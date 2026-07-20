@@ -3,7 +3,7 @@
 # - makes the launchers executable
 # - builds the interpreter
 # - adds an  `a`  alias to your shell so you can start Amber by typing:  a
-# Installs NOTHING system-wide and never touches your ngn/k, kona, or kdb.
+# Installs NOTHING system-wide and never touches your other k/q installs (kdb+, kona, ...).
 set -e
 here="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 cd "$here"

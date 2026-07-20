@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 # Amber launcher.  Usage:  ./a     (or:  bash a    if the +x bit was lost)
-# Builds the interpreter on first use, then starts the Amber REPL.
-# Always runs from THIS folder, so the library loads no matter where you call it.
+# (Re)builds the interpreter when it is missing OR older than the sources,
+# then starts the Amber REPL. Always runs from THIS folder.
 here="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 cd "$here"
 chmod +x "$here/a" "$here/build.sh" 2>/dev/null || true
-if [ ! -x "$here/amber" ]; then
+stale=0
+[ ! -x "$here/amber" ] && stale=1
+if [ -x "$here/amber" ] && [ -n "$(find "$here" -maxdepth 1 \( -name '*.c' -o -name '*.h' -o -name build.sh \) -newer "$here/amber" 2>/dev/null | head -1)" ]; then
+  echo "amber: sources changed — rebuilding..." >&2; stale=1
+fi
+if [ "$stale" = 1 ]; then
   bash "$here/build.sh" || { echo "amber: build failed (see README.md)" >&2; exit 1; }
 fi
 if command -v rlwrap >/dev/null 2>&1; then

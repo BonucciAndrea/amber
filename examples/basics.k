@@ -13,7 +13,7 @@ p["deltas 1 3 6 10 = ";deltas 1 3 6 10]
 p["sums   1 2 3 4  = ";sums 1 2 3 4]
 
 hr"a table, a grid, and meta"
-t:+`sym`px`qty!(`a`b`c`a; 10 20 30 40; 5 6 7 8)
+t:([]sym:`a`b`c`a; px:10 20 30 40; qty:5 6 7 8)
 show t
 `0:""
 show meta t

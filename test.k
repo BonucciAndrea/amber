@@ -121,6 +121,21 @@ t[`likeQ;like["abcde";"a?e"];0]
 t[`likeMid;like["abcde";"*cd*"];1]
 t[`likeVec;like[("cat";"dog";"cab");"c*"];101b]
 
+/ ---- temporal ----
+t[`hms;hms[9;30;15];34215000]
+t[`hh;hh hms[9;30;15];9]
+t[`mm;mm hms[9;30;15];30]
+t[`sec;sec hms[9;30;15];15]
+t[`minute;minute hms[9;30;15];570]
+t[`second;second hms[9;30;15];34215]
+t[`milli;milli hms[9;30;15]+123;123]
+t[`stime;stime hms[9;30;15];"09:30:15.000"]
+t[`ptime;ptime"09:30:15.123";34215123]
+t[`ptimeRound;(ptime stime hms[13;45;9])=hms[13;45;9];1]
+t[`minbar;minbar[5;hms[9;37;0]];hms[9;35;0]]
+t[`minbarVec;minute minbar[1;hms[9;30;0]+60000*0 1 2];570 571 572]
+t[`bar5m;bar[5;60000;hms[9;37;30]];hms[9;35;0]]
+
 / ---- report ----
 fails:r@&{"FAIL"~4#x}'r[;1]
 `0:""

@@ -375,12 +375,48 @@ like[("cat";"dog";"cab");"c*"]/ 101b
 
 ---
 
+## 10a. Temporal (tick.minute style)
+
+Amber holds a **time of day** as an integer number of **milliseconds since midnight**, the
+same convention as kdb+’s `time`. The q dotted temporal accessors map to plain Amber calls:
+
+| q            | Amber        | meaning                              |
+|--------------|--------------|--------------------------------------|
+| `t.hh`       | `hh t`       | hour of day (0–23)                   |
+| `t.mm`       | `mm t`       | minute of hour (0–59)                |
+| `t.ss`       | `sec t`      | second of minute (`ss` = string-search) |
+| `t.minute`   | `minute t`   | minutes since midnight               |
+| `t.second`   | `second t`   | seconds since midnight               |
+| (millis)     | `milli t`    | millisecond (0–999)                  |
+| build        | `hms[h;m;s]` | construct a time                     |
+| parse        | `ptime "HH:MM:SS.mmm"` | string → ms                 |
+| format       | `stime t`    | ms → `"HH:MM:SS.mmm"`                 |
+
+Bucketing for bars:
+
+```q
+minbar[w;t]    / w-minute bar, returned as a time (ms)
+bar[w;u;t]     / generic: w buckets of u ms (bar[5;60000;t] = 5-min bars)
+xbar[w;x]      / plain bucketing of any integer column
+```
+
+Classic 1-minute OHLCV, exactly like a q tickerplant query:
+
+```q
+tb: +@[+trade; ,`time; minbar[1]@]        / snap the time column onto 1-minute bars
+qby[tb; `sym`time;
+    `open`high`low`close`vol!({first x`px};{max x`px};{min x`px};{last x`px};{sum x`sz})]
+```
+
+`tsym[t;c]` renders the time columns `c` as `HH:MM:SS.mmm` when you `show` a table. See
+`examples/tick.k` for a complete trades + quotes + as-of/window + OHLC walkthrough.
+
 ## 11. Full library index
 
 ```
 scalar     neg not null reciprocal sqrt floor ceiling signum abs exp log sin cos
            til enlist string type key value first last reverse distinct group where
-           flip count mod div xbar xlog
+           flip count mod div xbar xlog round
 aggregate  sum prd min max avg med var dev svar sdev cov scov cor wsum wavg all any
 uniform    sums prds mins maxs deltas ratios differ prev next
 order/set  rank iasc idesc asc desc xrank xprev rotate in except inter union raze
@@ -390,8 +426,16 @@ tables     istable isdict iskeyed cols keys rows atr xkey unkey xcolall xcols xa
 grouping   qwhere qselect qby xgroup ungroup fby
 joins      lj ij uj pj ej aj aj0 asof wj
 strings    lower upper ltrim rtrim trim ss ssr sv vs like lk1
+temporal   hms hh mm sec milli minute second stime ptime  bar minbar tsym
+display    show amfmt amtab amkeyed amdict
 attributes `sa (set sorted)   `at (get)     [kernel primitives]
 ```
+
+## Help inside the REPL
+
+Type `\` for the menu, then a topic: `\q` (scalars, aggregation, sets, strings),
+`\j` (tables, keyed tables, joins, qSQL), `\z` (temporal, bars, attributes, display).
+`\0 \+ \' \`` cover the underlying ngn/k core.
 
 ---
 

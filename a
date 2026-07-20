@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# Amber launcher.  Run it as ./a  (or alias a=/path/to/amber/a).
+# Amber launcher.  Usage:  ./a     (or:  bash a    if the +x bit was lost)
 # Builds the interpreter on first use, then starts the Amber REPL.
+# Always runs from THIS folder, so the library loads no matter where you call it.
 here="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
 cd "$here"
-if [ ! -x ./amber ]; then
-  ./build.sh || { echo "amber: build failed (see README.md)" >&2; exit 1; }
+chmod +x "$here/a" "$here/build.sh" 2>/dev/null || true
+if [ ! -x "$here/amber" ]; then
+  bash "$here/build.sh" || { echo "amber: build failed (see README.md)" >&2; exit 1; }
 fi
 if command -v rlwrap >/dev/null 2>&1; then
-  exec rlwrap -pgreen ./amber repl.k "$@"
+  exec rlwrap "$here/amber" "$here/repl.k" "$@"
 else
-  exec ./amber repl.k "$@"
+  exec "$here/amber" "$here/repl.k" "$@"
 fi

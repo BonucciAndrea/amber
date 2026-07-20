@@ -36,6 +36,7 @@ mod:{y!x}
 div:{_x%y}
 xbar:{x*_y%x}
 xlog:{(`ln y)%`ln x}
+round:{[d;x]p:*/d#10;(_0.5+x*p)%p}
 
 / ---- aggregations ----------------------------------------------------------
 sum:{$[0=#x;0;+/x]}
@@ -139,8 +140,27 @@ vs:{x\y}
 lk1:{[s;p]$[~#p;~#s;"*"=*p;$[#s;lk1[s;1_p]|lk1[1_s;p];lk1[s;1_p]];~#s;0;("?"=*p)|(*p)=*s;lk1[1_s;1_p];0]}
 like:{[x;p]$[`C=@x;lk1[x;p];lk1[;p]'x]}
 
+/ ---- temporal : time-of-day held as milliseconds since midnight (like q time)
+/ q's  time.minute / time.hh / time.ss  become  minute t / hh t / ss t  in Amber.
+hms:{[h;m;s]1000*s+(60*m)+3600*h}                  / build a time from h m s
+hh:{_(x%3600000)}                                  / hour of day      (q time.hh)
+mm:{60!_(x%60000)}                                 / minute of hour   (q time.mm)
+sec:{60!_(x%1000)}                                 / second of minute (q time.ss; ss=string-search)
+milli:{1000!x}                                     / millisecond      (q time.ms)
+minute:{_(x%60000)}                                / minutes since midnight (q time.minute)
+second:{_(x%1000)}                                 / seconds since midnight (q time.second)
+z2:{-2$"0",$x}
+z3:{-3$"00",$x}
+stime1:{(z2 hh x),":",(z2 mm x),":",(z2 sec x),".",z3 milli x}
+stime:{$[|/(@x)=`i`j;stime1 x;stime1'x]}           / time -> "HH:MM:SS.mmm"
+ptime:{p:"."\x;t:`I$":"\*p;m:$[1<#p;`I$3#(p 1),"000";0];(3600000*t 0)+(60000*t 1)+(1000*t 2)+m}
+bar:{[w;u;t]s:w*u;s*_(t%s)}                        / w u-unit bars: bar[5;60000;t] = 5-min bars(ms)
+minbar:{[w;t]60000*xbar[w;minute t]}               / w-minute bar as a time (ms)
+tsym:{[t;c]+@[+t;c,();stime]}                      / render time cols c of table t as HH:MM:SS strings
+
 / ---- table visualization (q-style grids) -----------------------------------
-amblk:{[t;c]cl:{[t;x](+t)x}[t]'c;sc:{$x}'cl;h:$c;w:(#:'h)|{$[#x;|/#:'x;0]}'sc;pc:{[w;h;sc;i](,(w i)$h i),(w i)$'sc i}[w;h;sc]'!#c;+pc}
+amcells:{$[(`A=@x)&(0<#x)&`C=@*x;x;$x]}
+amblk:{[t;c]cl:{[t;x](+t)x}[t]'c;sc:amcells'cl;h:$c;w:(#:'h)|{$[#x;|/#:'x;0]}'sc;pc:{[w;h;sc;i](,(w i)$h i),(w i)$'sc i}[w;h;sc]'!#c;+pc}
 amtab:{[t]lns:{" "/x}'amblk[t;cols t];(1#lns),(,(#*lns)#"-"),1_lns}
 amkeyed:{[kt]t:unkey kt;kc:keys kt;vc:except[cols t;kc];kr:{" "/x}'amblk[t;kc];vr:{" "/x}'amblk[t;vc];lns:(kr,\:"| "),'vr;(1#lns),(,(#*lns)#"-"),1_lns}
 amdict:{[d]ks:$!d;vs:$. d;kw:|/#:'ks;{[kw;ks;vs;i](kw$ks i),"| ",vs i}[kw;ks;vs]'!#ks}

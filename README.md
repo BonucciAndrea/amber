@@ -1,12 +1,32 @@
 # Amber — a q/kdb+ language on ngn/k
 
+![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
+![license](https://img.shields.io/badge/license-AGPLv3-blue)
+![tests](https://img.shields.io/badge/tests-97%20passing-brightgreen)
+
 Amber is a small, self-contained vector language. It is the **ngn/k** interpreter plus a
 **q/kdb+ vocabulary** (aggregations, dictionaries, **tables & keyed tables**, the whole join
-family incl. **as-of** and **window** joins, a qSQL-style select/by, strings) and **sorted
-column attributes implemented in C** that make search ~1000× faster on large data.
+family incl. **as-of** and **window** joins, a qSQL-style select/by, strings, and **intraday
+temporal / tick.minute bars**) and **sorted column attributes implemented in C** that make
+search ~1000× faster on large data.
 
 This folder is everything you need. Nothing is installed system-wide. **It cannot interfere
 with your ngn/k, kona, or kdb+ installs** — see “Isolation” below.
+
+**New in 1.1:** temporal functions (`hms hh mm sec minute second stime`, `minbar` OHLC
+bucketing), `meta` now shows column attributes, clean grid rendering with `show`, a
+restructured `\` help (`\q \j \z`), and `examples/` with realistic trades & quotes.
+See [CHANGELOG.md](CHANGELOG.md).
+
+## Try it in 30 seconds
+
+```sh
+cd amber && ./a           # builds on first run, opens the REPL
+```
+```q
+\l examples/tick.k         # realistic trades/quotes: as-of & window joins, VWAP, OHLC bars
+\z                         # help page for temporal / tick bars / attributes
+```
 
 ---
 
@@ -151,6 +171,27 @@ t:+`sym`px`sz!(`a`b`a`b`a; 100 200 300 400 500; 10 20 30 40 50)
 show qwhere[t; t[`sz]>20]                        / where sz>20
 show qby[t; `sym; `vol`vwap!({sum x`sz}; {wavg[x`sz; x`px]})]   / by sym: sum sz, vwap
 ```
+
+### Temporal & tick bars (`tick.minute` style)
+
+Times are held as **milliseconds since midnight** (like q's `time`). q's dotted accessors
+`t.hh`, `t.minute`, … become plain calls in Amber:
+
+```q
+t:hms[9;30;15]            / 09:30:15  -> 34215000
+hh t                     / 9      (q t.hh)
+minute t                 / 570    (q t.minute)  -- minutes since midnight
+sec t                    / 15     (q t.ss; ss is reserved for string-search)
+stime t                  / "09:30:15.000"
+ptime "09:30:15.123"     / 34215123
+
+/ 1-minute OHLCV bars (the classic tickerplant query):
+tb:+@[+trade; ,`time; minbar[1]@]      / bucket the time column to 1-min bars
+qby[tb; `sym`time; `open`high`low`close`vol!({first x`px};{max x`px};{min x`px};{last x`px};{sum x`sz})]
+```
+
+`minbar[5;times]` gives 5-minute bars; `bar[w;u;t]` is generic. Run
+`./amber examples/tick.k` for a full trades/quotes/as-of/window/OHLC walkthrough.
 
 ### Attributes make search fast (the C-level feature)
 

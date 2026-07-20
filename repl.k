@@ -31,21 +31,29 @@ line:line1@line0@
 $["repl.k"~basename`argv 1;{cmds::@[cmds;x[1]1;:;{y;`0:x}2_x]}'{(&x~\:80#"-")_x:(1+*&x~\:,"/")_-1_x}@0:`argv 1;];
 run:{`1:banner,prompt;{line@1:`}::/`;}
 \d .
-\l amber.k
+/ load the Amber library by ABSOLUTE path derived from this script's own location,
+/ so it works no matter what the current working directory is.
+{.[{. x};,x;{}]}'0:({$[#p:"/"/-1_"/"\x;p;"."]}`argv 1),"/amber.k";
+$[.[{sum;1};,`;{0}];;`0:"amber: WARNING - amber.k did not load (is it next to repl.k?)\n"]
 
 $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
 
 /
 --------------------------------------------------------------------------------
 
-\   help               \\         exit
-\a  license(AGPLv3)    \l file.k  load
-\0  types              \d foo     set namespace; restore with  \d .
-\+  verbs              \t:n expr  time(elapsed milliseconds after n runs)
-\:  I/O verbs          \v         variables
-\'  adverbs            \f         functions
-\`  symbols            \cd path   change directory
-\h  summary            \other     command(through /bin/sh)
+                 A M B E R   help      ( type  \X  for a topic )
+
+  AMBER q-layer                             ngn/k core
+  \q  scalars, aggregation, uniform, sets   \0  types
+  \j  tables, keyed tables, joins, qSQL     \+  verbs
+  \z  temporal (tick bars), attrs, show     \'  adverbs   \`  symbols
+                                            \h  ngn/k cheat-sheet
+  session
+  \a  license (AGPLv3)     \l file.k  load a script     \v  variables
+  \d ns   namespace (\d .) \t:n expr  time n runs (ms)  \f  functions
+  \cd path   change dir    \other     shell command     \\  exit
+
+  quick start:  show t   meta t   sum x   aj[`sym`time;trade;quote]
 --------------------------------------------------------------------------------
 \0
 Types:
@@ -236,4 +244,70 @@ $ cast     string
 . apply(n) eval      .[x;i;[f;]y] drill
 grammar:  E:E;e|e e:nve|te| t:n|v v:tA|V n:t[E]|(E)|{E}|N
 limits:   8args 16locals 256globals 256bytecode 2048stack
+--------------------------------------------------------------------------------
+\q
+Amber q-layer : scalars, aggregation, uniform, ordering, sets, strings
+NOTE two-argument library functions take brackets:  f[x;y]  (no infix user verbs)
+
+SCALAR (monadic, call as  f x)
+  neg not null reciprocal sqrt floor ceiling signum abs exp log sin cos
+  til enlist string type key value first last reverse distinct group where flip count
+DYADIC (brackets)
+  mod[x;y]  div[x;y]  xbar[w;x]  xlog[base;x]
+AGGREGATION (list -> atom)
+  sum prd min max avg med var dev svar sdev  all any
+  wsum[x;y] wavg[x;y] cov[x;y] scov[x;y] cor[x;y]
+UNIFORM (list -> list)
+  sums prds mins maxs deltas ratios differ prev next
+ORDER / RANK
+  asc desc iasc idesc rank   xrank[n;x] xprev[n;x] rotate[n;x]
+  asc and xasc set the `s sorted attribute  ->  O(log n) search
+SETS (brackets)
+  in[x;y] except[x;y] inter[x;y] union[x;y] raze x sublist[n;x] cross[x;y]
+STRINGS
+  lower upper trim ltrim rtrim
+  ss[s;sub] ssr[s;from;to] sv[d;x] vs[d;x] like[x;pat]   (globs: * and ?)
+--------------------------------------------------------------------------------
+\j
+Amber q-layer : tables, keyed tables, joins, qSQL
+
+BUILD / INSPECT
+  t:+`a`b!(1 2;3 4)      table = flip of a column dict
+  show t                 grid    t`a col   t i row-dict   #t rows   cols t   meta t
+  istable isdict iskeyed  meta shows column type AND attribute (a)
+KEYED TABLES
+  xkey[`k;t]  unkey t  keys t  xcols[c;t]  xcolall[nm;t]  xasc[c;t]  xdesc[c;t]
+RESTRUCTURE
+  xgroup[k;t]  ungroup t  fby[(f;d);g]  insert[t;r]
+JOINS  (left operand drives ; c = `key..`time , last col is the sort/time key)
+  lj[t;kt] left     ij[t;kt] inner    uj[x;y] union    pj[t;kt] plus   ej[c;x;y] equi
+  aj[c;x;y] as-of   aj0[c;x;y] as-of(y time)   asof[t;d] single    wj[w;c;t;q;aggs] window
+  wj: w=(begins;ends) aligned to t ; aggs=((name;fn;col);..)
+SELECT / GROUP-BY
+  qwhere[t;mask]              select rows where mask
+  qselect[t; name!funcs]      computed columns (func takes the table)
+  qby[t; by; name!funcs]      group aggregate -> keyed table (func takes group sub-table)
+  e.g.  qby[trade;`sym; `vwap`n!({wavg[x`sz;x`px]};{#x})]
+--------------------------------------------------------------------------------
+\z
+Amber q-layer : temporal (tick bars), attributes, display
+
+TIME OF DAY  (milliseconds since midnight, like q `time)
+  hms[h;m;s]  build a time         minute t  minutes since midnight (q time.minute)
+  hh t   hour        (time.hh)      second t  seconds since midnight (q time.second)
+  mm t   min of hour (time.mm)      milli t   millisecond
+  sec t  sec of min  (time.ss*)     stime t   -> "HH:MM:SS.mmm"    ptime "09:30:00.5" -> ms
+  (* the q accessor is time.ss ; here it is sec, since ss = string-search)
+BARS  (tick.minute-style bucketing)
+  minbar[w;t]  w-minute bar (a time)      bar[w;u;t]  w u-unit bars in ms
+  xbar[w;x]    generic bucketing          minbar[5;trade`time] = 5-minute bars
+  1-min OHLCV:  qby[+@[+trade;,`time;minbar[1]@]; `sym`time; open/high/low/close/vol]
+  full worked example:  \l examples/tick.k
+ATTRIBUTES  (implemented in C ; speed up search)
+  `sa x  set sorted attribute      `at x  read it (`s or `)
+  asc x  -> `s-attributed sorted vector    meta t shows the `a` column
+DISPLAY
+  show x      grid-print table / keyed table / dict
+  tsym[t;c]   show time columns c as HH:MM:SS strings
+  amfmt x     -> the grid as a list of lines
 \

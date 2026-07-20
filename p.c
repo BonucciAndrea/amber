@@ -1,5 +1,5 @@
-#include"a.h" // ngn/k, (c) 2019-2024 ngn, GNU AGPLv3 - https://codeberg.org/ngn/k/raw/branch/master/LICENSE
-Z S s0,s;Z U k;Z A pb(A,C);                                                                         //parser state (s:current pointer, s0:start of source, k:implicit arg counter)
+#include"a.h" // Amber parser - GNU AGPLv3 - see LICENSE and NOTICE
+Z S s0,s;Z U k;Z A pb(A,C);Z A pe(A,C*);Z A ps();                                                   //parser state (s:current pointer, s0:start of source, k:implicit arg counter)
 U si(S s,C v)_(strchrnul(s,v)-(C*)s)                                                                //find char (string index)
 B id0(UC c)_(CAz(c)|(c|1)==0xd1)                                                                    //is identifier start char?
 Z B id1(C c)_(id0(c)|C09(c))                                                                        //is identifier char?
@@ -35,11 +35,19 @@ Z A0(pP,I a[8];U n=0;                                                           
  W(1,P(n>=L(a),ez0())A y=str0(ps());a[n++]=us(yV);y(0);B(*s-'.'||!id0(s[1]))++s)
  aV(tS,n,a))
 Z A0(pp,P(*s-'[',au)A x=N(pS(';'));P(*s-']'||!xn,ep(x))P(xN>8,ez(x))s++;x)                          //parse parameter list
+Z S pws(S s)_(W(*s==32||*s==10,s++)s)                                                               //skip spaces and newlines
+Z A amkl(CO A*e,U n)_(A x=aA1(MKL);F(n,PSH(x,e[i]))x)                                                //make-list node (e0;e1;..)
+Z A amcg(C end,U*np)_(I nm[256];A ex[256];U n=0;s=pws(s);                                            //parse `name:expr;..` group up to end -> (names ! (e0;e1;..))
+ W(*s-end,P(!id0(*s),ep0())A y=str0(N(ps()));nm[n]=us(yC);y(0);s=pws(s);P(*s-':',ep0())s++;
+  C v=0;ex[n++]=N(pe(0,&v));s=pws(s);I(*s==';',s++)s=pws(s))
+ s++;*np=n;aA3(EXC,qte(aV(tS,n,nm)),amkl(ex,n)))
+Z A0(amtbl,s++;U nk,nv;A kd=N(amcg(']',&nk)),vd=N(amcg(')',&nv));                                    //table literal ([keys]cols) ; s at '['
+ A vt=aA2(FLP,vd);P(!nk,vt)aA3(EXC,aA2(FLP,kd),vt))                                                  //unkeyed:+names!cols  keyed:keytable!valtable
 Z A pt(C*v)_(C c=*s;                                                                                //parse term
  P(c=='`',qte(p1(N(pS('`')))))
  P(c=='"',p1(pC()))
  P(c=='[',s++;pb(GAP,']'))
- P(c=='(',s++;P(*s==')',s++;emp(tA))A x=N(pb(MKL,')'));xn-2?x:las(x))
+ P(c=='(',s++;P(*s=='[',amtbl())P(*s==')',s++;emp(tA))A x=N(pb(MKL,')'));xn-2?x:las(x))
  P(c=='{',C k0=k;k=1;S s1=s0,t=s0=s++;A y=N(pp()),z=pb(GAP,'}');P(!z,s0=s1;y(0))I(y==au,y=aS(k);F(3,yi='x'+i))A x=N(cpl(aCn(t,s-t),z,y));s0=s1;k=k0;x)
  P(id0(c),S p=s;A x=pP();I(s-p==1&&c-'y'<2u,k=MAX(k,c-'w'))AO(p-s0,x))
  P(C09(c)&&s[1]==':',B u=s[2]==':';s+=2+u;U i=20+c-'0';P(i>25,ep0())*v=1;Lt(tv-u)|i)

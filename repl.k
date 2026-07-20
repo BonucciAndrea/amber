@@ -1,6 +1,6 @@
 #!k
 \d repl
-banner:"\n"/("";"    /\\   Amber 1.0";"   /--\\  q/kdb+ vocabulary on ngn/k   (GNU AGPLv3)";"  /    \\ tables | keyed tables | lj ij uj pj ej aj aj0 wj | qsql | sorted attrs";"";"  print a table:  show t     column info + attributes:  meta t";"  help: \\    quit: \\\\    (this is Amber, not ngn/k / kona / q)";"";"")
+banner:"\n"/("";"   █████╗ ███╗   ███╗██████╗ ███████╗██████╗";"  ██╔══██╗████╗ ████║██╔══██╗██╔════╝██╔══██╗";"  ███████║██╔████╔██║██████╔╝█████╗  ██████╔╝";"  ██╔══██║██║╚██╔╝██║██╔══██╗██╔══╝  ██╔══██╗";"  ██║  ██║██║ ╚═╝ ██║██████╔╝███████╗██║  ██║";"  ╚═╝  ╚═╝╚═╝     ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝";"  ▒▒ the array language ▒ v1.3 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒";"     columnar · vectorised · in-memory · O(log n) attribute search";"     tables · keyed tables · as-of/window joins · tick bars";"     \\ help    \\\\ quit    show t / bare t renders a grid";"")
 prompt:," " /use 0x0720 for emacs integration
 (opn;sem;cls):"(;)"
 /(opn;sem;cls):("( ";" ; ";" )") /uncomment this line for extra spacing
@@ -43,11 +43,11 @@ $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
 
                  A M B E R   help      ( type  \X  for a topic )
 
-  AMBER q-layer                             ngn/k core
+  AMBER q-layer                             core language
   \q  scalars, aggregation, uniform, sets   \0  types
   \j  tables, keyed tables, joins, qSQL     \+  verbs
   \z  temporal (tick bars), attrs, show     \'  adverbs   \`  symbols
-                                            \h  ngn/k cheat-sheet
+                                            \h  core cheat-sheet
   session
   \a  license (AGPLv3)     \l file.k  load a script     \v  variables
   \d ns   namespace (\d .) \t:n expr  time n runs (ms)  \f  functions
@@ -272,7 +272,8 @@ STRINGS
 Amber q-layer : tables, keyed tables, joins, qSQL
 
 BUILD / INSPECT
-  t:+`a`b!(1 2;3 4)      table = flip of a column dict
+  t:([]a:1 2;b:3 4)      table literal   ([key:..]col:..) = keyed table
+  t:+`a`b!(1 2;3 4)      (also: flip of a column dict)
   show t                 grid    t`a col   t i row-dict   #t rows   cols t   meta t
   istable isdict iskeyed  meta shows column type AND attribute (a)
 KEYED TABLES

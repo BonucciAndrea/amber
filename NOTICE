@@ -1,0 +1,14 @@
+Amber
+=====
+
+Amber is distributed under the GNU Affero General Public License v3 (see LICENSE).
+
+Amber's interpreter core is derived from a k array-language interpreter released
+under the GNU AGPLv3 by its original author (ngn). That upstream copyright is
+retained here solely as the AGPLv3 requires; this NOTICE is the single place it
+is recorded. Amber is an independent language and is not affiliated with, nor a
+distribution of, that project.
+
+All Amber-specific work -- the q/kdb+ vocabulary, the C-level column attributes,
+the ([]...) table-literal syntax, the temporal/tick functions, the REPL, tooling
+and documentation -- is (c) 2026 the Amber authors, under the GNU AGPLv3.

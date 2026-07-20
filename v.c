@@ -1,4 +1,4 @@
-#include"a.h" // ngn/k, (c) 2019-2024 ngn, GNU AGPLv3 - https://codeberg.org/ngn/k/raw/branch/master/LICENSE
+#include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 X1(flp,Rt(enl(enl(x)))R_(enl(x))RM(A y=kv(&x);am(x,y))RB(flp(cG(x)))
  Rm(A y=kv(&x);Y(RA(I(yn>1,L n=cfm(yA,yn);P(n<0,x(el(y)))F(yn,A z=ya;I(ztt,y=mut(y);ya=rsz(n,z))))aM(x,y))RT_A(aM(x,e1f(enl,y)))R_(x(en(y))))0)
  RA(U m=xn;L n=cfm(xA,m|!m);P(n==-1,enl(x))P(n<0,el(x))C t=_t(xx);I(t<tM&&t-tE,F(m,A y=xa;B(yt-t,t=0)))E(t=0)A y=aA(n);

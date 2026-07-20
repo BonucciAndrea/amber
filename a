@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Amber launcher.  Run it as ./a  (or alias a=/path/to/amber/a).
+# Builds the interpreter on first use, then starts the Amber REPL.
+here="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+cd "$here"
+if [ ! -x ./amber ]; then
+  ./build.sh || { echo "amber: build failed (see README.md)" >&2; exit 1; }
+fi
+if command -v rlwrap >/dev/null 2>&1; then
+  exec rlwrap -pgreen ./amber repl.k "$@"
+else
+  exec ./amber repl.k "$@"
+fi

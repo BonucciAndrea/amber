@@ -1,4 +1,4 @@
-#include"a.h" // ngn/k, (c) 2019-2024 ngn, GNU AGPLv3 - https://codeberg.org/ngn/k/raw/branch/master/LICENSE
+#include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #define abn V*RES a,CO V*RES b,U n
 #define M(x,y,z) Z V c##x##y(abn){x*r=AL(a);CO y*p=AL(b);F(n+((1<<z)-1)>>z,Fj(1<<z,*r++=*p++))}
  M(H,G,4)M(G,H,4)M(H,I,3)M(I,H,3)M(G,I,3)M(I,G,3)M(H,L,2)M(L,I,2)M(I,L,2)M(G,L,2)//cHG cGH cHI cIH cGI cIG cHL cLI cIL cGL

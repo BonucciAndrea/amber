@@ -1,4 +1,4 @@
-#include<dlfcn.h> // ngn/k, (c) 2019-2024 ngn, GNU AGPLv3 - https://codeberg.org/ngn/k/raw/branch/master/LICENSE
+#include<dlfcn.h> // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include<sys/socket.h>
 #include<sys/wait.h>
 #include<netinet/in.h>

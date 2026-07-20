@@ -1,7 +1,7 @@
 / ============================================================================
-/ Amber standard library  -  q/kdb+ functionality implemented on top of ngn/k
-/ (c) 2026.  Amber is a derivative of ngn/k (GNU AGPLv3).
-/ One definition per line (ngn/k statement = line).  Loaded at startup.
+/ Amber standard library  -  the q/kdb+ vocabulary of the Amber array language.
+/ (c) 2026 the Amber authors.  GNU AGPLv3 (see LICENSE and NOTICE).
+/ One definition per line (an Amber statement is a line).  Loaded at startup.
 / ============================================================================
 
 / ---- scalar / monadic primitives ------------------------------------------
@@ -54,8 +54,8 @@ cov:{avg[x*y]-avg[x]*avg y}
 scov:{(n*cov[x;y])%-1+n:#x}
 cor:{cov[x;y]%dev[x]*dev y}
 med:{a:x@<x;n:#a;m:_n%2;$[2!n;0.0+a m;avg a@m-1 0]}
-all:{&/`b$x}
-any:{|/`b$x}
+all:{~|/x=0}
+any:{~&/x=0}
 sums:{+\x}
 prds:{*\x}
 mins:{&\x}
@@ -88,7 +88,7 @@ cross:{,/x,/:\:y}
 / ---- table predicates & basics ---------------------------------------------
 istable:{`M=@x}
 isdict:{`m=@x}
-iskeyed:{(`m=@x)&`M=@!x}
+iskeyed:{$[`m=@x;`M=@!x;0]}
 cols:{$[iskeyed x;(!!x),!.x;!x]}
 keys:{$[iskeyed x;!!x;0#`]}
 rows:{+. x}
@@ -159,11 +159,11 @@ minbar:{[w;t]60000*xbar[w;minute t]}               / w-minute bar as a time (ms)
 tsym:{[t;c]+@[+t;c,();stime]}                      / render time cols c of table t as HH:MM:SS strings
 
 / ---- table visualization (q-style grids) -----------------------------------
-amcells:{$[(`A=@x)&(0<#x)&`C=@*x;x;$x]}
+amcells:{$[`A=@x;{$[`C=@x;x;`k x]}'x;$x]}
 amblk:{[t;c]cl:{[t;x](+t)x}[t]'c;sc:amcells'cl;h:$c;w:(#:'h)|{$[#x;|/#:'x;0]}'sc;pc:{[w;h;sc;i](,(w i)$h i),(w i)$'sc i}[w;h;sc]'!#c;+pc}
 amtab:{[t]lns:{" "/x}'amblk[t;cols t];(1#lns),(,(#*lns)#"-"),1_lns}
 amkeyed:{[kt]t:unkey kt;kc:keys kt;vc:except[cols t;kc];kr:{" "/x}'amblk[t;kc];vr:{" "/x}'amblk[t;vc];lns:(kr,\:"| "),'vr;(1#lns),(,(#*lns)#"-"),1_lns}
-amdict:{[d]ks:$!d;vs:$. d;kw:|/#:'ks;{[kw;ks;vs;i](kw$ks i),"| ",vs i}[kw;ks;vs]'!#ks}
+amdict:{[d]ks:$!d;vs:`k'value d;kw:|/#:'ks;{[kw;ks;vs;i](kw$ks i),"| ",vs i}[kw;ks;vs]'!#ks}
 amfmt:{$[iskeyed x;amkeyed x;`M=@x;amtab x;`m=@x;amdict x;`k x]}
 show:{`0:amfmt x;}
 

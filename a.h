@@ -1,4 +1,4 @@
-#include<stdbool.h> // ngn/k, (c) 2019-2024 ngn, GNU AGPLv3 - https://codeberg.org/ngn/k/raw/branch/master/LICENSE
+#include<stdbool.h> // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include<string.h>
 #include<unistd.h>
 #include"g.h"

@@ -1,14 +1,12 @@
 # Amber
 
-**Amber** is a vector programming language: it takes the [ngn/k](https://codeberg.org/ngn/k)
-interpreter (a fast, compact implementation of the *k* array language) and layers on top of it
+**Amber** is a low-latency **array language**: a fast, compact array interpreter that provides
 the major functionality of **q/kdb+** — aggregations, dictionaries, tables, keyed tables,
 the join family (left / inner / union / plus / equi / **as-of** / **window**), a qSQL‑style
 select/by, string utilities, and **column attributes** that accelerate search.
 
-Amber is a derivative work of ngn/k and is distributed under the **GNU AGPLv3 (v3 only)**,
-the same licence as ngn/k. Upstream copyright notices are preserved in the C sources as the
-licence requires; the *language identity* (banner, binary, prelude) is Amber.
+Amber is distributed under the **GNU AGPLv3 (v3 only)**. Its interpreter core derives from an
+AGPLv3 k interpreter; that attribution is recorded in `NOTICE`, as the licence requires.
 
 Amber ships as:
 
@@ -17,7 +15,7 @@ Amber ships as:
 | `amber`     | the interpreter (compiled from the C sources)                 |
 | `amber.k`   | the Amber standard library (the q layer), auto‑loaded         |
 | `repl.k`    | the interactive read‑eval‑print loop (loads `amber.k`)        |
-| `test.k`    | the test suite (84 assertions)                                |
+| `test.k`    | the test suite (104 assertions)                               |
 | `*.c *.h`   | the interpreter sources (modified `a.c a.h m.c f.c` for attributes) |
 
 ---
@@ -32,12 +30,12 @@ make amber CC=gcc            # or CC=clang-17, CC=gcc-10, ...
 ```
 
 `make amber` compiles every `*.c`, links `-lm -ldl`, and copies the result to `./amber`.
-Under the hood it is exactly the ngn/k build (`-O3 -march=native`) plus the attribute changes.
+The build is an optimised C compile (`-O2`, portable) of the Amber interpreter.
 
 Other targets:
 
 ```sh
-make k        # build the interpreter as ./k (identical binary, ngn name)
+make k        # build the interpreter as ./k (identical binary, short name)
 make c        # clean (rm -rf o k amber libk.so libk.a)
 ```
 
@@ -47,7 +45,7 @@ Run the test suite:
 ./amber test.k
 # ...
 # ================ AMBER TEST SUITE ================
-# 84 tests run, 0 failures
+# 104 tests run, 0 failures
 # ALL TESTS PASSED
 # =================================================
 ```
@@ -65,8 +63,8 @@ To use the library from your own script, put `\l amber.k` on the first line:
 
 ```k
 \l amber.k
-t:+`sym`px!(`a`b`a;100 200 300)
-select avg px by sym from t    / see §7 for the functional form
+t:([]sym:`a`b`a; px:100 200 300)
+qby[t; `sym; (,`ap)!,{avg x`px}]   / see §7
 ```
 
 ---
@@ -75,20 +73,20 @@ select avg px by sym from t    / see §7 for the functional form
 
 Amber is **two layers**:
 
-1. **The kernel (C).** ngn/k’s evaluator, memory manager, parser and ~200 primitive verbs.
+1. **The kernel (C).** Amber’s evaluator, memory manager, parser and ~200 primitive verbs.
    This is where values live and where the *attribute* machinery was added (see §9).
 
 2. **The library (`amber.k`).** ~110 definitions, one per line, that recreate q’s vocabulary
    using kernel primitives. Loading is silent; every name lands in the root namespace.
 
-Because Amber is *k underneath*, everything in the k language is still available and mixes
-freely with the q layer. Amber is q semantics with k’s notation and k’s speed.
+Everything in the underlying array language is available and mixes freely with the q layer:
+Amber is q semantics in a terse array notation, at array-language speed.
 
 ### Dialect notes (important)
 
-Amber follows **ngn/k grammar**, which differs from kdb+/q in a few ways you must know:
+Amber follows a terse **array grammar**, which differs from kdb+/q in a few ways you must know:
 
-* **Dyadic library functions are called with brackets, not infix.** ngn/k does **not** allow a
+* **Dyadic library functions are called with brackets, not infix.** Amber does **not** allow a
   user‑defined function to be applied infix (`x f y` is a parse of two nouns). So write
   `lj[t;kt]`, `in[x;y]`, `except[a;b]`, `xasc[`sym;t]` — not `t lj kt`. Built‑in verbs
   (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) *are* infix as usual.
@@ -104,7 +102,7 @@ These are properties of the host, not bugs, and the library is written to respec
 
 ---
 
-## 3. Type & null quick reference (inherited from k)
+## 3. Type & null quick reference
 
 | k type | list / atom | example            | null   |
 |--------|-------------|--------------------|--------|
@@ -174,7 +172,7 @@ A **dictionary** is `keys!values`; a **table** is a flipped column dictionary `+
 a **keyed table** is a dictionary whose key *and* value are both tables (exactly kdb+’s model).
 
 ```k
-t:+`sym`px`sz!(`a`b`c;100 200 300;10 20 30)   / a 3-row table
+t:([]sym:`a`b`c; px:100 200 300; sz:10 20 30)   / a 3-row table (literal syntax)
 t`px                 / 100 200 300            column access
 t 1                  / `sym`px`sz!(`b;200;20) row as a dict
 #t                   / 3                       row count
@@ -316,7 +314,7 @@ lives. Two symbol‑verbs are exposed by the interpreter:
 
 ### Why it makes search faster
 
-ngn/k’s find (`?`) and membership (`in`) on integer vectors are an **O(n) linear scan**
+Amber’s find (`?`) and membership (`in`) on integer vectors are an **O(n) linear scan**
 (`f.c: fGL/fHL/fIL/fLL`). Binary search (`bin`, the `x'y` form) already exists but you have to
 ask for it. The sorted attribute lets `?`/`in` *decide for themselves*: when the left vector is
 attributed sorted, find dispatches to a new **O(log n) binary search** instead of the scan.
@@ -435,7 +433,7 @@ attributes `sa (set sorted)   `at (get)     [kernel primitives]
 
 Type `\` for the menu, then a topic: `\q` (scalars, aggregation, sets, strings),
 `\j` (tables, keyed tables, joins, qSQL), `\z` (temporal, bars, attributes, display).
-`\0 \+ \' \`` cover the underlying ngn/k core.
+`\0 \+ \' \`` cover the core array language.
 
 ---
 
@@ -466,4 +464,4 @@ in[3 5; ids]                      / binary-searched membership
 
 ---
 
-*Amber — q on k. Built on ngn/k. GNU AGPLv3.*
+*Amber — a low-latency array language. GNU AGPLv3.*

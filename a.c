@@ -1,4 +1,4 @@
-#include"a.h" // ngn/k, (c) 2019-2024 ngn, GNU AGPLv3 - https://codeberg.org/ngn/k/raw/branch/master/LICENSE
+#include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 Z A1(sam,x)V_;T_;U _K(A x/*0*/)_(X(R2(tu,tw,1)Rv(2)Rx(x>>48&15)Ropqr(xk))0)
 X1(mkn,RmMA(e1f(mkn,x))Rt(x(_R(cn[xt])))R_(x(rsz(xN,_R(cn[xt])))))
 A1(iei,/*0*/0x2332211004>>(xv*(xtv&&xv<10u)<<2)&15)

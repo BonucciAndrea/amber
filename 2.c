@@ -1,4 +1,4 @@
-#include"a.h" // ngn/k, (c) 2019-2024 ngn, GNU AGPLv3 - https://codeberg.org/ngn/k/raw/branch/master/LICENSE
+#include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 Z CO W msk[]={0x8080808080808080ll,0x8000800080008000ll,0x8000000080000000ll};
 #define M(o,f,T) ZN V f(CO V*RES a,CO V*RES b,V*RES c,U n){CO T*x=AL(a),*y=AL(b);T*r=AL(c);F(n,Fj(32/SZ(T),*r++=*x++o*y++))}
  M(+,aFF,F)M(*,mFF,F)M(/,dFF,F)M(+,aLL,L)M(+,aII,I)M(+,aHH,H)M(+,aGG,G)

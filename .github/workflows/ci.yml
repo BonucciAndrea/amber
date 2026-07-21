@@ -1,0 +1,22 @@
+name: ci
+on:
+  push:
+  pull_request:
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install compiler
+        run: sudo apt-get update && sudo apt-get install -y build-essential
+      - name: Build amber
+        run: ./build.sh
+      - name: Run test suite
+        run: |
+          out=$(./amber test.k)
+          echo "$out"
+          echo "$out" | grep -Eq '0 failures' || { echo "TESTS FAILED"; exit 1; }
+      - name: Run examples (smoke)
+        run: |
+          ./amber examples/basics.k > /dev/null
+          ./amber examples/tick.k  > /dev/null

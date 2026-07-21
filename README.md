@@ -13,7 +13,7 @@
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
-![tests](https://img.shields.io/badge/tests-148%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-188%20passing-brightgreen)
 ![build](https://img.shields.io/badge/build-C11%20·%20portable-informational)
 
 </div>
@@ -85,7 +85,7 @@ Run the guided tours:
 ./amber examples/basics.k   # a 2-minute intro
 ./amber examples/tick.k     # realistic trades & quotes: as-of/window joins, VWAP, OHLC
 ./amber bench.k             # attribute speed benchmark
-./amber test.k              # the 148-assertion test suite
+./amber test.k              # the 153-assertion test suite
 ```
 
 ---
@@ -122,6 +122,31 @@ vocabulary, `\0 \+ \' \`` for the core.
 
 ---
 
+## Finance / HFT module (`fin.k`)
+
+Auto-loaded after `amber.k`. Generate a market session and analyse it the way an HFT desk does:
+
+```q
+gentq 100000                       / sets global `trades` and `quotes` (numeric times, `s on time, `p on sym)
+m:aj[`sym`time; trades; quotes]    / TAQ: prevailing quote for every trade
+tsign m                            / Lee-Ready trade sign (+1 buy / -1 sell)
+effspread m                        / effective spread = 2|px-mid|
+qby[trades;`sym; `vwap!enlist {wavg[x`sz;x`px]}]   / VWAP by symbol
+bars[1; trades]                    / 1-minute OHLCV bars
+g:bysym trades                     / O(1) grouped index
+symrows[trades; g; `AAPL]          / all AAPL rows in O(1)
+```
+
+Included: `mid spread spreadbps micro imbal` (book), `vwap twap tsign signedvol effspread
+notional` (trades), `ret logret rvol movavg movsum movmax movmin ema rollstd` (returns/vol),
+`bars symstats` (aggregation), `bysym symrows gidx` (O(1) index), `pt` (time-formatted print).
+Walkthrough: `./amber examples/hft.k`.
+
+**Attributes.** Amber has all four kdb-style attributes in C: `` `sa`` sorted, `` `ua`` unique,
+`` `pa`` parted, `` `ga`` grouped (`` `at`` reads them, `meta` shows them). Sorted/parted give
+O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing
+(`bench-fin.k` ~ 20,000x vs a scan).
+
 ## What's inside
 
 | file | |
@@ -130,15 +155,16 @@ vocabulary, `\0 \+ \' \`` for the core.
 | `*.c`, `*.h` | the interpreter (`p.c` carries the `([]…)` table-literal parser) |
 | `amber.k` | the q/kdb+ vocabulary (auto-loaded) |
 | `repl.k` | the REPL — banner, grid rendering, help |
-| `examples/` | `tour.k` · `basics.k` · `tick.k` |
-| `test.k`, `bench.k` | 148-assertion suite; attribute benchmark |
+| `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `attributes.k` · `practice.k` |
+| `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |
+| `test.k`, `bench.k` | 153-assertion suite; attribute benchmark |
 | `AMBER.md`, `MISSING.md`, `CHANGELOG.md` | reference · roadmap · history |
 
 ## Roadmap
 
 Amber covers a large slice of q. [MISSING.md](MISSING.md) is an honest map of what's next —
-top picks: the `` `g`` grouped attribute, real temporal *types*, a `select…from…where` parser,
-on-disk tables, and IPC.
+top picks: real temporal *types*, a `select…from…where` parser, on-disk / splayed tables,
+and IPC.
 
 <a name="isolation"></a>
 ## Isolation

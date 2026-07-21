@@ -47,7 +47,7 @@ X2(fnd,
   YmMA(r2f(fnd,x,y))
   YE(fnd(x,gZ(y)))
   P(xt==TT[yt]||xtZ&&ytzZ,
-   B srt=!_tP(x)&&xt!=tF&&xt!=tS&&_at(x)==1;TY(fGL)*f=(srt?G(&bGL,bHL,bIL,bLL):G(&fGL,fHL,fIL,fLL))[xw-3];V*a=xV;U m=xn;
+   B srt=!_tP(x)&&xt!=tF&&xt!=tS&&(_at(x)==1||_at(x)==3);TY(fGL)*f=(srt?G(&bGL,bHL,bIL,bLL):G(&fGL,fHL,fIL,fLL))[xw-3];V*a=xV;U m=xn;
    Yt(az(f(a,m,gl(y))))
    U n=yn;A z=aL(n);My(S4(yw-3,F(n,zl=f(a,m,yg)),F(n,zl=f(a,m,yh)),F(n,zl=f(a,m,yi)),F(n,zl=f(a,m,yl))))z)
   fN(y)))

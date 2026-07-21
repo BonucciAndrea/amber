@@ -157,6 +157,7 @@ ptime:{p:"."\x;t:`I$":"\*p;m:$[1<#p;`I$3#(p 1),"000";0];(3600000*t 0)+(60000*t 1
 bar:{[w;u;t]s:w*u;s*_(t%s)}                        / w u-unit bars: bar[5;60000;t] = 5-min bars(ms)
 minbar:{[w;t]60000*xbar[w;minute t]}               / w-minute bar as a time (ms)
 tsym:{[t;c]+@[+t;c,();stime]}                      / render time cols c of table t as HH:MM:SS strings
+gentq:{[n]u:`AAPL`MSFT`GOOG`AMZN`META`TSLA`NVDA`JPM`XOM`WMT;o:hms[9;30;0];L:hms[16;0;0]-o;bp:u!100.0+10*!#u;s:n?u;m:2*n;qs:m?u;mid:round[2](bp qs)+0.01*(m?201)-100;h:0.01*1+m?10;trades::xasc[`sym`time;([]sym:s;time:stime[o+n?L];px:round[2](bp s)+0.01*(n?201)-100;sz:100*1+n?10)];quotes::xasc[`sym`time;([]sym:qs;time:stime[o+m?L];bid:mid-h;ask:mid+h;bsz:100*1+m?5;asz:100*1+m?5)]}
 
 / ---- table visualization (q-style grids) -----------------------------------
 amcells:{$[`A=@x;{$[`C=@x;x;`k x]}'x;$x]}

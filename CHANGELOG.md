@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.4.1
+- **`gentq` now marks both key columns**: `time` gets the `` `s`` sorted attribute and `sym`
+  gets `` `p`` parted — both visible in `meta trades` / `meta quotes` (via `fin.k`'s
+  `sortcol`/`partcol` helpers). `test-fin.k` asserts both (now 35 tests).
+- **Help expanded**: the `\z` page documents all four attributes (`` `sa`` `` `ua`` `` `pa``
+  `` `ga`` + `` `at``, with complexity), and a new **`\m` page** documents the whole `fin.k`
+  HFT vocabulary. Added to the main `\` menu.
+
+## 1.4
+- **`fin.k` — a financial / HFT module** (auto-loaded after `amber.k`): a fixed `gentq[n]`
+  that sets global `trades`/`quotes` tables with **numeric times** and attributes on the key
+  columns (`` `s`` on `time`, `` `p`` on `sym`); an O(1) grouped index (`bysym`/`symrows`);
+  order-book analytics (`mid` `spread`
+  `spreadbps` `micro` `imbal`); trade analytics (`vwap` `twap` `tsign` `signedvol`
+  `effspread` `notional`); returns/vol (`ret` `logret` `rvol` `movavg` `movsum` `movmax`
+  `movmin` `ema` `rollstd`); `bars` (OHLCV) and `symstats`; and `pt` (time-formatted print).
+- **All four kdb attributes now exist in C**: `` `sa`` (sorted), `` `ua`` (unique),
+  `` `pa`` (parted), `` `ga`` (grouped); `` `at`` reports `s`/`u`/`p`/`g`; `meta` shows them.
+  Sorted **and parted** columns get O(log n) kernel find; grouped + the group index give O(1)
+  per-symbol slicing (see `bench-fin.k`: ~20,000x vs a linear scan).
+- **Join fix**: joins require **numeric** time columns — store times as ms and format only for
+  display (`tsym`/`pt`). `stime` on the stored column breaks `aj` (it makes time a string).
+- New: `examples/hft.k` (full HFT walkthrough), `examples/attributes.k`,
+  `examples/practice.k`, `test-fin.k` (32 tests), `bench-fin.k`. Core suite: 153 tests.
+
+
 ## 1.3
 - **Fixed table/grid rendering** used by both `show` and the bare-expression REPL:
   `amdict` now handles list-valued dicts (e.g. `group`), `amcells` renders nested columns

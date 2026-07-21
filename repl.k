@@ -1,6 +1,6 @@
 #!k
 \d repl
-banner:"\n"/("";"   █████╗ ███╗   ███╗██████╗ ███████╗██████╗";"  ██╔══██╗████╗ ████║██╔══██╗██╔════╝██╔══██╗";"  ███████║██╔████╔██║██████╔╝█████╗  ██████╔╝";"  ██╔══██║██║╚██╔╝██║██╔══██╗██╔══╝  ██╔══██╗";"  ██║  ██║██║ ╚═╝ ██║██████╔╝███████╗██║  ██║";"  ╚═╝  ╚═╝╚═╝     ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝";"  ▒▒ the array language ▒ v1.3 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒";"     columnar · vectorised · in-memory · O(log n) attribute search";"     tables · keyed tables · as-of/window joins · tick bars";"     \\ help    \\\\ quit    show t / bare t renders a grid";"")
+banner:"\n"/("";"   █████╗ ███╗   ███╗██████╗ ███████╗██████╗";"  ██╔══██╗████╗ ████║██╔══██╗██╔════╝██╔══██╗";"  ███████║██╔████╔██║██████╔╝█████╗  ██████╔╝";"  ██╔══██║██║╚██╔╝██║██╔══██╗██╔══╝  ██╔══██╗";"  ██║  ██║██║ ╚═╝ ██║██████╔╝███████╗██║  ██║";"  ╚═╝  ╚═╝╚═╝     ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝";"  ▒▒ the array language ▒ v1.4 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒";"     columnar · vectorised · in-memory · s/u/p/g attributes · O(1) index";"     tables · keyed tables · as-of/window joins · fin.k HFT module";"     \\ help    \\\\ quit    show t / bare t renders a grid";"")
 prompt:," " /use 0x0720 for emacs integration
 (opn;sem;cls):"(;)"
 /(opn;sem;cls):("( ";" ; ";" )") /uncomment this line for extra spacing
@@ -33,7 +33,9 @@ run:{`1:banner,prompt;{line@1:`}::/`;}
 \d .
 / load the Amber library by ABSOLUTE path derived from this script's own location,
 / so it works no matter what the current working directory is.
-{.[{. x};,x;{}]}'0:({$[#p:"/"/-1_"/"\x;p;"."]}`argv 1),"/amber.k";
+dir::{$[#p:"/"/-1_"/"\x;p;"."]}`argv 1
+{.[{. x};,x;{}]}'0:dir,"/amber.k";
+{.[{. x};,x;{}]}'0:dir,"/fin.k";
 $[.[{sum;1};,`;{0}];;`0:"amber: WARNING - amber.k did not load (is it next to repl.k?)\n"]
 
 $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
@@ -46,8 +48,8 @@ $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
   AMBER q-layer                             core language
   \q  scalars, aggregation, uniform, sets   \0  types
   \j  tables, keyed tables, joins, qSQL     \+  verbs
-  \z  temporal (tick bars), attrs, show     \'  adverbs   \`  symbols
-                                            \h  core cheat-sheet
+  \z  temporal, attributes (s/u/p/g), show  \'  adverbs   \`  symbols
+  \m  finance / HFT module (fin.k)          \h  core cheat-sheet
   session
   \a  license (AGPLv3)     \l file.k  load a script     \v  variables
   \d ns   namespace (\d .) \t:n expr  time n runs (ms)  \f  functions
@@ -304,11 +306,42 @@ BARS  (tick.minute-style bucketing)
   xbar[w;x]    generic bucketing          minbar[5;trade`time] = 5-minute bars
   1-min OHLCV:  qby[+@[+trade;,`time;minbar[1]@]; `sym`time; open/high/low/close/vol]
   full worked example:  \l examples/tick.k
-ATTRIBUTES  (implemented in C ; speed up search)
-  `sa x  set sorted attribute      `at x  read it (`s or `)
-  asc x  -> `s-attributed sorted vector    meta t shows the `a` column
+ATTRIBUTES  (implemented in C ; speed up search ; meta shows them in `a`)
+  `sa x  set sorted   (`s)   sorted asc     -> binary-search find   O(log n)
+  `ua x  set unique   (`u)   distinct keys  -> hash-like membership
+  `pa x  set parted   (`p)   grouped runs   -> binary-search find   O(log n)
+  `ga x  set grouped  (`g)   any order      -> group index          O(1) slice
+  `at x  read the attribute of x   ->  `s / `u / `p / `g  (or ` if none)
+  asc / xasc set `s for you.  fin.k: sortcol[c;t] partcol[c;t] groupcol[c;t]
+  set an attribute on a table column ; gentq marks time `s and sym `p.
+  bench.k  ~1000-2000x find speedup ;  bench-fin.k  O(1) per-symbol slicing
 DISPLAY
   show x      grid-print table / keyed table / dict
   tsym[t;c]   show time columns c as HH:MM:SS strings
   amfmt x     -> the grid as a list of lines
+--------------------------------------------------------------------------------
+\m
+Amber finance / HFT module  (fin.k, auto-loaded after amber.k)
+
+DATA GENERATOR
+  gentq n     sets globals  trades  and  quotes  (n trades, 2n quotes)
+              numeric times ; time is `s sorted , sym is `p parted (see meta)
+ATTRIBUTES ON TABLE COLUMNS
+  sortcol[c;t] mark col c `s      partcol[c;t] mark `p      groupcol[c;t] mark `g
+O(1) PER-SYMBOL INDEX
+  gidx x       vector -> value!positions        bysym t   -> sym!row-positions
+  symrows[t;g;s]  rows of t for symbol s in O(1)   (g:bysym t)
+QUOTE / ORDER-BOOK  (take a quote table)
+  mid q   spread q   spreadbps q   micro q (microprice)   imbal q (book imbalance)
+TRADE / TAQ  (aj trades to quotes first:  m:taq[trades;quotes])
+  taq[tr;qu]  as-of match      tsign m  Lee-Ready sign (+1 buy/-1 sell)
+  signedvol m signed volume    effspread m 2|px-mid|    notional m  px*sz
+PRICE SERIES  (a numeric vector)
+  ret x  logret x  rvol x  vwap t  twap t
+ROLLING / MOVING  (front-padded to length)
+  movavg[w;x] movsum[w;x] movmax[w;x] movmin[w;x]  ema[a;x]  rollstd[w;x]
+AGGREGATION
+  bars[w;t]  w-minute OHLCV keyed table     symstats t  per-symbol summary
+  pt x       print a table with `time formatted HH:MM:SS.mmm
+  worked example:  \l examples/hft.k
 \

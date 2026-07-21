@@ -67,6 +67,12 @@ t[`attrIsSet;`at bAttr;`s]
 t0:`t[];rr0:bAttr?q;t1:`t[]
 t2:`t[];rr1:base?q;t3:`t[]
 t[`attrSpeedup;(t3-t2)>2*1|t1-t0;1]
+/ the four kdb-style attributes
+t[`attrSorted;`at(`sa 1 2 3);`s]
+t[`attrUnique;`at(`ua 3 1 2);`u]
+t[`attrParted;`at(`pa 1 1 2 2);`p]
+t[`attrGrouped;`at(`ga 3 1 2);`g]
+t[`partedFindC;(`pa 10 10 20 20 30)?10 20 30 40;0 2 4 0N]
 
 / ---- tables / keyed tables ----
 tt:+`s`p`v!(`a`b`c;10 20 30;1.5 2.5 3.5)

@@ -18,7 +18,7 @@
 
 </div>
 
-Amber is a small, fast, self-contained array language, build on top of [ngn/k](https://codeberg.org/ngn/k), with the working vocabulary of
+Amber is a small, fast, self-contained array language, built on top of [ngn/k](https://codeberg.org/ngn/k), with the working vocabulary of
 **q/kdb+** — dictionaries, **tables & keyed tables** with `([]…)` literal syntax, the full
 **join family** (left · inner · union · plus · equi · **as-of** · **window**), qSQL-style
 select/by, strings, intraday **tick / OHLC** temporals, and **column attributes implemented

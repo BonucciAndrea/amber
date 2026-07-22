@@ -64,7 +64,7 @@ line-editing. Nothing is installed system-wide — see [Isolation](#isolation).
 meta ([]sym:`a`b; px:1.5 2.5)      / column types + attributes (c | t a)
 
 / the join every tick shop needs — as-of
-trade:([]sym:`a`b`a; time:3 4 9; px:100 200 300)
+trade:([]sym:`a`b`a; time:3 4 9; px:100 200 300;sz:100 150 175)
 quote:([]sym:`a`a`b`a; time:1 5 2 8; bid:10 11 20 12)
 aj[`sym`time; trade; quote]        / last quote at/ before each trade
 
@@ -72,10 +72,10 @@ aj[`sym`time; trade; quote]        / last quote at/ before each trade
 tb:+@[+trade; ,`time; minbar[1]@]
 qby[tb; `sym`time; `o`h`l`c`v!({first x`px};{max x`px};{min x`px};{last x`px};{sum x`sz})]
 
-/ sorted attribute => binary-search lookups
-v:asc 2000000?1000000000                     / `s attribute set by asc
-`at v                                        / `s
-v ? 12345 67890                              / O(log n)  (see bench.k: ~1000x faster)
+/ sorted attribute => binary-search lookups (20M)
+v:asc 20000000?100000000;u:0+v;p:v@5000?#v                 / v has sorted attribute while u does not
+t:`t[];a:u?p;lin:`t[]-t;t:`t[];b:v?p;bin:`t[]-t;           / lin and bin are both the runtimes in microseconds
+`ratio`linus`binus`equal`atv`atu!(round[5;lin%bin];lin;bin;a~b;`at v;`at u)
 ```
 
 Run the guided tours:

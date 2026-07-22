@@ -37,16 +37,11 @@ Splayed tables, **date-partitioned databases**, `set`/`get` to disk, `\l db`, me
 handlers, `.z.po`/`.z.pc` connect/disconnect, `.z.w`, websockets, TLS. And the whole
 tickerplant / RDB / HDB / gateway pattern (`tick.q`, `r.q`, `u.q`, `w.q`, `.u.sub`/`.u.pub`).
 
-## 6. Attributes — 1 of 4
-Amber implements **sorted (`` `s``)**. Missing: **`` `u`` unique**, **`` `p`` parted**,
-**`` `g`` grouped** (the real-time hash index that powers fast `where sym=` on RDBs). No
-attribute preservation through most ops (q keeps/drops them with defined rules).
-
-## 7. Enumerations, foreign keys, linked columns
+## 6. Enumerations, foreign keys, linked columns
 `` `sym$`` enumeration domains, `.Q.en`, foreign keys (`` `t$`` and dotted `order.customer.name`
 traversal), linked columns, `.Q.fk`. None in Amber.
 
-## 8. System namespaces
+## 7. System namespaces
 - **`.z.*`** clocks/handlers: `.z.p .z.P .z.z .z.t .z.d .z.T .z.D`, timer `.z.ts` + `\t`,
   `.z.exit`, `.z.pg .z.ps .z.po .z.pc .z.ph` (HTTP).
 - **`.Q.*`** utilities: `.Q.dpft .Q.en .Q.hg/.Q.hp` (HTTP get/post) `.Q.gc .Q.w` (mem)
@@ -55,37 +50,35 @@ traversal), linked columns, `.Q.fk`. None in Amber.
 - **`.h.*`** HTTP/markup: HTML/CSV/XML/XLS rendering, an HTTP server.
 - **`.j.*`** JSON: `.j.j` / `.j.k` (the array core has `` `j``; Amber doesn't wrap it yet).
 
-## 9. Moving / window aggregates
+## 8. Moving / window aggregates
 `mavg msum mcount mmin mmax mdev mmu` (moving) and `ema`, `wj2`, plus `ajf`/`ajf0` (fill
 as-of), `ij`f/`lj` fill variants, `ssr` vectorised, `rank`/`xrank` over tables.
 - **Amber has:** `sums prds mins maxs deltas ratios differ prev next wsum wavg xprev`. Missing
   the `m*` moving family and `ema`.
 
-## 10. Linear algebra & math
+## 9. Linear algebra & math
 `mmu` (matrix multiply), `inv` (inverse), `lsq` (least squares), `.q` solve; distributional
 `rand`, `binr`. Amber has `cor cov var dev svar sdev med` and scalar math.
 
-## 11. Casting / parsing / serialization
+## 10. Casting / parsing / serialization
 The full `$` cast matrix (temporal, guid, byte), typed file reader `("SIF";",")0:file`,
 `vs`/`sv` for base-N and temporal, `parse`/`eval`/`reval`, `-8!`/`-9!` (serialize/deserialize),
 `-18!` (compress), `-11!` (replay log), `md5`, `.Q.btoa`. Amber has `sv vs ss ssr like`,
 string casts, and `` `k`` (k-repr).
 
-## 12. Concurrency & performance ops
+## 11. Concurrency & performance ops
 `peach` (parallel each), secondary threads (`-s`), `.Q.fc` (parallel-on-cut), map-reduce over
 partitions, compression, `\ts` (time+space). Amber is single-threaded, in-memory.
 
-## 13. Console / environment niceties
+## 12. Console / environment niceties
 `\c` console dims, `\ts`, `\w` (workspace) — the array core has `\w`; `system"…"`, `getenv`/
 `setenv`, `\cd`. Number formatting `.Q.f`. Editor tooling / language server.
 
 ---
 
 ### Nice next steps (highest value first)
-1. **`` `g`` grouped attribute** in C — pairs with the sorted work you already have and unlocks
-   fast `where sym=`.
-2. **Real temporal types** (at least `date` + `timestamp`) with literals and `$` casts.
-3. **`select … from … where …` parser** on top of the existing `qwhere`/`qby` engine (the
+1. **Real temporal types** (at least `date` + `timestamp`) with literals and `$` casts.
+2. **`select … from … where …` parser** on top of the existing `qwhere`/`qby` engine (the
    `([]…)` literal work in `p.c` shows the pattern).
-4. **`set`/`get` to disk** for a minimal splayed/partitioned HDB.
-5. **`hopen`/IPC** for a toy tickerplant.
+3. **`set`/`get` to disk** for a minimal splayed/partitioned HDB.
+4. **`hopen`/IPC** for a toy tickerplant.

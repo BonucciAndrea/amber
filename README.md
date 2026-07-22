@@ -100,6 +100,7 @@ Run the guided tours:
 | 500 k | 417 ms | 0.9 ms | **470×** |
 | 2 M | 1.73 s | 1.4 ms | **1244×** |
 | 5 M | 4.23 s | 1.9 ms | **2261×** |
+| 20 M | 22.74 s | 2.9 ms | **7818×** |
 
 Results are identical; only the time differs. `asc` / `xasc` set the attribute for you, and
 `meta` shows it in the `a` column.

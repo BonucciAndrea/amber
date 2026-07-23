@@ -112,14 +112,14 @@ Results are identical; only the time differs. `asc` / `xasc` set the attribute f
 Amber uses a terse array notation. A few things that differ from kdb+/q:
 
 * **Two-argument library functions take brackets:** `aj[c;x;y]`, `lj[t;kt]`, `in[x;y]`,
-  `xasc[`sym;t]`. Built-in symbols (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) are still infix.
+  ``xasc[`sym;t]``. Built-in symbols (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) are still infix.
 * **No `>=` / `<=`** — write `~a<b` and `~a>b`.
 * **Symbols have no `_`** — use a quoted symbol `` `"a_b" ``.
 * Tables: `([]col:vals;…)`; keyed tables: `([key:vals]col:vals)`. A bare table at the prompt
   auto-renders as a grid (or `show t`).
 
 Full reference: **[AMBER.md](AMBER.md)**. Built-in help: `\` then `\q \j \z` for the Amber
-vocabulary, `\0 \+ \' \`` for the core.
+vocabulary, ``\0 \+ \` \'`` for the core.
 
 ---
 

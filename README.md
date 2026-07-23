@@ -18,7 +18,7 @@
 
 </div>
 
-Amber is a small, fast, self-contained array language with the working vocabulary of
+Amber is a small, fast, self-contained array language, built on top of [ngn/k](https://codeberg.org/ngn/k), with the working vocabulary of
 **q/kdb+** — dictionaries, **tables & keyed tables** with `([]…)` literal syntax, the full
 **join family** (left · inner · union · plus · equi · **as-of** · **window**), the
 **`select … by … from … where …` template**, strings, intraday **tick / OHLC** temporals,
@@ -67,7 +67,7 @@ line-editing. Nothing is installed system-wide — see [Isolation](#isolation).
 meta ([]sym:`a`b; px:1.5 2.5)      / column types + attributes (c | t a)
 
 / the join every tick shop needs — as-of
-trade:([]sym:`a`b`a; time:3 4 9; px:100 200 300)
+trade:([]sym:`a`b`a; time:3 4 9; px:100 200 300;sz:100 150 175)
 quote:([]sym:`a`a`b`a; time:1 5 2 8; bid:10 11 20 12)
 aj[`sym`time; trade; quote]        / last quote at/ before each trade
 
@@ -75,10 +75,10 @@ aj[`sym`time; trade; quote]        / last quote at/ before each trade
 tb:+@[+trade; ,`time; minbar[1]@]
 qby[tb; `sym`time; `o`h`l`c`v!({first x`px};{max x`px};{min x`px};{last x`px};{sum x`sz})]
 
-/ sorted attribute => binary-search lookups
-v:asc 2000000?1000000000                     / `s attribute set by asc
-`at v                                        / `s
-v ? 12345 67890                              / O(log n)  (see bench.k: ~1000x faster)
+/ sorted attribute => binary-search lookups (20M)
+v:asc 20000000?100000000;u:0+v;p:v@5000?#v                 / v has sorted attribute while u does not
+t:`t[];a:u?p;lin:`t[]-t;t:`t[];b:v?p;bin:`t[]-t;           / lin and bin are both the runtimes in microseconds
+`ratio`linus`binus`equal`atv`atu!(round[5;lin%bin];lin;bin;a~b;`at v;`at u)
 ```
 
 Run the guided tours:
@@ -105,6 +105,7 @@ Run the guided tours:
 | 500 k | 417 ms | 0.9 ms | **470×** |
 | 2 M | 1.73 s | 1.4 ms | **1244×** |
 | 5 M | 4.23 s | 1.9 ms | **2261×** |
+| 20 M | 22.74 s | 2.9 ms | **7818×** |
 
 Results are identical; only the time differs. `asc` / `xasc` set the attribute for you, and
 `meta` shows it in the `a` column.
@@ -116,14 +117,14 @@ Results are identical; only the time differs. `asc` / `xasc` set the attribute f
 Amber uses a terse array notation. A few things that differ from kdb+/q:
 
 * **Two-argument library functions take brackets:** `aj[c;x;y]`, `lj[t;kt]`, `in[x;y]`,
-  `xasc[`sym;t]`. Built-in symbols (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) are still infix.
+  ``xasc[`sym;t]``. Built-in symbols (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) are still infix.
 * **No `>=` / `<=`** — write `~a<b` and `~a>b`.
 * **Symbols have no `_`** — use a quoted symbol `` `"a_b" ``.
 * Tables: `([]col:vals;…)`; keyed tables: `([key:vals]col:vals)`. A bare table at the prompt
   auto-renders as a grid (or `show t`).
 
 Full reference: **[AMBER.md](AMBER.md)**. Built-in help: `\` then `\q \j \z` for the Amber
-vocabulary, `\0 \+ \' \`` for the core.
+vocabulary, ``\0 \+ \` \'`` for the core.
 
 ---
 

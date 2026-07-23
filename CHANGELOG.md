@@ -1,5 +1,32 @@
 # Changelog
 
+## 1.5 — the big extension release
+Six new library modules (auto-loaded after `fin.k`), plus one enabling C change.
+
+- **`qsql.k` — the qSQL template**: `sel "select … by … from … where …"`, `exq` (exec),
+  `upd` (update), `del` (delete), and functional `qexec[t;w;b;d]`. Bare column names in
+  expressions are rewritten to `` x`col `` and run on the qwhere/qby/qselect engine, so
+  `wavg[sz;px]`, `sum sz`, `max px` all work.
+- **`std.k` — moving/window aggregates + tooling**: vectorised `msum mavg mcount mprd
+  mvar mdev` (O(n) prefix-based) and `mmin mmax` (window); `mmu`/`dot`; `parse eval reval
+  ser deser protect`; casts (`long int float char sym bool`, `cast`); `peach`; `ts`.
+- **`temporal.k` — date & timestamp types**: `ymd2d d2ymd dstr pdate year month dayof
+  dow dadd ddiff` and `tstamp tsdate tsms pstr` (epoch 2000.01.01, Hinnant civil↔days).
+- **`sys.k` — system namespaces**: `z.*` clocks, `Q.*` utilities, `j.j`/`j.k` JSON,
+  `h.ht` HTML. (Written `z.p` etc. without kdb's leading dot — `.` is the eval verb here.)
+- **`hdb.k` — on-disk data**: `dset`/`dget`, `splay`/`dload`, `partsave`/`partload`/`parts`
+  (a value-partitioned database), stored as portable text.
+- **`ipc.k` — IPC & tick**: `hopen`/`hclose`/`hsend`/`hrecv`/`hsync` raw-socket messaging
+  and a fully in-process tickerplant (`u.def`/`u.sub`/`u.pub`/`u.get`).
+- **`\ts expr`** at the REPL (time; the core exposes no allocator introspection for space).
+- **C change — 2-byte global index**: the bytecode encoded global indices in a single
+  byte (a hard 256-global cap). Widened to a 2-byte little-endian index (emit, VM read,
+  and the `di` byte-length table), raising the cap to 4096 so the whole extended
+  vocabulary (287 globals) loads at once. All 188 existing tests still pass unchanged.
+- **Docs/help/tests**: new help pages `\w \s \u \y`; `test-ext.k` (38 assertions);
+  `bench-std.k`; MISSING.md rewritten to mark what's now done. The **Amber Notepad**
+  (a self-contained in-browser interpreter) is included — see the README.
+
 ## 1.4.1
 - **`gentq` now marks both key columns**: `time` gets the `` `s`` sorted attribute and `sym`
   gets `` `p`` parted — both visible in `meta trades` / `meta quotes` (via `fin.k`'s

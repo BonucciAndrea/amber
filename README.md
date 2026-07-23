@@ -13,16 +13,19 @@
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
-![tests](https://img.shields.io/badge/tests-188%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-226%20passing-brightgreen)
 ![build](https://img.shields.io/badge/build-C11%20·%20portable-informational)
 
 </div>
 
 Amber is a small, fast, self-contained array language with the working vocabulary of
 **q/kdb+** — dictionaries, **tables & keyed tables** with `([]…)` literal syntax, the full
-**join family** (left · inner · union · plus · equi · **as-of** · **window**), qSQL-style
-select/by, strings, intraday **tick / OHLC** temporals, and **column attributes implemented
-in C** that turn search from `O(n)` into `O(log n)` — **~1000–2000× faster** on large data.
+**join family** (left · inner · union · plus · equi · **as-of** · **window**), the
+**`select … by … from … where …` template**, strings, intraday **tick / OHLC** temporals,
+**date/timestamp types**, **vectorised moving/window aggregates**, **on-disk data**,
+**IPC + an in-process tickerplant**, **system namespaces** (`z.* Q.* j.* h.*`), and
+**column attributes implemented in C** that turn search from `O(n)` into `O(log n)` —
+**~1000–2000× faster** on large data.
 
 ```q
 t:([]sym:`AAPL`MSFT`AAPL; px:187.3 411.2 187.4; sz:100 250 50)   / a table, rendered instantly
@@ -84,8 +87,10 @@ Run the guided tours:
 ./amber examples/tour.k     # a worked example of EVERY function
 ./amber examples/basics.k   # a 2-minute intro
 ./amber examples/tick.k     # realistic trades & quotes: as-of/window joins, VWAP, OHLC
+./amber examples/extended.k # tour of the v1.5 modules (qSQL, window, dates, HDB, tick)
 ./amber bench.k             # attribute speed benchmark
-./amber test.k              # the 153-assertion test suite
+./amber bench-std.k         # vectorised moving/window-aggregate benchmark
+./amber test.k              # 153 core + run test-fin.k / test-ext.k for 226 total
 ```
 
 ---
@@ -147,6 +152,45 @@ Walkthrough: `./amber examples/hft.k`.
 O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing
 (`bench-fin.k` ~ 20,000x vs a scan).
 
+## Extended modules (v1.5)
+
+Six modules auto-load after `fin.k`. Built-in help: `\w \s \u \y`.
+
+```q
+/ qSQL template — bare column names just work (qsql.k, help \s)
+sel "select vwap:wavg[sz;px],n:#px by sym from trades where px>100"
+upd "update mid:0.5*bid+ask from quotes"
+del "delete from trades where sz<100"
+
+/ vectorised moving/window aggregates — O(n) prefix-based (std.k, help \w)
+mavg[20; px]   msum[20; sz]   mdev[20; px]   mmax[20; px]
+
+/ date & timestamp types, epoch 2000.01.01 (temporal.k, help \u)
+dstr ymd2d[2024;1;15]                 / "2024.01.15"
+dow ymd2d[2024;1;15]                  / `Mon
+pstr tstamp[ymd2d[2024;1;15]; hms[9;30;0]]   / "2024.01.15D09:30:00.000"
+
+/ system namespaces, JSON, on-disk, IPC/tick (sys.k / hdb.k / ipc.k, help \y)
+z.d[]                                 / today (date)
+j.j ([]a:1 2; b:`x`y)                 / -> JSON string
+splay["db/trades"; trades]            / save a splayed table;  dload "db/trades"
+u.def[`trade; ([]sym:0#`; px:0#0.0)]  / define a stream
+u.sub[`trade; {[nm;d] show d}]        / subscribe;  u.pub[`trade; batch]
+```
+
+`parse eval ser deser cast peach` and the `\ts expr` timer round it out. The 256-global
+cap was lifted to 4096 (a 2-byte bytecode index) so the whole vocabulary loads at once.
+
+## Amber Notepad — a browser playground
+
+`Amber-Notepad.html` is a **single self-contained page**: a real Amber interpreter
+(written in JavaScript) behind a notebook UI with an amber-phosphor theme. Open it in any
+browser — no install, no internet — and run Amber in stacked cells with live evaluation,
+syntax highlighting, and rendered tables/keyed-tables/dicts (attributes shown). It covers
+the everyday vocabulary — arithmetic, verbs, adverbs, lambdas, `([]…)` tables, `meta`,
+qSQL `qby`, as-of joins, `gentq` and the finance functions — as a faithful subset of the
+C interpreter, ideal for learning and quick experiments.
+
 ## What's inside
 
 | file | |
@@ -154,17 +198,20 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing
 | `a`, `build.sh` | launcher (build-if-stale) and portable compile |
 | `*.c`, `*.h` | the interpreter (`p.c` carries the `([]…)` table-literal parser) |
 | `amber.k` | the q/kdb+ vocabulary (auto-loaded) |
-| `repl.k` | the REPL — banner, grid rendering, help |
-| `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `attributes.k` · `practice.k` |
 | `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |
-| `test.k`, `bench.k` | 153-assertion suite; attribute benchmark |
+| `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` | v1.5 extended modules — `\w \s \u \y` |
+| `repl.k` | the REPL — banner, grid rendering, help |
+| `Amber-Notepad.html` | self-contained in-browser interpreter + notebook UI |
+| `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `attributes.k` · `practice.k` |
+| `test.k` `test-fin.k` `test-ext.k` | 226-assertion suite (153 + 35 + 38) |
+| `bench.k` `bench-fin.k` `bench-std.k` | attribute · O(1) index · window-aggregate benchmarks |
 | `AMBER.md`, `MISSING.md`, `CHANGELOG.md` | reference · roadmap · history |
 
 ## Roadmap
 
 Amber covers a large slice of q. [MISSING.md](MISSING.md) is an honest map of what's next —
-top picks: real temporal *types*, a `select…from…where` parser, on-disk / splayed tables,
-and IPC.
+top picks: real temporal *types* with literal syntax, sorted/limited selects
+(`select[>col]`), new C atom types (`byte` `real` `short`), and binary `-8!`/`-9!`.
 
 <a name="isolation"></a>
 ## Isolation

@@ -464,4 +464,65 @@ in[3 5; ids]                      / binary-searched membership
 
 ---
 
+## v1.5 extended modules
+
+Six modules load automatically after `fin.k`. Reach their help with `\w \s \u \y`.
+
+### qSQL template — `qsql.k` (`\s`)
+```q
+sel "select c:e,… [by b,…] from t [where p,…]"   / -> table (keyed if by)
+exq "exec e from t [where p]"                     / -> a single column
+upd "update c:e,… [by b,…] from t [where p]"      / -> the updated table
+del "delete [c,…] from t [where p]"               / -> rows kept / cols dropped
+qexec[t; where-mask|() ; by-cols|() ; name!fns|()]/ functional form
+```
+Bare column names in the expressions are rewritten to `` x`col ``, so `wavg[sz;px]`,
+`sum sz`, `max px` all work. Example:
+`sel "select vwap:wavg[sz;px],n:#px by sym from trades where px>100"`.
+
+### Moving / window + tooling — `std.k` (`\w`)
+```q
+msum[w;x] mavg[w;x] mcount[w;x] mprd[w;x] mvar[w;x] mdev[w;x]  / O(n) prefix-based
+mmin[w;x] mmax[w;x]                                            / O(n*w) window
+mmu[x;y] dot[x;y]                                              / matrix mult, dot
+parse s   eval s   reval s   ser x   deser s   protect s        / parse/eval/serialize
+long int float char sym bool   cast[`type;x]                    / casting
+peach[f;x]   ts"expr"                                           / parallel-each, timer
+```
+
+### Date & timestamp types — `temporal.k` (`\u`)
+`date` = days since 2000.01.01; `timestamp` = nanos since 2000.01.01.
+```q
+ymd2d[y;m;d]  d2ymd d  dstr d  pdate s  year d  month d  dayof d  dow d  dadd[d;n]
+tstamp[date;ms]  tsdate p  tsms p  pstr p
+```
+
+### System namespaces / on-disk / IPC — `sys.k` `hdb.k` `ipc.k` (`\y`)
+```q
+z.p z.P z.n z.d z.D z.t z.T z.z              / clocks (kdb .z.* without the leading dot)
+Q.f[n;x] Q.fmt[w;n;x] Q.s x Q.dd[a;b] Q.fc[f;x] Q.id x Q.trp[f;a;h]
+j.j x   j.k s                                / JSON encode / decode
+h.ht t  h.hc[tag;s]                          / HTML
+dset[f;x] dget f  splay[dir;t] dload dir  partsave[dir;t;`c] partload dir  parts dir
+hopen "host:port"  hclose h  hsend[h;m]  hrecv h  hsync[h;q]    / raw-socket IPC
+u.def[nm;schema]  u.sub[nm;cb]  u.pub[nm;data]  u.get nm        / in-process tickerplant
+```
+Notes: `z.*` etc. drop kdb's leading dot (in this core `.` is the eval verb). On-disk
+data is stored as portable Amber text — ideal for modest tables; very large single
+columns exceed the text parser (binary serialization is on the roadmap). IPC uses raw
+sockets, not the kdb+ binary wire protocol.
+
+### Interpreter capacity
+The bytecode's global index was widened from 1 byte to 2 (256 → 4096 globals) so the
+whole extended vocabulary (287 globals) loads at once.
+
+---
+
+## Amber Notepad
+`Amber-Notepad.html` is a single self-contained page — a JavaScript re-implementation of
+a faithful Amber subset behind a notebook UI (amber-phosphor theme, live evaluation,
+syntax highlighting, rendered tables with attributes). Open it in any browser; no install.
+
+---
+
 *Amber — a low-latency array language. GNU AGPLv3.*

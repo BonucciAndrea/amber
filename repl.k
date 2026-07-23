@@ -26,7 +26,7 @@ basename:{*|"/"\x}
 dirname:{$[#x:"/"/-1_"/"\x;x;,"."]}
 joinpath:{$[x~,".";y;"/"~*|x;x,y;x,"/",y]}
 line0:{c:{0x07~*-2#*x}{(l;r):x;(1:1;r,,(-2_l))}/(x;());"\n"/(*|c),,*c}
-line1:{$[#x;;:0];x:-1_x;$[(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;.[`1:(fmt;fmtx)[" "~*x]@.:;,x;{`0:`err[]}]];`1:prompt;1}
+line1:{$[#x;;:0];x:-1_x;$[(4<#x)&"\\ts "~4#x;[t0:`t[];v:. 4_x;`0:"ts: ",($0.001*`t[]-t0)," ms  (no space metric: core has no allocator introspection)";`1:fmt v];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;.[`1:(fmt;fmtx)[" "~*x]@.:;,x;{`0:`err[]}]];`1:prompt;1}
 line:line1@line0@
 $["repl.k"~basename`argv 1;{cmds::@[cmds;x[1]1;:;{y;`0:x}2_x]}'{(&x~\:80#"-")_x:(1+*&x~\:,"/")_-1_x}@0:`argv 1;];
 run:{`1:banner,prompt;{line@1:`}::/`;}
@@ -36,6 +36,12 @@ run:{`1:banner,prompt;{line@1:`}::/`;}
 dir::{$[#p:"/"/-1_"/"\x;p;"."]}`argv 1
 {.[{. x};,x;{}]}'0:dir,"/amber.k";
 {.[{. x};,x;{}]}'0:dir,"/fin.k";
+{.[{. x};,x;{}]}'0:dir,"/std.k";
+{.[{. x};,x;{}]}'0:dir,"/qsql.k";
+{.[{. x};,x;{}]}'0:dir,"/temporal.k";
+{.[{. x};,x;{}]}'0:dir,"/sys.k";
+{.[{. x};,x;{}]}'0:dir,"/hdb.k";
+{.[{. x};,x;{}]}'0:dir,"/ipc.k";
 $[.[{sum;1};,`;{0}];;`0:"amber: WARNING - amber.k did not load (is it next to repl.k?)\n"]
 
 $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
@@ -45,17 +51,18 @@ $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
 
                  A M B E R   help      ( type  \X  for a topic )
 
-  AMBER q-layer                             core language
-  \q  scalars, aggregation, uniform, sets   \0  types
-  \j  tables, keyed tables, joins, qSQL     \+  verbs
-  \z  temporal, attributes (s/u/p/g), show  \'  adverbs   \`  symbols
-  \m  finance / HFT module (fin.k)          \h  core cheat-sheet
-  session
-  \a  license (AGPLv3)     \l file.k  load a script     \v  variables
+  AMBER q-layer                             extended modules
+  \q  scalars, aggregation, uniform, sets   \w  moving/window · cast · parse · peach
+  \j  tables, keyed tables, joins, qSQL     \s  qSQL select/exec/update/delete
+  \z  temporal-of-day, attributes, show     \u  date/timestamp types (temporal.k)
+  \m  finance / HFT module (fin.k)          \y  .z .Q .j .h · on-disk · IPC · tick
+                                            core language
+  session                                   \0 types  \+ verbs  \' adverbs  \` symbols
+  \a  license (AGPLv3)     \l file.k  load a script     \v  variables   \h cheat-sheet
   \d ns   namespace (\d .) \t:n expr  time n runs (ms)  \f  functions
-  \cd path   change dir    \other     shell command     \\  exit
+  \cd path change dir  \ts expr time+space  \other shell command        \\  exit
 
-  quick start:  show t   meta t   sum x   aj[`sym`time;trade;quote]
+  quick start:  show t   meta t   sel"select … by … from … where …"   \ts sum til 1000000
 --------------------------------------------------------------------------------
 \0
 Types:
@@ -344,4 +351,64 @@ AGGREGATION
   bars[w;t]  w-minute OHLCV keyed table     symstats t  per-symbol summary
   pt x       print a table with `time formatted HH:MM:SS.mmm
   worked example:  \l examples/hft.k
+--------------------------------------------------------------------------------
+\w
+Amber std.k : moving/window aggregates, casting, parse/serialize, peach
+
+MOVING / WINDOW  (kdb semantics: growing window, then fixed w)
+  msum[w;x]  mavg[w;x]  mcount[w;x]  mprd[w;x]      O(n) prefix-based
+  mvar[w;x]  mdev[w;x]  mmin[w;x]  mmax[w;x]        (mmin/mmax are O(n*w))
+LINEAR ALGEBRA
+  mmu[x;y]   matrix multiply        dot[x;y]  vector dot product
+PARSE / EVAL / SERIALIZE
+  parse s    string -> parse tree   eval s / reval s   evaluate a string
+  ser x      value -> portable text  deser s   text -> value  (inverse)
+  protect s  ->  (1b;result) | (0b;error)          (like .Q.trp)
+CASTING
+  long int float char sym bool      cast[`type;x]   (`long`int`float`char`sym`bool)
+CONCURRENCY / TIMING
+  peach[f;x] parallel-each (sequential in this single-threaded build)
+  ts"expr"   time an expression      \ts expr   time it at the REPL
+--------------------------------------------------------------------------------
+\s
+Amber qsql.k : the select … by … from … where … template
+
+  sel "select c:e,… [by b,…] from t [where p,…]"     -> a table (keyed if by)
+  exq "exec e from t [where p]"                       -> a single column
+  upd "update c:e,… [by b,…] from t [where p]"        -> the updated table
+  del "delete [c,…] from t [where p]"                 -> rows kept / cols dropped
+Column names in the expressions are rewritten to  x`col  and run on the
+qwhere/qby/qselect engine, so  wavg[sz;px] , sum sz , max px  just work.
+  e.g.  sel "select vwap:wavg[sz;px],n:#px by sym from trades where px>100"
+FUNCTIONAL FORM
+  qexec[t; where-mask|() ; by-cols|() ; name!func-dict|()]
+--------------------------------------------------------------------------------
+\u
+Amber temporal.k : date & timestamp types (epoch 2000.01.01)
+
+  date       = integer days since 2000.01.01   (2000.01.01 -> 0)
+  timestamp  = long nanoseconds since 2000.01.01
+DATE
+  ymd2d[y;m;d]  build a date     d2ymd d  -> (year;month;day)
+  dstr d  -> "YYYY.MM.DD"        pdate "YYYY.MM.DD" -> date
+  year d  month d  dayof d       dow d  -> `Mon..`Sun    dadd[d;n]  ddiff[a;b]
+TIMESTAMP
+  tstamp[date;ms]  build         tsdate p   tsms p       pstr p -> full string
+  (time-of-day helpers hms hh mm sec minute second stime ptime live in \z)
+--------------------------------------------------------------------------------
+\y
+Amber sys.k / hdb.k / ipc.k : namespaces, on-disk data, IPC & tick
+
+SYSTEM NAMESPACES  (kdb .z/.Q/.j/.h written without the leading dot)
+  z.p z.P now(nanos)  z.d z.D today  z.t z.T time-ms  z.n nanos  z.z datetime
+  Q.f[n;x] fmt  Q.fmt[w;n;x]  Q.s x show-string  Q.dd[`a;`b]  Q.fc[f;x] par
+  j.j x  value -> JSON       j.k s  JSON -> value
+  h.ht t table -> HTML       h.hc[tag;s]  wrap
+ON-DISK (hdb.k)
+  dset[f;x] / dget f          value <-> a file (portable text)
+  splay[dir;t] / dload dir    table <-> a splayed directory
+  partsave[dir;t;`c] / partload dir / parts dir   value-partitioned database
+IPC + TICK (ipc.k)
+  hopen "host:port"  hclose h  hsend[h;m]  hrecv h  hsync[h;q]   (raw sockets)
+  u.def[nm;schema]  u.sub[nm;cb]  u.pub[nm;data]  u.get nm       (in-process tick)
 \

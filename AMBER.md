@@ -88,7 +88,7 @@ Amber follows a terse **array grammar**, which differs from kdb+/q in a few ways
 
 * **Dyadic library functions are called with brackets, not infix.** Amber does **not** allow a
   user‑defined function to be applied infix (`x f y` is a parse of two nouns). So write
-  `lj[t;kt]`, `in[x;y]`, `except[a;b]`, `xasc[`sym;t]` — not `t lj kt`. Built‑in verbs
+  `lj[t;kt]`, `in[x;y]`, `except[a;b]`, ``xasc[`sym;t]`` — not `t lj kt`. Built‑in verbs
   (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) *are* infix as usual.
 * **No `>=` / `<=` operators.** Use `~a<b` for `a>=b` and `~a>b` for `a<=b`.
 * **Symbols cannot contain `_`.** `` `a_b `` is a parse error; use a quoted symbol `` `"a_b" ``.
@@ -293,7 +293,7 @@ wj[w; `sym`time; trade; quote; ,(`mx;max;`bid)]
 /  a   9    300 12      max bid for a in [7,9]
 ```
 
-Pass several aggregates at once: `((`mx;max;`bid);(`mn;min;`bid);(`n;count;`bid))`.
+Pass several aggregates at once: ``((`mx;max;`bid);(`mn;min;`bid);(`n;count;`bid))``.
 
 ---
 
@@ -319,12 +319,12 @@ Amber’s find (`?`) and membership (`in`) on integer vectors are an **O(n) line
 ask for it. The sorted attribute lets `?`/`in` *decide for themselves*: when the left vector is
 attributed sorted, find dispatches to a new **O(log n) binary search** instead of the scan.
 
-Measured (2,000,000‑row sorted int vector, 5,000 look‑ups, identical results):
+Measured (20,000,000‑row sorted int vector, 5,000 look‑ups, identical results):
 
 ```
-binary (`s#)  ~1.7 ms
-linear         ~1900 ms
-speedup        ~1100x
+binary (`s#)   ~2.9 ms
+linear         ~22742 ms
+speedup        ~7818x
 ```
 
 The test suite asserts both **correctness** (`bin? == linear?`) and that the attributed path is
@@ -433,7 +433,7 @@ attributes `sa (set sorted)   `at (get)     [kernel primitives]
 
 Type `\` for the menu, then a topic: `\q` (scalars, aggregation, sets, strings),
 `\j` (tables, keyed tables, joins, qSQL), `\z` (temporal, bars, attributes, display).
-`\0 \+ \' \`` cover the core array language.
+``\0 \+ \` \'`` cover the core array language.
 
 ---
 

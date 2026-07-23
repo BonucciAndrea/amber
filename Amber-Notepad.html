@@ -3,181 +3,227 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Amber — interpreter notepad</title>
+<title>Amber Notepad</title>
 <style>
   :root{
-    --bg:#0b0805; --bg2:#120c06; --panel:#160f07; --panel2:#1c130a;
-    --line:#3a2a12; --line2:#2a1e0e;
-    --amber:#ffb000; --amber-b:#ffcf6b; --amber-d:#c78a2a; --amber-f:#7c5c26;
-    --ink:#f4d79a; --dim:#b78e46; --faint:#7a5c2e;
-    --str:#ffd98a; --sym:#ff9440; --num:#ffe6a8; --verb:#ff9e3d; --adv:#ffbe5c;
-    --brk:#a9791f; --kw:#ffd06b; --var:#e6c078; --com:#6f5427;
-    --err:#ff6b4a; --ok:#8fd06b;
-    --glow:0 0 8px rgba(255,176,0,.18);
-    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+    --bg:#1a1510; --panel:#211a12; --cell:#1e1710; --line:#3a2c1a; --line2:#2c2115;
+    --ink:#f4dcae; --dim:#c39d5f; --faint:#8a6d3b;
+    --accent:#ffb000; --accent2:#ff8c1a; --ok:#8fd06b; --err:#ff6b4a;
+    --glow:0 0 10px rgba(255,176,0,.22); --radius:12px;
+    --s-num:#ffe08a; --s-str:#ffd27f; --s-sym:#ff9440; --s-verb:#ff9e3d; --s-adv:#ffbe5c;
+    --s-kw:#ffcf6b; --s-var:#e6c078; --s-com:#7d6636; --s-brk:#c79a4a;
+    --caret:#ffb000; --selbg:rgba(255,176,0,.24);
+    --mono: ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,"DejaVu Sans Mono",monospace;
+    --ui: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --fs:13.5px;
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
-  body{
-    background:
-      radial-gradient(1200px 700px at 70% -10%, #1c1206 0%, rgba(28,18,6,0) 60%),
-      radial-gradient(900px 600px at -10% 110%, #170f06 0%, rgba(23,15,6,0) 55%),
-      var(--bg);
-    color:var(--ink); font-family:var(--mono); font-size:14px; line-height:1.5;
-    -webkit-font-smoothing:antialiased;
-  }
-  /* faint scanlines + vignette for the phosphor feel */
-  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;
-    background:repeating-linear-gradient(180deg, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.045) 2px 3px);
-    mix-blend-mode:multiply;opacity:.6}
-  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9998;
-    box-shadow:inset 0 0 220px 40px rgba(0,0,0,.55)}
-  a{color:var(--amber-b);text-decoration:none}
+  body{background:var(--bg);color:var(--ink);font-family:var(--ui);font-size:14px;
+    -webkit-font-smoothing:antialiased;transition:background .35s ease,color .35s ease;overflow:hidden}
+  ::selection{background:var(--selbg)}
+  ::-webkit-scrollbar{width:11px;height:11px}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:7px;border:2px solid transparent;background-clip:content-box}
+  ::-webkit-scrollbar-thumb:hover{background:var(--faint)}
+  button,input,select{font-family:inherit}
+  .app{display:flex;flex-direction:column;height:100vh}
 
-  .app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+  /* ---------- top bar ---------- */
+  header{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,var(--panel),var(--bg));position:relative;z-index:30;flex-wrap:wrap}
+  .logo{display:flex;align-items:center;gap:11px;user-select:none}
+  .gem{width:24px;height:24px;transform:rotate(45deg);border-radius:5px;flex:0 0 auto;
+    background:linear-gradient(135deg,var(--accent),var(--accent2) 60%,#8a4d00);
+    box-shadow:0 0 14px 1px color-mix(in srgb,var(--accent) 55%,transparent),inset 0 0 7px rgba(255,255,255,.4)}
+  .word{font-family:var(--mono);font-weight:800;letter-spacing:.36em;font-size:18px;color:var(--accent);
+    text-shadow:var(--glow);padding-left:.36em}
+  .sub{font-size:10px;letter-spacing:.26em;color:var(--faint);text-transform:uppercase;margin-top:2px}
+  .grow{flex:1}
+  .toolbar{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+  .btn{font-family:var(--ui);font-size:12.5px;color:var(--ink);background:var(--cell);
+    border:1px solid var(--line);border-radius:9px;padding:7px 12px;cursor:pointer;transition:.14s;white-space:nowrap;display:inline-flex;gap:6px;align-items:center}
+  .btn:hover{border-color:var(--accent);color:#fff;box-shadow:var(--glow)}
+  .btn:active{transform:translateY(1px)}
+  .btn.pri{background:linear-gradient(180deg,color-mix(in srgb,var(--accent) 26%,var(--cell)),var(--cell));
+    border-color:color-mix(in srgb,var(--accent) 50%,var(--line));color:#fff;font-weight:600}
+  .btn.pri:hover{box-shadow:0 0 0 1px var(--accent),var(--glow)}
+  .seg{display:flex;background:var(--cell);border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{border:0;background:transparent;color:var(--dim);padding:7px 13px;cursor:pointer;font-size:12.5px;transition:.14s}
+  .seg button.on{background:color-mix(in srgb,var(--accent) 20%,var(--cell));color:#fff}
+  .seg button:hover:not(.on){color:var(--ink)}
 
-  /* header */
-  header{display:flex;align-items:center;gap:18px;padding:12px 18px;border-bottom:1px solid var(--line);
-    background:linear-gradient(180deg,#160f07,#100b06);}
-  .brand{display:flex;flex-direction:column;line-height:1}
-  .word{font-weight:800;letter-spacing:.42em;font-size:20px;color:var(--amber);
-    text-shadow:var(--glow); padding-left:.42em}
-  .tag{font-size:10.5px;letter-spacing:.34em;color:var(--faint);margin-top:6px;padding-left:.34em;text-transform:uppercase}
-  .diamond{width:26px;height:26px;flex:0 0 auto;transform:rotate(45deg);
-    background:linear-gradient(135deg,#ffd873,#ffab00 55%,#a35e00);
-    border:1px solid #7a4b06;border-radius:5px;
-    box-shadow:0 0 14px rgba(255,176,0,.5), inset 0 0 8px rgba(255,255,255,.35)}
-  .spacer{flex:1}
-  .toolbar{display:flex;gap:8px;flex-wrap:wrap}
-  button{font-family:var(--mono);font-size:12px;color:var(--amber-b);
-    background:linear-gradient(180deg,#20160b,#180f07);border:1px solid var(--line);
-    border-radius:7px;padding:7px 11px;cursor:pointer;transition:.12s;letter-spacing:.02em}
-  button:hover{border-color:var(--amber-d);color:#fff0cf;box-shadow:var(--glow)}
-  button:active{transform:translateY(1px)}
-  button.pri{background:linear-gradient(180deg,#3a2708,#2a1c06);border-color:#6b4a12;color:#ffe1a6}
-  button.ghost{background:transparent}
-  .ver{font-size:11px;color:var(--faint);letter-spacing:.12em;padding:0 4px;align-self:center}
+  /* theme picker */
+  .themewrap{position:relative}
+  .themebtn{display:flex;align-items:center;gap:8px}
+  .swatch{width:14px;height:14px;border-radius:4px;border:1px solid rgba(255,255,255,.25)}
+  .thememenu{position:absolute;top:calc(100% + 8px);right:0;width:330px;max-height:70vh;overflow:auto;
+    background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:10px;z-index:60;
+    box-shadow:0 24px 60px rgba(0,0,0,.5);display:none;grid-template-columns:1fr 1fr;gap:8px}
+  .thememenu.open{display:grid}
+  .tcard{display:flex;flex-direction:column;gap:7px;padding:9px;border-radius:10px;border:1px solid var(--line2);
+    cursor:pointer;background:var(--cell);transition:.14s}
+  .tcard:hover{border-color:var(--accent);transform:translateY(-1px)}
+  .tcard.on{border-color:var(--accent);box-shadow:var(--glow)}
+  .tcard .nm{font-size:11.5px;font-weight:600}
+  .tprev{height:34px;border-radius:7px;display:flex;align-items:center;padding:0 8px;gap:4px;font-family:var(--mono);font-size:11px;overflow:hidden}
+  .tdot{width:8px;height:8px;border-radius:50%}
 
-  /* body split */
+  /* ---------- body split ---------- */
   .split{display:flex;flex:1;min-height:0}
-  .book{flex:1;min-width:0;overflow:auto;padding:20px 20px 120px}
-  .book::-webkit-scrollbar,.side::-webkit-scrollbar{width:10px;height:10px}
-  .book::-webkit-scrollbar-thumb,.side::-webkit-scrollbar-thumb{background:#3a2a12;border-radius:6px}
-  .side{width:340px;flex:0 0 auto;border-left:1px solid var(--line);overflow:auto;
-    background:linear-gradient(180deg,#130d06,#0e0904);padding:14px 14px 80px}
-  .side.hidden{display:none}
+  .work{flex:1;min-width:0;overflow:auto;padding:22px 22px 60px}
+  .side{width:340px;flex:0 0 auto;border-left:1px solid var(--line);background:var(--panel);
+    display:flex;flex-direction:column;min-height:0;transition:margin .25s ease}
+  .side.hidden{margin-right:-341px}
+  .side h3{margin:0;padding:14px 16px 10px;font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent);
+    border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:8px}
+  .searchwrap{padding:10px 12px;border-bottom:1px solid var(--line2)}
+  .search{width:100%;background:var(--cell);border:1px solid var(--line);border-radius:9px;color:var(--ink);
+    padding:8px 11px;font-size:13px;outline:none}
+  .search:focus{border-color:var(--accent);box-shadow:var(--glow)}
+  .exlist{overflow:auto;padding:8px 10px 40px;flex:1}
+  .excat{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin:12px 4px 5px}
+  .ex{display:block;width:100%;text-align:left;margin:4px 0;padding:8px 10px;border-radius:9px;border:1px solid var(--line2);
+    background:var(--cell);cursor:pointer;transition:.13s}
+  .ex:hover{border-color:var(--accent);box-shadow:var(--glow);transform:translateX(2px)}
+  .ex .exl{font-size:12.5px;color:var(--ink);font-weight:600;margin-bottom:3px}
+  .ex .exc{font-family:var(--mono);font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-  /* cells */
-  .cells{max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
-  .cell{border:1px solid var(--line2);border-radius:10px;background:linear-gradient(180deg,#140e07,#0f0a05);
-    overflow:hidden;transition:.15s}
-  .cell:focus-within{border-color:var(--amber-d);box-shadow:0 0 0 1px rgba(255,176,0,.12), var(--glow)}
-  .cellhead{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 10px;border-bottom:1px solid var(--line2);
-    background:#120c06}
-  .runbtn{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px;
-    cursor:pointer;color:var(--amber);border:1px solid var(--line);background:#1a1108;flex:0 0 auto}
-  .runbtn:hover{color:#fff0cf;border-color:var(--amber-d);box-shadow:var(--glow)}
-  .idx{font-size:11px;color:var(--faint);letter-spacing:.1em;min-width:34px}
-  .chead-sp{flex:1}
-  .cellhead .mini{width:24px;height:22px;font-size:12px;padding:0;display:flex;align-items:center;justify-content:center}
+  /* ---------- cells (notebook) ---------- */
+  .cells{max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+  .cell{border:1px solid var(--line2);border-radius:var(--radius);background:var(--cell);overflow:hidden;transition:.15s}
+  .cell:focus-within{border-color:var(--accent);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 30%,transparent),var(--glow)}
+  .chead{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 6px;border-bottom:1px solid var(--line2);background:var(--panel)}
+  .run{width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;
+    color:var(--accent);border:1px solid var(--line);background:var(--cell);flex:0 0 auto;font-size:12px;transition:.13s}
+  .run:hover{color:#fff;border-color:var(--accent);box-shadow:var(--glow)}
+  .idx{font-family:var(--mono);font-size:11px;color:var(--faint);min-width:30px}
+  .cgrow{flex:1}
+  .mini{width:26px;height:24px;border:1px solid var(--line);background:var(--cell);color:var(--dim);border-radius:7px;
+    cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;transition:.13s}
+  .mini:hover{color:var(--ink);border-color:var(--accent)}
   .editor{position:relative}
-  .editor pre,.editor textarea{
-    margin:0;padding:12px 14px;font-family:var(--mono);font-size:13.5px;line-height:1.55;
+  .editor pre,.editor textarea{margin:0;padding:12px 14px;font-family:var(--mono);font-size:var(--fs);line-height:1.6;
     white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;border:0;tab-size:2}
   .editor pre{position:absolute;inset:0;pointer-events:none;color:var(--ink);z-index:1}
-  .editor textarea{position:relative;z-index:2;width:100%;background:transparent;color:transparent;
-    caret-color:var(--amber);resize:none;outline:none;display:block;min-height:22px;overflow:hidden}
-  .editor textarea::selection{background:rgba(255,176,0,.22)}
-  .hl-com{color:var(--com);font-style:italic}
-  .hl-str{color:var(--str)}
-  .hl-sym{color:var(--sym)}
-  .hl-num{color:var(--num)}
-  .hl-verb{color:var(--verb);font-weight:600}
-  .hl-adv{color:var(--adv);font-weight:600}
-  .hl-brk{color:var(--brk)}
-  .hl-kw{color:var(--kw)}
-  .hl-var{color:var(--var)}
-
-  .out{border-top:1px solid var(--line2);padding:10px 14px;background:#0d0904;min-height:0}
+  .editor textarea{position:relative;z-index:2;width:100%;background:transparent;color:transparent;caret-color:var(--caret);
+    resize:none;outline:none;display:block;min-height:24px;overflow:hidden}
+  .out{border-top:1px solid var(--line2);padding:10px 14px;background:color-mix(in srgb,var(--bg) 60%,var(--cell))}
   .out.empty{display:none}
   .out pre{margin:0;white-space:pre;overflow-x:auto;font-family:var(--mono);font-size:13px;color:var(--ink)}
-  .out pre::-webkit-scrollbar{height:8px}
   .console{color:var(--dim)}
-  .err{color:var(--err);white-space:pre-wrap}
-  .ret{color:var(--amber-b)}
-  .otag{font-size:9.5px;letter-spacing:.18em;color:var(--faint);text-transform:uppercase;margin:0 0 4px}
+  .err{color:var(--err);white-space:pre-wrap;font-family:var(--mono);font-size:13px}
+  .ret{color:var(--accent);font-family:var(--mono);font-size:13px;white-space:pre;overflow-x:auto}
+  .typ{font-size:10.5px;color:var(--faint);margin-top:5px}
+  .addcell{max-width:1000px;margin:14px auto 0;display:flex;justify-content:center}
+  .addcell button{color:var(--dim);border:1px dashed var(--line);background:transparent;border-radius:10px;padding:8px 20px;cursor:pointer;transition:.14s}
+  .addcell button:hover{color:var(--accent);border-color:var(--accent)}
 
   /* value grids */
-  table.grid{border-collapse:collapse;font-size:13px;margin:2px 0}
-  table.grid th{color:var(--amber);text-align:left;font-weight:600;padding:2px 12px 5px 2px;
-    border-bottom:1px solid var(--line);white-space:nowrap}
-  table.grid td{padding:2px 12px 2px 2px;color:var(--ink);white-space:nowrap;vertical-align:top}
+  table.grid{border-collapse:collapse;font-family:var(--mono);font-size:12.5px;margin:2px 0}
+  table.grid th{color:var(--accent);text-align:left;font-weight:600;padding:2px 14px 5px 2px;border-bottom:1px solid var(--line);white-space:nowrap}
+  table.grid td{padding:2px 14px 2px 2px;color:var(--ink);white-space:nowrap;vertical-align:top}
   table.grid td.r,table.grid th.r{text-align:right}
-  table.grid .att{font-size:9px;color:var(--sym);letter-spacing:.1em;margin-left:6px;vertical-align:super}
-  table.grid tr:hover td{background:rgba(255,176,0,.05)}
-  .keyw{border-right:2px solid var(--line);padding-right:8px !important}
-  .dictgrid td.k{color:var(--sym)}
-  .typ{font-size:10px;color:var(--faint)}
+  table.grid .att{font-size:9px;color:var(--s-sym);letter-spacing:.1em;margin-left:5px;vertical-align:super}
+  table.grid tr:hover td{background:color-mix(in srgb,var(--accent) 8%,transparent)}
+  .keyw{border-right:2px solid var(--line);padding-right:9px !important}
+  .dictgrid td.k{color:var(--s-sym)}
 
-  /* sidebar */
-  .side h2{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--amber-d);
-    margin:18px 0 8px;border-bottom:1px solid var(--line2);padding-bottom:6px}
-  .side h2:first-child{margin-top:2px}
-  .snip{display:block;width:100%;text-align:left;margin:4px 0;padding:7px 9px;border-radius:7px;
-    border:1px solid var(--line2);background:#120c06;color:var(--var);font-size:12.5px;cursor:pointer;
-    white-space:pre-wrap;line-height:1.4}
-  .snip:hover{border-color:var(--amber-d);color:#ffe1a6;box-shadow:var(--glow)}
-  .snip .cm{color:var(--com)}
-  .ref{font-size:12px;color:var(--dim);margin:3px 0}
-  .ref b{color:var(--amber-b);font-weight:600}
-  .note{font-size:11.5px;color:var(--faint);line-height:1.5;margin:6px 0}
-  .side .sub{font-size:10px;color:var(--faint);letter-spacing:.16em;text-transform:uppercase;margin:10px 0 4px}
+  /* ---------- scratch mode ---------- */
+  .scratch{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px;height:100%}
+  .scratch .pane{border:1px solid var(--line2);border-radius:var(--radius);background:var(--cell);overflow:hidden;display:flex;flex-direction:column}
+  .scratch .phead{padding:7px 12px;border-bottom:1px solid var(--line2);background:var(--panel);font-size:11px;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--faint);display:flex;align-items:center;gap:8px}
+  .scratch .ed{flex:1;min-height:220px}
+  .scratch .editor{height:100%}
+  .scratch .editor pre,.scratch .editor textarea{min-height:220px;height:100%}
+  .scratch .console-pane{min-height:180px;max-height:44vh;overflow:auto;padding:10px 14px}
+  .trow{display:flex;gap:10px;padding:5px 0;border-bottom:1px solid var(--line2)}
+  .trow .tin{color:var(--s-var);font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;flex:0 0 46%}
+  .trow .tout{font-family:var(--mono);font-size:12.5px;flex:1;min-width:0}
+  .prompt{color:var(--accent);font-weight:700}
 
-  /* status bar */
-  .status{position:fixed;bottom:0;left:0;right:0;height:26px;display:flex;align-items:center;gap:16px;
-    padding:0 16px;font-size:11px;color:var(--faint);letter-spacing:.06em;
-    background:linear-gradient(180deg,#0e0904,#0b0704);border-top:1px solid var(--line2);z-index:50}
-  .status b{color:var(--amber-d);font-weight:600}
-  .status .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 6px var(--ok)}
-  .kbd{border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--dim);font-size:10.5px}
-  @media(max-width:820px){ .side{position:fixed;right:0;top:0;bottom:0;z-index:60;width:min(340px,88vw);
-     box-shadow:-20px 0 60px rgba(0,0,0,.6)} }
+  /* ---------- status bar ---------- */
+  .status{height:26px;display:flex;align-items:center;gap:16px;padding:0 16px;font-size:11px;color:var(--faint);
+    background:var(--panel);border-top:1px solid var(--line2);flex:0 0 auto}
+  .status b{color:var(--dim);font-weight:600}
+  .kbd{border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--dim);font-size:10.5px;font-family:var(--mono)}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 6px var(--ok)}
+  .toast{position:fixed;bottom:44px;left:50%;transform:translateX(-50%);background:var(--panel);border:1px solid var(--accent);
+    color:var(--ink);padding:9px 18px;border-radius:10px;box-shadow:var(--glow);z-index:80;opacity:0;transition:opacity .2s;pointer-events:none;font-size:13px}
+  .toast.show{opacity:1}
+
+  /* ghost autocomplete */
+  .ghost{color:var(--faint);opacity:.65;font-style:italic}
+  .acbadge{position:absolute;right:8px;bottom:6px;font-size:9.5px;letter-spacing:.12em;color:var(--faint);
+    background:color-mix(in srgb,var(--accent) 12%,transparent);border:1px solid var(--line2);border-radius:5px;padding:1px 6px;pointer-events:none;opacity:0;transition:.15s;z-index:3}
+  .editor:focus-within .acbadge.show{opacity:.9}
+  /* resizable splitters */
+  .splitter{height:9px;flex:0 0 auto;cursor:row-resize;background:
+    linear-gradient(180deg,transparent,var(--line2) 40%,var(--line2) 60%,transparent);position:relative}
+  .splitter:hover,.splitter.drag{background:linear-gradient(180deg,transparent,var(--accent) 40%,var(--accent) 60%,transparent)}
+  .splitter::after{content:"⋯";position:absolute;left:50%;top:-4px;transform:translateX(-50%);color:var(--faint);font-size:12px;letter-spacing:2px}
+  .sidesplit{width:7px;flex:0 0 auto;cursor:col-resize;background:transparent;position:relative;z-index:20}
+  .sidesplit:hover,.sidesplit.drag{background:linear-gradient(90deg,transparent,var(--accent) 45%,var(--accent) 55%,transparent)}
+  /* copy buttons */
+  .cpbtn{border:1px solid var(--line);background:var(--cell);color:var(--dim);border-radius:7px;cursor:pointer;
+    font-size:10.5px;padding:3px 8px;transition:.13s;display:inline-flex;gap:4px;align-items:center}
+  .cpbtn:hover{color:var(--accent);border-color:var(--accent)}
+  .outbar{display:flex;gap:6px;justify-content:flex-end;margin-bottom:6px}
+  /* syntax classes */
+  .hl-com{color:var(--s-com);font-style:italic}
+  .hl-str{color:var(--s-str)} .hl-sym{color:var(--s-sym)} .hl-num{color:var(--s-num)}
+  .hl-verb{color:var(--s-verb);font-weight:600} .hl-adv{color:var(--s-adv);font-weight:600}
+  .hl-brk{color:var(--s-brk)} .hl-kw{color:var(--s-kw)} .hl-var{color:var(--s-var)}
+  @media(max-width:860px){.side{position:fixed;right:0;top:0;bottom:0;z-index:70;width:min(340px,90vw)}.side.hidden{margin-right:-92vw}}
 </style>
 </head>
 <body>
 <div class="app">
   <header>
-    <div class="diamond"></div>
-    <div class="brand"><div class="word">AMBER</div><div class="tag">interpreter · notepad</div></div>
-    <span class="ver">v1.4</span>
-    <div class="spacer"></div>
+    <div class="logo"><div class="gem"></div>
+      <div><div class="word">AMBER</div><div class="sub">notepad</div></div></div>
+    <div class="grow"></div>
     <div class="toolbar">
-      <button class="pri" id="runall">▶ run all</button>
-      <button id="addcell">＋ cell</button>
-      <button id="clearout" class="ghost">clear output</button>
-      <button id="resetenv" class="ghost">reset env</button>
-      <button id="loaddemo" class="ghost">demo</button>
-      <button id="toghelp">✦ help</button>
+      <div class="seg" id="modeseg">
+        <button data-mode="notebook" class="on">▤ Notebook</button>
+        <button data-mode="scratch">▦ Scratch</button>
+      </div>
+      <button class="btn pri" id="runall">▶ Run all</button>
+      <button class="btn" id="clearout">Clear</button>
+      <button class="btn" id="resetenv">Reset env</button>
+      <button class="btn" id="aitoggle" title="AI ghost autocomplete — Tab to accept">⌁ AI on</button>
+      <button class="btn" id="surprise">🎲 Surprise</button>
+      <button class="btn" id="download">↓ .k</button>
+      <div class="themewrap">
+        <button class="btn themebtn" id="themebtn"><span class="swatch" id="themeSw"></span><span id="themeName">Amber</span> ▾</button>
+        <div class="thememenu" id="thememenu"></div>
+      </div>
+      <button class="btn" id="exbtn">✦ Examples</button>
     </div>
   </header>
 
   <div class="split">
-    <div class="book"><div class="cells" id="cells"></div></div>
-    <aside class="side" id="side"></aside>
+    <div class="work" id="work"></div>
+    <div class="sidesplit" id="sidesplit"></div>
+    <aside class="side" id="side" style="width:340px">
+      <h3>Example library <span class="grow"></span><span id="excount" style="color:var(--faint);font-size:10px"></span></h3>
+      <div class="searchwrap"><input class="search" id="exsearch" placeholder="search examples…  (try: join, vwap, date, json)"></div>
+      <div class="exlist" id="exlist"></div>
+    </aside>
   </div>
 
   <div class="status">
-    <span class="dot"></span>
-    <span>ready</span>
-    <span>cells <b id="stCells">0</b></span>
+    <span class="dot"></span><span id="stMsg">ready</span>
+    <span>mode <b id="stMode">notebook</b></span>
+    <span>theme <b id="stTheme">Amber</b></span>
     <span>vars <b id="stVars">·</b></span>
-    <span class="spacer" style="flex:1"></span>
-    <span><span class="kbd">Shift</span>+<span class="kbd">↵</span> run &amp; next</span>
+    <span class="grow" style="flex:1"></span>
+    <span><span class="kbd">Shift</span>+<span class="kbd">↵</span> run · next</span>
     <span><span class="kbd">Ctrl</span>+<span class="kbd">↵</span> run</span>
   </div>
 </div>
+<div class="toast" id="toast"></div>
 
-<!-- ==== Amber interpreter ==== -->
 <script>
 // ============================================================================
 // Amber interpreter — a browser/Node evaluator for a working subset of Amber
@@ -329,9 +375,12 @@
         continue;
       }
       // number / number-vector
+      // a leading '-' is a negative sign iff glued to a digit AND preceded by whitespace/start/delimiter/verb
+      // (so `sums -1` is the literal -1, while `x-1` and `1-1` are subtraction).
+      const negOK = (k) => { const pc = k === 0 ? '' : s[k - 1]; return pc === '' || ' \t\n\r([{;'.indexOf(pc) >= 0 || VERBCH.indexOf(pc) >= 0 || "/\\'".indexOf(pc) >= 0; };
       const startsNum = (ch, k) => /[0-9]/.test(ch) ||
         (ch === '.' && /[0-9]/.test(s[k + 1] || '')) ||
-        (ch === '-' && (/[0-9]/.test(s[k + 1] || '') || (s[k + 1] === '.' && /[0-9]/.test(s[k + 2] || ''))) && !prevNoun());
+        (ch === '-' && (/[0-9]/.test(s[k + 1] || '') || (s[k + 1] === '.' && /[0-9]/.test(s[k + 2] || ''))) && negOK(k));
       if (startsNum(c, i)) {
         const nums = [];
         while (true) {
@@ -661,13 +710,12 @@
 
   function applyArgs(of, argTerms, env) {
     // brackets after a value/function: indexing or application
+    const emptyMask = argTerms.map(a => a.length === 0);
+    const allEmpty = emptyMask.every(x => x);
     const args = argTerms.map(a => a.length ? evalTerms(a, env) : U); // elision -> U
-    const hasElision = args.some(a => a === U && true) && argTerms.some(a => a.length === 0);
     if (of && (of.t === 'fn' || of.t === 'vb' || of.t === 'pr')) {
-      if (argTerms.some(a => a.length === 0)) {
-        // projection
-        return makeProj(of, args, argTerms.map(a => a.length === 0));
-      }
+      if (allEmpty) return applyFn(of, [], env);           // niladic call  f[]
+      if (emptyMask.some(x => x)) return makeProj(of, args, emptyMask); // partial elision -> projection
       return applyFn(of, args, env);
     }
     // indexing a value
@@ -719,15 +767,16 @@
 
   function applyFn(fn, args, env) {
     if (fn.t === 'vb') {
-      if (args.length === 1) { if (!fn.mon) throw err('rank'); return fn.mon(args[0]); }
-      if (args.length === 2) { if (!fn.dy) throw err('rank'); return fn.dy(args[0], args[1]); }
+      if (args.length === 0) { if (fn.mon) return fn.mon(U); if (fn.nary) return fn.nary([]); if (fn.dy) return fn; throw err('rank'); }
+      if (args.length === 1) { if (fn.mon) return fn.mon(args[0]); if (fn.dy) return makeProj(fn, [args[0], U], [false, true]); if (fn.nary) return fn.nary(args); throw err('rank'); }
+      if (args.length === 2) { if (fn.dy) return fn.dy(args[0], args[1]); if (fn.nary) return fn.nary(args); throw err('rank'); }
       if (fn.nary) return fn.nary(args);
       throw err('rank');
     }
     if (fn.t === 'pr') {
       // fill masked positions with args
       const full = []; let ai = 0;
-      for (let k = 0; k < fn.args.length; k++) { if (fn.mask[k]) full.push(args[ai++]); else full.push(fn.args[k]); }
+      for (let k = 0; k < fn.args.length; k++) { if (fn.mask[k]) full.push(ai < args.length ? args[ai++] : U); else full.push(fn.args[k]); }
       while (ai < args.length) full.push(args[ai++]);
       return applyFn(fn.f, full, env);
     }
@@ -735,9 +784,8 @@
       const e2 = makeEnv(fn.env);
       const p = fn.p;
       for (let k = 0; k < p.length; k++) e2.vars[p[k]] = k < args.length ? args[k] : U;
-      // projection if too few args
-      if (args.length < fn.rank && args.some((a, ix) => a === U) === false && args.length < p.length) {
-        // partial -> projection
+      // projection only for a partial call (0 < given < rank), not for niladic f[]
+      if (args.length > 0 && args.length < fn.rank && args.every(a => a !== U) && args.length < p.length) {
         const mask = p.map((_, ix) => ix >= args.length);
         const pre = p.map((_, ix) => ix < args.length ? args[ix] : U);
         return { t: 'pr', f: fn, args: pre, mask };
@@ -1009,7 +1057,7 @@
     '^': { mon: x => each1(e => I(isNull(e) ? 1 : 0), x), dy: (x, y) => isAtom(x) ? fill(x, y) : without(x, y) },
     '#': { mon: countOf, dy: takeReshape },
     '_': { mon: x => each1(e => e.t === 'c' ? Ch(e.v.toLowerCase()) : I(Math.floor(num(e))), x), dy: dropCut },
-    '$': { mon: toStr, dy: (x, y) => x.t === 's' ? castTo(x, y) : padStr(x, y) },
+    '$': { mon: toStr, dy: (x, y) => x.t === 's' ? castTo(x, y) : padStr(x, y), nary: condN },
     '?': { mon: distinct, dy: qmark },
     '@': { mon: typeOf, dy: applyAt, nary: amendN },
     '.': { mon: dotMon, dy: (x, y) => indexDeep(x, arr(y)), nary: drillN },
@@ -1041,6 +1089,8 @@
     return findIn(x, y);
   }
   function padStr(x, y) { const n = num(x); const s = y.t === 'C' ? y.v : fmtAtom(y); if (n >= 0) return { t: 'C', v: (s + ' '.repeat(Math.max(0, n))).slice(0, n) }; const nn = -n; return { t: 'C', v: (' '.repeat(Math.max(0, nn)) + s).slice(-nn) }; }
+  function truthy(x) { if (isAtom(x)) return isNum(x) ? x.v !== 0 : x.t === 'c' ? x.v !== '\0' : x.t === 's' ? x.v !== '' : true; if (isVec(x)) return len(x) > 0 && truthy(first(x)); return true; }
+  function condN(args) { for (let k = 0; k + 1 < args.length; k += 2) { if (truthy(args[k])) return args[k + 1]; } return args.length % 2 ? args[args.length - 1] : U; }
   function dotMon(x) { if (x.t === 'm') return x.v; if (x.t === 'C') return evalString(x.v); if (x.t === 's') return lookupGlobal(x.v); if (x.t === 'S') return vec(x.v.map(lookupGlobal)); return x; }
   function amendN(args) { // @[x;i;f] or @[x;i;f;y]
     let [x, idx, f, y] = args; x = clone(x);
@@ -1122,14 +1172,20 @@
     for (let k = 1; k < a.length; k++) acc = applyFn(f, [acc, a[k]], null);
     return acc;
   }
+  function isMonadicFn(f) { return (f.t === 'fn' && f.rank === 1) || (f.t === 'vb' && f.mon && !f.dy) || f.t === 'pr'; }
   function overDy(f, seed, x) {
-    if (isNum(seed) && !isFnVal(f)) {/*unused*/ }
+    // n f/ x : integer-atom seed + monadic f -> apply f to x, n times (do-loop)
+    if (seed && seed.t === 'i' && isMonadicFn(f)) { let acc = x; for (let k = 0; k < seed.v; k++) acc = applyFn(f, [acc], null); return acc; }
     const a = arr(x); let acc = seed;
     for (let k = 0; k < a.length; k++) acc = applyFn(f, [acc, a[k]], null);
     return acc;
   }
   function scanMon(f, x) { const a = arr(x); if (a.length === 0) return x; const out = [a[0]]; let acc = a[0]; for (let k = 1; k < a.length; k++) { acc = applyFn(f, [acc, a[k]], null); out.push(acc); } return vec(out); }
-  function scanDy(f, seed, x) { const a = arr(x); const out = []; let acc = seed; for (let k = 0; k < a.length; k++) { acc = applyFn(f, [acc, a[k]], null); out.push(acc); } return vec(out); }
+  function scanDy(f, seed, x) {
+    // n f\ x : integer-atom seed + monadic f -> record each of n applications (do-scan)
+    if (seed && seed.t === 'i' && isMonadicFn(f)) { let acc = x; const out = [x]; for (let k = 0; k < seed.v; k++) { acc = applyFn(f, [acc], null); out.push(acc); } return vec(out); }
+    const a = arr(x); const out = []; let acc = seed; for (let k = 0; k < a.length; k++) { acc = applyFn(f, [acc, a[k]], null); out.push(acc); } return vec(out);
+  }
   function eachPrior(f, x, seed) {
     const a = arr(x); const out = []; for (let k = 0; k < a.length; k++) { if (k === 0) { out.push(seed ? applyFn(f, [a[0], seed], null) : a[0]); } else out.push(applyFn(f, [a[k], a[k - 1]], null)); } return vec(out);
   }
@@ -1283,9 +1339,12 @@
   }
 
   // ---- RNG (seedable) ----------------------------------------------------
-  let SEED = 42;
-  function RNG() { SEED = (SEED * 1103515245 + 12345) & 0x7fffffff; return SEED / 0x7fffffff; }
-  function setSeed(s) { SEED = s | 0; }
+  let SEED = 0;
+  // xorshift32 — decent bits (unlike a plain LCG, whose low bits are non-random);
+  // reseeded from Math.random on load so `?` rolls differ each session.
+  function RNG() { SEED ^= SEED << 13; SEED ^= SEED >>> 17; SEED ^= SEED << 5; SEED |= 0; return (SEED >>> 0) / 4294967296; }
+  function setSeed(s) { SEED = (s | 0) || 1; RNG(); RNG(); RNG(); }
+  try { setSeed((Math.floor(Math.random() * 2147483647) | 0) || 1); } catch (e) { setSeed(2463534242); }
 
   // ---- Amber vocabulary (named builtins) --------------------------------
   function reduceNum(f, init, x) { const a = raw(isAtom(x) ? enlist(x) : x); return a.reduce(f, init); }
@@ -1609,6 +1668,154 @@
   defMon('symstats', t => { const dict = { t: 'm', k: { t: 'S', v: ['n', 'vwap', 'hi', 'lo', 'vol'] }, v: { t: 'A', v: [{ t: 'vb', mon: g => countOf(tcol(g, 'px')) }, { t: 'vb', mon: g => { const w = raw(tcol(g, 'sz')), p = raw(tcol(g, 'px')); const sw = w.reduce((s, v) => s + v, 0); return F(Math.round(10000 * w.reduce((s, v, i) => s + v * p[i], 0) / sw) / 10000); } }, { t: 'vb', mon: g => aggNum((a, b) => Math.max(a, b), -Infinity, tcol(g, 'px')) }, { t: 'vb', mon: g => aggNum((a, b) => Math.min(a, b), Infinity, tcol(g, 'px')) }, { t: 'vb', mon: g => aggNum((a, b) => a + b, 0, tcol(g, 'sz')) }] } }; return qby(t, { t: 'S', v: ['sym'] }, dict); });
   defDy('round', (n, x) => { const d = Math.pow(10, num(n)); return each1(e => F(Math.round(num(e) * d) / d), x); });
 
+  // ============ v1.5 vocabulary (std / qsql / temporal / sys / hdb / ipc) =====
+  // ---- moving / window aggregates (std.k) ----
+  function movwin(w, p, f) { const out = []; for (let i = 0; i < p.length; i++) { const s = Math.max(0, i - w + 1); out.push(f(p.slice(s, i + 1))); } return { t: 'F', v: out }; }
+  defDy('msum', (w, x) => movwin(num(w), raw(x), a => a.reduce((s, v) => s + v, 0)));
+  defDy('mavg', (w, x) => movwin(num(w), raw(x), a => a.reduce((s, v) => s + v, 0) / a.length));
+  defDy('mcount', (w, x) => { const ww = num(w), n = len(x); const out = []; for (let i = 0; i < n; i++) out.push(Math.min(ww, i + 1)); return { t: 'I', v: out }; });
+  defDy('mprd', (w, x) => movwin(num(w), raw(x), a => a.reduce((s, v) => s * v, 1)));
+  defDy('mvar', (w, x) => movwin(num(w), raw(x), a => { const m = a.reduce((s, v) => s + v, 0) / a.length; return a.reduce((s, v) => s + (v - m) * (v - m), 0) / a.length; }));
+  defDy('mdev', (w, x) => movwin(num(w), raw(x), a => { const m = a.reduce((s, v) => s + v, 0) / a.length; return Math.sqrt(a.reduce((s, v) => s + (v - m) * (v - m), 0) / a.length); }));
+  defDy('mmin', (w, x) => movwin(num(w), raw(x), a => Math.min.apply(null, a)));
+  defDy('mmax', (w, x) => movwin(num(w), raw(x), a => Math.max.apply(null, a)));
+  defDy('dot', (x, y) => { const a = raw(x), b = raw(y); return F(a.reduce((s, v, i) => s + v * b[i], 0)); });
+  defDy('mmu', (x, y) => { const X = x.v.map(raw), Y = y.v.map(raw); const yc = Y[0].map((_, j) => Y.map(r => r[j])); return { t: 'A', v: X.map(r => nvec(yc.map(c => r.reduce((s, v, k) => s + v * c[k], 0)))) }; });
+
+  // ---- cast / parse / eval / serialize / peach (std.k) ----
+  defMon('parse', x => ({ t: 'C', v: x.v }));
+  defMon('eval', x => x.t === 'C' ? evalString(x.v) : x);
+  defMon('reval', x => x.t === 'C' ? evalString(x.v) : x);
+  defMon('ser', x => ({ t: 'C', v: fmt(x) }));
+  defMon('deser', x => evalString(x.v));
+  defMon('long', x => each1(e => I(Math.trunc(num(e))), x));
+  defMon('int', x => each1(e => I(Math.trunc(num(e))), x));
+  defMon('float', x => each1(e => F(num(e)), x));
+  defMon('bool', x => each1(e => I(num(e) !== 0 ? 1 : 0), x));
+  defDy('cast', (t, x) => { const s = t.v; return s === 'float' ? each1(e => F(num(e)), x) : (s === 'long' || s === 'int') ? each1(e => I(Math.trunc(num(e))), x) : s === 'bool' ? each1(e => I(num(e) !== 0 ? 1 : 0), x) : s === 'char' ? each1(e => Ch(String.fromCharCode(num(e))), x) : s === 'sym' ? each1(e => Sy(e.t === 'C' ? e.v : fmtAtom(e)), x) : x; });
+  defDy('peach', (f, x) => vec(arr(x).map(e => applyFn(f, [e], null))));
+
+  // ---- temporal types (temporal.k) ----
+  function fdivJ(a, b) { return Math.floor(a / b); }
+  function ymd2dJ(y, m, d) { const yy = y - (m < 3 ? 1 : 0), era = fdivJ(yy, 400), yoe = yy - era * 400, mp = m + (m > 2 ? -3 : 9), doy = fdivJ(153 * mp + 2, 5) + d - 1; return 146097 * era + 365 * yoe + fdivJ(yoe, 4) + doy - fdivJ(yoe, 100) - 730425; }
+  function d2ymdJ(g) { const z = g + 730425, era = fdivJ(z, 146097), doe = z - 146097 * era, yoe = fdivJ(doe - fdivJ(doe, 1460) + fdivJ(doe, 36524) - fdivJ(doe, 146096), 365), y = yoe + 400 * era, doy = doe - (365 * yoe + fdivJ(yoe, 4) - fdivJ(yoe, 100)), mp = fdivJ(5 * doy + 2, 153), dd = doy - fdivJ(153 * mp + 2, 5) + 1, m = mp + (mp < 10 ? 3 : -9); return [y + (m < 3 ? 1 : 0), m, dd]; }
+  const p2 = n => String(n).padStart(2, '0'), p3 = n => String(n).padStart(3, '0');
+  function dstrJ(g) { const [y, m, d] = d2ymdJ(g); return y + '.' + p2(m) + '.' + p2(d); }
+  function msStr(ms) { ms = ms | 0; const h = fdivJ(ms, 3600000); ms -= h * 3600000; const mi = fdivJ(ms, 60000); ms -= mi * 60000; const s = fdivJ(ms, 1000); ms -= s * 1000; return p2(h) + ':' + p2(mi) + ':' + p2(s) + '.' + p3(ms); }
+  defND('ymd2d', a => I(ymd2dJ(num(a[0]), num(a[1]), num(a[2]))));
+  defMon('d2ymd', x => ({ t: 'I', v: d2ymdJ(num(x)) }));
+  defMon('dstr', x => ({ t: 'C', v: dstrJ(num(x)) }));
+  defMon('pdate', x => { const p = x.v.split('.').map(Number); return I(ymd2dJ(p[0], p[1], p[2])); });
+  defMon('year', x => I(d2ymdJ(num(x))[0]));
+  defMon('month', x => I(d2ymdJ(num(x))[1]));
+  defMon('dayof', x => I(d2ymdJ(num(x))[2]));
+  defMon('dow', x => Sy(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][((num(x) + 5) % 7 + 7) % 7]));
+  defDy('dadd', (d, n) => I(num(d) + num(n)));
+  defDy('ddiff', (a, b) => I(num(a) - num(b)));
+  defND('tstamp', a => ({ t: 'i', v: (num(a[1]) + 86400000 * num(a[0])) * 1000000 }));
+  defMon('tsdate', x => I(fdivJ(num(x), 86400000000000)));
+  defMon('tsms', x => I(fdivJ(num(x), 1000000) - 86400000 * fdivJ(num(x), 86400000000000)));
+  defMon('pstr', x => { const p = num(x); const d = fdivJ(p, 86400000000000); const ms = fdivJ(p, 1000000) - 86400000 * d; return { t: 'C', v: dstrJ(d) + 'D' + msStr(ms) }; });
+  if (!BUILTINS['hms']) defND('hms', a => I((num(a[0]) * 3600 + num(a[1]) * 60 + num(a[2])) * 1000));
+
+  // ---- system namespaces (sys.k) : z.* Q.* j.* ----
+  const nowMs = () => (typeof Date !== 'undefined' ? Date.now() : 1770000000000);
+  const zdays = () => fdivJ(nowMs(), 86400000) - 10957;
+  const zmsday = () => nowMs() - 86400000 * fdivJ(nowMs(), 86400000);
+  defMon('z.d', () => I(zdays())); defMon('z.D', () => I(zdays()));
+  defMon('z.t', () => I(zmsday())); defMon('z.T', () => I(zmsday()));
+  defMon('z.p', () => ({ t: 'i', v: (86400000 * zdays() + zmsday()) * 1000000 }));
+  defMon('z.n', () => I(zmsday() * 1000000));
+  defND('Q.f', a => ({ t: 'C', v: (Math.round(num(a[1]) * Math.pow(10, num(a[0]))) / Math.pow(10, num(a[0]))).toFixed(num(a[0])) }));
+  defDy('Q.dd', (a, b) => Sy(a.v + '.' + b.v));
+  defMon('Q.s', x => ({ t: 'C', v: fmt(x) }));
+  function jenc(x) {
+    if (x.t === 'i' || x.t === 'f') return fmtAtom(x);
+    if (x.t === 's') return '"' + x.v + '"';
+    if (x.t === 'c') return '"' + x.v + '"';
+    if (x.t === 'C') return '"' + x.v + '"';
+    if (x.t === 'I' || x.t === 'F') return '[' + x.v.map(v => Number.isNaN(v) ? 'null' : v).join(',') + ']';
+    if (x.t === 'S') return '[' + x.v.map(s => '"' + s + '"').join(',') + ']';
+    if (x.t === 'A') return '[' + x.v.map(jenc).join(',') + ']';
+    if (x.t === 'm') return '{' + arr(x.k).map((k, i) => '"' + k.v + '":' + jenc(arr(x.v)[i])).join(',') + '}';
+    if (x.t === 'T' || x.t === 'K') { const t = x.t === 'K' ? mergeKV(x) : x; const n = len(t.d[0]); const rows = []; for (let i = 0; i < n; i++) rows.push('{' + t.c.map((c, ci) => '"' + c + '":' + jenc(arr(t.d[ci])[i])).join(',') + '}'); return '[' + rows.join(',') + ']'; }
+    return '"' + fmt(x) + '"';
+  }
+  function jparse(v) { if (typeof v === 'number') return Number.isInteger(v) ? I(v) : F(v); if (typeof v === 'string') return { t: 'C', v }; if (typeof v === 'boolean') return I(v ? 1 : 0); if (v === null) return NF; if (Array.isArray(v)) return vec(v.map(jparse)); if (typeof v === 'object') { const ks = Object.keys(v); return { t: 'm', k: { t: 'S', v: ks }, v: vec(ks.map(k => jparse(v[k]))) }; } return U; }
+  defMon('j.j', x => ({ t: 'C', v: jenc(x) }));
+  defMon('j.k', x => { try { return jparse(JSON.parse(x.v)); } catch (e) { throw err('json'); } });
+
+  // ---- on-disk data, in-memory emulation (hdb.k) ----
+  const DISK = {};
+  defDy('dset', (f, x) => { DISK[f.t === 'C' ? f.v : f.v] = x; return f; });
+  defMon('dget', f => DISK[f.v] || U);
+  defDy('splay', (d, t) => { DISK['splay:' + d.v] = t; return d; });
+  defMon('dload', d => DISK['splay:' + d.v] || U);
+  defND('partsave', a => { const [d, t, bc] = a; const tt = t.t === 'K' ? mergeKV(t) : t; const col = tt.d[tt.c.indexOf(bc.v)]; const keys = raw(distinct(col)); DISK['part:' + d.v] = { t, keys }; return d; });
+  defMon('partload', d => (DISK['part:' + d.v] || { t: U }).t);
+  defMon('parts', d => { const p = DISK['part:' + d.v]; return p ? distinct((p.t.t === 'K' ? mergeKV(p.t) : p.t).d[0]) : vec([]); });
+
+  // ---- in-process tickerplant (ipc.k) ----
+  const UTABS = {}, USUBS = {};
+  defND('u.def', a => { const nm = a[0].v; UTABS[nm] = a[1]; USUBS[nm] = []; return a[0]; });
+  defDy('u.sub', (nm, cb) => { (USUBS[nm.v] = USUBS[nm.v] || []).push(cb); return nm; });
+  defDy('u.pub', (nm, data) => { const k = nm.v; UTABS[k] = ucatT(UTABS[k], data); (USUBS[k] || []).forEach(cb => applyFn(cb, [nm, data], null)); return data; });
+  defMon('u.get', nm => UTABS[nm.v] || U);
+  function ucatT(t, r) { const tt = t.t === 'K' ? mergeKV(t) : t, rr = r.t === 'K' ? mergeKV(r) : r; return { t: 'T', c: tt.c.slice(), d: tt.c.map(c => concat(tt.d[tt.c.indexOf(c)], rr.d[rr.c.indexOf(c)])), at: tt.at.slice() }; }
+
+  // ---- qSQL string template (qsql.k) ----
+  function tblCols(t) { return t.t === 'K' ? t.kt.c.concat(t.vt.c) : t.c; }
+  function splitKw(s, kw) { const i = s.indexOf(kw); return i < 0 ? [s.trim(), null] : [s.slice(0, i).trim(), s.slice(i + kw.length).trim()]; }
+  function ccut(s) { const out = []; let d = 0, cur = ''; for (const ch of s) { if (ch === '[') d++; else if (ch === ']') d--; if (ch === ',' && d === 0) { out.push(cur.trim()); cur = ''; } else cur += ch; } if (cur.trim()) out.push(cur.trim()); return out; }
+  function isWord(c) { return /[A-Za-z0-9_]/.test(c); }
+  function cname(it) { let d = 0, i = -1; for (let k = 0; k < it.length; k++) { const c = it[k]; if (c === '[') d++; else if (c === ']') d--; else if (c === ':' && d === 0) { i = k; break; } } return i < 0 ? [null, it.trim()] : [it.slice(0, i).trim(), it.slice(i + 1).trim()]; }
+  function qtrans(cols, s) { let out = '', i = 0; while (i < s.length) { if (isWord(s[i])) { let j = i; while (j < s.length && isWord(s[j])) j++; const tok = s.slice(i, j); out += (cols.indexOf(tok) >= 0 && !/^[0-9]/.test(tok)) ? '(x`' + tok + ')' : tok; i = j; } else { out += s[i]; i++; } } return out; }
+  function qfnJ(cols, e) { return evalString('{[x]' + qtrans(cols, e) + '}'); }
+  function qmaskJ(t, cols, wh) { const conds = ccut(wh).map(c => applyFn(qfnJ(cols, c), [t], null)); return conds.reduce((m, c) => m ? each2((a, b) => I(num(a) && num(b) ? 1 : 0), m, c) : c, null); }
+  function symCols(cols, byp) { return { t: 'S', v: ccut(byp).map(it => cname(it)[1]) }; }
+  function selFn(sv) {
+    let s = sv.v.trim(); if (s.slice(0, 6) === 'select') s = s.slice(6).trim();
+    const [body, wh] = splitKw(s, ' where '); const [head, fromE] = splitKw(body, ' from '); const [selp, byp] = splitKw(head, ' by ');
+    const t0 = evalString(fromE); const cols = tblCols(t0); const t = wh ? qwhere(t0, qmaskJ(t0, cols, wh)) : t0;
+    if (selp === '*') return t;
+    const items = ccut(selp); const names = items.map((it, i) => { const [n, e] = cname(it); return Sy(n || (/^[A-Za-z_][A-Za-z0-9_]*$/.test(e) ? e : 'x' + i)); });
+    const funcs = items.map(it => qfnJ(cols, cname(it)[1]));
+    const dict = { t: 'm', k: vec(names), v: { t: 'A', v: funcs } };
+    return byp ? qby(t, symCols(cols, byp), dict) : qselect(t, dict);
+  }
+  function exqFn(sv) { let s = sv.v.trim(); if (s.slice(0, 4) === 'exec') s = s.slice(4).trim(); const [body, wh] = splitKw(s, ' where '); const [e, fromE] = splitKw(body, ' from '); const t0 = evalString(fromE); const cols = tblCols(t0); const t = wh ? qwhere(t0, qmaskJ(t0, cols, wh)) : t0; return applyFn(qfnJ(cols, cname(e)[1]), [t], null); }
+  function updFn(sv) {
+    let s = sv.v.trim(); if (s.slice(0, 6) === 'update') s = s.slice(6).trim();
+    const [body, wh] = splitKw(s, ' where '); const [head, fromE] = splitKw(body, ' from '); const [selp, byp] = splitKw(head, ' by ');
+    const t0 = evalString(fromE); const tt = t0.t === 'K' ? mergeKV(t0) : t0; const cols = tt.c.slice(); const n = len(tt.d[0]);
+    const items = ccut(selp);
+    let out = { t: 'T', c: tt.c.slice(), d: tt.d.slice(), at: tt.at.slice() };
+    const maskArr = wh ? raw(qmaskJ(tt, cols, wh)) : null;
+    if (byp) {
+      const bcols = symCols(cols, byp).v; const groups = new Map();
+      for (let i = 0; i < n; i++) { const key = bcols.map(c => keyOf(arr(tt.d[tt.c.indexOf(c)])[i])).join('\x01'); if (!groups.has(key)) groups.set(key, []); groups.get(key).push(i); }
+      items.forEach(it => { const [nm, e] = cname(it); const f = qfnJ(cols, e); const ci = out.c.indexOf(nm); const base = ci >= 0 ? arr(out.d[ci]).slice() : Array(n).fill(NF);
+        groups.forEach(idx => { const sub = { t: 'T', c: tt.c.slice(), d: tt.d.map(col => vec(idx.map(i => arr(col)[i]))), at: [] }; const v = applyFn(f, [sub], null); const vv = isVec(v) ? arr(v) : idx.map(() => v); idx.forEach((ri, k) => base[ri] = vv.length === idx.length ? vv[k] : (isAtom(v) ? v : vv[0])); });
+        setCol(out, nm, vec(base)); });
+    } else {
+      const sub = wh ? qwhere(tt, { t: 'I', v: maskArr.map(x => x ? 1 : 0) }) : tt;
+      items.forEach(it => { const [nm, e] = cname(it); const f = qfnJ(cols, e); const v = applyFn(f, [sub], null); const ci = out.c.indexOf(nm);
+        if (!maskArr) { setCol(out, nm, isVec(v) ? v : vec(Array(n).fill(v))); }
+        else { const base = ci >= 0 ? arr(out.d[ci]).slice() : Array(n).fill(NF); const vv = isVec(v) ? arr(v) : null; let j = 0; for (let i = 0; i < n; i++) if (maskArr[i]) base[i] = vv ? vv[j++] : v; setCol(out, nm, vec(base)); } });
+    }
+    return out;
+  }
+  function setCol(t, nm, col) { const ci = t.c.indexOf(nm); if (ci >= 0) { t.d[ci] = col; } else { t.c.push(nm); t.d.push(col); t.at.push(''); } }
+  function delFn(sv) {
+    let s = sv.v.trim(); if (s.slice(0, 6) === 'delete') s = s.slice(6).trim();
+    let colp, rest; if (s.slice(0, 5) === 'from ') { colp = ''; rest = s.slice(5).trim(); } else { const p = splitKw(s, ' from '); colp = p[0]; rest = p[1] || ''; }
+    const [fromE, wh] = splitKw(rest, ' where '); const t0 = evalString(fromE); const tt = t0.t === 'K' ? mergeKV(t0) : t0; const cols = tt.c.slice();
+    if (colp) { const drop = ccut(colp).map(it => cname(it)[1]); const keep = cols.filter(c => drop.indexOf(c) < 0); return { t: 'T', c: keep, d: keep.map(c => tt.d[cols.indexOf(c)]), at: keep.map(c => tt.at[cols.indexOf(c)]) }; }
+    const m = wh ? raw(qmaskJ(tt, cols, wh)) : Array(len(tt.d[0])).fill(1); const keepIdx = []; m.forEach((v, i) => { if (!v) keepIdx.push(i); });
+    return { t: 'T', c: cols, d: tt.d.map(col => vec(keepIdx.map(i => arr(col)[i]))), at: tt.at.slice() };
+  }
+  defMon('sel', selFn); defMon('exq', exqFn); defMon('upd', updFn); defMon('del', delFn);
+
   // ---- public API --------------------------------------------------------
   const ROOT = makeEnv(null);
   let OUT = [];
@@ -1630,7 +1837,7 @@
     }
     return { result, out: OUT.slice(), error, text: error ? null : (result === U ? null : fmt(result)), value: result };
   }
-  function reset() { for (const k in ROOT.vars) delete ROOT.vars[k]; SEED = 42; }
+  function reset() { for (const k in ROOT.vars) delete ROOT.vars[k]; try { setSeed((Math.floor(Math.random() * 2147483647) | 0) || 1); } catch (e) { setSeed(2463534242); } }
 
   function describe(x) {
     if (x === undefined || x === null || x.t === 'u') return { kind: 'unit' };
@@ -1660,295 +1867,534 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this);
 
 </script>
-
-<!-- ==== Notebook UI ==== -->
 <script>
-(function(){
+(function () {
   "use strict";
   const A = window.Amber;
-  const cellsEl = document.getElementById('cells');
-  const BUILTINS = new Set(Object.keys(A.BUILTINS).concat(
-    ['til','sum','avg','max','min','prd','count','first','last','reverse','distinct','where','group','flip','meta','show','cols']));
+  const $ = id => document.getElementById(id);
+  const BUILTINS = new Set(Object.keys(A.BUILTINS).concat(['til', 'sum', 'avg', 'max', 'min', 'prd', 'count', 'first', 'last', 'reverse', 'distinct', 'where', 'group', 'flip', 'meta', 'show', 'cols']));
   const VERBCH = "+-*%!&|<>=~,^#_$?@.:";
 
-  let cells = []; let uid = 0;
+  /* ===================== THEMES ===================== */
+  const THEMES = {
+    amber: { name: "Amber", v: { bg: "#1a1510", panel: "#211a12", cell: "#1e1710", line: "#3a2c1a", line2: "#2c2115", ink: "#f4dcae", dim: "#c39d5f", faint: "#8a6d3b", accent: "#ffb000", accent2: "#ff8c1a", ok: "#8fd06b", err: "#ff6b4a", num: "#ffe08a", str: "#ffd27f", sym: "#ff9440", verb: "#ff9e3d", adv: "#ffbe5c", kw: "#ffcf6b", var: "#e6c078", com: "#7d6636", brk: "#c79a4a", caret: "#ffb000", sel: "rgba(255,176,0,.24)" } },
+    amberLight: { name: "Amber Light", v: { bg: "#faf3e4", panel: "#f3e9d2", cell: "#fdf8ee", line: "#e0d0aa", line2: "#ece0c4", ink: "#4a3a1a", dim: "#8a6d2f", faint: "#b39a68", accent: "#c8891a", accent2: "#e0761a", ok: "#4e9a2f", err: "#c0392b", num: "#a6701a", str: "#9a6b12", sym: "#c25a10", verb: "#b26a12", adv: "#c8891a", kw: "#8a5a00", var: "#6b5220", com: "#b0996a", brk: "#a07a30", caret: "#c8891a", sel: "rgba(200,137,26,.22)" } },
+    dracula: { name: "Dracula", v: { bg: "#282a36", panel: "#21222c", cell: "#2b2d3a", line: "#44475a", line2: "#343746", ink: "#f8f8f2", dim: "#a9b0d0", faint: "#6272a4", accent: "#bd93f9", accent2: "#ff79c6", ok: "#50fa7b", err: "#ff5555", num: "#bd93f9", str: "#f1fa8c", sym: "#ffb86c", verb: "#ff79c6", adv: "#8be9fd", kw: "#50fa7b", var: "#f8f8f2", com: "#6272a4", brk: "#8be9fd", caret: "#ff79c6", sel: "rgba(189,147,249,.28)" } },
+    nord: { name: "Nord", v: { bg: "#2e3440", panel: "#272c36", cell: "#333a48", line: "#434c5e", line2: "#3b4252", ink: "#eceff4", dim: "#b7c0d0", faint: "#6d7791", accent: "#88c0d0", accent2: "#81a1c1", ok: "#a3be8c", err: "#bf616a", num: "#b48ead", str: "#a3be8c", sym: "#d08770", verb: "#81a1c1", adv: "#88c0d0", kw: "#8fbcbb", var: "#e5e9f0", com: "#616e88", brk: "#8fbcbb", caret: "#88c0d0", sel: "rgba(136,192,208,.26)" } },
+    monokai: { name: "Monokai", v: { bg: "#272822", panel: "#21221c", cell: "#2d2e27", line: "#49483e", line2: "#3a3b32", ink: "#f8f8f2", dim: "#bcbcae", faint: "#75715e", accent: "#a6e22e", accent2: "#fd971f", ok: "#a6e22e", err: "#f92672", num: "#ae81ff", str: "#e6db74", sym: "#fd971f", verb: "#f92672", adv: "#66d9ef", kw: "#a6e22e", var: "#f8f8f2", com: "#75715e", brk: "#66d9ef", caret: "#f92672", sel: "rgba(166,226,46,.22)" } },
+    solarizedD: { name: "Solarized Dark", v: { bg: "#002b36", panel: "#023642", cell: "#073642", line: "#0e4b56", line2: "#0a3d48", ink: "#93a1a1", dim: "#839496", faint: "#586e75", accent: "#b58900", accent2: "#cb4b16", ok: "#859900", err: "#dc322f", num: "#d33682", str: "#2aa198", sym: "#cb4b16", verb: "#268bd2", adv: "#6c71c4", kw: "#859900", var: "#eee8d5", com: "#586e75", brk: "#6c71c4", caret: "#b58900", sel: "rgba(181,137,0,.24)" } },
+    solarizedL: { name: "Solarized Light", v: { bg: "#fdf6e3", panel: "#f4edda", cell: "#fbf3df", line: "#e3dcc4", line2: "#efe8d2", ink: "#586e75", dim: "#657b83", faint: "#93a1a1", accent: "#b58900", accent2: "#cb4b16", ok: "#859900", err: "#dc322f", num: "#d33682", str: "#2aa198", sym: "#cb4b16", verb: "#268bd2", adv: "#6c71c4", kw: "#859900", var: "#073642", com: "#93a1a1", brk: "#6c71c4", caret: "#b58900", sel: "rgba(181,137,0,.16)" } },
+    tokyo: { name: "Tokyo Night", v: { bg: "#1a1b26", panel: "#16161e", cell: "#1f2233", line: "#2f334d", line2: "#252840", ink: "#c0caf5", dim: "#9aa5ce", faint: "#565f89", accent: "#7aa2f7", accent2: "#bb9af7", ok: "#9ece6a", err: "#f7768e", num: "#ff9e64", str: "#9ece6a", sym: "#e0af68", verb: "#bb9af7", adv: "#7dcfff", kw: "#7aa2f7", var: "#c0caf5", com: "#565f89", brk: "#7dcfff", caret: "#7aa2f7", sel: "rgba(122,162,247,.26)" } },
+    gruvbox: { name: "Gruvbox", v: { bg: "#282828", panel: "#1f1f1f", cell: "#32302f", line: "#504945", line2: "#3c3836", ink: "#ebdbb2", dim: "#bdae93", faint: "#928374", accent: "#fabd2f", accent2: "#fe8019", ok: "#b8bb26", err: "#fb4934", num: "#d3869b", str: "#b8bb26", sym: "#fe8019", verb: "#83a598", adv: "#8ec07c", kw: "#fabd2f", var: "#ebdbb2", com: "#928374", brk: "#8ec07c", caret: "#fabd2f", sel: "rgba(250,189,47,.22)" } },
+    githubL: { name: "GitHub Light", v: { bg: "#ffffff", panel: "#f6f8fa", cell: "#ffffff", line: "#d0d7de", line2: "#e6eaef", ink: "#24292e", dim: "#57606a", faint: "#8c959f", accent: "#0969da", accent2: "#8250df", ok: "#1a7f37", err: "#cf222e", num: "#0550ae", str: "#0a3069", sym: "#953800", verb: "#cf222e", adv: "#8250df", kw: "#116329", var: "#24292e", com: "#6e7781", brk: "#6639ba", caret: "#0969da", sel: "rgba(9,105,218,.14)" } },
+    synthwave: { name: "Synthwave", v: { bg: "#221733", panel: "#1b1229", cell: "#2a1f3d", line: "#472d6b", line2: "#35244f", ink: "#f0e6ff", dim: "#c4a5ec", faint: "#7a5ba6", accent: "#ff7edb", accent2: "#36f9f6", ok: "#72f1b8", err: "#fe4450", num: "#fede5d", str: "#72f1b8", sym: "#ff8b39", verb: "#36f9f6", adv: "#ff7edb", kw: "#fede5d", var: "#f0e6ff", com: "#7a5ba6", brk: "#36f9f6", caret: "#ff7edb", sel: "rgba(255,126,219,.28)" } },
+    matrix: { name: "Matrix", v: { bg: "#020a02", panel: "#041104", cell: "#04140a", line: "#0d3d1a", line2: "#0a2a12", ink: "#43ff67", dim: "#2ecb4d", faint: "#178a2c", accent: "#00ff41", accent2: "#7dff9a", ok: "#7dff9a", err: "#ff4d4d", num: "#8bff6a", str: "#b8ffb0", sym: "#43ff67", verb: "#00ff41", adv: "#7dff9a", kw: "#00e63a", var: "#43ff67", com: "#178a2c", brk: "#2ecb4d", caret: "#00ff41", sel: "rgba(0,255,65,.20)" } },
+    paper: { name: "Paper", v: { bg: "#f4ecd8", panel: "#eadfc4", cell: "#faf3e0", line: "#d8c9a4", line2: "#e6dabe", ink: "#4b3b26", dim: "#7a6544", faint: "#a89268", accent: "#a8621b", accent2: "#8a4b12", ok: "#5a7a2f", err: "#a83232", num: "#8a5a1a", str: "#6b6a1a", sym: "#a8621b", verb: "#7a4b12", adv: "#5a6a8a", kw: "#6a5218", var: "#4b3b26", com: "#a89268", brk: "#8a6a3a", caret: "#a8621b", sel: "rgba(168,98,27,.18)" } },
+    oceanic: { name: "Oceanic", v: { bg: "#1b2b34", panel: "#16232b", cell: "#22333c", line: "#3b4c54", line2: "#2c3c44", ink: "#cdd3de", dim: "#a7adba", faint: "#65737e", accent: "#6699cc", accent2: "#5fb3b3", ok: "#99c794", err: "#ec5f67", num: "#f99157", str: "#99c794", sym: "#fac863", verb: "#6699cc", adv: "#5fb3b3", kw: "#c594c5", var: "#cdd3de", com: "#65737e", brk: "#5fb3b3", caret: "#6699cc", sel: "rgba(102,153,204,.26)" } },
+  };
+  const THEME_ORDER = ['amber', 'amberLight', 'synthwave', 'tokyo', 'dracula', 'nord', 'monokai', 'gruvbox', 'oceanic', 'solarizedD', 'solarizedL', 'githubL', 'paper', 'matrix'];
+  const VARMAP = { bg: '--bg', panel: '--panel', cell: '--cell', line: '--line', line2: '--line2', ink: '--ink', dim: '--dim', faint: '--faint', accent: '--accent', accent2: '--accent2', ok: '--ok', err: '--err', num: '--s-num', str: '--s-str', sym: '--s-sym', verb: '--s-verb', adv: '--s-adv', kw: '--s-kw', var: '--s-var', com: '--s-com', brk: '--s-brk', caret: '--caret', sel: '--selbg' };
+  let curTheme = 'amber';
+  function applyTheme(key) {
+    const t = THEMES[key]; if (!t) return; curTheme = key;
+    const r = document.documentElement.style;
+    for (const k in t.v) r.setProperty(VARMAP[k], t.v[k]);
+    r.setProperty('--glow', '0 0 10px ' + hexA(t.v.accent, .22));
+    $('themeName').textContent = t.name; $('themeSw').style.background = t.v.accent;
+    $('stTheme').textContent = t.name;
+    document.querySelectorAll('.tcard').forEach(c => c.classList.toggle('on', c.dataset.k === key));
+    save('theme', key);
+  }
+  function hexA(hex, a) { const n = hex.replace('#', ''); const r = parseInt(n.substr(0, 2), 16), g = parseInt(n.substr(2, 2), 16), b = parseInt(n.substr(4, 2), 16); return `rgba(${r},${g},${b},${a})`; }
+  function buildThemeMenu() {
+    const m = $('thememenu'); m.innerHTML = '';
+    THEME_ORDER.forEach(k => {
+      const t = THEMES[k];
+      const c = document.createElement('div'); c.className = 'tcard'; c.dataset.k = k;
+      c.innerHTML = `<div class="tprev" style="background:${t.v.bg}">
+        <span class="tdot" style="background:${t.v.accent}"></span>
+        <span style="color:${t.v.verb}">sel</span><span style="color:${t.v.num}">42</span><span style="color:${t.v.str}">"x"</span><span style="color:${t.v.sym}">\`a</span></div>
+        <div class="nm" style="color:${t.v.ink}">${t.name}</div>`;
+      c.onclick = () => { applyTheme(k); $('thememenu').classList.remove('open'); };
+      m.appendChild(c);
+    });
+  }
+  function save(k, v) { try { localStorage.setItem('amber.' + k, v); } catch (e) { } }
+  function load(k) { try { return localStorage.getItem('amber.' + k); } catch (e) { return null; } }
 
-  // ---------- syntax highlighting ----------
-  function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
-  function highlight(src){
-    let i=0,n=src.length,out='';
-    const push=(cls,txt)=>{out+= cls?`<span class="hl-${cls}">${esc(txt)}</span>`:esc(txt);};
-    while(i<n){
-      const c=src[i];
-      // comment: / at line start or after whitespace, to EOL
-      if(c==='/' && (i===0 || src[i-1]==='\n' || src[i-1]===' ' || src[i-1]==='\t')){
-        let j=i; while(j<n && src[j]!=='\n') j++; push('com',src.slice(i,j)); i=j; continue;
+  /* ===================== SYNTAX HIGHLIGHT ===================== */
+  function esc(s) { return s.replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+  function highlight(src) {
+    let i = 0, n = src.length, out = '';
+    const push = (cls, txt) => { out += cls ? `<span class="hl-${cls}">${esc(txt)}</span>` : esc(txt); };
+    while (i < n) {
+      const c = src[i];
+      if (c === '/' && (i === 0 || src[i - 1] === '\n' || src[i - 1] === ' ' || src[i - 1] === '\t')) { let j = i; while (j < n && src[j] !== '\n') j++; push('com', src.slice(i, j)); i = j; continue; }
+      if (c === '"') { let j = i + 1; while (j < n && src[j] !== '"') { if (src[j] === '\\') j++; j++; } j++; push('str', src.slice(i, Math.min(j, n))); i = Math.min(j, n); continue; }
+      if (c === '`') { let j = i; while (j < n && (src[j] === '`' || /[A-Za-z0-9.]/.test(src[j]) || src[j] === '"')) { if (src[j] === '"') { j++; while (j < n && src[j] !== '"') j++; } j++; } push('sym', src.slice(i, j)); i = j; continue; }
+      if (/[0-9]/.test(c) || (c === '.' && /[0-9]/.test(src[i + 1] || '')) || (c === '-' && /[0-9]/.test(src[i + 1] || '') && !/[A-Za-z0-9.)\]]/.test((src[i - 1] || ' ')))) {
+        let j = i; if (src[j] === '-') j++; while (j < n && /[0-9.eE]/.test(src[j])) j++;
+        while (src[j] === ' ' && (/[0-9]/.test(src[j + 1] || '') || (src[j + 1] === '-' && /[0-9.]/.test(src[j + 2] || '')))) { j++; if (src[j] === '-') j++; while (j < n && /[0-9.eE]/.test(src[j])) j++; }
+        push('num', src.slice(i, j)); i = j; continue;
       }
-      if(c==='"'){ let j=i+1; while(j<n && src[j]!=='"'){ if(src[j]==='\\')j++; j++; } j++; push('str',src.slice(i,Math.min(j,n))); i=Math.min(j,n); continue; }
-      if(c==='`'){ let j=i; while(j<n && (src[j]==='`' || /[A-Za-z0-9.]/.test(src[j]) || src[j]==='"')){ if(src[j]==='"'){ j++; while(j<n&&src[j]!=='"')j++; } j++; } push('sym',src.slice(i,j)); i=j; continue; }
-      if(/[0-9]/.test(c) || (c==='.'&&/[0-9]/.test(src[i+1]||'')) || (c==='-'&&/[0-9]/.test(src[i+1]||'')&&!/[A-Za-z0-9.)\]]/.test((src[i-1]||' ').trim()||' '))){
-        let j=i; if(src[j]==='-')j++; while(j<n && /[0-9.eE]/.test(src[j])) j++;
-        // allow number vectors 1 2 3
-        while(src[j]===' ' && (/[0-9]/.test(src[j+1]||'')||(src[j+1]==='-'&&/[0-9.]/.test(src[j+2]||'')))){ j++; if(src[j]==='-')j++; while(j<n&&/[0-9.eE]/.test(src[j]))j++; }
-        push('num',src.slice(i,j)); i=j; continue;
-      }
-      if(/[A-Za-z]/.test(c)){ let j=i; while(j<n && /[A-Za-z0-9.]/.test(src[j])) j++; const nm=src.slice(i,j);
-        push(BUILTINS.has(nm)?'kw':'var',nm); i=j; continue; }
-      if(c==="'"&&src[i+1]===':'){push('adv',"':");i+=2;continue;}
-      if((c==='/'||c==='\\')&&src[i+1]===':'){push('adv',c+':');i+=2;continue;}
-      if(c==="'"||c==='/'||c==='\\'){push('adv',c);i++;continue;}
-      if(c===':'&&src[i+1]===':'){push('verb','::');i+=2;continue;}
-      if(VERBCH.indexOf(c)>=0){push('verb',c);i++;continue;}
-      if('()[]{}'.indexOf(c)>=0){push('brk',c);i++;continue;}
-      if(c===';'){push('brk',';');i++;continue;}
-      push(null,c); i++;
+      if (/[A-Za-z]/.test(c)) { let j = i; while (j < n && /[A-Za-z0-9.]/.test(src[j])) j++; const nm = src.slice(i, j); push(BUILTINS.has(nm) ? 'kw' : 'var', nm); i = j; continue; }
+      if (c === "'" && src[i + 1] === ':') { push('adv', "':"); i += 2; continue; }
+      if ((c === '/' || c === '\\') && src[i + 1] === ':') { push('adv', c + ':'); i += 2; continue; }
+      if (c === "'" || c === '/' || c === '\\') { push('adv', c); i++; continue; }
+      if (c === ':' && src[i + 1] === ':') { push('verb', '::'); i += 2; continue; }
+      if (VERBCH.indexOf(c) >= 0) { push('verb', c); i++; continue; }
+      if ('()[]{}'.indexOf(c) >= 0) { push('brk', c); i++; continue; }
+      if (c === ';') { push('brk', ';'); i++; continue; }
+      push(null, c); i++;
     }
-    return out+'\n';
+    return out + '\n';
   }
 
-  // ---------- value rendering ----------
-  function renderValue(container, res){
-    container.innerHTML='';
-    let any=false;
-    if(res.out && res.out.length){
-      const pre=document.createElement('pre'); pre.className='console';
-      pre.textContent=res.out.join('\n'); container.appendChild(pre); any=true;
+  /* ===================== AI GHOST AUTOCOMPLETE ===================== */
+  // A local predictive engine (no network): a token n-gram model trained on the
+  // example corpus + your own run history, plus symbol-table prefix completion.
+  const AC = (function () {
+    let enabled = true, suppress = false;
+    const g2 = {}, g3 = {}, uni = {};
+    const KW = ['select', 'by', 'from', 'where', 'update', 'exec', 'delete', 'insert'];
+    function tok(s) {
+      const out = []; let i = 0, n = s.length;
+      while (i < n) {
+        const c = s[i];
+        if (c === ' ' || c === '\t') { i++; continue; }
+        if (c === '/') break;                                    // comment: ignore rest
+        if (c === '"') { let j = i + 1; while (j < n && s[j] !== '"') { if (s[j] === '\\') j++; j++; } out.push('␝S'); i = j + 1; continue; }
+        if (c === '`') { let j = i; while (j < n && (s[j] === '`' || /[A-Za-z0-9.]/.test(s[j]))) j++; out.push(s.slice(i, j)); i = j; continue; }
+        if (/[0-9]/.test(c) || (c === '.' && /[0-9]/.test(s[i + 1] || ''))) { let j = i; while (j < n && /[0-9.eE]/.test(s[j])) j++; while (s[j] === ' ' && /[0-9]/.test(s[j + 1] || '')) { j++; while (j < n && /[0-9.]/.test(s[j])) j++; } out.push('␝N'); i = j; continue; }
+        if (/[A-Za-z_]/.test(c)) { let j = i; while (j < n && /[A-Za-z0-9_.]/.test(s[j])) j++; out.push(s.slice(i, j)); i = j; continue; }
+        out.push(c); i++;
+      }
+      return out;
     }
-    if(res.error){ const e=document.createElement('div'); e.className='err'; e.textContent="'"+res.error; container.appendChild(e); any=true; }
-    else if(res.value && res.value.t!=='u'){
-      const d=A.describe(res.value);
-      const node=renderDescribe(d);
-      if(node){ container.appendChild(node); any=true; }
+    function bump(m, k, t) { (m[k] || (m[k] = {}))[t] = ((m[k] || {})[t] || 0) + 1; }
+    function train(code) {
+      (code || '').split('\n').forEach(ln => {
+        const t = tok(ln);
+        for (let i = 0; i < t.length; i++) { uni[t[i]] = (uni[t[i]] || 0) + 1; if (i >= 1) bump(g2, t[i - 1], t[i]); if (i >= 2) bump(g3, t[i - 2] + '' + t[i - 1], t[i]); }
+      });
     }
-    container.classList.toggle('empty', !any);
-  }
-  function cell(txt,cls){const td=document.createElement('td'); if(cls)td.className=cls; td.textContent=txt; return td;}
-  function attrBadge(a){ if(!a)return ''; return `<span class="att">${a}</span>`; }
-  function renderDescribe(d){
-    if(d.kind==='unit') return null;
-    if(d.kind==='text'){ const pre=document.createElement('pre'); pre.className='ret'; pre.textContent=d.text; return pre; }
-    if(d.kind==='dict'){
-      const t=document.createElement('table'); t.className='grid dictgrid';
-      for(let i=0;i<d.keys.length;i++){ const tr=document.createElement('tr');
-        tr.appendChild(cell(d.keys[i],'k')); tr.appendChild(cell(d.vals[i], d.valign?'r':'')); t.appendChild(tr); }
+    function best(obj) { let b = null, bc = 0; for (const k in obj) if (obj[k] > bc) { bc = obj[k]; b = k; } return b; }
+    function symbolNames() {
+      const vars = Object.keys(A._root.vars);
+      return { vars: new Set(vars), all: Array.from(new Set(vars.concat(Array.from(BUILTINS)).concat(KW))) };
+    }
+    function predictTok(t) {
+      const n = t.length; if (n >= 2) { const c = g3[t[n - 2] + '' + t[n - 1]]; const b = c && best(c); if (b) return b; }
+      if (n >= 1) { const c = g2[t[n - 1]]; const b = c && best(c); if (b) return b; }
+      return null;
+    }
+    function real(t) { return t && t !== '␝N' && t !== '␝S'; }
+    function complete(text) {
+      if (!enabled || suppress) return '';
+      const line = text.slice(text.lastIndexOf('\n') + 1);
+      if (!line.trim()) return '';
+      const m = line.match(/[A-Za-z_][A-Za-z0-9_.]*$/);
+      if (m) {                                                   // ---- prefix completion of an identifier
+        const pre = m[0]; const S = symbolNames();
+        let bestN = null, bestScore = -1;
+        for (const nm of S.all) {
+          if (nm.length <= pre.length || nm.slice(0, pre.length) !== pre) continue;
+          const sc = (S.vars.has(nm) ? 1000 : 0) + (uni[nm] || 0) * 3 + (BUILTINS.has(nm) ? 6 : 0) - nm.length * 0.2;
+          if (sc > bestScore) { bestScore = sc; bestN = nm; }
+        }
+        if (bestN) { let g = bestN.slice(pre.length); if (BUILTINS.has(bestN) && /^(aj|lj|ij|uj|pj|qby|qwhere|qselect|xasc|xkey|in|mod|div|round|xbar|wavg|wsum|hms|tstamp|ymd2d|mavg|msum|mmax|mmin|mdev|bars|cast|dset|splay)$/.test(bestN)) g += '['; return g; }
+        return '';
+      }
+      // ---- next-token prediction at a boundary
+      const t = tok(line); const p = predictTok(t);
+      if (!real(p)) return '';
+      const lead = /[A-Za-z0-9_.)\]"`]$/.test(line) ? ' ' : '';
+      let ghost = lead + p;
+      const t2 = t.concat([p]); const p2 = predictTok(t2);           // chain one more token
+      if (real(p2) && p2.length > 1 && !/[()\[\]{};]/.test(p2)) ghost += ' ' + p2;
+      return ghost;
+    }
+    function ghostFor(ta) {
+      if (!enabled || suppress) return '';
+      if (ta.selectionStart !== ta.value.length || ta.selectionStart !== ta.selectionEnd) return '';
+      if (!ta.value.length) return '';
+      try { return complete(ta.value); } catch (e) { return ''; }
+    }
+    return {
+      train, ghostFor, complete,
+      isOn: () => enabled, setOn: v => { enabled = v; }, toggle: () => enabled = !enabled,
+      dismiss: () => { suppress = true; }, allow: () => { suppress = false; }
+    };
+  })();
+  // seed corpus: idiomatic Amber lines so predictions are useful from the first keystroke
+  const CORPUS = [
+    'sum til 100', 'avg x', 'asc x', 'meta t', 'cols t', 'show t', 'gentq 5000', 'reverse x',
+    'qby[trades;`sym;(,`vwap)!,{wavg[x`sz;x`px]}]', 'aj[`sym`time;trades;quotes]', 'bars[1;trades]',
+    'sel"select vwap:wavg[sz;px] by sym from trades where px>100"', 'sel"select px from trades"',
+    'mavg[20;px]', 'msum[10;x]', 'mmax[5;x]', 'ema[0.3;x]', 'dstr ymd2d[2024;1;15]', 'dow d',
+    'z.d[]', 'j.j t', 'tsign m', 'vwap trades', 'wavg[sz;px]', 'meta trades', 'flip t',
+    'qwhere[t;t[`px]>100]', 'xasc[`sym;t]', 'symrows[trades;g;`AAPL]', 'bysym trades',
+    't:([]sym:`a`b`c;px:1 2 3)', 'x:til 10', 'sums x', 'deltas x', 'distinct x', 'where x>0'
+  ];
+  CORPUS.forEach(l => AC.train(l));
+
+  /* ===================== VALUE RENDER ===================== */
+  function cell(txt, cls) { const td = document.createElement('td'); if (cls) td.className = cls; td.textContent = txt; return td; }
+  function attrBadge(a) { return a ? `<span class="att">${a}</span>` : ''; }
+  function renderDescribe(d) {
+    if (!d || d.kind === 'unit') return null;
+    if (d.kind === 'text') { const pre = document.createElement('pre'); pre.className = 'ret'; pre.textContent = d.text; return pre; }
+    if (d.kind === 'dict') {
+      const t = document.createElement('table'); t.className = 'grid dictgrid';
+      for (let i = 0; i < d.keys.length; i++) { const tr = document.createElement('tr'); tr.appendChild(cell(d.keys[i], 'k')); tr.appendChild(cell(d.vals[i], d.valign ? 'r' : '')); t.appendChild(tr); }
       return t;
     }
-    if(d.kind==='table'){
-      const t=document.createElement('table'); t.className='grid';
-      const thead=document.createElement('tr');
-      d.cols.forEach((c,i)=>{ const th=document.createElement('th'); if(d.align[i])th.className='r';
-        th.innerHTML=esc(c)+attrBadge(d.attrs[i]); thead.appendChild(th); });
-      t.appendChild(thead);
-      const nrows=d.rows.length, cap=300;
-      for(let r=0;r<Math.min(nrows,cap);r++){ const tr=document.createElement('tr');
-        d.rows[r].forEach((v,i)=>tr.appendChild(cell(v,d.align[i]?'r':''))); t.appendChild(tr); }
-      const wrap=document.createElement('div');
-      wrap.appendChild(t);
-      if(nrows>cap){ const m=document.createElement('div'); m.className='note'; m.textContent=`… ${nrows-cap} more rows (${nrows} total)`; wrap.appendChild(m); }
-      else { const m=document.createElement('div'); m.className='typ'; m.textContent=`${nrows} row${nrows===1?'':'s'} · ${d.cols.length} cols`; wrap.appendChild(m); }
-      return wrap;
-    }
-    if(d.kind==='keyed'){
-      const t=document.createElement('table'); t.className='grid';
-      const thead=document.createElement('tr');
-      d.kcols.forEach((c,i)=>{ const th=document.createElement('th'); th.className=(d.kalign[i]?'r ':'')+'keyw';
-        th.innerHTML=esc(c)+attrBadge(d.kattrs[i]); thead.appendChild(th); });
-      d.vcols.forEach((c,i)=>{ const th=document.createElement('th'); if(d.valign[i])th.className='r';
-        th.innerHTML=esc(c)+attrBadge(d.vattrs[i]); thead.appendChild(th); });
-      t.appendChild(thead);
-      const nrows=d.krows.length, cap=300;
-      for(let r=0;r<Math.min(nrows,cap);r++){ const tr=document.createElement('tr');
-        d.krows[r].forEach((v,i)=>{ const c=cell(v,(d.kalign[i]?'r ':'')+'keyw'); tr.appendChild(c); });
-        d.vrows[r].forEach((v,i)=>tr.appendChild(cell(v,d.valign[i]?'r':''))); t.appendChild(tr); }
-      const wrap=document.createElement('div'); wrap.appendChild(t);
-      const m=document.createElement('div'); m.className='typ';
-      m.textContent=`${nrows} row${nrows===1?'':'s'} · keyed ${d.kcols.length}!${d.vcols.length}`; wrap.appendChild(m);
-      if(nrows>cap){ const mm=document.createElement('div'); mm.className='note'; mm.textContent=`… ${nrows-cap} more rows`; wrap.appendChild(mm);}
-      return wrap;
-    }
+    if (d.kind === 'table' || d.kind === 'keyed') return renderTableLike(d);
     return null;
   }
+  function renderTableLike(d) {
+    const t = document.createElement('table'); t.className = 'grid';
+    const thead = document.createElement('tr');
+    const kc = d.kind === 'keyed' ? d.kcols : [], ka = d.kind === 'keyed' ? d.kattrs : [], kal = d.kind === 'keyed' ? d.kalign : [];
+    const vc = d.kind === 'keyed' ? d.vcols : d.cols, va = d.kind === 'keyed' ? d.vattrs : d.attrs, val = d.kind === 'keyed' ? d.valign : d.align;
+    kc.forEach((c, i) => { const th = document.createElement('th'); th.className = (kal[i] ? 'r ' : '') + 'keyw'; th.innerHTML = esc(c) + attrBadge(ka[i]); thead.appendChild(th); });
+    vc.forEach((c, i) => { const th = document.createElement('th'); if (val[i]) th.className = 'r'; th.innerHTML = esc(c) + attrBadge(va[i]); thead.appendChild(th); });
+    t.appendChild(thead);
+    const krows = d.kind === 'keyed' ? d.krows : null, vrows = d.kind === 'keyed' ? d.vrows : d.rows;
+    const nrows = vrows.length, cap = 300;
+    for (let r = 0; r < Math.min(nrows, cap); r++) {
+      const tr = document.createElement('tr');
+      if (krows) krows[r].forEach((v, i) => tr.appendChild(cell(v, (kal[i] ? 'r ' : '') + 'keyw')));
+      vrows[r].forEach((v, i) => tr.appendChild(cell(v, val[i] ? 'r' : '')));
+      t.appendChild(tr);
+    }
+    const wrap = document.createElement('div'); wrap.appendChild(t);
+    const m = document.createElement('div'); m.className = 'typ';
+    m.textContent = `${nrows} row${nrows === 1 ? '' : 's'}` + (d.kind === 'keyed' ? ` · keyed ${d.kcols.length}!${d.vcols.length}` : ` · ${d.cols.length} cols`);
+    wrap.appendChild(m);
+    if (nrows > cap) { const mm = document.createElement('div'); mm.className = 'typ'; mm.textContent = `… ${nrows - cap} more rows`; wrap.appendChild(mm); }
+    return wrap;
+  }
+  function renderInto(container, res) {
+    container.innerHTML = ''; let any = false;
+    if (res.out && res.out.length) { const pre = document.createElement('pre'); pre.className = 'console'; pre.textContent = res.out.join('\n'); container.appendChild(pre); any = true; }
+    if (res.error) { const e = document.createElement('div'); e.className = 'err'; e.textContent = "'" + res.error; container.appendChild(e); any = true; }
+    else if (res.value && res.value.t !== 'u') { const node = renderDescribe(A.describe(res.value)); if (node) { container.appendChild(node); any = true; } }
+    if (container.classList) container.classList.toggle('empty', !any);
+    return any;
+  }
 
-  // ---------- cell object ----------
-  function makeCell(src){
-    const id=++uid;
-    const el=document.createElement('div'); el.className='cell'; el.dataset.id=id;
-    el.innerHTML=`
-      <div class="cellhead">
-        <div class="runbtn" title="run (Ctrl+Enter)">▶</div>
-        <span class="idx"></span>
-        <div class="chead-sp"></div>
-        <button class="mini up" title="move up">↑</button>
-        <button class="mini down" title="move down">↓</button>
-        <button class="mini add" title="add cell below">＋</button>
-        <button class="mini del" title="delete cell">✕</button>
-      </div>
-      <div class="editor">
-        <pre class="hl"></pre>
-        <textarea spellcheck="false" autocapitalize="off" autocomplete="off" wrap="soft"></textarea>
-      </div>
+  /* ===================== NOTEBOOK ===================== */
+  let cells = [], uid = 0;
+  function makeCell(src) {
+    const id = ++uid;
+    const el = document.createElement('div'); el.className = 'cell'; el.dataset.id = id;
+    el.innerHTML = `<div class="chead"><div class="run" title="run (Ctrl+Enter)">▶</div><span class="idx"></span><div class="cgrow"></div>
+      <button class="mini up" title="move up">↑</button><button class="mini down" title="move down">↓</button>
+      <button class="mini cp" title="copy">⧉</button><button class="mini add" title="add below">＋</button><button class="mini del" title="delete">✕</button></div>
+      <div class="editor"><pre class="hl"></pre><textarea spellcheck="false" autocapitalize="off" autocomplete="off" wrap="soft"></textarea></div>
       <div class="out empty"></div>`;
-    const ta=el.querySelector('textarea');
-    const hl=el.querySelector('.hl');
-    const out=el.querySelector('.out');
-    const obj={id,el,ta,hl,out};
-    ta.value=src||'';
-    function sync(){ hl.innerHTML=highlight(ta.value); ta.style.height='auto'; ta.style.height=(ta.scrollHeight)+'px'; }
-    ta.addEventListener('input',sync);
-    ta.addEventListener('scroll',()=>{hl.scrollTop=ta.scrollTop;});
-    ta.addEventListener('keydown',e=>{
-      if(e.key==='Enter' && (e.shiftKey||e.metaKey||e.ctrlKey)){ e.preventDefault();
-        runCell(obj);
-        if(e.shiftKey && !(e.metaKey||e.ctrlKey)){ const idx=cells.indexOf(obj);
-          if(idx===cells.length-1){ const c=addCell('',idx); c.ta.focus(); } else { cells[idx+1].ta.focus(); } }
+    const ta = el.querySelector('textarea'), hl = el.querySelector('.hl'), out = el.querySelector('.out');
+    const badge = document.createElement('div'); badge.className = 'acbadge'; badge.textContent = '⌁ Tab'; el.querySelector('.editor').appendChild(badge);
+    const obj = { id, el, ta, hl, out, ghost: null };
+    ta.value = src || '';
+    function sync() { attachGhost(ta, hl, badge, obj); ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 'px'; }
+    ta.addEventListener('input', () => { AC.allow(); sync(); });
+    ta.addEventListener('click', sync);
+    ta.addEventListener('keyup', e => { if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].indexOf(e.key) >= 0) sync(); });
+    ta.addEventListener('keydown', e => {
+      if (e.key === 'Tab' && obj.ghost) { e.preventDefault(); acceptGhost(ta, obj); sync(); return; }
+      if (e.key === 'Escape' && obj.ghost) { AC.dismiss(); obj.ghost = null; sync(); return; }
+      if (e.key === 'Enter' && (e.shiftKey || e.metaKey || e.ctrlKey)) {
+        e.preventDefault(); runCell(obj);
+        if (e.shiftKey && !(e.metaKey || e.ctrlKey)) { const i = cells.indexOf(obj); if (i === cells.length - 1) { const c = addCell('', i); c.ta.focus(); } else cells[i + 1].ta.focus(); }
       }
     });
-    el.querySelector('.runbtn').onclick=()=>runCell(obj);
-    el.querySelector('.add').onclick=()=>{ const idx=cells.indexOf(obj); const c=addCell('',idx); c.ta.focus(); };
-    el.querySelector('.del').onclick=()=>removeCell(obj);
-    el.querySelector('.up').onclick=()=>moveCell(obj,-1);
-    el.querySelector('.down').onclick=()=>moveCell(obj,1);
-    obj.sync=sync; obj.run=()=>runCell(obj);
-    setTimeout(sync,0);
+    el.querySelector('.run').onclick = () => runCell(obj);
+    el.querySelector('.add').onclick = () => { const c = addCell('', cells.indexOf(obj)); c.ta.focus(); };
+    el.querySelector('.del').onclick = () => removeCell(obj);
+    el.querySelector('.up').onclick = () => moveCell(obj, -1);
+    el.querySelector('.down').onclick = () => moveCell(obj, 1);
+    el.querySelector('.cp').onclick = () => copyText(ta.value, 'input copied');
+    obj.sync = sync; setTimeout(sync, 0);
     return obj;
   }
-  function addCell(src,afterIdx){
-    const obj=makeCell(src);
-    if(afterIdx===undefined || afterIdx>=cells.length-1){ cells.push(obj); cellsEl.appendChild(obj.el); }
-    else { cells.splice(afterIdx+1,0,obj); cellsEl.insertBefore(obj.el, cells[afterIdx+2] ? cells[afterIdx+2].el : null); }
+  // ---- ghost helpers (shared by notebook cells and scratch editor) ----
+  function attachGhost(ta, hl, badge, obj) {
+    let html = highlight(ta.value); const g = AC.ghostFor(ta); obj.ghost = g || null;
+    if (g) html = html.replace(/\n$/, '') + '<span class="ghost">' + esc(g) + '</span>\n';
+    hl.innerHTML = html; if (badge) badge.classList.toggle('show', !!g);
+  }
+  function acceptGhost(ta, obj) { const p = ta.selectionStart; ta.value = ta.value.slice(0, p) + obj.ghost + ta.value.slice(p); const np = p + obj.ghost.length; ta.selectionStart = ta.selectionEnd = np; obj.ghost = null; }
+  // ---- copy helpers ----
+  function copyText(t, msg) { try { navigator.clipboard.writeText(t); } catch (e) { const x = document.createElement('textarea'); x.value = t; document.body.appendChild(x); x.select(); try { document.execCommand('copy'); } catch (_) { } x.remove(); } toast(msg || 'copied'); }
+  function gridText(cols, rows) { const w = cols.map((c, i) => Math.max(c.length, ...rows.map(r => (r[i] || '').length), 1)); const pad = (s, i) => ((s || '') + ' '.repeat(w[i])).slice(0, w[i]); const head = cols.map(pad).join(' '); const sep = w.map(x => '-'.repeat(x)).join(' '); return [head, sep].concat(rows.map(r => r.map(pad).join(' '))).join('\n'); }
+  function describeText(d) { if (!d || d.kind === 'unit') return ''; if (d.kind === 'text') return d.text; if (d.kind === 'dict') return d.keys.map((k, i) => k + ' | ' + d.vals[i]).join('\n'); if (d.kind === 'table') return gridText(d.cols, d.rows); if (d.kind === 'keyed') return gridText(d.kcols.concat(d.vcols), d.krows.map((kr, i) => kr.concat(d.vrows[i]))); return ''; }
+  function outText(res) { let s = ''; if (res.out && res.out.length) s += res.out.join('\n'); if (res.error) s += (s ? '\n' : '') + "'" + res.error; else if (res.value && res.value.t !== 'u') { const d = A.describe(res.value); const t = describeText(d); if (t) s += (s ? '\n' : '') + t; } return s; }
+  function addCopyBar(container, src, res) {
+    if (container.classList.contains('empty')) return;
+    const bar = document.createElement('div'); bar.className = 'outbar';
+    const mk = (label, txt, msg) => { const b = document.createElement('button'); b.className = 'cpbtn'; b.textContent = label; b.onclick = () => copyText(txt, msg); return b; };
+    bar.appendChild(mk('⧉ in', src, 'input copied'));
+    bar.appendChild(mk('⧉ out', outText(res), 'output copied'));
+    bar.appendChild(mk('⧉ both', src + '\n' + outText(res), 'copied in+out'));
+    container.insertBefore(bar, container.firstChild);
+  }
+  function cellsHost() { let h = $('cellsHost'); return h; }
+  function addCell(src, afterIdx) {
+    const obj = makeCell(src); const host = $('cellsHost');
+    if (afterIdx === undefined || afterIdx >= cells.length - 1) { cells.push(obj); host.appendChild(obj.el); }
+    else { cells.splice(afterIdx + 1, 0, obj); host.insertBefore(obj.el, cells[afterIdx + 2] ? cells[afterIdx + 2].el : null); }
     reindex(); return obj;
   }
-  function removeCell(obj){ const i=cells.indexOf(obj); if(i<0)return; cells.splice(i,1); obj.el.remove();
-    if(cells.length===0) addCell(''); reindex(); }
-  function moveCell(obj,dir){ const i=cells.indexOf(obj); const j=i+dir; if(j<0||j>=cells.length)return;
-    cells.splice(i,1); cells.splice(j,0,obj);
-    cellsEl.innerHTML=''; cells.forEach(c=>cellsEl.appendChild(c.el)); reindex(); obj.ta.focus(); }
-  function reindex(){ cells.forEach((c,i)=>c.el.querySelector('.idx').textContent='['+(i+1)+']');
-    document.getElementById('stCells').textContent=cells.length; }
+  function removeCell(obj) { const i = cells.indexOf(obj); if (i < 0) return; cells.splice(i, 1); obj.el.remove(); if (!cells.length) addCell(''); reindex(); }
+  function moveCell(obj, d) { const i = cells.indexOf(obj), j = i + d; if (j < 0 || j >= cells.length) return; cells.splice(i, 1); cells.splice(j, 0, obj); const host = $('cellsHost'); host.innerHTML = ''; cells.forEach(c => host.appendChild(c.el)); reindex(); obj.ta.focus(); }
+  function reindex() { cells.forEach((c, i) => c.el.querySelector('.idx').textContent = '[' + (i + 1) + ']'); }
+  function runCell(obj) { const src = obj.ta.value; const res = A.run(src); renderInto(obj.out, res); addCopyBar(obj.out, src, res); AC.train(src); updateVars(); }
 
-  function runCell(obj){
-    const res=A.run(obj.ta.value);
-    renderValue(obj.out,res);
+  /* ===================== SCRATCH ===================== */
+  let scratchTA = null;
+  function runScratch() {
+    const src = scratchTA.value; const con = $('scratchConsole'); con.innerHTML = '';
+    const lines = src.split('\n'); let txt = '';
+    lines.forEach(line => {
+      const t = line.trim();
+      if (!t || t[0] === '/') return;
+      const res = A.run(line); AC.train(line);
+      const row = document.createElement('div'); row.className = 'trow';
+      const inp = document.createElement('div'); inp.className = 'tin'; inp.innerHTML = '<span class="prompt">amber&gt; </span>' + esc(t);
+      const outc = document.createElement('div'); outc.className = 'tout';
+      renderInto(outc, res);
+      row.appendChild(inp); row.appendChild(outc); con.appendChild(row);
+      txt += 'amber> ' + t + '\n' + outText(res) + '\n';
+    });
+    con.dataset.txt = txt; con.scrollTop = con.scrollHeight; updateVars();
+  }
+
+  /* ===================== MODE SWITCH ===================== */
+  let mode = 'notebook';
+  function setMode(m) {
+    mode = m; $('stMode').textContent = m; save('mode', m);
+    document.querySelectorAll('#modeseg button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+    const work = $('work'); work.innerHTML = '';
+    if (m === 'notebook') {
+      window.__scSync = null;
+      const wrap = document.createElement('div'); wrap.className = 'cells'; wrap.id = 'cellsHost'; work.appendChild(wrap);
+      const add = document.createElement('div'); add.className = 'addcell'; add.innerHTML = '<button>＋ add cell</button>'; add.querySelector('button').onclick = () => { const c = addCell(''); c.ta.focus(); }; work.appendChild(add);
+      cells = []; addCell('');
+    } else {
+      const edH = load('edH') || '52%';
+      work.innerHTML = `<div class="scratch" id="scratchRoot">
+        <div class="pane ed" id="scratchEd" style="height:${edH}">
+          <div class="phead">editor <span class="cgrow" style="flex:1"></span>
+            <button class="cpbtn" id="scEdCopy">⧉ copy</button>
+            <span style="font-family:var(--mono);margin-left:8px">Ctrl/⌘+Enter to run · Tab accepts ⌁</span></div>
+          <div class="editor"><pre class="hl" id="scratchHL"></pre><textarea id="scratchTA" spellcheck="false" autocapitalize="off" autocomplete="off" placeholder="type Amber, one statement per line…"></textarea><div class="acbadge" id="scBadge">⌁ Tab</div></div></div>
+        <div class="splitter" id="scSplit"></div>
+        <div class="pane" style="flex:1;min-height:0">
+          <div class="phead">console <span class="cgrow" style="flex:1"></span>
+            <button class="cpbtn" id="scOutCopy">⧉ copy all</button></div>
+          <div class="console-pane" id="scratchConsole"></div></div></div>`;
+      scratchTA = $('scratchTA'); const hl = $('scratchHL'); const badge = $('scBadge');
+      const sobj = { ghost: null };
+      function sync() { attachGhost(scratchTA, hl, badge, sobj); }
+      scratchTA.addEventListener('input', () => { AC.allow(); sync(); });
+      scratchTA.addEventListener('click', sync);
+      scratchTA.addEventListener('keyup', e => { if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].indexOf(e.key) >= 0) sync(); });
+      scratchTA.addEventListener('keydown', e => {
+        if (e.key === 'Tab' && sobj.ghost) { e.preventDefault(); acceptGhost(scratchTA, sobj); sync(); return; }
+        if (e.key === 'Escape' && sobj.ghost) { AC.dismiss(); sobj.ghost = null; sync(); return; }
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); runScratch(); }
+      });
+      $('scEdCopy').onclick = () => copyText(scratchTA.value, 'editor copied');
+      $('scOutCopy').onclick = () => copyText($('scratchConsole').dataset.txt || '', 'console copied');
+      makeVSplitter($('scSplit'), $('scratchEd'), $('scratchRoot'), h => save('edH', h));
+      window.__scSync = sync;
+      sync();
+    }
     updateVars();
   }
-  function runAll(){ cells.forEach(runCell); }
-
-  function updateVars(){
-    const root=A._root.vars; const names=Object.keys(root);
-    const el=document.getElementById('stVars');
-    el.textContent = names.length? names.slice(0,10).join(' ')+(names.length>10?' …':'') : '·';
-  }
-
-  // ---------- toolbar ----------
-  document.getElementById('runall').onclick=runAll;
-  document.getElementById('addcell').onclick=()=>{ const c=addCell(''); c.ta.focus(); };
-  document.getElementById('clearout').onclick=()=>cells.forEach(c=>{c.out.innerHTML='';c.out.classList.add('empty');});
-  document.getElementById('resetenv').onclick=()=>{ A.reset(); updateVars(); flash('environment reset'); };
-  document.getElementById('loaddemo').onclick=loadDemo;
-  const side=document.getElementById('side');
-  document.getElementById('toghelp').onclick=()=>side.classList.toggle('hidden');
-
-  function flash(msg){ const s=document.querySelector('.status span:nth-child(2)'); const old=s.textContent; s.textContent=msg; setTimeout(()=>s.textContent=old,1400); }
-
-  // ---------- sidebar ----------
-  function buildSide(){
-    const S=[];
-    S.push(`<h2>examples</h2>`);
-    const ex=[
-      ['vectors', '2 3 4 * 10 20 30'],
-      ['range → sum', 'sum til 100'],
-      ['right-to-left', '2 * 3 + 4'],
-      ['a table', '([]sym:`AAPL`MSFT`GOOG; px:187.3 411.2 92.5; sz:100 250 50)'],
-      ['meta + attrs', 'meta ([]t:asc 1 2 3; s:`a`b`c)'],
-      ['group by', 't:([]s:`a`b`a`b`a; v:1 2 3 4 5)\nqby[t; `s; `n`sum!({#x`v};{sum x`v})]'],
-      ['as-of join', 'gentq 2000\n5 # aj[`sym`time; trades; quotes]'],
-      ['1-min OHLCV bars', 'gentq 2000\nbars[1; trades]'],
-      ['VWAP by symbol', 'gentq 2000\nqby[trades; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]'],
-      ['O(1) symbol slice', 'gentq 3000\ng:bysym trades\nsymrows[trades; g; `AAPL]'],
-      ['moving average', 'movavg[3; 10 11 9 12 15 14]'],
-      ['sorted → attribute', '`at asc 5 3 8 1'],
-    ];
-    ex.forEach(([label,code])=>{
-      S.push(`<button class="snip" data-code="${encodeURIComponent(code)}"><span class="cm">/ ${label}</span>\n${esc(code)}</button>`);
-    });
-
-    S.push(`<h2>verbs</h2>`);
-    const verbs=[
-      ['+ - * %','add sub mul div (÷ → float)'],['! ','enum / dict / mod'],['&amp; |','where·min / reverse·max'],
-      ['&lt; &gt; =','grade / compare / group'],['# _','take·reshape / drop·cut'],['^ ,','fill·without / concat·enlist'],
-      ['$ ?','string·cast / distinct·find'],['@ .','type·apply / value·apply-n'],['~','match / not']
-    ];
-    verbs.forEach(([a,b])=>S.push(`<div class="ref"><b>${a}</b> — ${b}</div>`));
-
-    S.push(`<h2>adverbs</h2>`);
-    [['f/','over (fold)'],['f\\','scan'],["f'",'each'],["f':",'each-prior'],['f/:','each-right'],['f\\:','each-left']]
-      .forEach(([a,b])=>S.push(`<div class="ref"><b>${esc(a)}</b> — ${b}</div>`));
-
-    S.push(`<h2>vocabulary</h2>`);
-    S.push(`<div class="sub">aggregate</div><div class="note">sum prd min max avg med dev var sdev wsum wavg cor cov all any</div>`);
-    S.push(`<div class="sub">uniform</div><div class="note">sums prds mins maxs deltas ratios differ prev next rank</div>`);
-    S.push(`<div class="sub">list / order</div><div class="note">til enlist reverse distinct where group flip asc desc iasc idesc raze first last count</div>`);
-    S.push(`<div class="sub">sets · strings</div><div class="note">in except inter union cross sublist rotate · lower upper trim ss ssr sv vs like</div>`);
-
-    S.push(`<h2>tables &amp; qSQL</h2>`);
-    S.push(`<div class="note"><b>([]c:v;…)</b> table · <b>([k:v]c:v)</b> keyed · meta · cols · xkey · xasc · xgroup</div>`);
-    S.push(`<div class="note">qwhere[t;mask] · qselect[t;n!f] · qby[t;by;n!f]</div>`);
-    S.push(`<div class="note">joins: lj ij uj · aj[c;x;y] as-of · taq[tr;qu]</div>`);
-
-    S.push(`<h2>attributes</h2>`);
-    S.push(`<div class="note"><b>\`sa</b> sorted · <b>\`ua</b> unique · <b>\`pa</b> parted · <b>\`ga</b> grouped · <b>\`at</b> reads it. <b>asc</b>/<b>xasc</b> set <b>\`s</b>; <b>meta</b> shows the <b>a</b> column.</div>`);
-
-    S.push(`<h2>finance (fin)</h2>`);
-    S.push(`<div class="note"><b>gentq n</b> → globals <b>trades</b>,<b>quotes</b>. mid spread spreadbps micro imbal · vwap twap tsign signedvol effspread · ret logret rvol movavg ema rollstd · bars symstats · bysym symrows gidx.</div>`);
-
-    S.push(`<h2>notes</h2>`);
-    S.push(`<div class="note">Evaluation is right-to-left, no precedence: <b>2*3+4 → 14</b>. Two-arg library functions take brackets: <b>aj[c;x;y]</b>. A bare table renders as a grid — no <b>show</b> needed. This is a working subset of Amber running in your browser.</div>`);
-
-    side.innerHTML=S.join('');
-    side.querySelectorAll('.snip').forEach(b=>b.onclick=()=>{
-      const code=decodeURIComponent(b.dataset.code); const c=addCell(code); c.sync(); c.run();
-      c.el.scrollIntoView({behavior:'smooth',block:'center'});
+  // drag a horizontal splitter to resize the pane above it
+  function makeVSplitter(split, topPane, root, onDone) {
+    split.addEventListener('mousedown', e => {
+      e.preventDefault(); split.classList.add('drag'); const r = root.getBoundingClientRect();
+      const move = ev => { let h = (ev.clientY - r.top) / r.height * 100; h = Math.max(15, Math.min(85, h)); topPane.style.height = h + '%'; };
+      const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); split.classList.remove('drag'); onDone && onDone(topPane.style.height); };
+      document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
     });
   }
 
-  // ---------- demo notebook ----------
-  const DEMO=[
-`/ Welcome to Amber — a columnar array language.
-/ Press Shift+Enter to run a cell (Ctrl+Enter to run in place).
-2 3 4 * 10 20 30`,
-`/ evaluation is right to left, with no operator precedence
-2 * 3 + 4`,
-`/ ranges, aggregation, adverbs
-sum til 100`,
-`/ tables are first class — a bare table renders as a grid
-([]sym:\`AAPL\`MSFT\`GOOG\`AMZN; px:187.3 411.2 92.5 138.1; sz:100 250 50 300)`,
-`/ meta shows column types AND attributes (the a column)
-meta ([]time:asc 3 1 2 4; sym:\`a\`b\`a\`b; px:1.5 2.5 3.5 4.5)`,
-`/ generate a market session: sets globals trades & quotes
-/ time gets the \`s sorted attribute, sym gets \`p parted
-gentq 2000
-meta trades`,
-`/ the join every tick shop needs — as-of (prevailing quote per trade)
-5 # aj[\`sym\`time; trades; quotes]`,
-`/ VWAP and trade count by symbol (qSQL group-by)
-qby[trades; \`sym; \`n\`vwap!({#x\`px}; {wavg[x\`sz;x\`px]})]`,
-`/ 1-minute OHLCV bars
-bars[1; trades]`,
-`/ O(1) per-symbol slice via a group index
-g:bysym trades
-symrows[trades; g; \`AAPL]`
-  ];
-  function loadDemo(){ cells.forEach(c=>c.el.remove()); cells=[]; DEMO.forEach(s=>addCell(s)); reindex();
-    cells.forEach(runCell); flash('demo loaded'); window.scrollTo(0,0); }
+  /* ===================== EXAMPLES ===================== */
+  const EXAMPLES = [
+    // Basics
+    ['Basics', 'Hello vector', '2 3 4 * 10 20 30'],
+    ['Basics', 'Right-to-left', '2 * 3 + 4        / = 14, no precedence'],
+    ['Basics', 'Range & sum', 'sum til 100'],
+    ['Basics', 'Assign & use', 'x:1 2 3 4 5\nx * reverse x'],
+    ['Basics', 'A lambda', '{x*x+1} 2 3 4'],
+    ['Basics', 'Conditional (each)', '{$[x>0;`pos;`neg]}\' -5 3 0'],
+    // Vectors & math
+    ['Vectors', 'Random ints', '10 ? 100'],
+    ['Vectors', 'Sorted', 'asc 5 3 8 1 9 2'],
+    ['Vectors', 'Cumulative', 'sums 1 2 3 4 5'],
+    ['Vectors', 'Deltas', 'deltas 10 13 12 20'],
+    ['Vectors', 'Dot & matmul', 'dot[1 2 3;4 5 6]\nmmu[(1 2;3 4);(5 6;7 8)]'],
+    ['Vectors', 'Where', '&0 1 0 1 1 0 1'],
+    // Aggregations
+    ['Aggregate', 'Stats', 'x:10?100\n`min`max`avg`dev!(min x;max x;avg x;dev x)'],
+    ['Aggregate', 'Weighted avg', 'wavg[100 200 300; 1.0 2 3]'],
+    ['Aggregate', 'Correlation', 'cor[1 2 3 4 5; 2 4 5 4 5]'],
+    ['Aggregate', 'Median', 'med 3 1 4 1 5 9 2 6'],
+    // Adverbs
+    ['Adverbs', 'Over (fold)', '+/1 2 3 4 5'],
+    ['Adverbs', 'Scan', '*\\1 2 3 4 5'],
+    ['Adverbs', 'Each', '{x#x}\'1 2 3'],
+    ['Adverbs', 'Each-prior', '-\':1 2 4 7 11'],
+    ['Adverbs', 'Each-right', '1 2 3 +/: 10 20'],
+    // Strings
+    ['Strings', 'Reverse', '|"amber"'],
+    ['Strings', 'Upper/trim', 'upper trim "  hi there  "'],
+    ['Strings', 'Split a string', 'vs["/"; "a/b/c/d"]'],
+    ['Strings', 'Symbols', '`AAPL`MSFT`GOOG'],
+    // Dictionaries
+    ['Dicts', 'Make a dict', '`a`b`c!10 20 30'],
+    ['Dicts', 'Index', 'd:`a`b`c!10 20 30\nd`b'],
+    ['Dicts', 'Group', '=`a`b`a`c`a`b'],
+    // Tables
+    ['Tables', 'A table', '([]sym:`AAPL`MSFT`GOOG; px:187.3 411.2 92.5; sz:100 250 50)'],
+    ['Tables', 'Keyed table', '([sym:`a`b`c] px:10 20 30)'],
+    ['Tables', 'meta', 'meta ([]t:asc 3 1 2; s:`a`b`c; v:1.5 2.5 3.5)'],
+    ['Tables', 'Column & rows', 't:([]a:1 2 3; b:10 20 30)\nt`a'],
+    ['Tables', 'qby aggregate', 't:([]s:`a`b`a`b`a; v:1 2 3 4 5)\nqby[t;`s;(,`sum)!,{sum x`v}]'],
+    // qSQL
+    ['qSQL', 'select where', 'gentq 500\nsel"select sym,px,sz from trades where px>150"'],
+    ['qSQL', 'select by', 'gentq 2000\nsel"select vwap:wavg[sz;px],n:#px by sym from trades"'],
+    ['qSQL', 'computed cols', 'gentq 300\nsel"select sym,notional:px*sz from trades where sz>500"'],
+    ['qSQL', 'exec a column', 'gentq 200\nexq"exec px from trades where sym=`AAPL"'],
+    ['qSQL', 'update', 'gentq 100\n3#upd"update mid:px by sym from trades"'],
+    ['qSQL', 'delete rows', 'gentq 500\n#del"delete from trades where sz<300"'],
+    // Joins
+    ['Joins', 'as-of join', 'gentq 1000\n5#aj[`sym`time; trades; quotes]'],
+    ['Joins', 'left join', 't:([]sym:`a`b`c; px:1 2 3)\nkt:([sym:`a`b] w:10 20)\nlj[t;kt]'],
+    ['Joins', 'union', 'uj[([]a:1 2;b:3 4); ([]a:5;c:9)]'],
+    // Attributes
+    ['Attributes', 'sorted → `s', 'v:asc 5 3 8 1 9\n`at v'],
+    ['Attributes', 'meta shows attrs', 'gentq 500\nmeta trades'],
+    ['Attributes', 'O(1) symbol slice', 'gentq 3000\ng:bysym trades\n#symrows[trades;g;`AAPL]'],
+    // Temporal
+    ['Temporal', 'Build a date', 'dstr ymd2d[2024;1;15]'],
+    ['Temporal', 'Day of week', 'dow ymd2d[2024;1;15]'],
+    ['Temporal', 'Parse a date', 'pdate"2024.07.04"'],
+    ['Temporal', 'Timestamp', 'pstr tstamp[ymd2d[2024;1;15]; hms[9;30;0]]'],
+    ['Temporal', 'Today', 'dstr z.d[]'],
+    // Window / moving
+    ['Window', 'moving sum', 'msum[3; 1 2 3 4 5 6]'],
+    ['Window', 'moving avg', 'mavg[3; 10 11 9 12 15 14]'],
+    ['Window', 'moving max/min', 'mmax[3; 1 3 2 5 4]\nmmin[3; 5 3 4 1 2]'],
+    ['Window', 'moving std', 'round[3] mdev[4; 1.0 2 3 4 5 6 7]'],
+    ['Window', 'EMA', 'round[2] ema[0.3; 10 11 9 12 15 14 13.0]'],
+    // Finance / HFT
+    ['Finance', 'Generate a session', 'gentq 5000\nmeta trades'],
+    ['Finance', 'VWAP by symbol', 'gentq 5000\nqby[trades;`sym;(,`vwap)!,{round[3]wavg[x`sz;x`px]}]'],
+    ['Finance', 'OHLCV bars', 'gentq 5000\nbars[1; trades]'],
+    ['Finance', 'TAQ + trade sign', 'gentq 3000\nm:taq[trades;quotes]\n5#+(+m),(,`sign)!,tsign m'],
+    ['Finance', 'Order-book microprice', 'gentq 500\n5#+(+quotes),`mid`micro!(round[2]mid quotes; round[2]micro quotes)'],
+    ['Finance', 'Per-symbol summary', 'gentq 4000\nsymstats trades'],
+    // System / JSON
+    ['System', 'Value → JSON', 'j.j ([]sym:`a`b; px:1.5 2.5)'],
+    ['System', 'JSON → value', 'j.k"{\\"a\\":1,\\"b\\":[2,3]}"'],
+    ['System', 'Format number', 'Q.f[2; 3.14159]'],
+    ['System', 'Serialize round-trip', 'deser ser (1 2 3; `a`b; "hi")'],
+    ['System', 'Table → JSON rows', 'j.j 2#([]a:1 2 3; b:`x`y`z)'],
+    // Tickerplant
+    ['Tick', 'Define a stream', 'u.def[`trade; ([]sym:0#`; px:0#0.0)]\n`ok'],
+    ['Tick', 'Subscribe + publish', 'u.def[`trade;([]sym:0#`;px:0#0.0)]\nu.sub[`trade; {[nm;d] show d}]\nu.pub[`trade; ([]sym:`a`b; px:10 20.0)]'],
+    ['Tick', 'Accumulated table', 'u.def[`t;([]s:0#`;p:0#0.0)]\nu.pub[`t;([]s:`a`b;p:1 2.0)]\nu.pub[`t;([]s:`c;p:3.0)]\nu.get`t'],
+    // Showcase
+    ['Showcase', 'FizzBuzz', '{$[0=15!x;`FizzBuzz;0=3!x;`Fizz;0=5!x;`Buzz;x]}\' 1+til 20'],
+    ['Showcase', 'Fibonacci', '10 {x,+/-2#x}/0 1'],
+    ['Showcase', 'Primes < 40', 'p:2+til 38\np where {2=#&0=(1+til x)!\\:x}\'p'],
+    ['Showcase', 'Times table', 'n:1+til 9\nn */: n'],
+    ['Showcase', 'Powers of two', '10 {2*x}\\1'],
+    ['Showcase', 'Random walk', 'sums -1 1 @ 100?2'],
+    ['Showcase', 'Group words', '=vs[" "; "the cat the dog the bird the"]'],
+  ].filter(e => e[2]);
 
-  // ---------- boot ----------
-  buildSide();
-  // paint the shell first, then load & run the demo so the page is instantly interactive
-  addCell('/ loading demo…');
-  reindex();
-  setTimeout(loadDemo, 30);
+  function buildExamples(filter) {
+    const host = $('exlist'); host.innerHTML = ''; const f = (filter || '').toLowerCase();
+    const seen = {}; let count = 0;
+    const cats = [];
+    EXAMPLES.forEach(e => { if (cats.indexOf(e[0]) < 0) cats.push(e[0]); });
+    cats.forEach(cat => {
+      const items = EXAMPLES.filter(e => e[0] === cat && (!f || (e[1] + ' ' + e[2] + ' ' + e[0]).toLowerCase().includes(f)));
+      if (!items.length) return;
+      const h = document.createElement('div'); h.className = 'excat'; h.textContent = cat; host.appendChild(h);
+      items.forEach(e => {
+        count++;
+        const b = document.createElement('button'); b.className = 'ex';
+        b.innerHTML = `<div class="exl">${esc(e[1])}</div><div class="exc">${esc(e[2].split('\n')[0])}</div>`;
+        b.onclick = () => runExample(e[2]);
+        host.appendChild(b);
+      });
+    });
+    $('excount').textContent = count + ' shown';
+  }
+  function runExample(code) {
+    if (mode === 'notebook') {
+      let c;
+      if (cells.length === 1 && !cells[0].ta.value.trim()) c = cells[0]; else c = addCell('');
+      c.ta.value = code; c.sync(); runCell(c); c.el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      scratchTA.value = (scratchTA.value ? scratchTA.value.replace(/\n+$/, '') + '\n' : '') + code;
+      $('scratchHL').innerHTML = highlight(scratchTA.value); runScratch();
+    }
+    toast('inserted & ran');
+  }
+
+  /* ===================== TOOLBAR ===================== */
+  function updateVars() { const names = Object.keys(A._root.vars); $('stVars').textContent = names.length ? names.slice(0, 12).join(' ') + (names.length > 12 ? ' …' : '') : '·'; }
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 1300); }
+  $('runall').onclick = () => { if (mode === 'notebook') cells.forEach(runCell); else runScratch(); };
+  $('clearout').onclick = () => { if (mode === 'notebook') cells.forEach(c => { c.out.innerHTML = ''; c.out.classList.add('empty'); }); else $('scratchConsole').innerHTML = ''; };
+  $('resetenv').onclick = () => { A.reset(); updateVars(); toast('environment reset'); };
+  $('download').onclick = () => {
+    const src = mode === 'notebook' ? cells.map(c => c.ta.value).filter(x => x.trim()).join('\n\n') : scratchTA.value;
+    const blob = new Blob([src || ''], { type: 'text/plain' }); const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'amber-notepad.k'; a.click(); toast('downloaded .k');
+  };
+  $('surprise').onclick = () => { const e = EXAMPLES[Math.floor(Math.random() * EXAMPLES.length)]; runExample(e[2]); };
+  $('themebtn').onclick = e => { e.stopPropagation(); $('thememenu').classList.toggle('open'); };
+  document.addEventListener('click', () => $('thememenu').classList.remove('open'));
+  $('thememenu').onclick = e => e.stopPropagation();
+  $('exbtn').onclick = () => $('side').classList.toggle('hidden');
+  $('exsearch').addEventListener('input', e => buildExamples(e.target.value));
+  document.querySelectorAll('#modeseg button').forEach(b => b.onclick = () => setMode(b.dataset.mode));
+  // AI ghost autocomplete toggle
+  function refreshAI() { const on = AC.isOn(); $('aitoggle').textContent = '⌁ AI ' + (on ? 'on' : 'off'); $('aitoggle').classList.toggle('pri', on); save('ai', on ? '1' : '0'); }
+  $('aitoggle').onclick = () => { AC.toggle(); refreshAI(); (mode === 'notebook' ? cells.forEach(c => c.sync()) : (window.__scSync && window.__scSync())); };
+  // draggable sidebar width
+  (function () {
+    const sp = $('sidesplit'), side = $('side');
+    sp.addEventListener('mousedown', e => {
+      e.preventDefault(); sp.classList.add('drag');
+      const move = ev => { let w = window.innerWidth - ev.clientX; w = Math.max(220, Math.min(620, w)); side.style.width = w + 'px'; save('sideW', w); };
+      const up = () => { document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); sp.classList.remove('drag'); };
+      document.addEventListener('mousemove', move); document.addEventListener('mouseup', up);
+    });
+    const sw = load('sideW'); if (sw) side.style.width = sw + 'px';
+  })();
+
+  /* ===================== BOOT ===================== */
+  EXAMPLES.forEach(e => AC.train(e[2]));
+  buildThemeMenu();
+  applyTheme(load('theme') && THEMES[load('theme')] ? load('theme') : 'amber');
+  buildExamples('');
+  if (load('ai') === '0') AC.setOn(false);
+  refreshAI();
+  setMode(load('mode') === 'scratch' ? 'scratch' : 'notebook');
   updateVars();
 })();
+
 </script>
 </body>
 </html>

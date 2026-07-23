@@ -1,0 +1,1954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amber — interpreter notepad</title>
+<style>
+  :root{
+    --bg:#0b0805; --bg2:#120c06; --panel:#160f07; --panel2:#1c130a;
+    --line:#3a2a12; --line2:#2a1e0e;
+    --amber:#ffb000; --amber-b:#ffcf6b; --amber-d:#c78a2a; --amber-f:#7c5c26;
+    --ink:#f4d79a; --dim:#b78e46; --faint:#7a5c2e;
+    --str:#ffd98a; --sym:#ff9440; --num:#ffe6a8; --verb:#ff9e3d; --adv:#ffbe5c;
+    --brk:#a9791f; --kw:#ffd06b; --var:#e6c078; --com:#6f5427;
+    --err:#ff6b4a; --ok:#8fd06b;
+    --glow:0 0 8px rgba(255,176,0,.18);
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:
+      radial-gradient(1200px 700px at 70% -10%, #1c1206 0%, rgba(28,18,6,0) 60%),
+      radial-gradient(900px 600px at -10% 110%, #170f06 0%, rgba(23,15,6,0) 55%),
+      var(--bg);
+    color:var(--ink); font-family:var(--mono); font-size:14px; line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* faint scanlines + vignette for the phosphor feel */
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;
+    background:repeating-linear-gradient(180deg, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.045) 2px 3px);
+    mix-blend-mode:multiply;opacity:.6}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9998;
+    box-shadow:inset 0 0 220px 40px rgba(0,0,0,.55)}
+  a{color:var(--amber-b);text-decoration:none}
+
+  .app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+
+  /* header */
+  header{display:flex;align-items:center;gap:18px;padding:12px 18px;border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#160f07,#100b06);}
+  .brand{display:flex;flex-direction:column;line-height:1}
+  .word{font-weight:800;letter-spacing:.42em;font-size:20px;color:var(--amber);
+    text-shadow:var(--glow); padding-left:.42em}
+  .tag{font-size:10.5px;letter-spacing:.34em;color:var(--faint);margin-top:6px;padding-left:.34em;text-transform:uppercase}
+  .diamond{width:26px;height:26px;flex:0 0 auto;transform:rotate(45deg);
+    background:linear-gradient(135deg,#ffd873,#ffab00 55%,#a35e00);
+    border:1px solid #7a4b06;border-radius:5px;
+    box-shadow:0 0 14px rgba(255,176,0,.5), inset 0 0 8px rgba(255,255,255,.35)}
+  .spacer{flex:1}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap}
+  button{font-family:var(--mono);font-size:12px;color:var(--amber-b);
+    background:linear-gradient(180deg,#20160b,#180f07);border:1px solid var(--line);
+    border-radius:7px;padding:7px 11px;cursor:pointer;transition:.12s;letter-spacing:.02em}
+  button:hover{border-color:var(--amber-d);color:#fff0cf;box-shadow:var(--glow)}
+  button:active{transform:translateY(1px)}
+  button.pri{background:linear-gradient(180deg,#3a2708,#2a1c06);border-color:#6b4a12;color:#ffe1a6}
+  button.ghost{background:transparent}
+  .ver{font-size:11px;color:var(--faint);letter-spacing:.12em;padding:0 4px;align-self:center}
+
+  /* body split */
+  .split{display:flex;flex:1;min-height:0}
+  .book{flex:1;min-width:0;overflow:auto;padding:20px 20px 120px}
+  .book::-webkit-scrollbar,.side::-webkit-scrollbar{width:10px;height:10px}
+  .book::-webkit-scrollbar-thumb,.side::-webkit-scrollbar-thumb{background:#3a2a12;border-radius:6px}
+  .side{width:340px;flex:0 0 auto;border-left:1px solid var(--line);overflow:auto;
+    background:linear-gradient(180deg,#130d06,#0e0904);padding:14px 14px 80px}
+  .side.hidden{display:none}
+
+  /* cells */
+  .cells{max-width:960px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+  .cell{border:1px solid var(--line2);border-radius:10px;background:linear-gradient(180deg,#140e07,#0f0a05);
+    overflow:hidden;transition:.15s}
+  .cell:focus-within{border-color:var(--amber-d);box-shadow:0 0 0 1px rgba(255,176,0,.12), var(--glow)}
+  .cellhead{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 10px;border-bottom:1px solid var(--line2);
+    background:#120c06}
+  .runbtn{width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:6px;
+    cursor:pointer;color:var(--amber);border:1px solid var(--line);background:#1a1108;flex:0 0 auto}
+  .runbtn:hover{color:#fff0cf;border-color:var(--amber-d);box-shadow:var(--glow)}
+  .idx{font-size:11px;color:var(--faint);letter-spacing:.1em;min-width:34px}
+  .chead-sp{flex:1}
+  .cellhead .mini{width:24px;height:22px;font-size:12px;padding:0;display:flex;align-items:center;justify-content:center}
+  .editor{position:relative}
+  .editor pre,.editor textarea{
+    margin:0;padding:12px 14px;font-family:var(--mono);font-size:13.5px;line-height:1.55;
+    white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;border:0;tab-size:2}
+  .editor pre{position:absolute;inset:0;pointer-events:none;color:var(--ink);z-index:1}
+  .editor textarea{position:relative;z-index:2;width:100%;background:transparent;color:transparent;
+    caret-color:var(--amber);resize:none;outline:none;display:block;min-height:22px;overflow:hidden}
+  .editor textarea::selection{background:rgba(255,176,0,.22)}
+  .hl-com{color:var(--com);font-style:italic}
+  .hl-str{color:var(--str)}
+  .hl-sym{color:var(--sym)}
+  .hl-num{color:var(--num)}
+  .hl-verb{color:var(--verb);font-weight:600}
+  .hl-adv{color:var(--adv);font-weight:600}
+  .hl-brk{color:var(--brk)}
+  .hl-kw{color:var(--kw)}
+  .hl-var{color:var(--var)}
+
+  .out{border-top:1px solid var(--line2);padding:10px 14px;background:#0d0904;min-height:0}
+  .out.empty{display:none}
+  .out pre{margin:0;white-space:pre;overflow-x:auto;font-family:var(--mono);font-size:13px;color:var(--ink)}
+  .out pre::-webkit-scrollbar{height:8px}
+  .console{color:var(--dim)}
+  .err{color:var(--err);white-space:pre-wrap}
+  .ret{color:var(--amber-b)}
+  .otag{font-size:9.5px;letter-spacing:.18em;color:var(--faint);text-transform:uppercase;margin:0 0 4px}
+
+  /* value grids */
+  table.grid{border-collapse:collapse;font-size:13px;margin:2px 0}
+  table.grid th{color:var(--amber);text-align:left;font-weight:600;padding:2px 12px 5px 2px;
+    border-bottom:1px solid var(--line);white-space:nowrap}
+  table.grid td{padding:2px 12px 2px 2px;color:var(--ink);white-space:nowrap;vertical-align:top}
+  table.grid td.r,table.grid th.r{text-align:right}
+  table.grid .att{font-size:9px;color:var(--sym);letter-spacing:.1em;margin-left:6px;vertical-align:super}
+  table.grid tr:hover td{background:rgba(255,176,0,.05)}
+  .keyw{border-right:2px solid var(--line);padding-right:8px !important}
+  .dictgrid td.k{color:var(--sym)}
+  .typ{font-size:10px;color:var(--faint)}
+
+  /* sidebar */
+  .side h2{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--amber-d);
+    margin:18px 0 8px;border-bottom:1px solid var(--line2);padding-bottom:6px}
+  .side h2:first-child{margin-top:2px}
+  .snip{display:block;width:100%;text-align:left;margin:4px 0;padding:7px 9px;border-radius:7px;
+    border:1px solid var(--line2);background:#120c06;color:var(--var);font-size:12.5px;cursor:pointer;
+    white-space:pre-wrap;line-height:1.4}
+  .snip:hover{border-color:var(--amber-d);color:#ffe1a6;box-shadow:var(--glow)}
+  .snip .cm{color:var(--com)}
+  .ref{font-size:12px;color:var(--dim);margin:3px 0}
+  .ref b{color:var(--amber-b);font-weight:600}
+  .note{font-size:11.5px;color:var(--faint);line-height:1.5;margin:6px 0}
+  .side .sub{font-size:10px;color:var(--faint);letter-spacing:.16em;text-transform:uppercase;margin:10px 0 4px}
+
+  /* status bar */
+  .status{position:fixed;bottom:0;left:0;right:0;height:26px;display:flex;align-items:center;gap:16px;
+    padding:0 16px;font-size:11px;color:var(--faint);letter-spacing:.06em;
+    background:linear-gradient(180deg,#0e0904,#0b0704);border-top:1px solid var(--line2);z-index:50}
+  .status b{color:var(--amber-d);font-weight:600}
+  .status .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 6px var(--ok)}
+  .kbd{border:1px solid var(--line);border-radius:4px;padding:0 5px;color:var(--dim);font-size:10.5px}
+  @media(max-width:820px){ .side{position:fixed;right:0;top:0;bottom:0;z-index:60;width:min(340px,88vw);
+     box-shadow:-20px 0 60px rgba(0,0,0,.6)} }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="diamond"></div>
+    <div class="brand"><div class="word">AMBER</div><div class="tag">interpreter · notepad</div></div>
+    <span class="ver">v1.4</span>
+    <div class="spacer"></div>
+    <div class="toolbar">
+      <button class="pri" id="runall">▶ run all</button>
+      <button id="addcell">＋ cell</button>
+      <button id="clearout" class="ghost">clear output</button>
+      <button id="resetenv" class="ghost">reset env</button>
+      <button id="loaddemo" class="ghost">demo</button>
+      <button id="toghelp">✦ help</button>
+    </div>
+  </header>
+
+  <div class="split">
+    <div class="book"><div class="cells" id="cells"></div></div>
+    <aside class="side" id="side"></aside>
+  </div>
+
+  <div class="status">
+    <span class="dot"></span>
+    <span>ready</span>
+    <span>cells <b id="stCells">0</b></span>
+    <span>vars <b id="stVars">·</b></span>
+    <span class="spacer" style="flex:1"></span>
+    <span><span class="kbd">Shift</span>+<span class="kbd">↵</span> run &amp; next</span>
+    <span><span class="kbd">Ctrl</span>+<span class="kbd">↵</span> run</span>
+  </div>
+</div>
+
+<!-- ==== Amber interpreter ==== -->
+<script>
+// ============================================================================
+// Amber interpreter — a browser/Node evaluator for a working subset of Amber
+// (the q/kdb+-style array language).  Right-to-left evaluation, ints/floats/
+// chars/symbols/lists/dicts/tables, verbs, adverbs, lambdas, indexing,
+// assignment, column attributes, and a slice of the Amber vocabulary.
+// ============================================================================
+(function (root) {
+  'use strict';
+
+  // ---- value model -------------------------------------------------------
+  // atoms:   {t:'i'|'f'|'c'|'s', v}
+  // vectors: {t:'I'|'F'|'C'|'S'|'A', v:[...], at?}    C -> v is a JS string
+  // dict:    {t:'m', k:<vec>, v:<vec/list>}
+  // table:   {t:'T', c:[names], d:[colvals], at:[attr]}
+  // keyed:   {t:'K', kt:<table>, vt:<table>}
+  // lambda:  {t:'fn', p:[names], b:<terms>, src, rank}
+  // verb:    {t:'vb', n, mon, dy}
+  // proj:    {t:'pr', f, args, need}
+  // unit/::  {t:'u'}
+  const U = { t: 'u' };
+  const I = (v) => ({ t: 'i', v: v | 0 });
+  const F = (v) => ({ t: 'f', v: +v });
+  const Ch = (v) => ({ t: 'c', v: v });
+  const Sy = (v) => ({ t: 's', v: v });
+
+  function isAtom(x) { return x && 'ifcsu'.indexOf(x.t) >= 0; }
+  function isVec(x) { return x && 'IFCSA'.indexOf(x.t) >= 0; }
+  function isNum(x) { return x && (x.t === 'i' || x.t === 'f'); }
+  function isNumVec(x) { return x && (x.t === 'I' || x.t === 'F'); }
+
+  function len(x) {
+    if (isVec(x)) return x.t === 'C' ? x.v.length : x.v.length;
+    if (x.t === 'm') return len(x.k);
+    if (x.t === 'T') return x.d.length ? len(x.d[0]) : 0;
+    if (x.t === 'K') return len(x.kt);
+    return 1;
+  }
+
+  // JS array of element *values* from a vector
+  function arr(x) {
+    if (x.t === 'C') return x.v.split('').map(Ch);
+    if (x.t === 'S') return x.v.map(Sy);
+    if (x.t === 'I') return x.v.map(I);
+    if (x.t === 'F') return x.v.map(F);
+    if (x.t === 'A') return x.v.slice();
+    if (isAtom(x)) return [x];
+    return [x];
+  }
+  // raw JS primitives
+  function raw(x) {
+    if (x.t === 'C') return x.v.split('');
+    if (x.t === 'S' || x.t === 'I' || x.t === 'F' || x.t === 'A') return x.v.slice();
+    return [x.v];
+  }
+
+  // build a best-typed vector from an array of *values*
+  function vec(vals) {
+    if (vals.length === 0) return { t: 'A', v: [] };
+    let allc = true, alls = true, alli = true, allf = true;
+    for (const e of vals) {
+      if (!e || e.t === undefined) { allc = alls = alli = allf = false; break; }
+      if (e.t !== 'c') allc = false;
+      if (e.t !== 's') alls = false;
+      if (e.t !== 'i') alli = false;
+      if (e.t !== 'i' && e.t !== 'f') allf = false;
+    }
+    if (allc) return { t: 'C', v: vals.map(e => e.v).join('') };
+    if (alls) return { t: 'S', v: vals.map(e => e.v) };
+    if (alli) return { t: 'I', v: vals.map(e => e.v) };
+    if (allf) return { t: 'F', v: vals.map(e => +e.v) };
+    return { t: 'A', v: vals.slice() };
+  }
+  // build numeric vector, choosing int vs float
+  function nvec(nums) {
+    let allint = true;
+    for (const n of nums) if (!Number.isInteger(n)) { allint = false; break; }
+    return allint ? { t: 'I', v: nums.map(n => n | 0) } : { t: 'F', v: nums.map(n => +n) };
+  }
+
+  function num(x) {
+    if (x.t === 'i' || x.t === 'f') return x.v;
+    if (x.t === 'c') return x.v.charCodeAt(0);
+    throw err('type');
+  }
+  function err(m) { const e = new Error(m); e.amber = true; return e; }
+  function isNull(x) {
+    if (x.t === 'i') return x.v === -9223372036854775807 || x.v === null;
+    if (x.t === 'f') return Number.isNaN(x.v);
+    if (x.t === 'c') return x.v === ' ';
+    if (x.t === 's') return x.v === '';
+    return false;
+  }
+  const NF = { t: 'f', v: NaN };            // 0n
+  const NI = { t: 'i', v: -9223372036854775807 }; // 0N
+
+  // ---- lexer -------------------------------------------------------------
+  const VERBCH = "+-*%!&|<>=~,^#_$?@.";
+  function lex(s) {
+    const T = [];
+    let i = 0, n = s.length;
+    const prevNoun = () => {
+      // look at last meaningful token
+      for (let j = T.length - 1; j >= 0; j--) {
+        const t = T[j];
+        return t.k === 'num' || t.k === 'name' || t.k === 'str' || t.k === 'sym' ||
+          t.k === 'symv' || t.v === ')' || t.v === ']' || t.v === '}';
+      }
+      return false;
+    };
+    while (i < n) {
+      let c = s[i];
+      if (c === ' ' || c === '\t' || c === '\r') { i++; continue; }
+      if (c === '\n' || c === ';') { T.push({ k: 'sep', v: c === '\n' ? ';' : ';' }); i++; continue; }
+      if (c === '/' && (i === 0 || s[i - 1] === '\n' || s[i - 1] === ' ' || s[i - 1] === '\t')) {
+        // line comment to EOL
+        while (i < n && s[i] !== '\n') i++;
+        continue;
+      }
+      if (c === '"') { // string
+        let j = i + 1, out = '';
+        while (j < n && s[j] !== '"') {
+          if (s[j] === '\\') {
+            const e = s[j + 1];
+            out += e === 'n' ? '\n' : e === 't' ? '\t' : e === 'r' ? '\r' :
+              e === '0' ? '\0' : e === '\\' ? '\\' : e === '"' ? '"' : e;
+            j += 2;
+          } else { out += s[j]; j++; }
+        }
+        i = j + 1; T.push({ k: 'str', v: out }); continue;
+      }
+      if (c === '`') { // symbol or symbol vector
+        const syms = [];
+        while (s[i] === '`') {
+          i++;
+          let nm = '';
+          if (s[i] === '"') { // quoted symbol
+            i++;
+            while (i < n && s[i] !== '"') { nm += s[i]; i++; }
+            i++;
+          } else {
+            while (i < n && /[A-Za-z0-9.]/.test(s[i])) { nm += s[i]; i++; }
+          }
+          syms.push(nm);
+          // allow immediate backtick chain w/o space
+        }
+        if (syms.length === 1) T.push({ k: 'sym', v: syms[0] });
+        else T.push({ k: 'symv', v: syms });
+        continue;
+      }
+      // number / number-vector
+      const startsNum = (ch, k) => /[0-9]/.test(ch) ||
+        (ch === '.' && /[0-9]/.test(s[k + 1] || '')) ||
+        (ch === '-' && (/[0-9]/.test(s[k + 1] || '') || (s[k + 1] === '.' && /[0-9]/.test(s[k + 2] || ''))) && !prevNoun());
+      if (startsNum(c, i)) {
+        const nums = [];
+        while (true) {
+          // read one number (with optional glued sign)
+          let j = i, sign = 1;
+          if (s[j] === '-') { sign = -1; j++; }
+          let numstr = '';
+          if (s.substr(j, 2) === '0N') { nums.push(NaN); j += 2; i = j; }
+          else if (s.substr(j, 2) === '0n') { nums.push(NaN); j += 2; i = j; }
+          else if (s.substr(j, 2) === '0w') { nums.push(sign * Infinity); j += 2; i = j; }
+          else {
+            while (j < n && /[0-9.eE]/.test(s[j])) {
+              if ((s[j] === 'e' || s[j] === 'E') && (s[j + 1] === '-' || s[j + 1] === '+')) { numstr += s[j] + s[j + 1]; j += 2; continue; }
+              numstr += s[j]; j++;
+            }
+            nums.push(sign * parseFloat(numstr));
+            i = j;
+          }
+          // continue vector? space then another number glued with sign or digit
+          let k = i;
+          if (s[k] === ' ') {
+            let m = k; while (s[m] === ' ') m++;
+            if (/[0-9]/.test(s[m] || '') || (s[m] === '-' && /[0-9.]/.test(s[m + 1] || '')) ||
+              (s[m] === '.' && /[0-9]/.test(s[m + 1] || '')) || s.substr(m, 2) === '0N' || s.substr(m, 2) === '0n' || s.substr(m, 2) === '0w') {
+              i = m; continue;
+            }
+          }
+          break;
+        }
+        T.push({ k: 'num', v: nums }); continue;
+      }
+      if (/[A-Za-z]/.test(c)) { // name
+        let nm = '';
+        while (i < n && /[A-Za-z0-9]/.test(s[i])) { nm += s[i]; i++; }
+        // dotted names a.b
+        while (s[i] === '.' && /[A-Za-z]/.test(s[i + 1] || '')) {
+          nm += s[i]; i++;
+          while (i < n && /[A-Za-z0-9]/.test(s[i])) { nm += s[i]; i++; }
+        }
+        T.push({ k: 'name', v: nm }); continue;
+      }
+      // adverbs
+      if (c === "'" && s[i + 1] === ':') { T.push({ k: 'adv', v: "':" }); i += 2; continue; }
+      if (c === '/' && s[i + 1] === ':') { T.push({ k: 'adv', v: '/:' }); i += 2; continue; }
+      if (c === '\\' && s[i + 1] === ':') { T.push({ k: 'adv', v: '\\:' }); i += 2; continue; }
+      if (c === "'") { T.push({ k: 'adv', v: "'" }); i++; continue; }
+      if (c === '/') { T.push({ k: 'adv', v: '/' }); i++; continue; }
+      if (c === '\\') { T.push({ k: 'adv', v: '\\' }); i++; continue; }
+      // multi-char verbs 0: 1:
+      if ((c === '0' || c === '1') && s[i + 1] === ':') { T.push({ k: 'verb', v: c + ':' }); i += 2; continue; }
+      // assignment ::  and :
+      if (c === ':' && s[i + 1] === ':') { T.push({ k: 'gassign', v: '::' }); i += 2; continue; }
+      if (c === ':') { T.push({ k: 'assign', v: ':' }); i++; continue; }
+      if (VERBCH.indexOf(c) >= 0) { T.push({ k: 'verb', v: c }); i++; continue; }
+      if (c === '(') { T.push({ k: 'open', v: '(' }); i++; continue; }
+      if (c === ')') { T.push({ k: 'close', v: ')' }); i++; continue; }
+      if (c === '[') { T.push({ k: 'obrk', v: '[' }); i++; continue; }
+      if (c === ']') { T.push({ k: 'cbrk', v: ']' }); i++; continue; }
+      if (c === '{') { T.push({ k: 'obrc', v: '{' }); i++; continue; }
+      if (c === '}') { T.push({ k: 'cbrc', v: '}' }); i++; continue; }
+      throw err('lex:' + c);
+    }
+    return T;
+  }
+
+  // ---- parser: token stream -> list of statements, each a list of terms --
+  // term kinds: {k:'val',v} {k:'name',n} {k:'verb',v} {k:'adv',a,of}
+  //   {k:'paren',e} {k:'list',es} {k:'brack',args} {k:'lambda',...}
+  //   {k:'assign',name,g} {k:'idxassign',...}
+  function parse(tokens) {
+    let p = 0;
+    function peek() { return tokens[p]; }
+    function next() { return tokens[p++]; }
+
+    // parse a sequence of terms until a stopper (close/cbrk/cbrc/sep at depth)
+    function parseTerms(stopset) {
+      const terms = [];
+      while (p < tokens.length) {
+        const t = peek();
+        if (stopset.indexOf(t.k) >= 0) break;
+        if (t.k === 'sep') break;
+        terms.push(parseTerm());
+        // attach trailing adverbs
+        while (p < tokens.length && peek().k === 'adv') {
+          const a = next();
+          const of = terms.pop();
+          terms.push({ k: 'adv', a: a.v, of: of });
+        }
+        // attach trailing brackets (index/apply)
+        while (p < tokens.length && peek().k === 'obrk') {
+          next();
+          const args = parseBrackArgs();
+          const of = terms.pop();
+          terms.push({ k: 'apply', of: of, args: args });
+        }
+      }
+      return terms;
+    }
+
+    function parseBrackArgs() {
+      // already consumed '['
+      const args = [];
+      let cur = parseTerms(['close', 'cbrk', 'cbrc']);
+      args.push(cur);
+      while (peek() && peek().k === 'sep') { next(); args.push(parseTerms(['close', 'cbrk', 'cbrc'])); }
+      if (!peek() || peek().k !== 'cbrk') throw err('parse:]');
+      next();
+      return args;
+    }
+
+    function parseTerm() {
+      const t = next();
+      switch (t.k) {
+        case 'num': return { k: 'val', v: t.v.length === 1 ? mkNumAtom(t.v[0]) : nvec(t.v) };
+        case 'str': return { k: 'val', v: t.v.length === 1 ? Ch(t.v) : { t: 'C', v: t.v } };
+        case 'sym': return { k: 'val', v: Sy(t.v) };
+        case 'symv': return { k: 'val', v: { t: 'S', v: t.v } };
+        case 'name': {
+          // assignment?
+          if (peek() && (peek().k === 'assign' || peek().k === 'gassign')) {
+            const g = next().k === 'gassign';
+            // could be modified assign name+:  -> but keep simple
+            const rhs = parseTerms(['close', 'cbrk', 'cbrc']);
+            return { k: 'assign', name: t.v, g: g, rhs: rhs };
+          }
+          return { k: 'name', n: t.v };
+        }
+        case 'verb': return { k: 'verb', v: t.v };
+        case 'assign': return { k: 'verb', v: ':' }; // ':' as right/return verb
+        case 'open': return parseParen();
+        case 'obrk': { const args = parseBrackArgs(); return { k: 'progn', args }; }
+        case 'obrc': return parseLambda();
+        default: throw err('parse:' + t.k + (t.v ? ' ' + t.v : ''));
+      }
+    }
+
+    function parseParen() {
+      // detect table literal:  ( [ ... ] ... )
+      if (peek() && peek().k === 'obrk') {
+        return parseTableLit();
+      }
+      const es = [];
+      es.push(parseTerms(['close', 'cbrk', 'cbrc']));
+      while (peek() && peek().k === 'sep') { next(); es.push(parseTerms(['close', 'cbrk', 'cbrc'])); }
+      if (!peek() || peek().k !== 'close') throw err('parse:)');
+      next();
+      if (es.length === 1) return { k: 'paren', e: es[0] };
+      return { k: 'list', es: es };
+    }
+
+    function parseTableLit() {
+      // consumed '(' ; now at '['
+      next(); // '['
+      // key column defs until ']'
+      const keydefs = parseColDefs(['cbrk']);
+      if (!peek() || peek().k !== 'cbrk') throw err('parse:table]');
+      next();
+      const coldefs = parseColDefs(['close']);
+      if (!peek() || peek().k !== 'close') throw err('parse:table)');
+      next();
+      return { k: 'table', keys: keydefs, cols: coldefs };
+    }
+
+    function parseColDefs(stop) {
+      // sequence of  name:expr  separated by ';'
+      const defs = [];
+      if (peek() && stop.indexOf(peek().k) >= 0) return defs;
+      while (true) {
+        if (peek() && (peek().k === 'name')) {
+          const nm = next().v;
+          if (peek() && (peek().k === 'assign' || peek().k === 'gassign')) {
+            next();
+            const e = parseTerms(['close', 'cbrk', 'cbrc']);
+            defs.push({ name: nm, e });
+          } else {
+            // bare column name -> value is the variable itself
+            defs.push({ name: nm, e: [{ k: 'name', n: nm }] });
+          }
+        } else {
+          // expression column w/o name -> derive name later
+          const e = parseTerms(['close', 'cbrk', 'cbrc']);
+          defs.push({ name: null, e });
+        }
+        if (peek() && peek().k === 'sep') { next(); continue; }
+        break;
+      }
+      return defs;
+    }
+
+    function parseLambda() {
+      // consumed '{'
+      let params = null;
+      if (peek() && peek().k === 'obrk') {
+        // explicit params [a;b]
+        next();
+        params = [];
+        if (peek() && peek().k !== 'cbrk') {
+          params.push(readName());
+          while (peek() && peek().k === 'sep') { next(); params.push(readName()); }
+        }
+        if (!peek() || peek().k !== 'cbrk') throw err('parse:lambda]');
+        next();
+      }
+      const body = [];
+      body.push(parseTerms(['cbrc']));
+      while (peek() && peek().k === 'sep') { next(); body.push(parseTerms(['cbrc'])); }
+      if (!peek() || peek().k !== 'cbrc') throw err('parse:}');
+      next();
+      return { k: 'lambda', params, body };
+    }
+    function readName() { const t = next(); if (t.k !== 'name') throw err('parse:param'); return t.v; }
+
+    // top level: statements separated by 'sep'
+    const stmts = [];
+    stmts.push(parseTerms([]));
+    while (p < tokens.length && peek().k === 'sep') { next(); stmts.push(parseTerms([])); }
+    return stmts;
+  }
+
+  function mkNumAtom(v) { return Number.isInteger(v) ? I(v) : F(v); }
+
+  // ---- evaluator ---------------------------------------------------------
+  function makeEnv(parent) { return { vars: Object.create(parent ? parent.vars : null), parent, out: parent ? parent.out : [] }; }
+
+  function evalProgram(stmts, env) {
+    let r = U;
+    for (const s of stmts) { if (s.length) r = evalTerms(s, env); }
+    return r;
+  }
+
+  function evalTerms(terms, env) {
+    if (!terms.length) return U;
+    return evFrom(terms, 0, env);
+  }
+
+  // evaluate terms[i..end] right-associatively
+  function evFrom(terms, i, env) {
+    const t = terms[i];
+    // assignment term stands alone
+    if (t.k === 'assign') {
+      const val = evalTerms(t.rhs, env);
+      setVar(env, t.name, val, t.g);
+      return val;
+    }
+    const isLast = i === terms.length - 1;
+    // Is this term a function in prefix position? (verb / adverb / lambda / name-fn / paren-fn)
+    const fnv = asFunctionTerm(t, env);
+    if (fnv) {
+      if (isLast) return fnv.fn; // function as a value
+      const rhs = evFrom(terms, i + 1, env);
+      return applyFn(fnv.fn, [rhs], env); // monadic apply to the rest
+    }
+    // t is a noun
+    const A = evalNoun(t, env);
+    if (isLast) return A;
+    const nt = terms[i + 1];
+    // dyadic infix ONLY for primitive verbs / adverb-derived verbs (Amber has no infix user verbs)
+    const inf = asInfixFn(nt, env);
+    if (inf) {
+      if (i + 1 === terms.length - 1) return applyFn(inf.fn, [A], env); // trailing verb -> monadic on A
+      const B = evFrom(terms, i + 2, env);
+      return applyFn(inf.fn, [A, B], env);
+    }
+    // juxtaposition: A applied to (rest)  (indexing / symbol-verb)
+    const rhs = evFrom(terms, i + 1, env);
+    return applyValue(A, rhs, env);
+  }
+
+  // infix-capable = primitive verb, adverb-modified verb, or (verb)/(adverb) in parens
+  function asInfixFn(t, env) {
+    if (t.k === 'verb') return { fn: verbFn(t.v) };
+    if (t.k === 'adv') return { fn: advFn(t, env) };
+    if (t.k === 'paren') {
+      if (t.e.length === 1 && t.e[0].k === 'verb') return { fn: verbFn(t.e[0].v) };
+      if (t.e.length === 1 && t.e[0].k === 'adv') return { fn: advFn(t.e[0], env) };
+    }
+    return null;
+  }
+
+  // decide if a term is a function (verb, adverb-verb, lambda literal, or name bound to fn)
+  function asFunctionTerm(t, env) {
+    if (t.k === 'verb') return { fn: verbFn(t.v) };
+    if (t.k === 'adv') return { fn: advFn(t, env) };
+    if (t.k === 'lambda') return { fn: makeLambda(t, env) };
+    if (t.k === 'name') {
+      const v = lookup(env, t.n);
+      if (v && (v.t === 'fn' || v.t === 'vb' || v.t === 'pr')) return { fn: v };
+      return null;
+    }
+    if (t.k === 'paren') {
+      // (verb) or (expr) that yields a function
+      // peek: if single verb term
+      if (t.e.length === 1 && t.e[0].k === 'verb') return { fn: verbFn(t.e[0].v) };
+      if (t.e.length === 1 && t.e[0].k === 'adv') return { fn: advFn(t.e[0], env) };
+      return null;
+    }
+    return null;
+  }
+
+  function evalNoun(t, env) {
+    switch (t.k) {
+      case 'val': return t.v;
+      case 'name': {
+        const v = lookup(env, t.n);
+        if (v === undefined) throw err('value:' + t.n);
+        return v;
+      }
+      case 'paren': return evalTerms(t.e, env);
+      case 'progn': { let r = U; for (const a of t.args) r = evalTerms(a, env); return r; }
+      case 'list': return vec(t.es.map(e => evalTerms(e, env)));
+      case 'lambda': return makeLambda(t, env);
+      case 'verb': return verbFn(t.v);
+      case 'adv': return advFn(t, env);
+      case 'apply': {
+        const of = evalNounOrFn(t.of, env);
+        return applyArgs(of, t.args, env);
+      }
+      case 'table': return buildTable(t, env);
+      default: throw err('eval:' + t.k);
+    }
+  }
+  function evalNounOrFn(t, env) {
+    const f = asFunctionTerm(t, env);
+    if (f) return f.fn;
+    return evalNoun(t, env);
+  }
+
+  function applyArgs(of, argTerms, env) {
+    // brackets after a value/function: indexing or application
+    const args = argTerms.map(a => a.length ? evalTerms(a, env) : U); // elision -> U
+    const hasElision = args.some(a => a === U && true) && argTerms.some(a => a.length === 0);
+    if (of && (of.t === 'fn' || of.t === 'vb' || of.t === 'pr')) {
+      if (argTerms.some(a => a.length === 0)) {
+        // projection
+        return makeProj(of, args, argTerms.map(a => a.length === 0));
+      }
+      return applyFn(of, args, env);
+    }
+    // indexing a value
+    if (args.length === 1) return index(of, args[0]);
+    return indexDeep(of, args);
+  }
+
+  function setVar(env, name, val, global) {
+    if (global) {
+      // set at root
+      let e = env; while (e.parent) e = e.parent;
+      e.vars[name] = val;
+    } else env.vars[name] = val;
+    return val;
+  }
+  function lookup(env, name) {
+    let v = env.vars[name];
+    if (v !== undefined) return v;
+    return BUILTINS[name];
+  }
+
+  function makeLambda(t, env) {
+    let rank = 0, params = t.params;
+    if (!params) {
+      // infer x/y/z usage
+      const used = new Set();
+      scanNames(t.body, used);
+      if (used.has('z')) rank = 3; else if (used.has('y')) rank = 2; else if (used.has('x')) rank = 1; else rank = 1;
+      params = ['x', 'y', 'z'].slice(0, rank);
+    } else rank = params.length;
+    return { t: 'fn', p: params, b: t.body, env, rank, src: t.src };
+  }
+  function scanNames(body, set) {
+    for (const stmt of body) for (const term of stmt) scanTerm(term, set);
+  }
+  function scanTerm(term, set) {
+    if (!term) return;
+    if (term.k === 'name') set.add(term.n);
+    if (term.k === 'assign') { set.add(term.name); term.rhs.forEach(x => scanTerm(x, set)); }
+    if (term.k === 'adv') scanTerm(term.of, set);
+    if (term.k === 'apply') { scanTerm(term.of, set); term.args.forEach(a => a.forEach(x => scanTerm(x, set))); }
+    if (term.k === 'paren') term.e.forEach(x => scanTerm(x, set));
+    if (term.k === 'progn') term.args.forEach(a => a.forEach(x => scanTerm(x, set)));
+    if (term.k === 'list') term.es.forEach(a => a.forEach(x => scanTerm(x, set)));
+    // do not descend into nested lambdas for x/y/z inference
+  }
+
+  function makeProj(fn, args, mask) { return { t: 'pr', f: fn, args, mask }; }
+
+  function applyFn(fn, args, env) {
+    if (fn.t === 'vb') {
+      if (args.length === 1) { if (!fn.mon) throw err('rank'); return fn.mon(args[0]); }
+      if (args.length === 2) { if (!fn.dy) throw err('rank'); return fn.dy(args[0], args[1]); }
+      if (fn.nary) return fn.nary(args);
+      throw err('rank');
+    }
+    if (fn.t === 'pr') {
+      // fill masked positions with args
+      const full = []; let ai = 0;
+      for (let k = 0; k < fn.args.length; k++) { if (fn.mask[k]) full.push(args[ai++]); else full.push(fn.args[k]); }
+      while (ai < args.length) full.push(args[ai++]);
+      return applyFn(fn.f, full, env);
+    }
+    if (fn.t === 'fn') {
+      const e2 = makeEnv(fn.env);
+      const p = fn.p;
+      for (let k = 0; k < p.length; k++) e2.vars[p[k]] = k < args.length ? args[k] : U;
+      // projection if too few args
+      if (args.length < fn.rank && args.some((a, ix) => a === U) === false && args.length < p.length) {
+        // partial -> projection
+        const mask = p.map((_, ix) => ix >= args.length);
+        const pre = p.map((_, ix) => ix < args.length ? args[ix] : U);
+        return { t: 'pr', f: fn, args: pre, mask };
+      }
+      return evalProgram(fn.b.map(stmt => stmt), e2);
+    }
+    throw err('type:apply');
+  }
+
+  const SYMVERB = {
+    at: x => Sy(x.at || ''),
+    sa: x => setAttr(x, 's'), ua: x => setAttr(x, 'u'), pa: x => setAttr(x, 'p'), ga: x => setAttr(x, 'g'),
+    k: x => ({ t: 'C', v: fmt(x) }),
+    '0': y => { OUT.push(outStr(y)); return U; }, '1': y => { OUT.push(outStr(y)); return U; },
+  };
+  function outStr(y) { if (y.t === 'C') return y.v; if (y.t === 'c') return y.v; return fmt(y); }
+  function applyValue(v, arg, env) {
+    // juxtaposition A rhs
+    if (v.t === 'fn' || v.t === 'vb' || v.t === 'pr') return applyFn(v, [arg], env);
+    if (v.t === 's' && SYMVERB[v.v]) return SYMVERB[v.v](arg);
+    return index(v, arg);
+  }
+
+  // ---- indexing ----------------------------------------------------------
+  function index(x, y) {
+    if (y === U) return x;
+    if (x.t === 'm') { // dict lookup
+      return dictAt(x, y);
+    }
+    if (x.t === 'T') { return tableIndex(x, y); }
+    if (x.t === 'K') { return index(x.vt, y); }
+    if (isAtom(x)) { // atom indexed -> only y=0 valid, else error; but allow apply of fn already handled
+      throw err('type:index');
+    }
+    if (isVec(x)) {
+      if (isNum(y)) { const idx = y.v; return arr(x)[wrap(idx, len(x))] || nullOf(x); }
+      if (y.t === 'I' || y.t === 'F') return vec(y.v.map(iv => arr(x)[wrap(iv | 0, len(x))] || nullOf(x)));
+      if (y.t === 'A') return vec(y.v.map(iv => index(x, iv)));
+      if (y === U) return x;
+    }
+    throw err('type:index');
+  }
+  function wrap(i, n) { return i < 0 ? n + i : i; }
+  function nullOf(x) { return x.t === 'I' ? NI : x.t === 'F' ? NF : x.t === 'S' ? Sy('') : x.t === 'C' ? Ch(' ') : NI; }
+  function indexDeep(x, ys) {
+    let r = x;
+    for (const y of ys) { if (y === U) { /* full slice - map */ return vec(arr(r).map(e => indexDeep(e, ys.slice(1)))); } r = index(r, y); }
+    return r;
+  }
+
+  function dictAt(d, y) {
+    const ks = raw(d.k);
+    if (isAtom(y)) {
+      const idx = ks.indexOf(y.v);
+      if (idx < 0) return nullOf(d.v);
+      return arr(d.v)[idx];
+    }
+    if (isVec(y)) return vec(arr(y).map(e => dictAt(d, e)));
+    return U;
+  }
+
+  // ---- verbs -------------------------------------------------------------
+  function each1(f, x) {
+    if (isAtom(x)) return f(x);
+    return vec(arr(x).map(f));
+  }
+  function each2(f, x, y) {
+    const xa = isAtom(x), ya = isAtom(y);
+    if (xa && ya) return f(x, y);
+    if (xa) return vec(arr(y).map(e => f(x, e)));
+    if (ya) return vec(arr(x).map(e => f(e, y)));
+    if (len(x) !== len(y)) throw err('length');
+    const ax = arr(x), ay = arr(y);
+    return vec(ax.map((e, k) => f(e, ay[k])));
+  }
+  function arith(f, floatOut) {
+    return (x, y) => each2((a, b) => {
+      const r = f(num(a), num(b));
+      return floatOut || !Number.isInteger(r) || a.t === 'f' || b.t === 'f' ? F(r) : I(r);
+    }, x, y);
+  }
+
+  function eq2(a, b) {
+    if (a.t === 's' || b.t === 's') return I(a.v === b.v ? 1 : 0);
+    if (a.t === 'c' && b.t === 'c') return I(a.v === b.v ? 1 : 0);
+    return I(num(a) === num(b) ? 1 : 0);
+  }
+
+  function match(x, y) { return I(deepEq(x, y) ? 1 : 0); }
+  function deepEq(x, y) {
+    if (x.t !== y.t) {
+      // allow I~F equal values? k: 0~0.0 -> 0. keep strict on type
+      return false;
+    }
+    if (isAtom(x)) return x.v === y.v || (Number.isNaN(x.v) && Number.isNaN(y.v));
+    if (x.t === 'C') return x.v === y.v;
+    if (x.t === 'S') return x.v.length === y.v.length && x.v.every((e, i) => e === y.v[i]);
+    if (x.t === 'I' || x.t === 'F') return x.v.length === y.v.length && x.v.every((e, i) => e === y.v[i] || (Number.isNaN(e) && Number.isNaN(y.v[i])));
+    if (x.t === 'A') return x.v.length === y.v.length && x.v.every((e, i) => deepEq(e, y.v[i]));
+    if (x.t === 'm') return deepEq(x.k, y.k) && deepEq(x.v, y.v);
+    if (x.t === 'T') return JSON.stringify(tblPlain(x)) === JSON.stringify(tblPlain(y));
+    return false;
+  }
+  function tblPlain(t) { return { c: t.c, d: t.d.map(raw) }; }
+
+  function concat(x, y) {
+    if (x.t === 'm' && y.t === 'm') return dictMerge(x, y);
+    const xa = isAtom(x) ? [x] : arr(x);
+    const ya = isAtom(y) ? [y] : arr(y);
+    return vec(xa.concat(ya));
+  }
+  function enlist(x) { return vec([x]); }
+
+  function til(x) { const n = num(x); if (n < 0) { const a = []; for (let k = 0; k < -n; k++)a.push(n + k); return { t: 'I', v: a }; } const a = []; for (let k = 0; k < n; k++)a.push(k); return { t: 'I', v: a }; }
+
+  function first(x) { if (isAtom(x)) return x; const a = arr(x); return a.length ? a[0] : nullOf(x); }
+  function last(x) { if (isAtom(x)) return x; const a = arr(x); return a.length ? a[a.length - 1] : nullOf(x); }
+  function reverse(x) { if (isAtom(x)) return x; if (x.t === 'm') return { t: 'm', k: reverse(x.k), v: reverse(x.v) }; return vec(arr(x).reverse()); }
+  function countOf(x) { return I(len(x)); }
+
+  function distinct(x) {
+    if (isAtom(x)) return enlist(x);
+    const seen = [], out = [];
+    for (const e of arr(x)) { const key = keyOf(e); if (seen.indexOf(key) < 0) { seen.push(key); out.push(e); } }
+    return vec(out);
+  }
+  function keyOf(e) { if (isAtom(e)) return e.t + ':' + e.v; return e.t + ':' + JSON.stringify(raw(e)); }
+
+  function where(x) {
+    if (x.t === 'm') { // where on dict -> keys where val true
+      const out = []; const ks = arr(x.k), vs = arr(x.v);
+      vs.forEach((v, i) => { for (let j = 0; j < num(v); j++) out.push(ks[i]); }); return vec(out);
+    }
+    const a = raw(x); const out = [];
+    a.forEach((v, i) => { for (let j = 0; j < v; j++) out.push(i); });
+    return { t: 'I', v: out };
+  }
+  function groupBy(x) {
+    const a = arr(x); const keys = [], pos = [];
+    a.forEach((e, i) => { const kk = keyOf(e); let ix = keys.indexOf(kk); if (ix < 0) { keys.push(kk); pos.push([i]); } else pos[ix].push(i); });
+    const kv = []; const seen = {};
+    const uniqVals = []; a.forEach((e) => { const kk = keyOf(e); if (!(kk in seen)) { seen[kk] = e; uniqVals.push(e); } });
+    return { t: 'm', k: vec(uniqVals), v: { t: 'A', v: pos.map(p => ({ t: 'I', v: p })) } };
+  }
+
+  function gradeUp(x) { const a = arr(x); const idx = a.map((_, i) => i); idx.sort((i, j) => cmp(a[i], a[j]) || i - j); return { t: 'I', v: idx }; }
+  function gradeDown(x) { const a = arr(x); const idx = a.map((_, i) => i); idx.sort((i, j) => cmp(a[j], a[i]) || i - j); return { t: 'I', v: idx }; }
+  function cmp(a, b) {
+    if (a.t === 's' && b.t === 's') return a.v < b.v ? -1 : a.v > b.v ? 1 : 0;
+    if (a.t === 'c' && b.t === 'c') return a.v < b.v ? -1 : a.v > b.v ? 1 : 0;
+    const x = num(a), y = num(b); return x < y ? -1 : x > y ? 1 : 0;
+  }
+  function ascv(x) { const g = gradeUp(x); const r = index(x, g); r.at = 's'; return r; }
+  function descv(x) { const g = gradeDown(x); return index(x, g); }
+
+  function flip(x) {
+    if (x.t === 'm') return dictToTable(x);
+    if (x.t === 'T') return tableToDict(x);
+    if (x.t === 'A') { // matrix transpose
+      const rows = x.v.map(arr); const n = rows[0].length;
+      const out = []; for (let j = 0; j < n; j++) out.push(vec(rows.map(r => r[j])));
+      return { t: 'A', v: out };
+    }
+    return x;
+  }
+
+  function takeReshape(x, y) {
+    if (x.t === 'fn' || x.t === 'vb' || x.t === 'pr') return replicateFn(x, y);
+    if (isNum(x) && (y.t === 'T' || y.t === 'K')) { const n = num(x), R = len(y); const rows = []; const nn = Math.min(Math.abs(n), R); for (let k = 0; k < nn; k++) rows.push(n >= 0 ? k : R - nn + k); return tableIndex(y.t === 'K' ? mergeKV(y) : y, { t: 'I', v: rows }); }
+    if (isNum(x)) {
+      const n = num(x); const src = isAtom(y) ? [y] : arr(y); const L = src.length || 1;
+      const out = []; const nn = Math.abs(n);
+      if (n >= 0) for (let k = 0; k < nn; k++) out.push(src[k % L]);
+      else for (let k = 0; k < nn; k++) out.push(src[((L - (nn - k) % L) % L + L) % L]);
+      if (src.length === 0) return vec([]);
+      return vec(out);
+    }
+    if (x.t === 'I') { // reshape
+      return reshape(raw(x), isAtom(y) ? [y] : arr(y));
+    }
+    if (x.t === 'S' && y.t === 'm') { // take keys
+      return { t: 'm', k: x, v: vec(arr(x).map(kk => dictAt(y, kk))) };
+    }
+    throw err('type:#');
+  }
+  function reshape(dims, src) {
+    let idx = 0; const L = src.length;
+    function build(d) {
+      if (d.length === 1) { const out = []; for (let k = 0; k < dims[dims.length - d.length]; k++) { out.push(src[idx % L]); idx++; } return vec(out); }
+      const out = []; for (let k = 0; k < dims[dims.length - d.length]; k++) out.push(build(d.slice(1))); return { t: 'A', v: out };
+    }
+    return build(dims);
+  }
+  function replicateFn(f, y) {
+    const a = arr(y); const out = [];
+    a.forEach(e => { const c = num(applyFn(f, [e], null)); for (let j = 0; j < c; j++) out.push(e); });
+    return vec(out);
+  }
+
+  function dropCut(x, y) {
+    if (isNum(x) && (y.t === 'T' || y.t === 'K')) { const n = num(x), R = len(y); const rows = []; for (let k = 0; k < R; k++) rows.push(k); const keep = n >= 0 ? rows.slice(n) : rows.slice(0, R + n); return tableIndex(y.t === 'K' ? mergeKV(y) : y, { t: 'I', v: keep }); }
+    if (isNum(x)) { const n = num(x); const a = isAtom(y) ? [y] : arr(y); return n >= 0 ? vec(a.slice(n)) : vec(a.slice(0, a.length + n)); }
+    if (x.t === 'S' && y.t === 'm') { const rm = raw(x); const nk = [], nv = []; arr(y.k).forEach((kk, i) => { if (rm.indexOf(kk.v) < 0) { nk.push(kk); nv.push(arr(y.v)[i]); } }); return { t: 'm', k: vec(nk), v: vec(nv) }; }
+    if (x.t === 'I') { const cuts = raw(x); const a = arr(y); const out = []; for (let k = 0; k < cuts.length; k++) { const s = cuts[k], e = k + 1 < cuts.length ? cuts[k + 1] : a.length; out.push(vec(a.slice(s, e))); } return { t: 'A', v: out }; }
+    throw err('type:_');
+  }
+
+  function findIn(x, y) {
+    const a = arr(x); const raws = a.map(keyOf);
+    const one = (e) => { const ix = raws.indexOf(keyOf(e)); return I(ix < 0 ? len(x) : ix); };
+    if (isAtom(y)) return one(y);
+    return vec(arr(y).map(one));
+  }
+  function fill(x, y) { // x atom fills nulls in y
+    return each1(e => isNull(e) ? x : e, y);
+  }
+  function without(x, y) { const rm = (isAtom(y) ? [y] : arr(y)).map(keyOf); return vec(arr(x).filter(e => rm.indexOf(keyOf(e)) < 0)); }
+
+  function toStr(x) {
+    if (x.t === 'c') return { t: 'C', v: x.v };
+    if (x.t === 'C') return x;
+    if (isAtom(x)) return { t: 'C', v: fmtAtom(x) };
+    return vec(arr(x).map(e => toStr(e)));
+  }
+  function castTo(sym, y) {
+    const s = sym.v;
+    if (s === 'i' || s === 'I') return each1(e => I(Math.trunc(num(e))), y);
+    if (s === 'f' || s === 'F') return each1(e => F(num(e)), y);
+    if (s === 'c' || s === 'C') return each1(e => Ch(String.fromCharCode(num(e))), y);
+    if (s === '') { // `$ -> symbol from string
+      if (y.t === 'C') return Sy(y.v);
+      return each1(e => Sy(e.t === 'C' ? e.v : e.v + ''), y);
+    }
+    if (s === 's' || s === 'S') { if (y.t === 'C') return Sy(y.v); return each1(e => Sy(e.v + ''), y); }
+    return y;
+  }
+
+  function typeOf(x) {
+    const map = { i: 'i', f: 'f', c: 'c', s: 's', I: 'I', F: 'F', C: 'C', S: 'S', A: 'A', m: 'm', T: 'M', K: 'M', fn: 'o', vb: 'v', pr: 'p', u: 'u' };
+    return Sy(map[x.t] || '?');
+  }
+
+  // apply (@ .)
+  function applyAt(x, y) {
+    if (x.t === 'fn' || x.t === 'vb' || x.t === 'pr') return applyFn(x, [y], null);
+    return index(x, y);
+  }
+
+  function verbFn(v) {
+    const V = VERBS[v];
+    if (!V) throw err('nyi verb ' + v);
+    return { t: 'vb', n: v, mon: V.mon, dy: V.dy, nary: V.nary };
+  }
+
+  const VERBS = {
+    ':': { mon: x => x, dy: (x, y) => { if (x.t === 's' && (x.v === '0' || x.v === '1' || x.v === '2')) { OUT.push(outStr(y)); return U; } return y; } },
+    '+': { mon: flip, dy: arith((a, b) => a + b) },
+    '-': { mon: x => each1(e => isNum(e) ? (e.t === 'f' ? F(-e.v) : I(-e.v)) : F(-num(e)), x), dy: arith((a, b) => a - b) },
+    '*': { mon: first, dy: arith((a, b) => a * b) },
+    '%': { mon: x => each1(e => F(Math.sqrt(num(e))), x), dy: arith((a, b) => a / b, true) },
+    '!': { mon: monBang, dy: dyBang },
+    '&': { mon: where, dy: arith((a, b) => Math.min(a, b)) },
+    '|': { mon: reverse, dy: arith((a, b) => Math.max(a, b)) },
+    '<': { mon: gradeUp, dy: (x, y) => each2((a, b) => I(cmp(a, b) < 0 ? 1 : 0), x, y) },
+    '>': { mon: gradeDown, dy: (x, y) => each2((a, b) => I(cmp(a, b) > 0 ? 1 : 0), x, y) },
+    '=': { mon: groupBy, dy: (x, y) => each2(eq2, x, y) },
+    '~': { mon: x => each1(e => I(num0(e) ? 0 : 1), x), dy: match },
+    ',': { mon: enlist, dy: concat },
+    '^': { mon: x => each1(e => I(isNull(e) ? 1 : 0), x), dy: (x, y) => isAtom(x) ? fill(x, y) : without(x, y) },
+    '#': { mon: countOf, dy: takeReshape },
+    '_': { mon: x => each1(e => e.t === 'c' ? Ch(e.v.toLowerCase()) : I(Math.floor(num(e))), x), dy: dropCut },
+    '$': { mon: toStr, dy: (x, y) => x.t === 's' ? castTo(x, y) : padStr(x, y) },
+    '?': { mon: distinct, dy: qmark },
+    '@': { mon: typeOf, dy: applyAt, nary: amendN },
+    '.': { mon: dotMon, dy: (x, y) => indexDeep(x, arr(y)), nary: drillN },
+    '0:': { mon: x => x, dy: (x, y) => { return y; } },
+    '1:': { mon: x => x, dy: (x, y) => y },
+  };
+  function num0(e) { return isNum(e) ? e.v === 0 : (e.t === 'c' ? e.v === '\0' : (e.t === 's' ? e.v === '' : false)); }
+  function monBang(x) { if (x.t === 'm') return x.k; if (x.t === 'T') return keysList(x); return til(x); }
+  function keysList(t) { return { t: 'S', v: t.c }; }
+  function dyBang(x, y) {
+    // numeric mod/div only when the LEFT is a numeric atom
+    if (isNum(x) && (isNum(y) || isNumVec(y))) {
+      const m = num(x);
+      if (m < 0) return each1(e => I(Math.trunc(num(e) / -m)), y); // div
+      return each1(e => I(((num(e) % m) + m) % m), y); // mod
+    }
+    // otherwise build a dictionary (atoms get enlisted to length 1)
+    const kk = isAtom(x) ? vec([x]) : x;
+    const vv = isAtom(y) ? vec([y]) : y;
+    if (len(kk) !== len(vv)) throw err('length');
+    return { t: 'm', k: kk, v: vv };
+  }
+  function qmark(x, y) {
+    if (isNum(x)) { // roll/deal
+      const n = num(x); const rng = num(y);
+      const out = []; for (let k = 0; k < Math.abs(n); k++) out.push(Math.floor(RNG() * rng));
+      return { t: 'I', v: out };
+    }
+    return findIn(x, y);
+  }
+  function padStr(x, y) { const n = num(x); const s = y.t === 'C' ? y.v : fmtAtom(y); if (n >= 0) return { t: 'C', v: (s + ' '.repeat(Math.max(0, n))).slice(0, n) }; const nn = -n; return { t: 'C', v: (' '.repeat(Math.max(0, nn)) + s).slice(-nn) }; }
+  function dotMon(x) { if (x.t === 'm') return x.v; if (x.t === 'C') return evalString(x.v); if (x.t === 's') return lookupGlobal(x.v); if (x.t === 'S') return vec(x.v.map(lookupGlobal)); return x; }
+  function amendN(args) { // @[x;i;f] or @[x;i;f;y]
+    let [x, idx, f, y] = args; x = clone(x);
+    const idxs = isAtom(idx) ? [idx] : arr(idx);
+    idxs.forEach((iv, k) => {
+      const pos = num(iv);
+      const cur = index(x, iv);
+      const nv = args.length === 3 ? applyFn(asFn(f), [cur], null) : applyFn(asFn(f), [cur, isAtom(y) ? y : arr(y)[k]], null);
+      x = amendAt(x, pos, nv);
+    });
+    return x;
+  }
+  function drillN(args) { let [x, idx, f, y] = args; const path = isAtom(idx) ? [idx] : arr(idx); return amendDeep(clone(x), path, f, y, args.length); }
+  function amendDeep(x, path, f, y, n) {
+    if (path.length === 1) { const cur = index(x, path[0]); const nv = n === 3 ? applyFn(asFn(f), [cur], null) : applyFn(asFn(f), [cur, y], null); return amendAt(x, num(path[0]), nv); }
+    const cur = index(x, path[0]); const nv = amendDeep(clone(cur), path.slice(1), f, y, n); return amendAt(x, num(path[0]), nv);
+  }
+  function asFn(f) { if (f.t === 'fn' || f.t === 'vb' || f.t === 'pr') return f; if (f.t === 'c' || f.t === 'C') return verbFn(':'); return { t: 'vb', n: ':', mon: () => f, dy: () => f }; }
+  function amendAt(x, pos, nv) { const a = arr(x); a[wrap(pos, a.length)] = nv; return vec(a); }
+  function clone(x) { if (isVec(x)) return { t: x.t, v: x.t === 'C' ? x.v : x.v.slice(), at: x.at }; return x; }
+
+  function evalString(s) { const toks = lex(s); const st = parse(toks); return evalProgram(st, ROOT); }
+  function lookupGlobal(n) { const v = ROOT.vars[typeof n === 'string' ? n : n.v]; return v === undefined ? (BUILTINS[n] || U) : v; }
+
+  // ---- adverbs -----------------------------------------------------------
+  function advFn(t, env) {
+    const inner = advInnerFn(t.of, env);
+    const a = t.a;
+    return makeAdverb(a, inner, env);
+  }
+  function advInnerFn(of, env) {
+    const f = asFunctionTerm(of, env);
+    if (f) return f.fn;
+    // maybe it's a noun that is a function value
+    const v = evalNounOrFn(of, env);
+    return v;
+  }
+  function makeAdverb(a, f, env) {
+    const self = {
+      t: 'vb', n: a,
+      mon: (x) => advApply(a, f, [x]),
+      dy: (x, y) => advApply(a, f, [x, y])
+    };
+    return self;
+  }
+  function advApply(a, f, args) {
+    switch (a) {
+      case "'": // each
+        if (args.length === 1) return each1(e => applyFn(f, [e], null), args[0]);
+        return eachDy(f, args[0], args[1]);
+      case '/':
+        if (args.length === 1) return overMon(f, args[0]);
+        return overDy(f, args[0], args[1]);
+      case '\\':
+        if (args.length === 1) return scanMon(f, args[0]);
+        return scanDy(f, args[0], args[1]);
+      case "':":
+        if (args.length === 1) return eachPrior(f, args[0], null);
+        return eachPrior(f, args[1], args[0]);
+      case '/:':
+        return eachRight(f, args[0], args[1]);
+      case '\\:':
+        return eachLeft(f, args[0], args[1]);
+    }
+    throw err('nyi adv ' + a);
+  }
+  function eachDy(f, x, y) {
+    const xa = isAtom(x), ya = isAtom(y);
+    if (xa && ya) return applyFn(f, [x, y], null);
+    if (xa) return vec(arr(y).map(e => applyFn(f, [x, e], null)));
+    if (ya) return vec(arr(x).map(e => applyFn(f, [e, y], null)));
+    if (len(x) !== len(y)) throw err('length');
+    const ax = arr(x), ay = arr(y); return vec(ax.map((e, k) => applyFn(f, [e, ay[k]], null)));
+  }
+  function isFnVal(f) { return f && (f.t === 'fn' || f.t === 'vb' || f.t === 'pr'); }
+  function overMon(f, x) {
+    // n f/ x  is handled when f is an int (do). here f is function.
+    const a = arr(x); if (a.length === 0) return x; let acc = a[0];
+    for (let k = 1; k < a.length; k++) acc = applyFn(f, [acc, a[k]], null);
+    return acc;
+  }
+  function overDy(f, seed, x) {
+    if (isNum(seed) && !isFnVal(f)) {/*unused*/ }
+    const a = arr(x); let acc = seed;
+    for (let k = 0; k < a.length; k++) acc = applyFn(f, [acc, a[k]], null);
+    return acc;
+  }
+  function scanMon(f, x) { const a = arr(x); if (a.length === 0) return x; const out = [a[0]]; let acc = a[0]; for (let k = 1; k < a.length; k++) { acc = applyFn(f, [acc, a[k]], null); out.push(acc); } return vec(out); }
+  function scanDy(f, seed, x) { const a = arr(x); const out = []; let acc = seed; for (let k = 0; k < a.length; k++) { acc = applyFn(f, [acc, a[k]], null); out.push(acc); } return vec(out); }
+  function eachPrior(f, x, seed) {
+    const a = arr(x); const out = []; for (let k = 0; k < a.length; k++) { if (k === 0) { out.push(seed ? applyFn(f, [a[0], seed], null) : a[0]); } else out.push(applyFn(f, [a[k], a[k - 1]], null)); } return vec(out);
+  }
+  function eachRight(f, x, y) { return vec(arr(y).map(e => applyFn(f, [x, e], null))); }
+  function eachLeft(f, x, y) { return vec(arr(x).map(e => applyFn(f, [e, y], null))); }
+
+  // ---- tables ------------------------------------------------------------
+  function buildTable(t, env) {
+    const keyCols = t.keys.map(cd => resolveCol(cd, env));
+    const valCols = t.cols.map(cd => resolveCol(cd, env));
+    // normalize lengths
+    const allCols = keyCols.concat(valCols);
+    const n = allCols.reduce((m, c) => Math.max(m, isVec(c.val) ? len(c.val) : 1), 0);
+    allCols.forEach(c => { if (isAtom(c.val)) c.val = vec(Array(n).fill(c.val)); });
+    const vt = { t: 'T', c: valCols.map(c => c.name), d: valCols.map(c => c.val), at: valCols.map(c => c.val.at || '') };
+    if (keyCols.length === 0) return vt;
+    const kt = { t: 'T', c: keyCols.map(c => c.name), d: keyCols.map(c => c.val), at: keyCols.map(c => c.val.at || '') };
+    return { t: 'K', kt, vt };
+  }
+  function resolveCol(cd, env) {
+    let name = cd.name; let val = evalTerms(cd.e, env);
+    if (!name) name = 'x';
+    return { name, val };
+  }
+  function dictToTable(d) { // +dict where vals are equal-length vectors
+    const names = raw(d.k).map(k => typeof k === 'string' ? k : k); const cols = arr(d.v);
+    return { t: 'T', c: names, d: cols, at: cols.map(c => c.at || '') };
+  }
+  function tableToDict(t) { return { t: 'm', k: { t: 'S', v: t.c }, v: { t: 'A', v: t.d } }; }
+  function tableIndex(t, y) {
+    if (y.t === 's') { const ix = t.c.indexOf(y.v); if (ix < 0) throw err('value:' + y.v); return t.d[ix]; }
+    if (y.t === 'S') return vec(y.v.map(s => t.d[t.c.indexOf(s)] || U));
+    if (isNum(y)) { // row dict
+      const i = num(y); return { t: 'm', k: { t: 'S', v: t.c }, v: vec(t.d.map(col => arr(col)[i])) };
+    }
+    if (y.t === 'I') { const rows = raw(y); return { t: 'T', c: t.c, d: t.d.map(col => vec(rows.map(i => arr(col)[i]))), at: t.at.slice() }; }
+    throw err('type:tindex');
+  }
+  function meta(x) {
+    let t = x.t === 'K' ? mergeKV(x) : x;
+    if (t.t !== 'T') throw err('type:meta');
+    const cols = t.c.slice();
+    const types = t.d.map(c => Sy(typeChar(c)));
+    const attrs = t.d.map((c, i) => Sy(c.at || (t.at && t.at[i]) || ''));
+    // keyed table: build keyed meta (c!(t;a))
+    const kt = { t: 'T', c: ['c'], d: [{ t: 'S', v: cols }], at: [''] };
+    const vt = { t: 'T', c: ['t', 'a'], d: [{ t: 'S', v: types.map(s => s.v) }, { t: 'S', v: attrs.map(s => s.v) }], at: ['', ''] };
+    return { t: 'K', kt, vt };
+  }
+  function typeChar(c) {
+    if (c.t === 'I') return 'i'; if (c.t === 'F') return 'f'; if (c.t === 'C') return 'c'; if (c.t === 'S') return 's';
+    if (c.t === 'A') return ''; return c.t;
+  }
+  function mergeKV(k) { return { t: 'T', c: k.kt.c.concat(k.vt.c), d: k.kt.d.concat(k.vt.d), at: k.kt.at.concat(k.vt.at) }; }
+
+  // ---- formatting --------------------------------------------------------
+  function fmtNum(v) {
+    if (Number.isNaN(v)) return '0n';
+    if (v === Infinity) return '0w'; if (v === -Infinity) return '-0w';
+    if (Number.isInteger(v)) return String(v);
+    let s = String(v);
+    return s;
+  }
+  function fmtAtom(x) {
+    if (x.t === 'i') return x.v === -9223372036854775807 ? '0N' : String(x.v);
+    if (x.t === 'f') return fmtF(x.v);
+    if (x.t === 'c') return x.v;
+    if (x.t === 's') return '`' + x.v;
+    if (x.t === 'u') return '::';
+    return fmt(x);
+  }
+  function fmtF(v) { if (Number.isNaN(v)) return '0n'; if (v === Infinity) return '0w'; if (v === -Infinity) return '-0w'; if (Number.isInteger(v)) return v + 'f'; return String(v); }
+  function fmtFv(v) { if (Number.isNaN(v)) return '0n'; if (v === Infinity) return '0w'; if (v === -Infinity) return '-0w'; return String(v); }
+
+  function fmt(x) {
+    if (x === undefined || x === null) return '';
+    if (isAtom(x)) return fmtAtom(x);
+    if (x.t === 'C') return '"' + x.v + '"';
+    if (x.t === 'S') return x.v.map(s => '`' + s).join('');
+    if (x.t === 'I') return x.v.map(fmtNum).join(' ');
+    if (x.t === 'F') return x.v.map(fmtFv).join(' ');
+    if (x.t === 'A') return '(' + x.v.map(fmt).join(';') + ')';
+    if (x.t === 'm') return fmtDict(x);
+    if (x.t === 'T') return renderTable(x).join('\n');
+    if (x.t === 'K') return renderKeyed(x).join('\n');
+    if (x.t === 'fn') return x.src || '{...}';
+    if (x.t === 'vb') return x.n;
+    if (x.t === 'pr') return 'projection';
+    if (x.t === 'u') return '';
+    return '?';
+  }
+  function fmtDict(d) { return renderDict(d).join('\n'); }
+
+  // grid renderers return arrays of text lines
+  function colStrings(col) {
+    const a = arr(col);
+    return a.map(e => {
+      if (e === undefined) return '';
+      if (e.t === 'c') return e.v;
+      if (e.t === 'C') return e.v;
+      if (e.t === 's') return e.v;
+      if (isAtom(e)) return fmtAtom(e);
+      if (e.t === 'S') return e.v.map(s => '`' + s).join('');
+      if (e.t === 'I' || e.t === 'F') return fmt(e);
+      return fmt(e);
+    });
+  }
+  function pad(s, w, right) { s = s == null ? '' : String(s); if (s.length >= w) return s; const sp = ' '.repeat(w - s.length); return right ? sp + s : s + sp; }
+
+  function renderTable(t) {
+    const names = t.c;
+    const cols = t.d.map(colStrings);
+    const rightAlign = t.d.map(c => c.t === 'I' || c.t === 'F');
+    const widths = names.map((nm, i) => Math.max(nm.length, cols[i].reduce((m, s) => Math.max(m, s.length), 0)));
+    const n = t.d.length ? len(t.d[0]) : 0;
+    const header = names.map((nm, i) => pad(nm, widths[i], false)).join(' ');
+    const sep = widths.map(w => '-'.repeat(w)).join(' ');
+    const lines = [header, sep];
+    for (let r = 0; r < n; r++) lines.push(cols.map((c, i) => pad(c[r], widths[i], rightAlign[i])).join(' '));
+    return lines;
+  }
+  function renderKeyed(k) {
+    const kt = k.kt, vt = k.vt;
+    const kcols = kt.d.map(colStrings), vcols = vt.d.map(colStrings);
+    const kw = kt.c.map((nm, i) => Math.max(nm.length, kcols[i].reduce((m, s) => Math.max(m, s.length), 0)));
+    const vw = vt.c.map((nm, i) => Math.max(nm.length, vcols[i].reduce((m, s) => Math.max(m, s.length), 0)));
+    const kRA = kt.d.map(c => c.t === 'I' || c.t === 'F'); const vRA = vt.d.map(c => c.t === 'I' || c.t === 'F');
+    const n = kt.d.length ? len(kt.d[0]) : 0;
+    const header = kt.c.map((nm, i) => pad(nm, kw[i], false)).join(' ') + '| ' + vt.c.map((nm, i) => pad(nm, vw[i], false)).join(' ');
+    const sep = kw.map(w => '-'.repeat(w)).join(' ') + '| ' + vw.map(w => '-'.repeat(w)).join(' ');
+    const lines = [header, sep];
+    for (let r = 0; r < n; r++) {
+      const l = kcols.map((c, i) => pad(c[r], kw[i], kRA[i])).join(' ') + '| ' + vcols.map((c, i) => pad(c[r], vw[i], vRA[i])).join(' ');
+      lines.push(l);
+    }
+    return lines;
+  }
+  function renderDict(d) {
+    const ks = colStrings(d.k); const vs = d.v.t === 'A' ? d.v.v.map(e => fmt(e)) : colStrings(d.v);
+    const kw = ks.reduce((m, s) => Math.max(m, s.length), 0);
+    const lines = [];
+    for (let i = 0; i < ks.length; i++) lines.push(pad(ks[i], kw, false) + '| ' + vs[i]);
+    return lines;
+  }
+
+  function dictMerge(a, b) {
+    const nk = arr(a.k).slice(), nv = arr(a.v).slice();
+    const keys = nk.map(keyOf);
+    arr(b.k).forEach((kk, i) => { const ix = keys.indexOf(keyOf(kk)); const val = arr(b.v)[i]; if (ix < 0) { nk.push(kk); nv.push(val); keys.push(keyOf(kk)); } else nv[ix] = val; });
+    return { t: 'm', k: vec(nk), v: vec(nv) };
+  }
+
+  // ---- RNG (seedable) ----------------------------------------------------
+  let SEED = 42;
+  function RNG() { SEED = (SEED * 1103515245 + 12345) & 0x7fffffff; return SEED / 0x7fffffff; }
+  function setSeed(s) { SEED = s | 0; }
+
+  // ---- Amber vocabulary (named builtins) --------------------------------
+  function reduceNum(f, init, x) { const a = raw(isAtom(x) ? enlist(x) : x); return a.reduce(f, init); }
+  const BUILTINS = {};
+  function defMon(name, fn) { BUILTINS[name] = { t: 'vb', n: name, mon: fn }; }
+  function defDy(name, fn) { BUILTINS[name] = { t: 'vb', n: name, dy: fn }; }
+  function defND(name, fn) { BUILTINS[name] = { t: 'vb', n: name, nary: fn, dy: (x, y) => fn([x, y]), mon: x => fn([x]) }; }
+
+  defMon('til', til);
+  defMon('enlist', enlist);
+  defMon('count', countOf);
+  defMon('first', first);
+  defMon('last', last);
+  defMon('reverse', reverse);
+  defMon('distinct', distinct);
+  defMon('where', where);
+  defMon('group', groupBy);
+  defMon('flip', flip);
+  defMon('type', typeOf);
+  defMon('key', x => x.t === 'm' ? x.k : x.t === 'K' ? x.kt : monBang(x));
+  defMon('value', x => x.t === 'm' ? x.v : x.t === 'K' ? x.vt : x);
+  defMon('string', toStr);
+  defMon('neg', x => each1(e => isNum(e) ? (e.t === 'f' ? F(-e.v) : I(-e.v)) : F(-num(e)), x));
+  defMon('not', x => each1(e => I(num0(e) ? 1 : 0), x));
+  defMon('null', x => each1(e => I(isNull(e) ? 1 : 0), x));
+  defMon('sqrt', x => each1(e => F(Math.sqrt(num(e))), x));
+  defMon('abs', x => each1(e => isNum(e) ? (e.t === 'f' ? F(Math.abs(e.v)) : I(Math.abs(e.v))) : F(Math.abs(num(e))), x));
+  defMon('signum', x => each1(e => I(Math.sign(num(e))), x));
+  defMon('floor', x => each1(e => I(Math.floor(num(e))), x));
+  defMon('ceiling', x => each1(e => I(Math.ceil(num(e))), x));
+  defMon('exp', x => each1(e => F(Math.exp(num(e))), x));
+  defMon('log', x => each1(e => F(Math.log(num(e))), x));
+  defMon('sin', x => each1(e => F(Math.sin(num(e))), x));
+  defMon('cos', x => each1(e => F(Math.cos(num(e))), x));
+  defMon('reciprocal', x => each1(e => F(1 / num(e)), x));
+  defMon('sum', x => aggNum((a, b) => a + b, 0, x));
+  defMon('prd', x => aggNum((a, b) => a * b, 1, x));
+  defMon('min', x => aggNum((a, b) => Math.min(a, b), Infinity, x));
+  defMon('max', x => aggNum((a, b) => Math.max(a, b), -Infinity, x));
+  defMon('avg', x => { const a = raw(x); return F(a.reduce((s, v) => s + v, 0) / a.length); });
+  defMon('med', x => { const a = raw(x).slice().sort((p, q) => p - q); const n = a.length; return F(n % 2 ? a[(n - 1) / 2] : (a[n / 2 - 1] + a[n / 2]) / 2); });
+  defMon('dev', x => { const a = raw(x); const m = a.reduce((s, v) => s + v, 0) / a.length; return F(Math.sqrt(a.reduce((s, v) => s + (v - m) * (v - m), 0) / a.length)); });
+  defMon('var', x => { const a = raw(x); const m = a.reduce((s, v) => s + v, 0) / a.length; return F(a.reduce((s, v) => s + (v - m) * (v - m), 0) / a.length); });
+  defMon('sdev', x => { const a = raw(x); const m = a.reduce((s, v) => s + v, 0) / a.length; return F(Math.sqrt(a.reduce((s, v) => s + (v - m) * (v - m), 0) / (a.length - 1))); });
+  defMon('svar', x => { const a = raw(x); const m = a.reduce((s, v) => s + v, 0) / a.length; return F(a.reduce((s, v) => s + (v - m) * (v - m), 0) / (a.length - 1)); });
+  defMon('all', x => I(raw(x).every(v => v !== 0) ? 1 : 0));
+  defMon('any', x => I(raw(x).some(v => v !== 0) ? 1 : 0));
+  defMon('sums', x => scanMon(verbFn('+'), x));
+  defMon('prds', x => scanMon(verbFn('*'), x));
+  defMon('mins', x => scanMon(verbFn('&'), x));
+  defMon('maxs', x => scanMon(verbFn('|'), x));
+  defMon('deltas', x => eachPrior(verbFn('-'), x, null));
+  defMon('ratios', x => eachPrior(verbFn('%'), x, null));
+  defMon('differ', x => eachPrior({ t: 'vb', n: 'differ', dy: (a, b) => I(deepEq(a, b) ? 0 : 1) }, x, null));
+  defMon('prev', x => { const a = arr(x); return vec([nullOf(x)].concat(a.slice(0, -1))); });
+  defMon('next', x => { const a = arr(x); return vec(a.slice(1).concat([nullOf(x)])); });
+  defMon('asc', ascv);
+  defMon('desc', descv);
+  defMon('iasc', gradeUp);
+  defMon('idesc', gradeDown);
+  defMon('rank', x => index(gradeUp(gradeUp(x)), til(countOf(x))));
+  defMon('raze', x => { if (x.t !== 'A') return x; let out = []; x.v.forEach(e => { out = out.concat(isAtom(e) ? [e] : arr(e)); }); return vec(out); });
+  defMon('lower', x => each1(e => e.t === 'c' ? Ch(e.v.toLowerCase()) : e, strc(x)));
+  defMon('upper', x => each1(e => e.t === 'c' ? Ch(e.v.toUpperCase()) : e, strc(x)));
+  defMon('trim', x => ({ t: 'C', v: x.v.trim() }));
+  defMon('ltrim', x => ({ t: 'C', v: x.v.replace(/^ +/, '') }));
+  defMon('rtrim', x => ({ t: 'C', v: x.v.replace(/ +$/, '') }));
+  defMon('cols', x => ({ t: 'S', v: (x.t === 'K' ? x.kt.c.concat(x.vt.c) : x.c) }));
+  defMon('meta', meta);
+  defMon('keys', x => x.t === 'K' ? { t: 'S', v: x.kt.c } : { t: 'S', v: [] });
+  defMon('unkey', x => x.t === 'K' ? mergeKV(x) : x);
+  defMon('cols', x => ({ t: 'S', v: (x.t === 'K' ? x.kt.c.concat(x.vt.c) : x.c) }));
+  defMon('istable', x => I(x.t === 'T' || x.t === 'K' ? 1 : 0));
+  defMon('isdict', x => I(x.t === 'm' ? 1 : 0));
+  defMon('iskeyed', x => I(x.t === 'K' ? 1 : 0));
+  function strc(x) { return isAtom(x) && x.t === 'c' ? x : x; }
+  function aggNum(f, init, x) {
+    if (isAtom(x)) return x;
+    const a = raw(x); if (a.length === 0) return init === Infinity ? NF : init === -Infinity ? NF : (Number.isInteger(init) ? I(init) : F(init));
+    let acc = a[0]; for (let k = 1; k < a.length; k++) acc = f(acc, a[k]);
+    return (x.t === 'F' || !Number.isInteger(acc)) ? F(acc) : I(acc);
+  }
+
+  defDy('mod', (x, y) => each2((a, b) => I(((num(a) % num(b)) + num(b)) % num(b)), x, y));
+  defDy('div', (x, y) => each2((a, b) => I(Math.floor(num(a) / num(b))), x, y));
+  defDy('xbar', (w, x) => { const ww = num(w); return each1(e => { const v = num(e); return I(Math.floor(v / ww) * ww); }, x); });
+  defDy('xlog', (b, x) => each1(e => F(Math.log(num(e)) / Math.log(num(b))), x));
+  defDy('wsum', (w, x) => { const a = raw(w), b = raw(x); return F(a.reduce((s, v, i) => s + v * b[i], 0)); });
+  defDy('wavg', (w, x) => { const a = raw(w), b = raw(x); const sw = a.reduce((s, v) => s + v, 0); return F(a.reduce((s, v, i) => s + v * b[i], 0) / sw); });
+  defDy('cov', (x, y) => { const a = raw(x), b = raw(y); const mx = a.reduce((s, v) => s + v, 0) / a.length, my = b.reduce((s, v) => s + v, 0) / b.length; return F(a.reduce((s, v, i) => s + (v - mx) * (b[i] - my), 0) / a.length); });
+  defDy('cor', (x, y) => { const a = raw(x), b = raw(y); const n = a.length; const mx = a.reduce((s, v) => s + v, 0) / n, my = b.reduce((s, v) => s + v, 0) / n; let sxy = 0, sx = 0, sy = 0; for (let i = 0; i < n; i++) { sxy += (a[i] - mx) * (b[i] - my); sx += (a[i] - mx) ** 2; sy += (b[i] - my) ** 2; } return F(sxy / Math.sqrt(sx * sy)); });
+  defDy('in', (x, y) => { const set = arr(y).map(keyOf); return each1(e => I(set.indexOf(keyOf(e)) >= 0 ? 1 : 0), x); });
+  defDy('except', (x, y) => { const set = arr(y).map(keyOf); return vec(arr(x).filter(e => set.indexOf(keyOf(e)) < 0)); });
+  defDy('inter', (x, y) => { const set = arr(y).map(keyOf); return vec(arr(x).filter(e => set.indexOf(keyOf(e)) >= 0)); });
+  defDy('union', (x, y) => distinct(concat(x, y)));
+  defDy('cross', (x, y) => { const a = arr(x), b = arr(y); const out = []; a.forEach(p => b.forEach(q => out.push(vec([p, q])))); return { t: 'A', v: out }; });
+  defDy('sublist', (n, x) => { const nn = num(n); const a = arr(x); return nn >= 0 ? vec(a.slice(0, nn)) : vec(a.slice(nn)); });
+  defDy('rotate', (n, x) => { const a = arr(x); const nn = ((num(n) % a.length) + a.length) % a.length; return vec(a.slice(nn).concat(a.slice(0, nn))); });
+  defDy('xexp', (b, x) => each1(e => F(Math.pow(num(b), num(e))), x));
+  defDy('like', (x, pat) => { const p = pat.v; const re = new RegExp('^' + p.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$'); return I(re.test(x.v) ? 1 : 0); });
+  defDy('ss', (s, sub) => { const str = s.v, ph = sub.v; const out = []; let i = str.indexOf(ph); while (i >= 0) { out.push(i); i = str.indexOf(ph, i + 1); } return { t: 'I', v: out }; });
+  defND('ssr', (a) => { const [s, from, to] = a; return { t: 'C', v: s.v.split(from.v).join(to.v) }; });
+  defDy('sv', (d, x) => { if (d.t === 'C' || d.t === 'c') { const sep = d.t === 'c' ? d.v : d.v; return { t: 'C', v: arr(x).map(e => e.t === 'C' ? e.v : fmtAtom(e)).join(sep) }; } return x; });
+  defDy('vs', (d, x) => { const sep = d.t === 'c' ? d.v : d.v; return vec(x.v.split(sep).map(s => ({ t: 'C', v: s }))); });
+  defDy('xbarApply', (w, x) => x);
+
+  // table ops
+  defDy('xasc', (c, t) => sortTable(c, t, false));
+  defDy('xdesc', (c, t) => sortTable(c, t, true));
+  defDy('xkey', (k, t) => xkey(k, t));
+  defDy('xcols', (c, t) => { const nc = arr(c).map(s => s.v); const tt = t.t === 'K' ? mergeKV(t) : t; const rest = tt.c.filter(x => nc.indexOf(x) < 0); const order = nc.concat(rest); return { t: 'T', c: order, d: order.map(n => tt.d[tt.c.indexOf(n)]), at: order.map(n => tt.at[tt.c.indexOf(n)]) }; });
+  defDy('xgroup', (k, t) => xgroup(k, t));
+  defDy('ungroup', (t) => t);
+  defND('qwhere', (a) => qwhere(a[0], a[1]));
+  defND('qselect', (a) => qselect(a[0], a[1]));
+  defND('qby', (a) => qby(a[0], a[1], a[2]));
+  defND('aj', (a) => aj(a[0], a[1], a[2], false));
+  defND('aj0', (a) => aj(a[0], a[1], a[2], true));
+  defDy('lj', (t, kt) => lj(t, kt));
+  defDy('ij', (t, kt) => ij(t, kt));
+  defDy('uj', (x, y) => uj(x, y));
+  defDy('insert', (t, r) => insertRow(t, r));
+
+  // attribute sym-verbs available as functions too
+  defMon('at', x => Sy(x.at || ''));
+  defMon('sa', x => setAttr(x, 's'));
+  defMon('ua', x => setAttr(x, 'u'));
+  defMon('pa', x => setAttr(x, 'p'));
+  defMon('ga', x => setAttr(x, 'g'));
+  defDy('sortcol', (c, t) => attrCol(c, t, 's'));
+  defDy('partcol', (c, t) => attrCol(c, t, 'p'));
+  defDy('groupcol', (c, t) => attrCol(c, t, 'g'));
+  defMon('gentq', gentq);
+  defND('hms', (a) => I((num(a[0]) * 3600 + num(a[1]) * 60 + num(a[2])) * 1000));
+  defMon('show', x => { OUT.push(fmt(x)); return U; });
+  defMon('stime', x => each1(e => ({ t: 'C', v: msToStr(num(e)) }), x));
+  defND('bar', (a) => { const [w, u, t] = a; return xbarT(num(w) * num(u), t); });
+  defDy('minbar', (w, t) => xbarT(num(w) * 60000, t));
+  defDy('xbar', (w, x) => { const ww = num(w); return each1(e => I(Math.floor(num(e) / ww) * ww), x); });
+
+  function setAttr(x, a) { const c = clone(x); c.at = a; return c; }
+  function attrCol(c, t, a) {
+    const tt = t.t === 'K' ? mergeKV(t) : t;
+    const ci = tt.c.indexOf(c.v); if (ci < 0) throw err('value:col');
+    const nd = tt.d.slice(); nd[ci] = setAttr(nd[ci], a);
+    const na = tt.at.slice(); na[ci] = a;
+    return { t: 'T', c: tt.c.slice(), d: nd, at: na };
+  }
+  function sortTable(c, t, desc) {
+    const tt = t.t === 'K' ? mergeKV(t) : t;
+    const cnames = (c.t === 'S' ? c.v : [c.v]);
+    const n = len(tt.d[0]);
+    let idx = []; for (let i = 0; i < n; i++) idx.push(i);
+    idx.sort((i, j) => { for (const cn of cnames) { const col = tt.d[tt.c.indexOf(cn)]; const cc = cmp(arr(col)[i], arr(col)[j]); if (cc) return desc ? -cc : cc; } return i - j; });
+    const nd = tt.d.map(col => vec(idx.map(i => arr(col)[i])));
+    const na = tt.at.slice();
+    // first sort col gets attribute
+    const fi = tt.c.indexOf(cnames[0]); if (fi >= 0 && !desc) { nd[fi] = setAttr(nd[fi], 's'); na[fi] = 's'; }
+    return { t: 'T', c: tt.c.slice(), d: nd, at: na };
+  }
+  function xkey(k, t) {
+    const tt = t.t === 'K' ? mergeKV(t) : t;
+    const kn = (k.t === 'S' ? k.v : [k.v]);
+    const kt = { t: 'T', c: kn, d: kn.map(n => tt.d[tt.c.indexOf(n)]), at: kn.map(n => tt.at[tt.c.indexOf(n)]) };
+    const vn = tt.c.filter(n => kn.indexOf(n) < 0);
+    const vt = { t: 'T', c: vn, d: vn.map(n => tt.d[tt.c.indexOf(n)]), at: vn.map(n => tt.at[tt.c.indexOf(n)]) };
+    return { t: 'K', kt, vt };
+  }
+  function qwhere(t, mask) {
+    const tt = t.t === 'K' ? mergeKV(t) : t;
+    const m = raw(mask); const idx = []; m.forEach((v, i) => { if (v) idx.push(i); });
+    return { t: 'T', c: tt.c.slice(), d: tt.d.map(col => vec(idx.map(i => arr(col)[i]))), at: tt.at.slice() };
+  }
+  function qselect(t, dict) {
+    const tt = t.t === 'K' ? mergeKV(t) : t;
+    const names = arr(dict.k).map(s => s.v); const fns = arr(dict.v);
+    const d = fns.map(f => applyFn(f, [tt], null));
+    return { t: 'T', c: names, d: d.map(x => isVec(x) ? x : vec(Array(len(tt.d[0])).fill(x))), at: names.map(() => '') };
+  }
+  function qby(t, by, dict) {
+    const tt = t.t === 'K' ? mergeKV(t) : t;
+    const bcols = (by.t === 'S' ? by.v : [by.v]);
+    const n = len(tt.d[0]);
+    // group rows by by-cols
+    const groups = new Map(); const order = [];
+    for (let i = 0; i < n; i++) { const key = bcols.map(c => keyOf(arr(tt.d[tt.c.indexOf(c)])[i])).join('\x01'); if (!groups.has(key)) { groups.set(key, []); order.push({ key, i }); } groups.get(key).push(i); }
+    const names = arr(dict.k).map(s => s.v); const fns = arr(dict.v);
+    const keyData = bcols.map(() => []); const valData = names.map(() => []);
+    order.forEach(o => {
+      const rows = groups.get(o.key);
+      bcols.forEach((c, ci) => keyData[ci].push(arr(tt.d[tt.c.indexOf(c)])[rows[0]]));
+      const sub = { t: 'T', c: tt.c.slice(), d: tt.d.map(col => vec(rows.map(i => arr(col)[i]))), at: tt.at.slice() };
+      fns.forEach((f, fi) => valData[fi].push(applyFn(f, [sub], null)));
+    });
+    const kt = { t: 'T', c: bcols, d: keyData.map(vec), at: bcols.map(() => '') };
+    const vt = { t: 'T', c: names, d: valData.map(vec), at: names.map(() => '') };
+    return { t: 'K', kt, vt };
+  }
+  function aj(c, x, q, useYTime) {
+    const cn = (c.t === 'S' ? c.v : [c.v]);
+    const gcols = cn.slice(0, -1); const tcol = cn[cn.length - 1];
+    const xt = x.t === 'K' ? mergeKV(x) : x; const qt = q.t === 'K' ? mergeKV(q) : q;
+    const n = len(xt.d[0]); const qn = len(qt.d[0]);
+    const xc = {}; xt.c.forEach(cc => xc[cc] = arr(xt.d[xt.c.indexOf(cc)]));
+    const qc = {}; qt.c.forEach(cc => qc[cc] = arr(qt.d[qt.c.indexOf(cc)]));
+    const xTimes = xc[tcol].map(num), qTimes = qc[tcol].map(num);
+    const qE = qt.c.filter(cc => gcols.indexOf(cc) < 0 && cc !== tcol);
+    // group quote rows by group key, sorted by time -> binary search per trade
+    const groups = new Map();
+    for (let j = 0; j < qn; j++) { const key = gcols.map(g => keyOf(qc[g][j])).join('\x01'); let a = groups.get(key); if (!a) { a = []; groups.set(key, a); } a.push(j); }
+    groups.forEach(a => a.sort((p, r) => qTimes[p] - qTimes[r]));
+    const out = {}; xt.c.forEach(cc => out[cc] = xc[cc].slice()); qE.forEach(cc => { if (!(cc in out)) out[cc] = []; });
+    for (let i = 0; i < n; i++) {
+      const a = groups.get(gcols.map(g => keyOf(xc[g][i])).join('\x01'));
+      let best = -1;
+      if (a) { let lo = 0, hi = a.length - 1; const t = xTimes[i]; while (lo <= hi) { const mid = (lo + hi) >> 1; if (qTimes[a[mid]] <= t) { best = a[mid]; lo = mid + 1; } else hi = mid - 1; } }
+      qE.forEach(cc => { if (xt.c.indexOf(cc) >= 0) return; out[cc].push(best >= 0 ? qc[cc][best] : nullOf(qt.d[qt.c.indexOf(cc)])); });
+    }
+    const finalCols = xt.c.concat(qE.filter(cc => xt.c.indexOf(cc) < 0));
+    return { t: 'T', c: finalCols, d: finalCols.map(cc => vec(out[cc])), at: finalCols.map(() => '') };
+  }
+  function lj(t, kt) {
+    if (kt.t !== 'K') throw err('type:lj');
+    const tt = t.t === 'K' ? mergeKV(t) : t;
+    const kcols = kt.kt.c; const n = len(tt.d[0]);
+    const vcols = kt.vt.c;
+    const out = {}; tt.c.forEach(c => out[c] = arr(tt.d[tt.c.indexOf(c)]).slice()); vcols.forEach(c => out[c] = []);
+    for (let i = 0; i < n; i++) {
+      let mj = -1; const kn = len(kt.kt.d[0]);
+      for (let j = 0; j < kn; j++) { let m = true; for (const kc of kcols) { if (!deepEq(arr(tt.d[tt.c.indexOf(kc)])[i], arr(kt.kt.d[kt.kt.c.indexOf(kc)])[j])) { m = false; break; } } if (m) { mj = j; break; } }
+      vcols.forEach(vc => out[vc].push(mj >= 0 ? arr(kt.vt.d[kt.vt.c.indexOf(vc)])[mj] : nullOf(kt.vt.d[kt.vt.c.indexOf(vc)])));
+    }
+    const fc = tt.c.concat(vcols.filter(c => tt.c.indexOf(c) < 0));
+    return { t: 'T', c: fc, d: fc.map(c => vec(out[c])), at: fc.map(() => '') };
+  }
+  function ij(t, kt) {
+    const full = lj(t, kt); // then drop non-matching — approximate by keeping all (kept simple)
+    return full;
+  }
+  function uj(x, y) {
+    const xt = x.t === 'K' ? mergeKV(x) : x, yt = y.t === 'K' ? mergeKV(y) : y;
+    const cols = xt.c.slice(); yt.c.forEach(c => { if (cols.indexOf(c) < 0) cols.push(c); });
+    const nx = len(xt.d[0] || { t: 'I', v: [] }), ny = len(yt.d[0] || { t: 'I', v: [] });
+    const d = cols.map(c => {
+      const xi = xt.c.indexOf(c), yi = yt.c.indexOf(c);
+      const a = xi >= 0 ? arr(xt.d[xi]) : Array(nx).fill(NI);
+      const b = yi >= 0 ? arr(yt.d[yi]) : Array(ny).fill(NI);
+      return vec(a.concat(b));
+    });
+    return { t: 'T', c: cols, d, at: cols.map(() => '') };
+  }
+  function insertRow(t, r) {
+    const tt = t.t === 'K' ? mergeKV(t) : t;
+    const rvals = r.t === 'A' ? r.v : arr(r);
+    const d = tt.d.map((col, i) => concat(col, rvals[i]));
+    return { t: 'T', c: tt.c.slice(), d, at: tt.at.slice() };
+  }
+  function xgroup(k, t) {
+    const tt = t.t === 'K' ? mergeKV(t) : t;
+    const kn = (k.t === 'S' ? k.v : [k.v]);
+    const n = len(tt.d[0]); const groups = new Map(); const order = [];
+    for (let i = 0; i < n; i++) { const key = kn.map(c => keyOf(arr(tt.d[tt.c.indexOf(c)])[i])).join('\x01'); if (!groups.has(key)) { groups.set(key, []); order.push({ key, i }); } groups.get(key).push(i); }
+    const vcols = tt.c.filter(c => kn.indexOf(c) < 0);
+    const kt = { t: 'T', c: kn, d: kn.map(c => vec(order.map(o => arr(tt.d[tt.c.indexOf(c)])[o.i]))), at: kn.map(() => '') };
+    const vt = { t: 'T', c: vcols, d: vcols.map(c => ({ t: 'A', v: order.map(o => vec(groups.get(o.key).map(i => arr(tt.d[tt.c.indexOf(c)])[i]))) })), at: vcols.map(() => '') };
+    return { t: 'K', kt, vt };
+  }
+  function xbarT(ms, x) { return each1(e => I(Math.floor(num(e) / ms) * ms), x); }
+  function msToStr(ms) { ms = ms | 0; const h = Math.floor(ms / 3600000); ms -= h * 3600000; const m = Math.floor(ms / 60000); ms -= m * 60000; const s = Math.floor(ms / 1000); ms -= s * 1000; const p2 = n => String(n).padStart(2, '0'); const p3 = n => String(n).padStart(3, '0'); return p2(h) + ':' + p2(m) + ':' + p2(s) + '.' + p3(ms); }
+
+  function gentq(nv) {
+    const n = num(nv); setSeed(12345 + n);
+    const u = ['AAPL', 'MSFT', 'GOOG', 'AMZN', 'META', 'TSLA', 'NVDA', 'JPM', 'XOM', 'WMT'];
+    const o = (9 * 3600 + 30 * 60) * 1000, L = (16 * 3600) * 1000 - o;
+    const bp = {}; u.forEach((s, i) => bp[s] = 100 + 10 * i);
+    const m = 2 * n;
+    const rint = (k) => Math.floor(RNG() * k);
+    const tsym = [], ttime = [], tpx = [], tsz = [];
+    for (let i = 0; i < n; i++) { const s = u[rint(u.length)]; tsym.push(s); ttime.push(o + rint(L)); tpx.push(Math.round((bp[s] + 0.01 * (rint(201) - 100)) * 100) / 100); tsz.push(100 * (1 + rint(10))); }
+    const qsym = [], qtime = [], qbid = [], qask = [], qbsz = [], qasz = [];
+    for (let i = 0; i < m; i++) { const s = u[rint(u.length)]; const mid = Math.round((bp[s] + 0.01 * (rint(201) - 100)) * 100) / 100; const h = 0.01 * (1 + rint(10)); qsym.push(s); qtime.push(o + rint(L)); qbid.push(Math.round((mid - h) * 100) / 100); qask.push(Math.round((mid + h) * 100) / 100); qbsz.push(100 * (1 + rint(5))); qasz.push(100 * (1 + rint(5))); }
+    // sort by sym,time
+    const sortIdx = (syms, times) => { const idx = syms.map((_, i) => i); idx.sort((a, b) => syms[a] < syms[b] ? -1 : syms[a] > syms[b] ? 1 : times[a] - times[b]); return idx; };
+    const ti = sortIdx(tsym, ttime), qi = sortIdx(qsym, qtime);
+    const trades = { t: 'T', c: ['sym', 'time', 'px', 'sz'], d: [{ t: 'S', v: ti.map(i => tsym[i]), at: 'p' }, { t: 'I', v: ti.map(i => ttime[i]), at: 's' }, { t: 'F', v: ti.map(i => tpx[i]) }, { t: 'I', v: ti.map(i => tsz[i]) }], at: ['p', 's', '', ''] };
+    const quotes = { t: 'T', c: ['sym', 'time', 'bid', 'ask', 'bsz', 'asz'], d: [{ t: 'S', v: qi.map(i => qsym[i]), at: 'p' }, { t: 'I', v: qi.map(i => qtime[i]), at: 's' }, { t: 'F', v: qi.map(i => qbid[i]) }, { t: 'F', v: qi.map(i => qask[i]) }, { t: 'I', v: qi.map(i => qbsz[i]) }, { t: 'I', v: qi.map(i => qasz[i]) }], at: ['p', 's', '', '', '', ''] };
+    ROOT.vars['trades'] = trades; ROOT.vars['quotes'] = quotes;
+    return { t: 'S', v: ['trades', 'quotes'] };
+  }
+
+  // fin.k analytics (operate on quote/trade tables via col access)
+  defMon('mid', t => { const b = raw(tcol(t, 'bid')), a = raw(tcol(t, 'ask')); return nvecF(b.map((v, i) => (v + a[i]) / 2)); });
+  defMon('spread', t => { const b = raw(tcol(t, 'bid')), a = raw(tcol(t, 'ask')); return nvecF(a.map((v, i) => v - b[i])); });
+  defMon('vwap', t => { const w = raw(tcol(t, 'sz')), p = raw(tcol(t, 'px')); const sw = w.reduce((s, v) => s + v, 0); return F(w.reduce((s, v, i) => s + v * p[i], 0) / sw); });
+  defMon('twap', t => { const p = raw(tcol(t, 'px')); return F(p.reduce((s, v) => s + v, 0) / p.length); });
+  defMon('notional', t => { const p = raw(tcol(t, 'px')), s = raw(tcol(t, 'sz')); return nvecF(p.map((v, i) => v * s[i])); });
+  function tcol(t, name) { const tt = t.t === 'K' ? mergeKV(t) : t; const i = tt.c.indexOf(name); if (i < 0) throw err('value:' + name); return tt.d[i]; }
+  function nvecF(nums) { return { t: 'F', v: nums }; }
+  function midArr(t) { const b = raw(tcol(t, 'bid')), a = raw(tcol(t, 'ask')); return b.map((v, i) => (v + a[i]) / 2); }
+  defMon('spreadbps', t => { const b = raw(tcol(t, 'bid')), a = raw(tcol(t, 'ask')); const m = midArr(t); return nvecF(a.map((v, i) => Math.round(10000 * (v - b[i]) / m[i] * 100) / 100)); });
+  defMon('micro', t => { const b = raw(tcol(t, 'bid')), a = raw(tcol(t, 'ask')), bs = raw(tcol(t, 'bsz')), as = raw(tcol(t, 'asz')); return nvecF(b.map((v, i) => (v * as[i] + a[i] * bs[i]) / (bs[i] + as[i]))); });
+  defMon('imbal', t => { const bs = raw(tcol(t, 'bsz')), as = raw(tcol(t, 'asz')); return nvecF(bs.map((v, i) => Math.round(10000 * (v - as[i]) / (v + as[i])) / 10000)); });
+  defMon('tsign', t => { const p = raw(tcol(t, 'px')); const m = midArr(t); return { t: 'I', v: p.map((v, i) => Math.sign(v - m[i])) }; });
+  defMon('signedvol', t => { const p = raw(tcol(t, 'px')), s = raw(tcol(t, 'sz')); const m = midArr(t); return { t: 'I', v: p.map((v, i) => Math.sign(v - m[i]) * s[i]) }; });
+  defMon('effspread', t => { const p = raw(tcol(t, 'px')); const m = midArr(t); return nvecF(p.map((v, i) => 2 * Math.abs(v - m[i]))); });
+  defMon('ret', t => { const p = raw(t); const out = [NaN]; for (let i = 1; i < p.length; i++) out.push((p[i] - p[i - 1]) / p[i - 1]); return { t: 'F', v: out }; });
+  defMon('logret', t => { const p = raw(t); const out = [NaN]; for (let i = 1; i < p.length; i++) out.push(Math.log(p[i] / p[i - 1])); return { t: 'F', v: out }; });
+  defMon('rvol', t => { const p = raw(t); let s = 0; for (let i = 1; i < p.length; i++) { const r = Math.log(p[i] / p[i - 1]); s += r * r; } return F(Math.sqrt(s)); });
+  defDy('taq', (tr, qu) => aj({ t: 'S', v: ['sym', 'time'] }, tr, qu, false));
+  defDy('movavg', (w, x) => moving(num(w), raw(x), a => a.reduce((s, v) => s + v, 0) / a.length));
+  defDy('movsum', (w, x) => moving(num(w), raw(x), a => a.reduce((s, v) => s + v, 0)));
+  defDy('movmax', (w, x) => moving(num(w), raw(x), a => Math.max.apply(null, a)));
+  defDy('movmin', (w, x) => moving(num(w), raw(x), a => Math.min.apply(null, a)));
+  defDy('ema', (al, x) => { const a = num(al); const p = raw(x); const out = [p[0]]; for (let i = 1; i < p.length; i++) out.push(a * p[i] + (1 - a) * out[i - 1]); return { t: 'F', v: out }; });
+  defDy('rollstd', (w, x) => { const ww = num(w); const p = raw(x); const out = []; for (let i = 0; i < p.length; i++) { if (i < ww - 1) { out.push(NaN); continue; } const win = p.slice(i - ww + 1, i + 1); const m = win.reduce((s, v) => s + v, 0) / ww; out.push(Math.sqrt(win.reduce((s, v) => s + (v - m) * (v - m), 0) / ww)); } return { t: 'F', v: out }; });
+  function moving(w, p, f) { const out = []; for (let i = 0; i < p.length; i++) { if (i < w - 1) { out.push(NaN); continue; } out.push(f(p.slice(i - w + 1, i + 1))); } return { t: 'F', v: out }; }
+  defMon('bysym', t => { const col = tcol(t, 'sym'); return groupBy(col); });
+  defMon('gidx', x => groupBy(x));
+  defND('symrows', a => { const [t, g, s] = a; const pos = dictAt(g, s); return index(t.t === 'K' ? mergeKV(t) : t, pos); });
+  defDy('bars', (w, t) => { const tt = t.t === 'K' ? mergeKV(t) : t; const ti = tt.c.indexOf('time'); const nd = tt.d.slice(); nd[ti] = xbarT(num(w) * 60000, nd[ti]); const bt = { t: 'T', c: tt.c.slice(), d: nd, at: tt.at.slice() }; const dict = { t: 'm', k: { t: 'S', v: ['o', 'h', 'l', 'c', 'v'] }, v: { t: 'A', v: [{ t: 'vb', mon: g => first(tcol(g, 'px')) }, { t: 'vb', mon: g => aggNum((a, b) => Math.max(a, b), -Infinity, tcol(g, 'px')) }, { t: 'vb', mon: g => aggNum((a, b) => Math.min(a, b), Infinity, tcol(g, 'px')) }, { t: 'vb', mon: g => last(tcol(g, 'px')) }, { t: 'vb', mon: g => aggNum((a, b) => a + b, 0, tcol(g, 'sz')) }] } }; return qby(bt, { t: 'S', v: ['sym', 'time'] }, dict); });
+  defMon('symstats', t => { const dict = { t: 'm', k: { t: 'S', v: ['n', 'vwap', 'hi', 'lo', 'vol'] }, v: { t: 'A', v: [{ t: 'vb', mon: g => countOf(tcol(g, 'px')) }, { t: 'vb', mon: g => { const w = raw(tcol(g, 'sz')), p = raw(tcol(g, 'px')); const sw = w.reduce((s, v) => s + v, 0); return F(Math.round(10000 * w.reduce((s, v, i) => s + v * p[i], 0) / sw) / 10000); } }, { t: 'vb', mon: g => aggNum((a, b) => Math.max(a, b), -Infinity, tcol(g, 'px')) }, { t: 'vb', mon: g => aggNum((a, b) => Math.min(a, b), Infinity, tcol(g, 'px')) }, { t: 'vb', mon: g => aggNum((a, b) => a + b, 0, tcol(g, 'sz')) }] } }; return qby(t, { t: 'S', v: ['sym'] }, dict); });
+  defDy('round', (n, x) => { const d = Math.pow(10, num(n)); return each1(e => F(Math.round(num(e) * d) / d), x); });
+
+  // ---- public API --------------------------------------------------------
+  const ROOT = makeEnv(null);
+  let OUT = [];
+  ROOT.out = OUT;
+
+  // `0: output verb & sym-verb application via symbol-as-function
+  // handle symbol applied to arg (e.g. `0:"x", `at v) inside applyValue: when a symbol atom is applied
+  const origApplyValue = applyValue;
+
+  function run(src) {
+    OUT = []; ROOT.out = OUT;
+    let result, error = null;
+    try {
+      const toks = lex(src);
+      const stmts = parse(toks);
+      result = evalProgram(stmts, ROOT);
+    } catch (e) {
+      error = e.amber ? e.message : ('' + (e && e.message || e));
+    }
+    return { result, out: OUT.slice(), error, text: error ? null : (result === U ? null : fmt(result)), value: result };
+  }
+  function reset() { for (const k in ROOT.vars) delete ROOT.vars[k]; SEED = 42; }
+
+  function describe(x) {
+    if (x === undefined || x === null || x.t === 'u') return { kind: 'unit' };
+    if (x.t === 'T') {
+      return { kind: 'table', cols: x.c.slice(), attrs: x.d.map(c => c.at || ''), types: x.d.map(typeChar), rows: transposeCells(x.d), align: x.d.map(c => c.t === 'I' || c.t === 'F') };
+    }
+    if (x.t === 'K') {
+      const kt = x.kt, vt = x.vt;
+      return { kind: 'keyed', kcols: kt.c.slice(), vcols: vt.c.slice(), kattrs: kt.d.map(c => c.at || ''), vattrs: vt.d.map(c => c.at || ''), krows: transposeCells(kt.d), vrows: transposeCells(vt.d), kalign: kt.d.map(c => c.t === 'I' || c.t === 'F'), valign: vt.d.map(c => c.t === 'I' || c.t === 'F') };
+    }
+    if (x.t === 'm') {
+      const ks = colStrings(x.k); const vs = x.v.t === 'A' ? x.v.v.map(fmt) : colStrings(x.v);
+      return { kind: 'dict', keys: ks, vals: vs, valign: (x.v.t === 'I' || x.v.t === 'F') };
+    }
+    return { kind: 'text', text: fmt(x) };
+  }
+  function transposeCells(cols) {
+    const scols = cols.map(colStrings);
+    const n = cols.length ? len(cols[0]) : 0;
+    const rows = [];
+    for (let r = 0; r < n; r++) rows.push(scols.map(c => c[r]));
+    return rows;
+  }
+  const API = { run, reset, fmt, describe, lex, parse, VERBS, BUILTINS, _root: ROOT, renderTable, renderKeyed, renderDict, isTableVal: (x) => x && (x.t === 'T' || x.t === 'K'), isDictVal: (x) => x && x.t === 'm', U };
+  root.Amber = API;
+  if (typeof module !== 'undefined' && module.exports) module.exports = API;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+
+</script>
+
+<!-- ==== Notebook UI ==== -->
+<script>
+(function(){
+  "use strict";
+  const A = window.Amber;
+  const cellsEl = document.getElementById('cells');
+  const BUILTINS = new Set(Object.keys(A.BUILTINS).concat(
+    ['til','sum','avg','max','min','prd','count','first','last','reverse','distinct','where','group','flip','meta','show','cols']));
+  const VERBCH = "+-*%!&|<>=~,^#_$?@.:";
+
+  let cells = []; let uid = 0;
+
+  // ---------- syntax highlighting ----------
+  function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+  function highlight(src){
+    let i=0,n=src.length,out='';
+    const push=(cls,txt)=>{out+= cls?`<span class="hl-${cls}">${esc(txt)}</span>`:esc(txt);};
+    while(i<n){
+      const c=src[i];
+      // comment: / at line start or after whitespace, to EOL
+      if(c==='/' && (i===0 || src[i-1]==='\n' || src[i-1]===' ' || src[i-1]==='\t')){
+        let j=i; while(j<n && src[j]!=='\n') j++; push('com',src.slice(i,j)); i=j; continue;
+      }
+      if(c==='"'){ let j=i+1; while(j<n && src[j]!=='"'){ if(src[j]==='\\')j++; j++; } j++; push('str',src.slice(i,Math.min(j,n))); i=Math.min(j,n); continue; }
+      if(c==='`'){ let j=i; while(j<n && (src[j]==='`' || /[A-Za-z0-9.]/.test(src[j]) || src[j]==='"')){ if(src[j]==='"'){ j++; while(j<n&&src[j]!=='"')j++; } j++; } push('sym',src.slice(i,j)); i=j; continue; }
+      if(/[0-9]/.test(c) || (c==='.'&&/[0-9]/.test(src[i+1]||'')) || (c==='-'&&/[0-9]/.test(src[i+1]||'')&&!/[A-Za-z0-9.)\]]/.test((src[i-1]||' ').trim()||' '))){
+        let j=i; if(src[j]==='-')j++; while(j<n && /[0-9.eE]/.test(src[j])) j++;
+        // allow number vectors 1 2 3
+        while(src[j]===' ' && (/[0-9]/.test(src[j+1]||'')||(src[j+1]==='-'&&/[0-9.]/.test(src[j+2]||'')))){ j++; if(src[j]==='-')j++; while(j<n&&/[0-9.eE]/.test(src[j]))j++; }
+        push('num',src.slice(i,j)); i=j; continue;
+      }
+      if(/[A-Za-z]/.test(c)){ let j=i; while(j<n && /[A-Za-z0-9.]/.test(src[j])) j++; const nm=src.slice(i,j);
+        push(BUILTINS.has(nm)?'kw':'var',nm); i=j; continue; }
+      if(c==="'"&&src[i+1]===':'){push('adv',"':");i+=2;continue;}
+      if((c==='/'||c==='\\')&&src[i+1]===':'){push('adv',c+':');i+=2;continue;}
+      if(c==="'"||c==='/'||c==='\\'){push('adv',c);i++;continue;}
+      if(c===':'&&src[i+1]===':'){push('verb','::');i+=2;continue;}
+      if(VERBCH.indexOf(c)>=0){push('verb',c);i++;continue;}
+      if('()[]{}'.indexOf(c)>=0){push('brk',c);i++;continue;}
+      if(c===';'){push('brk',';');i++;continue;}
+      push(null,c); i++;
+    }
+    return out+'\n';
+  }
+
+  // ---------- value rendering ----------
+  function renderValue(container, res){
+    container.innerHTML='';
+    let any=false;
+    if(res.out && res.out.length){
+      const pre=document.createElement('pre'); pre.className='console';
+      pre.textContent=res.out.join('\n'); container.appendChild(pre); any=true;
+    }
+    if(res.error){ const e=document.createElement('div'); e.className='err'; e.textContent="'"+res.error; container.appendChild(e); any=true; }
+    else if(res.value && res.value.t!=='u'){
+      const d=A.describe(res.value);
+      const node=renderDescribe(d);
+      if(node){ container.appendChild(node); any=true; }
+    }
+    container.classList.toggle('empty', !any);
+  }
+  function cell(txt,cls){const td=document.createElement('td'); if(cls)td.className=cls; td.textContent=txt; return td;}
+  function attrBadge(a){ if(!a)return ''; return `<span class="att">${a}</span>`; }
+  function renderDescribe(d){
+    if(d.kind==='unit') return null;
+    if(d.kind==='text'){ const pre=document.createElement('pre'); pre.className='ret'; pre.textContent=d.text; return pre; }
+    if(d.kind==='dict'){
+      const t=document.createElement('table'); t.className='grid dictgrid';
+      for(let i=0;i<d.keys.length;i++){ const tr=document.createElement('tr');
+        tr.appendChild(cell(d.keys[i],'k')); tr.appendChild(cell(d.vals[i], d.valign?'r':'')); t.appendChild(tr); }
+      return t;
+    }
+    if(d.kind==='table'){
+      const t=document.createElement('table'); t.className='grid';
+      const thead=document.createElement('tr');
+      d.cols.forEach((c,i)=>{ const th=document.createElement('th'); if(d.align[i])th.className='r';
+        th.innerHTML=esc(c)+attrBadge(d.attrs[i]); thead.appendChild(th); });
+      t.appendChild(thead);
+      const nrows=d.rows.length, cap=300;
+      for(let r=0;r<Math.min(nrows,cap);r++){ const tr=document.createElement('tr');
+        d.rows[r].forEach((v,i)=>tr.appendChild(cell(v,d.align[i]?'r':''))); t.appendChild(tr); }
+      const wrap=document.createElement('div');
+      wrap.appendChild(t);
+      if(nrows>cap){ const m=document.createElement('div'); m.className='note'; m.textContent=`… ${nrows-cap} more rows (${nrows} total)`; wrap.appendChild(m); }
+      else { const m=document.createElement('div'); m.className='typ'; m.textContent=`${nrows} row${nrows===1?'':'s'} · ${d.cols.length} cols`; wrap.appendChild(m); }
+      return wrap;
+    }
+    if(d.kind==='keyed'){
+      const t=document.createElement('table'); t.className='grid';
+      const thead=document.createElement('tr');
+      d.kcols.forEach((c,i)=>{ const th=document.createElement('th'); th.className=(d.kalign[i]?'r ':'')+'keyw';
+        th.innerHTML=esc(c)+attrBadge(d.kattrs[i]); thead.appendChild(th); });
+      d.vcols.forEach((c,i)=>{ const th=document.createElement('th'); if(d.valign[i])th.className='r';
+        th.innerHTML=esc(c)+attrBadge(d.vattrs[i]); thead.appendChild(th); });
+      t.appendChild(thead);
+      const nrows=d.krows.length, cap=300;
+      for(let r=0;r<Math.min(nrows,cap);r++){ const tr=document.createElement('tr');
+        d.krows[r].forEach((v,i)=>{ const c=cell(v,(d.kalign[i]?'r ':'')+'keyw'); tr.appendChild(c); });
+        d.vrows[r].forEach((v,i)=>tr.appendChild(cell(v,d.valign[i]?'r':''))); t.appendChild(tr); }
+      const wrap=document.createElement('div'); wrap.appendChild(t);
+      const m=document.createElement('div'); m.className='typ';
+      m.textContent=`${nrows} row${nrows===1?'':'s'} · keyed ${d.kcols.length}!${d.vcols.length}`; wrap.appendChild(m);
+      if(nrows>cap){ const mm=document.createElement('div'); mm.className='note'; mm.textContent=`… ${nrows-cap} more rows`; wrap.appendChild(mm);}
+      return wrap;
+    }
+    return null;
+  }
+
+  // ---------- cell object ----------
+  function makeCell(src){
+    const id=++uid;
+    const el=document.createElement('div'); el.className='cell'; el.dataset.id=id;
+    el.innerHTML=`
+      <div class="cellhead">
+        <div class="runbtn" title="run (Ctrl+Enter)">▶</div>
+        <span class="idx"></span>
+        <div class="chead-sp"></div>
+        <button class="mini up" title="move up">↑</button>
+        <button class="mini down" title="move down">↓</button>
+        <button class="mini add" title="add cell below">＋</button>
+        <button class="mini del" title="delete cell">✕</button>
+      </div>
+      <div class="editor">
+        <pre class="hl"></pre>
+        <textarea spellcheck="false" autocapitalize="off" autocomplete="off" wrap="soft"></textarea>
+      </div>
+      <div class="out empty"></div>`;
+    const ta=el.querySelector('textarea');
+    const hl=el.querySelector('.hl');
+    const out=el.querySelector('.out');
+    const obj={id,el,ta,hl,out};
+    ta.value=src||'';
+    function sync(){ hl.innerHTML=highlight(ta.value); ta.style.height='auto'; ta.style.height=(ta.scrollHeight)+'px'; }
+    ta.addEventListener('input',sync);
+    ta.addEventListener('scroll',()=>{hl.scrollTop=ta.scrollTop;});
+    ta.addEventListener('keydown',e=>{
+      if(e.key==='Enter' && (e.shiftKey||e.metaKey||e.ctrlKey)){ e.preventDefault();
+        runCell(obj);
+        if(e.shiftKey && !(e.metaKey||e.ctrlKey)){ const idx=cells.indexOf(obj);
+          if(idx===cells.length-1){ const c=addCell('',idx); c.ta.focus(); } else { cells[idx+1].ta.focus(); } }
+      }
+    });
+    el.querySelector('.runbtn').onclick=()=>runCell(obj);
+    el.querySelector('.add').onclick=()=>{ const idx=cells.indexOf(obj); const c=addCell('',idx); c.ta.focus(); };
+    el.querySelector('.del').onclick=()=>removeCell(obj);
+    el.querySelector('.up').onclick=()=>moveCell(obj,-1);
+    el.querySelector('.down').onclick=()=>moveCell(obj,1);
+    obj.sync=sync; obj.run=()=>runCell(obj);
+    setTimeout(sync,0);
+    return obj;
+  }
+  function addCell(src,afterIdx){
+    const obj=makeCell(src);
+    if(afterIdx===undefined || afterIdx>=cells.length-1){ cells.push(obj); cellsEl.appendChild(obj.el); }
+    else { cells.splice(afterIdx+1,0,obj); cellsEl.insertBefore(obj.el, cells[afterIdx+2] ? cells[afterIdx+2].el : null); }
+    reindex(); return obj;
+  }
+  function removeCell(obj){ const i=cells.indexOf(obj); if(i<0)return; cells.splice(i,1); obj.el.remove();
+    if(cells.length===0) addCell(''); reindex(); }
+  function moveCell(obj,dir){ const i=cells.indexOf(obj); const j=i+dir; if(j<0||j>=cells.length)return;
+    cells.splice(i,1); cells.splice(j,0,obj);
+    cellsEl.innerHTML=''; cells.forEach(c=>cellsEl.appendChild(c.el)); reindex(); obj.ta.focus(); }
+  function reindex(){ cells.forEach((c,i)=>c.el.querySelector('.idx').textContent='['+(i+1)+']');
+    document.getElementById('stCells').textContent=cells.length; }
+
+  function runCell(obj){
+    const res=A.run(obj.ta.value);
+    renderValue(obj.out,res);
+    updateVars();
+  }
+  function runAll(){ cells.forEach(runCell); }
+
+  function updateVars(){
+    const root=A._root.vars; const names=Object.keys(root);
+    const el=document.getElementById('stVars');
+    el.textContent = names.length? names.slice(0,10).join(' ')+(names.length>10?' …':'') : '·';
+  }
+
+  // ---------- toolbar ----------
+  document.getElementById('runall').onclick=runAll;
+  document.getElementById('addcell').onclick=()=>{ const c=addCell(''); c.ta.focus(); };
+  document.getElementById('clearout').onclick=()=>cells.forEach(c=>{c.out.innerHTML='';c.out.classList.add('empty');});
+  document.getElementById('resetenv').onclick=()=>{ A.reset(); updateVars(); flash('environment reset'); };
+  document.getElementById('loaddemo').onclick=loadDemo;
+  const side=document.getElementById('side');
+  document.getElementById('toghelp').onclick=()=>side.classList.toggle('hidden');
+
+  function flash(msg){ const s=document.querySelector('.status span:nth-child(2)'); const old=s.textContent; s.textContent=msg; setTimeout(()=>s.textContent=old,1400); }
+
+  // ---------- sidebar ----------
+  function buildSide(){
+    const S=[];
+    S.push(`<h2>examples</h2>`);
+    const ex=[
+      ['vectors', '2 3 4 * 10 20 30'],
+      ['range → sum', 'sum til 100'],
+      ['right-to-left', '2 * 3 + 4'],
+      ['a table', '([]sym:`AAPL`MSFT`GOOG; px:187.3 411.2 92.5; sz:100 250 50)'],
+      ['meta + attrs', 'meta ([]t:asc 1 2 3; s:`a`b`c)'],
+      ['group by', 't:([]s:`a`b`a`b`a; v:1 2 3 4 5)\nqby[t; `s; `n`sum!({#x`v};{sum x`v})]'],
+      ['as-of join', 'gentq 2000\n5 # aj[`sym`time; trades; quotes]'],
+      ['1-min OHLCV bars', 'gentq 2000\nbars[1; trades]'],
+      ['VWAP by symbol', 'gentq 2000\nqby[trades; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]'],
+      ['O(1) symbol slice', 'gentq 3000\ng:bysym trades\nsymrows[trades; g; `AAPL]'],
+      ['moving average', 'movavg[3; 10 11 9 12 15 14]'],
+      ['sorted → attribute', '`at asc 5 3 8 1'],
+    ];
+    ex.forEach(([label,code])=>{
+      S.push(`<button class="snip" data-code="${encodeURIComponent(code)}"><span class="cm">/ ${label}</span>\n${esc(code)}</button>`);
+    });
+
+    S.push(`<h2>verbs</h2>`);
+    const verbs=[
+      ['+ - * %','add sub mul div (÷ → float)'],['! ','enum / dict / mod'],['&amp; |','where·min / reverse·max'],
+      ['&lt; &gt; =','grade / compare / group'],['# _','take·reshape / drop·cut'],['^ ,','fill·without / concat·enlist'],
+      ['$ ?','string·cast / distinct·find'],['@ .','type·apply / value·apply-n'],['~','match / not']
+    ];
+    verbs.forEach(([a,b])=>S.push(`<div class="ref"><b>${a}</b> — ${b}</div>`));
+
+    S.push(`<h2>adverbs</h2>`);
+    [['f/','over (fold)'],['f\\','scan'],["f'",'each'],["f':",'each-prior'],['f/:','each-right'],['f\\:','each-left']]
+      .forEach(([a,b])=>S.push(`<div class="ref"><b>${esc(a)}</b> — ${b}</div>`));
+
+    S.push(`<h2>vocabulary</h2>`);
+    S.push(`<div class="sub">aggregate</div><div class="note">sum prd min max avg med dev var sdev wsum wavg cor cov all any</div>`);
+    S.push(`<div class="sub">uniform</div><div class="note">sums prds mins maxs deltas ratios differ prev next rank</div>`);
+    S.push(`<div class="sub">list / order</div><div class="note">til enlist reverse distinct where group flip asc desc iasc idesc raze first last count</div>`);
+    S.push(`<div class="sub">sets · strings</div><div class="note">in except inter union cross sublist rotate · lower upper trim ss ssr sv vs like</div>`);
+
+    S.push(`<h2>tables &amp; qSQL</h2>`);
+    S.push(`<div class="note"><b>([]c:v;…)</b> table · <b>([k:v]c:v)</b> keyed · meta · cols · xkey · xasc · xgroup</div>`);
+    S.push(`<div class="note">qwhere[t;mask] · qselect[t;n!f] · qby[t;by;n!f]</div>`);
+    S.push(`<div class="note">joins: lj ij uj · aj[c;x;y] as-of · taq[tr;qu]</div>`);
+
+    S.push(`<h2>attributes</h2>`);
+    S.push(`<div class="note"><b>\`sa</b> sorted · <b>\`ua</b> unique · <b>\`pa</b> parted · <b>\`ga</b> grouped · <b>\`at</b> reads it. <b>asc</b>/<b>xasc</b> set <b>\`s</b>; <b>meta</b> shows the <b>a</b> column.</div>`);
+
+    S.push(`<h2>finance (fin)</h2>`);
+    S.push(`<div class="note"><b>gentq n</b> → globals <b>trades</b>,<b>quotes</b>. mid spread spreadbps micro imbal · vwap twap tsign signedvol effspread · ret logret rvol movavg ema rollstd · bars symstats · bysym symrows gidx.</div>`);
+
+    S.push(`<h2>notes</h2>`);
+    S.push(`<div class="note">Evaluation is right-to-left, no precedence: <b>2*3+4 → 14</b>. Two-arg library functions take brackets: <b>aj[c;x;y]</b>. A bare table renders as a grid — no <b>show</b> needed. This is a working subset of Amber running in your browser.</div>`);
+
+    side.innerHTML=S.join('');
+    side.querySelectorAll('.snip').forEach(b=>b.onclick=()=>{
+      const code=decodeURIComponent(b.dataset.code); const c=addCell(code); c.sync(); c.run();
+      c.el.scrollIntoView({behavior:'smooth',block:'center'});
+    });
+  }
+
+  // ---------- demo notebook ----------
+  const DEMO=[
+`/ Welcome to Amber — a columnar array language.
+/ Press Shift+Enter to run a cell (Ctrl+Enter to run in place).
+2 3 4 * 10 20 30`,
+`/ evaluation is right to left, with no operator precedence
+2 * 3 + 4`,
+`/ ranges, aggregation, adverbs
+sum til 100`,
+`/ tables are first class — a bare table renders as a grid
+([]sym:\`AAPL\`MSFT\`GOOG\`AMZN; px:187.3 411.2 92.5 138.1; sz:100 250 50 300)`,
+`/ meta shows column types AND attributes (the a column)
+meta ([]time:asc 3 1 2 4; sym:\`a\`b\`a\`b; px:1.5 2.5 3.5 4.5)`,
+`/ generate a market session: sets globals trades & quotes
+/ time gets the \`s sorted attribute, sym gets \`p parted
+gentq 2000
+meta trades`,
+`/ the join every tick shop needs — as-of (prevailing quote per trade)
+5 # aj[\`sym\`time; trades; quotes]`,
+`/ VWAP and trade count by symbol (qSQL group-by)
+qby[trades; \`sym; \`n\`vwap!({#x\`px}; {wavg[x\`sz;x\`px]})]`,
+`/ 1-minute OHLCV bars
+bars[1; trades]`,
+`/ O(1) per-symbol slice via a group index
+g:bysym trades
+symrows[trades; g; \`AAPL]`
+  ];
+  function loadDemo(){ cells.forEach(c=>c.el.remove()); cells=[]; DEMO.forEach(s=>addCell(s)); reindex();
+    cells.forEach(runCell); flash('demo loaded'); window.scrollTo(0,0); }
+
+  // ---------- boot ----------
+  buildSide();
+  // paint the shell first, then load & run the demo so the page is instantly interactive
+  addCell('/ loading demo…');
+  reindex();
+  setTimeout(loadDemo, 30);
+  updateVars();
+})();
+</script>
+</body>
+</html>

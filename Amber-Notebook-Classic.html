@@ -1,0 +1,2119 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="amber">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Amber Notebook — Classic</title>
+<style>
+/* ---- shared core: editor overlay, syntax colors, output grids, toast ---- */
+:root{
+  --mono:"SF Mono",ui-monospace,"JetBrains Mono","Fira Code",Menlo,Consolas,monospace;
+  --ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+.nb-ed{position:relative;font-family:var(--mono);font-size:13.5px;line-height:1.5}
+.nb-hl,.nb-ed textarea{margin:0;padding:10px 12px;font-family:inherit;font-size:inherit;line-height:inherit;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;border:0;tab-size:2}
+.nb-hl{position:absolute;inset:0;pointer-events:none;color:var(--s-var);z-index:0;overflow:hidden}
+.nb-ed textarea{position:relative;display:block;width:100%;min-height:22px;background:transparent;color:transparent;caret-color:var(--caret);resize:none;outline:none;z-index:1;overflow:hidden}
+.nb-ed textarea::selection{background:var(--selbg)}
+.nb-ed textarea::placeholder{color:var(--faint);opacity:.7}
+.hl-num{color:var(--s-num)}.hl-str{color:var(--s-str)}.hl-sym{color:var(--s-sym)}
+.hl-verb{color:var(--s-verb)}.hl-adv{color:var(--s-adv)}.hl-kw{color:var(--s-kw)}
+.hl-var{color:var(--s-var)}.hl-com{color:var(--s-com);font-style:italic}.hl-brk{color:var(--s-brk)}
+
+/* output */
+.nb-out{font-family:var(--mono);font-size:13px;color:var(--ink);overflow:auto}
+.nb-out.empty{display:none}
+.nb-out pre.console{margin:0 0 6px;color:var(--dim);white-space:pre-wrap}
+.nb-out pre.ret{margin:0;color:var(--ink);white-space:pre-wrap;word-break:break-word}
+.nb-out .err{color:var(--err);font-family:var(--mono);white-space:pre-wrap}
+.gridwrap{overflow:auto}
+table.grid{border-collapse:collapse;font-family:var(--mono);font-size:12.5px;margin:0}
+table.grid th{ text-align:left;color:var(--accent2);font-weight:600;padding:2px 14px 4px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+table.grid th.r,table.grid td.r{text-align:right}
+table.grid td{padding:2px 14px 2px 0;color:var(--ink);white-space:nowrap;border-bottom:1px solid var(--line2)}
+table.grid td.keyw,table.grid th.keyw{color:var(--s-sym)}
+table.dictgrid td.k{color:var(--s-sym);padding-right:10px}
+table.grid tr:last-child td{border-bottom:0}
+.att{display:inline-block;margin-left:5px;padding:0 4px;font-size:9px;border-radius:4px;background:var(--selbg);color:var(--accent);vertical-align:middle}
+.typ{margin-top:5px;font-size:10.5px;color:var(--faint);font-family:var(--ui)}
+
+/* toast */
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:9px 16px;font:13px var(--ui);opacity:0;pointer-events:none;transition:.22s;z-index:9999;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* scrollbars */
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px;border:3px solid transparent;background-clip:content-box}
+::-webkit-scrollbar-thumb:hover{background:var(--faint)}
+::-webkit-scrollbar-track{background:transparent}
+
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--ui);overflow:hidden}
+#top{height:52px;display:flex;align-items:center;gap:10px;padding:0 16px;background:var(--panel);border-bottom:1px solid var(--line);position:relative;z-index:30}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;letter-spacing:.3px}
+.brand .gem{color:var(--accent);font-size:17px;filter:drop-shadow(0 0 6px var(--accent))}
+.brand small{font-weight:500;color:var(--faint);font-size:11px;letter-spacing:1.5px;text-transform:uppercase}
+.sp{flex:1}
+.tbtn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 13px;border:1px solid var(--line);background:var(--cell);color:var(--ink);border-radius:8px;font:13px var(--ui);cursor:pointer;transition:.15s}
+.tbtn:hover{border-color:var(--accent);color:var(--accent)}
+.tbtn.primary{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:600}
+.tbtn.primary:hover{filter:brightness(1.08);color:var(--bg)}
+.tsw{width:15px;height:15px;border-radius:4px;background:var(--accent);box-shadow:var(--glow)}
+#main{display:flex;height:calc(100% - 52px)}
+#side{width:290px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;transition:margin-left .2s}
+#side.hide{margin-left:-290px}
+.sidehd{padding:12px 14px 8px;font-size:11px;text-transform:uppercase;letter-spacing:1.4px;color:var(--faint)}
+.search{margin:0 12px 8px}
+.search input{width:100%;height:32px;padding:0 11px;border:1px solid var(--line);background:var(--cell);color:var(--ink);border-radius:8px;font:13px var(--mono);outline:none}
+.search input:focus{border-color:var(--accent)}
+#exlist{flex:1;overflow:auto;padding:2px 8px 20px}
+.excat{margin:10px 6px 4px;font-size:10.5px;font-weight:700;letter-spacing:.6px;color:var(--accent2);text-transform:uppercase}
+.exitem{padding:7px 10px;border-radius:8px;cursor:pointer;border:1px solid transparent;transition:.12s}
+.exitem:hover{background:var(--cell);border-color:var(--line)}
+.exitem .exn{font-size:12.5px;color:var(--ink)}
+.exitem .exc{font:11px var(--mono);color:var(--faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#scrollhost{flex:1;overflow:auto}
+#doc{max-width:900px;margin:0 auto;padding:26px 24px 200px}
+.doch{margin:0 0 18px}
+.doch h1{margin:0;font-size:21px;font-weight:700}
+.doch p{margin:5px 0 0;color:var(--dim);font-size:13.5px}
+.nb-cell{display:flex;gap:12px;margin:14px 0;border:1px solid var(--line);border-radius:12px;background:var(--cell);padding:8px 12px 10px;transition:border-color .15s,box-shadow .15s}
+.nb-cell.active{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--glow)}
+.nb-gutter{display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:2px;width:34px;flex-shrink:0}
+.nb-run{width:28px;height:28px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--accent);cursor:pointer;font-size:11px;transition:.15s}
+.nb-run:hover{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.nb-count{font:10px var(--mono);color:var(--faint)}
+.nb-ord{font:10px var(--mono);color:var(--line);margin-top:auto}
+.nb-main{flex:1;min-width:0}
+.nb-ed{border-radius:7px}
+.nb-out{margin-top:9px;padding-top:9px;border-top:1px dashed var(--line2)}
+.nb-tools{display:flex;gap:5px;margin-top:8px;opacity:0;transition:.15s}
+.nb-cell:hover .nb-tools,.nb-cell.active .nb-tools{opacity:1}
+.nb-tools button{height:24px;padding:0 8px;font:11px var(--ui);border:1px solid var(--line);background:var(--panel);color:var(--dim);border-radius:6px;cursor:pointer}
+.nb-tools button:hover{color:var(--accent);border-color:var(--accent)}
+.nb-sp{flex:1}
+.addbar{text-align:center;margin:16px 0}
+.addbar button{height:34px;padding:0 18px;border:1px dashed var(--line);background:transparent;color:var(--dim);border-radius:9px;cursor:pointer;font:13px var(--ui)}
+.addbar button:hover{border-color:var(--accent);color:var(--accent)}
+/* theme popover */
+#pop{position:absolute;top:48px;right:14px;width:330px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;display:none;grid-template-columns:1fr 1fr;gap:9px;z-index:40;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+#pop.open{display:grid}
+.tcard{border:1px solid var(--line);border-radius:10px;overflow:hidden;cursor:pointer;transition:.15s}
+.tcard:hover{transform:translateY(-2px)}
+.tcard.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.tprev{padding:12px 10px;display:flex;align-items:center;gap:5px;font:12px var(--mono)}
+.tdot{width:9px;height:9px;border-radius:50%;margin-right:3px}
+.tcard .nm{padding:6px 10px;font-size:12px;background:var(--cell)}
+@media(max-width:760px){#side{position:absolute;z-index:20;height:100%}#doc{padding:18px 14px 200px}}
+</style>
+</head>
+<body>
+<div id="top">
+  <div class="brand"><span class="gem">◆</span> Amber <small>Notebook</small></div>
+  <button class="tbtn" id="btnSide">☰ Examples</button>
+  <div class="sp"></div>
+  <button class="tbtn" id="btnRunAll">▶▶ Run all</button>
+  <button class="tbtn" id="btnClear">Clear</button>
+  <button class="tbtn" id="btnTheme"><span class="tsw" id="tsw"></span> <span id="tname">Amber</span></button>
+</div>
+<div id="pop"></div>
+<div id="main">
+  <aside id="side">
+    <div class="sidehd">Examples · click to run</div>
+    <div class="search"><input id="exsearch" placeholder="filter examples…"/></div>
+    <div id="exlist"></div>
+  </aside>
+  <div id="scrollhost">
+    <div id="doc">
+      <div class="doch"><h1>Amber Notebook</h1><p>A real Amber interpreter in your browser. Type a statement and press <b>Ctrl/⌘ + Enter</b> — or pick an example on the left. Everything runs locally, including qSQL.</p></div>
+      <div id="cells"></div>
+      <div class="addbar"><button id="btnAdd">＋ Add cell</button></div>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast"></div>
+<script>// ============================================================================
+// Amber interpreter — a browser/Node evaluator for a working subset of Amber
+// (the q/kdb+-style array language).  Right-to-left evaluation, ints/floats/
+// chars/symbols/lists/dicts/tables, verbs, adverbs, lambdas, indexing,
+// assignment, column attributes, and a slice of the Amber vocabulary.
+// ============================================================================
+(function (root) {
+  'use strict';
+
+  // ---- value model -------------------------------------------------------
+  // atoms:   {t:'i'|'f'|'c'|'s', v}
+  // vectors: {t:'I'|'F'|'C'|'S'|'A', v:[...], at?}    C -> v is a JS string
+  // dict:    {t:'m', k:<vec>, v:<vec/list>}
+  // table:   {t:'T', c:[names], d:[colvals], at:[attr]}
+  // keyed:   {t:'K', kt:<table>, vt:<table>}
+  // lambda:  {t:'fn', p:[names], b:<terms>, src, rank}
+  // verb:    {t:'vb', n, mon, dy}
+  // proj:    {t:'pr', f, args, need}
+  // unit/::  {t:'u'}
+  const U = { t: 'u' };
+  const I = (v) => ({ t: 'i', v: v | 0 });
+  const F = (v) => ({ t: 'f', v: +v });
+  const Ch = (v) => ({ t: 'c', v: v });
+  const Sy = (v) => ({ t: 's', v: v });
+
+  function isAtom(x) { return x && 'ifcsu'.indexOf(x.t) >= 0; }
+  function isVec(x) { return x && 'IFCSA'.indexOf(x.t) >= 0; }
+  function isNum(x) { return x && (x.t === 'i' || x.t === 'f'); }
+  function isNumVec(x) { return x && (x.t === 'I' || x.t === 'F'); }
+
+  function len(x) {
+    if (isVec(x)) return x.t === 'C' ? x.v.length : x.v.length;
+    if (x.t === 'm') return len(x.k);
+    if (x.t === 'T') return x.d.length ? len(x.d[0]) : 0;
+    if (x.t === 'K') return len(x.kt);
+    return 1;
+  }
+
+  // JS array of element *values* from a vector
+  function arr(x) {
+    if (x.t === 'C') return x.v.split('').map(Ch);
+    if (x.t === 'S') return x.v.map(Sy);
+    if (x.t === 'I') return x.v.map(I);
+    if (x.t === 'F') return x.v.map(F);
+    if (x.t === 'A') return x.v.slice();
+    if (isAtom(x)) return [x];
+    return [x];
+  }
+  // raw JS primitives
+  function raw(x) {
+    if (x.t === 'C') return x.v.split('');
+    if (x.t === 'S' || x.t === 'I' || x.t === 'F' || x.t === 'A') return x.v.slice();
+    return [x.v];
+  }
+
+  // build a best-typed vector from an array of *values*
+  function vec(vals) {
+    if (vals.length === 0) return { t: 'A', v: [] };
+    let allc = true, alls = true, alli = true, allf = true;
+    for (const e of vals) {
+      if (!e || e.t === undefined) { allc = alls = alli = allf = false; break; }
+      if (e.t !== 'c') allc = false;
+      if (e.t !== 's') alls = false;
+      if (e.t !== 'i') alli = false;
+      if (e.t !== 'i' && e.t !== 'f') allf = false;
+    }
+    if (allc) return { t: 'C', v: vals.map(e => e.v).join('') };
+    if (alls) return { t: 'S', v: vals.map(e => e.v) };
+    if (alli) return { t: 'I', v: vals.map(e => e.v) };
+    if (allf) return { t: 'F', v: vals.map(e => +e.v) };
+    return { t: 'A', v: vals.slice() };
+  }
+  // build numeric vector, choosing int vs float
+  function nvec(nums) {
+    let allint = true;
+    for (const n of nums) if (!Number.isInteger(n)) { allint = false; break; }
+    return allint ? { t: 'I', v: nums.map(n => n | 0) } : { t: 'F', v: nums.map(n => +n) };
+  }
+
+  function num(x) {
+    if (x.t === 'i' || x.t === 'f') return x.v;
+    if (x.t === 'c') return x.v.charCodeAt(0);
+    throw err('type');
+  }
+  function err(m) { const e = new Error(m); e.amber = true; return e; }
+  function isNull(x) {
+    if (x.t === 'i') return x.v === -9223372036854775807 || x.v === null;
+    if (x.t === 'f') return Number.isNaN(x.v);
+    if (x.t === 'c') return x.v === ' ';
+    if (x.t === 's') return x.v === '';
+    return false;
+  }
+  const NF = { t: 'f', v: NaN };            // 0n
+  const NI = { t: 'i', v: -9223372036854775807 }; // 0N
+
+  // ---- lexer -------------------------------------------------------------
+  const VERBCH = "+-*%!&|<>=~,^#_$?@.";
+  function lex(s) {
+    const T = [];
+    let i = 0, n = s.length;
+    const prevNoun = () => {
+      // look at last meaningful token
+      for (let j = T.length - 1; j >= 0; j--) {
+        const t = T[j];
+        return t.k === 'num' || t.k === 'name' || t.k === 'str' || t.k === 'sym' ||
+          t.k === 'symv' || t.v === ')' || t.v === ']' || t.v === '}';
+      }
+      return false;
+    };
+    while (i < n) {
+      let c = s[i];
+      if (c === ' ' || c === '\t' || c === '\r') { i++; continue; }
+      if (c === '\n' || c === ';') { T.push({ k: 'sep', v: c === '\n' ? ';' : ';' }); i++; continue; }
+      if (c === '/' && (i === 0 || s[i - 1] === '\n' || s[i - 1] === ' ' || s[i - 1] === '\t')) {
+        // line comment to EOL
+        while (i < n && s[i] !== '\n') i++;
+        continue;
+      }
+      if (c === '"') { // string
+        let j = i + 1, out = '';
+        while (j < n && s[j] !== '"') {
+          if (s[j] === '\\') {
+            const e = s[j + 1];
+            out += e === 'n' ? '\n' : e === 't' ? '\t' : e === 'r' ? '\r' :
+              e === '0' ? '\0' : e === '\\' ? '\\' : e === '"' ? '"' : e;
+            j += 2;
+          } else { out += s[j]; j++; }
+        }
+        i = j + 1; T.push({ k: 'str', v: out }); continue;
+      }
+      if (c === '`') { // symbol or symbol vector
+        const syms = [];
+        while (s[i] === '`') {
+          i++;
+          let nm = '';
+          if (s[i] === '"') { // quoted symbol
+            i++;
+            while (i < n && s[i] !== '"') { nm += s[i]; i++; }
+            i++;
+          } else {
+            while (i < n && /[A-Za-z0-9.]/.test(s[i])) { nm += s[i]; i++; }
+          }
+          syms.push(nm);
+          // allow immediate backtick chain w/o space
+        }
+        if (syms.length === 1) T.push({ k: 'sym', v: syms[0] });
+        else T.push({ k: 'symv', v: syms });
+        continue;
+      }
+      // number / number-vector
+      // a leading '-' is a negative sign iff glued to a digit AND preceded by whitespace/start/delimiter/verb
+      // (so `sums -1` is the literal -1, while `x-1` and `1-1` are subtraction).
+      const negOK = (k) => { const pc = k === 0 ? '' : s[k - 1]; return pc === '' || ' \t\n\r([{;'.indexOf(pc) >= 0 || VERBCH.indexOf(pc) >= 0 || "/\\'".indexOf(pc) >= 0; };
+      const startsNum = (ch, k) => /[0-9]/.test(ch) ||
+        (ch === '.' && /[0-9]/.test(s[k + 1] || '')) ||
+        (ch === '-' && (/[0-9]/.test(s[k + 1] || '') || (s[k + 1] === '.' && /[0-9]/.test(s[k + 2] || ''))) && negOK(k));
+      // boolean literal: 0b, 1b, 101b (contiguous 0/1 digits + b)
+      if (/[01]/.test(c)) {
+        const bm = /^[01]+b(?![0-9A-Za-z.:])/.exec(s.slice(i));
+        if (bm) { T.push({ k: 'num', v: bm[0].slice(0, -1).split('').map(Number) }); i += bm[0].length; continue; }
+      }
+      if (startsNum(c, i)) {
+        const nums = [];
+        while (true) {
+          // read one number (with optional glued sign)
+          let j = i, sign = 1;
+          if (s[j] === '-') { sign = -1; j++; }
+          let numstr = '';
+          if (s.substr(j, 2) === '0N') { nums.push(NaN); j += 2; i = j; }
+          else if (s.substr(j, 2) === '0n') { nums.push(NaN); j += 2; i = j; }
+          else if (s.substr(j, 2) === '0w') { nums.push(sign * Infinity); j += 2; i = j; }
+          else {
+            while (j < n && /[0-9.eE]/.test(s[j])) {
+              if ((s[j] === 'e' || s[j] === 'E') && (s[j + 1] === '-' || s[j + 1] === '+')) { numstr += s[j] + s[j + 1]; j += 2; continue; }
+              numstr += s[j]; j++;
+            }
+            nums.push(sign * parseFloat(numstr));
+            i = j;
+          }
+          // continue vector? space then another number glued with sign or digit
+          let k = i;
+          if (s[k] === ' ') {
+            let m = k; while (s[m] === ' ') m++;
+            if (/[0-9]/.test(s[m] || '') || (s[m] === '-' && /[0-9.]/.test(s[m + 1] || '')) ||
+              (s[m] === '.' && /[0-9]/.test(s[m + 1] || '')) || s.substr(m, 2) === '0N' || s.substr(m, 2) === '0n' || s.substr(m, 2) === '0w') {
+              i = m; continue;
+            }
+          }
+          break;
+        }
+        // trailing 'b' turns a 0/1 vector into a boolean vector (e.g. 1 0 1b)
+        if (s[i] === 'b' && !/[0-9A-Za-z.]/.test(s[i + 1] || '') && nums.length > 1 && nums.every(x => x === 0 || x === 1)) i++;
+        T.push({ k: 'num', v: nums }); continue;
+      }
+      if (/[A-Za-z]/.test(c)) { // name
+        let nm = '';
+        while (i < n && /[A-Za-z0-9]/.test(s[i])) { nm += s[i]; i++; }
+        // dotted names a.b
+        while (s[i] === '.' && /[A-Za-z]/.test(s[i + 1] || '')) {
+          nm += s[i]; i++;
+          while (i < n && /[A-Za-z0-9]/.test(s[i])) { nm += s[i]; i++; }
+        }
+        T.push({ k: 'name', v: nm }); continue;
+      }
+      // adverbs
+      if (c === "'" && s[i + 1] === ':') { T.push({ k: 'adv', v: "':" }); i += 2; continue; }
+      if (c === '/' && s[i + 1] === ':') { T.push({ k: 'adv', v: '/:' }); i += 2; continue; }
+      if (c === '\\' && s[i + 1] === ':') { T.push({ k: 'adv', v: '\\:' }); i += 2; continue; }
+      if (c === "'") { T.push({ k: 'adv', v: "'" }); i++; continue; }
+      if (c === '/') { T.push({ k: 'adv', v: '/' }); i++; continue; }
+      if (c === '\\') { T.push({ k: 'adv', v: '\\' }); i++; continue; }
+      // multi-char verbs 0: 1:
+      if ((c === '0' || c === '1') && s[i + 1] === ':') { T.push({ k: 'verb', v: c + ':' }); i += 2; continue; }
+      // assignment ::  and :
+      if (c === ':' && s[i + 1] === ':') { T.push({ k: 'gassign', v: '::' }); i += 2; continue; }
+      if (c === ':') { T.push({ k: 'assign', v: ':' }); i++; continue; }
+      if (VERBCH.indexOf(c) >= 0) { T.push({ k: 'verb', v: c }); i++; continue; }
+      if (c === '(') { T.push({ k: 'open', v: '(' }); i++; continue; }
+      if (c === ')') { T.push({ k: 'close', v: ')' }); i++; continue; }
+      if (c === '[') { T.push({ k: 'obrk', v: '[' }); i++; continue; }
+      if (c === ']') { T.push({ k: 'cbrk', v: ']' }); i++; continue; }
+      if (c === '{') { T.push({ k: 'obrc', v: '{' }); i++; continue; }
+      if (c === '}') { T.push({ k: 'cbrc', v: '}' }); i++; continue; }
+      throw err('lex:' + c);
+    }
+    return T;
+  }
+
+  // ---- parser: token stream -> list of statements, each a list of terms --
+  // term kinds: {k:'val',v} {k:'name',n} {k:'verb',v} {k:'adv',a,of}
+  //   {k:'paren',e} {k:'list',es} {k:'brack',args} {k:'lambda',...}
+  //   {k:'assign',name,g} {k:'idxassign',...}
+  function parse(tokens) {
+    let p = 0;
+    function peek() { return tokens[p]; }
+    function next() { return tokens[p++]; }
+
+    // parse a sequence of terms until a stopper (close/cbrk/cbrc/sep at depth)
+    function parseTerms(stopset) {
+      const terms = [];
+      while (p < tokens.length) {
+        const t = peek();
+        if (stopset.indexOf(t.k) >= 0) break;
+        if (t.k === 'sep') break;
+        terms.push(parseTerm());
+        // attach trailing adverbs
+        while (p < tokens.length && peek().k === 'adv') {
+          const a = next();
+          const of = terms.pop();
+          terms.push({ k: 'adv', a: a.v, of: of });
+        }
+        // attach trailing brackets (index/apply)
+        while (p < tokens.length && peek().k === 'obrk') {
+          next();
+          const args = parseBrackArgs();
+          const of = terms.pop();
+          terms.push({ k: 'apply', of: of, args: args });
+        }
+      }
+      return terms;
+    }
+
+    function parseBrackArgs() {
+      // already consumed '['
+      const args = [];
+      let cur = parseTerms(['close', 'cbrk', 'cbrc']);
+      args.push(cur);
+      while (peek() && peek().k === 'sep') { next(); args.push(parseTerms(['close', 'cbrk', 'cbrc'])); }
+      if (!peek() || peek().k !== 'cbrk') throw err('parse:]');
+      next();
+      return args;
+    }
+
+    function parseTerm() {
+      const t = next();
+      switch (t.k) {
+        case 'num': return { k: 'val', v: t.v.length === 1 ? mkNumAtom(t.v[0]) : nvec(t.v) };
+        case 'str': return { k: 'val', v: t.v.length === 1 ? Ch(t.v) : { t: 'C', v: t.v } };
+        case 'sym': return { k: 'val', v: Sy(t.v) };
+        case 'symv': return { k: 'val', v: { t: 'S', v: t.v } };
+        case 'name': {
+          // assignment?
+          if (peek() && (peek().k === 'assign' || peek().k === 'gassign')) {
+            const g = next().k === 'gassign';
+            // could be modified assign name+:  -> but keep simple
+            const rhs = parseTerms(['close', 'cbrk', 'cbrc']);
+            return { k: 'assign', name: t.v, g: g, rhs: rhs };
+          }
+          return { k: 'name', n: t.v };
+        }
+        case 'verb': return { k: 'verb', v: t.v };
+        case 'assign': return { k: 'verb', v: ':' }; // ':' as right/return verb
+        case 'open': return parseParen();
+        case 'obrk': { const args = parseBrackArgs(); return { k: 'progn', args }; }
+        case 'obrc': return parseLambda();
+        default: throw err('parse:' + t.k + (t.v ? ' ' + t.v : ''));
+      }
+    }
+
+    function parseParen() {
+      // detect table literal:  ( [ ... ] ... )
+      if (peek() && peek().k === 'obrk') {
+        return parseTableLit();
+      }
+      const es = [];
+      es.push(parseTerms(['close', 'cbrk', 'cbrc']));
+      while (peek() && peek().k === 'sep') { next(); es.push(parseTerms(['close', 'cbrk', 'cbrc'])); }
+      if (!peek() || peek().k !== 'close') throw err('parse:)');
+      next();
+      if (es.length === 1) return { k: 'paren', e: es[0] };
+      return { k: 'list', es: es };
+    }
+
+    function parseTableLit() {
+      // consumed '(' ; now at '['
+      next(); // '['
+      // key column defs until ']'
+      const keydefs = parseColDefs(['cbrk']);
+      if (!peek() || peek().k !== 'cbrk') throw err('parse:table]');
+      next();
+      const coldefs = parseColDefs(['close']);
+      if (!peek() || peek().k !== 'close') throw err('parse:table)');
+      next();
+      return { k: 'table', keys: keydefs, cols: coldefs };
+    }
+
+    function parseColDefs(stop) {
+      // sequence of  name:expr  separated by ';'
+      const defs = [];
+      if (peek() && stop.indexOf(peek().k) >= 0) return defs;
+      while (true) {
+        if (peek() && (peek().k === 'name')) {
+          const nm = next().v;
+          if (peek() && (peek().k === 'assign' || peek().k === 'gassign')) {
+            next();
+            const e = parseTerms(['close', 'cbrk', 'cbrc']);
+            defs.push({ name: nm, e });
+          } else {
+            // bare column name -> value is the variable itself
+            defs.push({ name: nm, e: [{ k: 'name', n: nm }] });
+          }
+        } else {
+          // expression column w/o name -> derive name later
+          const e = parseTerms(['close', 'cbrk', 'cbrc']);
+          defs.push({ name: null, e });
+        }
+        if (peek() && peek().k === 'sep') { next(); continue; }
+        break;
+      }
+      return defs;
+    }
+
+    function parseLambda() {
+      // consumed '{'
+      let params = null;
+      if (peek() && peek().k === 'obrk') {
+        // explicit params [a;b]
+        next();
+        params = [];
+        if (peek() && peek().k !== 'cbrk') {
+          params.push(readName());
+          while (peek() && peek().k === 'sep') { next(); params.push(readName()); }
+        }
+        if (!peek() || peek().k !== 'cbrk') throw err('parse:lambda]');
+        next();
+      }
+      const body = [];
+      body.push(parseTerms(['cbrc']));
+      while (peek() && peek().k === 'sep') { next(); body.push(parseTerms(['cbrc'])); }
+      if (!peek() || peek().k !== 'cbrc') throw err('parse:}');
+      next();
+      return { k: 'lambda', params, body };
+    }
+    function readName() { const t = next(); if (t.k !== 'name') throw err('parse:param'); return t.v; }
+
+    // top level: statements separated by 'sep'
+    const stmts = [];
+    stmts.push(parseTerms([]));
+    while (p < tokens.length && peek().k === 'sep') { next(); stmts.push(parseTerms([])); }
+    return stmts;
+  }
+
+  function mkNumAtom(v) { return Number.isInteger(v) ? I(v) : F(v); }
+
+  // ---- evaluator ---------------------------------------------------------
+  function makeEnv(parent) { return { vars: Object.create(parent ? parent.vars : null), parent, out: parent ? parent.out : [] }; }
+
+  function evalProgram(stmts, env) {
+    let r = U;
+    for (const s of stmts) { if (s.length) r = evalTerms(s, env); }
+    return r;
+  }
+
+  function evalTerms(terms, env) {
+    if (!terms.length) return U;
+    return evFrom(terms, 0, env);
+  }
+
+  // evaluate terms[i..end] right-associatively
+  function evFrom(terms, i, env) {
+    const t = terms[i];
+    // assignment term stands alone
+    if (t.k === 'assign') {
+      const val = evalTerms(t.rhs, env);
+      setVar(env, t.name, val, t.g);
+      return val;
+    }
+    const isLast = i === terms.length - 1;
+    // Is this term a function in prefix position? (verb / adverb / lambda / name-fn / paren-fn)
+    const fnv = asFunctionTerm(t, env);
+    if (fnv) {
+      if (isLast) return fnv.fn; // function as a value
+      const rhs = evFrom(terms, i + 1, env);
+      return applyFn(fnv.fn, [rhs], env); // monadic apply to the rest
+    }
+    // t is a noun
+    const A = evalNoun(t, env);
+    if (isLast) return A;
+    const nt = terms[i + 1];
+    // dyadic infix ONLY for primitive verbs / adverb-derived verbs (Amber has no infix user verbs)
+    const inf = asInfixFn(nt, env);
+    if (inf) {
+      if (i + 1 === terms.length - 1) return applyFn(inf.fn, [A], env); // trailing verb -> monadic on A
+      const B = evFrom(terms, i + 2, env);
+      return applyFn(inf.fn, [A, B], env);
+    }
+    // juxtaposition: A applied to (rest)  (indexing / symbol-verb)
+    const rhs = evFrom(terms, i + 1, env);
+    return applyValue(A, rhs, env);
+  }
+
+  // infix-capable = primitive verb, adverb-modified verb, or (verb)/(adverb) in parens
+  function asInfixFn(t, env) {
+    if (t.k === 'verb') return { fn: verbFn(t.v) };
+    if (t.k === 'adv') return { fn: advFn(t, env) };
+    if (t.k === 'paren') {
+      if (t.e.length === 1 && t.e[0].k === 'verb') return { fn: verbFn(t.e[0].v) };
+      if (t.e.length === 1 && t.e[0].k === 'adv') return { fn: advFn(t.e[0], env) };
+    }
+    return null;
+  }
+
+  // decide if a term is a function (verb, adverb-verb, lambda literal, or name bound to fn)
+  function asFunctionTerm(t, env) {
+    if (t.k === 'verb') return { fn: verbFn(t.v) };
+    if (t.k === 'adv') return { fn: advFn(t, env) };
+    if (t.k === 'lambda') return { fn: makeLambda(t, env) };
+    if (t.k === 'name') {
+      const v = lookup(env, t.n);
+      if (v && (v.t === 'fn' || v.t === 'vb' || v.t === 'pr')) return { fn: v };
+      return null;
+    }
+    if (t.k === 'paren') {
+      // (verb) or (expr) that yields a function
+      // peek: if single verb term
+      if (t.e.length === 1 && t.e[0].k === 'verb') return { fn: verbFn(t.e[0].v) };
+      if (t.e.length === 1 && t.e[0].k === 'adv') return { fn: advFn(t.e[0], env) };
+      return null;
+    }
+    return null;
+  }
+
+  function evalNoun(t, env) {
+    switch (t.k) {
+      case 'val': return t.v;
+      case 'name': {
+        const v = lookup(env, t.n);
+        if (v === undefined) throw err('value:' + t.n);
+        return v;
+      }
+      case 'paren': return evalTerms(t.e, env);
+      case 'progn': { let r = U; for (const a of t.args) r = evalTerms(a, env); return r; }
+      case 'list': return vec(t.es.map(e => evalTerms(e, env)));
+      case 'lambda': return makeLambda(t, env);
+      case 'verb': return verbFn(t.v);
+      case 'adv': return advFn(t, env);
+      case 'apply': {
+        const of = evalNounOrFn(t.of, env);
+        return applyArgs(of, t.args, env);
+      }
+      case 'table': return buildTable(t, env);
+      default: throw err('eval:' + t.k);
+    }
+  }
+  function evalNounOrFn(t, env) {
+    const f = asFunctionTerm(t, env);
+    if (f) return f.fn;
+    return evalNoun(t, env);
+  }
+
+  function applyArgs(of, argTerms, env) {
+    // brackets after a value/function: indexing or application
+    const emptyMask = argTerms.map(a => a.length === 0);
+    const allEmpty = emptyMask.every(x => x);
+    const args = argTerms.map(a => a.length ? evalTerms(a, env) : U); // elision -> U
+    if (of && (of.t === 'fn' || of.t === 'vb' || of.t === 'pr')) {
+      if (allEmpty) return applyFn(of, [], env);           // niladic call  f[]
+      if (emptyMask.some(x => x)) return makeProj(of, args, emptyMask); // partial elision -> projection
+      return applyFn(of, args, env);
+    }
+    // indexing a value
+    if (args.length === 1) return index(of, args[0]);
+    return indexDeep(of, args);
+  }
+
+  function setVar(env, name, val, global) {
+    if (global) {
+      // set at root
+      let e = env; while (e.parent) e = e.parent;
+      e.vars[name] = val;
+    } else env.vars[name] = val;
+    return val;
+  }
+  function lookup(env, name) {
+    let v = env.vars[name];
+    if (v !== undefined) return v;
+    return BUILTINS[name];
+  }
+
+  function makeLambda(t, env) {
+    let rank = 0, params = t.params;
+    if (!params) {
+      // infer x/y/z usage
+      const used = new Set();
+      scanNames(t.body, used);
+      if (used.has('z')) rank = 3; else if (used.has('y')) rank = 2; else if (used.has('x')) rank = 1; else rank = 1;
+      params = ['x', 'y', 'z'].slice(0, rank);
+    } else rank = params.length;
+    return { t: 'fn', p: params, b: t.body, env, rank, src: t.src };
+  }
+  function scanNames(body, set) {
+    for (const stmt of body) for (const term of stmt) scanTerm(term, set);
+  }
+  function scanTerm(term, set) {
+    if (!term) return;
+    if (term.k === 'name') set.add(term.n);
+    if (term.k === 'assign') { set.add(term.name); term.rhs.forEach(x => scanTerm(x, set)); }
+    if (term.k === 'adv') scanTerm(term.of, set);
+    if (term.k === 'apply') { scanTerm(term.of, set); term.args.forEach(a => a.forEach(x => scanTerm(x, set))); }
+    if (term.k === 'paren') term.e.forEach(x => scanTerm(x, set));
+    if (term.k === 'progn') term.args.forEach(a => a.forEach(x => scanTerm(x, set)));
+    if (term.k === 'list') term.es.forEach(a => a.forEach(x => scanTerm(x, set)));
+    // do not descend into nested lambdas for x/y/z inference
+  }
+
+  function makeProj(fn, args, mask) { return { t: 'pr', f: fn, args, mask }; }
+
+  function applyFn(fn, args, env) {
+    if (fn.t === 'vb') {
+      if (args.length === 0) { if (fn.mon) return fn.mon(U); if (fn.nary) return fn.nary([]); if (fn.dy) return fn; throw err('rank'); }
+      if (args.length === 1) { if (fn.mon) return fn.mon(args[0]); if (fn.dy) return makeProj(fn, [args[0], U], [false, true]); if (fn.nary) return fn.nary(args); throw err('rank'); }
+      if (args.length === 2) { if (fn.dy) return fn.dy(args[0], args[1]); if (fn.nary) return fn.nary(args); throw err('rank'); }
+      if (fn.nary) return fn.nary(args);
+      throw err('rank');
+    }
+    if (fn.t === 'pr') {
+      // fill masked positions with args
+      const full = []; let ai = 0;
+      for (let k = 0; k < fn.args.length; k++) { if (fn.mask[k]) full.push(ai < args.length ? args[ai++] : U); else full.push(fn.args[k]); }
+      while (ai < args.length) full.push(args[ai++]);
+      return applyFn(fn.f, full, env);
+    }
+    if (fn.t === 'fn') {
+      const e2 = makeEnv(fn.env);
+      const p = fn.p;
+      for (let k = 0; k < p.length; k++) e2.vars[p[k]] = k < args.length ? args[k] : U;
+      // projection only for a partial call (0 < given < rank), not for niladic f[]
+      if (args.length > 0 && args.length < fn.rank && args.every(a => a !== U) && args.length < p.length) {
+        const mask = p.map((_, ix) => ix >= args.length);
+        const pre = p.map((_, ix) => ix < args.length ? args[ix] : U);
+        return { t: 'pr', f: fn, args: pre, mask };
+      }
+      return evalProgram(fn.b.map(stmt => stmt), e2);
+    }
+    throw err('type:apply');
+  }
+
+  const SYMVERB = {
+    at: x => Sy(x.at || ''),
+    sa: x => setAttr(x, 's'), ua: x => setAttr(x, 'u'), pa: x => setAttr(x, 'p'), ga: x => setAttr(x, 'g'),
+    k: x => ({ t: 'C', v: fmt(x) }),
+    '0': y => { OUT.push(outStr(y)); return U; }, '1': y => { OUT.push(outStr(y)); return U; },
+  };
+  function outStr(y) { if (y.t === 'C') return y.v; if (y.t === 'c') return y.v; return fmt(y); }
+  function applyValue(v, arg, env) {
+    // juxtaposition A rhs
+    if (v.t === 'fn' || v.t === 'vb' || v.t === 'pr') return applyFn(v, [arg], env);
+    if (v.t === 's' && SYMVERB[v.v]) return SYMVERB[v.v](arg);
+    return index(v, arg);
+  }
+
+  // ---- indexing ----------------------------------------------------------
+  function index(x, y) {
+    if (y === U) return x;
+    if (x.t === 'm') { // dict lookup
+      return dictAt(x, y);
+    }
+    if (x.t === 'T') { return tableIndex(x, y); }
+    if (x.t === 'K') { return index(x.vt, y); }
+    if (isAtom(x)) { // atom indexed -> only y=0 valid, else error; but allow apply of fn already handled
+      throw err('type:index');
+    }
+    if (isVec(x)) {
+      if (isNum(y)) { const idx = y.v; return arr(x)[wrap(idx, len(x))] || nullOf(x); }
+      if (y.t === 'I' || y.t === 'F') return vec(y.v.map(iv => arr(x)[wrap(iv | 0, len(x))] || nullOf(x)));
+      if (y.t === 'A') return vec(y.v.map(iv => index(x, iv)));
+      if (y === U) return x;
+    }
+    throw err('type:index');
+  }
+  function wrap(i, n) { return i < 0 ? n + i : i; }
+  function nullOf(x) { return x.t === 'I' ? NI : x.t === 'F' ? NF : x.t === 'S' ? Sy('') : x.t === 'C' ? Ch(' ') : NI; }
+  function indexDeep(x, ys) {
+    let r = x;
+    for (const y of ys) { if (y === U) { /* full slice - map */ return vec(arr(r).map(e => indexDeep(e, ys.slice(1)))); } r = index(r, y); }
+    return r;
+  }
+
+  function dictAt(d, y) {
+    const ks = raw(d.k);
+    if (isAtom(y)) {
+      const idx = ks.indexOf(y.v);
+      if (idx < 0) return nullOf(d.v);
+      return arr(d.v)[idx];
+    }
+    if (isVec(y)) return vec(arr(y).map(e => dictAt(d, e)));
+    return U;
+  }
+
+  // ---- verbs -------------------------------------------------------------
+  function each1(f, x) {
+    if (isAtom(x)) return f(x);
+    return vec(arr(x).map(f));
+  }
+  function each2(f, x, y) {
+    const xa = isAtom(x), ya = isAtom(y);
+    if (xa && ya) return f(x, y);
+    if (xa) return vec(arr(y).map(e => f(x, e)));
+    if (ya) return vec(arr(x).map(e => f(e, y)));
+    if (len(x) !== len(y)) throw err('length');
+    const ax = arr(x), ay = arr(y);
+    return vec(ax.map((e, k) => f(e, ay[k])));
+  }
+  function arith(f, floatOut) {
+    return (x, y) => each2((a, b) => {
+      const r = f(num(a), num(b));
+      return floatOut || !Number.isInteger(r) || a.t === 'f' || b.t === 'f' ? F(r) : I(r);
+    }, x, y);
+  }
+
+  function eq2(a, b) {
+    if (a.t === 's' || b.t === 's') return I(a.v === b.v ? 1 : 0);
+    if (a.t === 'c' && b.t === 'c') return I(a.v === b.v ? 1 : 0);
+    return I(num(a) === num(b) ? 1 : 0);
+  }
+
+  function match(x, y) { return I(deepEq(x, y) ? 1 : 0); }
+  function deepEq(x, y) {
+    if (x.t !== y.t) {
+      // allow I~F equal values? k: 0~0.0 -> 0. keep strict on type
+      return false;
+    }
+    if (isAtom(x)) return x.v === y.v || (Number.isNaN(x.v) && Number.isNaN(y.v));
+    if (x.t === 'C') return x.v === y.v;
+    if (x.t === 'S') return x.v.length === y.v.length && x.v.every((e, i) => e === y.v[i]);
+    if (x.t === 'I' || x.t === 'F') return x.v.length === y.v.length && x.v.every((e, i) => e === y.v[i] || (Number.isNaN(e) && Number.isNaN(y.v[i])));
+    if (x.t === 'A') return x.v.length === y.v.length && x.v.every((e, i) => deepEq(e, y.v[i]));
+    if (x.t === 'm') return deepEq(x.k, y.k) && deepEq(x.v, y.v);
+    if (x.t === 'T') return JSON.stringify(tblPlain(x)) === JSON.stringify(tblPlain(y));
+    return false;
+  }
+  function tblPlain(t) { return { c: t.c, d: t.d.map(raw) }; }
+
+  function concat(x, y) {
+    if (x.t === 'm' && y.t === 'm') return dictMerge(x, y);
+    const xa = isAtom(x) ? [x] : arr(x);
+    const ya = isAtom(y) ? [y] : arr(y);
+    return vec(xa.concat(ya));
+  }
+  function enlist(x) { return vec([x]); }
+
+  function til(x) { const n = num(x); if (n < 0) { const a = []; for (let k = 0; k < -n; k++)a.push(n + k); return { t: 'I', v: a }; } const a = []; for (let k = 0; k < n; k++)a.push(k); return { t: 'I', v: a }; }
+
+  function first(x) { if (isAtom(x)) return x; const a = arr(x); return a.length ? a[0] : nullOf(x); }
+  function last(x) { if (isAtom(x)) return x; const a = arr(x); return a.length ? a[a.length - 1] : nullOf(x); }
+  function reverse(x) { if (isAtom(x)) return x; if (x.t === 'm') return { t: 'm', k: reverse(x.k), v: reverse(x.v) }; return vec(arr(x).reverse()); }
+  function countOf(x) { return I(len(x)); }
+
+  function distinct(x) {
+    if (isAtom(x)) return enlist(x);
+    const seen = [], out = [];
+    for (const e of arr(x)) { const key = keyOf(e); if (seen.indexOf(key) < 0) { seen.push(key); out.push(e); } }
+    return vec(out);
+  }
+  function keyOf(e) { if (isAtom(e)) return e.t + ':' + e.v; return e.t + ':' + JSON.stringify(raw(e)); }
+
+  function where(x) {
+    if (x.t === 'm') { // where on dict -> keys where val true
+      const out = []; const ks = arr(x.k), vs = arr(x.v);
+      vs.forEach((v, i) => { for (let j = 0; j < num(v); j++) out.push(ks[i]); }); return vec(out);
+    }
+    const a = raw(x); const out = [];
+    a.forEach((v, i) => { for (let j = 0; j < v; j++) out.push(i); });
+    return { t: 'I', v: out };
+  }
+  function groupBy(x) {
+    const a = arr(x); const keys = [], pos = [];
+    a.forEach((e, i) => { const kk = keyOf(e); let ix = keys.indexOf(kk); if (ix < 0) { keys.push(kk); pos.push([i]); } else pos[ix].push(i); });
+    const kv = []; const seen = {};
+    const uniqVals = []; a.forEach((e) => { const kk = keyOf(e); if (!(kk in seen)) { seen[kk] = e; uniqVals.push(e); } });
+    return { t: 'm', k: vec(uniqVals), v: { t: 'A', v: pos.map(p => ({ t: 'I', v: p })) } };
+  }
+
+  function gradeUp(x) { const a = arr(x); const idx = a.map((_, i) => i); idx.sort((i, j) => cmp(a[i], a[j]) || i - j); return { t: 'I', v: idx }; }
+  function gradeDown(x) { const a = arr(x); const idx = a.map((_, i) => i); idx.sort((i, j) => cmp(a[j], a[i]) || i - j); return { t: 'I', v: idx }; }
+  function cmp(a, b) {
+    if (a.t === 's' && b.t === 's') return a.v < b.v ? -1 : a.v > b.v ? 1 : 0;
+    if (a.t === 'c' && b.t === 'c') return a.v < b.v ? -1 : a.v > b.v ? 1 : 0;
+    const x = num(a), y = num(b); return x < y ? -1 : x > y ? 1 : 0;
+  }
+  function ascv(x) { const g = gradeUp(x); const r = index(x, g); r.at = 's'; return r; }
+  function descv(x) { const g = gradeDown(x); return index(x, g); }
+
+  function flip(x) {
+    if (x.t === 'm') return dictToTable(x);
+    if (x.t === 'T') return tableToDict(x);
+    if (x.t === 'A') { // matrix transpose
+      const rows = x.v.map(arr); const n = rows[0].length;
+      const out = []; for (let j = 0; j < n; j++) out.push(vec(rows.map(r => r[j])));
+      return { t: 'A', v: out };
+    }
+    return x;
+  }
+
+  function takeReshape(x, y) {
+    if (x.t === 'fn' || x.t === 'vb' || x.t === 'pr') return replicateFn(x, y);
+    if (isNum(x) && (y.t === 'T' || y.t === 'K')) { const n = num(x), R = len(y); const rows = []; const nn = Math.min(Math.abs(n), R); for (let k = 0; k < nn; k++) rows.push(n >= 0 ? k : R - nn + k); return tableIndex(y.t === 'K' ? mergeKV(y) : y, { t: 'I', v: rows }); }
+    if (isNum(x)) {
+      const n = num(x); const src = isAtom(y) ? [y] : arr(y); const L = src.length || 1;
+      const out = []; const nn = Math.abs(n);
+      if (n >= 0) for (let k = 0; k < nn; k++) out.push(src[k % L]);
+      else for (let k = 0; k < nn; k++) out.push(src[((L - (nn - k) % L) % L + L) % L]);
+      if (src.length === 0) return vec([]);
+      return vec(out);
+    }
+    if (x.t === 'I') { // reshape
+      return reshape(raw(x), isAtom(y) ? [y] : arr(y));
+    }
+    if (x.t === 'S' && y.t === 'm') { // take keys
+      return { t: 'm', k: x, v: vec(arr(x).map(kk => dictAt(y, kk))) };
+    }
+    throw err('type:#');
+  }
+  function reshape(dims, src) {
+    let idx = 0; const L = src.length;
+    function build(d) {
+      if (d.length === 1) { const out = []; for (let k = 0; k < dims[dims.length - d.length]; k++) { out.push(src[idx % L]); idx++; } return vec(out); }
+      const out = []; for (let k = 0; k < dims[dims.length - d.length]; k++) out.push(build(d.slice(1))); return { t: 'A', v: out };
+    }
+    return build(dims);
+  }
+  function replicateFn(f, y) {
+    const a = arr(y); const out = [];
+    a.forEach(e => { const c = num(applyFn(f, [e], null)); for (let j = 0; j < c; j++) out.push(e); });
+    return vec(out);
+  }
+
+  function dropCut(x, y) {
+    if (isNum(x) && (y.t === 'T' || y.t === 'K')) { const n = num(x), R = len(y); const rows = []; for (let k = 0; k < R; k++) rows.push(k); const keep = n >= 0 ? rows.slice(n) : rows.slice(0, R + n); return tableIndex(y.t === 'K' ? mergeKV(y) : y, { t: 'I', v: keep }); }
+    if (isNum(x)) { const n = num(x); const a = isAtom(y) ? [y] : arr(y); return n >= 0 ? vec(a.slice(n)) : vec(a.slice(0, a.length + n)); }
+    if (x.t === 'S' && y.t === 'm') { const rm = raw(x); const nk = [], nv = []; arr(y.k).forEach((kk, i) => { if (rm.indexOf(kk.v) < 0) { nk.push(kk); nv.push(arr(y.v)[i]); } }); return { t: 'm', k: vec(nk), v: vec(nv) }; }
+    if (x.t === 'I') { const cuts = raw(x); const a = arr(y); const out = []; for (let k = 0; k < cuts.length; k++) { const s = cuts[k], e = k + 1 < cuts.length ? cuts[k + 1] : a.length; out.push(vec(a.slice(s, e))); } return { t: 'A', v: out }; }
+    throw err('type:_');
+  }
+
+  function findIn(x, y) {
+    const a = arr(x); const raws = a.map(keyOf);
+    const one = (e) => { const ix = raws.indexOf(keyOf(e)); return I(ix < 0 ? len(x) : ix); };
+    if (isAtom(y)) return one(y);
+    return vec(arr(y).map(one));
+  }
+  function fill(x, y) { // x atom fills nulls in y
+    return each1(e => isNull(e) ? x : e, y);
+  }
+  function without(x, y) { const rm = (isAtom(y) ? [y] : arr(y)).map(keyOf); return vec(arr(x).filter(e => rm.indexOf(keyOf(e)) < 0)); }
+
+  function toStr(x) {
+    if (x.t === 'c') return { t: 'C', v: x.v };
+    if (x.t === 'C') return x;
+    if (isAtom(x)) return { t: 'C', v: fmtAtom(x) };
+    return vec(arr(x).map(e => toStr(e)));
+  }
+  function castTo(sym, y) {
+    const s = sym.v;
+    if (s === 'i' || s === 'I') return each1(e => I(Math.trunc(num(e))), y);
+    if (s === 'f' || s === 'F') return each1(e => F(num(e)), y);
+    if (s === 'c' || s === 'C') return each1(e => Ch(String.fromCharCode(num(e))), y);
+    if (s === '') { // `$ -> symbol from string
+      if (y.t === 'C') return Sy(y.v);
+      return each1(e => Sy(e.t === 'C' ? e.v : e.v + ''), y);
+    }
+    if (s === 's' || s === 'S') { if (y.t === 'C') return Sy(y.v); return each1(e => Sy(e.v + ''), y); }
+    return y;
+  }
+
+  function typeOf(x) {
+    const map = { i: 'i', f: 'f', c: 'c', s: 's', I: 'I', F: 'F', C: 'C', S: 'S', A: 'A', m: 'm', T: 'M', K: 'M', fn: 'o', vb: 'v', pr: 'p', u: 'u' };
+    return Sy(map[x.t] || '?');
+  }
+
+  // apply (@ .)
+  function applyAt(x, y) {
+    if (x.t === 'fn' || x.t === 'vb' || x.t === 'pr') return applyFn(x, [y], null);
+    return index(x, y);
+  }
+
+  function verbFn(v) {
+    const V = VERBS[v];
+    if (!V) throw err('nyi verb ' + v);
+    return { t: 'vb', n: v, mon: V.mon, dy: V.dy, nary: V.nary };
+  }
+
+  const VERBS = {
+    ':': { mon: x => x, dy: (x, y) => { if (x.t === 's' && (x.v === '0' || x.v === '1' || x.v === '2')) { OUT.push(outStr(y)); return U; } return y; } },
+    '+': { mon: flip, dy: arith((a, b) => a + b) },
+    '-': { mon: x => each1(e => isNum(e) ? (e.t === 'f' ? F(-e.v) : I(-e.v)) : F(-num(e)), x), dy: arith((a, b) => a - b) },
+    '*': { mon: first, dy: arith((a, b) => a * b) },
+    '%': { mon: x => each1(e => F(Math.sqrt(num(e))), x), dy: arith((a, b) => a / b, true) },
+    '!': { mon: monBang, dy: dyBang },
+    '&': { mon: where, dy: arith((a, b) => Math.min(a, b)) },
+    '|': { mon: reverse, dy: arith((a, b) => Math.max(a, b)) },
+    '<': { mon: gradeUp, dy: (x, y) => each2((a, b) => I(cmp(a, b) < 0 ? 1 : 0), x, y) },
+    '>': { mon: gradeDown, dy: (x, y) => each2((a, b) => I(cmp(a, b) > 0 ? 1 : 0), x, y) },
+    '=': { mon: groupBy, dy: (x, y) => each2(eq2, x, y) },
+    '~': { mon: x => each1(e => I(num0(e) ? 0 : 1), x), dy: match },
+    ',': { mon: enlist, dy: concat },
+    '^': { mon: x => each1(e => I(isNull(e) ? 1 : 0), x), dy: (x, y) => isAtom(x) ? fill(x, y) : without(x, y) },
+    '#': { mon: countOf, dy: takeReshape },
+    '_': { mon: x => each1(e => e.t === 'c' ? Ch(e.v.toLowerCase()) : I(Math.floor(num(e))), x), dy: dropCut },
+    '$': { mon: toStr, dy: (x, y) => x.t === 's' ? castTo(x, y) : padStr(x, y), nary: condN },
+    '?': { mon: distinct, dy: qmark },
+    '@': { mon: typeOf, dy: applyAt, nary: amendN },
+    '.': { mon: dotMon, dy: (x, y) => indexDeep(x, arr(y)), nary: drillN },
+    '0:': { mon: x => x, dy: (x, y) => { return y; } },
+    '1:': { mon: x => x, dy: (x, y) => y },
+  };
+  function num0(e) { return isNum(e) ? e.v === 0 : (e.t === 'c' ? e.v === '\0' : (e.t === 's' ? e.v === '' : false)); }
+  function monBang(x) { if (x.t === 'm') return x.k; if (x.t === 'T') return keysList(x); return til(x); }
+  function keysList(t) { return { t: 'S', v: t.c }; }
+  function dyBang(x, y) {
+    // numeric mod/div only when the LEFT is a numeric atom
+    if (isNum(x) && (isNum(y) || isNumVec(y))) {
+      const m = num(x);
+      if (m < 0) return each1(e => I(Math.trunc(num(e) / -m)), y); // div
+      return each1(e => I(((num(e) % m) + m) % m), y); // mod
+    }
+    // otherwise build a dictionary (atoms get enlisted to length 1)
+    const kk = isAtom(x) ? vec([x]) : x;
+    const vv = isAtom(y) ? vec([y]) : y;
+    if (len(kk) !== len(vv)) throw err('length');
+    return { t: 'm', k: kk, v: vv };
+  }
+  function qmark(x, y) {
+    if (isNum(x)) { // roll/deal
+      const n = num(x); const rng = num(y);
+      const out = []; for (let k = 0; k < Math.abs(n); k++) out.push(Math.floor(RNG() * rng));
+      return { t: 'I', v: out };
+    }
+    return findIn(x, y);
+  }
+  function padStr(x, y) { const n = num(x); const s = y.t === 'C' ? y.v : fmtAtom(y); if (n >= 0) return { t: 'C', v: (s + ' '.repeat(Math.max(0, n))).slice(0, n) }; const nn = -n; return { t: 'C', v: (' '.repeat(Math.max(0, nn)) + s).slice(-nn) }; }
+  function truthy(x) { if (isAtom(x)) return isNum(x) ? x.v !== 0 : x.t === 'c' ? x.v !== '\0' : x.t === 's' ? x.v !== '' : true; if (isVec(x)) return len(x) > 0 && truthy(first(x)); return true; }
+  function condN(args) { for (let k = 0; k + 1 < args.length; k += 2) { if (truthy(args[k])) return args[k + 1]; } return args.length % 2 ? args[args.length - 1] : U; }
+  function dotMon(x) { if (x.t === 'm') return x.v; if (x.t === 'C') return evalString(x.v); if (x.t === 's') return lookupGlobal(x.v); if (x.t === 'S') return vec(x.v.map(lookupGlobal)); return x; }
+  function amendN(args) { // @[x;i;f] or @[x;i;f;y]
+    let [x, idx, f, y] = args; x = clone(x);
+    const idxs = isAtom(idx) ? [idx] : arr(idx);
+    idxs.forEach((iv, k) => {
+      const pos = num(iv);
+      const cur = index(x, iv);
+      const nv = args.length === 3 ? applyFn(asFn(f), [cur], null) : applyFn(asFn(f), [cur, isAtom(y) ? y : arr(y)[k]], null);
+      x = amendAt(x, pos, nv);
+    });
+    return x;
+  }
+  function drillN(args) { let [x, idx, f, y] = args; const path = isAtom(idx) ? [idx] : arr(idx); return amendDeep(clone(x), path, f, y, args.length); }
+  function amendDeep(x, path, f, y, n) {
+    if (path.length === 1) { const cur = index(x, path[0]); const nv = n === 3 ? applyFn(asFn(f), [cur], null) : applyFn(asFn(f), [cur, y], null); return amendAt(x, num(path[0]), nv); }
+    const cur = index(x, path[0]); const nv = amendDeep(clone(cur), path.slice(1), f, y, n); return amendAt(x, num(path[0]), nv);
+  }
+  function asFn(f) { if (f.t === 'fn' || f.t === 'vb' || f.t === 'pr') return f; if (f.t === 'c' || f.t === 'C') return verbFn(':'); return { t: 'vb', n: ':', mon: () => f, dy: () => f }; }
+  function amendAt(x, pos, nv) { const a = arr(x); a[wrap(pos, a.length)] = nv; return vec(a); }
+  function clone(x) { if (isVec(x)) return { t: x.t, v: x.t === 'C' ? x.v : x.v.slice(), at: x.at }; return x; }
+
+  function evalString(s) { const toks = lex(s); const st = parse(toks); return evalProgram(st, ROOT); }
+  function lookupGlobal(n) { const v = ROOT.vars[typeof n === 'string' ? n : n.v]; return v === undefined ? (BUILTINS[n] || U) : v; }
+
+  // ---- adverbs -----------------------------------------------------------
+  function advFn(t, env) {
+    const inner = advInnerFn(t.of, env);
+    const a = t.a;
+    return makeAdverb(a, inner, env);
+  }
+  function advInnerFn(of, env) {
+    const f = asFunctionTerm(of, env);
+    if (f) return f.fn;
+    // maybe it's a noun that is a function value
+    const v = evalNounOrFn(of, env);
+    return v;
+  }
+  function makeAdverb(a, f, env) {
+    const self = {
+      t: 'vb', n: a,
+      mon: (x) => advApply(a, f, [x]),
+      dy: (x, y) => advApply(a, f, [x, y])
+    };
+    return self;
+  }
+  function advApply(a, f, args) {
+    switch (a) {
+      case "'": // each
+        if (args.length === 1) return each1(e => applyFn(f, [e], null), args[0]);
+        return eachDy(f, args[0], args[1]);
+      case '/':
+        if (args.length === 1) return overMon(f, args[0]);
+        return overDy(f, args[0], args[1]);
+      case '\\':
+        if (args.length === 1) return scanMon(f, args[0]);
+        return scanDy(f, args[0], args[1]);
+      case "':":
+        if (args.length === 1) return eachPrior(f, args[0], null);
+        return eachPrior(f, args[1], args[0]);
+      case '/:':
+        return eachRight(f, args[0], args[1]);
+      case '\\:':
+        return eachLeft(f, args[0], args[1]);
+    }
+    throw err('nyi adv ' + a);
+  }
+  function eachDy(f, x, y) {
+    const xa = isAtom(x), ya = isAtom(y);
+    if (xa && ya) return applyFn(f, [x, y], null);
+    if (xa) return vec(arr(y).map(e => applyFn(f, [x, e], null)));
+    if (ya) return vec(arr(x).map(e => applyFn(f, [e, y], null)));
+    if (len(x) !== len(y)) throw err('length');
+    const ax = arr(x), ay = arr(y); return vec(ax.map((e, k) => applyFn(f, [e, ay[k]], null)));
+  }
+  function isFnVal(f) { return f && (f.t === 'fn' || f.t === 'vb' || f.t === 'pr'); }
+  function overMon(f, x) {
+    // n f/ x  is handled when f is an int (do). here f is function.
+    const a = arr(x); if (a.length === 0) return x; let acc = a[0];
+    for (let k = 1; k < a.length; k++) acc = applyFn(f, [acc, a[k]], null);
+    return acc;
+  }
+  function isMonadicFn(f) { return (f.t === 'fn' && f.rank === 1) || (f.t === 'vb' && f.mon && !f.dy) || f.t === 'pr'; }
+  function overDy(f, seed, x) {
+    // n f/ x : integer-atom seed + monadic f -> apply f to x, n times (do-loop)
+    if (seed && seed.t === 'i' && isMonadicFn(f)) { let acc = x; for (let k = 0; k < seed.v; k++) acc = applyFn(f, [acc], null); return acc; }
+    const a = arr(x); let acc = seed;
+    for (let k = 0; k < a.length; k++) acc = applyFn(f, [acc, a[k]], null);
+    return acc;
+  }
+  function scanMon(f, x) { const a = arr(x); if (a.length === 0) return x; const out = [a[0]]; let acc = a[0]; for (let k = 1; k < a.length; k++) { acc = applyFn(f, [acc, a[k]], null); out.push(acc); } return vec(out); }
+  function scanDy(f, seed, x) {
+    // n f\ x : integer-atom seed + monadic f -> record each of n applications (do-scan)
+    if (seed && seed.t === 'i' && isMonadicFn(f)) { let acc = x; const out = [x]; for (let k = 0; k < seed.v; k++) { acc = applyFn(f, [acc], null); out.push(acc); } return vec(out); }
+    const a = arr(x); const out = []; let acc = seed; for (let k = 0; k < a.length; k++) { acc = applyFn(f, [acc, a[k]], null); out.push(acc); } return vec(out);
+  }
+  function eachPrior(f, x, seed) {
+    const a = arr(x); const out = []; for (let k = 0; k < a.length; k++) { if (k === 0) { out.push(seed ? applyFn(f, [a[0], seed], null) : a[0]); } else out.push(applyFn(f, [a[k], a[k - 1]], null)); } return vec(out);
+  }
+  function eachRight(f, x, y) { return vec(arr(y).map(e => applyFn(f, [x, e], null))); }
+  function eachLeft(f, x, y) { return vec(arr(x).map(e => applyFn(f, [e, y], null))); }
+
+  // ---- tables ------------------------------------------------------------
+  function buildTable(t, env) {
+    const keyCols = t.keys.map(cd => resolveCol(cd, env));
+    const valCols = t.cols.map(cd => resolveCol(cd, env));
+    // normalize lengths
+    const allCols = keyCols.concat(valCols);
+    const n = allCols.reduce((m, c) => Math.max(m, isVec(c.val) ? len(c.val) : 1), 0);
+    allCols.forEach(c => { if (isAtom(c.val)) c.val = vec(Array(n).fill(c.val)); });
+    const vt = { t: 'T', c: valCols.map(c => c.name), d: valCols.map(c => c.val), at: valCols.map(c => c.val.at || '') };
+    if (keyCols.length === 0) return vt;
+    const kt = { t: 'T', c: keyCols.map(c => c.name), d: keyCols.map(c => c.val), at: keyCols.map(c => c.val.at || '') };
+    return { t: 'K', kt, vt };
+  }
+  function resolveCol(cd, env) {
+    let name = cd.name; let val = evalTerms(cd.e, env);
+    if (!name) name = 'x';
+    return { name, val };
+  }
+  function dictToTable(d) { // +dict where vals are equal-length vectors
+    const names = raw(d.k).map(k => typeof k === 'string' ? k : k); const cols = arr(d.v);
+    return { t: 'T', c: names, d: cols, at: cols.map(c => c.at || '') };
+  }
+  function tableToDict(t) { return { t: 'm', k: { t: 'S', v: t.c }, v: { t: 'A', v: t.d } }; }
+  function tableIndex(t, y) {
+    if (y.t === 's') { const ix = t.c.indexOf(y.v); if (ix < 0) throw err('value:' + y.v); return t.d[ix]; }
+    if (y.t === 'S') return vec(y.v.map(s => t.d[t.c.indexOf(s)] || U));
+    if (isNum(y)) { // row dict
+      const i = num(y); return { t: 'm', k: { t: 'S', v: t.c }, v: vec(t.d.map(col => arr(col)[i])) };
+    }
+    if (y.t === 'I') { const rows = raw(y); return { t: 'T', c: t.c, d: t.d.map(col => vec(rows.map(i => arr(col)[i]))), at: t.at.slice() }; }
+    throw err('type:tindex');
+  }
+  function meta(x) {
+    let t = x.t === 'K' ? mergeKV(x) : x;
+    if (t.t !== 'T') throw err('type:meta');
+    const cols = t.c.slice();
+    const types = t.d.map(c => Sy(typeChar(c)));
+    const attrs = t.d.map((c, i) => Sy(c.at || (t.at && t.at[i]) || ''));
+    // keyed table: build keyed meta (c!(t;a))
+    const kt = { t: 'T', c: ['c'], d: [{ t: 'S', v: cols }], at: [''] };
+    const vt = { t: 'T', c: ['t', 'a'], d: [{ t: 'S', v: types.map(s => s.v) }, { t: 'S', v: attrs.map(s => s.v) }], at: ['', ''] };
+    return { t: 'K', kt, vt };
+  }
+  function typeChar(c) {
+    if (c.t === 'I') return 'i'; if (c.t === 'F') return 'f'; if (c.t === 'C') return 'c'; if (c.t === 'S') return 's';
+    if (c.t === 'A') return ''; return c.t;
+  }
+  function mergeKV(k) { return { t: 'T', c: k.kt.c.concat(k.vt.c), d: k.kt.d.concat(k.vt.d), at: k.kt.at.concat(k.vt.at) }; }
+
+  // ---- formatting --------------------------------------------------------
+  function fmtNum(v) {
+    if (Number.isNaN(v)) return '0n';
+    if (v === Infinity) return '0w'; if (v === -Infinity) return '-0w';
+    if (Number.isInteger(v)) return String(v);
+    let s = String(v);
+    return s;
+  }
+  function fmtAtom(x) {
+    if (x.t === 'i') return x.v === -9223372036854775807 ? '0N' : String(x.v);
+    if (x.t === 'f') return fmtF(x.v);
+    if (x.t === 'c') return x.v;
+    if (x.t === 's') return '`' + x.v;
+    if (x.t === 'u') return '::';
+    return fmt(x);
+  }
+  function fmtF(v) { if (Number.isNaN(v)) return '0n'; if (v === Infinity) return '0w'; if (v === -Infinity) return '-0w'; if (Number.isInteger(v)) return v + 'f'; return String(v); }
+  function fmtFv(v) { if (Number.isNaN(v)) return '0n'; if (v === Infinity) return '0w'; if (v === -Infinity) return '-0w'; return String(v); }
+
+  function fmt(x) {
+    if (x === undefined || x === null) return '';
+    if (isAtom(x)) return fmtAtom(x);
+    if (x.t === 'C') return '"' + x.v + '"';
+    if (x.t === 'S') return x.v.map(s => '`' + s).join('');
+    if (x.t === 'I') return x.v.map(fmtNum).join(' ');
+    if (x.t === 'F') return x.v.map(fmtFv).join(' ');
+    if (x.t === 'A') return '(' + x.v.map(fmt).join(';') + ')';
+    if (x.t === 'm') return fmtDict(x);
+    if (x.t === 'T') return renderTable(x).join('\n');
+    if (x.t === 'K') return renderKeyed(x).join('\n');
+    if (x.t === 'fn') return x.src || '{...}';
+    if (x.t === 'vb') return x.n;
+    if (x.t === 'pr') return 'projection';
+    if (x.t === 'u') return '';
+    return '?';
+  }
+  function fmtDict(d) { return renderDict(d).join('\n'); }
+
+  // grid renderers return arrays of text lines
+  function colStrings(col) {
+    const a = arr(col);
+    return a.map(e => {
+      if (e === undefined) return '';
+      if (e.t === 'c') return e.v;
+      if (e.t === 'C') return e.v;
+      if (e.t === 's') return e.v;
+      if (isAtom(e)) return fmtAtom(e);
+      if (e.t === 'S') return e.v.map(s => '`' + s).join('');
+      if (e.t === 'I' || e.t === 'F') return fmt(e);
+      return fmt(e);
+    });
+  }
+  function pad(s, w, right) { s = s == null ? '' : String(s); if (s.length >= w) return s; const sp = ' '.repeat(w - s.length); return right ? sp + s : s + sp; }
+
+  function renderTable(t) {
+    const names = t.c;
+    const cols = t.d.map(colStrings);
+    const rightAlign = t.d.map(c => c.t === 'I' || c.t === 'F');
+    const widths = names.map((nm, i) => Math.max(nm.length, cols[i].reduce((m, s) => Math.max(m, s.length), 0)));
+    const n = t.d.length ? len(t.d[0]) : 0;
+    const header = names.map((nm, i) => pad(nm, widths[i], false)).join(' ');
+    const sep = widths.map(w => '-'.repeat(w)).join(' ');
+    const lines = [header, sep];
+    for (let r = 0; r < n; r++) lines.push(cols.map((c, i) => pad(c[r], widths[i], rightAlign[i])).join(' '));
+    return lines;
+  }
+  function renderKeyed(k) {
+    const kt = k.kt, vt = k.vt;
+    const kcols = kt.d.map(colStrings), vcols = vt.d.map(colStrings);
+    const kw = kt.c.map((nm, i) => Math.max(nm.length, kcols[i].reduce((m, s) => Math.max(m, s.length), 0)));
+    const vw = vt.c.map((nm, i) => Math.max(nm.length, vcols[i].reduce((m, s) => Math.max(m, s.length), 0)));
+    const kRA = kt.d.map(c => c.t === 'I' || c.t === 'F'); const vRA = vt.d.map(c => c.t === 'I' || c.t === 'F');
+    const n = kt.d.length ? len(kt.d[0]) : 0;
+    const header = kt.c.map((nm, i) => pad(nm, kw[i], false)).join(' ') + '| ' + vt.c.map((nm, i) => pad(nm, vw[i], false)).join(' ');
+    const sep = kw.map(w => '-'.repeat(w)).join(' ') + '| ' + vw.map(w => '-'.repeat(w)).join(' ');
+    const lines = [header, sep];
+    for (let r = 0; r < n; r++) {
+      const l = kcols.map((c, i) => pad(c[r], kw[i], kRA[i])).join(' ') + '| ' + vcols.map((c, i) => pad(c[r], vw[i], vRA[i])).join(' ');
+      lines.push(l);
+    }
+    return lines;
+  }
+  function renderDict(d) {
+    const ks = colStrings(d.k); const vs = d.v.t === 'A' ? d.v.v.map(e => fmt(e)) : colStrings(d.v);
+    const kw = ks.reduce((m, s) => Math.max(m, s.length), 0);
+    const lines = [];
+    for (let i = 0; i < ks.length; i++) lines.push(pad(ks[i], kw, false) + '| ' + vs[i]);
+    return lines;
+  }
+
+  function dictMerge(a, b) {
+    const nk = arr(a.k).slice(), nv = arr(a.v).slice();
+    const keys = nk.map(keyOf);
+    arr(b.k).forEach((kk, i) => { const ix = keys.indexOf(keyOf(kk)); const val = arr(b.v)[i]; if (ix < 0) { nk.push(kk); nv.push(val); keys.push(keyOf(kk)); } else nv[ix] = val; });
+    return { t: 'm', k: vec(nk), v: vec(nv) };
+  }
+
+  // ---- RNG (seedable) ----------------------------------------------------
+  let SEED = 0;
+  // xorshift32 — decent bits (unlike a plain LCG, whose low bits are non-random);
+  // reseeded from Math.random on load so `?` rolls differ each session.
+  function RNG() { SEED ^= SEED << 13; SEED ^= SEED >>> 17; SEED ^= SEED << 5; SEED |= 0; return (SEED >>> 0) / 4294967296; }
+  function setSeed(s) { SEED = (s | 0) || 1; RNG(); RNG(); RNG(); }
+  try { setSeed((Math.floor(Math.random() * 2147483647) | 0) || 1); } catch (e) { setSeed(2463534242); }
+
+  // ---- Amber vocabulary (named builtins) --------------------------------
+  function reduceNum(f, init, x) { const a = raw(isAtom(x) ? enlist(x) : x); return a.reduce(f, init); }
+  const BUILTINS = {};
+  function defMon(name, fn) { BUILTINS[name] = { t: 'vb', n: name, mon: fn }; }
+  function defDy(name, fn) { BUILTINS[name] = { t: 'vb', n: name, dy: fn }; }
+  function defND(name, fn) { BUILTINS[name] = { t: 'vb', n: name, nary: fn, dy: (x, y) => fn([x, y]), mon: x => fn([x]) }; }
+
+  defMon('til', til);
+  defMon('enlist', enlist);
+  defMon('count', countOf);
+  defMon('first', first);
+  defMon('last', last);
+  defMon('reverse', reverse);
+  defMon('distinct', distinct);
+  defMon('where', where);
+  defMon('group', groupBy);
+  defMon('flip', flip);
+  defMon('type', typeOf);
+  defMon('key', x => x.t === 'm' ? x.k : x.t === 'K' ? x.kt : monBang(x));
+  defMon('value', x => x.t === 'm' ? x.v : x.t === 'K' ? x.vt : x);
+  defMon('string', toStr);
+  defMon('neg', x => each1(e => isNum(e) ? (e.t === 'f' ? F(-e.v) : I(-e.v)) : F(-num(e)), x));
+  defMon('not', x => each1(e => I(num0(e) ? 1 : 0), x));
+  defMon('null', x => each1(e => I(isNull(e) ? 1 : 0), x));
+  defMon('sqrt', x => each1(e => F(Math.sqrt(num(e))), x));
+  defMon('abs', x => each1(e => isNum(e) ? (e.t === 'f' ? F(Math.abs(e.v)) : I(Math.abs(e.v))) : F(Math.abs(num(e))), x));
+  defMon('signum', x => each1(e => I(Math.sign(num(e))), x));
+  defMon('floor', x => each1(e => I(Math.floor(num(e))), x));
+  defMon('ceiling', x => each1(e => I(Math.ceil(num(e))), x));
+  defMon('exp', x => each1(e => F(Math.exp(num(e))), x));
+  defMon('log', x => each1(e => F(Math.log(num(e))), x));
+  defMon('sin', x => each1(e => F(Math.sin(num(e))), x));
+  defMon('cos', x => each1(e => F(Math.cos(num(e))), x));
+  defMon('reciprocal', x => each1(e => F(1 / num(e)), x));
+  defMon('sum', x => aggNum((a, b) => a + b, 0, x));
+  defMon('prd', x => aggNum((a, b) => a * b, 1, x));
+  defMon('min', x => aggNum((a, b) => Math.min(a, b), Infinity, x));
+  defMon('max', x => aggNum((a, b) => Math.max(a, b), -Infinity, x));
+  defMon('avg', x => { const a = raw(x); return F(a.reduce((s, v) => s + v, 0) / a.length); });
+  defMon('med', x => { const a = raw(x).slice().sort((p, q) => p - q); const n = a.length; return F(n % 2 ? a[(n - 1) / 2] : (a[n / 2 - 1] + a[n / 2]) / 2); });
+  defMon('dev', x => { const a = raw(x); const m = a.reduce((s, v) => s + v, 0) / a.length; return F(Math.sqrt(a.reduce((s, v) => s + (v - m) * (v - m), 0) / a.length)); });
+  defMon('var', x => { const a = raw(x); const m = a.reduce((s, v) => s + v, 0) / a.length; return F(a.reduce((s, v) => s + (v - m) * (v - m), 0) / a.length); });
+  defMon('sdev', x => { const a = raw(x); const m = a.reduce((s, v) => s + v, 0) / a.length; return F(Math.sqrt(a.reduce((s, v) => s + (v - m) * (v - m), 0) / (a.length - 1))); });
+  defMon('svar', x => { const a = raw(x); const m = a.reduce((s, v) => s + v, 0) / a.length; return F(a.reduce((s, v) => s + (v - m) * (v - m), 0) / (a.length - 1)); });
+  defMon('all', x => I(raw(x).every(v => v !== 0) ? 1 : 0));
+  defMon('any', x => I(raw(x).some(v => v !== 0) ? 1 : 0));
+  defMon('sums', x => scanMon(verbFn('+'), x));
+  defMon('prds', x => scanMon(verbFn('*'), x));
+  defMon('mins', x => scanMon(verbFn('&'), x));
+  defMon('maxs', x => scanMon(verbFn('|'), x));
+  defMon('deltas', x => eachPrior(verbFn('-'), x, null));
+  defMon('ratios', x => eachPrior(verbFn('%'), x, null));
+  defMon('differ', x => eachPrior({ t: 'vb', n: 'differ', dy: (a, b) => I(deepEq(a, b) ? 0 : 1) }, x, null));
+  defMon('prev', x => { const a = arr(x); return vec([nullOf(x)].concat(a.slice(0, -1))); });
+  defMon('next', x => { const a = arr(x); return vec(a.slice(1).concat([nullOf(x)])); });
+  defMon('asc', ascv);
+  defMon('desc', descv);
+  defMon('iasc', gradeUp);
+  defMon('idesc', gradeDown);
+  defMon('rank', x => index(gradeUp(gradeUp(x)), til(countOf(x))));
+  defMon('raze', x => { if (x.t !== 'A') return x; let out = []; x.v.forEach(e => { out = out.concat(isAtom(e) ? [e] : arr(e)); }); return vec(out); });
+  defMon('lower', x => each1(e => e.t === 'c' ? Ch(e.v.toLowerCase()) : e, strc(x)));
+  defMon('upper', x => each1(e => e.t === 'c' ? Ch(e.v.toUpperCase()) : e, strc(x)));
+  defMon('trim', x => ({ t: 'C', v: x.v.trim() }));
+  defMon('ltrim', x => ({ t: 'C', v: x.v.replace(/^ +/, '') }));
+  defMon('rtrim', x => ({ t: 'C', v: x.v.replace(/ +$/, '') }));
+  defMon('cols', x => ({ t: 'S', v: (x.t === 'K' ? x.kt.c.concat(x.vt.c) : x.c) }));
+  defMon('meta', meta);
+  defMon('keys', x => x.t === 'K' ? { t: 'S', v: x.kt.c } : { t: 'S', v: [] });
+  defMon('unkey', x => x.t === 'K' ? mergeKV(x) : x);
+  defMon('cols', x => ({ t: 'S', v: (x.t === 'K' ? x.kt.c.concat(x.vt.c) : x.c) }));
+  defMon('istable', x => I(x.t === 'T' || x.t === 'K' ? 1 : 0));
+  defMon('isdict', x => I(x.t === 'm' ? 1 : 0));
+  defMon('iskeyed', x => I(x.t === 'K' ? 1 : 0));
+  function strc(x) { return isAtom(x) && x.t === 'c' ? x : x; }
+  function aggNum(f, init, x) {
+    if (isAtom(x)) return x;
+    const a = raw(x); if (a.length === 0) return init === Infinity ? NF : init === -Infinity ? NF : (Number.isInteger(init) ? I(init) : F(init));
+    let acc = a[0]; for (let k = 1; k < a.length; k++) acc = f(acc, a[k]);
+    return (x.t === 'F' || !Number.isInteger(acc)) ? F(acc) : I(acc);
+  }
+
+  defDy('mod', (x, y) => each2((a, b) => I(((num(a) % num(b)) + num(b)) % num(b)), x, y));
+  defDy('div', (x, y) => each2((a, b) => I(Math.floor(num(a) / num(b))), x, y));
+  defDy('xbar', (w, x) => { const ww = num(w); return each1(e => { const v = num(e); return I(Math.floor(v / ww) * ww); }, x); });
+  defDy('xlog', (b, x) => each1(e => F(Math.log(num(e)) / Math.log(num(b))), x));
+  defDy('wsum', (w, x) => { const a = raw(w), b = raw(x); return F(a.reduce((s, v, i) => s + v * b[i], 0)); });
+  defDy('wavg', (w, x) => { const a = raw(w), b = raw(x); const sw = a.reduce((s, v) => s + v, 0); return F(a.reduce((s, v, i) => s + v * b[i], 0) / sw); });
+  defDy('cov', (x, y) => { const a = raw(x), b = raw(y); const mx = a.reduce((s, v) => s + v, 0) / a.length, my = b.reduce((s, v) => s + v, 0) / b.length; return F(a.reduce((s, v, i) => s + (v - mx) * (b[i] - my), 0) / a.length); });
+  defDy('cor', (x, y) => { const a = raw(x), b = raw(y); const n = a.length; const mx = a.reduce((s, v) => s + v, 0) / n, my = b.reduce((s, v) => s + v, 0) / n; let sxy = 0, sx = 0, sy = 0; for (let i = 0; i < n; i++) { sxy += (a[i] - mx) * (b[i] - my); sx += (a[i] - mx) ** 2; sy += (b[i] - my) ** 2; } return F(sxy / Math.sqrt(sx * sy)); });
+  defDy('in', (x, y) => { const set = arr(y).map(keyOf); return each1(e => I(set.indexOf(keyOf(e)) >= 0 ? 1 : 0), x); });
+  defDy('except', (x, y) => { const set = arr(y).map(keyOf); return vec(arr(x).filter(e => set.indexOf(keyOf(e)) < 0)); });
+  defDy('inter', (x, y) => { const set = arr(y).map(keyOf); return vec(arr(x).filter(e => set.indexOf(keyOf(e)) >= 0)); });
+  defDy('union', (x, y) => distinct(concat(x, y)));
+  defDy('cross', (x, y) => { const a = arr(x), b = arr(y); const out = []; a.forEach(p => b.forEach(q => out.push(vec([p, q])))); return { t: 'A', v: out }; });
+  defDy('sublist', (n, x) => { const nn = num(n); const a = arr(x); return nn >= 0 ? vec(a.slice(0, nn)) : vec(a.slice(nn)); });
+  defDy('rotate', (n, x) => { const a = arr(x); const nn = ((num(n) % a.length) + a.length) % a.length; return vec(a.slice(nn).concat(a.slice(0, nn))); });
+  defDy('xexp', (b, x) => each1(e => F(Math.pow(num(b), num(e))), x));
+  defDy('like', (x, pat) => { const p = pat.v; const re = new RegExp('^' + p.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$'); return I(re.test(x.v) ? 1 : 0); });
+  defDy('ss', (s, sub) => { const str = s.v, ph = sub.v; const out = []; let i = str.indexOf(ph); while (i >= 0) { out.push(i); i = str.indexOf(ph, i + 1); } return { t: 'I', v: out }; });
+  defND('ssr', (a) => { const [s, from, to] = a; return { t: 'C', v: s.v.split(from.v).join(to.v) }; });
+  defDy('sv', (d, x) => { if (d.t === 'C' || d.t === 'c') { const sep = d.t === 'c' ? d.v : d.v; return { t: 'C', v: arr(x).map(e => e.t === 'C' ? e.v : fmtAtom(e)).join(sep) }; } return x; });
+  defDy('vs', (d, x) => { const sep = d.t === 'c' ? d.v : d.v; return vec(x.v.split(sep).map(s => ({ t: 'C', v: s }))); });
+  defDy('xbarApply', (w, x) => x);
+
+  // table ops
+  defDy('xasc', (c, t) => sortTable(c, t, false));
+  defDy('xdesc', (c, t) => sortTable(c, t, true));
+  defDy('xkey', (k, t) => xkey(k, t));
+  defDy('xcols', (c, t) => { const nc = arr(c).map(s => s.v); const tt = t.t === 'K' ? mergeKV(t) : t; const rest = tt.c.filter(x => nc.indexOf(x) < 0); const order = nc.concat(rest); return { t: 'T', c: order, d: order.map(n => tt.d[tt.c.indexOf(n)]), at: order.map(n => tt.at[tt.c.indexOf(n)]) }; });
+  defDy('xgroup', (k, t) => xgroup(k, t));
+  defDy('ungroup', (t) => t);
+  defND('qwhere', (a) => qwhere(a[0], a[1]));
+  defND('qselect', (a) => qselect(a[0], a[1]));
+  defND('qby', (a) => qby(a[0], a[1], a[2]));
+  defND('aj', (a) => aj(a[0], a[1], a[2], false));
+  defND('aj0', (a) => aj(a[0], a[1], a[2], true));
+  defDy('lj', (t, kt) => lj(t, kt));
+  defDy('ij', (t, kt) => ij(t, kt));
+  defDy('uj', (x, y) => uj(x, y));
+  defDy('insert', (t, r) => insertRow(t, r));
+
+  // attribute sym-verbs available as functions too
+  defMon('at', x => Sy(x.at || ''));
+  defMon('sa', x => setAttr(x, 's'));
+  defMon('ua', x => setAttr(x, 'u'));
+  defMon('pa', x => setAttr(x, 'p'));
+  defMon('ga', x => setAttr(x, 'g'));
+  defDy('sortcol', (c, t) => attrCol(c, t, 's'));
+  defDy('partcol', (c, t) => attrCol(c, t, 'p'));
+  defDy('groupcol', (c, t) => attrCol(c, t, 'g'));
+  defMon('gentq', gentq);
+  defND('hms', (a) => I((num(a[0]) * 3600 + num(a[1]) * 60 + num(a[2])) * 1000));
+  defMon('show', x => { OUT.push(fmt(x)); return U; });
+  defMon('stime', x => each1(e => ({ t: 'C', v: msToStr(num(e)) }), x));
+  defND('bar', (a) => { const [w, u, t] = a; return xbarT(num(w) * num(u), t); });
+  defDy('minbar', (w, t) => xbarT(num(w) * 60000, t));
+  defDy('xbar', (w, x) => { const ww = num(w); return each1(e => I(Math.floor(num(e) / ww) * ww), x); });
+
+  function setAttr(x, a) { const c = clone(x); c.at = a; return c; }
+  function attrCol(c, t, a) {
+    const tt = t.t === 'K' ? mergeKV(t) : t;
+    const ci = tt.c.indexOf(c.v); if (ci < 0) throw err('value:col');
+    const nd = tt.d.slice(); nd[ci] = setAttr(nd[ci], a);
+    const na = tt.at.slice(); na[ci] = a;
+    return { t: 'T', c: tt.c.slice(), d: nd, at: na };
+  }
+  function sortTable(c, t, desc) {
+    const tt = t.t === 'K' ? mergeKV(t) : t;
+    const cnames = (c.t === 'S' ? c.v : [c.v]);
+    const n = len(tt.d[0]);
+    let idx = []; for (let i = 0; i < n; i++) idx.push(i);
+    idx.sort((i, j) => { for (const cn of cnames) { const col = tt.d[tt.c.indexOf(cn)]; const cc = cmp(arr(col)[i], arr(col)[j]); if (cc) return desc ? -cc : cc; } return i - j; });
+    const nd = tt.d.map(col => vec(idx.map(i => arr(col)[i])));
+    const na = tt.at.slice();
+    // first sort col gets attribute
+    const fi = tt.c.indexOf(cnames[0]); if (fi >= 0 && !desc) { nd[fi] = setAttr(nd[fi], 's'); na[fi] = 's'; }
+    return { t: 'T', c: tt.c.slice(), d: nd, at: na };
+  }
+  function xkey(k, t) {
+    const tt = t.t === 'K' ? mergeKV(t) : t;
+    const kn = (k.t === 'S' ? k.v : [k.v]);
+    const kt = { t: 'T', c: kn, d: kn.map(n => tt.d[tt.c.indexOf(n)]), at: kn.map(n => tt.at[tt.c.indexOf(n)]) };
+    const vn = tt.c.filter(n => kn.indexOf(n) < 0);
+    const vt = { t: 'T', c: vn, d: vn.map(n => tt.d[tt.c.indexOf(n)]), at: vn.map(n => tt.at[tt.c.indexOf(n)]) };
+    return { t: 'K', kt, vt };
+  }
+  function qwhere(t, mask) {
+    const tt = t.t === 'K' ? mergeKV(t) : t;
+    const m = raw(mask); const idx = []; m.forEach((v, i) => { if (v) idx.push(i); });
+    return { t: 'T', c: tt.c.slice(), d: tt.d.map(col => vec(idx.map(i => arr(col)[i]))), at: tt.at.slice() };
+  }
+  function qselect(t, dict) {
+    const tt = t.t === 'K' ? mergeKV(t) : t;
+    const names = arr(dict.k).map(s => s.v); const fns = arr(dict.v);
+    const d = fns.map(f => applyFn(f, [tt], null));
+    return { t: 'T', c: names, d: d.map(x => isVec(x) ? x : vec(Array(len(tt.d[0])).fill(x))), at: names.map(() => '') };
+  }
+  function qby(t, by, dict) {
+    const tt = t.t === 'K' ? mergeKV(t) : t;
+    const bcols = (by.t === 'S' ? by.v : [by.v]);
+    const n = len(tt.d[0]);
+    // group rows by by-cols
+    const groups = new Map(); const order = [];
+    for (let i = 0; i < n; i++) { const key = bcols.map(c => keyOf(arr(tt.d[tt.c.indexOf(c)])[i])).join('\x01'); if (!groups.has(key)) { groups.set(key, []); order.push({ key, i }); } groups.get(key).push(i); }
+    const names = arr(dict.k).map(s => s.v); const fns = arr(dict.v);
+    const keyData = bcols.map(() => []); const valData = names.map(() => []);
+    order.forEach(o => {
+      const rows = groups.get(o.key);
+      bcols.forEach((c, ci) => keyData[ci].push(arr(tt.d[tt.c.indexOf(c)])[rows[0]]));
+      const sub = { t: 'T', c: tt.c.slice(), d: tt.d.map(col => vec(rows.map(i => arr(col)[i]))), at: tt.at.slice() };
+      fns.forEach((f, fi) => valData[fi].push(applyFn(f, [sub], null)));
+    });
+    const kt = { t: 'T', c: bcols, d: keyData.map(vec), at: bcols.map(() => '') };
+    const vt = { t: 'T', c: names, d: valData.map(vec), at: names.map(() => '') };
+    return { t: 'K', kt, vt };
+  }
+  function aj(c, x, q, useYTime) {
+    const cn = (c.t === 'S' ? c.v : [c.v]);
+    const gcols = cn.slice(0, -1); const tcol = cn[cn.length - 1];
+    const xt = x.t === 'K' ? mergeKV(x) : x; const qt = q.t === 'K' ? mergeKV(q) : q;
+    const n = len(xt.d[0]); const qn = len(qt.d[0]);
+    const xc = {}; xt.c.forEach(cc => xc[cc] = arr(xt.d[xt.c.indexOf(cc)]));
+    const qc = {}; qt.c.forEach(cc => qc[cc] = arr(qt.d[qt.c.indexOf(cc)]));
+    const xTimes = xc[tcol].map(num), qTimes = qc[tcol].map(num);
+    const qE = qt.c.filter(cc => gcols.indexOf(cc) < 0 && cc !== tcol);
+    // group quote rows by group key, sorted by time -> binary search per trade
+    const groups = new Map();
+    for (let j = 0; j < qn; j++) { const key = gcols.map(g => keyOf(qc[g][j])).join('\x01'); let a = groups.get(key); if (!a) { a = []; groups.set(key, a); } a.push(j); }
+    groups.forEach(a => a.sort((p, r) => qTimes[p] - qTimes[r]));
+    const out = {}; xt.c.forEach(cc => out[cc] = xc[cc].slice()); qE.forEach(cc => { if (!(cc in out)) out[cc] = []; });
+    for (let i = 0; i < n; i++) {
+      const a = groups.get(gcols.map(g => keyOf(xc[g][i])).join('\x01'));
+      let best = -1;
+      if (a) { let lo = 0, hi = a.length - 1; const t = xTimes[i]; while (lo <= hi) { const mid = (lo + hi) >> 1; if (qTimes[a[mid]] <= t) { best = a[mid]; lo = mid + 1; } else hi = mid - 1; } }
+      qE.forEach(cc => { if (xt.c.indexOf(cc) >= 0) return; out[cc].push(best >= 0 ? qc[cc][best] : nullOf(qt.d[qt.c.indexOf(cc)])); });
+    }
+    const finalCols = xt.c.concat(qE.filter(cc => xt.c.indexOf(cc) < 0));
+    return { t: 'T', c: finalCols, d: finalCols.map(cc => vec(out[cc])), at: finalCols.map(() => '') };
+  }
+  function lj(t, kt) {
+    if (kt.t !== 'K') throw err('type:lj');
+    const tt = t.t === 'K' ? mergeKV(t) : t;
+    const kcols = kt.kt.c; const n = len(tt.d[0]);
+    const vcols = kt.vt.c;
+    const out = {}; tt.c.forEach(c => out[c] = arr(tt.d[tt.c.indexOf(c)]).slice()); vcols.forEach(c => out[c] = []);
+    for (let i = 0; i < n; i++) {
+      let mj = -1; const kn = len(kt.kt.d[0]);
+      for (let j = 0; j < kn; j++) { let m = true; for (const kc of kcols) { if (!deepEq(arr(tt.d[tt.c.indexOf(kc)])[i], arr(kt.kt.d[kt.kt.c.indexOf(kc)])[j])) { m = false; break; } } if (m) { mj = j; break; } }
+      vcols.forEach(vc => out[vc].push(mj >= 0 ? arr(kt.vt.d[kt.vt.c.indexOf(vc)])[mj] : nullOf(kt.vt.d[kt.vt.c.indexOf(vc)])));
+    }
+    const fc = tt.c.concat(vcols.filter(c => tt.c.indexOf(c) < 0));
+    return { t: 'T', c: fc, d: fc.map(c => vec(out[c])), at: fc.map(() => '') };
+  }
+  function ij(t, kt) {
+    const full = lj(t, kt); // then drop non-matching — approximate by keeping all (kept simple)
+    return full;
+  }
+  function uj(x, y) {
+    const xt = x.t === 'K' ? mergeKV(x) : x, yt = y.t === 'K' ? mergeKV(y) : y;
+    const cols = xt.c.slice(); yt.c.forEach(c => { if (cols.indexOf(c) < 0) cols.push(c); });
+    const nx = len(xt.d[0] || { t: 'I', v: [] }), ny = len(yt.d[0] || { t: 'I', v: [] });
+    const d = cols.map(c => {
+      const xi = xt.c.indexOf(c), yi = yt.c.indexOf(c);
+      const a = xi >= 0 ? arr(xt.d[xi]) : Array(nx).fill(NI);
+      const b = yi >= 0 ? arr(yt.d[yi]) : Array(ny).fill(NI);
+      return vec(a.concat(b));
+    });
+    return { t: 'T', c: cols, d, at: cols.map(() => '') };
+  }
+  function insertRow(t, r) {
+    const tt = t.t === 'K' ? mergeKV(t) : t;
+    const rvals = r.t === 'A' ? r.v : arr(r);
+    const d = tt.d.map((col, i) => concat(col, rvals[i]));
+    return { t: 'T', c: tt.c.slice(), d, at: tt.at.slice() };
+  }
+  function xgroup(k, t) {
+    const tt = t.t === 'K' ? mergeKV(t) : t;
+    const kn = (k.t === 'S' ? k.v : [k.v]);
+    const n = len(tt.d[0]); const groups = new Map(); const order = [];
+    for (let i = 0; i < n; i++) { const key = kn.map(c => keyOf(arr(tt.d[tt.c.indexOf(c)])[i])).join('\x01'); if (!groups.has(key)) { groups.set(key, []); order.push({ key, i }); } groups.get(key).push(i); }
+    const vcols = tt.c.filter(c => kn.indexOf(c) < 0);
+    const kt = { t: 'T', c: kn, d: kn.map(c => vec(order.map(o => arr(tt.d[tt.c.indexOf(c)])[o.i]))), at: kn.map(() => '') };
+    const vt = { t: 'T', c: vcols, d: vcols.map(c => ({ t: 'A', v: order.map(o => vec(groups.get(o.key).map(i => arr(tt.d[tt.c.indexOf(c)])[i]))) })), at: vcols.map(() => '') };
+    return { t: 'K', kt, vt };
+  }
+  function xbarT(ms, x) { return each1(e => I(Math.floor(num(e) / ms) * ms), x); }
+  function msToStr(ms) { ms = ms | 0; const h = Math.floor(ms / 3600000); ms -= h * 3600000; const m = Math.floor(ms / 60000); ms -= m * 60000; const s = Math.floor(ms / 1000); ms -= s * 1000; const p2 = n => String(n).padStart(2, '0'); const p3 = n => String(n).padStart(3, '0'); return p2(h) + ':' + p2(m) + ':' + p2(s) + '.' + p3(ms); }
+
+  function gentq(nv) {
+    const n = num(nv); setSeed(12345 + n);
+    const u = ['AAPL', 'MSFT', 'GOOG', 'AMZN', 'META', 'TSLA', 'NVDA', 'JPM', 'XOM', 'WMT'];
+    const o = (9 * 3600 + 30 * 60) * 1000, L = (16 * 3600) * 1000 - o;
+    const bp = {}; u.forEach((s, i) => bp[s] = 100 + 10 * i);
+    const m = 2 * n;
+    const rint = (k) => Math.floor(RNG() * k);
+    const tsym = [], ttime = [], tpx = [], tsz = [];
+    for (let i = 0; i < n; i++) { const s = u[rint(u.length)]; tsym.push(s); ttime.push(o + rint(L)); tpx.push(Math.round((bp[s] + 0.01 * (rint(201) - 100)) * 100) / 100); tsz.push(100 * (1 + rint(10))); }
+    const qsym = [], qtime = [], qbid = [], qask = [], qbsz = [], qasz = [];
+    for (let i = 0; i < m; i++) { const s = u[rint(u.length)]; const mid = Math.round((bp[s] + 0.01 * (rint(201) - 100)) * 100) / 100; const h = 0.01 * (1 + rint(10)); qsym.push(s); qtime.push(o + rint(L)); qbid.push(Math.round((mid - h) * 100) / 100); qask.push(Math.round((mid + h) * 100) / 100); qbsz.push(100 * (1 + rint(5))); qasz.push(100 * (1 + rint(5))); }
+    // sort by sym,time
+    const sortIdx = (syms, times) => { const idx = syms.map((_, i) => i); idx.sort((a, b) => syms[a] < syms[b] ? -1 : syms[a] > syms[b] ? 1 : times[a] - times[b]); return idx; };
+    const ti = sortIdx(tsym, ttime), qi = sortIdx(qsym, qtime);
+    const trades = { t: 'T', c: ['sym', 'time', 'px', 'sz'], d: [{ t: 'S', v: ti.map(i => tsym[i]), at: 'p' }, { t: 'I', v: ti.map(i => ttime[i]), at: 's' }, { t: 'F', v: ti.map(i => tpx[i]) }, { t: 'I', v: ti.map(i => tsz[i]) }], at: ['p', 's', '', ''] };
+    const quotes = { t: 'T', c: ['sym', 'time', 'bid', 'ask', 'bsz', 'asz'], d: [{ t: 'S', v: qi.map(i => qsym[i]), at: 'p' }, { t: 'I', v: qi.map(i => qtime[i]), at: 's' }, { t: 'F', v: qi.map(i => qbid[i]) }, { t: 'F', v: qi.map(i => qask[i]) }, { t: 'I', v: qi.map(i => qbsz[i]) }, { t: 'I', v: qi.map(i => qasz[i]) }], at: ['p', 's', '', '', '', ''] };
+    ROOT.vars['trades'] = trades; ROOT.vars['quotes'] = quotes;
+    return { t: 'S', v: ['trades', 'quotes'] };
+  }
+
+  // fin.k analytics (operate on quote/trade tables via col access)
+  defMon('mid', t => { const b = raw(tcol(t, 'bid')), a = raw(tcol(t, 'ask')); return nvecF(b.map((v, i) => (v + a[i]) / 2)); });
+  defMon('spread', t => { const b = raw(tcol(t, 'bid')), a = raw(tcol(t, 'ask')); return nvecF(a.map((v, i) => v - b[i])); });
+  defMon('vwap', t => { const w = raw(tcol(t, 'sz')), p = raw(tcol(t, 'px')); const sw = w.reduce((s, v) => s + v, 0); return F(w.reduce((s, v, i) => s + v * p[i], 0) / sw); });
+  defMon('twap', t => { const p = raw(tcol(t, 'px')); return F(p.reduce((s, v) => s + v, 0) / p.length); });
+  defMon('notional', t => { const p = raw(tcol(t, 'px')), s = raw(tcol(t, 'sz')); return nvecF(p.map((v, i) => v * s[i])); });
+  function tcol(t, name) { const tt = t.t === 'K' ? mergeKV(t) : t; const i = tt.c.indexOf(name); if (i < 0) throw err('value:' + name); return tt.d[i]; }
+  function nvecF(nums) { return { t: 'F', v: nums }; }
+  function midArr(t) { const b = raw(tcol(t, 'bid')), a = raw(tcol(t, 'ask')); return b.map((v, i) => (v + a[i]) / 2); }
+  defMon('spreadbps', t => { const b = raw(tcol(t, 'bid')), a = raw(tcol(t, 'ask')); const m = midArr(t); return nvecF(a.map((v, i) => Math.round(10000 * (v - b[i]) / m[i] * 100) / 100)); });
+  defMon('micro', t => { const b = raw(tcol(t, 'bid')), a = raw(tcol(t, 'ask')), bs = raw(tcol(t, 'bsz')), as = raw(tcol(t, 'asz')); return nvecF(b.map((v, i) => (v * as[i] + a[i] * bs[i]) / (bs[i] + as[i]))); });
+  defMon('imbal', t => { const bs = raw(tcol(t, 'bsz')), as = raw(tcol(t, 'asz')); return nvecF(bs.map((v, i) => Math.round(10000 * (v - as[i]) / (v + as[i])) / 10000)); });
+  defMon('tsign', t => { const p = raw(tcol(t, 'px')); const m = midArr(t); return { t: 'I', v: p.map((v, i) => Math.sign(v - m[i])) }; });
+  defMon('signedvol', t => { const p = raw(tcol(t, 'px')), s = raw(tcol(t, 'sz')); const m = midArr(t); return { t: 'I', v: p.map((v, i) => Math.sign(v - m[i]) * s[i]) }; });
+  defMon('effspread', t => { const p = raw(tcol(t, 'px')); const m = midArr(t); return nvecF(p.map((v, i) => 2 * Math.abs(v - m[i]))); });
+  defMon('ret', t => { const p = raw(t); const out = [NaN]; for (let i = 1; i < p.length; i++) out.push((p[i] - p[i - 1]) / p[i - 1]); return { t: 'F', v: out }; });
+  defMon('logret', t => { const p = raw(t); const out = [NaN]; for (let i = 1; i < p.length; i++) out.push(Math.log(p[i] / p[i - 1])); return { t: 'F', v: out }; });
+  defMon('rvol', t => { const p = raw(t); let s = 0; for (let i = 1; i < p.length; i++) { const r = Math.log(p[i] / p[i - 1]); s += r * r; } return F(Math.sqrt(s)); });
+  defDy('taq', (tr, qu) => aj({ t: 'S', v: ['sym', 'time'] }, tr, qu, false));
+  defDy('movavg', (w, x) => moving(num(w), raw(x), a => a.reduce((s, v) => s + v, 0) / a.length));
+  defDy('movsum', (w, x) => moving(num(w), raw(x), a => a.reduce((s, v) => s + v, 0)));
+  defDy('movmax', (w, x) => moving(num(w), raw(x), a => Math.max.apply(null, a)));
+  defDy('movmin', (w, x) => moving(num(w), raw(x), a => Math.min.apply(null, a)));
+  defDy('ema', (al, x) => { const a = num(al); const p = raw(x); const out = [p[0]]; for (let i = 1; i < p.length; i++) out.push(a * p[i] + (1 - a) * out[i - 1]); return { t: 'F', v: out }; });
+  defDy('rollstd', (w, x) => { const ww = num(w); const p = raw(x); const out = []; for (let i = 0; i < p.length; i++) { if (i < ww - 1) { out.push(NaN); continue; } const win = p.slice(i - ww + 1, i + 1); const m = win.reduce((s, v) => s + v, 0) / ww; out.push(Math.sqrt(win.reduce((s, v) => s + (v - m) * (v - m), 0) / ww)); } return { t: 'F', v: out }; });
+  function moving(w, p, f) { const out = []; for (let i = 0; i < p.length; i++) { if (i < w - 1) { out.push(NaN); continue; } out.push(f(p.slice(i - w + 1, i + 1))); } return { t: 'F', v: out }; }
+  defMon('bysym', t => { const col = tcol(t, 'sym'); return groupBy(col); });
+  defMon('gidx', x => groupBy(x));
+  defND('symrows', a => { const [t, g, s] = a; const pos = dictAt(g, s); return index(t.t === 'K' ? mergeKV(t) : t, pos); });
+  defDy('bars', (w, t) => { const tt = t.t === 'K' ? mergeKV(t) : t; const ti = tt.c.indexOf('time'); const nd = tt.d.slice(); nd[ti] = xbarT(num(w) * 60000, nd[ti]); const bt = { t: 'T', c: tt.c.slice(), d: nd, at: tt.at.slice() }; const dict = { t: 'm', k: { t: 'S', v: ['o', 'h', 'l', 'c', 'v'] }, v: { t: 'A', v: [{ t: 'vb', mon: g => first(tcol(g, 'px')) }, { t: 'vb', mon: g => aggNum((a, b) => Math.max(a, b), -Infinity, tcol(g, 'px')) }, { t: 'vb', mon: g => aggNum((a, b) => Math.min(a, b), Infinity, tcol(g, 'px')) }, { t: 'vb', mon: g => last(tcol(g, 'px')) }, { t: 'vb', mon: g => aggNum((a, b) => a + b, 0, tcol(g, 'sz')) }] } }; return qby(bt, { t: 'S', v: ['sym', 'time'] }, dict); });
+  defMon('symstats', t => { const dict = { t: 'm', k: { t: 'S', v: ['n', 'vwap', 'hi', 'lo', 'vol'] }, v: { t: 'A', v: [{ t: 'vb', mon: g => countOf(tcol(g, 'px')) }, { t: 'vb', mon: g => { const w = raw(tcol(g, 'sz')), p = raw(tcol(g, 'px')); const sw = w.reduce((s, v) => s + v, 0); return F(Math.round(10000 * w.reduce((s, v, i) => s + v * p[i], 0) / sw) / 10000); } }, { t: 'vb', mon: g => aggNum((a, b) => Math.max(a, b), -Infinity, tcol(g, 'px')) }, { t: 'vb', mon: g => aggNum((a, b) => Math.min(a, b), Infinity, tcol(g, 'px')) }, { t: 'vb', mon: g => aggNum((a, b) => a + b, 0, tcol(g, 'sz')) }] } }; return qby(t, { t: 'S', v: ['sym'] }, dict); });
+  defDy('round', (n, x) => { const d = Math.pow(10, num(n)); return each1(e => F(Math.round(num(e) * d) / d), x); });
+
+  // ============ v1.5 vocabulary (std / qsql / temporal / sys / hdb / ipc) =====
+  // ---- moving / window aggregates (std.k) ----
+  function movwin(w, p, f) { const out = []; for (let i = 0; i < p.length; i++) { const s = Math.max(0, i - w + 1); out.push(f(p.slice(s, i + 1))); } return { t: 'F', v: out }; }
+  defDy('msum', (w, x) => movwin(num(w), raw(x), a => a.reduce((s, v) => s + v, 0)));
+  defDy('mavg', (w, x) => movwin(num(w), raw(x), a => a.reduce((s, v) => s + v, 0) / a.length));
+  defDy('mcount', (w, x) => { const ww = num(w), n = len(x); const out = []; for (let i = 0; i < n; i++) out.push(Math.min(ww, i + 1)); return { t: 'I', v: out }; });
+  defDy('mprd', (w, x) => movwin(num(w), raw(x), a => a.reduce((s, v) => s * v, 1)));
+  defDy('mvar', (w, x) => movwin(num(w), raw(x), a => { const m = a.reduce((s, v) => s + v, 0) / a.length; return a.reduce((s, v) => s + (v - m) * (v - m), 0) / a.length; }));
+  defDy('mdev', (w, x) => movwin(num(w), raw(x), a => { const m = a.reduce((s, v) => s + v, 0) / a.length; return Math.sqrt(a.reduce((s, v) => s + (v - m) * (v - m), 0) / a.length); }));
+  defDy('mmin', (w, x) => movwin(num(w), raw(x), a => Math.min.apply(null, a)));
+  defDy('mmax', (w, x) => movwin(num(w), raw(x), a => Math.max.apply(null, a)));
+  defDy('dot', (x, y) => { const a = raw(x), b = raw(y); return F(a.reduce((s, v, i) => s + v * b[i], 0)); });
+  defDy('mmu', (x, y) => { const X = x.v.map(raw), Y = y.v.map(raw); const yc = Y[0].map((_, j) => Y.map(r => r[j])); return { t: 'A', v: X.map(r => nvec(yc.map(c => r.reduce((s, v, k) => s + v * c[k], 0)))) }; });
+
+  // ---- cast / parse / eval / serialize / peach (std.k) ----
+  defMon('parse', x => ({ t: 'C', v: x.v }));
+  defMon('eval', x => x.t === 'C' ? evalString(x.v) : x);
+  defMon('reval', x => x.t === 'C' ? evalString(x.v) : x);
+  defMon('ser', x => ({ t: 'C', v: fmt(x) }));
+  defMon('deser', x => evalString(x.v));
+  defMon('long', x => each1(e => I(Math.trunc(num(e))), x));
+  defMon('int', x => each1(e => I(Math.trunc(num(e))), x));
+  defMon('float', x => each1(e => F(num(e)), x));
+  defMon('bool', x => each1(e => I(num(e) !== 0 ? 1 : 0), x));
+  defDy('cast', (t, x) => {
+    const k = String(t.v);
+    if (k === 'float' || k === 'f' || k === 'e' || k === 'real') return each1(e => F(num(e)), x);
+    if (k === 'long' || k === 'int' || k === 'i' || k === 'j' || k === 'h' || k === 'short') return each1(e => I(Math.trunc(num(e))), x);
+    if (k === 'bool' || k === 'b') return each1(e => I(num(e) !== 0 ? 1 : 0), x);
+    if (k === 'char' || k === 'c') return (x.t === 'I' || x.t === 'F') ? { t: 'C', v: arr(x).map(e => String.fromCharCode(num(e))).join('') } : (x.t === 'i' || x.t === 'f') ? Ch(String.fromCharCode(num(x))) : each1(e => Ch(String.fromCharCode(num(e))), x);
+    if (k === 'sym' || k === 's') return x.t === 'C' ? Sy(x.v) : x.t === 'S' ? x : each1(e => Sy(e.t === 'c' ? e.v : e.t === 'C' ? e.v : fmtAtom(e)), x);
+    return x;
+  });
+  defDy('peach', (f, x) => vec(arr(x).map(e => applyFn(f, [e], null))));
+
+  // ---- temporal types (temporal.k) ----
+  function fdivJ(a, b) { return Math.floor(a / b); }
+  function ymd2dJ(y, m, d) { const yy = y - (m < 3 ? 1 : 0), era = fdivJ(yy, 400), yoe = yy - era * 400, mp = m + (m > 2 ? -3 : 9), doy = fdivJ(153 * mp + 2, 5) + d - 1; return 146097 * era + 365 * yoe + fdivJ(yoe, 4) + doy - fdivJ(yoe, 100) - 730425; }
+  function d2ymdJ(g) { const z = g + 730425, era = fdivJ(z, 146097), doe = z - 146097 * era, yoe = fdivJ(doe - fdivJ(doe, 1460) + fdivJ(doe, 36524) - fdivJ(doe, 146096), 365), y = yoe + 400 * era, doy = doe - (365 * yoe + fdivJ(yoe, 4) - fdivJ(yoe, 100)), mp = fdivJ(5 * doy + 2, 153), dd = doy - fdivJ(153 * mp + 2, 5) + 1, m = mp + (mp < 10 ? 3 : -9); return [y + (m < 3 ? 1 : 0), m, dd]; }
+  const p2 = n => String(n).padStart(2, '0'), p3 = n => String(n).padStart(3, '0');
+  function dstrJ(g) { const [y, m, d] = d2ymdJ(g); return y + '.' + p2(m) + '.' + p2(d); }
+  function msStr(ms) { ms = ms | 0; const h = fdivJ(ms, 3600000); ms -= h * 3600000; const mi = fdivJ(ms, 60000); ms -= mi * 60000; const s = fdivJ(ms, 1000); ms -= s * 1000; return p2(h) + ':' + p2(mi) + ':' + p2(s) + '.' + p3(ms); }
+  defND('ymd2d', a => I(ymd2dJ(num(a[0]), num(a[1]), num(a[2]))));
+  defMon('d2ymd', x => ({ t: 'I', v: d2ymdJ(num(x)) }));
+  defMon('dstr', x => ({ t: 'C', v: dstrJ(num(x)) }));
+  defMon('pdate', x => { const p = x.v.split('.').map(Number); return I(ymd2dJ(p[0], p[1], p[2])); });
+  defMon('year', x => I(d2ymdJ(num(x))[0]));
+  defMon('month', x => I(d2ymdJ(num(x))[1]));
+  defMon('dayof', x => I(d2ymdJ(num(x))[2]));
+  defMon('dow', x => Sy(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][((num(x) + 5) % 7 + 7) % 7]));
+  defDy('dadd', (d, n) => I(num(d) + num(n)));
+  defDy('ddiff', (a, b) => I(num(a) - num(b)));
+  defND('tstamp', a => ({ t: 'i', v: (num(a[1]) + 86400000 * num(a[0])) * 1000000 }));
+  defMon('tsdate', x => I(fdivJ(num(x), 86400000000000)));
+  defMon('tsms', x => I(fdivJ(num(x), 1000000) - 86400000 * fdivJ(num(x), 86400000000000)));
+  defMon('pstr', x => { const p = num(x); const d = fdivJ(p, 86400000000000); const ms = fdivJ(p, 1000000) - 86400000 * d; return { t: 'C', v: dstrJ(d) + 'D' + msStr(ms) }; });
+  if (!BUILTINS['hms']) defND('hms', a => I((num(a[0]) * 3600 + num(a[1]) * 60 + num(a[2])) * 1000));
+
+  // ---- system namespaces (sys.k) : z.* Q.* j.* ----
+  const nowMs = () => (typeof Date !== 'undefined' ? Date.now() : 1770000000000);
+  const zdays = () => fdivJ(nowMs(), 86400000) - 10957;
+  const zmsday = () => nowMs() - 86400000 * fdivJ(nowMs(), 86400000);
+  defMon('z.d', () => I(zdays())); defMon('z.D', () => I(zdays()));
+  defMon('z.t', () => I(zmsday())); defMon('z.T', () => I(zmsday()));
+  defMon('z.p', () => ({ t: 'i', v: (86400000 * zdays() + zmsday()) * 1000000 }));
+  defMon('z.n', () => I(zmsday() * 1000000));
+  defND('Q.f', a => ({ t: 'C', v: (Math.round(num(a[1]) * Math.pow(10, num(a[0]))) / Math.pow(10, num(a[0]))).toFixed(num(a[0])) }));
+  defDy('Q.dd', (a, b) => Sy(a.v + '.' + b.v));
+  defMon('Q.s', x => ({ t: 'C', v: fmt(x) }));
+  function jenc(x) {
+    if (x.t === 'i' || x.t === 'f') return fmtAtom(x);
+    if (x.t === 's') return '"' + x.v + '"';
+    if (x.t === 'c') return '"' + x.v + '"';
+    if (x.t === 'C') return '"' + x.v + '"';
+    if (x.t === 'I' || x.t === 'F') return '[' + x.v.map(v => Number.isNaN(v) ? 'null' : v).join(',') + ']';
+    if (x.t === 'S') return '[' + x.v.map(s => '"' + s + '"').join(',') + ']';
+    if (x.t === 'A') return '[' + x.v.map(jenc).join(',') + ']';
+    if (x.t === 'm') return '{' + arr(x.k).map((k, i) => '"' + k.v + '":' + jenc(arr(x.v)[i])).join(',') + '}';
+    if (x.t === 'T' || x.t === 'K') { const t = x.t === 'K' ? mergeKV(x) : x; const n = len(t.d[0]); const rows = []; for (let i = 0; i < n; i++) rows.push('{' + t.c.map((c, ci) => '"' + c + '":' + jenc(arr(t.d[ci])[i])).join(',') + '}'); return '[' + rows.join(',') + ']'; }
+    return '"' + fmt(x) + '"';
+  }
+  function jparse(v) { if (typeof v === 'number') return Number.isInteger(v) ? I(v) : F(v); if (typeof v === 'string') return { t: 'C', v }; if (typeof v === 'boolean') return I(v ? 1 : 0); if (v === null) return NF; if (Array.isArray(v)) return vec(v.map(jparse)); if (typeof v === 'object') { const ks = Object.keys(v); return { t: 'm', k: { t: 'S', v: ks }, v: vec(ks.map(k => jparse(v[k]))) }; } return U; }
+  defMon('j.j', x => ({ t: 'C', v: jenc(x) }));
+  defMon('j.k', x => { try { return jparse(JSON.parse(x.v)); } catch (e) { throw err('json'); } });
+
+  // ---- on-disk data, in-memory emulation (hdb.k) ----
+  const DISK = {};
+  defDy('dset', (f, x) => { DISK[f.t === 'C' ? f.v : f.v] = x; return f; });
+  defMon('dget', f => DISK[f.v] || U);
+  defDy('splay', (d, t) => { DISK['splay:' + d.v] = t; return d; });
+  defMon('dload', d => DISK['splay:' + d.v] || U);
+  defND('partsave', a => { const [d, t, bc] = a; const tt = t.t === 'K' ? mergeKV(t) : t; const col = tt.d[tt.c.indexOf(bc.v)]; const keys = raw(distinct(col)); DISK['part:' + d.v] = { t, keys }; return d; });
+  defMon('partload', d => (DISK['part:' + d.v] || { t: U }).t);
+  defMon('parts', d => { const p = DISK['part:' + d.v]; return p ? distinct((p.t.t === 'K' ? mergeKV(p.t) : p.t).d[0]) : vec([]); });
+
+  // ---- in-process tickerplant (ipc.k) ----
+  const UTABS = {}, USUBS = {};
+  defND('u.def', a => { const nm = a[0].v; UTABS[nm] = a[1]; USUBS[nm] = []; return a[0]; });
+  defDy('u.sub', (nm, cb) => { (USUBS[nm.v] = USUBS[nm.v] || []).push(cb); return nm; });
+  defDy('u.pub', (nm, data) => { const k = nm.v; UTABS[k] = ucatT(UTABS[k], data); (USUBS[k] || []).forEach(cb => applyFn(cb, [nm, data], null)); return data; });
+  defMon('u.get', nm => UTABS[nm.v] || U);
+  function ucatT(t, r) { const tt = t.t === 'K' ? mergeKV(t) : t, rr = r.t === 'K' ? mergeKV(r) : r; return { t: 'T', c: tt.c.slice(), d: tt.c.map(c => concat(tt.d[tt.c.indexOf(c)], rr.d[rr.c.indexOf(c)])), at: tt.at.slice() }; }
+
+  // ---- qSQL string template (qsql.k) ----
+  function tblCols(t) { return t.t === 'K' ? t.kt.c.concat(t.vt.c) : t.c; }
+  function splitKw(s, kw) { const i = s.indexOf(kw); return i < 0 ? [s.trim(), null] : [s.slice(0, i).trim(), s.slice(i + kw.length).trim()]; }
+  function splitFrom(b) { b = b.trim(); if (b.slice(0, 5) === 'from ') return ['', b.slice(5).trim()]; return splitKw(b, ' from '); }
+  function ccut(s) { const out = []; let d = 0, cur = ''; for (const ch of s) { if (ch === '[') d++; else if (ch === ']') d--; if (ch === ',' && d === 0) { out.push(cur.trim()); cur = ''; } else cur += ch; } if (cur.trim()) out.push(cur.trim()); return out; }
+  function isWord(c) { return /[A-Za-z0-9_]/.test(c); }
+  function cname(it) { let d = 0, i = -1; for (let k = 0; k < it.length; k++) { const c = it[k]; if (c === '[') d++; else if (c === ']') d--; else if (c === ':' && d === 0) { i = k; break; } } return i < 0 ? [null, it.trim()] : [it.slice(0, i).trim(), it.slice(i + 1).trim()]; }
+  function qtrans(cols, s) { let out = '', i = 0; while (i < s.length) { if (isWord(s[i])) { let j = i; while (j < s.length && isWord(s[j])) j++; const tok = s.slice(i, j); out += (cols.indexOf(tok) >= 0 && !/^[0-9]/.test(tok)) ? '(x`' + tok + ')' : tok; i = j; } else { out += s[i]; i++; } } return out; }
+  function qfnJ(cols, e) { return evalString('{[x]' + qtrans(cols, e) + '}'); }
+  function qmaskJ(t, cols, wh) { const conds = ccut(wh).map(c => applyFn(qfnJ(cols, c), [t], null)); return conds.reduce((m, c) => m ? each2((a, b) => I(num(a) && num(b) ? 1 : 0), m, c) : c, null); }
+  function symCols(cols, byp) { return { t: 'S', v: ccut(byp).map(it => cname(it)[1]) }; }
+  function selFn(sv) {
+    let s = sv.v.trim(); if (s.slice(0, 6) === 'select') s = s.slice(6).trim();
+    const [body, wh] = splitKw(s, ' where '); const [head, fromE] = splitFrom(body); const [selp, byp] = splitKw(head, ' by ');
+    const t0 = evalString(fromE); const cols = tblCols(t0); const t = wh ? qwhere(t0, qmaskJ(t0, cols, wh)) : t0;
+    if (selp === '*' || selp === '') { if (!byp) return t; selp = cols.join(','); }
+    const items = ccut(selp); const names = items.map((it, i) => { const [n, e] = cname(it); return Sy(n || (/^[A-Za-z_][A-Za-z0-9_]*$/.test(e) ? e : 'x' + i)); });
+    const funcs = items.map(it => qfnJ(cols, cname(it)[1]));
+    const dict = { t: 'm', k: vec(names), v: { t: 'A', v: funcs } };
+    return byp ? qby(t, symCols(cols, byp), dict) : qselect(t, dict);
+  }
+  function exqFn(sv) { let s = sv.v.trim(); if (s.slice(0, 4) === 'exec') s = s.slice(4).trim(); const [body, wh] = splitKw(s, ' where '); const [e, fromE] = splitFrom(body); const t0 = evalString(fromE); const cols = tblCols(t0); const t = wh ? qwhere(t0, qmaskJ(t0, cols, wh)) : t0; return applyFn(qfnJ(cols, cname(e)[1]), [t], null); }
+  function updFn(sv) {
+    let s = sv.v.trim(); if (s.slice(0, 6) === 'update') s = s.slice(6).trim();
+    const [body, wh] = splitKw(s, ' where '); const [head, fromE] = splitFrom(body); const [selp, byp] = splitKw(head, ' by ');
+    const t0 = evalString(fromE); const tt = t0.t === 'K' ? mergeKV(t0) : t0; const cols = tt.c.slice(); const n = len(tt.d[0]);
+    const items = ccut(selp);
+    let out = { t: 'T', c: tt.c.slice(), d: tt.d.slice(), at: tt.at.slice() };
+    const maskArr = wh ? raw(qmaskJ(tt, cols, wh)) : null;
+    if (byp) {
+      const bcols = symCols(cols, byp).v; const groups = new Map();
+      for (let i = 0; i < n; i++) { const key = bcols.map(c => keyOf(arr(tt.d[tt.c.indexOf(c)])[i])).join('\x01'); if (!groups.has(key)) groups.set(key, []); groups.get(key).push(i); }
+      items.forEach(it => { const [nm, e] = cname(it); const f = qfnJ(cols, e); const ci = out.c.indexOf(nm); const base = ci >= 0 ? arr(out.d[ci]).slice() : Array(n).fill(NF);
+        groups.forEach(idx => { const sub = { t: 'T', c: tt.c.slice(), d: tt.d.map(col => vec(idx.map(i => arr(col)[i]))), at: [] }; const v = applyFn(f, [sub], null); const vv = isVec(v) ? arr(v) : idx.map(() => v); idx.forEach((ri, k) => base[ri] = vv.length === idx.length ? vv[k] : (isAtom(v) ? v : vv[0])); });
+        setCol(out, nm, vec(base)); });
+    } else {
+      const sub = wh ? qwhere(tt, { t: 'I', v: maskArr.map(x => x ? 1 : 0) }) : tt;
+      items.forEach(it => { const [nm, e] = cname(it); const f = qfnJ(cols, e); const v = applyFn(f, [sub], null); const ci = out.c.indexOf(nm);
+        if (!maskArr) { setCol(out, nm, isVec(v) ? v : vec(Array(n).fill(v))); }
+        else { const base = ci >= 0 ? arr(out.d[ci]).slice() : Array(n).fill(NF); const vv = isVec(v) ? arr(v) : null; let j = 0; for (let i = 0; i < n; i++) if (maskArr[i]) base[i] = vv ? vv[j++] : v; setCol(out, nm, vec(base)); } });
+    }
+    return out;
+  }
+  function setCol(t, nm, col) { const ci = t.c.indexOf(nm); if (ci >= 0) { t.d[ci] = col; } else { t.c.push(nm); t.d.push(col); t.at.push(''); } }
+  function delFn(sv) {
+    let s = sv.v.trim(); if (s.slice(0, 6) === 'delete') s = s.slice(6).trim();
+    let colp, rest; if (s.slice(0, 5) === 'from ') { colp = ''; rest = s.slice(5).trim(); } else { const p = splitKw(s, ' from '); colp = p[0]; rest = p[1] || ''; }
+    const [fromE, wh] = splitKw(rest, ' where '); const t0 = evalString(fromE); const tt = t0.t === 'K' ? mergeKV(t0) : t0; const cols = tt.c.slice();
+    if (colp) { const drop = ccut(colp).map(it => cname(it)[1]); const keep = cols.filter(c => drop.indexOf(c) < 0); return { t: 'T', c: keep, d: keep.map(c => tt.d[cols.indexOf(c)]), at: keep.map(c => tt.at[cols.indexOf(c)]) }; }
+    const m = wh ? raw(qmaskJ(tt, cols, wh)) : Array(len(tt.d[0])).fill(1); const keepIdx = []; m.forEach((v, i) => { if (!v) keepIdx.push(i); });
+    return { t: 'T', c: cols, d: tt.d.map(col => vec(keepIdx.map(i => arr(col)[i]))), at: tt.at.slice() };
+  }
+  defMon('sel', selFn); defMon('exq', exqFn); defMon('upd', updFn); defMon('del', delFn);
+
+  // ---- public API --------------------------------------------------------
+  const ROOT = makeEnv(null);
+  let OUT = [];
+  ROOT.out = OUT;
+
+  // `0: output verb & sym-verb application via symbol-as-function
+  // handle symbol applied to arg (e.g. `0:"x", `at v) inside applyValue: when a symbol atom is applied
+  const origApplyValue = applyValue;
+
+  function run(src) {
+    OUT = []; ROOT.out = OUT;
+    let result, error = null;
+    try {
+      const toks = lex(src);
+      const stmts = parse(toks);
+      result = evalProgram(stmts, ROOT);
+    } catch (e) {
+      error = e.amber ? e.message : ('' + (e && e.message || e));
+    }
+    return { result, out: OUT.slice(), error, text: error ? null : (result === U ? null : fmt(result)), value: result };
+  }
+  function reset() { for (const k in ROOT.vars) delete ROOT.vars[k]; try { setSeed((Math.floor(Math.random() * 2147483647) | 0) || 1); } catch (e) { setSeed(2463534242); } }
+
+  function describe(x) {
+    if (x === undefined || x === null || x.t === 'u') return { kind: 'unit' };
+    if (x.t === 'T') {
+      return { kind: 'table', cols: x.c.slice(), attrs: x.d.map(c => c.at || ''), types: x.d.map(typeChar), rows: transposeCells(x.d), align: x.d.map(c => c.t === 'I' || c.t === 'F') };
+    }
+    if (x.t === 'K') {
+      const kt = x.kt, vt = x.vt;
+      return { kind: 'keyed', kcols: kt.c.slice(), vcols: vt.c.slice(), kattrs: kt.d.map(c => c.at || ''), vattrs: vt.d.map(c => c.at || ''), krows: transposeCells(kt.d), vrows: transposeCells(vt.d), kalign: kt.d.map(c => c.t === 'I' || c.t === 'F'), valign: vt.d.map(c => c.t === 'I' || c.t === 'F') };
+    }
+    if (x.t === 'm') {
+      const ks = colStrings(x.k); const vs = x.v.t === 'A' ? x.v.v.map(fmt) : colStrings(x.v);
+      return { kind: 'dict', keys: ks, vals: vs, valign: (x.v.t === 'I' || x.v.t === 'F') };
+    }
+    return { kind: 'text', text: fmt(x) };
+  }
+  function transposeCells(cols) {
+    const scols = cols.map(colStrings);
+    const n = cols.length ? len(cols[0]) : 0;
+    const rows = [];
+    for (let r = 0; r < n; r++) rows.push(scols.map(c => c[r]));
+    return rows;
+  }
+  const API = { run, reset, fmt, describe, lex, parse, VERBS, BUILTINS, _root: ROOT, renderTable, renderKeyed, renderDict, isTableVal: (x) => x && (x.t === 'T' || x.t === 'K'), isDictVal: (x) => x && x.t === 'm', U };
+  root.Amber = API;
+  if (typeof module !== 'undefined' && module.exports) module.exports = API;
+})(typeof globalThis !== 'undefined' ? globalThis : this);
+</script>
+<script>/* Amber Notebook kernel — shared engine glue: themes, highlight, render, examples.
+   DOM-light: applyTheme sets CSS custom properties on :root and fires 'themechange'.
+   Each UI shell supplies its own layout + a #toast element. */
+(function(){
+  "use strict";
+  const A = window.Amber;
+  const BUILTINS = new Set(Object.keys(A.BUILTINS).concat(['til','sum','avg','max','min','prd','count','first','last','reverse','distinct','where','group','flip','meta','show','cols','sel','exq','upd','del','cast','parse','eval','ser','deser','peach']));
+  const VERBCH = "+-*%!&|<>=~,^#_$?@.:";
+
+  const THEMES = {
+    amber: { name: "Amber", v: { bg: "#1a1510", panel: "#211a12", cell: "#1e1710", line: "#3a2c1a", line2: "#2c2115", ink: "#f4dcae", dim: "#c39d5f", faint: "#8a6d3b", accent: "#ffb000", accent2: "#ff8c1a", ok: "#8fd06b", err: "#ff6b4a", num: "#ffe08a", str: "#ffd27f", sym: "#ff9440", verb: "#ff9e3d", adv: "#ffbe5c", kw: "#ffcf6b", var: "#e6c078", com: "#7d6636", brk: "#c79a4a", caret: "#ffb000", sel: "rgba(255,176,0,.24)" } },
+    amberLight: { name: "Amber Light", v: { bg: "#faf3e4", panel: "#f3e9d2", cell: "#fdf8ee", line: "#e0d0aa", line2: "#ece0c4", ink: "#4a3a1a", dim: "#8a6d2f", faint: "#b39a68", accent: "#c8891a", accent2: "#e0761a", ok: "#4e9a2f", err: "#c0392b", num: "#a6701a", str: "#9a6b12", sym: "#c25a10", verb: "#b26a12", adv: "#c8891a", kw: "#8a5a00", var: "#6b5220", com: "#b0996a", brk: "#a07a30", caret: "#c8891a", sel: "rgba(200,137,26,.22)" } },
+    dracula: { name: "Dracula", v: { bg: "#282a36", panel: "#21222c", cell: "#2b2d3a", line: "#44475a", line2: "#343746", ink: "#f8f8f2", dim: "#a9b0d0", faint: "#6272a4", accent: "#bd93f9", accent2: "#ff79c6", ok: "#50fa7b", err: "#ff5555", num: "#bd93f9", str: "#f1fa8c", sym: "#ffb86c", verb: "#ff79c6", adv: "#8be9fd", kw: "#50fa7b", var: "#f8f8f2", com: "#6272a4", brk: "#8be9fd", caret: "#ff79c6", sel: "rgba(189,147,249,.28)" } },
+    nord: { name: "Nord", v: { bg: "#2e3440", panel: "#272c36", cell: "#333a48", line: "#434c5e", line2: "#3b4252", ink: "#eceff4", dim: "#b7c0d0", faint: "#6d7791", accent: "#88c0d0", accent2: "#81a1c1", ok: "#a3be8c", err: "#bf616a", num: "#b48ead", str: "#a3be8c", sym: "#d08770", verb: "#81a1c1", adv: "#88c0d0", kw: "#8fbcbb", var: "#e5e9f0", com: "#616e88", brk: "#8fbcbb", caret: "#88c0d0", sel: "rgba(136,192,208,.26)" } },
+    monokai: { name: "Monokai", v: { bg: "#272822", panel: "#21221c", cell: "#2d2e27", line: "#49483e", line2: "#3a3b32", ink: "#f8f8f2", dim: "#bcbcae", faint: "#75715e", accent: "#a6e22e", accent2: "#fd971f", ok: "#a6e22e", err: "#f92672", num: "#ae81ff", str: "#e6db74", sym: "#fd971f", verb: "#f92672", adv: "#66d9ef", kw: "#a6e22e", var: "#f8f8f2", com: "#75715e", brk: "#66d9ef", caret: "#f92672", sel: "rgba(166,226,46,.22)" } },
+    solarizedD: { name: "Solarized Dark", v: { bg: "#002b36", panel: "#023642", cell: "#073642", line: "#0e4b56", line2: "#0a3d48", ink: "#93a1a1", dim: "#839496", faint: "#586e75", accent: "#b58900", accent2: "#cb4b16", ok: "#859900", err: "#dc322f", num: "#d33682", str: "#2aa198", sym: "#cb4b16", verb: "#268bd2", adv: "#6c71c4", kw: "#859900", var: "#eee8d5", com: "#586e75", brk: "#6c71c4", caret: "#b58900", sel: "rgba(181,137,0,.24)" } },
+    solarizedL: { name: "Solarized Light", v: { bg: "#fdf6e3", panel: "#f4edda", cell: "#fbf3df", line: "#e3dcc4", line2: "#efe8d2", ink: "#586e75", dim: "#657b83", faint: "#93a1a1", accent: "#b58900", accent2: "#cb4b16", ok: "#859900", err: "#dc322f", num: "#d33682", str: "#2aa198", sym: "#cb4b16", verb: "#268bd2", adv: "#6c71c4", kw: "#859900", var: "#073642", com: "#93a1a1", brk: "#6c71c4", caret: "#b58900", sel: "rgba(181,137,0,.16)" } },
+    tokyo: { name: "Tokyo Night", v: { bg: "#1a1b26", panel: "#16161e", cell: "#1f2233", line: "#2f334d", line2: "#252840", ink: "#c0caf5", dim: "#9aa5ce", faint: "#565f89", accent: "#7aa2f7", accent2: "#bb9af7", ok: "#9ece6a", err: "#f7768e", num: "#ff9e64", str: "#9ece6a", sym: "#e0af68", verb: "#bb9af7", adv: "#7dcfff", kw: "#7aa2f7", var: "#c0caf5", com: "#565f89", brk: "#7dcfff", caret: "#7aa2f7", sel: "rgba(122,162,247,.26)" } },
+    gruvbox: { name: "Gruvbox", v: { bg: "#282828", panel: "#1f1f1f", cell: "#32302f", line: "#504945", line2: "#3c3836", ink: "#ebdbb2", dim: "#bdae93", faint: "#928374", accent: "#fabd2f", accent2: "#fe8019", ok: "#b8bb26", err: "#fb4934", num: "#d3869b", str: "#b8bb26", sym: "#fe8019", verb: "#83a598", adv: "#8ec07c", kw: "#fabd2f", var: "#ebdbb2", com: "#928374", brk: "#8ec07c", caret: "#fabd2f", sel: "rgba(250,189,47,.22)" } },
+    githubL: { name: "GitHub Light", v: { bg: "#ffffff", panel: "#f6f8fa", cell: "#ffffff", line: "#d0d7de", line2: "#e6eaef", ink: "#24292e", dim: "#57606a", faint: "#8c959f", accent: "#0969da", accent2: "#8250df", ok: "#1a7f37", err: "#cf222e", num: "#0550ae", str: "#0a3069", sym: "#953800", verb: "#cf222e", adv: "#8250df", kw: "#116329", var: "#24292e", com: "#6e7781", brk: "#6639ba", caret: "#0969da", sel: "rgba(9,105,218,.14)" } },
+    synthwave: { name: "Synthwave", v: { bg: "#221733", panel: "#1b1229", cell: "#2a1f3d", line: "#472d6b", line2: "#35244f", ink: "#f0e6ff", dim: "#c4a5ec", faint: "#7a5ba6", accent: "#ff7edb", accent2: "#36f9f6", ok: "#72f1b8", err: "#fe4450", num: "#fede5d", str: "#72f1b8", sym: "#ff8b39", verb: "#36f9f6", adv: "#ff7edb", kw: "#fede5d", var: "#f0e6ff", com: "#7a5ba6", brk: "#36f9f6", caret: "#ff7edb", sel: "rgba(255,126,219,.28)" } },
+    matrix: { name: "Matrix", v: { bg: "#020a02", panel: "#041104", cell: "#04140a", line: "#0d3d1a", line2: "#0a2a12", ink: "#43ff67", dim: "#2ecb4d", faint: "#178a2c", accent: "#00ff41", accent2: "#7dff9a", ok: "#7dff9a", err: "#ff4d4d", num: "#8bff6a", str: "#b8ffb0", sym: "#43ff67", verb: "#00ff41", adv: "#7dff9a", kw: "#00e63a", var: "#43ff67", com: "#178a2c", brk: "#2ecb4d", caret: "#00ff41", sel: "rgba(0,255,65,.20)" } },
+    paper: { name: "Paper", v: { bg: "#f4ecd8", panel: "#eadfc4", cell: "#faf3e0", line: "#d8c9a4", line2: "#e6dabe", ink: "#4b3b26", dim: "#7a6544", faint: "#a89268", accent: "#a8621b", accent2: "#8a4b12", ok: "#5a7a2f", err: "#a83232", num: "#8a5a1a", str: "#6b6a1a", sym: "#a8621b", verb: "#7a4b12", adv: "#5a6a8a", kw: "#6a5218", var: "#4b3b26", com: "#a89268", brk: "#8a6a3a", caret: "#a8621b", sel: "rgba(168,98,27,.18)" } },
+    oceanic: { name: "Oceanic", v: { bg: "#1b2b34", panel: "#16232b", cell: "#22333c", line: "#3b4c54", line2: "#2c3c44", ink: "#cdd3de", dim: "#a7adba", faint: "#65737e", accent: "#6699cc", accent2: "#5fb3b3", ok: "#99c794", err: "#ec5f67", num: "#f99157", str: "#99c794", sym: "#fac863", verb: "#6699cc", adv: "#5fb3b3", kw: "#c594c5", var: "#cdd3de", com: "#65737e", brk: "#5fb3b3", caret: "#6699cc", sel: "rgba(102,153,204,.26)" } },
+  };
+
+  const THEME_ORDER_ = ['amber','amberLight','synthwave','tokyo','dracula','nord','monokai','gruvbox','oceanic','solarizedD','solarizedL'];
+  const VARMAP = { bg:'--bg', panel:'--panel', cell:'--cell', line:'--line', line2:'--line2', ink:'--ink', dim:'--dim', faint:'--faint', accent:'--accent', accent2:'--accent2', ok:'--ok', err:'--err', num:'--s-num', str:'--s-str', sym:'--s-sym', verb:'--s-verb', adv:'--s-adv', kw:'--s-kw', var:'--s-var', com:'--s-com', brk:'--s-brk', caret:'--caret', sel:'--selbg' };
+  function hexA(hex,a){ const n=hex.replace('#',''); const r=parseInt(n.substr(0,2),16),g=parseInt(n.substr(2,2),16),b=parseInt(n.substr(4,2),16); return 'rgba('+r+','+g+','+b+','+a+')'; }
+  let curTheme='amber';
+  function applyTheme(key){ const t=THEMES[key]; if(!t) return; curTheme=key; const r=document.documentElement.style; for(const k in t.v) r.setProperty(VARMAP[k], t.v[k]); r.setProperty('--glow','0 0 10px '+hexA(t.v.accent,.22)); document.documentElement.dataset.theme=key; save('theme',key); window.dispatchEvent(new CustomEvent('themechange',{detail:{key:key,theme:t}})); }
+  function save(k,v){ try{ localStorage.setItem('amber.'+k,v); }catch(e){} }
+  function load(k){ try{ return localStorage.getItem('amber.'+k); }catch(e){ return null; } }
+
+  function esc(s){ return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+  function highlight(src){
+    let i=0,n=src.length,out='';
+    const push=(cls,txt)=>{ out+= cls?('<span class="hl-'+cls+'">'+esc(txt)+'</span>'):esc(txt); };
+    while(i<n){ const c=src[i];
+      if(c==='/'&&(i===0||src[i-1]==='\n'||src[i-1]===' '||src[i-1]==='\t')){ let j=i; while(j<n&&src[j]!=='\n')j++; push('com',src.slice(i,j)); i=j; continue; }
+      if(c==='"'){ let j=i+1; while(j<n&&src[j]!=='"'){ if(src[j]==='\\')j++; j++; } j++; push('str',src.slice(i,Math.min(j,n))); i=Math.min(j,n); continue; }
+      if(c==='\''){ /* backtick handled below */ }
+      if(c==='`'){ let j=i; while(j<n&&(src[j]==='`'||/[A-Za-z0-9.]/.test(src[j])||src[j]==='"')){ if(src[j]==='"'){ j++; while(j<n&&src[j]!=='"')j++; } j++; } push('sym',src.slice(i,j)); i=j; continue; }
+      if(/[0-9]/.test(c)||(c==='.'&&/[0-9]/.test(src[i+1]||''))||(c==='-'&&/[0-9]/.test(src[i+1]||'')&&!/[A-Za-z0-9.)\]]/.test((src[i-1]||' ')))){
+        let j=i; if(src[j]==='-')j++; while(j<n&&/[0-9.eE]/.test(src[j]))j++;
+        while(src[j]===' '&&(/[0-9]/.test(src[j+1]||'')||(src[j+1]==='-'&&/[0-9.]/.test(src[j+2]||'')))){ j++; if(src[j]==='-')j++; while(j<n&&/[0-9.eE]/.test(src[j]))j++; }
+        if(src[j]==='b'&&!/[0-9A-Za-z.]/.test(src[j+1]||''))j++;
+        push('num',src.slice(i,j)); i=j; continue;
+      }
+      if(/[A-Za-z]/.test(c)){ let j=i; while(j<n&&/[A-Za-z0-9.]/.test(src[j]))j++; const nm=src.slice(i,j); push(BUILTINS.has(nm)?'kw':'var',nm); i=j; continue; }
+      if(c==="'"&&src[i+1]===':'){ push('adv',"':"); i+=2; continue; }
+      if((c==='/'||c==='\\')&&src[i+1]===':'){ push('adv',c+':'); i+=2; continue; }
+      if(c==="'"||c==='/'||c==='\\'){ push('adv',c); i++; continue; }
+      if(c===':'&&src[i+1]===':'){ push('verb','::'); i+=2; continue; }
+      if(VERBCH.indexOf(c)>=0){ push('verb',c); i++; continue; }
+      if('()[]{}'.indexOf(c)>=0){ push('brk',c); i++; continue; }
+      if(c===';'){ push('brk',';'); i++; continue; }
+      push(null,c); i++;
+    }
+    return out+'\n';
+  }
+
+  function cell(txt,cls){ const td=document.createElement('td'); if(cls)td.className=cls; td.textContent=txt; return td; }
+  function attrBadge(a){ return a?'<span class="att">'+a+'</span>':''; }
+  function renderTableLike(d){
+    const t=document.createElement('table'); t.className='grid';
+    const thead=document.createElement('tr');
+    const kc=d.kind==='keyed'?d.kcols:[], ka=d.kind==='keyed'?d.kattrs:[], kal=d.kind==='keyed'?d.kalign:[];
+    const vc=d.kind==='keyed'?d.vcols:d.cols, va=d.kind==='keyed'?d.vattrs:d.attrs, val=d.kind==='keyed'?d.valign:d.align;
+    kc.forEach((c,i)=>{ const th=document.createElement('th'); th.className=(kal[i]?'r ':'')+'keyw'; th.innerHTML=esc(c)+attrBadge(ka[i]); thead.appendChild(th); });
+    vc.forEach((c,i)=>{ const th=document.createElement('th'); if(val[i])th.className='r'; th.innerHTML=esc(c)+attrBadge(va[i]); thead.appendChild(th); });
+    t.appendChild(thead);
+    const krows=d.kind==='keyed'?d.krows:null, vrows=d.kind==='keyed'?d.vrows:d.rows;
+    const nrows=vrows.length, cap=300;
+    for(let r=0;r<Math.min(nrows,cap);r++){ const tr=document.createElement('tr');
+      if(krows) krows[r].forEach((v,i)=>tr.appendChild(cell(v,(kal[i]?'r ':'')+'keyw')));
+      vrows[r].forEach((v,i)=>tr.appendChild(cell(v,val[i]?'r':''))); t.appendChild(tr); }
+    const wrap=document.createElement('div'); wrap.className='gridwrap'; wrap.appendChild(t);
+    const m=document.createElement('div'); m.className='typ';
+    m.textContent=nrows+' row'+(nrows===1?'':'s')+(d.kind==='keyed'?(' · keyed '+d.kcols.length+'!'+d.vcols.length):(' · '+d.cols.length+' cols'));
+    wrap.appendChild(m);
+    if(nrows>cap){ const mm=document.createElement('div'); mm.className='typ'; mm.textContent='… '+(nrows-cap)+' more rows'; wrap.appendChild(mm); }
+    return wrap;
+  }
+  function renderDescribe(d){
+    if(!d||d.kind==='unit')return null;
+    if(d.kind==='text'){ const pre=document.createElement('pre'); pre.className='ret'; pre.textContent=d.text; return pre; }
+    if(d.kind==='dict'){ const t=document.createElement('table'); t.className='grid dictgrid';
+      for(let i=0;i<d.keys.length;i++){ const tr=document.createElement('tr'); tr.appendChild(cell(d.keys[i],'k')); tr.appendChild(cell(d.vals[i],d.valign?'r':'')); t.appendChild(tr); }
+      const wrap=document.createElement('div'); wrap.className='gridwrap'; wrap.appendChild(t); return wrap;
+    }
+    if(d.kind==='table'||d.kind==='keyed')return renderTableLike(d);
+    return null;
+  }
+  function renderInto(container,res){
+    container.innerHTML=''; let any=false;
+    if(res.out&&res.out.length){ const pre=document.createElement('pre'); pre.className='console'; pre.textContent=res.out.join('\n'); container.appendChild(pre); any=true; }
+    if(res.error){ const e=document.createElement('div'); e.className='err'; e.textContent="'"+res.error; container.appendChild(e); any=true; }
+    else if(res.value&&res.value.t!=='u'){ const node=renderDescribe(A.describe(res.value)); if(node){ container.appendChild(node); any=true; } }
+    if(container.classList) container.classList.toggle('empty',!any);
+    return any;
+  }
+  function gridText(cols,rows){ const w=cols.map((c,i)=>Math.max(c.length,...rows.map(r=>(r[i]||'').length),1)); const pad=(s,i)=>((s||'')+' '.repeat(w[i])).slice(0,w[i]); const head=cols.map(pad).join(' '); const sep=w.map(x=>'-'.repeat(x)).join(' '); return [head,sep].concat(rows.map(r=>r.map(pad).join(' '))).join('\n'); }
+  function describeText(d){ if(!d||d.kind==='unit')return ''; if(d.kind==='text')return d.text; if(d.kind==='dict')return d.keys.map((k,i)=>k+' | '+d.vals[i]).join('\n'); if(d.kind==='table')return gridText(d.cols,d.rows); if(d.kind==='keyed')return gridText(d.kcols.concat(d.vcols),d.krows.map((kr,i)=>kr.concat(d.vrows[i]))); return ''; }
+  function outText(res){ let s=''; if(res.out&&res.out.length)s+=res.out.join('\n'); if(res.error)s+=(s?'\n':'')+"'"+res.error; else if(res.value&&res.value.t!=='u'){ const d=A.describe(res.value); const t=describeText(d); if(t)s+=(s?'\n':'')+t; } return s; }
+  function copyText(t,msg){ try{ navigator.clipboard.writeText(t); }catch(e){ const x=document.createElement('textarea'); x.value=t; document.body.appendChild(x); x.select(); try{document.execCommand('copy');}catch(_){} x.remove(); } toast(msg||'copied'); }
+  function toast(msg){ let t=document.getElementById('toast'); if(!t){ t=document.createElement('div'); t.id='toast'; t.className='toast'; document.body.appendChild(t); } t.textContent=msg; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'),1300); }
+
+  const EXAMPLES = [
+    // Basics
+    ['Basics', 'Hello vector', '2 3 4 * 10 20 30'],
+    ['Basics', 'Right-to-left', '2 * 3 + 4        / = 14, no precedence'],
+    ['Basics', 'Range & sum', 'sum til 100'],
+    ['Basics', 'Assign & use', 'x:1 2 3 4 5\nx * reverse x'],
+    ['Basics', 'A lambda', '{x*x+1} 2 3 4'],
+    ['Basics', 'Conditional (each)', '{$[x>0;`pos;`neg]}\' -5 3 0'],
+    // Vectors & math
+    ['Vectors', 'Random ints', '10 ? 100'],
+    ['Vectors', 'Sorted', 'asc 5 3 8 1 9 2'],
+    ['Vectors', 'Cumulative', 'sums 1 2 3 4 5'],
+    ['Vectors', 'Deltas', 'deltas 10 13 12 20'],
+    ['Vectors', 'Dot & matmul', 'dot[1 2 3;4 5 6]\nmmu[(1 2;3 4);(5 6;7 8)]'],
+    ['Vectors', 'Where', '&0 1 0 1 1 0 1'],
+    // Aggregations
+    ['Aggregate', 'Stats', 'x:10?100\n`min`max`avg`dev!(min x;max x;avg x;dev x)'],
+    ['Aggregate', 'Weighted avg', 'wavg[100 200 300; 1.0 2 3]'],
+    ['Aggregate', 'Correlation', 'cor[1 2 3 4 5; 2 4 5 4 5]'],
+    ['Aggregate', 'Median', 'med 3 1 4 1 5 9 2 6'],
+    // Adverbs
+    ['Adverbs', 'Over (fold)', '+/1 2 3 4 5'],
+    ['Adverbs', 'Scan', '*\\1 2 3 4 5'],
+    ['Adverbs', 'Each', '{x#x}\'1 2 3'],
+    ['Adverbs', 'Each-prior', '-\':1 2 4 7 11'],
+    ['Adverbs', 'Each-right', '1 2 3 +/: 10 20'],
+    // Strings
+    ['Strings', 'Reverse', '|"amber"'],
+    ['Strings', 'Upper/trim', 'upper trim "  hi there  "'],
+    ['Strings', 'Split a string', 'vs["/"; "a/b/c/d"]'],
+    ['Strings', 'Symbols', '`AAPL`MSFT`GOOG'],
+    // Dictionaries
+    ['Dicts', 'Make a dict', '`a`b`c!10 20 30'],
+    ['Dicts', 'Index', 'd:`a`b`c!10 20 30\nd`b'],
+    ['Dicts', 'Group', '=`a`b`a`c`a`b'],
+    // Tables
+    ['Tables', 'A table', '([]sym:`AAPL`MSFT`GOOG; px:187.3 411.2 92.5; sz:100 250 50)'],
+    ['Tables', 'Keyed table', '([sym:`a`b`c] px:10 20 30)'],
+    ['Tables', 'meta', 'meta ([]t:asc 3 1 2; s:`a`b`c; v:1.5 2.5 3.5)'],
+    ['Tables', 'Column & rows', 't:([]a:1 2 3; b:10 20 30)\nt`a'],
+    ['Tables', 'qby aggregate', 't:([]s:`a`b`a`b`a; v:1 2 3 4 5)\nqby[t;`s;(,`sum)!,{sum x`v}]'],
+    // qSQL
+    ['qSQL', 'select where', 'gentq 500\nsel"select sym,px,sz from trades where px>150"'],
+    ['qSQL', 'select by', 'gentq 2000\nsel"select vwap:wavg[sz;px],n:#px by sym from trades"'],
+    ['qSQL', 'computed cols', 'gentq 300\nsel"select sym,notional:px*sz from trades where sz>500"'],
+    ['qSQL', 'exec a column', 'gentq 200\nexq"exec px from trades where sym=`AAPL"'],
+    ['qSQL', 'update', 'gentq 100\n3#upd"update mid:px by sym from trades"'],
+    ['qSQL', 'delete rows', 'gentq 500\n#del"delete from trades where sz<300"'],
+    // Joins
+    ['Joins', 'as-of join', 'gentq 1000\n5#aj[`sym`time; trades; quotes]'],
+    ['Joins', 'left join', 't:([]sym:`a`b`c; px:1 2 3)\nkt:([sym:`a`b] w:10 20)\nlj[t;kt]'],
+    ['Joins', 'union', 'uj[([]a:1 2;b:3 4); ([]a:5;c:9)]'],
+    // Attributes
+    ['Attributes', 'sorted → `s', 'v:asc 5 3 8 1 9\n`at v'],
+    ['Attributes', 'meta shows attrs', 'gentq 500\nmeta trades'],
+    ['Attributes', 'O(1) symbol slice', 'gentq 3000\ng:bysym trades\n#symrows[trades;g;`AAPL]'],
+    // Temporal
+    ['Temporal', 'Build a date', 'dstr ymd2d[2024;1;15]'],
+    ['Temporal', 'Day of week', 'dow ymd2d[2024;1;15]'],
+    ['Temporal', 'Parse a date', 'pdate"2024.07.04"'],
+    ['Temporal', 'Timestamp', 'pstr tstamp[ymd2d[2024;1;15]; hms[9;30;0]]'],
+    ['Temporal', 'Today', 'dstr z.d[]'],
+    // Window / moving
+    ['Window', 'moving sum', 'msum[3; 1 2 3 4 5 6]'],
+    ['Window', 'moving avg', 'mavg[3; 10 11 9 12 15 14]'],
+    ['Window', 'moving max/min', 'mmax[3; 1 3 2 5 4]\nmmin[3; 5 3 4 1 2]'],
+    ['Window', 'moving std', 'round[3] mdev[4; 1.0 2 3 4 5 6 7]'],
+    ['Window', 'EMA', 'round[2] ema[0.3; 10 11 9 12 15 14 13.0]'],
+    // Finance / HFT
+    ['Finance', 'Generate a session', 'gentq 5000\nmeta trades'],
+    ['Finance', 'VWAP by symbol', 'gentq 5000\nqby[trades;`sym;(,`vwap)!,{round[3]wavg[x`sz;x`px]}]'],
+    ['Finance', 'OHLCV bars', 'gentq 5000\nbars[1; trades]'],
+    ['Finance', 'TAQ + trade sign', 'gentq 3000\nm:taq[trades;quotes]\n5#+(+m),(,`sign)!,tsign m'],
+    ['Finance', 'Order-book microprice', 'gentq 500\n5#+(+quotes),`mid`micro!(round[2]mid quotes; round[2]micro quotes)'],
+    ['Finance', 'Per-symbol summary', 'gentq 4000\nsymstats trades'],
+    // System / JSON
+    ['System', 'Value → JSON', 'j.j ([]sym:`a`b; px:1.5 2.5)'],
+    ['System', 'JSON → value', 'j.k"{\\"a\\":1,\\"b\\":[2,3]}"'],
+    ['System', 'Format number', 'Q.f[2; 3.14159]'],
+    ['System', 'Serialize round-trip', 'deser ser (1 2 3; `a`b; "hi")'],
+    ['System', 'Table → JSON rows', 'j.j 2#([]a:1 2 3; b:`x`y`z)'],
+    // Tickerplant
+    ['Tick', 'Define a stream', 'u.def[`trade; ([]sym:0#`; px:0#0.0)]\n`ok'],
+    ['Tick', 'Subscribe + publish', 'u.def[`trade;([]sym:0#`;px:0#0.0)]\nu.sub[`trade; {[nm;d] show d}]\nu.pub[`trade; ([]sym:`a`b; px:10 20.0)]'],
+    ['Tick', 'Accumulated table', 'u.def[`t;([]s:0#`;p:0#0.0)]\nu.pub[`t;([]s:`a`b;p:1 2.0)]\nu.pub[`t;([]s:`c;p:3.0)]\nu.get`t'],
+    // Booleans (new)
+    ['Booleans', 'Boolean atoms', '1b\n0b'],
+    ['Booleans', 'Boolean vector', '1 0 1 1 0b'],
+    ['Booleans', 'Comparisons', '3 1 4 1 5 > 2'],
+    ['Booleans', 'Mask & filter', 'x:10 20 30 40 50\nx where x>25'],
+    // Casting / parse / eval (new)
+    ['Casting', 'Cast to int', 'cast[`i; 3.7 8.2 1.5 9.9]'],
+    ['Casting', 'Cast to float', 'cast[`f; 1 2 3 4]'],
+    ['Casting', 'Int → char', 'cast[`c; 72 105 33]'],
+    ['Casting', 'Chars → symbol', 'cast[`s; "AAPL"]'],
+    ['Casting', 'Parse & eval', 'eval parse "2 + 3 * 4"'],
+    ['Casting', 'Serialize round-trip', 'deser ser (1 2 3; `a`b`c)'],
+    // qSQL — bare templates (new)
+    ['qSQL+', 'select all where', 'gentq 400\n5#sel"select from trades where px>150"'],
+    ['qSQL+', 'select by two agg', 'gentq 2000\nsel"select n:#px, avgpx:avg px by sym from trades"'],
+    ['qSQL+', 'exec vector', 'gentq 300\n10#exq"exec px from trades where sym=`MSFT"'],
+    ['qSQL+', 'update where', 'gentq 200\n5#upd"update flag:1b from trades where sz>500"'],
+    ['qSQL+', 'delete + count', 'gentq 500\nn0:#trades\nn1:#del"delete from trades where sz<300"\n`before`after!n0,n1'],
+    // Parallel (new)
+    ['Parallel', 'peach map', 'peach[{x*x}; 1 2 3 4 5]'],
+    ['Parallel', 'peach on rows', 'peach[{sum x}; (1 2 3; 4 5 6; 7 8 9)]'],
+    // Showcase
+    ['Showcase', 'FizzBuzz', '{$[0=15!x;`FizzBuzz;0=3!x;`Fizz;0=5!x;`Buzz;x]}\' 1+til 20'],
+    ['Showcase', 'Fibonacci', '10 {x,+/-2#x}/0 1'],
+    ['Showcase', 'Primes < 40', 'p:2+til 38\np where {2=#&0=(1+til x)!\\:x}\'p'],
+    ['Showcase', 'Times table', 'n:1+til 9\nn */: n'],
+    ['Showcase', 'Powers of two', '10 {2*x}\\1'],
+    ['Showcase', 'Random walk', 'sums -1 1 @ 100?2'],
+    ['Showcase', 'Group words', '=vs[" "; "the cat the dog the bird the"]'],
+  ].filter(e => e[2]);
+
+
+  window.AK = { A, THEMES, THEME_ORDER: THEME_ORDER_, applyTheme, highlight, renderInto, outText, copyText, toast, EXAMPLES, esc, hexA, save, load, curTheme:()=>curTheme };
+})();
+</script>
+<script>/* Shared notebook engine. Mounts stacked cells into a host element.
+   Cell markup uses class hooks (.nb-*) that each UI shell styles differently. */
+(function () {
+  "use strict";
+  const AK = window.AK, A = AK.A;
+
+  function wireEditor(ta, hl, onRun) {
+    function sync() { hl.innerHTML = AK.highlight(ta.value); ta.style.height = 'auto'; ta.style.height = Math.max(ta.scrollHeight, 22) + 'px'; }
+    ta.addEventListener('input', sync);
+    ta.addEventListener('scroll', () => { hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft; });
+    ta.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && (e.shiftKey || e.metaKey || e.ctrlKey)) { e.preventDefault(); onRun(e.shiftKey && !(e.metaKey || e.ctrlKey)); }
+      if (e.key === 'Tab') { e.preventDefault(); const s = ta.selectionStart, en = ta.selectionEnd; ta.value = ta.value.slice(0, s) + '  ' + ta.value.slice(en); ta.selectionStart = ta.selectionEnd = s + 2; sync(); }
+    });
+    return sync;
+  }
+
+  window.NB = function (host, opts) {
+    opts = opts || {};
+    const cells = []; let counter = 0;
+    function renumber() { cells.forEach((c, i) => c.ord && (c.ord.textContent = (i + 1))); }
+
+    function make(src, at) {
+      const el = document.createElement('div'); el.className = 'nb-cell';
+      el.innerHTML =
+        '<div class="nb-gutter"><button class="nb-run" title="Run (Ctrl/⌘+Enter)">▶</button><span class="nb-count"></span><span class="nb-ord"></span></div>' +
+        '<div class="nb-main">' +
+        '<div class="nb-ed"><pre class="nb-hl" aria-hidden="true"></pre><textarea spellcheck="false" autocapitalize="off" autocomplete="off" wrap="soft" placeholder="type Amber… Ctrl/⌘+Enter to run"></textarea></div>' +
+        '<div class="nb-out empty"></div>' +
+        '<div class="nb-tools"><button data-a="copyin">⧉ in</button><button data-a="copyout">⧉ out</button><span class="nb-sp"></span>' +
+        '<button data-a="up" title="move up">↑</button><button data-a="down" title="move down">↓</button>' +
+        '<button data-a="add" title="add below">＋</button><button data-a="del" title="delete">✕</button></div>' +
+        '</div>';
+      const ta = el.querySelector('textarea'), hl = el.querySelector('.nb-hl'), out = el.querySelector('.nb-out');
+      const count = el.querySelector('.nb-count'), ord = el.querySelector('.nb-ord');
+      const obj = { el, ta, hl, out, count, ord, res: null };
+      ta.value = src || '';
+      const sync = wireEditor(ta, hl, (adv) => { run(obj); if (adv) focusNext(obj); });
+      el.querySelector('.nb-run').onclick = () => run(obj);
+      el.querySelector('[data-a=copyin]').onclick = () => AK.copyText(ta.value, 'input copied');
+      el.querySelector('[data-a=copyout]').onclick = () => AK.copyText(obj.res ? AK.outText(obj.res) : '', 'output copied');
+      el.querySelector('[data-a=add]').onclick = () => { const c = make('', idx(obj) + 1); c.ta.focus(); };
+      el.querySelector('[data-a=del]').onclick = () => remove(obj);
+      el.querySelector('[data-a=up]').onclick = () => move(obj, -1);
+      el.querySelector('[data-a=down]').onclick = () => move(obj, 1);
+      ta.addEventListener('focus', () => { cells.forEach(c => c.el.classList.remove('active')); el.classList.add('active'); });
+
+      const pos = (at == null || at >= cells.length) ? cells.length : at;
+      if (pos >= cells.length) { host.appendChild(el); cells.push(obj); }
+      else { host.insertBefore(el, cells[pos].el); cells.splice(pos, 0, obj); }
+      setTimeout(sync, 0); renumber();
+      return obj;
+    }
+    function idx(o) { return cells.indexOf(o); }
+    function focusNext(o) { const i = idx(o); if (i === cells.length - 1) { const c = make(''); c.ta.focus(); } else cells[i + 1].ta.focus(); }
+    function run(obj) { const res = A.run(obj.ta.value); obj.res = res; AK.renderInto(obj.out, res); counter++; obj.count.textContent = '[' + counter + ']'; if (opts.onRun) opts.onRun(res); }
+    function remove(obj) { const i = idx(obj); if (i < 0) return; obj.el.remove(); cells.splice(i, 1); if (!cells.length) make(''); renumber(); }
+    function move(obj, dir) { const i = idx(obj), j = i + dir; if (j < 0 || j >= cells.length) return; cells.splice(i, 1); cells.splice(j, 0, obj); if (dir > 0) host.insertBefore(cells[j].el, cells[j + 1] ? cells[j + 1].el.nextSibling : null); host.insertBefore(obj.el, cells[j + 1] ? cells[j + 1].el : null); renumber(); reorderDom(); }
+    function reorderDom() { cells.forEach(c => host.appendChild(c.el)); }
+    function runAll() { cells.forEach(run); }
+    function clearAll() { cells.slice().forEach(c => { c.el.remove(); }); cells.length = 0; make(''); }
+    function insert(code, autorun) { const c = make(code); if (autorun !== false) run(c); c.el.scrollIntoView({ behavior: 'smooth', block: 'center' }); c.ta.focus(); return c; }
+
+    return { make, run, runAll, clearAll, insert, cells, reorderDom };
+  };
+})();
+</script>
+<script>
+(function(){
+  const AK=window.AK, $=id=>document.getElementById(id);
+  AK.applyTheme(AK.load('theme')||'amber');
+  const nb=window.NB($('cells'));
+  nb.make('');
+  // theme popover
+  const pop=$('pop');
+  AK.THEME_ORDER.forEach(k=>{const t=AK.THEMES[k];const c=document.createElement('div');c.className='tcard';c.dataset.k=k;
+    c.innerHTML='<div class="tprev" style="background:'+t.v.bg+'"><span class="tdot" style="background:'+t.v.accent+'"></span><span style="color:'+t.v.verb+'">sel</span> <span style="color:'+t.v.num+'">42</span> <span style="color:'+t.v.str+'">"x"</span> <span style="color:'+t.v.sym+'">`a</span></div><div class="nm" style="color:'+t.v.ink+'">'+t.name+'</div>';
+    c.onclick=()=>{AK.applyTheme(k);pop.classList.remove('open');};pop.appendChild(c);});
+  function syncTheme(){const k=AK.curTheme(),t=AK.THEMES[k];$('tname').textContent=t.name;document.querySelectorAll('.tcard').forEach(c=>c.classList.toggle('on',c.dataset.k===k));}
+  window.addEventListener('themechange',syncTheme);syncTheme();
+  $('btnTheme').onclick=e=>{e.stopPropagation();pop.classList.toggle('open');};
+  document.addEventListener('click',e=>{if(!pop.contains(e.target)&&e.target.id!=='btnTheme')pop.classList.remove('open');});
+  // examples
+  function buildEx(filter){const host=$('exlist');host.innerHTML='';const f=(filter||'').toLowerCase();const cats=[];
+    AK.EXAMPLES.forEach(e=>{if(cats.indexOf(e[0])<0)cats.push(e[0]);});
+    cats.forEach(cat=>{const items=AK.EXAMPLES.filter(e=>e[0]===cat&&(!f||(e[1]+' '+e[2]+' '+e[0]).toLowerCase().includes(f)));if(!items.length)return;
+      const h=document.createElement('div');h.className='excat';h.textContent=cat;host.appendChild(h);
+      items.forEach(e=>{const d=document.createElement('div');d.className='exitem';d.innerHTML='<div class="exn"></div><div class="exc"></div>';
+        d.querySelector('.exn').textContent=e[1];d.querySelector('.exc').textContent=e[2].replace(/\n/g,' · ');
+        d.onclick=()=>nb.insert(e[2]);host.appendChild(d);});});}
+  buildEx('');$('exsearch').addEventListener('input',e=>buildEx(e.target.value));
+  $('btnSide').onclick=()=>$('side').classList.toggle('hide');
+  $('btnRunAll').onclick=()=>nb.runAll();
+  $('btnClear').onclick=()=>nb.clearAll();
+  $('btnAdd').onclick=()=>{const c=nb.make('');c.ta.focus();};
+})();
+</script>
+</body>
+</html>

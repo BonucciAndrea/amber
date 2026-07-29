@@ -88,7 +88,7 @@ Amber follows a terse **array grammar**, which differs from kdb+/q in a few ways
 
 * **Dyadic library functions are called with brackets, not infix.** Amber does **not** allow a
   user‑defined function to be applied infix (`x f y` is a parse of two nouns). So write
-  `lj[t;kt]`, `in[x;y]`, `except[a;b]`, ``xasc[`sym;t]`` — not `t lj kt`. Built‑in verbs
+  `lj[t;kt]`, `in[x;y]`, `except[a;b]`, `xasc[`sym;t]` — not `t lj kt`. Built‑in verbs
   (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) *are* infix as usual.
 * **No `>=` / `<=` operators.** Use `~a<b` for `a>=b` and `~a>b` for `a<=b`.
 * **Symbols cannot contain `_`.** `` `a_b `` is a parse error; use a quoted symbol `` `"a_b" ``.
@@ -209,10 +209,23 @@ meta t               / +`c`t!(`sym`px`sz;`s`i`i)
 
 ---
 
-## 7. Selecting and grouping (qSQL, functional form)
+## 7. Selecting and grouping (qSQL)
 
-Because Amber is k, qSQL is expressed with functions rather than the `select … by … from …`
-sugar. The pieces:
+Amber supports the **`select … by … from … where …` template directly** — type it at the
+prompt with no wrapper:
+
+```k
+select avg px by sym from trades where px>100     / grouped aggregate
+select sym,px from trades where px>180            / chosen columns, filtered
+exec avg px from trades where sym=`AAPL           / one column/expression
+update mid:0.5*bid+ask from quotes                / add/replace columns
+delete from trades where sz<300                   / drop rows
+r:select n:#px, avg px by sym from trades         / assign; also  5#select …  count select …
+```
+
+Bare column names in the expressions become `x`col`, so `wavg[sz;px]` just works. The same
+templates are also callable as strings (`sel"select …"`, `exq`, `upd`, `del`) and via the
+**functional form** below (handy when you build the query programmatically):
 
 | function             | q analogue                                     |
 |----------------------|------------------------------------------------|
@@ -293,7 +306,7 @@ wj[w; `sym`time; trade; quote; ,(`mx;max;`bid)]
 /  a   9    300 12      max bid for a in [7,9]
 ```
 
-Pass several aggregates at once: ``((`mx;max;`bid);(`mn;min;`bid);(`n;count;`bid))``.
+Pass several aggregates at once: `((`mx;max;`bid);(`mn;min;`bid);(`n;count;`bid))`.
 
 ---
 
@@ -319,12 +332,12 @@ Amber’s find (`?`) and membership (`in`) on integer vectors are an **O(n) line
 ask for it. The sorted attribute lets `?`/`in` *decide for themselves*: when the left vector is
 attributed sorted, find dispatches to a new **O(log n) binary search** instead of the scan.
 
-Measured (20,000,000‑row sorted int vector, 5,000 look‑ups, identical results):
+Measured (2,000,000‑row sorted int vector, 5,000 look‑ups, identical results):
 
 ```
-binary (`s#)   ~2.9 ms
-linear         ~22742 ms
-speedup        ~7818x
+binary (`s#)  ~1.7 ms
+linear         ~1900 ms
+speedup        ~1100x
 ```
 
 The test suite asserts both **correctness** (`bin? == linear?`) and that the attributed path is
@@ -433,7 +446,7 @@ attributes `sa (set sorted)   `at (get)     [kernel primitives]
 
 Type `\` for the menu, then a topic: `\q` (scalars, aggregation, sets, strings),
 `\j` (tables, keyed tables, joins, qSQL), `\z` (temporal, bars, attributes, display).
-``\0 \+ \` \'`` cover the core array language.
+`\0 \+ \' \`` cover the core array language.
 
 ---
 
@@ -461,67 +474,6 @@ ids: asc distinct trade`time      / `s-attributed integer vector
 `at ids                           / `s   -> `?/`in on ids run in O(log n)
 in[3 5; ids]                      / binary-searched membership
 ```
-
----
-
-## v1.5 extended modules
-
-Six modules load automatically after `fin.k`. Reach their help with `\w \s \u \y`.
-
-### qSQL template — `qsql.k` (`\s`)
-```q
-sel "select c:e,… [by b,…] from t [where p,…]"   / -> table (keyed if by)
-exq "exec e from t [where p]"                     / -> a single column
-upd "update c:e,… [by b,…] from t [where p]"      / -> the updated table
-del "delete [c,…] from t [where p]"               / -> rows kept / cols dropped
-qexec[t; where-mask|() ; by-cols|() ; name!fns|()]/ functional form
-```
-Bare column names in the expressions are rewritten to `` x`col ``, so `wavg[sz;px]`,
-`sum sz`, `max px` all work. Example:
-`sel "select vwap:wavg[sz;px],n:#px by sym from trades where px>100"`.
-
-### Moving / window + tooling — `std.k` (`\w`)
-```q
-msum[w;x] mavg[w;x] mcount[w;x] mprd[w;x] mvar[w;x] mdev[w;x]  / O(n) prefix-based
-mmin[w;x] mmax[w;x]                                            / O(n*w) window
-mmu[x;y] dot[x;y]                                              / matrix mult, dot
-parse s   eval s   reval s   ser x   deser s   protect s        / parse/eval/serialize
-long int float char sym bool   cast[`type;x]                    / casting
-peach[f;x]   ts"expr"                                           / parallel-each, timer
-```
-
-### Date & timestamp types — `temporal.k` (`\u`)
-`date` = days since 2000.01.01; `timestamp` = nanos since 2000.01.01.
-```q
-ymd2d[y;m;d]  d2ymd d  dstr d  pdate s  year d  month d  dayof d  dow d  dadd[d;n]
-tstamp[date;ms]  tsdate p  tsms p  pstr p
-```
-
-### System namespaces / on-disk / IPC — `sys.k` `hdb.k` `ipc.k` (`\y`)
-```q
-z.p z.P z.n z.d z.D z.t z.T z.z              / clocks (kdb .z.* without the leading dot)
-Q.f[n;x] Q.fmt[w;n;x] Q.s x Q.dd[a;b] Q.fc[f;x] Q.id x Q.trp[f;a;h]
-j.j x   j.k s                                / JSON encode / decode
-h.ht t  h.hc[tag;s]                          / HTML
-dset[f;x] dget f  splay[dir;t] dload dir  partsave[dir;t;`c] partload dir  parts dir
-hopen "host:port"  hclose h  hsend[h;m]  hrecv h  hsync[h;q]    / raw-socket IPC
-u.def[nm;schema]  u.sub[nm;cb]  u.pub[nm;data]  u.get nm        / in-process tickerplant
-```
-Notes: `z.*` etc. drop kdb's leading dot (in this core `.` is the eval verb). On-disk
-data is stored as portable Amber text — ideal for modest tables; very large single
-columns exceed the text parser (binary serialization is on the roadmap). IPC uses raw
-sockets, not the kdb+ binary wire protocol.
-
-### Interpreter capacity
-The bytecode's global index was widened from 1 byte to 2 (256 → 4096 globals) so the
-whole extended vocabulary (287 globals) loads at once.
-
----
-
-## Amber Notepad
-`Amber-Notepad.html` is a single self-contained page — a JavaScript re-implementation of
-a faithful Amber subset behind a notebook UI (amber-phosphor theme, live evaluation,
-syntax highlighting, rendered tables with attributes). Open it in any browser; no install.
 
 ---
 

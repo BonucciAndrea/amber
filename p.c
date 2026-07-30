@@ -43,6 +43,23 @@ Z A amcg(C end,U*np)_(I nm[256];A ex[256];U n=0;s=pws(s);                       
  s++;*np=n;aA3(EXC,qte(aV(tS,n,nm)),amkl(ex,n)))
 Z A0(amtbl,s++;U nk,nv;A kd=N(amcg(']',&nk)),vd=N(amcg(')',&nv));                                    //table literal ([keys]cols) ; s at '['
  A vt=aA2(FLP,vd);P(!nk,vt)aA3(EXC,aA2(FLP,kd),vt))                                                  //unkeyed:+names!cols  keyed:keytable!valtable
+// amber: civil date -> days since 2000.01.01 (Howard Hinnant, epoch-shifted; matches temporal.k ymd2d)
+Z L ymd2days(L y,L m,L d){L wy=y-(m<=2);L era=(wy>=0?wy:wy-399)/400;L yoe=wy-era*400;L mp=m+(m>2?-3:9);L doy=(153*mp+2)/5+d-1;return era*146097+365*yoe+yoe/4-yoe/100+doy-730425;}
+// amber: temporal-literal scanner.  Fires only on unambiguous patterns:
+//   HH:MM[:SS[.mmm]]              -> time atom (ms of day)
+//   YYYY.MM.DD                    -> date atom (days; needs TWO dots, so floats X.Y are untouched)
+//   YYYY.MM.DDD HH:MM:SS.fffffffff-> timestamp atom (ns).  Returns 0 (s unchanged) on no match.
+Z A pTmp(){S p=s;if(!C09(*p))return 0;L a=0;S q=p;while(C09(*q)){a=10*a+(*q-'0');q++;}
+ if(*q==':'){q++;L mi=0;while(C09(*q)){mi=10*mi+(*q-'0');q++;}L sc=0,ms=0;
+  if(*q==':'){q++;while(C09(*q)){sc=10*sc+(*q-'0');q++;}if(*q=='.'){q++;I nd=0;while(C09(*q)&&nd<3){ms=10*ms+(*q-'0');q++;nd++;}while(nd<3){ms*=10;nd++;}while(C09(*q))q++;}}
+  s=q;return atm((I)(3600000*a+60000*mi+1000*sc+ms));}
+ if(*q=='.'){S q2=q+1;if(!C09(*q2))return 0;L mo=0;while(C09(*q2)){mo=10*mo+(*q2-'0');q2++;}if(*q2!='.')return 0;q2++;if(!C09(*q2))return 0;L dy=0;while(C09(*q2)){dy=10*dy+(*q2-'0');q2++;}
+  L days=ymd2days(a,mo,dy);
+  if(*q2=='D'){q2++;L hh=0;while(C09(*q2)){hh=10*hh+(*q2-'0');q2++;}if(*q2!=':')return 0;q2++;L mi=0;while(C09(*q2)){mi=10*mi+(*q2-'0');q2++;}L sc=0,ns=0;
+   if(*q2==':'){q2++;while(C09(*q2)){sc=10*sc+(*q2-'0');q2++;}if(*q2=='.'){q2++;I nd=0;while(C09(*q2)&&nd<9){ns=10*ns+(*q2-'0');q2++;nd++;}while(nd<9){ns*=10;nd++;}while(C09(*q2))q2++;}}
+   s=q2;return antp(days*86400000000000LL+3600000000000LL*hh+60000000000LL*mi+1000000000LL*sc+ns);}
+  s=q2;return adt((I)days);}
+ return 0;}
 Z A pt(C*v)_(C c=*s;                                                                                //parse term
  P(c=='`',qte(p1(N(pS('`')))))
  P(c=='"',p1(pC()))
@@ -53,6 +70,7 @@ Z A pt(C*v)_(C c=*s;                                                            
  P(C09(c)&&s[1]==':',B u=s[2]==':';s+=2+u;U i=20+c-'0';P(i>25,ep0())*v=1;Lt(tv-u)|i)
  P(c=='0'&&s[1]=='x',s+=2;p1(p0x()))
  P(num(s)&&(c-'-'||s==s0||(!id1(s[-1])&&!strchr(")]}\"",s[-1]))),
+  A tlit=pTmp();P(tlit,tlit)
   B d=0;S p=s;c=*p;W(1,p=pw(p);B(!num(p))p+=*p=='-';c=*p;B(!CA9(c))W(CA9(c)||c=='.'||c==':',d|=!!strchr(".nwef",c);c=*++p))p1(d?pF():pZ()))
  P(c>>7,S p=s;A x=pP();*v=1;AO(p-s0,x))
  U i=si("'/\\",c);P(i<3,c=*++s;B h=c==':';s+=h;*v=1;aw+i+3*h)i=si(vc,c);P(i>19,GAP)

@@ -48,7 +48,7 @@ C*sf(C*s,L d)_(W x=d,m=x<<12>>12;I e=x<<1>>53;I(x>>63,*s++='-')P(e==2047,P(!m,MC
  P(-4<t&&t<0,F(l+1,s[l-t-i]=s[l-i])s[-1]='0';*s++='.';MS(s,'0',-t-1)+l-t)I(l>0,*s++='.';s+=l)*s++='e';I(t<0,t=-t;*s++='-')sW(s,t))
 
 A1(str0,Q(xtC);U n=xn;x=AN(n,aa(n+1,x));xC[n]=0;x)
-X1(str,Rilf(A y=aC(24);TY(sf)*f=xtf?sf:sl;AN(f(yC,gl(x))-yC,y))Rs(aCz(su(xv)))Rc(enl(x))RU(kst(x))R_(e1f(str,x)))
+X1(str,Rilf(A y=aC(24);TY(sf)*f=xtf?sf:sl;AN(f(yC,gl(x))-yC,y))R(tdt,K1("dstr",ai((I)x)))R(ttm,K1("stime",ai((I)x)))R(tnp,L v_=*(L*)_V(x);x(K1("pstr",al(v_))))Rs(aCz(su(xv)))Rc(enl(x))RU(kst(x))R_(e1f(str,x)))
 V hexC(S s,U n,C*r){Z S q="0123456789abcdef";F(n,C c=*s++;*r++=q[(UC)c>>4];*r++=q[c&15])}
 X1(hex,RmMA(e1f(hex,x))RC(A y=aC(2*xn);Mx(hexC(xV,xn,yV))y)R_(et(x)))
 ZN V unh0(C*q){MS(q,-1,256);F(10,q['0'+i]=i)F(6,q['A'+i]=q['a'+i]=10+i)}
@@ -78,6 +78,9 @@ X1(kst,R_(x(aCz("???")))
  RM(pre('+',kst(flp(x))))
  Rm(A y=kv(&x);cat11(apc(kl(x),'!'),kr(y)))
  Rilf(str(x))
+ R(tdt,K1("dstr",ai((I)x)))
+ R(ttm,K1("stime",ai((I)x)))
+ R(tnp,L v_=*(L*)_V(x);x(K1("pstr",al(v_))))
  Rc(kss(enl(x)))
  Rs(x=str0(str(x));I(xC+xn-pID(xC),x=kst(x);I(*xC==',',x=drp(1,x)))pre('`',x))
  Ro(x(_R(xx)))

@@ -45,7 +45,7 @@ movavg:{[w;x]x:0.0+x;((w-1)#0n),avg'w':x}                       / w-window movin
 movsum:{[w;x]x:0.0+x;((w-1)#0n),sum'w':x}
 movmax:{[w;x]x:0.0+x;((w-1)#0n),max'w':x}
 movmin:{[w;x]x:0.0+x;((w-1)#0n),min'w':x}
-ema:{[a;x]x:0.0+x;(1#x),(*x){[a;p;v](a*v)+p*1-a}[a]\1_x}       / exponential moving average, factor a in (0,1]
+ema:{[a;x]`ema(a;x)}                                           / exponential moving average, factor a in (0,1]  (C kernel, O(n) sweep)
 rollstd:{[w;x]sqrt(movavg[w;x*x])-m*m:movavg[w;x]}     / rolling standard deviation
 
 / ---- per-symbol summary ----

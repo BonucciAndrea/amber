@@ -41,4 +41,76 @@ Z A rda(I f)_(A x=aC(256-HD);L m=0,k;W((k=read(f,xV+m,xn-m))>0,m+=k;I(m+1000000>
 Z I lC(A x)_(XA(F(xn,P(_t(xa)-tC,0))1)0)//list of strings?
 A1(frk,P(!xtA||xn-2,et(x))A y=kv(&x);P(!lC(x)||!ytC,y(ed(x)))x=Ny(e1f(str0,x));S a[xn+1];F(xn,a[i]=_V(xa))a[xn]=0;I p[4];pipe(p);pipe(p+2);I pid=fork();
  P(!pid,dup2(*p,0);dup2(p[3],1);F(4,close(p[i]))exit(execve(*a,(C**)a,(C*CO*)env));0)close(*p);close(p[3]);N(v1c(ai(p[1]),x(y)));close(p[1]);A x=rda(p[2]);wait4(pid,0,0,0);x)
+// amber: fork-based parallel-each.  x=(f;y): apply f to each item of y across
+// AMBER_THREADS worker processes (default 4).  Each worker computes its slice,
+// serialises the result (`k) and writes it down a pipe; the parent reads each
+// (rda), deserialises (val) and concatenates.  Falls back to serial each for
+// tiny inputs or AMBER_THREADS<2.  Correct because  (. `k v) ~ v  for all v.
+Z I peachNW(){S*e=env;I n=4;if(e)while(*e){S p=*e++;if(!strncmp(p,"AMBER_THREADS=",14)){n=0;S q=p+14;while(*q>='0'&&*q<='9')n=n*10+(*q++-'0');if(n<1)n=4;break;}}return n;}
+Z A eachR(A f,A y,U lo,U hi){U m=hi-lo;A u=aA0(m|!m);for(U i=0;i<m;i++){A v=_1(f,ii(y,lo+i));if(!v){mr(u);return 0;}u=psh(u,v);}return sqz(u);}
+A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);U n=_N(dat);I nw=peachNW();if(nw>64)nw=64;
+ if(nw<2||n<2){A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}
+ if((U)nw>n)nw=n;I pr[128],pid[64];U base=n/nw,rem=n%nw,lo=0;
+ for(I w=0;w<nw;w++){U hi=lo+base+((U)w<rem);pipe(pr+2*w);pid[w]=fork();
+  if(!pid[w]){close(pr[2*w]);A r=eachR(fn,dat,lo,hi);if(!r)_exit(3);v1c(ai(pr[2*w+1]),kst(r));close(pr[2*w+1]);_exit(0);}
+  close(pr[2*w+1]);lo=hi;}
+ A out=0;for(I w=0;w<nw;w++){A part=val(rda(pr[2*w]));out=out?cat(out,part):part;wait4(pid[w],0,0,0);}
+ mr(fn);mr(dat);return x(sqz(out));}
+// amber: window-join C kernel.  x=(qt;qcols;codes;w0;w1;gb;ge)  (marshalled by wj in amber.k)
+//  qt    sorted long vector (ordering column; ascending within each group slice)
+//  qcols list of numeric vectors (tF or tL) aligned to qt, one per aggregate
+//  codes int vector, reducer per agg: 0=first 1=last 2=min 3=max 4=sum 5=avg 6=count
+//  w0,w1 long window bounds per trade row (length nt)
+//  gb,ge long group-slice [base,end) in q per trade row (length nt)
+// returns list of nt-length result columns (tF for avg/float-source, tL otherwise).
+// O(log g) range probe per row + one contiguous slice sweep; no per-row K objects.
+Z U wjlb(CO L*RES p,U lo,U hi,L v){while(lo<hi){U m=(lo+hi)>>1;if(p[m]<v)lo=m+1;else hi=m;}return lo;}//first i in [lo,hi): p[i]>=v
+A wjc(A x){
+ P(_t(x)-tA||_n(x)-7,et(x))
+ A*e=(A*)_V(x);
+ P(!_n(e[1]),x(emp(tA)))
+ // normalise all integer inputs to 64-bit long (columns/times/bounds may be squeezed to G/H/I widths)
+ A QT=N(cL(_R(e[0]))),CD=N(cL(_R(e[2]))),W0A=N(cL(_R(e[3]))),W1A=N(cL(_R(e[4]))),GBA=N(cL(_R(e[5]))),GEA=N(cL(_R(e[6])));
+ CO L*T=_V(QT),*W0=_V(W0A),*W1=_V(W1A),*GB=_V(GBA),*GE=_V(GEA),*cod=_V(CD);
+ U nt=_n(W0A),na=_n(e[1]);
+ A*QC=(A*)_V(e[1]);
+ A res=aA(na);A*R=(A*)_V(res);
+ for(U a=0;a<na;a++){
+  A col=QC[a];I c=(I)cod[a];
+  B isf=_t(col)==tF,flo=(c==5)||(isf&&c!=6);
+  A out=flo?aF(nt):aL(nt);
+  A colL=isf?0:N(cL(_R(col)));
+  F*of=(F*)_V(out);L*ol=(L*)_V(out);
+  CO F*pf=isf?(CO F*)_V(col):0;CO L*pl=isf?0:(CO L*)_V(colL);
+  for(U i=0;i<nt;i++){
+   L b=GB[i],en=GE[i];U lo,hi;
+   if(b==NL||en==NL||en<=b){lo=0;hi=0;}
+   else{lo=wjlb(T,(U)b,(U)en,W0[i]);hi=wjlb(T,(U)b,(U)en,W1[i]+1);}
+   U m=hi-lo;
+   if(c==6){ol[i]=(L)m;continue;}
+   if(flo){F r;
+    if(!m)r=c==2?WF:c==3?-WF:c==4?0.0:NF;
+    else if(c==0)r=isf?pf[lo]:(F)pl[lo];
+    else if(c==1)r=isf?pf[hi-1]:(F)pl[hi-1];
+    else if(c==2){r=WF;for(U k=lo;k<hi;k++){F v=isf?pf[k]:(F)pl[k];if(v<r)r=v;}}
+    else if(c==3){r=-WF;for(U k=lo;k<hi;k++){F v=isf?pf[k]:(F)pl[k];if(v>r)r=v;}}
+    else if(c==4){r=0;for(U k=lo;k<hi;k++)r+=isf?pf[k]:(F)pl[k];}
+    else{r=0;for(U k=lo;k<hi;k++)r+=isf?pf[k]:(F)pl[k];r/=m;}
+    of[i]=r;
+   }else{L r;
+    if(!m)r=c==2?WL:c==3?-WL:c==4?0:NL;
+    else if(c==0)r=pl[lo];
+    else if(c==1)r=pl[hi-1];
+    else if(c==2){r=pl[lo];for(U k=lo+1;k<hi;k++)if(pl[k]<r)r=pl[k];}
+    else if(c==3){r=pl[lo];for(U k=lo+1;k<hi;k++)if(pl[k]>r)r=pl[k];}
+    else{r=0;for(U k=lo;k<hi;k++)r+=pl[k];}
+    ol[i]=r;
+   }
+  }
+  if(colL)mr(colL);
+  R[a]=out;
+ }
+ mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);
+ return x(res);
+}
 L now()_(ST timeval t;gettimeofday(&t,0);1000000ll*t.tv_sec+t.tv_usec)

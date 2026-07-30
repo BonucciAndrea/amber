@@ -163,7 +163,14 @@ gentq:{[n]u:`AAPL`MSFT`GOOG`AMZN`META`TSLA`NVDA`JPM`XOM`WMT;o:hms[9;30;0];L:hms[
 
 / ---- table visualization (q-style grids) -----------------------------------
 amcells:{$[`A=@x;{$[`C=@x;x;`k x]}'x;$x]}
-amblk:{[t;c]cl:{[t;x](+t)x}[t]'c;sc:amcells'cl;h:$c;w:(#:'h)|{$[#x;|/#:'x;0]}'sc;pc:{[w;h;sc;i](,(w i)$h i),(w i)$'sc i}[w;h;sc]'!#c;+pc}
+/ temporal columns auto-render (no tsym): a column whose NAME is in TCOLS/DCOLS and
+/ whose type is integer prints as HH:MM:SS.mmm / YYYY.MM.DD.  Name-based, so it survives
+/ every table op (select/aj/group-by/sort keep column names).  Set TCOLS:0#` to disable.
+TCOLS:`time`ts`t                                   / time-of-day columns  (ms since midnight)  -> HH:MM:SS.mmm
+DCOLS:,`date                                       / date columns (days, temporal.k epoch)     -> YYYY.MM.DD
+tnum:{in[@x;`I`L`i`j`l`H`G]}                        / integer-typed column?
+tcell:{[nm;col]$[in[nm;TCOLS]&tnum col;stime col;in[nm;DCOLS]&tnum col;dstr'col;amcells col]}
+amblk:{[t;c]cl:{[t;x](+t)x}[t]'c;sc:tcell'[c;cl];h:$c;w:(#:'h)|{$[#x;|/#:'x;0]}'sc;pc:{[w;h;sc;i](,(w i)$h i),(w i)$'sc i}[w;h;sc]'!#c;+pc}
 CROWS:20                                           / Q-style: show first CROWS rows of a grid then "..";  set CROWS:n to change
 nrows:{#*.+x}                                      / row count of a table
 captab:{c:cols x;+c!(CROWS#)'(+x)c}                / first CROWS rows (caps BEFORE formatting, so huge tables render instantly)

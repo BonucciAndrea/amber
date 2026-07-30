@@ -119,7 +119,11 @@ aj0:{[c;x;y]c:c,();y:xasc[c;y];m:ajm[c;x;y];vc:except[cols y;-1_c];+(+x),vc!{[m;
 asof:{[t;d]c:!d;g:-1_c;tc:*|c;td:+t;msk:$[#g;&/({[td;d;c]td[c]=d c}[td;d]'g);(#t)#1b];i:&msk&~td[tc]>d tc;$[#i;(except[cols t;c])#t[*|i];()]}
 
 / ---- window join wj : w=(begins;ends) aligned to t rows -----------------------
-wj:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:xasc[c;q];qt:(+q)tc;grp:$[#g;=rows[g#+q];(,0)!,!#q];tr:$[#g;rows[g#+t];(#t)#0];tt:(+t)tc;res:{[grp;qt;tr;w0;w1;qd;aggs;i]gk:tr i;p:$[in[gk;!grp];grp gk;0#0];p:p@&(~qt[p]<w0 i)&~qt[p]>w1 i;{[qd;p;a](a 1)(qd a 2)@p}[qd;p]'aggs}[grp;qt;tr;w 0;w 1;+q;aggs]'!#t;+(+t),(aggs[;0])!+res}
+/ VECTORISED window lookup: quotes are xasc'd on c, so within each group the time
+/ column is ascending -> the [w0,w1] slice is found with two bin (') searches
+/ instead of an O(group) scan per row (same technique that made aj ~6x faster).
+/ Result keeps the t-side `time` column, so it auto-renders HH:MM:SS.mmm.
+wj:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:xasc[c;q];qd:+q;qt:qd tc;qg:$[#g;=rows[g#+q];(,0)!,!#q];tg:$[#g;rows[g#+t];(#t)#0];res:{[qt;qg;tg;w0;w1;qd;aggs;i]gk:tg i;p:$[in[gk;!qg];qg gk;0#0];sel:$[#p;{[gt;p;lo;hi]a:gt'lo-1;p@(a+1)+!0|(gt'hi)-a}[qt p;p;w0 i;w1 i];0#0];{[qd;sel;a](a 1)(qd a 2)@sel}[qd;sel]'aggs}[qt;qg;tg;w 0;w 1;qd;aggs]'!#t;+(+t),(aggs[;0])!+res}
 
 / ---- qSQL-style select / group-by --------------------------------------------
 qwhere:{[t;m]t@&m}

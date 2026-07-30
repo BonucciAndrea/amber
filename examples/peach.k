@@ -11,7 +11,7 @@
 / one Monte-Carlo pi estimate from np random points  (pure compute, heavy)
 mcpi:{[np]x:np?1.0;y:np?1.0;4.0*(+/1.0>(x*x)+y*y)%np}
 
-NP:50000000                                          / points per task
+NP:20000000                                          / points per task
 K:16                                                / independent tasks
 tasks:K#NP
 

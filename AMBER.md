@@ -368,6 +368,34 @@ order for floats, and symbol order is interning order). This keeps results exact
 
 ---
 
+## 9a. Parallelism — `peach`
+
+`peach[f;y]` is a drop-in parallel replacement for `` f'y `` (each): it forks
+`AMBER_THREADS` worker **processes** (default 4), each applies `f` to a slice of `y`,
+serialises its result and streams it back, and the parent concatenates. The result is
+**identical** to serial `` f'y `` for every value (vectors, symbols, tables, nested, ragged).
+
+```k
+peach[{avg x?1.0}; 8#1000000]        / 8 heavy tasks, one per worker, across cores
+AMBER_THREADS=8 ./amber examples/peach.k   / a Monte-Carlo demo timing serial vs peach
+```
+
+It uses `fork` (copy-on-write heap), so there are no shared-memory data races and no
+atomic-refcount tax on ordinary single-threaded code — the same reason kdb+ parallelises
+with processes rather than threading its interpreter. And with no GIL, every worker runs on
+a real core at once. Use it for **coarse-grained, compute-heavy** per-item work (Monte-Carlo,
+per-symbol fits, bootstraps, parallel loads); for fine-grained work the fork + serialise
+round-trip makes plain `'` faster. `AMBER_THREADS=1` forces serial. See BENCHMARKS.md §4.
+
+## 9b. Display — Q-style grid preview
+
+`show t` and a bare table / keyed table / dict at the prompt print only the first `CROWS`
+rows (default **20**), then a `..` line to show there is more — exactly like q's console. The
+cap is applied *before* formatting, so previewing a million-row table is instant. Set
+`CROWS:10` (or any n) at the prompt to change the preview height; small results print in full.
+
+---
+
 ## 10. Strings
 
 `lower upper ltrim rtrim trim ss ssr sv vs like`

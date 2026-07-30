@@ -111,7 +111,9 @@ pj:{[t;kt]yk:rows[!kt];xk:+. (keys kt)#+t;i:(#yk)^yk?xk;vt:value kt;vc:cols vt;+
 ej:{[c;x;y]ij[x;xkey[c;y]]}
 
 / ---- asof join (aj/aj0) : y must contain matching + time cols -----------------
-ajm:{[c;x;y]c:c,();g:-1_c;tc:*|c;yt:(+y)tc;grp:$[#g;=rows[g#+y];(,0)!,!#y];xr:$[#g;rows[g#+x];(#x)#0];xt:(+x)tc;{[grp;yt;xr;xt;i]gk:xr i;$[~in[gk;!grp];0N;[p:grp gk;b:(yt p)'xt i;$[b<0;0N;p b]]]}[grp;yt;xr;xt]'!#x}
+/ ajm: as-of match, per-group VECTORISED binary search (' = bin on a sorted noun).
+/ ~10x faster than a per-row scalar bin; y must be xasc'd on c (aj does this).
+ajm:{[c;x;y]c:c,();g:-1_c;tc:*|c;yt:(+y)tc;xt:(+x)tc;yg:$[#g;=rows[g#+y];(,0)!,!#y];xg:$[#g;=rows[g#+x];(,0)!,!#x];{[yt;xt;yg;xg;acc;gk]yi:yg gk;xi:xg gk;b:(yt yi)'(xt xi);@[acc;xi;:;(yi,0N)@b]}[yt;xt;yg;xg]/[(#x)#0N;!xg]}
 aj:{[c;x;y]c:c,();y:xasc[c;y];m:ajm[c;x;y];vc:except[cols y;c];+(+x),vc!{[m;yd;c](yd c)@m}[m;+y]'vc}
 aj0:{[c;x;y]c:c,();y:xasc[c;y];m:ajm[c;x;y];vc:except[cols y;-1_c];+(+x),vc!{[m;yd;c](yd c)@m}[m;+y]'vc}
 asof:{[t;d]c:!d;g:-1_c;tc:*|c;td:+t;msk:$[#g;&/({[td;d;c]td[c]=d c}[td;d]'g);(#t)#1b];i:&msk&~td[tc]>d tc;$[#i;(except[cols t;c])#t[*|i];()]}
@@ -162,9 +164,12 @@ gentq:{[n]u:`AAPL`MSFT`GOOG`AMZN`META`TSLA`NVDA`JPM`XOM`WMT;o:hms[9;30;0];L:hms[
 / ---- table visualization (q-style grids) -----------------------------------
 amcells:{$[`A=@x;{$[`C=@x;x;`k x]}'x;$x]}
 amblk:{[t;c]cl:{[t;x](+t)x}[t]'c;sc:amcells'cl;h:$c;w:(#:'h)|{$[#x;|/#:'x;0]}'sc;pc:{[w;h;sc;i](,(w i)$h i),(w i)$'sc i}[w;h;sc]'!#c;+pc}
-amtab:{[t]lns:{" "/x}'amblk[t;cols t];(1#lns),(,(#*lns)#"-"),1_lns}
-amkeyed:{[kt]t:unkey kt;kc:keys kt;vc:except[cols t;kc];kr:{" "/x}'amblk[t;kc];vr:{" "/x}'amblk[t;vc];lns:(kr,\:"| "),'vr;(1#lns),(,(#*lns)#"-"),1_lns}
-amdict:{[d]ks:$!d;vs:`k'value d;kw:|/#:'ks;{[kw;ks;vs;i](kw$ks i),"| ",vs i}[kw;ks;vs]'!#ks}
+CROWS:20                                           / Q-style: show first CROWS rows of a grid then "..";  set CROWS:n to change
+nrows:{#*.+x}                                      / row count of a table
+captab:{c:cols x;+c!(CROWS#)'(+x)c}                / first CROWS rows (caps BEFORE formatting, so huge tables render instantly)
+amtab:{[t]tr:CROWS<nrows t;u:$[tr;captab t;t];lns:{" "/x}'amblk[u;cols u];b:(1#lns),(,(#*lns)#"-"),1_lns;$[tr;b,,"..";b]}
+amkeyed:{[kt]t:unkey kt;tr:CROWS<nrows t;t:$[tr;captab t;t];kc:keys kt;vc:except[cols t;kc];kr:{" "/x}'amblk[t;kc];vr:{" "/x}'amblk[t;vc];lns:(kr,\:"| "),'vr;b:(1#lns),(,(#*lns)#"-"),1_lns;$[tr;b,,"..";b]}
+amdict:{[d]tr:CROWS<#!d;kk:$[tr;CROWS#!d;!d];vv:$[tr;CROWS#value d;value d];ks:$kk;vs:`k'vv;kw:|/#:'ks;b:{[kw;ks;vs;i](kw$ks i),"| ",vs i}[kw;ks;vs]'!#ks;$[tr;b,,"..";b]}
 amfmt:{$[iskeyed x;amkeyed x;`M=@x;amtab x;`m=@x;amdict x;`k x]}
 show:{`0:amfmt x;}
 

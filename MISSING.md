@@ -20,21 +20,34 @@ arithmetic, and the dotted accessors (`t.hh`, `d.month`, `p.date`).
 set of typed nulls/infinities (`0Nh 0Ne 0Wp 0Nd …`). Amber has long/float/char/symbol/bool
 (and int) only, with `0N`/`0n` nulls.
 
-## 3. On-disk data (HDB) — entirely absent
+## 3. qSQL (the template syntax) — mostly done
+The `select … by … from … where …` template now works **bare** (no `sel"…"` wrapper), along
+with `exec`, `update`, and `delete` — see AMBER.md §7. Still missing: the general functional
+forms `?[t;where;by;select]` / `![t;where;by;cols]`, sorted/limited selects (`select[>px]`,
+`select[5]`), `fby` *inside* a where-clause, and correlated subqueries.
+- **Amber has:** bare + string `select/exec/update/delete`, plus the functional helpers
+  `qwhere qselect qby fby xgroup ungroup`.
+
+## 4. On-disk data (HDB) — entirely absent
 Splayed tables, **date-partitioned databases**, `set`/`get` to disk, `\l db`, memory-mapping,
 `.Q.dpft` (save partitioned), `.Q.en` (enumerate syms), `par.txt`, `.Q.chk`, `.Q.ind`,
 `.Q.fs`/`.Q.fsn` (chunked file streaming), on-disk `aj` over partitions. Amber is in-memory only.
 
-## 4. IPC & the tick architecture — absent
+## 5. IPC & the tick architecture — absent
 `hopen`/`hclose`, sync (`h"expr"`) and async (`neg[h]`) messaging, `.z.pg`/`.z.ps` query
 handlers, `.z.po`/`.z.pc` connect/disconnect, `.z.w`, websockets, TLS. And the whole
 tickerplant / RDB / HDB / gateway pattern (`tick.q`, `r.q`, `u.q`, `w.q`, `.u.sub`/`.u.pub`).
 
-## 5. Enumerations, foreign keys, linked columns
+## 6. Attributes — 1 of 4
+Amber implements **sorted (`` `s``)**. Missing: **`` `u`` unique**, **`` `p`` parted**,
+**`` `g`` grouped** (the real-time hash index that powers fast `where sym=` on RDBs). No
+attribute preservation through most ops (q keeps/drops them with defined rules).
+
+## 7. Enumerations, foreign keys, linked columns
 `` `sym$`` enumeration domains, `.Q.en`, foreign keys (`` `t$`` and dotted `order.customer.name`
 traversal), linked columns, `.Q.fk`. None in Amber.
 
-## 6. System namespaces
+## 8. System namespaces
 - **`.z.*`** clocks/handlers: `.z.p .z.P .z.z .z.t .z.d .z.T .z.D`, timer `.z.ts` + `\t`,
   `.z.exit`, `.z.pg .z.ps .z.po .z.pc .z.ph` (HTTP).
 - **`.Q.*`** utilities: `.Q.dpft .Q.en .Q.hg/.Q.hp` (HTTP get/post) `.Q.gc .Q.w` (mem)
@@ -43,39 +56,45 @@ traversal), linked columns, `.Q.fk`. None in Amber.
 - **`.h.*`** HTTP/markup: HTML/CSV/XML/XLS rendering, an HTTP server.
 - **`.j.*`** JSON: `.j.j` / `.j.k` (the array core has `` `j``; Amber doesn't wrap it yet).
 
-## 7. Moving / window aggregates
+## 9. Moving / window aggregates
 `mavg msum mcount mmin mmax mdev mmu` (moving) and `ema`, `wj2`, plus `ajf`/`ajf0` (fill
 as-of), `ij`f/`lj` fill variants, `ssr` vectorised, `rank`/`xrank` over tables.
 - **Amber has:** `sums prds mins maxs deltas ratios differ prev next wsum wavg xprev`. Missing
   the `m*` moving family and `ema`.
 
-## 8. Linear algebra & math
+## 10. Linear algebra & math
 `mmu` (matrix multiply), `inv` (inverse), `lsq` (least squares), `.q` solve; distributional
 `rand`, `binr`. Amber has `cor cov var dev svar sdev med` and scalar math.
 
-## 9. Casting / parsing / serialization
+## 11. Casting / parsing / serialization
 The full `$` cast matrix (temporal, guid, byte), typed file reader `("SIF";",")0:file`,
 `vs`/`sv` for base-N and temporal, `parse`/`eval`/`reval`, `-8!`/`-9!` (serialize/deserialize),
 `-18!` (compress), `-11!` (replay log), `md5`, `.Q.btoa`. Amber has `sv vs ss ssr like`,
 string casts, and `` `k`` (k-repr).
 
-## 10. Concurrency & performance ops
+## 12. Concurrency & performance ops
 `peach` (parallel each), secondary threads (`-s`), `.Q.fc` (parallel-on-cut), map-reduce over
 partitions, compression, `\ts` (time+space). Amber is single-threaded, in-memory.
 
-## 11. Console / environment niceties
+## 13. Console / environment niceties
 `\c` console dims, `\ts`, `\w` (workspace) — the array core has `\w`; `system"…"`, `getenv`/
 `setenv`, `\cd`. Number formatting `.Q.f`. Editor tooling / language server.
 
 ---
 
+Already done (once gaps): **bare qSQL** `select/exec/update/delete` (1.5), **vectorised as-of
+join** (1.5), **multi-core `peach`** (1.6, fork-based), **Q-style grid preview** (1.6).
+
 ### Nice next steps (highest value first)
-1. **Vectorised `bin` (searchsorted) in C** — the one real performance gap. `aj`/`wj` currently
-   match rows with an *interpreted per-row* binary search (`ajm` in `amber.k`), which is ~70×
-   slower than pandas' `merge_asof` (see [BENCHMARKS.md](BENCHMARKS.md)). A C `bin` primitive
-   turns the as-of matcher into a few vectorised calls and closes most of that gap; it also
-   speeds `wj` and any user code doing lookups. Everything else in the vocabulary already
-   matches or beats pandas/numpy on hash-heavy work (group-by, distinct).
+1. **Binary serialiser (`` -8!``/`` -9!``)** — `peach` currently ships each worker's result back
+   as text (`` `k ``) and the parent re-parses it. That's correct and fine for modest results, but
+   a compact binary encode/decode would cut the transfer cost and widen the range of workloads
+   where `peach` beats serial `'`. Also unlocks real IPC.
+2. **Vectorise `wj` (window join)** the way `aj` now is. `aj`'s matcher issues one vectorised
+   `bin` per group and is ~6× faster (see [BENCHMARKS.md](BENCHMARKS.md)); `wj` still uses the
+   older per-row form. The `bin`/searchsorted it needs already exists in C (the `'` verb on a
+   sorted noun), so this is a `.k` change. Sort is the largest remaining *numeric* gap vs numpy,
+   but that is SIMD, not algorithmic.
 2. **`` `g`` grouped attribute** in C — pairs with the sorted work you already have and unlocks
    fast `where sym=`.
 3. **Real temporal types** (at least `date` + `timestamp`) with literals and `$` casts.

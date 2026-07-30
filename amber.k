@@ -123,7 +123,15 @@ asof:{[t;d]c:!d;g:-1_c;tc:*|c;td:+t;msk:$[#g;&/({[td;d;c]td[c]=d c}[td;d]'g);(#t
 / column is ascending -> the [w0,w1] slice is found with two bin (') searches
 / instead of an O(group) scan per row (same technique that made aj ~6x faster).
 / Result keeps the t-side `time` column, so it auto-renders HH:MM:SS.mmm.
-wj:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:xasc[c;q];qd:+q;qt:qd tc;qg:$[#g;=rows[g#+q];(,0)!,!#q];tg:$[#g;rows[g#+t];(#t)#0];res:{[qt;qg;tg;w0;w1;qd;aggs;i]gk:tg i;p:$[in[gk;!qg];qg gk;0#0];sel:$[#p;{[gt;p;lo;hi]a:gt'lo-1;p@(a+1)+!0|(gt'hi)-a}[qt p;p;w0 i;w1 i];0#0];{[qd;sel;a](a 1)(qd a 2)@sel}[qd;sel]'aggs}[qt;qg;tg;w 0;w 1;qd;aggs]'!#t;+(+t),(aggs[;0])!+res}
+/ window join.  w=(begins;ends) aligned to t rows; aggs=list of (name;fn;col).
+/ Standard reducers (first last min max sum avg count) run in the C kernel `wj:
+/ vectorised binary-search range probe + contiguous slice sweep.  Arbitrary agg
+/ functions fall back to wjK (per-row K).  Result keeps the t-side `time column,
+/ so it auto-renders HH:MM:SS.mmm.
+wjcode:{$[x~first;0;x~last;1;x~min;2;x~max;3;x~sum;4;x~avg;5;x~count;6;x~{#x};6;-1]}
+wjbnd:{[g;t;q]$[#g;[gdi:=rows[g#+q];bas:*:'value gdi;len:#:'value gdi;ix:(!gdi)?rows[g#+t];(bas ix;(bas+len)ix)];((#t)#0;(#t)#(#q))]}
+wjK:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:xasc[c;q];qd:+q;qt:qd tc;qg:$[#g;=rows[g#+q];(,0)!,!#q];tg:$[#g;rows[g#+t];(#t)#0];res:{[qt;qg;tg;w0;w1;qd;aggs;i]gk:tg i;p:$[in[gk;!qg];qg gk;0#0];sel:$[#p;{[gt;p;lo;hi]a:gt'lo-1;p@(a+1)+!0|(gt'hi)-a}[qt p;p;w0 i;w1 i];0#0];{[qd;sel;a](a 1)(qd a 2)@sel}[qd;sel]'aggs}[qt;qg;tg;w 0;w 1;qd;aggs]'!#t;+(+t),(aggs[;0])!+res}
+wj:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:xasc[c;q];qd:+q;cs:wjcode'aggs[;1];$[|/cs<0;wjK[w;c;t;q;aggs];[b:wjbnd[g;t;q];+(+t),(aggs[;0])!`wj(qd tc;qd aggs[;2];cs;w 0;w 1;b 0;b 1)]]}
 
 / ---- qSQL-style select / group-by --------------------------------------------
 qwhere:{[t;m]t@&m}
@@ -163,7 +171,7 @@ ptime:{p:"."\x;t:`I$":"\*p;m:$[1<#p;`I$3#(p 1),"000";0];(3600000*t 0)+(60000*t 1
 bar:{[w;u;t]s:w*u;s*_(t%s)}                        / w u-unit bars: bar[5;60000;t] = 5-min bars(ms)
 minbar:{[w;t]60000*xbar[w;minute t]}               / w-minute bar as a time (ms)
 tsym:{[t;c]+@[+t;c,();stime]}                      / render time cols c of table t as HH:MM:SS strings
-gentq:{[n]u:`AAPL`MSFT`GOOG`AMZN`META`TSLA`NVDA`JPM`XOM`WMT;o:hms[9;30;0];L:hms[16;0;0]-o;bp:u!100.0+10*!#u;s:n?u;m:2*n;qs:m?u;mid:round[2](bp qs)+0.01*(m?201)-100;h:0.01*1+m?10;trades::xasc[`sym`time;([]sym:s;time:stime[o+n?L];px:round[2](bp s)+0.01*(n?201)-100;sz:100*1+n?10)];quotes::xasc[`sym`time;([]sym:qs;time:stime[o+m?L];bid:mid-h;ask:mid+h;bsz:100*1+m?5;asz:100*1+m?5)]}
+/ gentq (trade/quote generator) lives in fin.k, which loads after amber.k.
 
 / ---- table visualization (q-style grids) -----------------------------------
 amcells:{$[`A=@x;{$[`C=@x;x;`k x]}'x;$x]}

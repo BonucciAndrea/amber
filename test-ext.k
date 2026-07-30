@@ -74,6 +74,50 @@ x:u.pub[`trd;([]sym:`c`d`e;px:30 40 50.0)]
 t[`tickRows;#u.get`trd;5]
 t[`tickCb;TC;5]
 
+/ ---- C-kernel window join (wj): standard reducers run in C ----
+trade:+`sym`time`px!(`a`b`a;3 4 9;100 200 300)
+quote:+`sym`time`bid`ask!(`a`a`b`a;1 5 2 8;10 11 20 12;15 16 25 18)
+t[`wjClast;&/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`b;last;`bid)])[`b]=10 20 12;1b]
+t[`wjCmax; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`m;max;`ask)])[`m]=15 25 18;1b]
+t[`wjCmin; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`m;min;`bid)])[`m]=10 20 12;1b]
+t[`wjCsum; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`s;sum;`bid)])[`s]=10 20 12;1b]
+t[`wjCcnt; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`n;count;`bid)])[`n]=1 1 1;1b]
+t[`wjCavg; &/1e-9>abs(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`a;avg;`bid)])[`a]-10 20 12;1b]
+t[`wjCnogrp;&/(+wj[(trade[`time]-2;trade`time);,`time;trade;quote;,(`m;max;`bid)])[`m]=20 20 12;1b]
+/ C wj agrees with interpreted wjK on random data (bit-exact reducers)
+gentq 400
+wAGG:((`hi;max;`ask);(`lo;min;`bid);(`nq;count;`bid))
+wCr:+wj[(trades[`time]-60000;trades`time);`sym`time;trades;quotes;wAGG]
+wKr:+wjK[(trades[`time]-60000;trades`time);`sym`time;trades;quotes;wAGG]
+t[`wjCK;&/{[a;b;c]&/(a[c]=b c)|(^a[c])&^b c}[wCr;wKr]'`hi`lo`nq;1b]
+/ ---- C-kernel EMA ----
+t[`ema0;ema[0.5;1 2 3 4];1.0 1.5 2.25 3.125]
+t[`ema1;ema[1.0;1 2 3];1.0 2 3]
+t[`emaEmpty;ema[0.5;0#0.0];0#0.0]
+/ ---- temporal arithmetic ----
+t[`dateRT;pdate dstr ymd2d[2026;7;30];ymd2d[2026;7;30]]
+t[`dow;dow ymd2d[2000;1;1];`Sat]
+t[`year;year ymd2d[2026;7;30];2026]
+t[`timeAdd;stime[ptime["10:00:00.000"]+ptime["00:00:05.000"]];"10:00:05.000"]
+t[`tsRT;tsdate tstamp[ymd2d[2026;7;30];ptime"09:30:00.000"];ymd2d[2026;7;30]]
+/ ---- native temporal types: literals, arithmetic, casts, accessors ----
+t[`litDateT;type 2026.07.30;`d]
+t[`litTimeT;type 10:00:05.000;`t]
+t[`litTsT;type 2026.07.30D09:30:00.000;`n]
+t[`timeAddLit;`i$10:00:00.000+00:00:05.000;36005000]
+t[`dateDiff;2026.07.30-2026.07.25;5]
+t[`datePlus;`i$2026.07.30+5;9712]
+t[`dateCmp;$[2026.07.25<2026.07.30;1;0];1]
+t[`tsArith;`i$2026.07.30D09:30:00.000+1000000000;838719001000000000]
+t[`castD;type "D"$"2026.07.30";`d]
+t[`castT;`i$"T"$"10:00:05.000";36005000]
+t[`yearA;year 2026.07.30;2026]
+t[`monthA;month 2026.07.30;7]
+t[`dayA;day 2026.07.30;30]
+t[`dowA;dow 2026.07.30;`Thu]
+t[`thhA;thh 10:35:05.000;10]
+t[`tmmA;tmm 10:35:05.000;35]
+
 fails:r@&{"FAIL"~4#x}'r[;1]
 `0:"";`0:"============ EXTENDED TEST SUITE ============"
 `0:(($#r)," tests run, ",($#fails)," failures")

@@ -54,6 +54,13 @@
 #define Lij L i=*xL,j=xL[1];
 #define PSH(x,y) ((x)=psh(x,y))
 #define AL(x) __builtin_assume_aligned(x,32)
+#if defined(__clang__)
+#define SIMD _Pragma("clang loop vectorize(enable) interleave(enable)")
+#elif defined(__GNUC__)
+#define SIMD _Pragma("GCC ivdep")
+#else
+#define SIMD
+#endif
 #define CLZ   __builtin_clzll
 #define CTZ   __builtin_ctzll
 #define MC    __builtin_memcpy
@@ -74,8 +81,8 @@ TD unsigned long long W,A,A0(),A1(A),A2(A,A),A3(A,A,A),A4(A,A,A,A),AA(CO A*,U),A
 #define A4(f,b...) A f(A x,A y,A z,A u )_(b)
 #define AX(f,b...) A f(A x,CO A*a,U n  )_(DBG(Q(n<=8));b)/*0,1..1,n*/
 #define AA(f,b...) A f(    CO A*a,U n  )_(DBG(Q(n<=8));b)
-A1 _R,aA1,asc,AZ,blw,cB,cG,cC,cF,cH,cI,cL,cS,dsc,enl,epr,err,fir,flp,flr,frk,gZ,gg,grp,hex,imx,imn,inv,jS,js0,js1,kcos,kexp,klog,ksin,kst,las,len,m0,m1,mkn,mRa,mr,mut,
- neg,not,nul,of0,of1,opn,out,prng,qkmp,qpri,qte,raz,rev,rs0,spl,sqr,sqz,sqzZ,str,str0,til,typ,u0c,u1c,u2c,unh,unq,val,whr;
+A1 _R,aA1,asc,AZ,blw,cB,cG,cC,cF,cH,cI,cL,cS,dsc,emaC,enl,epr,err,fir,flp,flr,frk,gZ,gg,grp,hex,imx,imn,inv,jS,js0,js1,kcos,kexp,klog,ksin,kst,las,len,m0,m1,mkn,mRa,mr,mut,
+ neg,not,nul,of0,of1,opn,out,peachC,prng,qkmp,qpri,qte,raz,rev,rs0,spl,sqr,sqz,sqzZ,str,str0,til,typ,u0c,u1c,u2c,unh,unq,val,whr,wjc,mkdt,mktm,mknp;
 A2 _1,aA2,aM,add,am,psh,ari,bin,ct,cat,cat10,cat11,dlr,dex,dot,dvd,eql,exc,crt,fil,fnd,gtn,hsh,ie,i1,ltn,mod,mnm,mtc,mul,mxm,que,sub,und,v0c,v1c,v2c;
 A3 _2,aA3,arf,arp,ars,cpl,e2,r2,try;
 A4 ara,a4,d4;
@@ -102,15 +109,17 @@ EX A1*v1[];EX A2*v2[];EX AA*v8[];EX A gv[4096],cns,cn[],ci[2][5];EX I pg;EX TY(C
 
 //                    0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25
 //                      () !i ,1 ,i ,i ,i ,i ,f "" ,` +m X!  5  6 .6 "c" ` {} 1+ ++ +/ +:  +  / 2:
-enum                 {tA=1,tE,tB,tG,tH,tI,tL,tF,tC,tS,tM,tm,ti,tl,tf,tc,ts,to,tp,tq,tr,tu,tv,tw,tx,tn};
-#define T_ CO C TS[]="0""A""I""I""I""I""I""I""F""C""S""M""m""i""i""f""c""s""o""p""q""r""u""v""w""x",/*type symbols     */\
-                Tw[]={0, 6, 6, 0, 3, 4, 5, 6, 6, 3, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6},/*log2(size)       */\
-                TT[]={0,tA,tL,tB,tG,tH,tI,tL,tF,tC,tS,tM,tM,tI,tL,tF,tC,tS,tA,tA,tA,tA,tA,tA,tA,tA},/*list type        */\
-                TX[]={0,tG,tG,tG,tG,tH,tI,tL,tF,tG,tI,tG,tG, 0, 0,tF,tG,tI,tG,tG,tG,tG,tG,tG,tG,tG},/*arith conformance*/\
-                Tk[]="0""L""I""I""I""I""I""I""F""C""S""T""D""i""i""f""c""s""?""?""?""?""?""?""?""?";/*for the api (k.h)*/
+enum                 {tA=1,tE,tB,tG,tH,tI,tL,tF,tC,tS,tM,tm,ti,tl,tf,tc,ts,to,tp,tq,tr,tu,tv,tw,tx,tdt,ttm,tnp,tn};
+// tdt=date atom (days since 2000.01.01, packed int32); ttm=time atom (ms of day, packed int32);
+// tnp=timestamp atom (ns since 2000.01.01, heap int64).  Native scalar temporal types.
+#define T_ CO C TS[]="0""A""I""I""I""I""I""I""F""C""S""M""m""i""i""f""c""s""o""p""q""r""u""v""w""x""d""t""n",/*type symbols     */\
+                Tw[]={0, 6, 6, 0, 3, 4, 5, 6, 6, 3, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 5, 5, 6},/*log2(size)       */\
+                TT[]={0,tA,tL,tB,tG,tH,tI,tL,tF,tC,tS,tM,tM,tI,tL,tF,tC,tS,tA,tA,tA,tA,tA,tA,tA,tA,tI,tI,tL},/*list type        */\
+                TX[]={0,tG,tG,tG,tG,tH,tI,tL,tF,tG,tI,tG,tG, 0, 0,tF,tG,tI,tG,tG,tG,tG,tG,tG,tG,tG, 0, 0, 0},/*arith conformance*/\
+                Tk[]="0""L""I""I""I""I""I""I""F""C""S""T""D""i""i""f""c""s""?""?""?""?""?""?""?""?""d""t""p";/*for the api (k.h)*/
 #define TR(t) ((1<<tA|1<<tM|1<<tm|1<<to|1<<tp|1<<tq|1<<tr)>>(t)&1)//reftypes
-#define TP(t) ((1<<ti|1<<tc|1<<ts|1<<tu|1<<tv|1<<tw|1<<tx)>>(t)&1)//packed types
-#define TU(t) ((t)>=to)                                           //function types
+#define TP(t) ((1<<ti|1<<tc|1<<ts|1<<tu|1<<tv|1<<tw|1<<tx|1<<tdt|1<<ttm)>>(t)&1)//packed types (+ date/time atoms)
+#define TU(t) LH(to,t,tx)                                         //function types (to..tx exactly; temporal tags sit above)
 
 //header bytes: b....... XXXXXXXX ....OEkt rrrrnnnn
 #define _V(x) ((V*)(x))       //pointer to data
@@ -148,6 +157,9 @@ enum                 {tA=1,tE,tB,tG,tH,tI,tL,tF,tC,tS,tM,tm,ti,tl,tf,tc,ts,to,tp
 #define ac(v) (Lt(tc)|(U)(C)(v))
 #define ai(v) (Lt(ti)|(U)(v))
 #define as(v) (Lt(ts)|(U)(v))
+#define adt(v) (Lt(tdt)|(U)(I)(v))//date atom (packed): days since 2000.01.01
+#define atm(v) (Lt(ttm)|(U)(I)(v))//time atom (packed): ms of day
+#define antp(v) AT(tnp,al(v))     //timestamp atom (heap int64): ns since 2000.01.01
 #define ax(v,k) (Lt(tx)|(W)(k)<<48|(W)(v)<<16>>16)
 #define V_ A1*v1[]={sam,flp,neg,fir,sqr,til,whr,rev,asc,dsc,grp,not,enl,nul,len,flr,str,unq,typ,val,u0c,u1c,u2c,las,imn,imx,out};\
            A2*v2[]={dex,add,sub,mul,dvd,exc,mnm,mxm,ltn,gtn,eql,mtc,cat,crt,hsh,und,dlr,que, _1,dot,v0c,v1c,v2c,dex,dex,dex,dex};\

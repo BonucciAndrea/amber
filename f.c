@@ -69,3 +69,13 @@ Z Y2(binZ,
 
 Z Y2(binF,RF(x=of1(xR);x(binZ(x,of1(y))))REBGHILC(binF(x,N(cF(y))))Rt(YU(ed(y))fir(N(binF(x,enl(y)))))RmMA(r2f(binF,x,y))R_(ed(y)))
 X2(bin,REBGHILC(binZ(x,y))RF(binF(x,y))Rm(_1(xx,N(bin(xy,y))))R_(et(y)))
+
+//amber: exponential moving average kernel.  y is a float vector (caller-owned);
+//returns fresh float vector  z[0]=y[0]; z[i]=a*y[i]+(1-a)*z[i-1].  O(n) single sweep.
+Z A emaF(F a,A y)_(U n=yn;A z=aF(n);CO F*RES p=AL(yV);F*RES r=AL(zV);F b=1-a;I(n,F s=r[0]=p[0];for(U i=1;i<n;i++)r[i]=s=a*p[i]+b*s;)z)
+//amber: `ema(a;x) -> C-kernel EMA.  a=smoothing factor in (0,1], x=numeric vector.
+A1(emaC,P(_t(x)-tA||_n(x)-2,et(x))F a=gf(N(ii(x,0)));A y=N(cF(N(ii(x,1))));A z=emaF(a,y);mr(y);x(z))
+//amber: native temporal atom constructors.  `mkd d -> date(days), `mkt m -> time(ms), `mkp n -> timestamp(ns).
+A1(mkdt,L v=gl_(x);mr(x);adt((I)v))
+A1(mktm,L v=gl_(x);mr(x);atm((I)v))
+A1(mknp,L v=gl_(x);mr(x);antp(v))

@@ -66,11 +66,11 @@ Z A cmpzZ(L v,A y,U f)_(U w=yw-3;P(tG+w<tZ(v),y(rsz(yn,ai(f==8?v<0:f==9?v>0:0)))
  U n=yn;A z=aG(n);My(A(&ltng,ltnh,ltni,ltnl,gtng,gtnh,gtni,gtnl,eqlg,eqlh,eqli,eqll)[f-8<<2|w](v,yV,zG,n))z)
 
 Z A addzE(L v,A x)_(Lij x(0);aE(i+v,j+v))
-Z A addfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);U n=zn+3&-4;F(n,zf=v+yf)y-z?y(z):z)
-Z A mulfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);U n=zn+3&-4;F(n,zf=v*yf)y-z?y(z):z)
+Z A addfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);U n=zn+3&-4;SIMD F(n,zf=v+yf)y-z?y(z):z)
+Z A mulfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);U n=zn+3&-4;SIMD F(n,zf=v*yf)y-z?y(z):z)
 Z A admfF(F v,A y,U f)_((f==3?mulfF:addfF)(v,y,f))
-Z A dvdfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);U n=zn+3&-4;F(n,zf=v/yf)y-z?y(z):z)
-Z A dvdFf(A x,F v,U f)_(A z=aF(xn);F(xn,zf=xf/v)z)
+Z A dvdfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);U n=zn+3&-4;SIMD F(n,zf=v/yf)y-z?y(z):z)
+Z A dvdFf(A x,F v,U f)_(A z=aF(xn);SIMD F(xn,zf=xf/v)z)
 Z A dvdzZ(L v,A y,U f)_(dvdfF(v,cF(y),f))
 Z A dvdZZ(A x,A y,U f)_(x=cF(xR);x(amdFF(x,cF(y),f)))
 Z A arizz(L a,L b,U f)_(P(f==4,af((F)a/b))az(f==1?a+b:f==3?a*b:f==5?(!a?b:a<0?(b<0?-1-~b/-a:b/-a):(b%a+a)%a):f==6?MIN(a,b):f==7?MAX(a,b):f==8?a<b:f==9?a>b:f==10?a==b:0))
@@ -90,7 +90,19 @@ ZN A arif(A x,A y,U f)_(C t=xt,u=yt;
  x=of1(xR);y=ari(x,of1(y));x(f<8&&y?of0(y):y))
 
 Z U f;//0=dex,1=add,2=sub,3=mul,4=dvd,5=mod,6=mnm,7=mxm,8=ltn,9=gtn,10=eql
+// amber: native temporal scalar arithmetic.  date/time/timestamp atoms carry
+// their base units (days/ms/ns); + and - keep the temporal type, temporal-minus-
+// same-temporal yields a plain int (a difference), comparisons yield bool.
+Z L tval(A x)_(UC k=_t(x);k==tdt||k==ttm?(L)(I)x:k==tnp?*(L*)_V(x):gl_(x))
+Z A tmk(UC k,L w)_(k==tdt?adt((I)w):k==ttm?atm((I)w):k==tnp?antp(w):az(w))
+// v2 convention: consume y, leave x for the caller (bv opcode releases x; bV borrows a constant x).
+Z A tari(A x,A y,U op)_(UC ka=_t(x),kb=_t(y);B qa=ka>=tdt,qb=kb>=tdt;L va=tval(x),vb=tval(y);mr(y);
+ P(op>=8,ai((I)(op==8?va<vb:op==9?va>vb:va==vb)))
+ L vv=op==1?va+vb:op==2?va-vb:op==3?va*vb:op==6?MIN(va,vb):op==7?MAX(va,vb):va;
+ UC rk=(qa&&qb)?(op==2?0:ka):(qa?ka:kb);
+ tmk(rk,vv))
 A2(ari,C t=xt,u=yt;U v=1<<t|1<<u;
+ P(t>=tdt||u>=tdt,tari(x,y,f))
  P(!(v&~(1<<tG|1<<tH|1<<tI|1<<tL|1<<tC|1<<ti|1<<tl|1<<tc)),ariz(x,y,f))
  P(v&(1<<tm|1<<tM|1<<tA),e2(av+f,x,y))
  P(t==tB,x=cG(xR);x(ari(x,y)))
@@ -106,4 +118,4 @@ A2(ari,C t=xt,u=yt;U v=1<<t|1<<u;
 #define M(s,i) A2(s,U o=f;f=i;x=ari(x,y);f=o;x)
  M(add,1)M(mul,3)M(dvd,4)M(mod,5)M(mnm,6)M(mxm,7)M(ltn,8)M(gtn,9)M(eql,10)
 #undef M
-A2(dex,y)A2(sub,add(x,N(neg(y))))X2(exc,RMT(ytm||rnk(x)<0?ed(y):ytt?exc(x,rsz(xN,y)):xN-yN?el(y):am(xR,y))Rs(x=rsz(yN,x);x(exc(x,y)))Rilc(mod(x,y))R_(et(y)))
+A2(dex,y)A2(sub,P(_t(x)>=tdt||_t(y)>=tdt,tari(x,y,2))add(x,N(neg(y))))X2(exc,RMT(ytm||rnk(x)<0?ed(y):ytt?exc(x,rsz(xN,y)):xN-yN?el(y):am(xR,y))Rs(x=rsz(yN,x);x(exc(x,y)))Rilc(mod(x,y))R_(et(y)))

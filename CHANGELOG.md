@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.6
+- **Q-style grid preview.** `show t` (and a bare table/keyed-table/dict at the prompt) now
+  prints only the first `CROWS` rows (default 20) followed by a `..` line, instead of dumping
+  the whole thing. The cap is applied *before* formatting, so previewing a million-row table
+  is instant. Set `CROWS:n` at the prompt to change it (e.g. `CROWS:10`); small tables print
+  in full. Implemented in `amtab`/`amkeyed`/`amdict` (amber.k).
+- **`examples/peach.k`** — a runnable Monte-Carlo demo that times serial `` f'y `` vs
+  `peach[f;y]` so you can see the multi-core speedup on your own hardware
+  (`AMBER_THREADS=8 ./amber examples/peach.k`).
+- **Banner shows v1.6** and advertises bare qSQL + parallel `peach`.
+- **`peach` is now genuinely parallel (multi-core), in C.** `peach[f;y]` forks
+  `AMBER_THREADS` worker processes (default 4), each applies `f` to a slice of `y`,
+  serialises its result (`` `k ``) down a pipe, and the parent deserialises (`val`) and
+  concatenates. Because `(. `k v) ~ v` holds for every value, the result is identical to
+  serial `` f'y `` — verified across vectors, symbols, tables, nested and ragged results, and
+  a 200-iteration stress run; all 226 tests still pass. Set `AMBER_THREADS=N` to control the
+  worker count (`=1` forces serial). Implemented as a new C primitive (`peachC` in `i.c`,
+  wired through the `sym1` system-function table) — additive, so it can't affect the serial
+  core. Fork-based (copy-on-write heap) so there are **no data races**: this matches how
+  kdb+ gets multi-core and avoids the atomic-refcount tax that shared-memory threading would
+  put on all single-threaded code. Unlike Python threads (GIL-bound), Amber's workers run on
+  all cores at once. Best for coarse-grained, compute-heavy per-item work; see BENCHMARKS.md
+  for when the fork/serialise overhead makes serial `'` the better choice.
+
 ## 1.5
 - **The v1.5 extended modules now actually load in the REPL.** `repl.k` previously loaded only
   `amber.k` + `fin.k`, so `std`/`qsql`/`temporal`/`sys`/`hdb`/`ipc` — and therefore `sel`,
@@ -15,8 +39,16 @@
   `from`, all columns) correctly instead of mis-splitting the clause.
 - **Benchmarks + sanity harness.** New `BENCHMARKS.md` and `bench/` (Amber vs numpy/pandas here;
   auto-runs growler/k, kdb+/q, DuckDB, Polars where installed — `bench/run.sh`). All aggregation
-  results cross-check exactly against numpy/pandas; Amber's `group-by` and `distinct` beat pandas,
-  while the as-of join is flagged for a C `bin` primitive (see MISSING.md).
+  results cross-check exactly against numpy/pandas; Amber's `group-by` and `distinct` beat pandas.
+- **Faster as-of join.** `aj`'s matcher (`ajm`) now issues **one vectorised `bin` per group**
+  (`'` on a sorted noun) instead of a per-row scalar search — ~6× faster (≈700→115 ms at 50 k
+  rows), identical results, all 226 tests still pass. (`wj` still uses the per-row form.)
+- **`build.sh` defaults to portable `-O3 -flto`** (was `-O2`). Link-time optimisation is
+  auto-detected with a safe fallback if the compiler lacks it; `filter` ~2× faster and the
+  hash/group kernels ~20% faster, with no `-march` so the binary stays portable.
+  `AMBER_NATIVE=1 ./a` opts into `-march=native -funroll-loops` (group-by roughly halves again).
+  PGO was tested and dropped — the gain was noisy and not worth the two-pass build. See
+  BENCHMARKS.md.
 
 ## 1.4.1
 - **`gentq` now marks both key columns**: `time` gets the `` `s`` sorted attribute and `sym`

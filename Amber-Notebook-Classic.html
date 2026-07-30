@@ -1863,7 +1863,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--ui);overfl
     vc.forEach((c,i)=>{ const th=document.createElement('th'); if(val[i])th.className='r'; th.innerHTML=esc(c)+attrBadge(va[i]); thead.appendChild(th); });
     t.appendChild(thead);
     const krows=d.kind==='keyed'?d.krows:null, vrows=d.kind==='keyed'?d.vrows:d.rows;
-    const nrows=vrows.length, cap=300;
+    const nrows=vrows.length, cap=20;
     for(let r=0;r<Math.min(nrows,cap);r++){ const tr=document.createElement('tr');
       if(krows) krows[r].forEach((v,i)=>tr.appendChild(cell(v,(kal[i]?'r ':'')+'keyw')));
       vrows[r].forEach((v,i)=>tr.appendChild(cell(v,val[i]?'r':''))); t.appendChild(tr); }

@@ -12,9 +12,10 @@
 **A low-latency array language — columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
+![version](https://img.shields.io/badge/version-1.6-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
-![tests](https://img.shields.io/badge/tests-188%20passing-brightgreen)
-![build](https://img.shields.io/badge/build-C11%20·%20portable-informational)
+![tests](https://img.shields.io/badge/tests-226%20passing-brightgreen)
+![build](https://img.shields.io/badge/build-C11%20·%20portable%20·%20parallel-informational)
 
 </div>
 
@@ -80,7 +81,14 @@ qby[tb; `sym`time; `o`h`l`c`v!({first x`px};{max x`px};{min x`px};{last x`px};{s
 v:asc 2000000?1000000000                     / `s attribute set by asc
 `at v                                        / `s
 v ? 12345 67890                              / O(log n)  (see bench.k: ~1000x faster)
+
+/ multi-core: peach runs f over items in parallel worker processes (no GIL)
+peach[{avg x?1.0}; 8#1000000]                / 8 heavy tasks across AMBER_THREADS cores
 ```
+
+Big tables print Q-style — the first `CROWS` rows (default 20) then `..`; set `CROWS:10`
+to shorten. The cap is applied before formatting, so previewing a million-row table is
+instant.
 
 Run the guided tours:
 
@@ -88,6 +96,7 @@ Run the guided tours:
 ./amber examples/tour.k     # a worked example of EVERY function
 ./amber examples/basics.k   # a 2-minute intro
 ./amber examples/tick.k     # realistic trades & quotes: as-of/window joins, VWAP, OHLC
+AMBER_THREADS=8 ./amber examples/peach.k   # multi-core speedup demo (serial vs peach)
 ./amber bench.k             # attribute speed benchmark
 ./amber test.k              # core suite (153); also test-fin.k (35) + test-ext.k (38) = 226
 bash bench/run.sh           # cross-engine sanity + speed (Amber vs numpy/pandas/…; see BENCHMARKS.md)
@@ -120,6 +129,10 @@ Amber uses a terse array notation. A few things that differ from kdb+/q:
 * **No `>=` / `<=`** — write `~a<b` and `~a>b`.
 * **qSQL is bare:** type `select … by … from … where …` (also `exec` / `update` / `delete`)
   with no `sel"…"` wrapper — bare column names like `wavg[sz;px]` just work.
+* **`peach[f;y]` is real multi-core** — it forks `AMBER_THREADS` worker processes (default 4;
+  `=1` forces serial), so heavy per-item work scales across cores with no GIL. Identical
+  results to `` f'y ``; best for coarse-grained compute (see BENCHMARKS.md §4).
+* **Grids preview Q-style** — `show t` prints the first `CROWS` rows (default 20) then `..`.
 * **Symbols have no `_`** — use a quoted symbol `` `"a_b" ``.
 * Tables: `([]col:vals;…)`; keyed tables: `([key:vals]col:vals)`. A bare table at the prompt
   auto-renders as a grid (or `show t`).
@@ -164,7 +177,8 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing
 | `repl.k` | the REPL — banner, grid rendering, help |
 | `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `attributes.k` · `practice.k` |
 | `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |
-| `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` | v1.5 modules (auto-loaded): moving aggregates, bare qSQL, dates, `.z/.Q/.j/.h`, on-disk, tick |
+| `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` | v1.5 modules (auto-loaded): moving aggregates, bare qSQL, dates, `.z/.Q/.j/.h`, on-disk, tick, **parallel `peach`** |
+| `examples/peach.k` | multi-core Monte-Carlo demo (serial vs `peach` timing) |
 | `test.k` `test-fin.k` `test-ext.k` | 226-assertion suite (153 + 35 + 38) |
 | `bench.k` `bench-fin.k` `bench-std.k` `bench/` | attribute / index / window benchmarks; cross-engine harness |
 | `AMBER.md`, `MISSING.md`, `CHANGELOG.md`, `BENCHMARKS.md` | reference · roadmap · history · benchmarks |

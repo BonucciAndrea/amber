@@ -1,6 +1,6 @@
 #!k
 \d repl
-banner:"\n"/("";"   █████╗ ███╗   ███╗██████╗ ███████╗██████╗";"  ██╔══██╗████╗ ████║██╔══██╗██╔════╝██╔══██╗";"  ███████║██╔████╔██║██████╔╝█████╗  ██████╔╝";"  ██╔══██║██║╚██╔╝██║██╔══██╗██╔══╝  ██╔══██╗";"  ██║  ██║██║ ╚═╝ ██║██████╔╝███████╗██║  ██║";"  ╚═╝  ╚═╝╚═╝     ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝";"  ▒▒ the array language ▒ v1.4 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒";"     columnar · vectorised · in-memory · s/u/p/g attributes · O(1) index";"     tables · keyed tables · as-of/window joins · fin.k HFT module";"     \\ help    \\\\ quit    show t / bare t renders a grid";"")
+banner:"\n"/("";"   █████╗ ███╗   ███╗██████╗ ███████╗██████╗";"  ██╔══██╗████╗ ████║██╔══██╗██╔════╝██╔══██╗";"  ███████║██╔████╔██║██████╔╝█████╗  ██████╔╝";"  ██╔══██║██║╚██╔╝██║██╔══██╗██╔══╝  ██╔══██╗";"  ██║  ██║██║ ╚═╝ ██║██████╔╝███████╗██║  ██║";"  ╚═╝  ╚═╝╚═╝     ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝";"  ▒▒ the array language ▒ v1.6 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒";"     columnar · vectorised · in-memory · s/u/p/g attributes · O(1) index";"     bare qSQL · as-of/window joins · parallel peach · fin.k + v1.5 modules";"     \\ help    \\\\ quit    show t renders a grid (first CROWS rows, then ..)";"")
 prompt:," " /use 0x0720 for emacs integration
 (opn;sem;cls):"(;)"
 /(opn;sem;cls):("( ";" ; ";" )") /uncomment this line for extra spacing
@@ -334,9 +334,14 @@ ATTRIBUTES  (implemented in C ; speed up search ; meta shows them in `a`)
   set an attribute on a table column ; gentq marks time `s and sym `p.
   bench.k  ~1000-2000x find speedup ;  bench-fin.k  O(1) per-symbol slicing
 DISPLAY
-  show x      grid-print table / keyed table / dict
+  show x      grid-print table / keyed table / dict (first CROWS rows, then ..)
+  CROWS:n     set grid preview height (default 20 ; q-style)   CROWS:10
   tsym[t;c]   show time columns c as HH:MM:SS strings
   amfmt x     -> the grid as a list of lines
+PARALLEL  (std.k)
+  peach[f;y]  parallel each: fork AMBER_THREADS workers (default 4), f over slices of y
+              identical to f'y ; best for heavy per-item work.  AMBER_THREADS=1 = serial
+              demo:  AMBER_THREADS=8 ./amber examples/peach.k
 --------------------------------------------------------------------------------
 \m
 Amber finance / HFT module  (fin.k, auto-loaded after amber.k)

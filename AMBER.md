@@ -15,7 +15,7 @@ Amber ships as:
 | `amber`     | the interpreter (compiled from the C sources)                 |
 | `amber.k`   | the Amber standard library (the q layer), auto‑loaded         |
 | `repl.k`    | the interactive read‑eval‑print loop (loads `amber.k`)        |
-| `test.k`    | the test suite (104 assertions)                               |
+| `test.k`    | the core test suite (153 assertions; `test-fin.k` +35, `test-ext.k` +79 = 267) |
 | `*.c *.h`   | the interpreter sources (modified `a.c a.h m.c f.c` for attributes) |
 
 ---
@@ -45,9 +45,10 @@ Run the test suite:
 ./amber test.k
 # ...
 # ================ AMBER TEST SUITE ================
-# 104 tests run, 0 failures
+# 153 tests run, 0 failures
 # ALL TESTS PASSED
 # =================================================
+# (also: ./amber test-fin.k  -> 35,  ./amber test-ext.k -> 79; 267 total)
 ```
 
 Start an interactive session (a line‑editor wrapper is recommended for history/editing):
@@ -314,16 +315,23 @@ Pass several aggregates at once: `((`mx;max;`bid);(`mn;min;`bid);(`n;count;`bid)
 
 ### What was added
 
-kdb+ attaches *attributes* to vectors to speed up operations. Amber implements the **sorted
-attribute** (`` `s``, kdb+’s `` `s#``) at the **kernel level**, because that is where search
-lives. Two symbol‑verbs are exposed by the interpreter:
+kdb+ attaches *attributes* to vectors to speed up operations. Amber implements **all four
+kdb+ attributes** — sorted (`` `s``), unique (`` `u``), parted (`` `p``) and grouped (`` `g``) —
+at the **kernel level**, because that is where search lives. Five symbol‑verbs are exposed by
+the interpreter:
 
 ```k
 `sa x     / set the sorted attribute on vector x  (returns x, attribute = `s)
-`at x     / read the attribute of x               (`s if sorted, ` otherwise)
+`ua x     / set unique                            (attribute = `u)
+`pa x     / set parted                            (attribute = `p)
+`ga x     / set grouped                           (attribute = `g)
+`at x     / read the attribute of x               (`s`u`p`g, or ` if none)
 ```
 
-`asc` and `xasc` apply `` `sa`` for you, so idiomatic sorted data is attributed automatically.
+`asc` and `xasc` apply `` `sa`` for you, so idiomatic sorted data is attributed automatically;
+`fin.k`'s `gentq` sets `` `s`` on `time` and `` `p`` on `sym`. **Sorted *and* parted** vectors
+take the O(log n) binary‑search find path; grouped pairs with `fin.k`'s group index for O(1)
+per‑symbol slicing.
 
 ### Why it makes search faster
 
@@ -346,16 +354,19 @@ at least 2× faster on a 200k sample.
 ### How it is implemented (files changed)
 
 * **`a.h`** — a new header accessor `_at(x)` at the previously‑unused header byte `-13`
-  (`#define _at(x) (*(UC*)((x)-13))`). Attribute codes: `0` = none, `1` = sorted.
+  (`#define _at(x) (*(UC*)((x)-13))`). Attribute codes: `0` = none, `1` = sorted, `2` = unique,
+  `3` = parted, `4` = grouped.
 * **`m.c`** — the allocator `an()` now zeroes `_at(x)` on every allocation, so the flag is
   well‑defined for every object (the free‑list path did not previously clear this byte).
-* **`a.c`** — two functions, `qsa` (set) and `qat` (get), wired into the `sym1` symbol‑verb
-  dispatch table as `` `sa`` and `` `at``. `qsa` marks a simple vector sorted; `qat` reports it.
+* **`a.c`** — five functions, `qsa`/`qua`/`qpa`/`qga` (set) and `qat` (get), wired into the
+  `sym1` symbol‑verb dispatch table as `` `sa`` `` `ua`` `` `pa`` `` `ga`` and `` `at``. Each
+  setter marks a simple vector with its code; `qat` reports it as `` `s`u`p`g``.
 * **`f.c`** — four binary‑search probes `bGL/bHL/bIL/bLL`, and a one‑line change in `fnd` so the
-  integer find path selects them when `` _at(x)==1`` (and the type is `tH/tI/tL`, not float/symbol):
+  integer find path selects them when the vector is **sorted or parted** (and the type is
+  `tH/tI/tL`, not float/symbol):
 
   ```c
-  B srt = !_tP(x) && xt!=tF && xt!=tS && _at(x)==1;
+  B srt = !_tP(x) && xt!=tF && xt!=tS && (_at(x)==1 || _at(x)==3);
   TY(fGL)*f = (srt ? G(&bGL,bHL,bIL,bLL) : G(&fGL,fHL,fIL,fLL))[xw-3];
   ```
 
@@ -509,9 +520,38 @@ grouping   qwhere qselect qby xgroup ungroup fby
 joins      lj ij uj pj ej aj aj0 asof wj
 strings    lower upper ltrim rtrim trim ss ssr sv vs like lk1
 temporal   hms hh mm sec milli minute second stime ptime  bar minbar tsym
-display    show amfmt amtab amkeyed amdict
-attributes `sa (set sorted)   `at (get)     [kernel primitives]
+           year month day dow thh tmm tss  dstr pdate pstr ptstamp  (native types)
+display    show amfmt amtab amkeyed amdict  plot candle
+attributes `sa `ua `pa `ga (set sorted/unique/parted/grouped)   `at (get)  [kernel primitives]
+moving     mcount msum mavg mprd mvar mdev mmin mmax   (std.k, O(n) prefix)
+math       dot mmu (matrix multiply)                   (std.k)
+parse/ser  parse eval reval ser deser protect          (std.k; text serialise)
+cast       long int float char sym bool cast           (std.k)
+parallel   peach (multi-core, fork-based C kernel)      (std.k) ; ts (\ts timing)
+.z/.Q/.j/.h  z.p z.d z.t … · Q.f Q.dd Q.trp Q.s … · j.j j.k (JSON) · h.ht (HTML)  (sys.k)
+on-disk    dset dget splay dload partsave partload parts   (hdb.k, text-serialised)
+ipc/tick   hopen hclose hsend hrecv hsync · u.def u.sub u.pub u.get u.end  (ipc.k)
+arrow      arrow.export arrow.import                    (Arrow C Data Interface)
 ```
+
+### 11a. Extended modules (`std.k` `sys.k` `hdb.k` `ipc.k`)
+
+Loaded automatically by `repl.k` after `amber.k`/`fin.k`. They add, in lightweight text‑based
+form, a large slice of q's system vocabulary:
+
+* **`std.k`** — vectorised **moving aggregates** (`mcount msum mavg mprd mvar mdev mmin mmax`,
+  O(n) prefix sums), a little linear algebra (`dot`, `mmu`), **`parse`/`eval`/`reval`** and a
+  text **`ser`/`deser`** round‑trip (portable Amber text, *not* the kdb binary `-8!`/`-9!`),
+  `protect` (like `.Q.trp`), typed cast helpers, `peach`, and `ts` (time an expression).
+* **`sys.k`** — the `.z` clocks/handlers (`z.p z.P z.n z.d z.D z.t z.T z.z`; `z.pg z.ps z.po
+  z.pc z.ts z.exit` are stubs), `.Q` utilities (`Q.f Q.fmt Q.s Q.ty Q.qt Q.id Q.dd Q.gc Q.w
+  Q.fc Q.trp`), `.j` JSON (`j.j`/`j.k`), a minimal `.h` HTML renderer, and `plot`/`candle`.
+* **`hdb.k`** — on‑disk data: `dset`/`dget` (value ↔ file), `splay`/`dload` (splayed table ↔
+  directory, one file per column with a `.d`), `partsave`/`partload`/`parts` (value‑partitioned
+  database with `par.txt`). Storage is portable Amber text read back with `eval` — human‑readable
+  and version‑independent, but not memory‑mapped.
+* **`ipc.k`** — raw‑socket messaging (`hopen hclose hsend hrecv hsync`, text protocol — not the
+  kdb binary wire) and an in‑process tickerplant (`u.def u.sub u.pub u.get u.end`).
 
 ## Help inside the REPL
 

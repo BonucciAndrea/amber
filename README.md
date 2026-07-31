@@ -14,7 +14,7 @@
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
 ![version](https://img.shields.io/badge/version-1.7-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
-![tests](https://img.shields.io/badge/tests-269%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-267%20passing-brightgreen)
 ![build](https://img.shields.io/badge/build-C11%20·%20portable%20·%20parallel-informational)
 
 </div>
@@ -104,7 +104,7 @@ Run the guided tours:
 ./amber examples/tick.k     # realistic trades & quotes: as-of/window joins, VWAP, OHLC
 AMBER_THREADS=8 ./amber examples/peach.k   # multi-core speedup demo (serial vs peach)
 ./amber bench.k             # attribute speed benchmark
-./amber test.k              # core suite (153); also test-fin.k (35) + test-ext.k (38) = 226
+./amber test.k              # core suite (153); also test-fin.k (35) + test-ext.k (79) = 267
 bash bench/run.sh           # cross-engine sanity + speed (Amber vs numpy/pandas/…; see BENCHMARKS.md)
 ```
 
@@ -173,7 +173,6 @@ arrow.import p                      / (schemaAddr; arrayAddr) -> Amber table
 | 500 k | 417 ms | 0.9 ms | **470×** |
 | 2 M | 1.73 s | 1.4 ms | **1244×** |
 | 5 M | 4.23 s | 1.9 ms | **2261×** |
-| 20 M | 23.2 s | 2.9 ms | **8000×** |
 
 Results are identical; only the time differs. `asc` / `xasc` set the attribute for you, and
 `meta` shows it in the `a` column.
@@ -240,16 +239,17 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing
 | `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` | modules (auto-loaded): moving aggregates + C-kernel `ema`, bare qSQL, native temporal types, `.z/.Q/.j/.h` + `plot`/`candle` + `arrow`, on-disk, tick, **parallel `peach`** |
 | `ar.c` | zero-dependency Apache Arrow C Data Interface (`arrow.export`/`arrow.import`) |
 | `examples/peach.k` `examples/wj.k` `examples/graphs.k` | multi-core Monte-Carlo · C-kernel window join · 13-chart graphing tour |
-| `test.k` `test-fin.k` `test-ext.k` | 269-assertion suite (155 + 35 + 79) |
+| `test.k` `test-fin.k` `test-ext.k` | 267-assertion suite (153 + 35 + 79) |
 | `bench.k` `bench-fin.k` `bench-std.k` `bench/` | attribute / index / window benchmarks; cross-engine harness |
 | `AMBER.md`, `MISSING.md`, `CHANGELOG.md`, `BENCHMARKS.md` | reference · roadmap · history · benchmarks |
 
 ## Roadmap
 
 Amber covers a large slice of q. [MISSING.md](MISSING.md) is an honest map of what's next —
-top picks: a vectorised `bin`/searchsorted in C (the one real speed gap — see
-[BENCHMARKS.md](BENCHMARKS.md)), real temporal *types*, the `` `g`` grouped attribute, and
-on-disk / splayed tables.
+top picks: a **binary serialiser** (`` -8!``/`` -9!``) to replace the text transfer that `peach`,
+IPC and the on-disk layer all use; wiring the `` `g`` grouped attribute into the C find path;
+the missing atom types (`short`/`real`/`byte`/`guid`); and a true partitioned / memory-mapped
+HDB beyond the current text splay.
 
 <a name="isolation"></a>
 ## Isolation

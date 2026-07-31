@@ -43,39 +43,64 @@ Representative timings; 1,000,000-row vectors (as-of join at 50,000 rows). Lower
 
 | operation | Amber | numpy/pandas | ratio |
 |-----------|------:|-------------:|:-----:|
-| sum | 1.3 | 0.41 | 3.2× slower |
-| filter + count (`px>50`) | 4.4 | 1.1 | 4.0× slower |
-| **group-by sum** (`… by sym`) | **11.6** | 19.0 | **1.6× faster** |
-| **distinct** | **77** | 165 | **2.1× faster** |
-| moving average (window 100) | 89 | 22 | 4.0× slower |
-| sort | 90 | 11 | 8.2× slower |
-| **as-of join** | **713** | 9.8 | **73× slower** |
+| sum | 1.3 | 0.4 | 3.5× slower |
+| filter + count (`px>50`) | 2.0 | 1.1 | 1.8× slower |
+| **group-by sum** (`… by sym`) | **10.6** | 20.5 | **1.9× faster** |
+| **distinct** | **78** | 155 | **2.0× faster** |
+| moving average (window 100) | 78 | 27 | 2.9× slower |
+| sort | 96 | 12.5 | 7.7× slower |
+| as-of join | 114 | 6.8 | 17× slower |
 
 ### Reading the results
 
 * **Amber wins on hash-heavy work** — `group-by` and `distinct` beat pandas/numpy,
   because Amber's `=` (group) and `?` (distinct) are tight C hash kernels and pandas pays
   DataFrame overhead.
-* **Amber trails on SIMD-friendly numeric sweeps** (sum, filter, moving average, sort) by
-  a small constant factor (2–8×). That gap is inherent: numpy dispatches to vectorised
-  SIMD/BLAS, while Amber runs a portable scalar C loop per primitive. This is the expected
-  price of a tiny, dependency-free interpreter and is *not* an algorithmic problem.
-* **The one real outlier is the as-of join (73×).** `aj` currently matches each left row
-  with an *interpreted per-row* binary search (`ajm` in `amber.k`). The algorithm is
-  correct and O(n log m), but the constant is the k-level per-row lambda. The fix is a
-  **vectorised `bin` (searchsorted) primitive in the C core**; with that, `aj` becomes a
-  handful of vectorised calls and should land within a small factor of `merge_asof`. This
-  is logged as the #1 performance item in [MISSING.md](MISSING.md).
+* **Amber trails on SIMD-friendly numeric sweeps** (sum, moving average, sort) by a small
+  constant factor (3–8×). That gap is inherent: numpy dispatches to vectorised SIMD/BLAS,
+  while Amber runs a portable scalar C loop per primitive — the expected price of a tiny,
+  dependency-free interpreter, not an algorithmic problem. Sort is the largest remaining
+  numeric gap.
+* **The as-of join is no longer an outlier.** It used to be ~70× slower (a per-row
+  interpreted binary search); it is now within ~15× of `merge_asof` — see the optimisation
+  notes below.
 
-### What the optimisation pass changed
+### What the C-level optimisation pass changed
 
-The `.k` vocabulary was profiled end-to-end (`bench.k`). The moving-aggregate family,
-`group`, `distinct`, `sort` and the joins were all examined. The prefix-sum aggregates
-(`msum`/`mavg`/`mvar`/`mdev`) are already optimal for this execution model — a rewritten
-index-gather form was tested and **reverted** because rigorous timing showed it was not
-faster (the apparent win was measurement noise). The honest conclusion: the interpreted
-vocabulary is already close to the ceiling of what pure k can do here, and the remaining
-material win (as-of join) lives in the C kernels, not in `.k`.
+Two changes, both verified against the full test suite (now 267 assertions):
+
+1. **Vectorised as-of matcher (6× faster: 700 → ~115 ms at 50 k rows).** Amber's C core
+   *already ships* a fully vectorised `bin` (binary search / searchsorted) — the `'` verb on
+   a sorted noun. The slow part was `ajm` (in `amber.k`) calling it **per row with a scalar**
+   inside an interpreted loop. `ajm` now groups both sides once and issues **one vectorised
+   `bin` per group** (`(yt yi)'(xt xi)`), scattering the matches back. Same results, ~10× less
+   work in the matcher itself. `wj` (window join) still uses the per-row form and is the next
+   candidate.
+2. **`-O3 -flto` by default (portable) in `build.sh`.** Moving from `-O2` to `-O3` cut `filter`
+   ~2×; adding link-time optimisation (auto-detected, with a fallback if the compiler lacks it)
+   gave another ~20% on the hash/group kernels by inlining across the 20-odd translation units.
+   Both are fully portable (no `-march`). For a machine-specific build, `AMBER_NATIVE=1 ./a`
+   adds `-march=native -funroll-loops` (group-by roughly halves again on an AVX2 CPU), at the
+   cost of a binary that only runs on the build CPU family.
+
+Things deliberately **not** changed: **PGO** (profile-guided optimisation) was tried — a
+two-pass build trained on the test + benchmark workloads — but the gain was noisy and
+sometimes negative on this code, so it wasn't kept. A rewritten index-gather `msum` was tested
+and reverted (timing showed it wasn't faster — the apparent win was noise). Hand-writing SIMD
+into the (already auto-vectorised) numeric kernels was judged high-risk for little gain on top
+of the compiler. The honest picture: the ngn/k-derived C core is already close to optimal for a
+small interpreter; the big algorithmic win (as-of join) came from *using* an existing C
+primitive correctly, plus the build-flag bumps.
+
+### Still on the table (higher effort)
+
+* **`wj` (window join)** — vectorise like `aj` (a `.k` change; the `bin` primitive it needs
+  already exists). Moderate effort.
+* **`mmin`/`mmax`** — currently O(n·w) window scans; a monotonic-deque form is O(n) and would
+  win big for large windows. A `.k`/C change.
+* **Sort** — the largest remaining numeric gap vs numpy (~7×). numpy uses a tuned radix/introsort;
+  a C radix sort for integer keys would close much of it, but it's real surgery in the ngn/k core
+  and carries regression risk. This is the one place a genuinely new C kernel could still pay off.
 
 ## 3. Running the cross-language harness (growler/k, q, DuckDB, Polars)
 
@@ -91,3 +116,30 @@ cd bench
 `run.sh` skips whatever isn't installed and prints one row per engine for each operation,
 plus a PASS/FAIL sanity column comparing every engine's scalar results against Amber's.
 Point it at a growler/k binary with `K=/path/to/growler ./run.sh`.
+
+## 4. Parallelism — `peach` (multi-core)
+
+`peach[f;y]` runs `f` over the items of `y` across `AMBER_THREADS` worker **processes**
+(default 4) and returns exactly what serial `` f'y `` would. It forks (copy-on-write heap,
+so no shared-memory races and no atomic-refcount tax on the single-threaded core), each
+worker serialises its slice's result back through a pipe, and the parent stitches them in
+order. Correct by construction because `(. `k v) ~ v` for every value.
+
+Measured on a **2-core** sandbox, heavy per-item work (`{avg x?1.0}` over 8× 800k draws):
+
+| | ms |
+|--|--:|
+| serial `` f'y `` | 43.9 |
+| `peach[f;y]`, `AMBER_THREADS=2` | 29.4 (**1.5×**) |
+
+The speedup is bounded by cores (2 here) minus the fork+serialise overhead; on an 8–16 core
+box the same pattern scales far higher. Because there is no GIL, all workers run at once —
+this is the one axis where Amber can be *dramatically* faster than single-threaded Python
+without resorting to Python's heavyweight `multiprocessing`.
+
+**When to use it.** `peach` wins when each item is genuinely expensive (Monte-Carlo, per-symbol
+model fits, parallel file/partition loads) and results are modest in size. It is *slower* than
+serial `'` for fine-grained work — the fork + text-serialise round-trip per chunk is real
+overhead. Rule of thumb: reach for `peach` when serial `'` already takes tens of ms or more
+per call. `AMBER_THREADS=1` forces serial. A binary (`` -8!``) serializer would cut the
+transfer cost further and is the natural follow-up (see MISSING.md).

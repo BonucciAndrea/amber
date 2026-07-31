@@ -1,9 +1,10 @@
 # Amber vs kdb+/q — what's still missing
 
 Amber covers a large slice of q's *vocabulary* (aggregations, dicts, tables, keyed tables,
-the join family, qSQL-style select/by, strings, tick bars, and one attribute). This is an
-honest map of what kdb+/q has that Amber does **not** yet — roughly in order of how much it
-would change day-to-day use. "partial" means some of it exists.
+the join family, qSQL-style select/by, strings, tick bars, native temporal types, all four
+attributes, moving aggregates, a text-based on-disk / IPC layer, and the `.z`/`.Q`/`.j`/`.h`
+namespaces). This is an honest map of what kdb+/q has that Amber does **not** yet — roughly in
+order of how much it would change day-to-day use. "partial" means some of it exists.
 
 ## 1. Temporal types — done (1.7)
 Native `date` / `time` / `timestamp` types with literal syntax (`2026.07.30`,
@@ -27,77 +28,109 @@ forms `?[t;where;by;select]` / `![t;where;by;cols]`, sorted/limited selects (`se
 - **Amber has:** bare + string `select/exec/update/delete`, plus the functional helpers
   `qwhere qselect qby fby xgroup ungroup`.
 
-## 4. On-disk data (HDB) — entirely absent
-Splayed tables, **date-partitioned databases**, `set`/`get` to disk, `\l db`, memory-mapping,
-`.Q.dpft` (save partitioned), `.Q.en` (enumerate syms), `par.txt`, `.Q.chk`, `.Q.ind`,
-`.Q.fs`/`.Q.fsn` (chunked file streaming), on-disk `aj` over partitions. Amber is in-memory only.
+## 4. On-disk data (HDB) — partial (`hdb.k`)
+Amber now has a **text-serialised** on-disk layer: `dset`/`dget` (value ↔ single file),
+`splay`/`dload` (splayed table ↔ directory, one file per column plus a `.d`), and
+`partsave`/`partload`/`parts` (**value-partitioned** database, one splayed dir per partition
+value, with `par.txt`). Files are portable Amber text read back with `eval`, so they are
+human-readable and version-independent.
+- **Still missing:** true **date-partitioned** on-disk format, **memory-mapping** (data is fully
+  read into RAM, not mapped), `.Q.dpft` (save partitioned in kdb layout), `.Q.en` (enumerate
+  syms), `.Q.chk`, `.Q.ind`, `.Q.fs`/`.Q.fsn` (chunked file streaming), on-disk `aj` over
+  partitions, and a binary (not text) on-disk encoding.
 
-## 5. IPC & the tick architecture — absent
-`hopen`/`hclose`, sync (`h"expr"`) and async (`neg[h]`) messaging, `.z.pg`/`.z.ps` query
-handlers, `.z.po`/`.z.pc` connect/disconnect, `.z.w`, websockets, TLS. And the whole
-tickerplant / RDB / HDB / gateway pattern (`tick.q`, `r.q`, `u.q`, `w.q`, `.u.sub`/`.u.pub`).
+## 5. IPC & the tick architecture — partial (`ipc.k`)
+Amber now ships `hopen`/`hclose`/`hsend`/`hrecv`/`hsync` (raw-socket messaging) and an
+**in-process tickerplant** — `u.def` (define a stream), `u.sub`/`u.pub` (subscribe / publish),
+`u.get`/`u.end`. `.z.pg`/`.z.ps` handlers exist as evaluate-stubs in `sys.k`.
+- **Still missing:** the kdb+ **binary wire protocol** (Amber's sockets exchange plain text
+  expressions, not IPC-encoded messages), real over-the-network `.z.pg`/`.z.ps`/`.z.po`/`.z.pc`
+  handler dispatch, `.z.w`, websockets, TLS, and the full multi-process tickerplant / RDB / HDB /
+  gateway pattern (`tick.q`, `r.q`, `u.q`, `w.q`).
 
-## 6. Attributes — 1 of 4
-Amber implements **sorted (`` `s``)**. Missing: **`` `u`` unique**, **`` `p`` parted**,
-**`` `g`` grouped** (the real-time hash index that powers fast `where sym=` on RDBs). No
-attribute preservation through most ops (q keeps/drops them with defined rules).
+## 6. Attributes — 4 of 4 (setters); find accel on 2
+All four kdb+ attributes are set in C: **sorted (`` `sa``)**, **unique (`` `ua``)**,
+**parted (`` `pa``)**, **grouped (`` `ga``)**, read back with `` `at``. **Sorted and parted**
+vectors take the O(log n) binary-search find path; grouped pairs with `fin.k`'s group index
+(`bysym`/`symrows`) for O(1) per-symbol slicing.
+- **Still missing:** dedicated find/`where=` acceleration driven by the `` `u`` / `` `g``
+  attribute *itself* (grouped speed currently comes from the separate group index, not the
+  attribute), and **attribute preservation through ops** — the flag is dropped whenever an op
+  builds a new vector, whereas q keeps/drops attributes by defined per-op rules.
 
 ## 7. Enumerations, foreign keys, linked columns
 `` `sym$`` enumeration domains, `.Q.en`, foreign keys (`` `t$`` and dotted `order.customer.name`
 traversal), linked columns, `.Q.fk`. None in Amber.
 
-## 8. System namespaces
-- **`.z.*`** clocks/handlers: `.z.p .z.P .z.z .z.t .z.d .z.T .z.D`, timer `.z.ts` + `\t`,
-  `.z.exit`, `.z.pg .z.ps .z.po .z.pc .z.ph` (HTTP).
-- **`.Q.*`** utilities: `.Q.dpft .Q.en .Q.hg/.Q.hp` (HTTP get/post) `.Q.gc .Q.w` (mem)
-  `.Q.ty .Q.qt .Q.id .Q.j10/.Q.x10` (base64) `.Q.fc` (parallel) `.Q.trp` (protected)
-  `.Q.dd .Q.pv/.Q.pf` (partitions) `.Q.s` (show) `.Q.f/.Q.fmt` (number format).
-- **`.h.*`** HTTP/markup: HTML/CSV/XML/XLS rendering, an HTTP server.
-- **`.j.*`** JSON: `.j.j` / `.j.k` (the array core has `` `j``; Amber doesn't wrap it yet).
+## 8. System namespaces — partial (`sys.k`)
+Amber now provides the common members (as `.`-style names `z.*`/`Q.*`/`j.*`/`h.*`):
+- **`.z.*`** clocks **done**: `z.p z.P z.n z.d z.D z.t z.T z.z z.w`. Handlers `z.pg z.ps z.po
+  z.pc z.ts z.exit` exist but are **evaluate/no-op stubs** (no real timer `\t` or port dispatch).
+  Missing: `.z.ph` (HTTP).
+- **`.Q.*`** **done**: `Q.f Q.fmt` (number format), `Q.s` (show), `Q.ty Q.qt Q.id Q.dd`,
+  `Q.gc Q.w` (mem placeholders), `Q.fc` (sequential fallback), `Q.trp` (protected).
+  Missing: `.Q.dpft .Q.en` (partition/enumerate), `.Q.hg/.Q.hp` (HTTP get/post),
+  `.Q.j10/.Q.x10` (base64), `.Q.pv/.Q.pf` (partition vars).
+- **`.j.*`** JSON **done**: `j.j` (encode) / `j.k` (decode, via the core `` `j``).
+- **`.h.*`** markup **partial**: a minimal HTML table/row renderer (`h.ht h.hrow h.hc`).
+  Missing: CSV/XML/XLS rendering and an HTTP server.
 
-## 9. Moving / window aggregates
-`mavg msum mcount mmin mmax mdev mmu` (moving) and `ema`, `wj2`, plus `ajf`/`ajf0` (fill
-as-of), `ij`f/`lj` fill variants, `ssr` vectorised, `rank`/`xrank` over tables.
-- **Amber has:** `sums prds mins maxs deltas ratios differ prev next wsum wavg xprev`. Missing
-  the `m*` moving family and `ema`.
+## 9. Moving / window aggregates — mostly done (`std.k`, `fin.k`)
+The moving family is implemented: `mcount msum mavg mprd mvar mdev mmin mmax` (`std.k`, O(n)
+prefix sums; `mmin`/`mmax` are O(n·w) window scans) plus **`ema`** (C kernel, O(n) sweep).
+- **Amber also has:** `sums prds mins maxs deltas ratios differ prev next wsum wavg xprev`.
+- **Still missing:** `wj2`, `ajf`/`ajf0` (fill as-of), `ij`/`lj` fill variants, vectorised
+  `ssr`, and `rank`/`xrank` *over tables*. (`mmin`/`mmax` could also move to an O(n)
+  monotonic-deque form — see BENCHMARKS.md.)
 
-## 10. Linear algebra & math
-`mmu` (matrix multiply), `inv` (inverse), `lsq` (least squares), `.q` solve; distributional
-`rand`, `binr`. Amber has `cor cov var dev svar sdev med` and scalar math.
+## 10. Linear algebra & math — partial (`std.k`)
+`mmu` (matrix multiply) and `dot` (vector dot product) are implemented. Amber also has
+`cor cov var dev svar sdev med` and scalar math.
+- **Still missing:** `inv` (inverse), `lsq` (least squares), `.q` solve; distributional
+  `rand`/`binr`.
 
-## 11. Casting / parsing / serialization
-The full `$` cast matrix (temporal, guid, byte), typed file reader `("SIF";",")0:file`,
-`vs`/`sv` for base-N and temporal, `parse`/`eval`/`reval`, `-8!`/`-9!` (serialize/deserialize),
-`-18!` (compress), `-11!` (replay log), `md5`, `.Q.btoa`. Amber has `sv vs ss ssr like`,
-string casts, and `` `k`` (k-repr).
+## 11. Casting / parsing / serialization — partial (`std.k`)
+`parse`/`eval`/`reval` are implemented, along with a **text** `ser`/`deser` round-trip (portable
+Amber text via `` `k``, inverted by `eval`) and `protect` (like `.Q.trp`). Amber also has
+`sv vs ss ssr like`, string casts, and `` `k`` (k-repr).
+- **Still missing:** the **binary** serialiser `-8!`/`-9!` (current `ser`/`deser` is text, not the
+  compact IPC encoding — this is the top "nice next step" below), `-18!` (compress), `-11!`
+  (replay log), the full `$` cast matrix (guid, byte), typed file reader `("SIF";",")0:file`,
+  `vs`/`sv` for base-N and temporal, `md5`, `.Q.btoa` (base64).
 
-## 12. Concurrency & performance ops
-`peach` (parallel each), secondary threads (`-s`), `.Q.fc` (parallel-on-cut), map-reduce over
-partitions, compression, `\ts` (time+space). Amber is single-threaded, in-memory.
+## 12. Concurrency & performance ops — partial
+`peach` is real **multi-core** (forks `AMBER_THREADS` worker processes, C kernel), and `ts`
+(`\ts`) times an expression.
+- **Still missing:** kdb-style secondary threads (`-s`), a *parallel* `.Q.fc` (Amber's is a
+  sequential fallback), map-reduce over on-disk partitions, and compression. `peach` currently
+  ships each worker's result back as **text** (`` `k``) — a binary serialiser (§11) would cut
+  that transfer cost.
 
-## 13. Console / environment niceties
-`\c` console dims, `\ts`, `\w` (workspace) — the array core has `\w`; `system"…"`, `getenv`/
-`setenv`, `\cd`. Number formatting `.Q.f`. Editor tooling / language server.
+## 13. Console / environment niceties — partial
+`\ts` (via `ts`) and number formatting `.Q.f`/`.Q.fmt` are done.
+- **Still missing:** `\c` console dims, a real `\w` (workspace) report (`Q.w` is a placeholder),
+  `system"…"`, `getenv`/`setenv`, `\cd`, and editor tooling / a language server.
 
 ---
 
 Already done (once gaps): **bare qSQL** `select/exec/update/delete` (1.5), **vectorised as-of
 join** (1.5), **multi-core `peach`** (1.6, fork-based), **Q-style grid preview** (1.6),
 **native temporal types** (1.7), **C-kernel `wj`/`ema`** (1.7), **terminal charting**
-`plot`/`candle` (1.7), **Apache Arrow C Data Interface** (1.7).
+`plot`/`candle` (1.7), **Apache Arrow C Data Interface** (1.7), **all four attributes** in C
+(§6), the **moving-aggregate family** `m*` (§9), **`mmu`/`dot`** (§10), **`parse`/`eval`/`ser`**
+(§11), a **text-based on-disk layer** `dset`/`splay`/`partsave` (§4), and a **text IPC / in-process
+tickerplant** `hopen`/`u.*` (§5).
 
 ### Nice next steps (highest value first)
-1. **Binary serialiser (`` -8!``/`` -9!``)** — `peach` currently ships each worker's result back
-   as text (`` `k ``) and the parent re-parses it. That's correct and fine for modest results, but
-   a compact binary encode/decode would cut the transfer cost and widen the range of workloads
-   where `peach` beats serial `'`. Also unlocks real IPC.
-2. **Vectorise `wj` (window join)** the way `aj` now is. `aj`'s matcher issues one vectorised
-   `bin` per group and is ~6× faster (see [BENCHMARKS.md](BENCHMARKS.md)); `wj` still uses the
-   older per-row form. The `bin`/searchsorted it needs already exists in C (the `'` verb on a
-   sorted noun), so this is a `.k` change. Sort is the largest remaining *numeric* gap vs numpy,
-   but that is SIMD, not algorithmic.
-2. **`` `g`` grouped attribute** in C — pairs with the sorted work you already have and unlocks
-   fast `where sym=`.
-3. **Real temporal types** (at least `date` + `timestamp`) with literals and `$` casts.
-4. **`set`/`get` to disk** for a minimal splayed/partitioned HDB.
-5. **`hopen`/IPC** for a toy tickerplant.
+1. **Binary serialiser (`` -8!``/`` -9!``)** — the single biggest remaining lever. `peach` and
+   the on-disk / IPC layers all currently move values as **text** (`` `k ``) and re-parse them.
+   A compact binary encode/decode would cut that transfer cost, widen the range of workloads where
+   `peach` beats serial `'`, and unlock a real (binary-wire) IPC and a binary on-disk format.
+2. **Grouped-attribute-driven `where sym=`** — the `` `g`` setter exists, but fast `where sym=`
+   currently comes from `fin.k`'s separate group index rather than from the attribute itself.
+   Wiring the attribute into the C find path (as sorted/parted already are) would make it automatic.
+3. **Missing atom types** (§2) — `short`/`real`/`byte`/`guid` and their typed nulls/infinities.
+4. **Attribute preservation through ops** (§6) — keep/drop attributes by q's per-op rules instead
+   of always dropping on a new allocation.
+5. **True partitioned/mmap HDB** (§4) — a date-partitioned, memory-mapped on-disk format beyond
+   the current text splay, plus `.Q.dpft`/`.Q.en`.

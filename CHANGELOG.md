@@ -33,7 +33,7 @@
   (a copy — Amber's inline object header precludes aliasing a foreign buffer). New file
   `ar.c`. Numeric widths, ranges and symbol (utf8) columns round-trip exactly.
 - **Cleanup.** Removed the dead duplicate `gentq`; interpreted `wj` retained as `wjK`
-  (arbitrary-aggregator fallback). Test suite now **269** (155 + 35 + 79), 0 failures.
+  (arbitrary-aggregator fallback). Test suite now **267** (153 + 35 + 79), 0 failures.
 
 ## 1.6
 - **Q-style grid preview.** `show t` (and a bare table/keyed-table/dict at the prompt) now

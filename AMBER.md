@@ -405,6 +405,24 @@ rows (default **20**), then a `..` line to show there is more — exactly like q
 cap is applied *before* formatting, so previewing a million-row table is instant. Set
 `CROWS:10` (or any n) at the prompt to change the preview height; small results print in full.
 
+A bare table / keyed table also prints a dimmed **size footer** `[N rows x M cols]` under the
+grid (thousands-separated, e.g. `[1,000 rows x 4 cols]`); the counts are the true totals, taken
+before the `CROWS` truncation.
+
+**ANSI syntax highlighting.** Grid output (tables, keyed tables, dictionaries) is coloured for
+dark terminals with a vivid 256-colour, **14-hue per-column palette** (`PAL`) — each column gets a
+distinct colour, headers are bold white, and nulls / the size footer are dimmed. Colour is applied
+*after* width padding, and `vlen`/`vstrip` strip the escape bytes before every column-width and
+header-underline calculation, so alignment is exact. Set `COLOR:0` to disable (e.g. when
+redirecting output to a file); the per-column cycle lives in `PAL` and the type/attribute tints in
+the `CT` dictionary.
+
+## 9b′. Error ergonomics — descriptive text · caret
+
+On an error the REPL prints the offending input line with a `^` caret under the failing operator
+or verb (from the C core), and expands the terse one-word error into a description
+(`'length: operands have mismatched counts`, `'value: undefined name or empty value`).
+
 ---
 
 ## 9c. Terminal charts — `plot` · `candle`
@@ -522,6 +540,7 @@ strings    lower upper ltrim rtrim trim ss ssr sv vs like lk1
 temporal   hms hh mm sec milli minute second stime ptime  bar minbar tsym
            year month day dow thh tmm tss  dstr pdate pstr ptstamp  (native types)
 display    show amfmt amtab amkeyed amdict  plot candle
+           COLOR CT cwrap vlen vstrip (ANSI highlighting)  CROWS (preview height)
 attributes `sa `ua `pa `ga (set sorted/unique/parted/grouped)   `at (get)  [kernel primitives]
 moving     mcount msum mavg mprd mvar mdev mmin mmax   (std.k, O(n) prefix)
 math       dot mmu (matrix multiply)                   (std.k)

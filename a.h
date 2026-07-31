@@ -82,7 +82,7 @@ TD unsigned long long W,A,A0(),A1(A),A2(A,A),A3(A,A,A),A4(A,A,A,A),AA(CO A*,U),A
 #define AX(f,b...) A f(A x,CO A*a,U n  )_(DBG(Q(n<=8));b)/*0,1..1,n*/
 #define AA(f,b...) A f(    CO A*a,U n  )_(DBG(Q(n<=8));b)
 A1 _R,aA1,asc,AZ,blw,cB,cG,cC,cF,cH,cI,cL,cS,dsc,emaC,enl,epr,err,fir,flp,flr,frk,gZ,gg,grp,hex,imx,imn,inv,jS,js0,js1,kcos,kexp,klog,ksin,kst,las,len,m0,m1,mkn,mRa,mr,mut,
- neg,not,nul,of0,of1,opn,out,peachC,prng,qkmp,qpri,qte,raz,rev,rs0,spl,sqr,sqz,sqzZ,str,str0,til,typ,u0c,u1c,u2c,unh,unq,val,whr,wjc,mkdt,mktm,mknp;
+ neg,not,nul,of0,of1,opn,out,peachC,prng,qkmp,qpri,qte,raz,rev,rs0,spl,sqr,sqz,sqzZ,str,str0,til,typ,u0c,u1c,u2c,unh,unq,val,whr,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport;
 A2 _1,aA2,aM,add,am,psh,ari,bin,ct,cat,cat10,cat11,dlr,dex,dot,dvd,eql,exc,crt,fil,fnd,gtn,hsh,ie,i1,ltn,mod,mnm,mtc,mul,mxm,que,sub,und,v0c,v1c,v2c;
 A3 _2,aA3,arf,arp,ars,cpl,e2,r2,try;
 A4 ara,a4,d4;
@@ -183,6 +183,11 @@ enum         {au=Lt(tu),FLP,NEG,FIR,SQR,TIL,WHR,REV,ASC,DSC,GRP,NOT,ENL,NUL,LEN,
  ERR
 #undef M
 #define N(x,a...) ({A r_=(x);P(!r_,a;0)r_;})//error pass-through
+
+// ---- Apache Arrow C Data Interface (ABI-stable structs; no libarrow linkage) ----
+// github.com/apache/arrow/blob/main/cpp/src/arrow/c/abi.h
+struct ArrowSchema{CO C*format,*name,*metadata;L flags,n_children;struct ArrowSchema**children,*dictionary;V(*release)(struct ArrowSchema*);V*private_data;};
+struct ArrowArray{L length,null_count,offset,n_buffers,n_children;CO V**buffers;struct ArrowArray**children,*dictionary;V(*release)(struct ArrowArray*);V*private_data;};
 
 #define ov(x) ov_(#x":",(L)(x))
 #define oo os("["__FILE__":"M2(__LINE__)"]");

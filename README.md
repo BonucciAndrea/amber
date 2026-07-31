@@ -19,7 +19,7 @@
 
 </div>
 
-Amber is a small, fast, self-contained array language, built on top of [ngn/k](https://codeberg.org/ngn/k), with the working vocabulary of
+Amber is a small, fast, self-contained array language, built on top of [ngn/k](https://codeberg.org/ngn/k) with the working vocabulary of
 **q/kdb+** — dictionaries, **tables & keyed tables** with `([]…)` literal syntax, the full
 **join family** (left · inner · union · plus · equi · **as-of** · **window**), qSQL-style
 select/by, strings, intraday **tick / OHLC** temporals, and **column attributes implemented
@@ -191,7 +191,10 @@ Amber uses a terse array notation. A few things that differ from kdb+/q:
 * **`peach[f;y]` is real multi-core** — it forks `AMBER_THREADS` worker processes (default 4;
   `=1` forces serial), so heavy per-item work scales across cores with no GIL. Identical
   results to `` f'y ``; best for coarse-grained compute (see BENCHMARKS.md §4).
-* **Grids preview Q-style** — `show t` prints the first `CROWS` rows (default 20) then `..`.
+* **Grids preview Q-style** — `show t` prints the first `CROWS` rows (default 20) then `..`, with
+  a dimmed `[N rows x M cols]` size footer and **ANSI syntax highlighting** — a vivid 256-colour,
+  14-hue per-column palette (`COLOR:0` to disable). Errors show a `^` caret under the failing
+  token plus a descriptive message (`'length: operands have mismatched counts`).
 * **Symbols have no `_`** — use a quoted symbol `` `"a_b" ``.
 * Tables: `([]col:vals;…)`; keyed tables: `([key:vals]col:vals)`. A bare table at the prompt
   auto-renders as a grid (or `show t`).

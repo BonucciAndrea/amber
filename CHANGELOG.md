@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.8
+- **Table size footer.** A bare table / keyed table at the prompt now prints a
+  `[N rows x M cols]` summary underneath the grid, dimmed. `N` uses thousands separators
+  (`[1,000 rows x 4 cols]`). Row/col counts are the *true* totals (`#x` / `#cols x`), computed
+  before the `CROWS` grid truncation, so a previewed million-row table still reports its full
+  size. Implemented in `repl.k` (`fmt`/`ftr`, `comma`).
+- **Error ergonomics.** The terse one-word error is expanded to descriptive text
+  (`'length: operands have mismatched counts`, `'type: wrong type for this operation`, …) via a
+  lookup over the core's 12 error kinds, while the REPL still prints the offending input line with
+  the `^` caret under the failing operator/verb (the caret comes from the C core's `err`/`eQ`
+  machinery). Implemented as a repl-local handler `onerr`/`edesc` in `repl.k`.
+- **ANSI syntax highlighting.** Grid output (tables, keyed tables, dictionaries) is coloured for
+  dark terminals with a vivid **256-colour, 14-hue per-column palette** (`PAL`) — each column a
+  distinct colour, headers bold white, nulls and the size footer dimmed; dictionary values keep a
+  per-type tint. Colour is applied *after* width padding (ANSI is zero visual width), and a new
+  `vlen`/`vstrip` strips ANSI before every column-width and header-underline computation, so
+  alignment is exact. `COLOR:0` disables it globally. Implemented in `amber.k`
+  (`amblk`/`amtab`/`amkeyed`/`amdict` + palette `CT`/`cwrap`/`ccol`/`ccell`); reached from the
+  REPL through the existing `amfmt` call, so no cross-namespace globals are introduced.
+
 ## 1.7
 - **Native temporal types.** `date` (days since 2000.01.01), `time` (ms of day) and
   `timestamp` (ns since 2000.01.01) are now first-class C-level types with their own type

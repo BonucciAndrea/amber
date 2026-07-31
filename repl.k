@@ -1,6 +1,6 @@
 #!k
 \d repl
-banner:"\n"/("";"   █████╗ ███╗   ███╗██████╗ ███████╗██████╗";"  ██╔══██╗████╗ ████║██╔══██╗██╔════╝██╔══██╗";"  ███████║██╔████╔██║██████╔╝█████╗  ██████╔╝";"  ██╔══██║██║╚██╔╝██║██╔══██╗██╔══╝  ██╔══██╗";"  ██║  ██║██║ ╚═╝ ██║██████╔╝███████╗██║  ██║";"  ╚═╝  ╚═╝╚═╝     ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝";"  ▒▒ the array language ▒ v1.6 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒";"     columnar · vectorised · in-memory · s/u/p/g attributes · O(1) index";"     bare qSQL · as-of/window joins · peach · \\ help · \\\\ quit   ";"")
+banner:"\n"/("";"   █████╗ ███╗   ███╗██████╗ ███████╗██████╗";"  ██╔══██╗████╗ ████║██╔══██╗██╔════╝██╔══██╗";"  ███████║██╔████╔██║██████╔╝█████╗  ██████╔╝";"  ██╔══██║██║╚██╔╝██║██╔══██╗██╔══╝  ██╔══██╗";"  ██║  ██║██║ ╚═╝ ██║██████╔╝███████╗██║  ██║";"  ╚═╝  ╚═╝╚═╝     ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝";"  ▒▒ the array language ▒ v1.7 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒";"     columnar · vectorised · in-memory · s/u/p/g attributes · O(1) index";"     native dates · C-kernel wj/ema · plot·candle charts · arrow C ABI";"     \\ help    \\\\ quit    show t renders a grid (first CROWS rows, then ..)";"")
 prompt:," " /use 0x0720 for emacs integration
 (opn;sem;cls):"(;)"
 /(opn;sem;cls):("( ";" ; ";" )") /uncomment this line for extra spacing
@@ -65,7 +65,7 @@ $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
   \d ns   namespace (\d .) \t:n expr  time n runs (ms)  \f  functions
   \cd path   change dir    \other     shell command     \\  exit
 
-  quick start:  gentq 10000    meta trades    aj[`sym`time;trades;quotes]
+  quick start:  show t   meta t   sum x   aj[`sym`time;trade;quote]
 --------------------------------------------------------------------------------
 \0
 Types:
@@ -296,13 +296,14 @@ JOINS  (left operand drives ; c = `key..`time , last col is the sort/time key)
   lj[t;kt] left     ij[t;kt] inner    uj[x;y] union    pj[t;kt] plus   ej[c;x;y] equi
   aj[c;x;y] as-of   aj0[c;x;y] as-of(y time)   asof[t;d] single    wj[w;c;t;q;aggs] window
   wj: w=(begins;ends) aligned to t ; aggs=((name;fn;col);..)
-qSQL TEMPLATE
+qSQL TEMPLATE  (type it bare at the prompt - no  sel"..."  wrapper needed)
   select [cols] [by grps] from t [where conds]   select avg px by sym from trades where px>100
   exec col from t [where conds]                  one column / expression, not a table
   update col:expr [by grps] from t [where conds] add or replace columns
   delete [cols] from t [where conds]             drop rows (where) or named columns (cols)
   bare column names in the expressions become x`col, so  wavg[sz;px]  just works
   works after : and prefixes too:  r:select .. ;  5#select .. ;  count select ..
+  string forms still work:  sel"select .."  exq"exec .."  upd".."  del".."
 SELECT / GROUP-BY  (functional forms)
   qwhere[t;mask]              select rows where mask
   qselect[t; name!funcs]      computed columns (func takes the table)

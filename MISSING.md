@@ -5,15 +5,14 @@ the join family, qSQL-style select/by, strings, tick bars, and one attribute). T
 honest map of what kdb+/q has that Amber does **not** yet — roughly in order of how much it
 would change day-to-day use. "partial" means some of it exists.
 
-## 1. Temporal types (biggest gap)
-kdb+ has first-class temporal **types** with literals, arithmetic and auto-formatting:
-`date` (`2024.01.15`), `month` (`2024.01m`), `year`, `time` (`09:30:00.000`),
-`minute` (`09:30`), `second` (`09:30:00`), `timestamp` (`2024.01.15D09:30:00.000000000`),
-`timespan` (`0D01:00:00`), `datetime`. Casting (`` `date$ ``, `"T"$"09:30"`), temporal
-arithmetic, and the dotted accessors (`t.hh`, `d.month`, `p.date`).
-- **Amber has (partial):** time-of-day as ms-since-midnight with `hms hh mm sec minute second
-  milli stime ptime` and `minbar`/`bar` bucketing. No true types, no date/timestamp, no
-  literals, no `$` temporal casts, no timestamp arithmetic.
+## 1. Temporal types — done (1.7)
+Native `date` / `time` / `timestamp` types with literal syntax (`2026.07.30`,
+`10:00:05.000`, `2026.07.30D09:30:00.000000000`), auto-display, type-aware arithmetic
+(`time+time`, `date-date`→days, `date+n`, comparisons), string casts `"D"$`/`"T"$`/`"P"$`,
+and accessors `year`/`month`/`day`/`dow`/`thh`/`tmm`/`tss`. Columns keep numeric storage
+so `xasc`/`s#` work unchanged.
+- **Still missing:** `month`/`minute`/`second`/`timespan`/`datetime` as distinct types,
+  `m` month-literals, and the dotted `t.hh` accessor form (Amber uses `thh t`).
 
 ## 2. Missing atom types
 `short` (`h`), `real`/float32 (`e`), `byte` (`x`, `0x…`), `guid` (`g`, `0Ng`), plus the full
@@ -83,7 +82,9 @@ partitions, compression, `\ts` (time+space). Amber is single-threaded, in-memory
 ---
 
 Already done (once gaps): **bare qSQL** `select/exec/update/delete` (1.5), **vectorised as-of
-join** (1.5), **multi-core `peach`** (1.6, fork-based), **Q-style grid preview** (1.6).
+join** (1.5), **multi-core `peach`** (1.6, fork-based), **Q-style grid preview** (1.6),
+**native temporal types** (1.7), **C-kernel `wj`/`ema`** (1.7), **terminal charting**
+`plot`/`candle` (1.7), **Apache Arrow C Data Interface** (1.7).
 
 ### Nice next steps (highest value first)
 1. **Binary serialiser (`` -8!``/`` -9!``)** — `peach` currently ships each worker's result back

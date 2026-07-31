@@ -396,6 +396,33 @@ cap is applied *before* formatting, so previewing a million-row table is instant
 
 ---
 
+## 9c. Terminal charts — `plot` · `candle`
+
+`plot v` (or `plot (v;W;H)`) renders a numeric vector as a **Braille** line chart — a 2×4
+dot bitmask per character cell gives 2× horizontal and 4× vertical resolution — with min/max
+scaling, Y-axis tick labels, and Bresenham-drawn curves. `candle t` renders an OHLC table
+(columns `open/high/low/close` or `o/h/l/c`, keyed or not) as **Unicode candlesticks** with
+ANSI colour (green up / red down), box-drawing wicks (`│`) and block bodies (`█`).
+
+```q
+plot t`px                               / braille line chart of a price column
+plot (10*{sin x%6}'!120;100;16)         / (series; width; height)
+candle bars[10; select from trades where sym=`AAPL]
+```
+
+Both print directly (via `` `0:``); the C kernels are `plotC`/`candleC` in `i.c`. See
+`examples/graphs.k` for a 13-chart tour.
+
+## 9d. Apache Arrow C Data Interface — `arrow.export` · `arrow.import`
+
+Zero-dependency interop with PyArrow / Polars / DuckDB over the stable Arrow C ABI (no
+`libarrow`). `arrow.export t` → `(schemaAddr; arrayAddr)` (64-bit C-ABI pointers); export is
+**zero-copy** — each Arrow child `buffers[1]` aliases the Amber column payload and a `release`
+callback drops the refcount when the consumer finishes. `arrow.import (schemaAddr; arrayAddr)`
+→ Amber table (a copy: Amber's inline object header precludes aliasing a foreign buffer),
+translating format strings and validity bitmaps (→ `0N`/`0n`/null). Numeric widths, ranges
+and symbol (utf8) columns round-trip exactly. Structs live in `a.h`, logic in `ar.c`.
+
 ## 10. Strings
 
 `lower upper ltrim rtrim trim ss ssr sv vs like`
@@ -414,9 +441,25 @@ like[("cat";"dog";"cab");"c*"]/ 101b
 
 ---
 
-## 10a. Temporal (tick.minute style)
+## 10a. Temporal
 
-Amber holds a **time of day** as an integer number of **milliseconds since midnight**, the
+**Native types (1.7).** `date`, `time` and `timestamp` are first-class types with literal
+syntax and type-aware arithmetic:
+
+```q
+2026.07.30                      / date  (days since 2000.01.01)
+10:00:00.000 + 00:00:05.000     / time + time -> 10:00:05.000
+2026.08.15 - 2026.07.30         / date - date -> 16 (days) ; date+n -> date
+2026.07.30D09:30:00.000000000   / timestamp (ns since 2000.01.01)
+year 2026.07.30                 / accessors: year month day dow  ·  thh tmm tss (time)
+"D"$"2026.12.25"                / string casts: "D"$ (date) "T"$ (time) "P"$ (timestamp)
+`i$2026.07.30                   / extract the raw numeric value
+```
+
+Columns keep numeric storage (as kdb does internally), so `xasc` and the `s#` attribute work
+unchanged and a `time`-named column auto-renders as `HH:MM:SS.mmm` in a grid.
+
+Underneath, a **time of day** is an integer number of **milliseconds since midnight**, the
 same convention as kdb+’s `time`. The q dotted temporal accessors map to plain Amber calls:
 
 | q            | Amber        | meaning                              |

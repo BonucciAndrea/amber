@@ -113,4 +113,42 @@ A wjc(A x){
  mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);
  return x(res);
 }
+// ============ Braille & Unicode terminal charting ============
+// Braille dot bit for sub-cell (sx in 0..1, sy in 0..3).  U+2800 + bitmask -> 2x4 pixel cell.
+Z CO UC BRA[4][2]={{0x01,0x08},{0x02,0x10},{0x04,0x20},{0x40,0x80}};
+Z V pxset(UC*RES c,I W,I H,I px,I py){if(px>=0&&py>=0&&px<2*W&&py<4*H)c[(py>>2)*W+(px>>1)]|=BRA[py&3][px&1];}
+Z V bres(UC*c,I W,I H,I x0,I y0,I x1,I y1){I ax=x1-x0,ay=y1-y0,dx=ax<0?-ax:ax,sx=x0<x1?1:-1,dy=ay<0?ay:-ay,sy=y0<y1?1:-1,er=dx+dy;//Bresenham
+ while(1){pxset(c,W,H,x0,y0);if(x0==x1&&y0==y1)break;I e2=2*er;if(e2>=dy){er+=dy;x0+=sx;}if(e2<=dx){er+=dx;y0+=sy;}}}
+Z C*ebr(C*p,UC b){U cp=0x2800+b;*p++=0xE2;*p++=0x80|(cp>>6&0x3F);*p++=0x80|(cp&0x3F);return p;}//emit braille char
+Z C*elab(C*p,F v,I w){C b[40];L db;MC(&db,&v,8);C*e=sf(b,db);I ll=e-b;I(ll>w,ll=w)F(w-ll,*p++=' ')F(ll,*p++=b[i])return p;}//right-justified label
+// plot: x = numeric vector, or (series;W;H).  Returns a multi-line UTF-8 braille line chart.
+A plotC(A x){
+ A dat;I W=70,H=15;
+ if(_t(x)==tA){dat=N(ii(x,0));if(_n(x)>1)W=(I)gl(N(ii(x,1)));if(_n(x)>2)H=(I)gl(N(ii(x,2)));}else dat=_R(x);
+ mr(x);A ser=N(cF(dat));U n=_n(ser);
+ if(!n){mr(ser);return aCz("(empty)\n");}
+ if(W<10)W=10;if(W>200)W=200;if(H<3)H=3;if(H>60)H=60;I PW=2*W,PH=4*H;
+ CO F*d=(CO F*)_V(ser);F mn=d[0],mx=d[0];F(n,I(d[i]<mn,mn=d[i])I(d[i]>mx,mx=d[i]))F rng=mx-mn;I(rng<=0,rng=1)
+ UC cells[12000];MS(cells,0,W*H);I ppx=0,ppy=0;
+ F(n,I px=n>1?(I)((F)i*(PW-1)/(n-1)+.5):PW/2,py=(I)((PH-1)*(1.-(d[i]-mn)/rng)+.5);I(px>PW-1,px=PW-1)I(py>PH-1,py=PH-1)I(py<0,py=0)I(i,bres(cells,W,H,ppx,ppy,px,py))E(pxset(cells,W,H,px,py))ppx=px;ppy=py)
+ A out=aC(H*(16+W*3)+64);C*p=(C*)_V(out);
+ F(H,p=elab(p,i==0?mx:i==H-1?mn:mx-rng*i/(H-1),8);*p++=' ';*p++=0xE2;*p++=0x94;*p++=0x82;/*│*/
+  Fj(W,UC b=cells[i*W+j];I(b,p=ebr(p,b))E(*p++=' '))*p++='\n')
+ mr(ser);return AN(p-(C*)_V(out),out);}
+// candle: x = (open;high;low;close) 4 numeric vectors.  Box wicks + block bodies + ANSI colour.
+A candleC(A x){
+ P(_t(x)-tA||_n(x)-4,et(x))
+ A o=N(cF(N(ii(x,0)))),h=N(cF(N(ii(x,1)))),l=N(cF(N(ii(x,2)))),c=N(cF(N(ii(x,3))));mr(x);
+ U n=_n(o);I H=15;if(!n){mr(o);mr(h);mr(l);mr(c);return aCz("(empty)\n");}
+ CO F*O=_V(o),*Hi=_V(h),*Lo=_V(l),*Cl=_V(c);
+ F mn=Lo[0],mx=Hi[0];F(n,I(Lo[i]<mn,mn=Lo[i])I(Hi[i]>mx,mx=Hi[i]))F rng=mx-mn;I(rng<=0,rng=1)
+ A out=aC(H*(9+n*24)+64);C*p=(C*)_V(out);
+ F(H,I r=i;p=elab(p,i==0?mx:i==H-1?mn:mx-rng*i/(H-1),8);*p++=0xE2;*p++=0x94;*p++=0x82;
+  Fj(n,I rh=(I)((H-1)*(1.-(Hi[j]-mn)/rng)+.5),rl=(I)((H-1)*(1.-(Lo[j]-mn)/rng)+.5),bt=O[j]>Cl[j]?O[j]:Cl[j],bb=O[j]<Cl[j]?O[j]:Cl[j];
+   I rbt=(I)((H-1)*(1.-(bt-mn)/rng)+.5),rbb=(I)((H-1)*(1.-(bb-mn)/rng)+.5);B up=Cl[j]>=O[j];
+   S col=up?"\033[32m":"\033[31m";
+   I(r>=rbt&&r<=rbb,MC(p,col,5);p+=5;*p++=0xE2;*p++=0x96;*p++=0x88;/*█*/MC(p,"\033[0m",4);p+=4)
+   J(r>=rh&&r<=rl,MC(p,col,5);p+=5;*p++=0xE2;*p++=0x94;*p++=0x82;/*│*/MC(p,"\033[0m",4);p+=4)
+   E(*p++=' ')*p++=' ')*p++='\n')
+ mr(o);mr(h);mr(l);mr(c);return AN(p-(C*)_V(out),out);}
 L now()_(ST timeval t;gettimeofday(&t,0);1000000ll*t.tv_sec+t.tv_usec)

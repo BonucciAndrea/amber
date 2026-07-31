@@ -118,6 +118,18 @@ t[`dowA;dow 2026.07.30;`Thu]
 t[`thhA;thh 10:35:05.000;10]
 t[`tmmA;tmm 10:35:05.000;35]
 
+/ ---- terminal charting (braille canvas + candlesticks) ----
+t[`plotRows;+/"\n"=`plt (1.0*!30;40;10);10]              / H=10 -> 10 rows
+t[`plotNonEmpty;0<#`plt 1.0*!20;1b]                      / canvas generated
+t[`plotBraille;|/0>`plt 1.0*!30;1b]                      / contains UTF-8 multibyte (braille/box) chars
+t[`candleRows;+/"\n"=`cdl (1.0 2 3;3.0 4 5;0.0 1 2;2.0 3 4);15]  / default H=15
+/ ---- Arrow C Data Interface : pointer round-trips ----
+t[`arrowNum;([]a:1 2 3;b:1.5 2.5 3.5)~arrow.import arrow.export ([]a:1 2 3;b:1.5 2.5 3.5);1b]
+t[`arrowSym;([]s:`a`b`c;v:10 20 30)~arrow.import arrow.export ([]s:`a`b`c;v:10 20 30);1b]
+t[`arrowWide;([]x:100000 200000 300000;y:9000000000 9000000001 9000000002)~arrow.import arrow.export ([]x:100000 200000 300000;y:9000000000 9000000001 9000000002);1b]
+t[`arrowRange;([]v:0+!50)~arrow.import arrow.export ([]v:0+!50);1b]
+t[`arrowPtrs;{[t]p:arrow.export t;n:#p;arrow.import p;n}[([]a:1 2 3)];2]  / export -> 2 C ABI addresses
+
 fails:r@&{"FAIL"~4#x}'r[;1]
 `0:"";`0:"============ EXTENDED TEST SUITE ============"
 `0:(($#r)," tests run, ",($#fails)," failures")

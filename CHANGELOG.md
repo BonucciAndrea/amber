@@ -1,5 +1,40 @@
 # Changelog
 
+## 1.7
+- **Native temporal types.** `date` (days since 2000.01.01), `time` (ms of day) and
+  `timestamp` (ns since 2000.01.01) are now first-class C-level types with their own type
+  tags. Literal syntax parses directly — `2026.07.30`, `10:00:05.000`,
+  `2026.07.30D09:30:00.000000000` — and values auto-display in their own format.
+  Type-aware arithmetic: `10:00:00.000+00:00:05.000` → `10:00:05.000`, `date-date` → days,
+  `date+n` → date, plus comparisons. String casts `"D"$`/`"T"$`/`"P"$`, accessors
+  `year`/`month`/`day`/`dow`/`thh`/`tmm`/`tss`, and `` `i$`` to extract the raw value.
+  Columns keep numeric storage (as kdb does) so `xasc`/`s#` and name-based `time`-column
+  display continue to work. Implemented across `a.h` (enum + type tables + `TU`/`TP` macros),
+  `p.c` (literal scanner), `s.c` (formatter), `2.c` (arithmetic), `c.c` (casts).
+- **C-kernel window join.** `wj` moved from an interpreted per-row K loop to a C routine
+  (`wjc` in `i.c`): a vectorised binary-search range probe per row plus a contiguous slice
+  sweep for the standard reducers (`first last min max sum avg count`). ~2× faster in a
+  throttled sandbox (more on real cores), bit-exact vs the interpreted `wjK` fallback for the
+  non-floating reducers. Arbitrary aggregators fall back to `wjK`.
+- **C-kernel `ema`** — the exponential moving average was an interpreted per-element scan;
+  now a single O(n) C sweep (`emaC`), verified identical to the K version.
+- **SIMD math.** Portable vectorization pragmas (`clang loop vectorize` / `GCC ivdep`) on the
+  hot elementwise float kernels in `2.c`.
+- **Terminal charting.** `plot` draws a numeric vector as a 2×4 **Braille** line chart
+  (Bresenham into a bitmask canvas, min/max-scaled with Y-axis labels); `candle` draws an
+  OHLC table as **Unicode candlesticks** with ANSI colour (green up / red down), box-drawing
+  wicks and block bodies, one space between candles. Exposed in `sys.k`; C kernels
+  `plotC`/`candleC` in `i.c`. See `examples/graphs.k` for a 13-chart tour.
+- **Apache Arrow C Data Interface (zero dependency).** `arrow.export` / `arrow.import`
+  interop with PyArrow / Polars / DuckDB over the stable Arrow C ABI with no `libarrow`
+  linkage. `ArrowSchema`/`ArrowArray` structs are embedded in `a.h`; export is zero-copy
+  (child `buffers[1]` alias Amber column payloads and a `release` callback `mr`s them);
+  import parses format strings, applies validity bitmaps as nulls, and rebuilds a table
+  (a copy — Amber's inline object header precludes aliasing a foreign buffer). New file
+  `ar.c`. Numeric widths, ranges and symbol (utf8) columns round-trip exactly.
+- **Cleanup.** Removed the dead duplicate `gentq`; interpreted `wj` retained as `wjK`
+  (arbitrary-aggregator fallback). Test suite now **269** (155 + 35 + 79), 0 failures.
+
 ## 1.6
 - **Q-style grid preview.** `show t` (and a bare table/keyed-table/dict at the prompt) now
   prints only the first `CROWS` rows (default 20) followed by a `..` line, instead of dumping

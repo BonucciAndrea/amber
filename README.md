@@ -12,18 +12,24 @@
 **A low-latency array language — columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.6-orange)
+![version](https://img.shields.io/badge/version-1.7-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
-![tests](https://img.shields.io/badge/tests-226%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-269%20passing-brightgreen)
 ![build](https://img.shields.io/badge/build-C11%20·%20portable%20·%20parallel-informational)
 
 </div>
 
-Amber is a small, fast, self-contained array language, built on [ngn/k](https://codeberg.org/ngn/k), with the working vocabulary of
+Amber is a small, fast, self-contained array language with the working vocabulary of
 **q/kdb+** — dictionaries, **tables & keyed tables** with `([]…)` literal syntax, the full
 **join family** (left · inner · union · plus · equi · **as-of** · **window**), qSQL-style
 select/by, strings, intraday **tick / OHLC** temporals, and **column attributes implemented
 in C** that turn search from `O(n)` into `O(log n)` — **~1000–2000× faster** on large data.
+
+New in **1.7**: **native temporal types** with literal syntax (`2026.07.30`, `10:00:05.000`,
+`2026.07.30D09:30:00.000000000`) and type-aware arithmetic · a **C-kernel window join** and
+**`ema`** · **terminal charting** (`plot` braille line charts, `candle` Unicode candlesticks) ·
+and a **zero-dependency Apache Arrow C Data Interface** (`arrow.export`/`arrow.import`) for
+zero-copy interop with PyArrow / Polars / DuckDB.
 
 ```q
 t:([]sym:`AAPL`MSFT`AAPL; px:187.3 411.2 187.4; sz:100 250 50)   / a table, rendered instantly
@@ -104,6 +110,59 @@ bash bench/run.sh           # cross-engine sanity + speed (Amber vs numpy/pandas
 
 ---
 
+## Terminal charts (`plot` · `candle`)
+
+Pipe a query straight into a chart. `plot` renders a numeric vector as a **Braille** line
+chart (2×4 dots per cell → 2× horizontal, 4× vertical resolution); `candle` renders an OHLC
+table as **Unicode candlesticks** (green up / red down, box-drawing wicks, block bodies).
+
+```
+plot (14*{sin x%7}'!74;60;9)
+
+13.99999 │     ⢀⠤⠒⠉⠉⠑⠤⡀                            ⢀⠤⠊⠉⠉⠒⠤⡀
+10.50000 │    ⡔⠁      ⠈⠑⢄                        ⢀⠔⠁      ⠈⠱⡀
+7.000004 │  ⡠⠊          ⠈⠢⡀                     ⡠⠃          ⠈⢢
+3.500007 │ ⡰⠁             ⠑⡄                  ⢀⠔⠁             ⠣⡀
+1.119252 │⠜                ⠘⢄                ⢠⠊                ⠘⢄
+-3.49998 │                  ⠈⠢⡀             ⡔⠁                  ⠈⢢
+-6.99998 │                    ⠑⡄          ⢀⠜                      ⠣⡀
+-10.4999 │                     ⠈⠢⡀      ⢀⡠⠊                        ⠈⢢
+-13.9999 │                       ⠈⠒⠤⣀⣀⠤⠒⠁                            ⠉
+
+candle bars[10; select from trades where sym=`AAPL]      / OHLC candlesticks in colour
+```
+
+See [`examples/graphs.k`](examples/graphs.k) for a 13-chart tour (sine, random walk + EMA,
+logistic map, distributions, price + moving average, rolling volatility, candlesticks).
+
+## Native temporal types
+
+Dates, times and timestamps are **first-class types** with literal syntax, auto-display and
+type-aware arithmetic — no wrappers:
+
+```q
+2026.07.30                          / date         -> 2026.07.30
+10:00:00.000 + 00:00:05.000         / time + time  -> 10:00:05.000
+2026.08.15 - 2026.07.30             / date - date  -> 16   (days)
+2026.07.30D09:30:00.000000000       / timestamp (ns since 2000.01.01)
+year 2026.07.30                     / accessors: year month day dow / thh tmm tss
+"D"$"2026.12.25"                    / string casts: "D"$ "T"$ "P"$
+```
+
+Date columns sort with `xasc` and carry the `s#` attribute like any other; a `time` column
+in a table auto-renders as `HH:MM:SS.mmm`.
+
+## Apache Arrow C Data Interface (zero dependency)
+
+Interop with **PyArrow / Polars / DuckDB** over the stable Arrow C ABI — no `libarrow`
+linkage. Export is **zero-copy** (Arrow buffers alias Amber's column payloads; a `release`
+callback drops the refcount when the consumer is done):
+
+```q
+p:arrow.export t                    / table  -> (schemaAddr; arrayAddr)  64-bit C-ABI pointers
+arrow.import p                      / (schemaAddr; arrayAddr) -> Amber table
+```
+
 ## Why attributes matter
 
 `bench.k` measures `?` (find) on identical data, sorted-attributed vs not:
@@ -114,7 +173,6 @@ bash bench/run.sh           # cross-engine sanity + speed (Amber vs numpy/pandas
 | 500 k | 417 ms | 0.9 ms | **470×** |
 | 2 M | 1.73 s | 1.4 ms | **1244×** |
 | 5 M | 4.23 s | 1.9 ms | **2261×** |
-| 20 M | 22.7 s | 2.9 ms | **7818×** |
 
 Results are identical; only the time differs. `asc` / `xasc` set the attribute for you, and
 `meta` shows it in the `a` column.
@@ -178,9 +236,10 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing
 | `repl.k` | the REPL — banner, grid rendering, help |
 | `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `attributes.k` · `practice.k` |
 | `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |
-| `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` | v1.5 modules (auto-loaded): moving aggregates, bare qSQL, dates, `.z/.Q/.j/.h`, on-disk, tick, **parallel `peach`** |
-| `examples/peach.k` | multi-core Monte-Carlo demo (serial vs `peach` timing) |
-| `test.k` `test-fin.k` `test-ext.k` | 226-assertion suite (153 + 35 + 38) |
+| `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` | modules (auto-loaded): moving aggregates + C-kernel `ema`, bare qSQL, native temporal types, `.z/.Q/.j/.h` + `plot`/`candle` + `arrow`, on-disk, tick, **parallel `peach`** |
+| `ar.c` | zero-dependency Apache Arrow C Data Interface (`arrow.export`/`arrow.import`) |
+| `examples/peach.k` `examples/wj.k` `examples/graphs.k` | multi-core Monte-Carlo · C-kernel window join · 13-chart graphing tour |
+| `test.k` `test-fin.k` `test-ext.k` | 269-assertion suite (155 + 35 + 79) |
 | `bench.k` `bench-fin.k` `bench-std.k` `bench/` | attribute / index / window benchmarks; cross-engine harness |
 | `AMBER.md`, `MISSING.md`, `CHANGELOG.md`, `BENCHMARKS.md` | reference · roadmap · history · benchmarks |
 

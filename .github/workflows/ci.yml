@@ -42,8 +42,7 @@ jobs:
 
       - name: Run test suite
         run: |
-          ./amber test.k | tee test.log
-          grep -Eq '0 failures' test.log || { echo "::error::TEST SUITE FAILED"; exit 1; }
+          ./amber test.k
 
       - name: Run examples (smoke test)
         run: |

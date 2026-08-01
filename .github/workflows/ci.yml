@@ -38,7 +38,7 @@ jobs:
 
       - name: Run test suite
         run: |
-          BIN="./amber"
+          BIN="./a"
           [ -f ./a ] && BIN="./a"
           $BIN test.k
 

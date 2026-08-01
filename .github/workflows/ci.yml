@@ -1,22 +1,51 @@
 name: ci
+
 on:
   push:
+    branches: [ main, "feature/**" ]
   pull_request:
+    branches: [ main ]
+
 jobs:
   build-and-test:
-    runs-on: ubuntu-latest
+    name: Build & Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Install compiler
-        run: sudo apt-get update && sudo apt-get install -y build-essential
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install compiler (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+
+      - name: Grant execution permissions
+        run: |
+          chmod +x build.sh 2>/dev/null || true
+
       - name: Build amber
-        run: ./build.sh
+        run: |
+          if [ -f ./build.sh ]; then
+            ./build.sh
+          else
+            make
+          fi
+
+      - name: Ensure binary is executable
+        run: chmod +x ./amber
+
       - name: Run test suite
         run: |
-          out=$(./amber test.k)
-          echo "$out"
-          echo "$out" | grep -Eq '0 failures' || { echo "TESTS FAILED"; exit 1; }
-      - name: Run examples (smoke)
+          ./amber test.k | tee test.log
+          grep -Eq '0 failures' test.log || { echo "::error::TEST SUITE FAILED"; exit 1; }
+
+      - name: Run examples (smoke test)
         run: |
           ./amber examples/basics.k > /dev/null
-          ./amber examples/tick.k  > /dev/null
+          ./amber examples/tick.k   > /dev/null

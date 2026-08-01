@@ -1,7 +1,6 @@
 #!k
 \d repl
-banner:"\n"/("";"   █████╗ ███╗   ███╗██████╗ ███████╗██████╗";"  ██╔══██╗████╗ ████║██╔══██╗██╔════╝██╔══██╗";"  ███████║██╔████╔██║██████╔╝█████╗  ██████╔╝";"  ██╔══██║██║╚██╔╝██║██╔══██╗██╔══╝  ██╔══██╗";"  ██║  ██║██║ ╚═╝ ██║██████╔╝███████╗██║  ██║";"  ╚═╝  ╚═╝╚═╝     ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝";"  ▒▒ the array language ▒ v1.4 ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒";"     columnar · vectorised · in-memory · s/u/p/g attributes · O(1) index";"     tables · keyed tables · as-of/window joins · fin.k HFT module";"     \\ help    \\\\ quit    show t / bare t renders a grid";"")
-prompt:," " /use 0x0720 for emacs integration
+prompt:"amber> " /use 0x0720 for emacs integration
 (opn;sem;cls):"(;)"
 /(opn;sem;cls):("( ";" ; ";" )") /uncomment this line for extra spacing
 lines:cols:999
@@ -10,6 +9,13 @@ lim:{(x<#y)(x#)/y}
 dd:{(x<#y)(,[;".."](x-2)#)/y}
 fmt:{upd[];$[(::)~x;"";|/(@x)=`m`M;("\n"/amfmt x),"\n";(1<#x)&|/`m`M`A=@x;mMA x;(dd[cols]`k@lim[cols]x),"\n"]}
 fmtx:{$[(::)~x;"";`k[x],"\n"]}
+/ error ergonomics: expand the one-word error to descriptive text, keep the core's ^ caret.
+edesc:`compile`domain`index`length`nyi`io`parse`rank`stack`type`value`limit!("compile: expression could not be compiled";"domain: value outside the valid domain for this operation";"index: index out of range";"length: operands have mismatched counts";"nyi: not implemented for these types";"io: input/output error";"parse: malformed expression";"rank: wrong number of arguments";"stack: call depth exceeded";"type: wrong type for this operation";"value: undefined name or empty value";"limit: implementation limit reached")
+onerr:{b:`err[];lns:"\n"\b;h:$[#lns;*lns;""];nm:`$$[(0<#h)&"'"~*h;1_h;h];`0:$[(0<#h)&|/nm=!edesc;("'",edesc nm),"\n","\n"/1_lns;b];}
+/ \grid clean|rounded|sharp|heavy : set the table border mode (root global GRID, via eval).
+gridcmd:{p:" "\x;$[1<#p;[m:`$p 1;$[4>`clean`rounded`sharp`heavy?m;[.:("GRID:`",$m);`1:"grid: ",($m),"\n"];`1:"grid: modes are clean rounded sharp heavy\n"]];`1:"grid: ",($(.:"GRID")),"\n"]}
+/ \clear : clear the terminal (scrollback + screen, cursor home).
+clearcmd:{`1:,/(((`c$27),"[3J");((`c$27),"[H");((`c$27),"[2J");"\n");}
 mMA:{(P;f;q):((,"!/+(";dct;,")");(("+![";" +(");tbl;")]");(,,"(";lst;,")"))`m`M`A?t:@x
  w:cols-#*P;u:w-#q;h:lines-2
  x:$[h<(`M=t)+#x;,[;,".."](h-1)#f[w;u;h#x];f[w;u;x]]
@@ -26,16 +32,17 @@ basename:{*|"/"\x}
 dirname:{$[#x:"/"/-1_"/"\x;x;,"."]}
 joinpath:{$[x~,".";y;"/"~*|x;x,y;x,"/",y]}
 line0:{c:{0x07~*-2#*x}{(l;r):x;(1:1;r,,(-2_l))}/(x;());"\n"/(*|c),,*c}
-line1:{$[#x;;:0];x:-1_x;$[(4<#x)&"\\ts "~4#x;[t0:`t[];v:. 4_x;`0:"ts: ",($0.001*`t[]-t0)," ms  (no space metric: core has no allocator introspection)";`1:fmt v];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;.[`1:(fmt;fmtx)[" "~*x]@.:;,x;{`0:`err[]}]];`1:prompt;1}
+line1:{$[#x;;:0];x:-1_x;$[(4<#x)&"\\grid"~5#x;gridcmd x;(5<#x)&"\\clear"~6#x;clearcmd[];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;.[`1:(fmt;fmtx)[" "~*x]@.:;,(.:"qrw")x;onerr]];`1:prompt;1}
 line:line1@line0@
 $["repl.k"~basename`argv 1;{cmds::@[cmds;x[1]1;:;{y;`0:x}2_x]}'{(&x~\:80#"-")_x:(1+*&x~\:,"/")_-1_x}@0:`argv 1;];
-run:{`1:banner,prompt;{line@1:`}::/`;}
+run:{m:`bi 0;`1:(`c$27),"[4q";`1:"Amber v1.7 (",(m 2),"; ",(m 3),") — Columnar Time-Series Engine\nMemory: ",($0.1*_0.5+(m 0)%104857.6)," MB heap reserved | \\ for help command, \\\\ to exit\n\n",prompt;{line@1:`}::/`;}
 \d .
 / load the Amber library by ABSOLUTE path derived from this script's own location,
 / so it works no matter what the current working directory is.
 dir::{$[#p:"/"/-1_"/"\x;p;"."]}`argv 1
 {.[{. x};,x;{}]}'0:dir,"/amber.k";
 {.[{. x};,x;{}]}'0:dir,"/fin.k";
+/ v1.5 extended modules (order matters: std -> qsql -> temporal -> sys -> hdb -> ipc)
 {.[{. x};,x;{}]}'0:dir,"/std.k";
 {.[{. x};,x;{}]}'0:dir,"/qsql.k";
 {.[{. x};,x;{}]}'0:dir,"/temporal.k";
@@ -51,18 +58,23 @@ $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
 
                  A M B E R   help      ( type  \X  for a topic )
 
-  AMBER q-layer                             extended modules
-  \q  scalars, aggregation, uniform, sets   \w  moving/window · cast · parse · peach
-  \j  tables, keyed tables, joins, qSQL     \s  qSQL select/exec/update/delete
-  \z  temporal-of-day, attributes, show     \u  date/timestamp types (temporal.k)
-  \m  finance / HFT module (fin.k)          \y  .z .Q .j .h · on-disk · IPC · tick
-                                            core language
-  session                                   \0 types  \+ verbs  \' adverbs  \` symbols
-  \a  license (AGPLv3)     \l file.k  load a script     \v  variables   \h cheat-sheet
+  AMBER q-layer                             core language
+  \q  scalars, aggregation, uniform, sets   \0  types
+  \j  tables, keyed tables, joins, qSQL     \+  verbs
+  \z  temporal, attributes (s/u/p/g), show  \'  adverbs   \`  symbols
+  \m  finance / HFT module (fin.k)          \h  core cheat-sheet
+  
+  session
+  \a  license (AGPLv3)     \l file.k  load a script     \v  variables
   \d ns   namespace (\d .) \t:n expr  time n runs (ms)  \f  functions
-  \cd path change dir  \ts expr time+space  \other shell command        \\  exit
+  \cd path   change dir    \other     shell command     \\  exit
+  \grid MODE  table border: clean|rounded|sharp|heavy    \clear  clear screen
 
-  quick start:  show t   meta t   sel"select … by … from … where …"   \ts sum til 1000000
+  display knobs:  COLOR:0/1  PREC:n (float decimals; 0N=full)  CROWS:n (preview rows)
+
+  quick start:    gentq 1000    meta trades    taq[trades;quotes]
+		  plot(select from taq[trades;quotes] where sym=`AAPL)`px
+
 --------------------------------------------------------------------------------
 \0
 Types:
@@ -81,6 +93,7 @@ list atom
       `v   dyadic  verb   +   0:
       `w   adverb         '   /:
       `x   external func
+
 --------------------------------------------------------------------------------
 \:
 I/O verbs
@@ -96,6 +109,7 @@ x can be a file descriptor (int) or symbol or string such as
  "/path/to/file"
  "host:port"
  ":port"         /host defaults to 127.0.0.1
+
 --------------------------------------------------------------------------------
 \+
 Verbs:    : + - * % ! & | < > = ~ , ^ # _ $ ? @ . 0: 1:
@@ -182,6 +196,7 @@ x.y apply(n)  {x*y+1}. 2 3 -> 8   (`a`b`c;`d`e`f). 1 0 -> `d
 .[x;y;F;z] drill  .[("ab";"cd");1 0;:;"x"] -> ("ab";"xd")
 .[f;y;f]   try    .[+;1 2;"E:",] -> 3   .[+;1,`;"E:",] -> "E:'type\n"
 ?[x;y;z]   splice ?["abcd";1 3;"xyz"] -> "axyzd"
+
 --------------------------------------------------------------------------------
 \`
 Special symbols:
@@ -202,6 +217,7 @@ Special symbols:
  `exp@N exponential  `exp 1 -> 2.7182818284590455
   `ln@N logarithm    `ln 2 -> 0.6931471805599453
 `exit@i exit
+
 --------------------------------------------------------------------------------
 \'
 Adverbs:   ' / \ ': /: \:
@@ -229,6 +245,7 @@ i f': stencil   3{x,"."}':"abcde" -> ("abc.";"bcd.";"cde.")
 x F': seeded ': 10-':12 13 11 17 14 -> 2 1 -2 6 -3
 x F/: eachright 1 2*/:3 4 -> (3 6;4 8)
 x F\: eachleft  1 2*\:3 4 -> (3 4;6 8)
+
 --------------------------------------------------------------------------------
 \h
 : SET      RETURN    :[c;t;f]     COND
@@ -253,29 +270,38 @@ $ cast     string
 . apply(n) eval      .[x;i;[f;]y] drill
 grammar:  E:E;e|e e:nve|te| t:n|v v:tA|V n:t[E]|(E)|{E}|N
 limits:   8args 16locals 256globals 256bytecode 2048stack
+
 --------------------------------------------------------------------------------
 \q
 Amber q-layer : scalars, aggregation, uniform, ordering, sets, strings
 NOTE two-argument library functions take brackets:  f[x;y]  (no infix user verbs)
 
+
 SCALAR (monadic, call as  f x)
   neg not null reciprocal sqrt floor ceiling signum abs exp log sin cos
   til enlist string type key value first last reverse distinct group where flip count
+
 DYADIC (brackets)
   mod[x;y]  div[x;y]  xbar[w;x]  xlog[base;x]
+
 AGGREGATION (list -> atom)
   sum prd min max avg med var dev svar sdev  all any
   wsum[x;y] wavg[x;y] cov[x;y] scov[x;y] cor[x;y]
+
 UNIFORM (list -> list)
   sums prds mins maxs deltas ratios differ prev next
+
 ORDER / RANK
   asc desc iasc idesc rank   xrank[n;x] xprev[n;x] rotate[n;x]
   asc and xasc set the `s sorted attribute  ->  O(log n) search
+
 SETS (brackets)
   in[x;y] except[x;y] inter[x;y] union[x;y] raze x sublist[n;x] cross[x;y]
+
 STRINGS
   lower upper trim ltrim rtrim
   ss[s;sub] ssr[s;from;to] sv[d;x] vs[d;x] like[x;pat]   (globs: * and ?)
+
 --------------------------------------------------------------------------------
 \j
 Amber q-layer : tables, keyed tables, joins, qSQL
@@ -285,19 +311,33 @@ BUILD / INSPECT
   t:+`a`b!(1 2;3 4)      (also: flip of a column dict)
   show t                 grid    t`a col   t i row-dict   #t rows   cols t   meta t
   istable isdict iskeyed  meta shows column type AND attribute (a)
+
 KEYED TABLES
   xkey[`k;t]  unkey t  keys t  xcols[c;t]  xcolall[nm;t]  xasc[c;t]  xdesc[c;t]
+
 RESTRUCTURE
   xgroup[k;t]  ungroup t  fby[(f;d);g]  insert[t;r]
+
 JOINS  (left operand drives ; c = `key..`time , last col is the sort/time key)
   lj[t;kt] left     ij[t;kt] inner    uj[x;y] union    pj[t;kt] plus   ej[c;x;y] equi
   aj[c;x;y] as-of   aj0[c;x;y] as-of(y time)   asof[t;d] single    wj[w;c;t;q;aggs] window
   wj: w=(begins;ends) aligned to t ; aggs=((name;fn;col);..)
-SELECT / GROUP-BY
+
+qSQL TEMPLATE  (type it bare at the prompt - no  sel"..."  wrapper needed)
+  select [cols] [by grps] from t [where conds]   select avg px by sym from trades where px>100
+  exec col from t [where conds]                  one column / expression, not a table
+  update col:expr [by grps] from t [where conds] add or replace columns
+  delete [cols] from t [where conds]             drop rows (where) or named columns (cols)
+  bare column names in the expressions become x`col, so  wavg[sz;px]  just works
+  works after : and prefixes too:  r:select .. ;  5#select .. ;  count select ..
+  string forms still work:  sel"select .."  exq"exec .."  upd".."  del".."
+
+SELECT / GROUP-BY  (functional forms)
   qwhere[t;mask]              select rows where mask
   qselect[t; name!funcs]      computed columns (func takes the table)
   qby[t; by; name!funcs]      group aggregate -> keyed table (func takes group sub-table)
   e.g.  qby[trade;`sym; `vwap`n!({wavg[x`sz;x`px]};{#x})]
+
 --------------------------------------------------------------------------------
 \z
 Amber q-layer : temporal (tick bars), attributes, display
@@ -308,11 +348,13 @@ TIME OF DAY  (milliseconds since midnight, like q `time)
   mm t   min of hour (time.mm)      milli t   millisecond
   sec t  sec of min  (time.ss*)     stime t   -> "HH:MM:SS.mmm"    ptime "09:30:00.5" -> ms
   (* the q accessor is time.ss ; here it is sec, since ss = string-search)
+
 BARS  (tick.minute-style bucketing)
   minbar[w;t]  w-minute bar (a time)      bar[w;u;t]  w u-unit bars in ms
   xbar[w;x]    generic bucketing          minbar[5;trade`time] = 5-minute bars
   1-min OHLCV:  qby[+@[+trade;,`time;minbar[1]@]; `sym`time; open/high/low/close/vol]
   full worked example:  \l examples/tick.k
+
 ATTRIBUTES  (implemented in C ; speed up search ; meta shows them in `a`)
   `sa x  set sorted   (`s)   sorted asc     -> binary-search find   O(log n)
   `ua x  set unique   (`u)   distinct keys  -> hash-like membership
@@ -322,10 +364,18 @@ ATTRIBUTES  (implemented in C ; speed up search ; meta shows them in `a`)
   asc / xasc set `s for you.  fin.k: sortcol[c;t] partcol[c;t] groupcol[c;t]
   set an attribute on a table column ; gentq marks time `s and sym `p.
   bench.k  ~1000-2000x find speedup ;  bench-fin.k  O(1) per-symbol slicing
+
 DISPLAY
-  show x      grid-print table / keyed table / dict
+  show x      grid-print table / keyed table / dict (first CROWS rows, then ..)
+  CROWS:n     set grid preview height (default 20 ; q-style)   CROWS:10
   tsym[t;c]   show time columns c as HH:MM:SS strings
   amfmt x     -> the grid as a list of lines
+
+PARALLEL  (std.k)
+  peach[f;y]  parallel each: fork AMBER_THREADS workers (default 4), f over slices of y
+              identical to f'y ; best for heavy per-item work.  AMBER_THREADS=1 = serial
+              demo:  AMBER_THREADS=8 ./amber examples/peach.k
+
 --------------------------------------------------------------------------------
 \m
 Amber finance / HFT module  (fin.k, auto-loaded after amber.k)
@@ -333,82 +383,30 @@ Amber finance / HFT module  (fin.k, auto-loaded after amber.k)
 DATA GENERATOR
   gentq n     sets globals  trades  and  quotes  (n trades, 2n quotes)
               numeric times ; time is `s sorted , sym is `p parted (see meta)
+
 ATTRIBUTES ON TABLE COLUMNS
-  sortcol[c;t] mark col c `s      partcol[c;t] mark `p      groupcol[c;t] mark `g
+  sortcol[c;t] mark col c `s      partcol[c;t] mark `p      groupcol[c;t] mark `g 
+
 O(1) PER-SYMBOL INDEX
   gidx x       vector -> value!positions        bysym t   -> sym!row-positions
   symrows[t;g;s]  rows of t for symbol s in O(1)   (g:bysym t)
+
 QUOTE / ORDER-BOOK  (take a quote table)
   mid q   spread q   spreadbps q   micro q (microprice)   imbal q (book imbalance)
+
 TRADE / TAQ  (aj trades to quotes first:  m:taq[trades;quotes])
   taq[tr;qu]  as-of match      tsign m  Lee-Ready sign (+1 buy/-1 sell)
   signedvol m signed volume    effspread m 2|px-mid|    notional m  px*sz
+
 PRICE SERIES  (a numeric vector)
   ret x  logret x  rvol x  vwap t  twap t
+
 ROLLING / MOVING  (front-padded to length)
   movavg[w;x] movsum[w;x] movmax[w;x] movmin[w;x]  ema[a;x]  rollstd[w;x]
+
 AGGREGATION
   bars[w;t]  w-minute OHLCV keyed table     symstats t  per-symbol summary
   pt x       print a table with `time formatted HH:MM:SS.mmm
   worked example:  \l examples/hft.k
---------------------------------------------------------------------------------
-\w
-Amber std.k : moving/window aggregates, casting, parse/serialize, peach
 
-MOVING / WINDOW  (kdb semantics: growing window, then fixed w)
-  msum[w;x]  mavg[w;x]  mcount[w;x]  mprd[w;x]      O(n) prefix-based
-  mvar[w;x]  mdev[w;x]  mmin[w;x]  mmax[w;x]        (mmin/mmax are O(n*w))
-LINEAR ALGEBRA
-  mmu[x;y]   matrix multiply        dot[x;y]  vector dot product
-PARSE / EVAL / SERIALIZE
-  parse s    string -> parse tree   eval s / reval s   evaluate a string
-  ser x      value -> portable text  deser s   text -> value  (inverse)
-  protect s  ->  (1b;result) | (0b;error)          (like .Q.trp)
-CASTING
-  long int float char sym bool      cast[`type;x]   (`long`int`float`char`sym`bool)
-CONCURRENCY / TIMING
-  peach[f;x] parallel-each (sequential in this single-threaded build)
-  ts"expr"   time an expression      \ts expr   time it at the REPL
---------------------------------------------------------------------------------
-\s
-Amber qsql.k : the select … by … from … where … template
-
-  sel "select c:e,… [by b,…] from t [where p,…]"     -> a table (keyed if by)
-  exq "exec e from t [where p]"                       -> a single column
-  upd "update c:e,… [by b,…] from t [where p]"        -> the updated table
-  del "delete [c,…] from t [where p]"                 -> rows kept / cols dropped
-Column names in the expressions are rewritten to  x`col  and run on the
-qwhere/qby/qselect engine, so  wavg[sz;px] , sum sz , max px  just work.
-  e.g.  sel "select vwap:wavg[sz;px],n:#px by sym from trades where px>100"
-FUNCTIONAL FORM
-  qexec[t; where-mask|() ; by-cols|() ; name!func-dict|()]
---------------------------------------------------------------------------------
-\u
-Amber temporal.k : date & timestamp types (epoch 2000.01.01)
-
-  date       = integer days since 2000.01.01   (2000.01.01 -> 0)
-  timestamp  = long nanoseconds since 2000.01.01
-DATE
-  ymd2d[y;m;d]  build a date     d2ymd d  -> (year;month;day)
-  dstr d  -> "YYYY.MM.DD"        pdate "YYYY.MM.DD" -> date
-  year d  month d  dayof d       dow d  -> `Mon..`Sun    dadd[d;n]  ddiff[a;b]
-TIMESTAMP
-  tstamp[date;ms]  build         tsdate p   tsms p       pstr p -> full string
-  (time-of-day helpers hms hh mm sec minute second stime ptime live in \z)
---------------------------------------------------------------------------------
-\y
-Amber sys.k / hdb.k / ipc.k : namespaces, on-disk data, IPC & tick
-
-SYSTEM NAMESPACES  (kdb .z/.Q/.j/.h written without the leading dot)
-  z.p z.P now(nanos)  z.d z.D today  z.t z.T time-ms  z.n nanos  z.z datetime
-  Q.f[n;x] fmt  Q.fmt[w;n;x]  Q.s x show-string  Q.dd[`a;`b]  Q.fc[f;x] par
-  j.j x  value -> JSON       j.k s  JSON -> value
-  h.ht t table -> HTML       h.hc[tag;s]  wrap
-ON-DISK (hdb.k)
-  dset[f;x] / dget f          value <-> a file (portable text)
-  splay[dir;t] / dload dir    table <-> a splayed directory
-  partsave[dir;t;`c] / partload dir / parts dir   value-partitioned database
-IPC + TICK (ipc.k)
-  hopen "host:port"  hclose h  hsend[h;m]  hrecv h  hsync[h;q]   (raw sockets)
-  u.def[nm;schema]  u.sub[nm;cb]  u.pub[nm;data]  u.get nm       (in-process tick)
 \

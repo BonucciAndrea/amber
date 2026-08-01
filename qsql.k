@@ -21,7 +21,7 @@ qnm:{[i;it]p:qname it;$[#p 0;`$p 0;qsimple p 1;`$p 1;`$"x",$i]}                 
 qnull:{$[in[@x;`I`i];0N;in[@x;`F`f];0n;in[@x;`S`s];`;in[@x;`C`c];" ";0N]}
 
 / ---- select ---------------------------------------------------------------
-sel:{[s]s:trim s;s:$[(6#s)~"select";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];r2:qsplit[r 0;" from "];r3:qsplit[r2 0;" by "];selp:r3 0;u:. r2 1;t:qwhere[u;qmask[u;wh]];C:cols u;$[selp~,"*";t;[it:qcut selp;d:(qnm'[!#it;it])!{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;qby[t;qbc r3 1;d];qselect[t;d]]]]}
+sel:{[s]s:trim s;s:$[(6#s)~"select";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r3:qsplit[r2 0;" by "];selp:r3 0;u:. r2 1;t:qwhere[u;qmask[u;wh]];C:cols u;$[(selp~,"*")|0=#selp;t;[it:qcut selp;d:(qnm'[!#it;it])!{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;qby[t;qbc r3 1;d];qselect[t;d]]]]}
 
 / ---- exec  (return one column / expression, not a table) ------------------
 exq:{[s]s:trim s;s:$[(4#s)~"exec";trim 4_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];r2:qsplit[r 0;" from "];u:. r2 1;t:qwhere[u;qmask[u;wh]];(qfn[cols u;(qname trim r2 0)1])t}
@@ -36,3 +36,20 @@ del:{[s]s:trim s;s:$[(6#s)~"delete";trim 6_s;s];b:$[(5#s)~"from ";("";trim 5_s);
 
 / ---- functional form ------------------------------------------------------
 qexec:{[t;w;b;d]t:$[0=#w;t;qwhere[t;w]];$[0=#b;$[0=#d;t;qselect[t;d]];qby[t;b,();d]]}
+
+/ ---- bare qSQL rewriter ----------------------------------------------------
+/ Lets you type   select/exec/update/delete … from … [where …] [by …]   with no
+/ sel"…" wrapper.  qrw rewrites such an expression into the matching string call
+/ (sel/exq/upd/del); the REPL (repl.k, line1) runs every input line through it.
+/ Ordinary expressions - and an explicit sel"…" - are returned unchanged.
+qkws:("select";"exec";"update";"delete")
+qkfn:("sel";"exq";"upd";"del")
+qpre:" ([{;:,=<>+-*%!&|^~?@."
+qbig:1000000
+qesc:{,/{$[x="\\";"\\\\";$[x="\"";"\\\"";,x]]}'x}                                 / escape \ and " for a "…" literal
+qsmask:{[t]q:(t="\"")&~0,-1_t="\\";1=2!0,-1_sums q}                              / 1b where inside a "…" literal
+qendx:{[t;p]b:p_t;n:#b;op:(b="(")|(b="[")|b="{";cl:(b=")")|(b="]")|b="}";dep:sums op-cl;dB:0,-1_dep;ns:(dep<0)|(b=";")&dB=0;p+min((!n)*ns)+n*~ns}  / end of the expr starting at p
+qokp:{[t;sm;kw;p]((p=0)|(qpre?t[p-1])<#qpre)&(((p+#kw)<#t)&" "=t[p+#kw])&~sm p}   / is a valid keyword start at p
+qmin1:{[t;sm;kw]$[(#t)<#kw;qbig;[ps:ss[t;kw];$[0=#ps;qbig;[ok:qokp[t;sm;kw]'ps;v:ps+qbig*~ok;min v]]]]}  / earliest valid start of kw
+qfind:{[t]sm:qsmask t;mins:qmin1[t;sm]'qkws;best:min mins;$[~best<qbig;();(best;mins?best)]}             / (pos;keyword-index) or ()
+qrw:{[s]$[2>#s;s;[r:qfind s;$[0=#r;s;[p:r 0;ki:r 1;e:qendx[s;p];body:(e-p)#p_s;$[0<#ss[body;" from "];(p#s),qkfn[ki],"\"",(qesc body),"\"",qrw e_s;[L:p+#qkws ki;(L#s),qrw L_s]]]]]]}

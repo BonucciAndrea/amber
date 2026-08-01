@@ -12,20 +12,24 @@
 **A low-latency array language — columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
+![version](https://img.shields.io/badge/version-1.7-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
-![tests](https://img.shields.io/badge/tests-226%20passing-brightgreen)
-![build](https://img.shields.io/badge/build-C11%20·%20portable-informational)
+![tests](https://img.shields.io/badge/tests-267%20passing-brightgreen)
+![build](https://img.shields.io/badge/build-C11%20·%20portable%20·%20parallel-informational)
 
 </div>
 
 Amber is a small, fast, self-contained array language, built on top of [ngn/k](https://codeberg.org/ngn/k), with the working vocabulary of
 **q/kdb+** — dictionaries, **tables & keyed tables** with `([]…)` literal syntax, the full
-**join family** (left · inner · union · plus · equi · **as-of** · **window**), the
-**`select … by … from … where …` template**, strings, intraday **tick / OHLC** temporals,
-**date/timestamp types**, **vectorised moving/window aggregates**, **on-disk data**,
-**IPC + an in-process tickerplant**, **system namespaces** (`z.* Q.* j.* h.*`), and
-**column attributes implemented in C** that turn search from `O(n)` into `O(log n)` —
-**~1000–2000× faster** on large data.
+**join family** (left · inner · union · plus · equi · **as-of** · **window**), qSQL-style
+select/by, strings, intraday **tick / OHLC** temporals, and **column attributes implemented
+in C** that turn search from `O(n)` into `O(log n)` — **~1000–2000× faster** on large data.
+
+New in **1.7**: **native temporal types** with literal syntax (`2026.07.30`, `10:00:05.000`,
+`2026.07.30D09:30:00.000000000`) and type-aware arithmetic · a **C-kernel window join** and
+**`ema`** · **terminal charting** (`plot` braille line charts, `candle` Unicode candlesticks) ·
+and a **zero-dependency Apache Arrow C Data Interface** (`arrow.export`/`arrow.import`) for
+zero-copy interop with PyArrow / Polars / DuckDB.
 
 ```q
 t:([]sym:`AAPL`MSFT`AAPL; px:187.3 411.2 187.4; sz:100 250 50)   / a table, rendered instantly
@@ -71,15 +75,33 @@ trade:([]sym:`a`b`a; time:3 4 9; px:100 200 300;sz:100 150 175)
 quote:([]sym:`a`a`b`a; time:1 5 2 8; bid:10 11 20 12)
 aj[`sym`time; trade; quote]        / last quote at/ before each trade
 
+/ qSQL — type select/exec/update/delete straight, no sel"…" wrapper
+select last px by sym from trade   / grouped aggregate
+select from trade where px>150     / filter rows
+
 / 1-minute OHLCV bars (classic tickerplant query)
 tb:+@[+trade; ,`time; minbar[1]@]
 qby[tb; `sym`time; `o`h`l`c`v!({first x`px};{max x`px};{min x`px};{last x`px};{sum x`sz})]
 
+<<<<<<< HEAD
 / sorted attribute => binary-search lookups (20M)
 v:asc 20000000?100000000;u:0+v;p:v@5000?#v                 / v has sorted attribute while u does not
 t:`t[];a:u?p;lin:`t[]-t;t:`t[];b:v?p;bin:`t[]-t;           / lin and bin are both the runtimes in microseconds
 `ratio`linus`binus`equal`atv`atu!(round[5;lin%bin];lin;bin;a~b;`at v;`at u)
+=======
+/ sorted attribute => binary-search lookups
+v:asc 2000000?1000000000                     / `s attribute set by asc
+`at v                                        / `s
+v ? 12345 67890                              / O(log n)  (see bench.k: ~1000x faster)
+
+/ multi-core: peach runs f over items in parallel worker processes (no GIL)
+peach[{avg x?1.0}; 8#1000000]                / 8 heavy tasks across AMBER_THREADS cores
+>>>>>>> f5bb103 (Reorganize repo (src/ docs/ notebooks/))
 ```
+
+Big tables print Q-style — the first `CROWS` rows (default 20) then `..`; set `CROWS:10`
+to shorten. The cap is applied before formatting, so previewing a million-row table is
+instant.
 
 Run the guided tours:
 
@@ -87,13 +109,66 @@ Run the guided tours:
 ./amber examples/tour.k     # a worked example of EVERY function
 ./amber examples/basics.k   # a 2-minute intro
 ./amber examples/tick.k     # realistic trades & quotes: as-of/window joins, VWAP, OHLC
-./amber examples/extended.k # tour of the v1.5 modules (qSQL, window, dates, HDB, tick)
+AMBER_THREADS=8 ./amber examples/peach.k   # multi-core speedup demo (serial vs peach)
 ./amber bench.k             # attribute speed benchmark
-./amber bench-std.k         # vectorised moving/window-aggregate benchmark
-./amber test.k              # 153 core + run test-fin.k / test-ext.k for 226 total
+./amber test.k              # core suite (153); also test-fin.k (35) + test-ext.k (79) = 267
+bash bench/run.sh           # cross-engine sanity + speed (Amber vs numpy/pandas/…; see BENCHMARKS.md)
 ```
 
 ---
+
+## Terminal charts (`plot` · `candle`)
+
+Pipe a query straight into a chart. `plot` renders a numeric vector as a **Braille** line
+chart (2×4 dots per cell → 2× horizontal, 4× vertical resolution); `candle` renders an OHLC
+table as **Unicode candlesticks** (green up / red down, box-drawing wicks, block bodies).
+
+```
+plot (14*{sin x%7}'!74;60;9)
+
+13.99999 │     ⢀⠤⠒⠉⠉⠑⠤⡀                            ⢀⠤⠊⠉⠉⠒⠤⡀
+10.50000 │    ⡔⠁      ⠈⠑⢄                        ⢀⠔⠁      ⠈⠱⡀
+7.000004 │  ⡠⠊          ⠈⠢⡀                     ⡠⠃          ⠈⢢
+3.500007 │ ⡰⠁             ⠑⡄                  ⢀⠔⠁             ⠣⡀
+1.119252 │⠜                ⠘⢄                ⢠⠊                ⠘⢄
+-3.49998 │                  ⠈⠢⡀             ⡔⠁                  ⠈⢢
+-6.99998 │                    ⠑⡄          ⢀⠜                      ⠣⡀
+-10.4999 │                     ⠈⠢⡀      ⢀⡠⠊                        ⠈⢢
+-13.9999 │                       ⠈⠒⠤⣀⣀⠤⠒⠁                            ⠉
+
+candle bars[10; select from trades where sym=`AAPL]      / OHLC candlesticks in colour
+```
+
+See [`examples/graphs.k`](examples/graphs.k) for a 13-chart tour (sine, random walk + EMA,
+logistic map, distributions, price + moving average, rolling volatility, candlesticks).
+
+## Native temporal types
+
+Dates, times and timestamps are **first-class types** with literal syntax, auto-display and
+type-aware arithmetic — no wrappers:
+
+```q
+2026.07.30                          / date         -> 2026.07.30
+10:00:00.000 + 00:00:05.000         / time + time  -> 10:00:05.000
+2026.08.15 - 2026.07.30             / date - date  -> 16   (days)
+2026.07.30D09:30:00.000000000       / timestamp (ns since 2000.01.01)
+year 2026.07.30                     / accessors: year month day dow / thh tmm tss
+"D"$"2026.12.25"                    / string casts: "D"$ "T"$ "P"$
+```
+
+Date columns sort with `xasc` and carry the `s#` attribute like any other; a `time` column
+in a table auto-renders as `HH:MM:SS.mmm`.
+
+## Apache Arrow C Data Interface (zero dependency)
+
+Interop with **PyArrow / Polars / DuckDB** over the stable Arrow C ABI — no `libarrow`
+linkage. Export is **zero-copy** (Arrow buffers alias Amber's column payloads; a `release`
+callback drops the refcount when the consumer is done):
+
+```q
+p:arrow.export t                    / table  -> (schemaAddr; arrayAddr)  64-bit C-ABI pointers
+arrow.import p                      / (schemaAddr; arrayAddr) -> Amber table
+```
 
 ## Why attributes matter
 
@@ -119,12 +194,26 @@ Amber uses a terse array notation. A few things that differ from kdb+/q:
 * **Two-argument library functions take brackets:** `aj[c;x;y]`, `lj[t;kt]`, `in[x;y]`,
   ``xasc[`sym;t]``. Built-in symbols (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) are still infix.
 * **No `>=` / `<=`** — write `~a<b` and `~a>b`.
+* **qSQL is bare:** type `select … by … from … where …` (also `exec` / `update` / `delete`)
+  with no `sel"…"` wrapper — bare column names like `wavg[sz;px]` just work.
+* **`peach[f;y]` is real multi-core** — it forks `AMBER_THREADS` worker processes (default 4;
+  `=1` forces serial), so heavy per-item work scales across cores with no GIL. Identical
+  results to `` f'y ``; best for coarse-grained compute (see BENCHMARKS.md §4).
+* **Grids preview Q-style** — `show t` prints the first `CROWS` rows (default 20) then `..`, with
+  a dimmed `[N rows x M cols]` size footer and **ANSI syntax highlighting** — a vivid 256-colour,
+  14-hue per-column palette (`COLOR:0` to disable). Errors show a `^` caret under the failing
+  token plus a descriptive message (`'length: operands have mismatched counts`).
 * **Symbols have no `_`** — use a quoted symbol `` `"a_b" ``.
 * Tables: `([]col:vals;…)`; keyed tables: `([key:vals]col:vals)`. A bare table at the prompt
   auto-renders as a grid (or `show t`).
 
+<<<<<<< HEAD
 Full reference: **[AMBER.md](AMBER.md)**. Built-in help: `\` then `\q \j \z` for the Amber
 vocabulary, ``\0 \+ \` \'`` for the core.
+=======
+Full reference: **[AMBER.md](docs/AMBER.md)**. Built-in help: `\` then `\q \j \z` for the Amber
+vocabulary, `\0 \+ \' \`` for the core.
+>>>>>>> f5bb103 (Reorganize repo (src/ docs/ notebooks/))
 
 ---
 
@@ -153,66 +242,29 @@ Walkthrough: `./amber examples/hft.k`.
 O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing
 (`bench-fin.k` ~ 20,000x vs a scan).
 
-## Extended modules (v1.5)
-
-Six modules auto-load after `fin.k`. Built-in help: `\w \s \u \y`.
-
-```q
-/ qSQL template — bare column names just work (qsql.k, help \s)
-sel "select vwap:wavg[sz;px],n:#px by sym from trades where px>100"
-upd "update mid:0.5*bid+ask from quotes"
-del "delete from trades where sz<100"
-
-/ vectorised moving/window aggregates — O(n) prefix-based (std.k, help \w)
-mavg[20; px]   msum[20; sz]   mdev[20; px]   mmax[20; px]
-
-/ date & timestamp types, epoch 2000.01.01 (temporal.k, help \u)
-dstr ymd2d[2024;1;15]                 / "2024.01.15"
-dow ymd2d[2024;1;15]                  / `Mon
-pstr tstamp[ymd2d[2024;1;15]; hms[9;30;0]]   / "2024.01.15D09:30:00.000"
-
-/ system namespaces, JSON, on-disk, IPC/tick (sys.k / hdb.k / ipc.k, help \y)
-z.d[]                                 / today (date)
-j.j ([]a:1 2; b:`x`y)                 / -> JSON string
-splay["db/trades"; trades]            / save a splayed table;  dload "db/trades"
-u.def[`trade; ([]sym:0#`; px:0#0.0)]  / define a stream
-u.sub[`trade; {[nm;d] show d}]        / subscribe;  u.pub[`trade; batch]
-```
-
-`parse eval ser deser cast peach` and the `\ts expr` timer round it out. The 256-global
-cap was lifted to 4096 (a 2-byte bytecode index) so the whole vocabulary loads at once.
-
-## Amber Notepad — a browser playground
-
-`Amber-Notepad.html` is a **single self-contained page**: a real Amber interpreter
-(written in JavaScript) behind a notebook UI with an amber-phosphor theme. Open it in any
-browser — no install, no internet — and run Amber in stacked cells with live evaluation,
-syntax highlighting, and rendered tables/keyed-tables/dicts (attributes shown). It covers
-the everyday vocabulary — arithmetic, verbs, adverbs, lambdas, `([]…)` tables, `meta`,
-qSQL `qby`, as-of joins, `gentq` and the finance functions — as a faithful subset of the
-C interpreter, ideal for learning and quick experiments.
-
 ## What's inside
 
 | file | |
 |------|--|
 | `a`, `build.sh` | launcher (build-if-stale) and portable compile |
-| `*.c`, `*.h` | the interpreter (`p.c` carries the `([]…)` table-literal parser) |
+| `src/*.c`, `src/*.h` | the interpreter (`src/p.c` carries the `([]…)` table-literal parser; `src/ar.c` the Apache Arrow C Data Interface) |
 | `amber.k` | the q/kdb+ vocabulary (auto-loaded) |
-| `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |
-| `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` | v1.5 extended modules — `\w \s \u \y` |
 | `repl.k` | the REPL — banner, grid rendering, help |
-| `Amber-Notepad.html` | self-contained in-browser interpreter + notebook UI |
-| `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `attributes.k` · `practice.k` |
-| `test.k` `test-fin.k` `test-ext.k` | 226-assertion suite (153 + 35 + 38) |
-| `bench.k` `bench-fin.k` `bench-std.k` | attribute · O(1) index · window-aggregate benchmarks |
-| `AMBER.md`, `MISSING.md`, `CHANGELOG.md` | reference · roadmap · history |
+| `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |
+| `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` `tick.k` | modules (auto-loaded): moving aggregates + C-kernel `ema`, bare qSQL, native temporal types, `.z/.Q/.j/.h` + `plot`/`candle` + `arrow`, on-disk, tick, **parallel `peach`** |
+| `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `peach.k` · `wj.k` · `graphs.k` · … |
+| `test.k` `test-fin.k` `test-ext.k` | 267-assertion suite (153 + 35 + 79) |
+| `bench.k` `bench-fin.k` `bench-std.k` `bench/` | attribute / index / window benchmarks; cross-engine harness |
+| `docs/` | `AMBER.md` (reference) · `MISSING.md` (roadmap) · `CHANGELOG.md` (history) · `BENCHMARKS.md` |
+| `notebooks/` | standalone HTML notebooks |
 
 ## Roadmap
 
-Amber covers a large slice of q. [MISSING.md](MISSING.md) is an honest map of what's next —
-top picks: real temporal *types* with literal syntax, sorted/limited selects
-(`select[>col]`), new C atom types (`byte` `real` `short`), and binary `-8!`/`-9!`.
+Amber covers a large slice of q. [MISSING.md](docs/MISSING.md) is an honest map of what's next —
+top picks: a **binary serialiser** (`` -8!``/`` -9!``) to replace the text transfer that `peach`,
+IPC and the on-disk layer all use; wiring the `` `g`` grouped attribute into the C find path;
+the missing atom types (`short`/`real`/`byte`/`guid`); and a true partitioned / memory-mapped
+HDB beyond the current text splay.
 
 <a name="isolation"></a>
 ## Isolation

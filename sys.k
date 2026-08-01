@@ -43,6 +43,14 @@ jenc:{$[in[@x;`i`f];$x;`s=@x;"\"",($x),"\"";`c=@x;"\"",(,x),"\"";`C=@x;"\"",x,"\
 j.j:{jenc x}                               / value -> JSON string
 j.k:{`j? x}                                / JSON string -> value
 
+/ ---- terminal charting : braille line + unicode candlesticks -------------
+plot:{`0:`plt x;}                          / braille line chart:  plot y   or   plot (y;W;H)
+candle:{x:unkey x;p:{[t;n;a;b]t@$[in[a;n];a;b]}[x;cols x];`0:`cdl (p[`open;`o];p[`high;`h];p[`low;`l];p[`close;`c]);}  / candlestick from OHLC table
+
+/ ---- arrow : Apache Arrow C Data Interface (zero-dependency, C ABI) -------
+arrow.export:{x:unkey x;`aex (cols x;value flip x)}   / table -> (schemaAddr;arrayAddr) 64-bit C ABI pointers
+arrow.import:{d:`aim x;+(d 0)!d 1}                     / (schemaAddr;arrayAddr) -> Amber table
+
 / ---- .h : minimal HTML ---------------------------------------------------
 htag:{[t;s]("<",t,">"),s,"</",t,">"}
 h.hc:{[c;s]htag[c;s]}                       / wrap s in tag c

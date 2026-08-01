@@ -27,7 +27,7 @@ jobs:
 
       - name: Grant execution permissions
         run: |
-          chmod +x build.sh 2>/dev/null || true
+          chmod +x a build.sh install.sh 2>/dev/null || true
 
       - name: Build amber
         run: |
@@ -38,7 +38,7 @@ jobs:
           fi
 
       - name: Ensure binary is executable
-        run: chmod +x ./amber
+        run: chmod +x a 
 
       - name: Run test suite
         run: |

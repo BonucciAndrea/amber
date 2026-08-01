@@ -1,168 +1,136 @@
-# Amber vs kdb+/q — what's implemented, what's still missing
-
-Amber covers a large slice of q's *vocabulary*. This is an honest map. The **v1.5**
-release added a big batch of the items that used to be listed here; those are now in the
-**Implemented** section, with the remaining gaps below.
-
----
-
-## Implemented in v1.5 (new modules)
-
-- **qSQL template syntax** (`qsql.k`): `sel "select … by … from … where …"`, plus
-  `exq` (exec), `upd` (update), `del` (delete), and the functional `qexec[t;w;b;d]`.
-  Column names in expressions are rewritten to `x\`col` and run on the existing
-  qwhere/qby/qselect engine.
-- **Temporal types** (`temporal.k`): `date` (days since 2000.01.01) and `timestamp`
-  (nanos since 2000.01.01) with constructors (`ymd2d`, `tstamp`), formatting (`dstr`,
-  `pstr`), parsing (`pdate`), accessors (`year month dayof dow`) and arithmetic. Held
-  numerically, kdb-style. *(Still no dedicated literal syntax or true C-level types.)*
-- **On-disk data / HDB** (`hdb.k`): `dset`/`dget` (a value ↔ a file), `splay`/`dload`
-  (a table ↔ a splayed directory), `partsave`/`partload`/`parts` (a value-partitioned
-  database). Stored as portable Amber text.
-- **IPC & a tick architecture** (`ipc.k`): `hopen`/`hclose`/`hsend`/`hrecv`/`hsync`
-  raw-socket messaging, and a fully in-process **tickerplant** — `u.def`/`u.sub`/
-  `u.pub`/`u.get` (define a stream, subscribe callbacks, publish rows).
-  *(The core speaks raw sockets, not the kdb+ binary wire protocol.)*
-- **System namespaces** (`sys.k`): `z.*` clocks (`z.p z.P z.n z.d z.D z.t z.T z.z`),
-  `Q.*` utilities (`Q.f Q.fmt Q.s Q.dd Q.fc Q.gc Q.id Q.n Q.a Q.A Q.trp …`), `j.*`
-  JSON (`j.j` encode, `j.k` decode) and `h.*` HTML (`h.ht h.hc`).
-  *(Written `z.p` etc. — without kdb's leading dot, which is the eval verb here.)*
-- **Moving / window aggregates** (`std.k`): `msum mavg mcount mprd mvar mdev mmin mmax`
-  — the O(n) prefix-based ones are truly vectorised; plus `mmu` (matrix multiply) and
-  `dot`. (`movavg`/`ema`/`rollstd` also remain in `fin.k`.)
-- **Casting / parsing / serialization** (`std.k`): `parse eval reval ser deser protect`
-  and typed constructors `long int float char sym bool` + `cast[\`type;x]`.
-- **All four column attributes** in C: `\`sa` sorted, `\`ua` unique, `\`pa` parted,
-  `\`ga` grouped; `\`at` reads them; `meta` shows them.
-- **`peach`** (parallel-each; sequential in this single-threaded build) and **`\ts`**
-  (time an expression at the REPL).
-- **Interpreter capacity**: the global table was widened from a **1-byte** to a
-  **2-byte** index (256 → 4096 globals) so the full extended vocabulary loads at once.
-
----
-
-## Still missing
-
-### Atom types
-`short` (`h`), `real`/float32 (`e`), `byte` (`x`, `0x…`), `guid` (`g`) — Amber has
-long/float/char/symbol/bool/int only. These need new C-level types.
-
-### True temporal *types* & literals
-Amber holds dates/timestamps numerically; kdb has first-class types with literal
-syntax (`2024.01.15`, `09:30:00.000`, `2024.01.15D…`) and auto-formatting on display.
-
-### qSQL depth
-`select[>col]` / `select[n]` (sorted/limited selects), correlated subqueries, `fby`
-inside `where`, and parsed `insert`/`upsert` statements.
-
-### On-disk depth
-Real memory-mapping, date-partitioned HDBs with `par.txt` across drives, `.Q.dpft`,
-`.Q.en` enumeration, on-disk `aj` over partitions, compression.
-
-### Real threading
-`peach` is a sequential fallback; true secondary threads (`-s`) and `.Q.fc` parallelism
-need a threaded core.
-
-### IPC wire protocol
-`hsync` exchanges text, not the kdb+ binary protocol; no `z.pg`/`z.ps` dispatch over
-real connections, no websockets/TLS.
-
-### Enumerations, foreign keys, linked columns
-`\`sym$` domains, `.Q.en`, foreign-key traversal (`order.customer.name`), linked columns.
-
-### Misc
-`-8!`/`-9!` binary serialize (Amber serializes as text instead), a `\ts` space metric
-(the core has no allocator introspection), `inv`/`lsq` linear algebra, real console
-niceties (`\c`, editor tooling).
-
----
-
-### Next steps (highest value first)
-1. Real temporal **types** with literal syntax on top of the numeric layer.
-2. `select[>col]` / `select[n]` sorted-and-limited selects.
-3. New C atom types (`byte`, `real`, `short`).
-4. Binary `-8!`/`-9!` serialization for compact on-disk/IPC.
 # Amber vs kdb+/q — what's still missing
 
 Amber covers a large slice of q's *vocabulary* (aggregations, dicts, tables, keyed tables,
-the join family, qSQL-style select/by, strings, tick bars, and one attribute). This is an
-honest map of what kdb+/q has that Amber does **not** yet — roughly in order of how much it
-would change day-to-day use. "partial" means some of it exists.
+the join family, qSQL-style select/by, strings, tick bars, native temporal types, all four
+attributes, moving aggregates, a text-based on-disk / IPC layer, and the `.z`/`.Q`/`.j`/`.h`
+namespaces). This is an honest map of what kdb+/q has that Amber does **not** yet — roughly in
+order of how much it would change day-to-day use. "partial" means some of it exists.
 
-## 1. Temporal types (biggest gap)
-kdb+ has first-class temporal **types** with literals, arithmetic and auto-formatting:
-`date` (`2024.01.15`), `month` (`2024.01m`), `year`, `time` (`09:30:00.000`),
-`minute` (`09:30`), `second` (`09:30:00`), `timestamp` (`2024.01.15D09:30:00.000000000`),
-`timespan` (`0D01:00:00`), `datetime`. Casting (`` `date$ ``, `"T"$"09:30"`), temporal
-arithmetic, and the dotted accessors (`t.hh`, `d.month`, `p.date`).
-- **Amber has (partial):** time-of-day as ms-since-midnight with `hms hh mm sec minute second
-  milli stime ptime` and `minbar`/`bar` bucketing. No true types, no date/timestamp, no
-  literals, no `$` temporal casts, no timestamp arithmetic.
+## 1. Temporal types — done (1.7)
+Native `date` / `time` / `timestamp` types with literal syntax (`2026.07.30`,
+`10:00:05.000`, `2026.07.30D09:30:00.000000000`), auto-display, type-aware arithmetic
+(`time+time`, `date-date`→days, `date+n`, comparisons), string casts `"D"$`/`"T"$`/`"P"$`,
+and accessors `year`/`month`/`day`/`dow`/`thh`/`tmm`/`tss`. Columns keep numeric storage
+so `xasc`/`s#` work unchanged.
+- **Still missing:** `month`/`minute`/`second`/`timespan`/`datetime` as distinct types,
+  `m` month-literals, and the dotted `t.hh` accessor form (Amber uses `thh t`).
 
 ## 2. Missing atom types
 `short` (`h`), `real`/float32 (`e`), `byte` (`x`, `0x…`), `guid` (`g`, `0Ng`), plus the full
 set of typed nulls/infinities (`0Nh 0Ne 0Wp 0Nd …`). Amber has long/float/char/symbol/bool
 (and int) only, with `0N`/`0n` nulls.
 
-## 3. qSQL (the template syntax)
-Real `select … by … from … where …`, `update`, `delete`, `exec`, and their functional forms
-`?[t;where;by;select]` and `![t;where;by;cols]`. Sorted/limited selects (`select[>px]`,
-`select[5]`), `fby` inside where, correlated subqueries.
-- **Amber has (partial):** functional helpers `qwhere qselect qby fby xgroup ungroup` — but not
-  the parsed `select…from…` template, `update`, `delete`, or `exec`.
+## 3. qSQL (the template syntax) — mostly done
+The `select … by … from … where …` template now works **bare** (no `sel"…"` wrapper), along
+with `exec`, `update`, and `delete` — see AMBER.md §7. Still missing: the general functional
+forms `?[t;where;by;select]` / `![t;where;by;cols]`, sorted/limited selects (`select[>px]`,
+`select[5]`), `fby` *inside* a where-clause, and correlated subqueries.
+- **Amber has:** bare + string `select/exec/update/delete`, plus the functional helpers
+  `qwhere qselect qby fby xgroup ungroup`.
 
-## 4. On-disk data (HDB) — entirely absent
-Splayed tables, **date-partitioned databases**, `set`/`get` to disk, `\l db`, memory-mapping,
-`.Q.dpft` (save partitioned), `.Q.en` (enumerate syms), `par.txt`, `.Q.chk`, `.Q.ind`,
-`.Q.fs`/`.Q.fsn` (chunked file streaming), on-disk `aj` over partitions. Amber is in-memory only.
+## 4. On-disk data (HDB) — partial (`hdb.k`)
+Amber now has a **text-serialised** on-disk layer: `dset`/`dget` (value ↔ single file),
+`splay`/`dload` (splayed table ↔ directory, one file per column plus a `.d`), and
+`partsave`/`partload`/`parts` (**value-partitioned** database, one splayed dir per partition
+value, with `par.txt`). Files are portable Amber text read back with `eval`, so they are
+human-readable and version-independent.
+- **Still missing:** true **date-partitioned** on-disk format, **memory-mapping** (data is fully
+  read into RAM, not mapped), `.Q.dpft` (save partitioned in kdb layout), `.Q.en` (enumerate
+  syms), `.Q.chk`, `.Q.ind`, `.Q.fs`/`.Q.fsn` (chunked file streaming), on-disk `aj` over
+  partitions, and a binary (not text) on-disk encoding.
 
-## 5. IPC & the tick architecture — absent
-`hopen`/`hclose`, sync (`h"expr"`) and async (`neg[h]`) messaging, `.z.pg`/`.z.ps` query
-handlers, `.z.po`/`.z.pc` connect/disconnect, `.z.w`, websockets, TLS. And the whole
-tickerplant / RDB / HDB / gateway pattern (`tick.q`, `r.q`, `u.q`, `w.q`, `.u.sub`/`.u.pub`).
+## 5. IPC & the tick architecture — partial (`ipc.k`)
+Amber now ships `hopen`/`hclose`/`hsend`/`hrecv`/`hsync` (raw-socket messaging) and an
+**in-process tickerplant** — `u.def` (define a stream), `u.sub`/`u.pub` (subscribe / publish),
+`u.get`/`u.end`. `.z.pg`/`.z.ps` handlers exist as evaluate-stubs in `sys.k`.
+- **Still missing:** the kdb+ **binary wire protocol** (Amber's sockets exchange plain text
+  expressions, not IPC-encoded messages), real over-the-network `.z.pg`/`.z.ps`/`.z.po`/`.z.pc`
+  handler dispatch, `.z.w`, websockets, TLS, and the full multi-process tickerplant / RDB / HDB /
+  gateway pattern (`tick.q`, `r.q`, `u.q`, `w.q`).
 
-## 6. Enumerations, foreign keys, linked columns
+## 6. Attributes — 4 of 4 (setters); find accel on 2
+All four kdb+ attributes are set in C: **sorted (`` `sa``)**, **unique (`` `ua``)**,
+**parted (`` `pa``)**, **grouped (`` `ga``)**, read back with `` `at``. **Sorted and parted**
+vectors take the O(log n) binary-search find path; grouped pairs with `fin.k`'s group index
+(`bysym`/`symrows`) for O(1) per-symbol slicing.
+- **Still missing:** dedicated find/`where=` acceleration driven by the `` `u`` / `` `g``
+  attribute *itself* (grouped speed currently comes from the separate group index, not the
+  attribute), and **attribute preservation through ops** — the flag is dropped whenever an op
+  builds a new vector, whereas q keeps/drops attributes by defined per-op rules.
+
+## 7. Enumerations, foreign keys, linked columns
 `` `sym$`` enumeration domains, `.Q.en`, foreign keys (`` `t$`` and dotted `order.customer.name`
 traversal), linked columns, `.Q.fk`. None in Amber.
 
-## 7. System namespaces
-- **`.z.*`** clocks/handlers: `.z.p .z.P .z.z .z.t .z.d .z.T .z.D`, timer `.z.ts` + `\t`,
-  `.z.exit`, `.z.pg .z.ps .z.po .z.pc .z.ph` (HTTP).
-- **`.Q.*`** utilities: `.Q.dpft .Q.en .Q.hg/.Q.hp` (HTTP get/post) `.Q.gc .Q.w` (mem)
-  `.Q.ty .Q.qt .Q.id .Q.j10/.Q.x10` (base64) `.Q.fc` (parallel) `.Q.trp` (protected)
-  `.Q.dd .Q.pv/.Q.pf` (partitions) `.Q.s` (show) `.Q.f/.Q.fmt` (number format).
-- **`.h.*`** HTTP/markup: HTML/CSV/XML/XLS rendering, an HTTP server.
-- **`.j.*`** JSON: `.j.j` / `.j.k` (the array core has `` `j``; Amber doesn't wrap it yet).
+## 8. System namespaces — partial (`sys.k`)
+Amber now provides the common members (as `.`-style names `z.*`/`Q.*`/`j.*`/`h.*`):
+- **`.z.*`** clocks **done**: `z.p z.P z.n z.d z.D z.t z.T z.z z.w`. Handlers `z.pg z.ps z.po
+  z.pc z.ts z.exit` exist but are **evaluate/no-op stubs** (no real timer `\t` or port dispatch).
+  Missing: `.z.ph` (HTTP).
+- **`.Q.*`** **done**: `Q.f Q.fmt` (number format), `Q.s` (show), `Q.ty Q.qt Q.id Q.dd`,
+  `Q.gc Q.w` (mem placeholders), `Q.fc` (sequential fallback), `Q.trp` (protected).
+  Missing: `.Q.dpft .Q.en` (partition/enumerate), `.Q.hg/.Q.hp` (HTTP get/post),
+  `.Q.j10/.Q.x10` (base64), `.Q.pv/.Q.pf` (partition vars).
+- **`.j.*`** JSON **done**: `j.j` (encode) / `j.k` (decode, via the core `` `j``).
+- **`.h.*`** markup **partial**: a minimal HTML table/row renderer (`h.ht h.hrow h.hc`).
+  Missing: CSV/XML/XLS rendering and an HTTP server.
 
-## 8. Moving / window aggregates
-`mavg msum mcount mmin mmax mdev mmu` (moving) and `ema`, `wj2`, plus `ajf`/`ajf0` (fill
-as-of), `ij`f/`lj` fill variants, `ssr` vectorised, `rank`/`xrank` over tables.
-- **Amber has:** `sums prds mins maxs deltas ratios differ prev next wsum wavg xprev`. Missing
-  the `m*` moving family and `ema`.
+## 9. Moving / window aggregates — mostly done (`std.k`, `fin.k`)
+The moving family is implemented: `mcount msum mavg mprd mvar mdev mmin mmax` (`std.k`, O(n)
+prefix sums; `mmin`/`mmax` are O(n·w) window scans) plus **`ema`** (C kernel, O(n) sweep).
+- **Amber also has:** `sums prds mins maxs deltas ratios differ prev next wsum wavg xprev`.
+- **Still missing:** `wj2`, `ajf`/`ajf0` (fill as-of), `ij`/`lj` fill variants, vectorised
+  `ssr`, and `rank`/`xrank` *over tables*. (`mmin`/`mmax` could also move to an O(n)
+  monotonic-deque form — see BENCHMARKS.md.)
 
-## 9. Linear algebra & math
-`mmu` (matrix multiply), `inv` (inverse), `lsq` (least squares), `.q` solve; distributional
-`rand`, `binr`. Amber has `cor cov var dev svar sdev med` and scalar math.
+## 10. Linear algebra & math — partial (`std.k`)
+`mmu` (matrix multiply) and `dot` (vector dot product) are implemented. Amber also has
+`cor cov var dev svar sdev med` and scalar math.
+- **Still missing:** `inv` (inverse), `lsq` (least squares), `.q` solve; distributional
+  `rand`/`binr`.
 
-## 10. Casting / parsing / serialization
-The full `$` cast matrix (temporal, guid, byte), typed file reader `("SIF";",")0:file`,
-`vs`/`sv` for base-N and temporal, `parse`/`eval`/`reval`, `-8!`/`-9!` (serialize/deserialize),
-`-18!` (compress), `-11!` (replay log), `md5`, `.Q.btoa`. Amber has `sv vs ss ssr like`,
-string casts, and `` `k`` (k-repr).
+## 11. Casting / parsing / serialization — partial (`std.k`)
+`parse`/`eval`/`reval` are implemented, along with a **text** `ser`/`deser` round-trip (portable
+Amber text via `` `k``, inverted by `eval`) and `protect` (like `.Q.trp`). Amber also has
+`sv vs ss ssr like`, string casts, and `` `k`` (k-repr).
+- **Still missing:** the **binary** serialiser `-8!`/`-9!` (current `ser`/`deser` is text, not the
+  compact IPC encoding — this is the top "nice next step" below), `-18!` (compress), `-11!`
+  (replay log), the full `$` cast matrix (guid, byte), typed file reader `("SIF";",")0:file`,
+  `vs`/`sv` for base-N and temporal, `md5`, `.Q.btoa` (base64).
 
-## 11. Concurrency & performance ops
-`peach` (parallel each), secondary threads (`-s`), `.Q.fc` (parallel-on-cut), map-reduce over
-partitions, compression, `\ts` (time+space). Amber is single-threaded, in-memory.
+## 12. Concurrency & performance ops — partial
+`peach` is real **multi-core** (forks `AMBER_THREADS` worker processes, C kernel), and `ts`
+(`\ts`) times an expression.
+- **Still missing:** kdb-style secondary threads (`-s`), a *parallel* `.Q.fc` (Amber's is a
+  sequential fallback), map-reduce over on-disk partitions, and compression. `peach` currently
+  ships each worker's result back as **text** (`` `k``) — a binary serialiser (§11) would cut
+  that transfer cost.
 
-## 12. Console / environment niceties
-`\c` console dims, `\ts`, `\w` (workspace) — the array core has `\w`; `system"…"`, `getenv`/
-`setenv`, `\cd`. Number formatting `.Q.f`. Editor tooling / language server.
+## 13. Console / environment niceties — partial
+`\ts` (via `ts`) and number formatting `.Q.f`/`.Q.fmt` are done.
+- **Still missing:** `\c` console dims, a real `\w` (workspace) report (`Q.w` is a placeholder),
+  `system"…"`, `getenv`/`setenv`, `\cd`, and editor tooling / a language server.
 
 ---
 
+Already done (once gaps): **bare qSQL** `select/exec/update/delete` (1.5), **vectorised as-of
+join** (1.5), **multi-core `peach`** (1.6, fork-based), **Q-style grid preview** (1.6),
+**native temporal types** (1.7), **C-kernel `wj`/`ema`** (1.7), **terminal charting**
+`plot`/`candle` (1.7), **Apache Arrow C Data Interface** (1.7), **all four attributes** in C
+(§6), the **moving-aggregate family** `m*` (§9), **`mmu`/`dot`** (§10), **`parse`/`eval`/`ser`**
+(§11), a **text-based on-disk layer** `dset`/`splay`/`partsave` (§4), and a **text IPC / in-process
+tickerplant** `hopen`/`u.*` (§5).
+
 ### Nice next steps (highest value first)
-1. **Real temporal types** (at least `date` + `timestamp`) with literals and `$` casts.
-2. **`select … from … where …` parser** on top of the existing `qwhere`/`qby` engine (the
-   `([]…)` literal work in `p.c` shows the pattern).
-3. **`set`/`get` to disk** for a minimal splayed/partitioned HDB.
-4. **`hopen`/IPC** for a toy tickerplant.
+1. **Binary serialiser (`` -8!``/`` -9!``)** — the single biggest remaining lever. `peach` and
+   the on-disk / IPC layers all currently move values as **text** (`` `k ``) and re-parse them.
+   A compact binary encode/decode would cut that transfer cost, widen the range of workloads where
+   `peach` beats serial `'`, and unlock a real (binary-wire) IPC and a binary on-disk format.
+2. **Grouped-attribute-driven `where sym=`** — the `` `g`` setter exists, but fast `where sym=`
+   currently comes from `fin.k`'s separate group index rather than from the attribute itself.
+   Wiring the attribute into the C find path (as sorted/parted already are) would make it automatic.
+3. **Missing atom types** (§2) — `short`/`real`/`byte`/`guid` and their typed nulls/infinities.
+4. **Attribute preservation through ops** (§6) — keep/drop attributes by q's per-op rules instead
+   of always dropping on a new allocation.
+5. **True partitioned/mmap HDB** (§4) — a date-partitioned, memory-mapped on-disk format beyond
+   the current text splay, plus `.Q.dpft`/`.Q.en`.

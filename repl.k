@@ -12,10 +12,13 @@ fmtx:{$[(::)~x;"";`k[x],"\n"]}
 / error ergonomics: expand the one-word error to descriptive text, keep the core's ^ caret.
 edesc:`compile`domain`index`length`nyi`io`parse`rank`stack`type`value`limit!("compile: expression could not be compiled";"domain: value outside the valid domain for this operation";"index: index out of range";"length: operands have mismatched counts";"nyi: not implemented for these types";"io: input/output error";"parse: malformed expression";"rank: wrong number of arguments";"stack: call depth exceeded";"type: wrong type for this operation";"value: undefined name or empty value";"limit: implementation limit reached")
 onerr:{b:`err[];lns:"\n"\b;h:$[#lns;*lns;""];nm:`$$[(0<#h)&"'"~*h;1_h;h];`0:$[(0<#h)&|/nm=!edesc;("'",edesc nm),"\n","\n"/1_lns;b];}
+<<<<<<< HEAD
 / \grid clean|rounded|sharp|heavy : set the table border mode (root global GRID, via eval).
 gridcmd:{p:" "\x;$[1<#p;[m:`$p 1;$[4>`clean`rounded`sharp`heavy?m;[.:("GRID:`",$m);`1:"grid: ",($m),"\n"];`1:"grid: modes are clean rounded sharp heavy\n"]];`1:"grid: ",($(.:"GRID")),"\n"]}
 / \clear : clear the terminal (scrollback + screen, cursor home).
 clearcmd:{`1:,/(((`c$27),"[3J");((`c$27),"[H");((`c$27),"[2J");"\n");}
+=======
+>>>>>>> main
 mMA:{(P;f;q):((,"!/+(";dct;,")");(("+![";" +(");tbl;")]");(,,"(";lst;,")"))`m`M`A?t:@x
  w:cols-#*P;u:w-#q;h:lines-2
  x:$[h<(`M=t)+#x;,[;,".."](h-1)#f[w;u;h#x];f[w;u;x]]
@@ -32,7 +35,11 @@ basename:{*|"/"\x}
 dirname:{$[#x:"/"/-1_"/"\x;x;,"."]}
 joinpath:{$[x~,".";y;"/"~*|x;x,y;x,"/",y]}
 line0:{c:{0x07~*-2#*x}{(l;r):x;(1:1;r,,(-2_l))}/(x;());"\n"/(*|c),,*c}
+<<<<<<< HEAD
 line1:{$[#x;;:0];x:-1_x;$[(4<#x)&"\\grid"~5#x;gridcmd x;(5<#x)&"\\clear"~6#x;clearcmd[];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;.[`1:(fmt;fmtx)[" "~*x]@.:;,(.:"qrw")x;onerr]];`1:prompt;1}
+=======
+line1:{$[#x;;:0];x:-1_x;$[(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;.[`1:(fmt;fmtx)[" "~*x]@.:;,(.:"qrw")x;onerr]];`1:prompt;1}
+>>>>>>> main
 line:line1@line0@
 $["repl.k"~basename`argv 1;{cmds::@[cmds;x[1]1;:;{y;`0:x}2_x]}'{(&x~\:80#"-")_x:(1+*&x~\:,"/")_-1_x}@0:`argv 1;];
 run:{m:`bi 0;`1:(`c$27),"[4q";`1:"Amber v1.7 (",(m 2),"; ",(m 3),") — Columnar Time-Series Engine\nMemory: ",($0.1*_0.5+(m 0)%104857.6)," MB heap reserved | \\ for help command, \\\\ to exit\n\n",prompt;{line@1:`}::/`;}
@@ -68,9 +75,12 @@ $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
   \a  license (AGPLv3)     \l file.k  load a script     \v  variables
   \d ns   namespace (\d .) \t:n expr  time n runs (ms)  \f  functions
   \cd path   change dir    \other     shell command     \\  exit
+<<<<<<< HEAD
   \grid MODE  table border: clean|rounded|sharp|heavy    \clear  clear screen
 
   display knobs:  COLOR:0/1  PREC:n (float decimals; 0N=full)  CROWS:n (preview rows)
+=======
+>>>>>>> main
 
   quick start:    gentq 1000    meta trades    taq[trades;quotes]
 		  plot(select from taq[trades;quotes] where sym=`AAPL)`px

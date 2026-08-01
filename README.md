@@ -71,7 +71,7 @@ line-editing. Nothing is installed system-wide — see [Isolation](#isolation).
 meta ([]sym:`a`b; px:1.5 2.5)      / column types + attributes (c | t a)
 
 / the join every tick shop needs — as-of
-trade:([]sym:`a`b`a; time:3 4 9; px:100 200 300;sz:100 150 175)
+trade:([]sym:`a`b`a; time:3 4 9; px:100 200 300)
 quote:([]sym:`a`a`b`a; time:1 5 2 8; bid:10 11 20 12)
 aj[`sym`time; trade; quote]        / last quote at/ before each trade
 
@@ -84,11 +84,14 @@ tb:+@[+trade; ,`time; minbar[1]@]
 qby[tb; `sym`time; `o`h`l`c`v!({first x`px};{max x`px};{min x`px};{last x`px};{sum x`sz})]
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 / sorted attribute => binary-search lookups (20M)
 v:asc 20000000?100000000;u:0+v;p:v@5000?#v                 / v has sorted attribute while u does not
 t:`t[];a:u?p;lin:`t[]-t;t:`t[];b:v?p;bin:`t[]-t;           / lin and bin are both the runtimes in microseconds
 `ratio`linus`binus`equal`atv`atu!(round[5;lin%bin];lin;bin;a~b;`at v;`at u)
 =======
+=======
+>>>>>>> main
 / sorted attribute => binary-search lookups
 v:asc 2000000?1000000000                     / `s attribute set by asc
 `at v                                        / `s
@@ -96,7 +99,10 @@ v ? 12345 67890                              / O(log n)  (see bench.k: ~1000x fa
 
 / multi-core: peach runs f over items in parallel worker processes (no GIL)
 peach[{avg x?1.0}; 8#1000000]                / 8 heavy tasks across AMBER_THREADS cores
+<<<<<<< HEAD
 >>>>>>> f5bb103 (Reorganize repo (src/ docs/ notebooks/))
+=======
+>>>>>>> main
 ```
 
 Big tables print Q-style — the first `CROWS` rows (default 20) then `..`; set `CROWS:10`
@@ -180,7 +186,6 @@ arrow.import p                      / (schemaAddr; arrayAddr) -> Amber table
 | 500 k | 417 ms | 0.9 ms | **470×** |
 | 2 M | 1.73 s | 1.4 ms | **1244×** |
 | 5 M | 4.23 s | 1.9 ms | **2261×** |
-| 20 M | 22.74 s | 2.9 ms | **7818×** |
 
 Results are identical; only the time differs. `asc` / `xasc` set the attribute for you, and
 `meta` shows it in the `a` column.
@@ -192,7 +197,7 @@ Results are identical; only the time differs. `asc` / `xasc` set the attribute f
 Amber uses a terse array notation. A few things that differ from kdb+/q:
 
 * **Two-argument library functions take brackets:** `aj[c;x;y]`, `lj[t;kt]`, `in[x;y]`,
-  ``xasc[`sym;t]``. Built-in symbols (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) are still infix.
+  `xasc[`sym;t]`. Built-in symbols (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) are still infix.
 * **No `>=` / `<=`** — write `~a<b` and `~a>b`.
 * **qSQL is bare:** type `select … by … from … where …` (also `exec` / `update` / `delete`)
   with no `sel"…"` wrapper — bare column names like `wavg[sz;px]` just work.
@@ -209,11 +214,15 @@ Amber uses a terse array notation. A few things that differ from kdb+/q:
 
 <<<<<<< HEAD
 Full reference: **[AMBER.md](AMBER.md)**. Built-in help: `\` then `\q \j \z` for the Amber
+<<<<<<< HEAD
 vocabulary, ``\0 \+ \` \'`` for the core.
 =======
 Full reference: **[AMBER.md](docs/AMBER.md)**. Built-in help: `\` then `\q \j \z` for the Amber
 vocabulary, `\0 \+ \' \`` for the core.
 >>>>>>> f5bb103 (Reorganize repo (src/ docs/ notebooks/))
+=======
+vocabulary, `\0 \+ \' \`` for the core.
+>>>>>>> main
 
 ---
 
@@ -250,6 +259,7 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing
 | `src/*.c`, `src/*.h` | the interpreter (`src/p.c` carries the `([]…)` table-literal parser; `src/ar.c` the Apache Arrow C Data Interface) |
 | `amber.k` | the q/kdb+ vocabulary (auto-loaded) |
 | `repl.k` | the REPL — banner, grid rendering, help |
+<<<<<<< HEAD
 | `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |
 | `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` `tick.k` | modules (auto-loaded): moving aggregates + C-kernel `ema`, bare qSQL, native temporal types, `.z/.Q/.j/.h` + `plot`/`candle` + `arrow`, on-disk, tick, **parallel `peach`** |
 | `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `peach.k` · `wj.k` · `graphs.k` · … |
@@ -261,6 +271,20 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing
 ## Roadmap
 
 Amber covers a large slice of q. [MISSING.md](docs/MISSING.md) is an honest map of what's next —
+=======
+| `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `attributes.k` · `practice.k` |
+| `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |
+| `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` | modules (auto-loaded): moving aggregates + C-kernel `ema`, bare qSQL, native temporal types, `.z/.Q/.j/.h` + `plot`/`candle` + `arrow`, on-disk, tick, **parallel `peach`** |
+| `ar.c` | zero-dependency Apache Arrow C Data Interface (`arrow.export`/`arrow.import`) |
+| `examples/peach.k` `examples/wj.k` `examples/graphs.k` | multi-core Monte-Carlo · C-kernel window join · 13-chart graphing tour |
+| `test.k` `test-fin.k` `test-ext.k` | 267-assertion suite (153 + 35 + 79) |
+| `bench.k` `bench-fin.k` `bench-std.k` `bench/` | attribute / index / window benchmarks; cross-engine harness |
+| `AMBER.md`, `MISSING.md`, `CHANGELOG.md`, `BENCHMARKS.md` | reference · roadmap · history · benchmarks |
+
+## Roadmap
+
+Amber covers a large slice of q. [MISSING.md](MISSING.md) is an honest map of what's next —
+>>>>>>> main
 top picks: a **binary serialiser** (`` -8!``/`` -9!``) to replace the text transfer that `peach`,
 IPC and the on-disk layer all use; wiring the `` `g`` grouped attribute into the C find path;
 the missing atom types (`short`/`real`/`byte`/`guid`); and a true partitioned / memory-mapped

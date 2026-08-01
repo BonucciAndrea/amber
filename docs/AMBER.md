@@ -417,6 +417,21 @@ header-underline calculation, so alignment is exact. Set `COLOR:0` to disable (e
 redirecting output to a file); the per-column cycle lives in `PAL` and the type/attribute tints in
 the `CT` dictionary.
 
+<<<<<<< HEAD:docs/AMBER.md
+**Table borders.** `\grid clean|rounded|sharp|heavy` picks the frame style: `clean` (default,
+minimal dashed rule), `rounded` (`╭─┬─╮`), `sharp` (`┌─┬─┐`) or `heavy` (`┏━┳━┓`). Column widths
+are measured with `vlen` (ANSI stripped) so the box lines up exactly around coloured cells; borders
+are dimmed and the `[N rows x M cols]` footer sits below the bottom edge. `\clear` clears the
+terminal.
+
+Numeric and temporal columns are **right-aligned** (symbol / char / string columns left-aligned),
+the header underline is dimmed grey, and null sentinels (`0N` / `0n` / `0w` / a blank cell) render
+faint grey. Float precision in a grid is controlled by the **`PREC`** global — the number of
+decimals to show (default `7`); set `PREC:0N` for full precision. `PREC` affects grid display only,
+never the stored values.
+
+=======
+>>>>>>> main:AMBER.md
 ## 9b′. Error ergonomics — descriptive text · caret
 
 On an error the REPL prints the offending input line with a `^` caret under the failing operator

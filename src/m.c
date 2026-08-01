@@ -1,5 +1,21 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include<unistd.h>
+#if defined(__x86_64__)
+ #define AMARCH "x86-64"
+#elif defined(__aarch64__)
+ #define AMARCH "arm64"
+#elif defined(__i386__)
+ #define AMARCH "x86"
+#else
+ #define AMARCH "unknown"
+#endif
+#if defined(__clang__)
+ #define AMCC __VERSION__
+#elif defined(__GNUC__)
+ #define AMCC "gcc " __VERSION__
+#else
+ #define AMCC "cc"
+#endif
 #include<fcntl.h>
 #include<sys/mman.h>
 #ifndef MAP_NORESERVE
@@ -116,6 +132,8 @@ W ov_(S s,W v)_(os(s);o8(v);ow("\n",1);v)
 ZN V od(L v){C b[32];ow(b,sl(b,v)-b);}
 ZN V osd(S s,L v){os(s);od(v);}
 ZN A1(ox,o8(x);osd(" b",xb);C t=xT;os(" t");I(LH(1,t,tn),ow(&TS[t],1))E(od(t))osd(" r",xr);osd(" n",xn);F(MIN(5,cap(x)/8),os(" ");o8(xl))os("\n");x)
+// amber: engine metadata -> (heapBytes; nRegions; arch; compiler)  (used by the REPL banner)
+A1(binfo,L tot=0,nr=0;F(nreg,I(reg[i].p,tot+=reg[i].n;nr++))A a[]={al(tot),al(nr),aCz(AMARCH),aCz(AMCC)};x(aV(tA,4,a)))
 #define RGS(a...) F(nreg,B f=reg[i].f;V*p=reg[i].p,*q=f?p:p+reg[i].n;a)
 #define OBS(a...) RGS(A x=(A)(p+HD*!f+pg*f),y=(A)q;W(x<y,a;x+=HD<<xb))
 #define XYS(a...) OBS(I(xtR,F(xn|!xn,A y=xa;a)))

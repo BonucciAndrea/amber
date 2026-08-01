@@ -7,27 +7,23 @@ on:
     branches: [ main ]
 
 jobs:
-  build-and-test:
-    name: Build & Test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
+  # Job 1: Build & Test natively on macOS
+  macos:
+    name: Build & Test (macOS)
+    runs-on: macos-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install compiler (Linux)
-        if: runner.os == 'Linux'
+      - name: Fix line endings (CRLF -> LF)
         run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential
+          for f in build.sh install.sh test.k; do
+            [ -f "$f" ] && tr -d '\r' < "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+          done
 
       - name: Grant execution permissions
-        run: |
-          chmod +x a build.sh install.sh 2>/dev/null || true
+        run: chmod +x a amber build.sh install.sh 2>/dev/null || true
 
       - name: Build amber
         run: |
@@ -38,13 +34,68 @@ jobs:
           fi
 
       - name: Ensure binary is executable
-        run: chmod +x a 
+        run: chmod +x a amber 2>/dev/null || true
 
       - name: Run test suite
         run: |
-          ./amber test.k
+          BIN="./amber"
+          [ -f ./a ] && BIN="./a"
+          $BIN test.k
 
       - name: Run examples (smoke test)
         run: |
-          ./amber examples/basics.k > /dev/null
-          ./amber examples/tick.k   > /dev/null
+          BIN="./amber"
+          [ -f ./a ] && BIN="./a"
+          $BIN examples/basics.k > /dev/null
+          $BIN examples/tick.k   > /dev/null
+
+  # Job 2: Build & Test on Windows inside WSL (Ubuntu)
+  windows-wsl:
+    name: Build & Test (Windows WSL)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: wsl-bash {0}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup WSL with build dependencies
+        uses: Vampire/setup-wsl@v3
+        with:
+          distribution: Ubuntu-22.04
+          additional-packages: build-essential
+
+      - name: Fix line endings (CRLF -> LF)
+        run: |
+          for f in build.sh install.sh test.k; do
+            [ -f "$f" ] && tr -d '\r' < "$f" > "$f.tmp" && mv "$f.tmp" "$f"
+          done
+
+      - name: Grant execution permissions
+        run: chmod +x a amber build.sh install.sh 2>/dev/null || true
+
+      - name: Build amber
+        run: |
+          if [ -f ./build.sh ]; then
+            ./build.sh
+          else
+            make
+          fi
+
+      - name: Ensure binary is executable
+        run: chmod +x a amber 2>/dev/null || true
+
+      - name: Run test suite
+        run: |
+          BIN="./amber"
+          [ -f ./a ] && BIN="./a"
+          $BIN test.k
+
+      - name: Run examples (smoke test)
+        run: |
+          BIN="./amber"
+          [ -f ./a ] && BIN="./a"
+          $BIN examples/basics.k > /dev/null
+          $BIN examples/tick.k   > /dev/null

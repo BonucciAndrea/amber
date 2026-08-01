@@ -212,17 +212,9 @@ Amber uses a terse array notation. A few things that differ from kdb+/q:
 * Tables: `([]col:vals;…)`; keyed tables: `([key:vals]col:vals)`. A bare table at the prompt
   auto-renders as a grid (or `show t`).
 
-<<<<<<< HEAD
-Full reference: **[AMBER.md](AMBER.md)**. Built-in help: `\` then `\q \j \z` for the Amber
-<<<<<<< HEAD
-vocabulary, ``\0 \+ \` \'`` for the core.
-=======
+
 Full reference: **[AMBER.md](docs/AMBER.md)**. Built-in help: `\` then `\q \j \z` for the Amber
-vocabulary, `\0 \+ \' \`` for the core.
->>>>>>> f5bb103 (Reorganize repo (src/ docs/ notebooks/))
-=======
-vocabulary, `\0 \+ \' \`` for the core.
->>>>>>> main
+vocabulary, ``\0 \+ \` \'`` for the core.
 
 ---
 
@@ -280,15 +272,6 @@ Amber covers a large slice of q. [MISSING.md](docs/MISSING.md) is an honest map 
 | `test.k` `test-fin.k` `test-ext.k` | 267-assertion suite (153 + 35 + 79) |
 | `bench.k` `bench-fin.k` `bench-std.k` `bench/` | attribute / index / window benchmarks; cross-engine harness |
 | `AMBER.md`, `MISSING.md`, `CHANGELOG.md`, `BENCHMARKS.md` | reference · roadmap · history · benchmarks |
-
-## Roadmap
-
-Amber covers a large slice of q. [MISSING.md](MISSING.md) is an honest map of what's next —
->>>>>>> main
-top picks: a **binary serialiser** (`` -8!``/`` -9!``) to replace the text transfer that `peach`,
-IPC and the on-disk layer all use; wiring the `` `g`` grouped attribute into the C find path;
-the missing atom types (`short`/`real`/`byte`/`guid`); and a true partitioned / memory-mapped
-HDB beyond the current text splay.
 
 <a name="isolation"></a>
 ## Isolation

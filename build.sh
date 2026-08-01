@@ -23,5 +23,6 @@ if [ -n "${AMBER_NATIVE:-}" ]; then F="$F -march=native -funroll-loops"; MODE="n
 echo "amber: compiling with $CC ($MODE) ..."
 mkdir -p o
 for f in src/*.c; do "$CC" $F -o "o/$(basename "${f%.c}").o" -c "$f"; done
-"$CC" $F -o amber o/*.o -lm -ldl
+# link: -ldl exists on Linux; on macOS dlopen lives in libSystem, so fall back without it
+"$CC" $F -o amber o/*.o -lm -ldl 2>/dev/null || "$CC" $F -o amber o/*.o -lm
 echo "amber: built ./amber"

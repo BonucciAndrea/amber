@@ -3,7 +3,14 @@
 # Portable flags (no -march=native, warnings silenced) so the binary runs on
 # any x86-64 Linux with a C compiler. Never installs anything system-wide.
 set -e
-cd "$(dirname "$(readlink -f "$0")")"
+# Resolve this script's directory portably (macOS/BSD readlink has no -f; WSL is fine).
+SOURCE="$0"
+while [ -h "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  case "$SOURCE" in /*) ;; *) SOURCE="$DIR/$SOURCE";; esac
+done
+cd "$(cd -P "$(dirname "$SOURCE")" >/dev/null 2>&1 && pwd)"
 CC="${CC:-}"
 if [ -z "$CC" ]; then
   for c in cc gcc clang; do command -v "$c" >/dev/null 2>&1 && { CC="$c"; break; }; done

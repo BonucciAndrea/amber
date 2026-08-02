@@ -44,7 +44,7 @@ j.j:{jenc x}                               / value -> JSON string
 j.k:{`j? x}                                / JSON string -> value
 
 / ---- terminal charting : braille line + unicode candlesticks -------------
-plot:{`0:`plt x;}                          / braille line chart:  plot y   or   plot (y;W;H)
+plot:{`0:`plt x;}                          / braille line chart:  plot y | plot(y;W;H) | plot(y;W;H;mode)  (mode 0=centre line[default],1=hi/lo band,2=both; big series auto-decimated to screen width)
 candle:{x:unkey x;p:{[t;n;a;b]t@$[in[a;n];a;b]}[x;cols x];`0:`cdl (p[`open;`o];p[`high;`h];p[`low;`l];p[`close;`c]);}  / candlestick from OHLC table
 
 / ---- arrow : Apache Arrow C Data Interface (zero-dependency, C ABI) -------

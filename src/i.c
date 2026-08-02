@@ -121,16 +121,32 @@ Z V bres(UC*c,I W,I H,I x0,I y0,I x1,I y1){I ax=x1-x0,ay=y1-y0,dx=ax<0?-ax:ax,sx
  while(1){pxset(c,W,H,x0,y0);if(x0==x1&&y0==y1)break;I e2=2*er;if(e2>=dy){er+=dy;x0+=sx;}if(e2<=dx){er+=dx;y0+=sy;}}}
 Z C*ebr(C*p,UC b){U cp=0x2800+b;*p++=0xE2;*p++=0x80|(cp>>6&0x3F);*p++=0x80|(cp&0x3F);return p;}//emit braille char
 Z C*elab(C*p,F v,I w){C b[40];L db;MC(&db,&v,8);C*e=sf(b,db);I ll=e-b;I(ll>w,ll=w)F(w-ll,*p++=' ')F(ll,*p++=b[i])return p;}//right-justified label
-// plot: x = numeric vector, or (series;W;H).  Returns a multi-line UTF-8 braille line chart.
+// plot: x = numeric vector, or (series;W;H) or (series;W;H;mode).
+// mode: 0 = clean centre line [default], 1 = high/low envelope, 2 = both.
+// Returns a multi-line UTF-8 braille line chart.
 A plotC(A x){
- A dat;I W=70,H=15;
- if(_t(x)==tA){dat=N(ii(x,0));if(_n(x)>1)W=(I)gl(N(ii(x,1)));if(_n(x)>2)H=(I)gl(N(ii(x,2)));}else dat=_R(x);
+ A dat;I W=70,H=15,md=0;
+ if(_t(x)==tA){dat=N(ii(x,0));if(_n(x)>1)W=(I)gl(N(ii(x,1)));if(_n(x)>2)H=(I)gl(N(ii(x,2)));if(_n(x)>3)md=(I)gl(N(ii(x,3)));}else dat=_R(x);
  mr(x);A ser=N(cF(dat));U n=_n(ser);
  if(!n){mr(ser);return aCz("(empty)\n");}
- if(W<10)W=10;if(W>200)W=200;if(H<3)H=3;if(H>60)H=60;I PW=2*W,PH=4*H;
+ if(W<10)W=10;if(W>200)W=200;if(H<3)H=3;if(H>60)H=60;if(md<0||md>2)md=0;I PW=2*W,PH=4*H;
  CO F*d=(CO F*)_V(ser);F mn=d[0],mx=d[0];F(n,I(d[i]<mn,mn=d[i])I(d[i]>mx,mx=d[i]))F rng=mx-mn;I(rng<=0,rng=1)
- UC cells[12000];MS(cells,0,W*H);I ppx=0,ppy=0;
- F(n,I px=n>1?(I)((F)i*(PW-1)/(n-1)+.5):PW/2,py=(I)((PH-1)*(1.-(d[i]-mn)/rng)+.5);I(px>PW-1,px=PW-1)I(py>PH-1,py=PH-1)I(py<0,py=0)I(i,bres(cells,W,H,ppx,ppy,px,py))E(pxset(cells,W,H,px,py))ppx=px;ppy=py)
+ UC cells[12000];MS(cells,0,W*H);
+ // Per-pixel-column decimation.  Fold all n samples onto the PW(<=400) columns
+ // in one pass, keeping each column's min, max and running mean.  A million-point
+ // series then costs PW columns of drawing, not ~n overlapping segments (which
+ // flood the grid into a solid blob).  md picks how each column is rendered:
+ // 0 = centre (mean) line only -> a clean line through dense/noisy data;
+ // 1 = min/max envelope (the exact high/low band); 2 = envelope + centre line.
+ F vmn[400],vmx[400],vsm[400];I cnt[400];F(PW,cnt[i]=0)
+ F(n,I px=n>1?(I)((F)i*(PW-1)/(n-1)+.5):PW/2;I(px<0,px=0)I(px>PW-1,px=PW-1)F v=d[i];
+  I(cnt[px],I(v<vmn[px],vmn[px]=v)I(v>vmx[px],vmx[px]=v)vsm[px]+=v;cnt[px]++)E(vmn[px]=vmx[px]=vsm[px]=v;cnt[px]=1))
+ #define PY(v) ({I y_=(I)((PH-1)*(1.-((v)-mn)/rng)+.5);I(y_<0,y_=0)I(y_>PH-1,y_=PH-1)y_;})
+ I ppx=-1,ppy=0;
+ F(PW,I(cnt[i],I rhi=PY(vmx[i]),rlo=PY(vmn[i]),rmn=PY(vsm[i]/cnt[i]);
+   I(md>=1,I(rhi!=rlo,bres(cells,W,H,i,rhi,i,rlo))E(pxset(cells,W,H,i,rhi)))
+   I(md!=1,I(ppx>=0,bres(cells,W,H,ppx,ppy,i,rmn))E(pxset(cells,W,H,i,rmn))ppx=i;ppy=rmn)))
+ #undef PY
  A out=aC(H*(16+W*3)+64);C*p=(C*)_V(out);
  F(H,p=elab(p,i==0?mx:i==H-1?mn:mx-rng*i/(H-1),8);*p++=' ';*p++=0xE2;*p++=0x94;*p++=0x82;/*│*/
   Fj(W,UC b=cells[i*W+j];I(b,p=ebr(p,b))E(*p++=' '))*p++='\n')

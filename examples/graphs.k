@@ -60,4 +60,14 @@ candle bars[10;sel"select from trades where sym=`AAPL"]
 hd"13. wider candlesticks (5-minute bars, MSFT)"
 candle bars[5;sel"select from trades where sym=`MSFT"]
 
+/ ---- 7. big series: plot decimates a million points to fit the screen -------
+/ A raw million-point line would overplot every column into a solid blob.  plot
+/ folds the samples onto the pixel columns (min/max/mean per column) so it stays
+/ readable and fast.  mode picks the look: 0=centre line, 1=hi/lo band, 2=both.
+big:(1000+sums -0.5+1000000?1.0)+8*(-0.5+1000000?1.0)   / 1e6-tick noisy price
+hd"14. one million points, centre line (default, mode 0)"
+plot (big;100;16)
+hd"15. same series, high/low envelope (mode 1)"
+plot (big;100;16;1)
+
 `0:"\ndone.  every chart above was drawn with  plot  or  candle.\n"

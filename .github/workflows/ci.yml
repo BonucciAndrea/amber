@@ -1,101 +1,77 @@
 name: ci
-
 on:
   push:
-    branches: [ main, "feature/**" ]
   pull_request:
-    branches: [ main ]
 
 jobs:
-  # Job 1: Build & Test natively on macOS
-  macos:
-    name: Build & Test (macOS)
-    runs-on: macos-latest
-
+  # ----- Linux + macOS: both have a POSIX shell, so one matrix covers them -----
+  unix:
+    name: build-and-test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Fix line endings (CRLF -> LF)
-        run: |
-          for f in build.sh install.sh test.k; do
-            [ -f "$f" ] && tr -d '\r' < "$f" > "$f.tmp" && mv "$f.tmp" "$f"
-          done
+      - name: Install compiler (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential
 
-      - name: Grant execution permissions
-        run: chmod +x a amber build.sh install.sh 2>/dev/null || true
+      - name: Show compiler (macOS)
+        if: runner.os == 'macOS'
+        # clang ships with the Xcode Command Line Tools on GitHub's macOS runners.
+        run: cc --version
 
       - name: Build amber
-        run: |
-          if [ -f ./build.sh ]; then
-            ./build.sh
-          else
-            make
-          fi
-
-      - name: Ensure binary is executable
-        run: chmod +x a amber 2>/dev/null || true
+        run: ./build.sh
 
       - name: Run test suite
         run: |
-          BIN="./a"
-          [ -f ./a ] && BIN="./a"
-          $BIN test.k
+          out=$(./amber test.k)
+          echo "$out"
+          echo "$out" | grep -Eq '0 failures' || { echo "TESTS FAILED"; exit 1; }
 
-      - name: Run examples (smoke test)
+      - name: Run examples (smoke)
         run: |
-          BIN="./amber"
-          [ -f ./a ] && BIN="./a"
-          $BIN examples/basics.k > /dev/null
-          $BIN examples/tick.k   > /dev/null
+          ./amber examples/basics.k  > /dev/null
+          ./amber examples/tick.k    > /dev/null
+          ./amber examples/graphs.k  > /dev/null
 
-  # Job 2: Build & Test on Windows inside WSL (Ubuntu)
+  # ----- Windows via WSL (Ubuntu userland): build & test with the same bash flow -----
   windows-wsl:
-    name: Build & Test (Windows WSL)
+    name: build-and-test (windows-wsl)
     runs-on: windows-latest
     defaults:
       run:
         shell: wsl-bash {0}
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup WSL with build dependencies
+      - name: Set up WSL (Ubuntu) with build tools
         uses: Vampire/setup-wsl@v3
         with:
-          distribution: Ubuntu-22.04
+          distribution: Ubuntu-24.04
           additional-packages: build-essential
 
-      - name: Fix line endings (CRLF -> LF)
+      - name: Normalize line endings
+        # Windows checkout may introduce CRLF; strip it so bash and the .k loader
+        # (both read inside WSL) don't choke on carriage returns.
         run: |
-          for f in build.sh install.sh test.k; do
-            [ -f "$f" ] && tr -d '\r' < "$f" > "$f.tmp" && mv "$f.tmp" "$f"
-          done
-
-      - name: Grant execution permissions
-        run: chmod +x a amber build.sh install.sh 2>/dev/null || true
+          find . -type f \( -name '*.sh' -o -name '*.k' \) -print0 \
+            | xargs -0 sed -i 's/\r$//'
 
       - name: Build amber
-        run: |
-          if [ -f ./build.sh ]; then
-            ./build.sh
-          else
-            make
-          fi
-
-      - name: Ensure binary is executable
-        run: chmod +x a amber 2>/dev/null || true
+        run: ./build.sh
 
       - name: Run test suite
         run: |
-          BIN="./amber"
-          [ -f ./a ] && BIN="./a"
-          $BIN test.k
+          out=$(./amber test.k)
+          echo "$out"
+          echo "$out" | grep -Eq '0 failures' || { echo "TESTS FAILED"; exit 1; }
 
-      - name: Run examples (smoke test)
+      - name: Run examples (smoke)
         run: |
-          BIN="./amber"
-          [ -f ./a ] && BIN="./a"
-          $BIN examples/basics.k > /dev/null
-          $BIN examples/tick.k   > /dev/null
+          ./amber examples/basics.k > /dev/null
+          ./amber examples/tick.k   > /dev/null

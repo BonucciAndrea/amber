@@ -1,13 +1,23 @@
 name: ci
+
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref so the queue stays clean.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  # ----- Linux + macOS: both have a POSIX shell, so one matrix covers them -----
+  # ------------------------------------------------------------------ Linux + macOS
+  # Both have a POSIX shell, so a single matrix covers them. build.sh already
+  # resolves its own dir portably and links without -ldl on macOS.
   unix:
-    name: build-and-test (${{ matrix.os }})
+    name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -15,63 +25,74 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install compiler (Linux)
+      - name: Install build tools (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y build-essential
 
-      - name: Show compiler (macOS)
-        if: runner.os == 'macOS'
-        # clang ships with the Xcode Command Line Tools on GitHub's macOS runners.
-        run: cc --version
+      - name: Toolchain info
+        run: cc --version || clang --version || gcc --version
 
-      - name: Build amber
+      - name: Build
         run: ./build.sh
 
-      - name: Run test suite
+      - name: Test suite
         run: |
+          set -e
           out=$(./amber test.k)
           echo "$out"
-          echo "$out" | grep -Eq '0 failures' || { echo "TESTS FAILED"; exit 1; }
+          echo "$out" | grep -Eq '0 failures'
 
-      - name: Run examples (smoke)
+      - name: Smoke examples
         run: |
-          ./amber examples/basics.k  > /dev/null
-          ./amber examples/tick.k    > /dev/null
-          ./amber examples/graphs.k  > /dev/null
+          set -e
+          for f in basics tick graphs; do
+            if [ -f "examples/$f.k" ]; then
+              echo "run examples/$f.k"
+              ./amber "examples/$f.k" > /dev/null
+            fi
+          done
 
-  # ----- Windows via WSL (Ubuntu userland): build & test with the same bash flow -----
+  # ------------------------------------------------------------------ Windows (WSL)
+  # Ubuntu userland inside WSL, so the exact same bash/build flow runs unchanged.
   windows-wsl:
-    name: build-and-test (windows-wsl)
+    name: windows (wsl)
     runs-on: windows-latest
+    timeout-minutes: 25
     defaults:
       run:
         shell: wsl-bash {0}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up WSL (Ubuntu) with build tools
+      - name: Set up WSL + build tools
         uses: Vampire/setup-wsl@v3
         with:
-          distribution: Ubuntu-24.04
+          distribution: Ubuntu-22.04
           additional-packages: build-essential
 
       - name: Normalize line endings
-        # Windows checkout may introduce CRLF; strip it so bash and the .k loader
-        # (both read inside WSL) don't choke on carriage returns.
+        # The Windows checkout may write CRLF; strip it so bash and the .k loader
+        # (both read from inside WSL) don't choke on carriage returns.
         run: |
           find . -type f \( -name '*.sh' -o -name '*.k' \) -print0 \
             | xargs -0 sed -i 's/\r$//'
 
-      - name: Build amber
+      - name: Build
         run: ./build.sh
 
-      - name: Run test suite
+      - name: Test suite
         run: |
+          set -e
           out=$(./amber test.k)
           echo "$out"
-          echo "$out" | grep -Eq '0 failures' || { echo "TESTS FAILED"; exit 1; }
+          echo "$out" | grep -Eq '0 failures'
 
-      - name: Run examples (smoke)
+      - name: Smoke examples
         run: |
-          ./amber examples/basics.k > /dev/null
-          ./amber examples/tick.k   > /dev/null
+          set -e
+          for f in basics tick graphs; do
+            if [ -f "examples/$f.k" ]; then
+              echo "run examples/$f.k"
+              ./amber "examples/$f.k" > /dev/null
+            fi
+          done

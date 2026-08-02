@@ -121,44 +121,74 @@ Z V bres(UC*c,I W,I H,I x0,I y0,I x1,I y1){I ax=x1-x0,ay=y1-y0,dx=ax<0?-ax:ax,sx
  while(1){pxset(c,W,H,x0,y0);if(x0==x1&&y0==y1)break;I e2=2*er;if(e2>=dy){er+=dy;x0+=sx;}if(e2<=dx){er+=dx;y0+=sy;}}}
 Z C*ebr(C*p,UC b){U cp=0x2800+b;*p++=0xE2;*p++=0x80|(cp>>6&0x3F);*p++=0x80|(cp&0x3F);return p;}//emit braille char
 Z C*elab(C*p,F v,I w){C b[40];L db;MC(&db,&v,8);C*e=sf(b,db);I ll=e-b;I(ll>w,ll=w)F(w-ll,*p++=' ')F(ll,*p++=b[i])return p;}//right-justified label
-// plot: x = numeric vector, or (series;W;H) or (series;W;H;mode).
-// mode: 0 = clean centre line [default], 1 = high/low envelope, 2 = both.
-// Returns a multi-line UTF-8 braille line chart.
+// ---- x-axis tick-label helpers (shared by plot & candle) --------------------
+Z I xlab(C*o,A Xf,A Xs,U idx){//write one tick label into o, return length (<=20)
+ C b[40];I ll;
+ I(Xs,U m=_n(Xs);U k=idx<m?idx:(m?m-1:0);A el=ii(Xs,k);ll=(I)_n(el);I(ll>20,ll=20)MC(o,_V(el),ll);mr(el);return ll)
+ F v;I(Xf,U m=_n(Xf);U k=idx<m?idx:(m?m-1:0);v=((CO F*)_V(Xf))[k])E(v=(F)idx)
+ L db;MC(&db,&v,8);C*e=sf(b,db);ll=(I)(e-b);
+ I di=-1;F(ll,I(b[i]=='.',di=i))I(di>=0&&ll>di+3,ll=di+3)/*trim float noise to 2 decimals*/
+ I(ll>20,ll=20)MC(o,b,ll);return ll;}
+Z C*xaxis(C*p,I W,U n,A Xf,A Xs,I LM){//draw the '└────' rule then a row of tick labels
+ F(LM-1,*p++=' ')*p++=0xE2;*p++=0x94;*p++=0x94;/*└*/F(W,*p++=0xE2;*p++=0x94;*p++=0x80/*─*/)*p++='\n';
+ I NT=W<24?3:W<60?5:7,rl=LM+W+40;C row[rl];MS(row,' ',rl);I pe=-1;
+ F(NT,I c=NT>1?(I)i*(W-1)/(NT-1):0;U idx=n>1?(U)((F)c*(n-1)/(W-1)+.5):0;
+  C lab[40];I ll=xlab(lab,Xf,Xs,idx),st=LM+c;
+  I(i==NT-1,st=LM+c-(ll-1))J(i>0,st=LM+c-ll/2)I(st<0,st=0)I(st+ll>rl,st=rl-ll)
+  I(st>pe+1,MC(row+st,lab,ll);pe=st+ll-1)/*skip labels that would overlap the previous one*/)
+ I e2=rl;W(e2>0&&row[e2-1]==' ',e2--)MC(p,row,e2);p+=e2;*p++='\n';return p;}
+Z CO S CLR[6]={"\033[36m","\033[33m","\033[32m","\033[35m","\033[31m","\033[34m"};//cyan yel grn mag red blu
+// plot:  y | (y;W;H;mode) | (Y;W;H;mode) with Y a list of series | (X;Y;W;H;mode)
+// with X an x-axis vector (numeric, or a list of string labels for time-aware ticks).
+// mode: 0 = centre line[default], 1 = hi/lo band, 2 = both.  Multiple series draw in
+// colour with a legend; every chart shows a bottom x-axis.  Big series are decimated.
 A plotC(A x){
- A dat;I W=70,H=15,md=0;
- if(_t(x)==tA){dat=N(ii(x,0));if(_n(x)>1)W=(I)gl(N(ii(x,1)));if(_n(x)>2)H=(I)gl(N(ii(x,2)));if(_n(x)>3)md=(I)gl(N(ii(x,3)));}else dat=_R(x);
- mr(x);A ser=N(cF(dat));U n=_n(ser);
- if(!n){mr(ser);return aCz("(empty)\n");}
- if(W<10)W=10;if(W>200)W=200;if(H<3)H=3;if(H>60)H=60;if(md<0||md>2)md=0;I PW=2*W,PH=4*H;
- CO F*d=(CO F*)_V(ser);F mn=d[0],mx=d[0];F(n,I(d[i]<mn,mn=d[i])I(d[i]>mx,mx=d[i]))F rng=mx-mn;I(rng<=0,rng=1)
- UC cells[12000];MS(cells,0,W*H);
- // Per-pixel-column decimation.  Fold all n samples onto the PW(<=400) columns
- // in one pass, keeping each column's min, max and running mean.  A million-point
- // series then costs PW columns of drawing, not ~n overlapping segments (which
- // flood the grid into a solid blob).  md picks how each column is rendered:
- // 0 = centre (mean) line only -> a clean line through dense/noisy data;
- // 1 = min/max envelope (the exact high/low band); 2 = envelope + centre line.
- F vmn[400],vmx[400],vsm[400];I cnt[400];F(PW,cnt[i]=0)
- F(n,I px=n>1?(I)((F)i*(PW-1)/(n-1)+.5):PW/2;I(px<0,px=0)I(px>PW-1,px=PW-1)F v=d[i];
-  I(cnt[px],I(v<vmn[px],vmn[px]=v)I(v>vmx[px],vmx[px]=v)vsm[px]+=v;cnt[px]++)E(vmn[px]=vmx[px]=vsm[px]=v;cnt[px]=1))
- #define PY(v) ({I y_=(I)((PH-1)*(1.-((v)-mn)/rng)+.5);I(y_<0,y_=0)I(y_>PH-1,y_=PH-1)y_;})
- I ppx=-1,ppy=0;
- F(PW,I(cnt[i],I rhi=PY(vmx[i]),rlo=PY(vmn[i]),rmn=PY(vsm[i]/cnt[i]);
-   I(md>=1,I(rhi!=rlo,bres(cells,W,H,i,rhi,i,rlo))E(pxset(cells,W,H,i,rhi)))
-   I(md!=1,I(ppx>=0,bres(cells,W,H,ppx,ppy,i,rmn))E(pxset(cells,W,H,i,rmn))ppx=i;ppy=rmn)))
- #undef PY
- A out=aC(H*(16+W*3)+64);C*p=(C*)_V(out);
+ I W=70,H=15,md=0;A Y=0,X=0;
+ if(_t(x)==tA){A e0=ii(x,0),e1=_n(x)>1?ii(x,1):0;U bp;B ml=0;
+  I(_t(e0)==tA,A f0=_n(e0)?ii(e0,0):0;U ft=f0?_t(f0):0;I(f0,mr(f0))ml=ft>=tE&&ft<=tF)/*e0 is a list of numeric series?*/
+  I(ml,Y=e0;I(e1,mr(e1))bp=1)J(_t(e0)==tA&&e1,X=e0;Y=e1;bp=2/*e0 = string x-labels*/)J(e1&&_tT(e1),X=e0;Y=e1;bp=2/*(X;Y)*/)E(Y=e0;I(e1,mr(e1))bp=1)
+  I(_n(x)>bp,W=(I)gl(ii(x,bp)))I(_n(x)>bp+1,H=(I)gl(ii(x,bp+1)))I(_n(x)>bp+2,md=(I)gl(ii(x,bp+2)))
+ }E(Y=_R(x))
+ mr(x);
+ if(W<10)W=10;if(W>200)W=200;if(H<3)H=3;if(H>60)H=60;if(md<0||md>2)md=0;I PW=2*W,PH=4*H,LM=10;
+ A sr[6];I NS=0;
+ I(_t(Y)==tA,U m=_n(Y);I(m>6,m=6)F(m,sr[NS++]=N(cF(N(ii(Y,i)))))mr(Y))E(sr[0]=N(cF(Y));NS=1)
+ F mn=1e308,mx=-1e308;U nmax=0;
+ F(NS,A s=sr[i];U ns=_n(s);I(ns>nmax,nmax=ns)CO F*d=(CO F*)_V(s);Fj(ns,I(d[j]<mn,mn=d[j])I(d[j]>mx,mx=d[j])))
+ if(!nmax){F(NS,mr(sr[i]))I(X,mr(X))return aCz("(empty)\n");}
+ F rng=mx-mn;I(rng<=0,rng=1)
+ A Xf=0,Xs=0;I(X,I(_t(X)==tA,Xs=X)E(Xf=N(cF(X))))
+ #define PYY(v) ({I y_=(I)((PH-1)*(1.-((v)-mn)/rng)+.5);I(y_<0,y_=0)I(y_>PH-1,y_=PH-1)y_;})
+ static UC cells[6][12000];F(NS,MS(cells[i],0,W*H))
+ F(NS,A s=sr[i];U ns=_n(s);CO F*d=(CO F*)_V(s);UC*cl=cells[i];
+  F vmn[400],vmx[400],vsm[400];I cnt[400];Fj(PW,cnt[j]=0)
+  Fj(ns,I px=ns>1?(I)((F)j*(PW-1)/(ns-1)+.5):PW/2;I(px<0,px=0)I(px>PW-1,px=PW-1)F v=d[j];
+   I(cnt[px],I(v<vmn[px],vmn[px]=v)I(v>vmx[px],vmx[px]=v)vsm[px]+=v;cnt[px]++)E(vmn[px]=vmx[px]=vsm[px]=v;cnt[px]=1))
+  I ppx=-1,ppy=0;
+  Fj(PW,I(cnt[j],I rhi=PYY(vmx[j]),rlo=PYY(vmn[j]),rmn=PYY(vsm[j]/cnt[j]);
+   I(md>=1,I(rhi!=rlo,bres(cl,W,H,j,rhi,j,rlo))E(pxset(cl,W,H,j,rhi)))
+   I(md!=1,I(ppx>=0,bres(cl,W,H,ppx,ppy,j,rmn))E(pxset(cl,W,H,j,rmn))ppx=j;ppy=rmn))))
+ #undef PYY
+ A out=aC((H+3)*(LM+W*16)+W*24+512);C*p=(C*)_V(out);
  F(H,p=elab(p,i==0?mx:i==H-1?mn:mx-rng*i/(H-1),8);*p++=' ';*p++=0xE2;*p++=0x94;*p++=0x82;/*│*/
-  Fj(W,UC b=cells[i*W+j];I(b,p=ebr(p,b))E(*p++=' '))*p++='\n')
- mr(ser);return AN(p-(C*)_V(out),out);}
-// candle: x = (open;high;low;close) 4 numeric vectors.  Box wicks + block bodies + ANSI colour.
+  Fj(W,UC bit=0;I si=-1;F_(s,NS,UC bb=cells[s][i*W+j];I(bb,bit|=bb;I(si<0,si=s)))
+   I(bit,I(NS>1,MC(p,CLR[si%6],5);p+=5;p=ebr(p,bit);MC(p,"\033[0m",4);p+=4)E(p=ebr(p,bit)))E(*p++=' '))
+  *p++='\n')
+ p=xaxis(p,W,nmax,Xf,Xs,LM);
+ I(NS>1,MC(p,"          legend:",17);p+=17;F(NS,*p++=' ';MC(p,CLR[i%6],5);p+=5;MC(p,"series ",7);p+=7;*p++='1'+i;MC(p,"\033[0m",4);p+=4)*p++='\n')
+ F(NS,mr(sr[i]))I(Xf,mr(Xf))I(Xs,mr(Xs))
+ return AN(p-(C*)_V(out),out);}
+// candle: (open;high;low;close) or (open;high;low;close;labels).  Bar-index (or the
+// supplied labels) x-axis, block bodies + wicks in ANSI green(up)/red(down).
 A candleC(A x){
- P(_t(x)-tA||_n(x)-4,et(x))
- A o=N(cF(N(ii(x,0)))),h=N(cF(N(ii(x,1)))),l=N(cF(N(ii(x,2)))),c=N(cF(N(ii(x,3))));mr(x);
- U n=_n(o);I H=15;if(!n){mr(o);mr(h);mr(l);mr(c);return aCz("(empty)\n");}
+ P(_t(x)-tA||_n(x)<4,et(x))
+ A o=N(cF(N(ii(x,0)))),h=N(cF(N(ii(x,1)))),l=N(cF(N(ii(x,2)))),c=N(cF(N(ii(x,3))));
+ A X=_n(x)>4?ii(x,4):0;mr(x);
+ U n=_n(o);I H=15;if(!n){mr(o);mr(h);mr(l);mr(c);I(X,mr(X))return aCz("(empty)\n");}
  CO F*O=_V(o),*Hi=_V(h),*Lo=_V(l),*Cl=_V(c);
  F mn=Lo[0],mx=Hi[0];F(n,I(Lo[i]<mn,mn=Lo[i])I(Hi[i]>mx,mx=Hi[i]))F rng=mx-mn;I(rng<=0,rng=1)
- A out=aC(H*(9+n*24)+64);C*p=(C*)_V(out);
+ A Xf=0,Xs=0;I(X,I(_t(X)==tA,Xs=X)E(Xf=N(cF(X))))
+ A out=aC(H*(9+n*24)+2*n*3+n*8+256);C*p=(C*)_V(out);
  F(H,I r=i;p=elab(p,i==0?mx:i==H-1?mn:mx-rng*i/(H-1),8);*p++=0xE2;*p++=0x94;*p++=0x82;
   Fj(n,I rh=(I)((H-1)*(1.-(Hi[j]-mn)/rng)+.5),rl=(I)((H-1)*(1.-(Lo[j]-mn)/rng)+.5),bt=O[j]>Cl[j]?O[j]:Cl[j],bb=O[j]<Cl[j]?O[j]:Cl[j];
    I rbt=(I)((H-1)*(1.-(bt-mn)/rng)+.5),rbb=(I)((H-1)*(1.-(bb-mn)/rng)+.5);B up=Cl[j]>=O[j];
@@ -166,5 +196,6 @@ A candleC(A x){
    I(r>=rbt&&r<=rbb,MC(p,col,5);p+=5;*p++=0xE2;*p++=0x96;*p++=0x88;/*█*/MC(p,"\033[0m",4);p+=4)
    J(r>=rh&&r<=rl,MC(p,col,5);p+=5;*p++=0xE2;*p++=0x94;*p++=0x82;/*│*/MC(p,"\033[0m",4);p+=4)
    E(*p++=' ')*p++=' ')*p++='\n')
- mr(o);mr(h);mr(l);mr(c);return AN(p-(C*)_V(out),out);}
+ p=xaxis(p,(I)(2*n),n,Xf,Xs,9);
+ mr(o);mr(h);mr(l);mr(c);I(Xf,mr(Xf))I(Xs,mr(Xs))return AN(p-(C*)_V(out),out);}
 L now()_(ST timeval t;gettimeofday(&t,0);1000000ll*t.tv_sec+t.tv_usec)

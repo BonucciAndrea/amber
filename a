@@ -2,7 +2,9 @@
 # Amber launcher.  Usage:  ./a     (or:  bash a    if the +x bit was lost)
 # (Re)builds the interpreter when it is missing OR older than the sources,
 # then starts the Amber REPL. Always runs from THIS folder.
-here="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+# Resolve this script's dir portably (macOS/BSD readlink has no -f).
+src="$0"; while [ -h "$src" ]; do d="$(cd -P "$(dirname "$src")" && pwd)"; src="$(readlink "$src")"; case "$src" in /*) ;; *) src="$d/$src";; esac; done
+here="$(cd -P "$(dirname "$src")" && pwd)"
 cd "$here"
 chmod +x "$here/a" "$here/build.sh" 2>/dev/null || true
 stale=0

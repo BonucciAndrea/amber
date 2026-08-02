@@ -61,13 +61,29 @@ hd"13. wider candlesticks (5-minute bars, MSFT)"
 candle bars[5;sel"select from trades where sym=`MSFT"]
 
 / ---- 7. big series: plot decimates a million points to fit the screen -------
-/ A raw million-point line would overplot every column into a solid blob.  plot
-/ folds the samples onto the pixel columns (min/max/mean per column) so it stays
-/ readable and fast.  mode picks the look: 0=centre line, 1=hi/lo band, 2=both.
+/ A raw million-point line overplots every column into a solid blob.  plot folds
+/ the samples onto the pixel columns (min/max/mean per column) so it stays clean
+/ and fast.  mode: 0 = centre line[default], 1 = high/low band, 2 = both.
 big:(1000+sums -0.5+1000000?1.0)+8*(-0.5+1000000?1.0)   / 1e6-tick noisy price
 hd"14. one million points, centre line (default, mode 0)"
 plot (big;100;16)
 hd"15. same series, high/low envelope (mode 1)"
 plot (big;100;16;1)
+
+/ ---- 8. x-axis: every chart now shows a labelled x-axis ---------------------
+/ pass (X;Y;...) to label ticks with your own x-values (numeric or strings).
+hd"16. x-axis from a numeric X vector (hours of the day)"
+hrs:9.5+0.02*!390                                       / 09:30 .. 16:00
+plot (hrs;100+sums -0.5+390?1.0;100;12)
+
+hd"17. x-axis with string time labels (time-aware ticks)"
+tk:$'`$("09:30";"10:15";"11:00";"11:45";"12:30";"13:15";"14:00";"14:45";"15:30")
+plot (tk;100+{sin x%3}'!9;90;9)
+
+/ ---- 9. multi-series overlay + legend --------------------------------------
+/ pass a list of series -> each drawn in its own colour with a legend.
+hd"18. three series overlaid, colour-coded, with a legend"
+px:100+sums -0.5+300?1.0
+plot ((px;movavg[20;px];movavg[60;px]);100;16)
 
 `0:"\ndone.  every chart above was drawn with  plot  or  candle.\n"

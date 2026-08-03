@@ -226,7 +226,13 @@ r:select n:#px, avg px by sym from trades         / assign; also  5#select …  
 
 Bare column names in the expressions become `x`col`, so `wavg[sz;px]` just works. The same
 templates are also callable as strings (`sel"select …"`, `exq`, `upd`, `del`) and via the
-**functional form** below (handy when you build the query programmatically):
+**functional form** below (handy when you build the query programmatically).
+
+**Interactive prompt vs. `.k` scripts.** The bare `select … from …` rewriting above is applied
+line-by-line by `repl.k` (via `qsql.k`'s `qrw`) as you type at the `amber>` prompt. A script run
+with `./amber file.k` does not go through that per-line rewrite, so bare qSQL sugar will not parse
+there — use the `sel"…"`/`exq"…"`/`upd"…"`/`del"…"` string forms, or call `qwhere`/`qselect`/`qby`
+directly, exactly as `test.k` and every script under `examples/` already do.
 
 | function             | q analogue                                     |
 |----------------------|------------------------------------------------|
@@ -629,8 +635,19 @@ form, a large slice of q's system vocabulary:
 ## Help inside the REPL
 
 Type `\` for the menu, then a topic: `\q` (scalars, aggregation, sets, strings),
-`\j` (tables, keyed tables, joins, qSQL), `\z` (temporal, bars, attributes, display).
-`\0 \+ \' \`` cover the core array language.
+`\j` (tables, keyed tables, joins, qSQL), `\z` (temporal, bars, attributes, display),
+`\m` (finance/HFT module). `\0 \+ \' \`` `\h` cover the core array language and its cheat-sheet.
+
+**Session commands** (one-liners in the `\` menu itself, no separate topic page):
+`\l file.k` load a script, `\d ns` switch/show namespace, `\t:n expr` time `n` runs, `\f` list
+functions, `\cd path` change directory, `\grid MODE` set the table border
+(`clean`/`rounded`/`sharp`/`heavy`), `\clear` clear the screen, `\a` print the licence, `\\` exit.
+
+**Diagnostics:** `\v` a rich workspace inspector (every global as a Name/Type/Shape/Memory
+table — see `src/inspect.{h,c}`); `\ast expr` a colour-coded parse tree, parse-only, nothing is
+executed (`src/ast.{h,c}`); `\trace expr` a 4-phase timing report (parse/arena/exec/format) plus
+the arena's peak scratch usage for that evaluation, running the same qSQL rewrite the prompt uses
+so tracing a table or `select …` expression renders correctly (`src/trace.{h,c}`).
 
 ---
 

@@ -105,6 +105,21 @@ t[`aj0time;(+aj0[`sym`time;trade;quote])`time;1 2 8]
 t[`wjMax;(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`mx;max;`bid)])`mx;10 20 12]
 t[`asof;asof[xasc[`sym`time;trade];`sym`time!(`a;6)];(,`px)!,100]
 
+/ ---- native aj kernel (src/a.c): edge cases ----
+/ no match: trade before first quote in its group, and a symbol absent from quotes -> null
+tradeN:+`sym`time`px!(`a`c;0 5;1 2)
+t[`ajNull;(+aj[`sym`time;tradeN;quote])`bid;0N 0N]
+/ single-group (time-only) as-of: most recent quote on-or-before each trade time
+t[`ajNoGrp;(+aj[`time;+`time`x!(0 4 8;0 0 0);+`time`v!(1 3 5 7;10 20 30 40)])`v;0N 20 40]
+/ 64-bit nanosecond timestamps (values exceed 2^31 -> proves long/ns path)
+t[`ajNs;(+aj[`sym`time;+`sym`time`px!(,`a;,1500000000000;,1);+`sym`time`bid!(`a`a;1000000000000 2000000000000;10 20)])`bid;,10]
+
+/ ---- HFT arena scratchpad (src/arena.c) : bump / reset / overflow self-test ----
+t[`arena;`arn 0;1]
+
+/ ---- Rust-style diagnostics (src/diagnostic.c) : formatter structure self-test ----
+t[`diag;`dgn 0;1]
+
 / ---- qSQL-style ----
 st:+`s`v!(`a`b`a`b`a;1 2 3 4 5)
 t[`qwhere;(+qwhere[st;st[`v]>2])`v;3 4 5]

@@ -111,9 +111,12 @@ pj:{[t;kt]yk:rows[!kt];xk:+. (keys kt)#+t;i:(#yk)^yk?xk;vt:value kt;vc:cols vt;+
 ej:{[c;x;y]ij[x;xkey[c;y]]}
 
 / ---- asof join (aj/aj0) : y must contain matching + time cols -----------------
-/ ajm: as-of match, per-group VECTORISED binary search (' = bin on a sorted noun).
-/ ~10x faster than a per-row scalar bin; y must be xasc'd on c (aj does this).
-ajm:{[c;x;y]c:c,();g:-1_c;tc:*|c;yt:(+y)tc;xt:(+x)tc;yg:$[#g;=rows[g#+y];(,0)!,!#y];xg:$[#g;=rows[g#+x];(,0)!,!#x];{[yt;xt;yg;xg;acc;gk]yi:yg gk;xi:xg gk;b:(yt yi)'(xt xi);@[acc;xi;:;(yi,0N)@b]}[yt;xt;yg;xg]/[(#x)#0N;!xg]}
+/ ajm: as-of match indices.  Native path: the C `aj kernel does a branch-free
+/ lower_bound over each group's sorted ns-timestamp slice (src/a.c), eliminating
+/ the per-row K bin.  wjbnd supplies the [base,end) group slice per trade row.
+/ y must be xasc'd on c (aj does this) so each group's time column is ascending.
+ajmK:{[c;x;y]c:c,();g:-1_c;tc:*|c;yt:(+y)tc;xt:(+x)tc;yg:$[#g;=rows[g#+y];(,0)!,!#y];xg:$[#g;=rows[g#+x];(,0)!,!#x];{[yt;xt;yg;xg;acc;gk]yi:yg gk;xi:xg gk;b:(yt yi)'(xt xi);@[acc;xi;:;(yi,0N)@b]}[yt;xt;yg;xg]/[(#x)#0N;!xg]}  / pure-K reference
+ajm:{[c;x;y]c:c,();g:-1_c;tc:*|c;b:wjbnd[g;x;y];`aj((+y)tc;(+x)tc;b 0;b 1)}
 aj:{[c;x;y]c:c,();y:xasc[c;y];m:ajm[c;x;y];vc:except[cols y;c];+(+x),vc!{[m;yd;c](yd c)@m}[m;+y]'vc}
 aj0:{[c;x;y]c:c,();y:xasc[c;y];m:ajm[c;x;y];vc:except[cols y;-1_c];+(+x),vc!{[m;yd;c](yd c)@m}[m;+y]'vc}
 asof:{[t;d]c:!d;g:-1_c;tc:*|c;td:+t;msk:$[#g;&/({[td;d;c]td[c]=d c}[td;d]'g);(#t)#1b];i:&msk&~td[tc]>d tc;$[#i;(except[cols t;c])#t[*|i];()]}
@@ -181,30 +184,40 @@ amcells:{$[`A=@x;{$[`C=@x;x;`k x]}'x;$x]}
 TCOLS:`time`ts`t                                   / time-of-day columns  (ms since midnight)  -> HH:MM:SS.mmm
 DCOLS:,`date                                       / date columns (days, temporal.k epoch)     -> YYYY.MM.DD
 tnum:{in[@x;`I`L`i`j`l`H`G]}                        / integer-typed column?
-tcell:{[nm;col]$[in[nm;TCOLS]&tnum col;stime col;in[nm;DCOLS]&tnum col;dstr'col;amcells col]}
+tcell:{[nm;col]$[in[nm;TCOLS]&tnum col;stime col;in[nm;DCOLS]&tnum col;dstr'col;(~^PREC)&|/`f`F`e=@col;$round[PREC;col];amcells col]}
 / ---- ANSI syntax highlighting (subtle, dark-terminal) -----------------------
 / Colour is applied AFTER width padding (ANSI is zero visual width); vlen strips
 / ANSI before every width/underline computation so grids stay aligned.  COLOR:0 off.
 COLOR:1                                            / master toggle
 CSI:(`c$27),"["                                    / ANSI control sequence introducer
 RST:CSI,"0m"                                       / reset
-CT:`num`sym`str`time`null`hdr`bool`flt!("38;5;45";"38;5;214";"38;5;114";"38;5;141";"38;5;244";"1;38;5;231";"38;5;205";"38;5;79")  / 256-colour SGR codes
+CT:`num`sym`str`time`null`hdr`bool`flt`sep!("38;5;45";"38;5;214";"38;5;114";"38;5;141";"90";"1;38;5;231";"38;5;205";"38;5;79";"90")  / 256-colour SGR codes (null/sep = faint grey)
 PAL:("38;5;39";"38;5;208";"38;5;84";"38;5;213";"38;5;220";"38;5;51";"38;5;141";"38;5;203";"38;5;190";"38;5;87";"38;5;222";"38;5;159";"38;5;171";"38;5;120")  / vivid per-column cycle
+NULLS:("0N";"0n";"0w";"-0w";"0Nn";,"`")            / null sentinels rendered faint grey (empty cell too)
+PREC:7                                             / float precision (decimals) in grids; PREC:0N = full precision
 comma:{$[4>#x;x;(comma -3_x),",",-3#x]}            / thousands separators on a digit string
 vstrip:{p:((`c$27))\x;,/(1#p),{(1+x?"m")_x}'1_p}   / drop ANSI escape sequences
 vlen:{#vstrip x}                                    / visible (printed) width
 cwrap:{[c;s]$[COLOR&#c;(CSI,c,"m"),s,RST;s]}        / wrap s in SGR code c
 atcol:{$[`b=@x;CT`bool;|/`f`F`e=@x;CT`flt;|/`i`I`j`l`L`h`H`G=@x;CT`num;|/`s`S=@x;CT`sym;|/`c`C=@x;CT`str;""]}  / value type -> colour
 palN:{PAL@(#PAL)!x}                                 / n-th column colour (cycles the palette)
-isnul:{t:x^" ";(#t)&|/t~/:("0N";"0n";"0w";"-0w";,"`")}                             / null token?
+isnul:{t:x^" ";$[#t;|/t~/:NULLS;1]}                 / null token? (empty/blank cell counts)
 ccell:{[cc;s]cwrap[$[isnul s;CT`null;cc];s]}        / colour a padded cell (null override)
-amblk:{[t;c]cl:{[t;x](+t)x}[t]'c;sc:tcell'[c;cl];h:$c;w:(#:'h)|{$[#x;|/#:'x;0]}'sc;cc:palN'!#c;pc:{[w;h;sc;cc;i](,cwrap[CT`hdr;(w i)$h i]),ccell[cc i]'(w i)$'sc i}[w;h;sc;cc]'!#c;+pc}
+trt:{[nm;col]$[(in[nm;TCOLS])|in[nm;DCOLS];1;|/`i`I`j`l`L`h`H`G`f`F`e=@col]}  / right-align numeric/temporal cols
+amblk:{[t;c]cl:{[t;x](+t)x}[t]'c;sc:tcell'[c;cl];h:$c;w:(#:'h)|{$[#x;|/#:'x;0]}'sc;cc:palN'!#c;rt:trt'[c;cl];pc:{[w;h;sc;cc;rt;i]sw:$[rt i;neg w i;w i];(,cwrap[CT`hdr;sw$h i]),ccell[cc i]'sw$'sc i}[w;h;sc;cc;rt]'!#c;+pc}
 CROWS:20                                           / Q-style: show first CROWS rows of a grid then "..";  set CROWS:n to change
 nrows:{#*.+x}                                      / row count of a table
 captab:{c:cols x;+c!(CROWS#)'(+x)c}                / first CROWS rows (caps BEFORE formatting, so huge tables render instantly)
 aftr:{[nr;nc]cwrap[CT`null;"[",(comma($nr))," rows x ",($nc)," cols]"]}  / dimmed size footer
-amtab:{[t]nr:nrows t;tr:CROWS<nr;u:$[tr;captab t;t];lns:{" "/x}'amblk[u;cols u];b:(1#lns),(,(vlen(*lns))#"-"),1_lns;b:$[tr;b,,"..";b];b,,aftr[nr;#cols t]}
-amkeyed:{[kt]t:unkey kt;nr:nrows t;tr:CROWS<nr;t:$[tr;captab t;t];kc:keys kt;vc:except[cols t;kc];kr:{" "/x}'amblk[t;kc];vr:{" "/x}'amblk[t;vc];lns:(kr,\:"| "),'vr;b:(1#lns),(,(vlen(*lns))#"-"),1_lns;b:$[tr;b,,"..";b];b,,aftr[nr;#cols kt]}
+/ ---- Unicode table border modes (\grid clean|rounded|sharp|heavy) -----------
+GRID:`clean                                        / border mode; \grid sets it
+/ each entry: (horiz;vert;tl;tmid;tr;lmid;mid;rmid;bl;bmid;br)
+GB:`rounded`sharp`heavy!(("─";"│";"╭";"┬";"╮";"├";"┼";"┤";"╰";"┴";"╯");("─";"│";"┌";"┬";"┐";"├";"┼";"┤";"└";"┴";"┘");("━";"┃";"┏";"┳";"┓";"┣";"╋";"┫";"┗";"┻";"┛"))
+brep:{,/x#,y}                                       / repeat a (multi-byte) char x times
+/ box render: W=visible col widths, rows=(header;data..) of coloured padded cells, tr=truncated?
+box:{[W;rows;g;tr]G:GB g;segs:{,/(x+2)#,y}[;G 0]'W;hl:{[a;m;b;s]cwrap[CT`sep;a,(m/s),b]};vb:cwrap[CT`sep;G 1];mkrow:{[vb;cs]vb,(vb/{" ",x," "}'cs),vb}[vb];body:mkrow'1_rows;body:$[tr;body,,mkrow({[w]cwrap[CT`sep;w$".."]}'W);body];(hl[G 2;G 3;G 4;segs];mkrow(*rows);hl[G 5;G 6;G 7;segs]),body,,hl[G 8;G 9;G 10;segs]}
+amtab:{[t]nr:nrows t;tr:CROWS<nr;u:$[tr;captab t;t];rows:amblk[u;cols u];b:$[GRID~`clean;[lns:{" "/x}'rows;l:(1#lns),(,cwrap[CT`sep;(vlen(*lns))#"-"]),1_lns;$[tr;l,,"..";l]];box[{vlen x}'(*rows);rows;GRID;tr]];b,,aftr[nr;#cols t]}
+amkeyed:{[kt]t:unkey kt;nr:nrows t;tr:CROWS<nr;t:$[tr;captab t;t];kc:keys kt;vc:except[cols t;kc];kb:amblk[t;kc];vb2:amblk[t;vc];b:$[GRID~`clean;[kr:{" "/x}'kb;vr:{" "/x}'vb2;lns:(kr,\:"| "),'vr;l:(1#lns),(,cwrap[CT`sep;(vlen(*lns))#"-"]),1_lns;$[tr;l,,"..";l]];[rows:kb,'vb2;box[{vlen x}'(*rows);rows;GRID;tr]]];b,,aftr[nr;#cols kt]}
 amdict:{[d]tr:CROWS<#!d;kk:$[tr;CROWS#!d;!d];vv:$[tr;CROWS#value d;value d];ks:$kk;vs:`k'vv;kw:|/#:'ks;b:{[kw;ks;vs;vv;i](cwrap[palN i;kw$ks i]),"| ",ccell[atcol vv@i;vs i]}[kw;ks;vs;vv]'!#ks;$[tr;b,,"..";b]}
 amfmt:{$[iskeyed x;amkeyed x;`M=@x;amtab x;`m=@x;amdict x;`k x]}
 show:{`0:amfmt x;}

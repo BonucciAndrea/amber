@@ -12,24 +12,31 @@
 **A low-latency array language — columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.7-orange)
+![version](https://img.shields.io/badge/version-1.9-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
-![tests](https://img.shields.io/badge/tests-267%20passing-brightgreen)
-![build](https://img.shields.io/badge/build-C11%20·%20portable%20·%20parallel-informational)
+![tests](https://img.shields.io/badge/tests-272%20passing-brightgreen)
+![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
 
 </div>
 
-Amber is a small, fast, self-contained array language, built on top of [ngn/k](https://codeberg.org/ngn/k), with the working vocabulary of
+Amber is a small, fast, self-contained array language with the working vocabulary of
 **q/kdb+** — dictionaries, **tables & keyed tables** with `([]…)` literal syntax, the full
 **join family** (left · inner · union · plus · equi · **as-of** · **window**), qSQL-style
 select/by, strings, intraday **tick / OHLC** temporals, and **column attributes implemented
 in C** that turn search from `O(n)` into `O(log n)` — **~1000–2000× faster** on large data.
 
-New in **1.7**: **native temporal types** with literal syntax (`2026.07.30`, `10:00:05.000`,
-`2026.07.30D09:30:00.000000000`) and type-aware arithmetic · a **C-kernel window join** and
-**`ema`** · **terminal charting** (`plot` braille line charts, `candle` Unicode candlesticks) ·
-and a **zero-dependency Apache Arrow C Data Interface** (`arrow.export`/`arrow.import`) for
-zero-copy interop with PyArrow / Polars / DuckDB.
+Amber's interpreter core is built on **[ngn/k](https://codeberg.org/ngn/k)** — ngn's compact,
+AGPLv3 implementation of the K array language. Amber keeps that engine's speed and small
+footprint and layers a q/kdb+ vocabulary, C-level column attributes, native temporal types,
+`([]…)` table syntax, a tick/HFT toolkit, and a modern REPL on top. (The attribution is
+recorded in [NOTICE](NOTICE), as the AGPLv3 requires.)
+
+New in **1.9**: a **native C `aj` as-of-join kernel** (branch-free `lower_bound` over sorted
+nanosecond timestamps) · an **HFT zero-allocation arena** (thread-local 16 MB bump allocator
+that removes `malloc`/`free` jitter from the eval hot path) · **Rust-style visual diagnostics**
+(`AMBER_DIAG=1` prints gutter-aligned, ANSI-coloured `error[…]` reports with `^^^` underlines) ·
+an options/market-data generator (`genopt`, `gentq`) · Unicode grid modes (`\grid clean|rounded|sharp|heavy`) ·
+and a **CRLF-safe REPL loader** so a Windows checkout runs the library unchanged.
 
 ```q
 t:([]sym:`AAPL`MSFT`AAPL; px:187.3 411.2 187.4; sz:100 250 50)   / a table, rendered instantly
@@ -38,22 +45,47 @@ qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                         / vwap by symb
 
 ---
 
-## Install (Linux / WSL / macOS)
+## Download & install
+
+Amber compiles from source (portable **C99**, builds clean on `gcc` and `clang`) on first run —
+nothing is installed system-wide. Clone the repo:
 
 ```sh
+git clone https://github.com/BonucciAndrea/amber.git
 cd amber
-./a                 # builds on first run (needs a C compiler), then opens the REPL
 ```
 
-Type **`a`** from anywhere by adding an alias:
+**Linux / WSL** — needs a C compiler (`gcc` or `clang`):
 
 ```sh
-echo "alias a='$HOME/amber/a'" >> ~/.bashrc && source ~/.bashrc
+sudo apt-get update && sudo apt-get install -y build-essential   # one-time
+sudo apt-get install -y rlwrap                                    # optional: history / arrow keys
+chmod +x a build.sh install.sh                                    # restore exec bits if the copy dropped them
+./a                                                               # builds, then opens the REPL
 ```
 
-`./a` recompiles automatically whenever the C sources change, so you never run a stale build.
-Requirements: a C compiler (`sudo apt-get install build-essential`); optional `rlwrap` for
-line-editing. Nothing is installed system-wide — see [Isolation](#isolation).
+**macOS** (Intel or Apple Silicon) — needs Apple's `clang`:
+
+```sh
+xcode-select --install        # installs the Command Line Tools (clang); one-time
+brew install rlwrap           # optional: history / arrow keys (needs Homebrew)
+chmod +x a build.sh install.sh
+./a
+```
+
+That's it — `./a` compiles the interpreter (portable `-O3`, no `-march=native`) and drops you at
+the prompt; it recompiles automatically whenever the C sources change, so you never run a stale
+build. If `./a` prints **`Permission denied`**, the executable bit was lost in transfer — the
+`chmod +x` line above fixes it (or just run `bash a`).
+
+One-shot alternative: `bash install.sh` builds, runs the self-test, and adds an `a` alias to your
+shell rc (`~/.zshrc` on macOS, `~/.bashrc` on Linux). To add the alias by hand:
+
+```sh
+echo "alias a='$PWD/a'" >> ~/.zshrc     # macOS (zsh);  use ~/.bashrc on Linux, then: source it
+```
+
+Nothing is installed system-wide — see [Isolation](#isolation).
 
 ---
 
@@ -70,7 +102,7 @@ line-editing. Nothing is installed system-wide — see [Isolation](#isolation).
 
 meta ([]sym:`a`b; px:1.5 2.5)      / column types + attributes (c | t a)
 
-/ the join every tick shop needs — as-of
+/ the join every tick shop needs — as-of (native C kernel in 1.9)
 trade:([]sym:`a`b`a; time:3 4 9; px:100 200 300)
 quote:([]sym:`a`a`b`a; time:1 5 2 8; bid:10 11 20 12)
 aj[`sym`time; trade; quote]        / last quote at/ before each trade
@@ -104,9 +136,76 @@ Run the guided tours:
 ./amber examples/tick.k     # realistic trades & quotes: as-of/window joins, VWAP, OHLC
 AMBER_THREADS=8 ./amber examples/peach.k   # multi-core speedup demo (serial vs peach)
 ./amber bench.k             # attribute speed benchmark
-./amber test.k              # core suite (153); also test-fin.k (35) + test-ext.k (79) = 267
+./amber test.k              # core suite (158); also test-fin.k (35) + test-ext.k (79) = 272
 bash bench/run.sh           # cross-engine sanity + speed (Amber vs numpy/pandas/…; see BENCHMARKS.md)
 ```
+
+---
+
+## Rust-style diagnostics
+
+By default an error prints the terse core message with a `^` caret under the failing token:
+
+```
+'length: operands have mismatched counts
+ prices+sizes
+       ^
+```
+
+Set **`AMBER_DIAG=1`** and the same errors are additionally rendered as a **Rust-compiler-style
+report** — an `error[CODE]` line, a `-->` locator, a gutter-aligned source line, `^^^` underlines,
+and a `= help:` note (all ANSI-coloured on a colour terminal):
+
+```sh
+AMBER_DIAG=1 ./amber                # interactive
+AMBER_DIAG=1 ./amber myscript.k     # running a script
+```
+
+```text
+error[E0104]: Vector length mismatch
+  --> test.k:12:8
+   |
+12 |   prices + sizes
+   |   ^^^^^^   ^^^^^
+   |
+   = help: Both vectors must have matching lengths for element-wise `+`.
+```
+
+The formatter lives in `src/diagnostic.{h,c}` (a `Span` source-tracking struct + a
+`report_diagnostic()` renderer); the runtime error path (`src/e.c`) routes every parse / type /
+domain error through it when `AMBER_DIAG` is set, so the flag is entirely opt-in and changes
+nothing about the default output. You can exercise the formatter directly from Amber with the
+`` `dgn `` self-test builtin (returns `1` when the rendered report matches its expected shape):
+
+```q
+`dgn 0        / 1  — diagnostic formatter self-test
+```
+
+Turn it on for a session and leave it: it costs one `getenv` per error and never fires on
+success.
+
+---
+
+## HFT toolkit — native `aj`, arena, generators
+
+Amber 1.9 tightens the tick/quant path:
+
+```q
+gentq 100000                       / generate a full session: sets globals `trades` and `quotes`
+genopt 2000                        / generate a random option chain into global `options`
+m:aj[`sym`time; trades; quotes]    / TAQ: prevailing quote for every trade (native C kernel)
+select from options where abs[strike-spot]<5     / near-the-money contracts
+```
+
+* **Native `aj` kernel.** `aj`/`aj0` now match each trade to its most-recent quote with a
+  **branch-free `lower_bound`** binary search over each symbol group's sorted nanosecond
+  timestamp slice (`src/a.c`, marshalled from `amber.k`). The pure-K reference (`ajmK`) is kept
+  alongside it. Correct on 64-bit ns timestamps, empty groups, and no-match rows (→ null).
+* **Zero-allocation arena.** A thread-local **16 MB bump allocator** (`src/arena.{h,c}`:
+  `arena_init` / `arena_alloc` / `arena_reset` / `arena_free`) supplies transient scratch during
+  evaluation and is rewound once per eval cycle, so per-tick work does not thrash the system
+  `malloc`/`free` and the latency jitter they cause stays out of the hot path. Self-test:
+  `` `arn 0 `` → `1`.
 
 ---
 
@@ -120,20 +219,36 @@ table as **Unicode candlesticks** (green up / red down, box-drawing wicks, block
 plot (14*{sin x%7}'!74;60;9)
 
 13.99999 │     ⢀⠤⠒⠉⠉⠑⠤⡀                            ⢀⠤⠊⠉⠉⠒⠤⡀
-10.50000 │    ⡔⠁      ⠈⠑⢄                        ⢀⠔⠁      ⠈⠱⡀
 7.000004 │  ⡠⠊          ⠈⠢⡀                     ⡠⠃          ⠈⢢
-3.500007 │ ⡰⠁             ⠑⡄                  ⢀⠔⠁             ⠣⡀
 1.119252 │⠜                ⠘⢄                ⢠⠊                ⠘⢄
--3.49998 │                  ⠈⠢⡀             ⡔⠁                  ⠈⢢
 -6.99998 │                    ⠑⡄          ⢀⠜                      ⠣⡀
--10.4999 │                     ⠈⠢⡀      ⢀⡠⠊                        ⠈⢢
 -13.9999 │                       ⠈⠒⠤⣀⣀⠤⠒⠁                            ⠉
 
 candle bars[10; select from trades where sym=`AAPL]      / OHLC candlesticks in colour
 ```
 
-See [`examples/graphs.k`](examples/graphs.k) for a 13-chart tour (sine, random walk + EMA,
-logistic map, distributions, price + moving average, rolling volatility, candlesticks).
+See [`examples/graphs.k`](examples/graphs.k) for a chart tour.
+
+## Grid modes (`\grid`)
+
+`\grid clean|rounded|sharp|heavy` sets the table frame — `clean` (default) is a minimal dashed
+header rule; `rounded`/`sharp`/`heavy` draw a full box with curved / square / thick corners:
+
+```
+\grid rounded
+([]a:1 2; b:3 4)
+╭───┬───╮
+│ a │ b │
+├───┼───┤
+│ 1 │ 3 │
+│ 2 │ 4 │
+╰───┴───╯
+[2 rows x 2 cols]
+```
+
+Borders are dimmed so colourised cells stay the focus; `\clear` clears the screen. Grids also
+carry **ANSI syntax highlighting** (a 14-hue per-column palette; `COLOR:0` to disable), right-aligned
+numeric/temporal columns, and a `PREC`-capped float precision (default 7 decimals).
 
 ## Native temporal types
 
@@ -149,14 +264,10 @@ year 2026.07.30                     / accessors: year month day dow / thh tmm ts
 "D"$"2026.12.25"                    / string casts: "D"$ "T"$ "P"$
 ```
 
-Date columns sort with `xasc` and carry the `s#` attribute like any other; a `time` column
-in a table auto-renders as `HH:MM:SS.mmm`.
-
 ## Apache Arrow C Data Interface (zero dependency)
 
 Interop with **PyArrow / Polars / DuckDB** over the stable Arrow C ABI — no `libarrow`
-linkage. Export is **zero-copy** (Arrow buffers alias Amber's column payloads; a `release`
-callback drops the refcount when the consumer is done):
+linkage. Export is **zero-copy**:
 
 ```q
 p:arrow.export t                    / table  -> (schemaAddr; arrayAddr)  64-bit C-ABI pointers
@@ -189,17 +300,16 @@ Amber uses a terse array notation. A few things that differ from kdb+/q:
 * **qSQL is bare:** type `select … by … from … where …` (also `exec` / `update` / `delete`)
   with no `sel"…"` wrapper — bare column names like `wavg[sz;px]` just work.
 * **`peach[f;y]` is real multi-core** — it forks `AMBER_THREADS` worker processes (default 4;
-  `=1` forces serial), so heavy per-item work scales across cores with no GIL. Identical
-  results to `` f'y ``; best for coarse-grained compute (see BENCHMARKS.md §4).
+  `=1` forces serial), so heavy per-item work scales across cores with no GIL.
 * **Grids preview Q-style** — `show t` prints the first `CROWS` rows (default 20) then `..`, with
-  a dimmed `[N rows x M cols]` size footer and **ANSI syntax highlighting** — a vivid 256-colour,
-  14-hue per-column palette (`COLOR:0` to disable). Errors show a `^` caret under the failing
-  token plus a descriptive message (`'length: operands have mismatched counts`).
+  a dimmed `[N rows x M cols]` footer and ANSI syntax highlighting.
+* **Errors show a `^` caret** under the failing token plus a descriptive message; set
+  `AMBER_DIAG=1` for the full Rust-style report (see [Rust-style diagnostics](#rust-style-diagnostics)).
 * **Symbols have no `_`** — use a quoted symbol `` `"a_b" ``.
 * Tables: `([]col:vals;…)`; keyed tables: `([key:vals]col:vals)`. A bare table at the prompt
-  auto-renders as a grid (or `show t`).
+  auto-renders as a grid.
 
-Full reference: **[AMBER.md](AMBER.md)**. Built-in help: `\` then `\q \j \z` for the Amber
+Full reference: **[docs/AMBER.md](docs/AMBER.md)**. Built-in help: `\` then `\q \j \z` for the Amber
 vocabulary, `\0 \+ \' \`` for the core.
 
 ---
@@ -209,50 +319,46 @@ vocabulary, `\0 \+ \' \`` for the core.
 Auto-loaded after `amber.k`. Generate a market session and analyse it the way an HFT desk does:
 
 ```q
-gentq 100000                       / sets global `trades` and `quotes` (numeric times, `s on time, `p on sym)
+gentq 100000                       / sets global `trades` and `quotes`
+genopt 2000                        / sets global `options` (random option chain)
 m:aj[`sym`time; trades; quotes]    / TAQ: prevailing quote for every trade
 tsign m                            / Lee-Ready trade sign (+1 buy / -1 sell)
 effspread m                        / effective spread = 2|px-mid|
 qby[trades;`sym; `vwap!enlist {wavg[x`sz;x`px]}]   / VWAP by symbol
 bars[1; trades]                    / 1-minute OHLCV bars
-g:bysym trades                     / O(1) grouped index
-symrows[trades; g; `AAPL]          / all AAPL rows in O(1)
 ```
 
 Included: `mid spread spreadbps micro imbal` (book), `vwap twap tsign signedvol effspread
 notional` (trades), `ret logret rvol movavg movsum movmax movmin ema rollstd` (returns/vol),
-`bars symstats` (aggregation), `bysym symrows gidx` (O(1) index), `pt` (time-formatted print).
+`bars symstats` (aggregation), `bysym symrows gidx` (O(1) index), `genopt gentq` (generators).
 Walkthrough: `./amber examples/hft.k`.
 
 **Attributes.** Amber has all four kdb-style attributes in C: `` `sa`` sorted, `` `ua`` unique,
 `` `pa`` parted, `` `ga`` grouped (`` `at`` reads them, `meta` shows them). Sorted/parted give
-O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing
-(`bench-fin.k` ~ 20,000x vs a scan).
+O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 
 ## What's inside
 
 | file | |
 |------|--|
-| `a`, `build.sh` | launcher (build-if-stale) and portable compile |
-| `*.c`, `*.h` | the interpreter (`p.c` carries the `([]…)` table-literal parser) |
+| `a`, `build.sh` | launcher (build-if-stale) and portable compile (gcc / clang) |
+| `src/*.c`, `src/*.h` | the interpreter — ngn/k core + Amber extensions (`src/p.c` the `([]…)` parser; `src/ar.c` Arrow; `src/arena.{h,c}` the HFT arena; `src/diagnostic.{h,c}` the Rust-style formatter; the native `aj` kernel in `src/a.c`) |
 | `amber.k` | the q/kdb+ vocabulary (auto-loaded) |
-| `repl.k` | the REPL — banner, grid rendering, help |
-| `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `attributes.k` · `practice.k` |
+| `repl.k` | the REPL — banner, grid rendering, `\grid`/`\clear`, help; CRLF-safe module loader |
 | `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |
-| `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` | modules (auto-loaded): moving aggregates + C-kernel `ema`, bare qSQL, native temporal types, `.z/.Q/.j/.h` + `plot`/`candle` + `arrow`, on-disk, tick, **parallel `peach`** |
-| `ar.c` | zero-dependency Apache Arrow C Data Interface (`arrow.export`/`arrow.import`) |
-| `examples/peach.k` `examples/wj.k` `examples/graphs.k` | multi-core Monte-Carlo · C-kernel window join · 13-chart graphing tour |
-| `test.k` `test-fin.k` `test-ext.k` | 267-assertion suite (153 + 35 + 79) |
+| `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` `tick.k` | modules (auto-loaded) |
+| `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `peach.k` · `wj.k` · `graphs.k` · … |
+| `test.k` `test-fin.k` `test-ext.k` | 272-assertion suite (158 + 35 + 79) |
 | `bench.k` `bench-fin.k` `bench-std.k` `bench/` | attribute / index / window benchmarks; cross-engine harness |
-| `AMBER.md`, `MISSING.md`, `CHANGELOG.md`, `BENCHMARKS.md` | reference · roadmap · history · benchmarks |
+| `docs/` | `AMBER.md` (reference) · `MISSING.md` (roadmap) · `CHANGELOG.md` (history) · `BENCHMARKS.md` |
+| `.gitattributes` | forces LF checkout of sources so the REPL's line-based loader works on Windows too |
 
 ## Roadmap
 
-Amber covers a large slice of q. [MISSING.md](MISSING.md) is an honest map of what's next —
+Amber covers a large slice of q. [docs/MISSING.md](docs/MISSING.md) is an honest map of what's next —
 top picks: a **binary serialiser** (`` -8!``/`` -9!``) to replace the text transfer that `peach`,
-IPC and the on-disk layer all use; wiring the `` `g`` grouped attribute into the C find path;
-the missing atom types (`short`/`real`/`byte`/`guid`); and a true partitioned / memory-mapped
-HDB beyond the current text splay.
+IPC and the on-disk layer use; wiring the `` `g`` grouped attribute into the C find path; the
+missing atom types (`short`/`real`/`byte`/`guid`); and a true partitioned / memory-mapped HDB.
 
 <a name="isolation"></a>
 ## Isolation
@@ -264,5 +370,6 @@ uninstalls Amber completely.
 
 ## Licence
 
-GNU AGPLv3 (see [LICENSE](LICENSE)). Amber's interpreter core derives from an AGPLv3 k
-interpreter; that attribution is preserved in [NOTICE](NOTICE), as the licence requires.
+GNU AGPLv3 (see [LICENSE](LICENSE)). Amber's interpreter core derives from **ngn/k**, an AGPLv3
+K interpreter by ngn; that attribution is preserved in [NOTICE](NOTICE), as the licence requires.
+Amber is an independent language and is not affiliated with, nor a distribution of, that project.

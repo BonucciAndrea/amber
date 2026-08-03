@@ -12,6 +12,10 @@ fmtx:{$[(::)~x;"";`k[x],"\n"]}
 / error ergonomics: expand the one-word error to descriptive text, keep the core's ^ caret.
 edesc:`compile`domain`index`length`nyi`io`parse`rank`stack`type`value`limit!("compile: expression could not be compiled";"domain: value outside the valid domain for this operation";"index: index out of range";"length: operands have mismatched counts";"nyi: not implemented for these types";"io: input/output error";"parse: malformed expression";"rank: wrong number of arguments";"stack: call depth exceeded";"type: wrong type for this operation";"value: undefined name or empty value";"limit: implementation limit reached")
 onerr:{b:`err[];lns:"\n"\b;h:$[#lns;*lns;""];nm:`$$[(0<#h)&"'"~*h;1_h;h];`0:$[(0<#h)&|/nm=!edesc;("'",edesc nm),"\n","\n"/1_lns;b];}
+/ \grid clean|rounded|sharp|heavy : set the table border mode (root global GRID, via eval).
+gridcmd:{p:" "\x;$[1<#p;[m:`$p 1;$[4>`clean`rounded`sharp`heavy?m;[.:("GRID:`",$m);`1:"grid: ",($m),"\n"];`1:"grid: modes are clean rounded sharp heavy\n"]];`1:"grid: ",($(.:"GRID")),"\n"]}
+/ \clear : clear the terminal (scrollback + screen, cursor home).
+clearcmd:{`1:,/(((`c$27),"[3J");((`c$27),"[H");((`c$27),"[2J");"\n");}
 mMA:{(P;f;q):((,"!/+(";dct;,")");(("+![";" +(");tbl;")]");(,,"(";lst;,")"))`m`M`A?t:@x
  w:cols-#*P;u:w-#q;h:lines-2
  x:$[h<(`M=t)+#x;,[;,".."](h-1)#f[w;u;h#x];f[w;u;x]]
@@ -28,23 +32,26 @@ basename:{*|"/"\x}
 dirname:{$[#x:"/"/-1_"/"\x;x;,"."]}
 joinpath:{$[x~,".";y;"/"~*|x;x,y;x,"/",y]}
 line0:{c:{0x07~*-2#*x}{(l;r):x;(1:1;r,,(-2_l))}/(x;());"\n"/(*|c),,*c}
-line1:{$[#x;;:0];x:-1_x;$[(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;.[`1:(fmt;fmtx)[" "~*x]@.:;,(.:"qrw")x;onerr]];`1:prompt;1}
+line1:{$[#x;;:0];x:-1_x;$[(4<#x)&"\\grid"~5#x;gridcmd x;(5<#x)&"\\clear"~6#x;clearcmd[];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;.[`1:(fmt;fmtx)[" "~*x]@.:;,(.:"qrw")x;onerr]];`1:prompt;1}
 line:line1@line0@
 $["repl.k"~basename`argv 1;{cmds::@[cmds;x[1]1;:;{y;`0:x}2_x]}'{(&x~\:80#"-")_x:(1+*&x~\:,"/")_-1_x}@0:`argv 1;];
-run:{m:`bi 0;`1:(`c$27),"[4q";`1:"Amber v1.7 (",(m 2),"; ",(m 3),") — Columnar Time-Series Engine\nMemory: ",($0.1*_0.5+(m 0)%104857.6)," MB heap reserved | \\ for help command, \\\\ to exit\n\n",prompt;{line@1:`}::/`;}
+/ `bi 0 (process/build info) can throw 'domain on non-Linux builds (e.g. macOS);
+/ trap it so the banner still renders.  Returns (heap;used;arch;compiler).
+binfo:{.[{`bi 0};,0;(10485760;0;"arm64";"Darwin")]}
+run:{m:binfo[];`1:(`c$27),"[4q";`1:"Amber v1.7 (",(m 2),"; ",(m 3),") — Columnar Time-Series Engine\nMemory: ",($0.1*_0.5+(m 0)%104857.6)," MB heap reserved | \\ for help command, \\\\ to exit\n\n",prompt;{line@1:`}::/`;}
 \d .
 / load the Amber library by ABSOLUTE path derived from this script's own location,
 / so it works no matter what the current working directory is.
 dir::{$[#p:"/"/-1_"/"\x;p;"."]}`argv 1
-{.[{. x};,x;{}]}'0:dir,"/amber.k";
-{.[{. x};,x;{}]}'0:dir,"/fin.k";
+{.[{. x^(`c$13)};,x;{}]}'0:dir,"/amber.k";
+{.[{. x^(`c$13)};,x;{}]}'0:dir,"/fin.k";
 / v1.5 extended modules (order matters: std -> qsql -> temporal -> sys -> hdb -> ipc)
-{.[{. x};,x;{}]}'0:dir,"/std.k";
-{.[{. x};,x;{}]}'0:dir,"/qsql.k";
-{.[{. x};,x;{}]}'0:dir,"/temporal.k";
-{.[{. x};,x;{}]}'0:dir,"/sys.k";
-{.[{. x};,x;{}]}'0:dir,"/hdb.k";
-{.[{. x};,x;{}]}'0:dir,"/ipc.k";
+{.[{. x^(`c$13)};,x;{}]}'0:dir,"/std.k";
+{.[{. x^(`c$13)};,x;{}]}'0:dir,"/qsql.k";
+{.[{. x^(`c$13)};,x;{}]}'0:dir,"/temporal.k";
+{.[{. x^(`c$13)};,x;{}]}'0:dir,"/sys.k";
+{.[{. x^(`c$13)};,x;{}]}'0:dir,"/hdb.k";
+{.[{. x^(`c$13)};,x;{}]}'0:dir,"/ipc.k";
 $[.[{sum;1};,`;{0}];;`0:"amber: WARNING - amber.k did not load (is it next to repl.k?)\n"]
 
 $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
@@ -64,8 +71,12 @@ $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
   \a  license (AGPLv3)     \l file.k  load a script     \v  variables
   \d ns   namespace (\d .) \t:n expr  time n runs (ms)  \f  functions
   \cd path   change dir    \other     shell command     \\  exit
+  \grid MODE  table border: clean|rounded|sharp|heavy    \clear  clear screen
+
+  display knobs:  COLOR:0/1  PREC:n (float decimals; 0N=full)  CROWS:n (preview rows)
 
   quick start:    gentq 1000    meta trades    taq[trades;quotes]
+                  genopt 2000   select from options where abs[strike-spot]<5
 		  plot(select from taq[trades;quotes] where sym=`AAPL)`px
 
 --------------------------------------------------------------------------------
@@ -375,7 +386,15 @@ Amber finance / HFT module  (fin.k, auto-loaded after amber.k)
 
 DATA GENERATOR
   gentq n     sets globals  trades  and  quotes  (n trades, 2n quotes)
-              numeric times ; time is `s sorted , sym is `p parted (see meta)
+              realistic: per-symbol geometric random-walk mid, U-shaped intraday
+              volume/vol, spreads ~ price*vol, trades execute at the prevailing
+              NBBO (buy@ask/sell@bid, some price-improvement), liquidity-weighted
+              symbols.  numeric times ; time is `s sorted , sym is `p parted.
+  genopt n    sets global  options  : n random option contracts across
+              underlying x expiry x strike x call/put, Black-Scholes priced with
+              an IV smile + term structure.  cols: sym expiry strike right spot iv
+              price bid ask delta gamma vega theta volume oi.  (sym `p, strike `s)
+              tune the universe via  OBP OSIG OIV OQBPS OLIQW  (dicts on OUNI).
 
 ATTRIBUTES ON TABLE COLUMNS
   sortcol[c;t] mark col c `s      partcol[c;t] mark `p      groupcol[c;t] mark `g 

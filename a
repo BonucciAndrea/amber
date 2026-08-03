@@ -7,7 +7,7 @@ cd "$here"
 chmod +x "$here/a" "$here/build.sh" 2>/dev/null || true
 stale=0
 [ ! -x "$here/amber" ] && stale=1
-if [ -x "$here/amber" ] && [ -n "$(find "$here" -maxdepth 1 \( -name '*.c' -o -name '*.h' -o -name build.sh \) -newer "$here/amber" 2>/dev/null | head -1)" ]; then
+if [ -x "$here/amber" ] && [ -n "$(find "$here" -maxdepth 2 \( -name '*.c' -o -name '*.h' -o -name build.sh \) -newer "$here/amber" 2>/dev/null | head -1)" ]; then
   echo "amber: sources changed — rebuilding..." >&2; stale=1
 fi
 if [ "$stale" = 1 ]; then

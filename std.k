@@ -45,7 +45,7 @@ cast:{[t;x]$[t~`long;`i$x;t~`int;`i$x;t~`float;`f$x;t~`char;`c$x;t~`sym;`$x;t~`b
 / NOTE: this build is single-threaded, so peach evaluates sequentially with
 / each's semantics. Written as its own verb so code using peach is portable
 / to a threaded build; also exposed as .Q.fc (parallel-on-cut) in sys.k.
-peach:{x'y}
+peach:{`pe(x;y)}                                         / parallel each: fork AMBER_THREADS workers (C)
 
 / ---- timing ---------------------------------------------------------------
 / ts"expr"  ->  evaluates expr, prints elapsed ms, returns the result.

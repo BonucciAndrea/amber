@@ -1,5 +1,30 @@
 # Changelog
 
+## Unreleased — REPL diagnostics + cleanup
+- **`\v` rich workspace inspector.** `src/inspect.{h,c}` — every currently-defined global as an
+  ASCII table (Name / Type / Shape·Length / Memory), with a recursive deep-memory-footprint
+  walker (`iv_deepsize`) and a structural table-vs-dict classifier (`iv_as_table`) since both
+  share the `tM` heap tag in Amber.
+- **`\ast` AST visualiser.** `src/ast.{h,c}` — a parse-only, colour-coded tree view of an
+  expression (verbs bold cyan, binary ops bold magenta, variables yellow, scalars green, vectors
+  cyan, function application bold blue, list literals bold green, block separators dim gray),
+  built from the same shape-dispatch `cr()` uses to compile.
+- **`\trace` execution profiler.** `src/trace.{h,c}` — 4-phase timing (parse / arena setup /
+  execute / format) via `clock_gettime(CLOCK_MONOTONIC)`, a Unicode block-bar report, and the
+  arena's peak scratch usage for that one evaluation. Runs the input through the same
+  `qsql.k`/`qrw` rewrite the interactive prompt uses first, so tracing a table expression or a
+  bare `select … from … where …` query renders and profiles correctly instead of failing to parse.
+- **`\timer` removed.** An earlier execution-timer badge (`src/badge.{h,c}`) was tried and then
+  explicitly removed at the request of the project owner; `\v`/`\ast`/`\trace` above are its
+  replacements for workspace/perf visibility.
+- **Cleanup.** Consolidated three copies of a `fmt_bytes()` helper (`inspect.c`, `trace.c`,
+  `badge.c`) into `src/fmtutil.{h,c}`; consolidated a duplicated `C_RST` ANSI-reset macro
+  (`ast.c`, `diagnostic.c`) into `src/ansi.h`; removed dead code (`diagnostic.c`'s unused `Span
+  all`, unused `<string.h>`/`<stdint.h>` includes); fixed two feature-test-macro gaps
+  (`_POSIX_C_SOURCE`/`_DEFAULT_SOURCE`) that broke a strict `-std=c99` build of `trace.c`/`m.c`;
+  tree compiles warning-clean under `-Wall -Wextra -std=c99` (aside from pre-existing sign-compare
+  noise from `a.h`'s `LH`/`TU` macros) and passes the full `test.k` suite (158/158).
+
 ## 1.9 — Mac integration + HFT features
 - **Native `aj` as-of-join kernel.** `aj`/`aj0` now compute their match indices in C
   (`src/a.c`, `ajc` + `ajlb`) instead of the per-row K `bin`. For each trade the kernel does a

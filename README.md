@@ -91,8 +91,14 @@ Nothing is installed system-wide — see [Isolation](#isolation).
 
 ## A quick taste
 
+> These snippets are written as you'd type them at the interactive prompt (`./a`), where a bare
+> table auto-renders as a grid and qSQL sugar (`select … by … from … where …`) works directly on
+> the input line. Inside a `.k` script run via `./amber file.k`, wrap a bare table in `show`
+> (`show t`) for the grid view, and use the `sel"…"` string form (or `qselect`/`qby`/`qwhere`
+> directly) for qSQL — exactly the pattern used throughout `examples/*.k` and `test.k`.
+
 ```q
-/ tables are first-class and render without `show`
+/ tables are first-class and render without `show` -- at the interactive prompt
 ([]sym:`a`b`c; px:100 200 300)
 /  sym px
 /  -------
@@ -183,6 +189,86 @@ nothing about the default output. You can exercise the formatter directly from A
 
 Turn it on for a session and leave it: it costs one `getenv` per error and never fires on
 success.
+
+---
+
+## REPL diagnostics (`\v` · `\ast` · `\trace`)
+
+Three zero-dependency session commands for inspecting the workspace and the evaluator itself —
+none of them touch `eval`/`arena`/core REPL behaviour; they only read state and print a report.
+
+**`\v`** — a rich workspace inspector: every currently-defined global as an ASCII table
+(Name / Type / Shape·Length / Memory), with a recursive deep-memory-footprint walker so table
+and nested-list sizes are real, not a shallow guess:
+
+```
+amber> t:([]a:1 2 3;b:10 20 30)
+amber> \v
++-------------+---------------+----------------+---------+
+| Name        | Type          | Shape / Length | Memory  |
++-------------+---------------+----------------+---------+
+| repl.prompt | Char Vector   | 7              | 64 B    |
+| repl.edesc  | Table         | 41 x 12        | 1.5 KB  |
+| PAL         | List          | 14             | 1.1 KB  |
+| ...         | ...           | ...            | ...     |
+| t           | Table         | 3 x 2          | 320 B   |
++-------------+---------------+----------------+---------+
+```
+
+`\v` lists *every* global in scope, which after `repl.k`'s modules are loaded includes the
+REPL/library's own internal state (`repl.*`, `PAL`, `GB`, `OUNI`, …) alongside your own — scan
+for the names and types you defined, or `\d yourns` first to narrow the namespace.
+
+**`\ast`** — a colour-coded parse tree (parse-only; nothing is executed):
+
+```
+amber> \ast (1+2)*3-4
+Root
+└── Binary Op : * (Multiply)     / bold magenta - binary operators
+    ├── Binary Op : + (Add)
+    │   ├── Scalar : 1            / green - scalar literals
+    │   └── Scalar : 2
+    └── Binary Op : - (Subtract)
+        ├── Scalar : 3
+        └── Scalar : 4
+```
+
+Verbs/adverb-derived verbs render bold cyan, binary operators bold magenta, variables yellow,
+scalars green, vectors plain cyan, function application bold blue, list literals bold green, and
+block separators dim gray — so the shape of an expression reads at a glance.
+
+**`\trace`** — a 4-phase execution profiler (parse → arena setup → execute → format), with a
+Unicode bar chart and the arena's peak scratch usage for that one evaluation. It prints the
+expression's normal result first, then the report (timings vary run to run):
+
+```
+amber> \trace (1+2)*3-4
+-3
++-------------------------------------------------------+
+| Parse         11us  [■■                  ]   8.2% |
+| Arena          5us  [■                   ]   4.3% |
+| Execute        4us  [■                   ]   3.7% |
+| Format       113us  [■■■■■■■■■■■■■■■■■   ]  83.9% |
++-------------------------------------------------------+
+| Total: 135us     Arena peak: 0 B                       |
++-------------------------------------------------------+
+```
+
+`\trace` runs the same `select … by … from … where …` rewrite the interactive prompt uses, so
+tracing a table expression or a bare qSQL query renders and profiles correctly:
+
+```
+amber> \trace select from t where a>1
++`a`b!(2 3;20 30)
++-------------------------------------------------------+
+| Parse          2us  [                    ]   0.9% |
+| Arena          3us  [                    ]   1.3% |
+| Execute      212us  [■■■■■■■■■■■■■■■     ]  76.7% |
+| Format        58us  [■■■■                ]  21.1% |
++-------------------------------------------------------+
+| Total: 276us     Arena peak: 0 B                       |
++-------------------------------------------------------+
+```
 
 ---
 
@@ -297,8 +383,10 @@ Amber uses a terse array notation. A few things that differ from kdb+/q:
 * **Two-argument library functions take brackets:** `aj[c;x;y]`, `lj[t;kt]`, `in[x;y]`,
   `xasc[`sym;t]`. Built-in symbols (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) are still infix.
 * **No `>=` / `<=`** — write `~a<b` and `~a>b`.
-* **qSQL is bare:** type `select … by … from … where …` (also `exec` / `update` / `delete`)
-  with no `sel"…"` wrapper — bare column names like `wavg[sz;px]` just work.
+* **qSQL is bare — at the prompt:** type `select … by … from … where …` (also `exec` / `update` /
+  `delete`) with no `sel"…"` wrapper — bare column names like `wavg[sz;px]` just work. This
+  line-level rewriting is a REPL convenience; inside a `.k` script use `sel"select …"` (also
+  `exq"…"` `upd"…"` `del"…"`) or the functional forms `qselect`/`qby`/`qwhere` directly.
 * **`peach[f;y]` is real multi-core** — it forks `AMBER_THREADS` worker processes (default 4;
   `=1` forces serial), so heavy per-item work scales across cores with no GIL.
 * **Grids preview Q-style** — `show t` prints the first `CROWS` rows (default 20) then `..`, with
@@ -310,7 +398,8 @@ Amber uses a terse array notation. A few things that differ from kdb+/q:
   auto-renders as a grid.
 
 Full reference: **[docs/AMBER.md](docs/AMBER.md)**. Built-in help: `\` then `\q \j \z` for the Amber
-vocabulary, `\0 \+ \' \`` for the core.
+vocabulary, `\0 \+ \' \`` for the core, `\v \ast \trace` for the session/diagnostic tools (see
+[REPL diagnostics](#repl-diagnostics-v--ast--trace) below).
 
 ---
 
@@ -342,7 +431,7 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 | file | |
 |------|--|
 | `a`, `build.sh` | launcher (build-if-stale) and portable compile (gcc / clang) |
-| `src/*.c`, `src/*.h` | the interpreter — ngn/k core + Amber extensions (`src/p.c` the `([]…)` parser; `src/ar.c` Arrow; `src/arena.{h,c}` the HFT arena; `src/diagnostic.{h,c}` the Rust-style formatter; the native `aj` kernel in `src/a.c`) |
+| `src/*.c`, `src/*.h` | the interpreter — ngn/k core + Amber extensions (`src/p.c` the `([]…)` parser; `src/ar.c` Arrow; `src/arena.{h,c}` the HFT arena; `src/diagnostic.{h,c}` the Rust-style formatter; the native `aj` kernel in `src/a.c`; `src/inspect.{h,c}` the `\v` inspector; `src/ast.{h,c}` the `\ast` visualiser; `src/trace.{h,c}` the `\trace` profiler; `src/fmtutil.{h,c}` and `src/ansi.h` shared formatting/colour helpers) |
 | `amber.k` | the q/kdb+ vocabulary (auto-loaded) |
 | `repl.k` | the REPL — banner, grid rendering, `\grid`/`\clear`, help; CRLF-safe module loader |
 | `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |

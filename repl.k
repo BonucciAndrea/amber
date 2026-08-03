@@ -68,16 +68,20 @@ $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
   \m  finance / HFT module (fin.k)          \h  core cheat-sheet
   
   session
-  \a  license (AGPLv3)     \l file.k  load a script     \v  variables
+  \a  license (AGPLv3)     \l file.k  load a script     \v  variables (rich inspector)
   \d ns   namespace (\d .) \t:n expr  time n runs (ms)  \f  functions
   \cd path   change dir    \other     shell command     \\  exit
   \grid MODE  table border: clean|rounded|sharp|heavy    \clear  clear screen
+
+  diagnostics
+  \ast expr    coloured parse-tree (AST) of an expression, parse-only
+  \trace expr  4-phase timing (parse/arena/exec/format) + arena peak memory
 
   display knobs:  COLOR:0/1  PREC:n (float decimals; 0N=full)  CROWS:n (preview rows)
 
   quick start:    gentq 1000    meta trades    taq[trades;quotes]
                   genopt 2000   select from options where abs[strike-spot]<5
-		  plot(select from taq[trades;quotes] where sym=`AAPL)`px
+                  plot(select from taq[trades;quotes] where sym=`AAPL)`px
 
 --------------------------------------------------------------------------------
 \0

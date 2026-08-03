@@ -2,7 +2,6 @@
  * GNU AGPLv3 - see LICENSE and NOTICE.  See arena.h for the contract. */
 #include "arena.h"
 #include <stdlib.h>
-#include <stdint.h>
 
 #define ARENA_DEFAULT ((size_t)16u * 1024u * 1024u) /* 16 MB per thread */
 #define ARENA_ALIGN   ((size_t)16u)                 /* SIMD-friendly alignment */

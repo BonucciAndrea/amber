@@ -1,6 +1,7 @@
 /* diagnostic.c  -  Amber Rust-style visual diagnostic error reports.
  * GNU AGPLv3 - see LICENSE and NOTICE.  See diagnostic.h for the contract. */
 #include "diagnostic.h"
+#include "ansi.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -10,7 +11,7 @@
 #define C_LOC  "\x1b[1;34m"  /* bold blue   : --> and gutter |   */
 #define C_CAR  "\x1b[1;31m"  /* bold red    : ^^^ underlines     */
 #define C_HLP  "\x1b[1;36m"  /* bold cyan   : = help             */
-#define C_RST  "\x1b[0m"
+#define C_RST  ANSI_RST
 
 /* ---- tiny bounded string builder (snprintf semantics) -------------------- */
 typedef struct { char *buf; size_t cap; size_t len; } SB;
@@ -93,7 +94,6 @@ size_t report_diagnostic(char *buf, size_t buflen,
     {
         /* rightmost caret column, so we know how far to sweep */
         uint32_t maxc = 0;
-        Span all;
         size_t sidx;
         for (sidx = 0; sidx <= nsecondary; sidx++) {
             Span sp = (sidx == 0) ? primary : secondary[sidx - 1];
@@ -102,7 +102,6 @@ size_t report_diagnostic(char *buf, size_t buflen,
             uint32_t c1 = c0 + (sp.end > sp.start ? sp.end - sp.start : 1);
             if (c1 > maxc) maxc = c1;
         }
-        (void)all;
         sb_col(&sb, color, C_CAR);
         for (uint32_t c = 0; c < maxc; c++) {
             int caret = 0;

@@ -15,6 +15,7 @@
  */
 #include "a.h"
 #include "inspect.h"
+#include "fmtutil.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -22,7 +23,8 @@
 typedef struct {
     char name[64];
     char type[24];
-    char shape[32];
+    char shape[64]; /* wide enough for comma-formatted "rows x cols" even
+                      * when both dimensions run into the billions */
     char mem[16];
 } IvRow;
 
@@ -45,15 +47,6 @@ static void fmt_int_commas(long long n, char *buf, size_t buflen) {
         if (k > 0 && k % 3 == 0) buf[bi++] = ',';
     }
     buf[bi < buflen ? bi : buflen - 1] = 0;
-}
-
-static void fmt_bytes(double bytes, char *buf, size_t buflen) {
-    if (bytes >= 1024.0 * 1024.0)
-        snprintf(buf, buflen, "%.1f MB", bytes / (1024.0 * 1024.0));
-    else if (bytes >= 1024.0)
-        snprintf(buf, buflen, "%.1f KB", bytes / 1024.0);
-    else
-        snprintf(buf, buflen, "%.0f B", bytes);
 }
 
 static const char *iv_typename(UC t) {
@@ -96,7 +89,7 @@ static const char *iv_typename(UC t) {
 static size_t iv_deepsize(A v, int depth) {
     if (_t0(v) || depth > 32) return sizeof(A);
     size_t bucket = (size_t)HD << _b(v);
-    size_t raw = (size_t)HD + ((((size_t)_n(v)) << _w(v)) + 7 >> 3);
+    size_t raw = (size_t)HD + (((((size_t)_n(v)) << _w(v)) + 7) >> 3);
     size_t bytes = raw > bucket ? raw : bucket;
     if (TR(_t(v))) {
         U n = _n(v);
@@ -113,7 +106,7 @@ static A _a1(A v) { return _A(v)[0]; }
 /* `v` looks like a table iff it's a 2-element {names;values} pair whose
  * names are symbols and whose values are a non-empty ref-holding list (one
  * entry per column) with a first column we can measure. On success, fills
- * *rows/*cols and returns 1; otherwise returns 0 (plain dict, or something
+ * *rows / *cols and returns 1; otherwise returns 0 (plain dict, or something
  * with a nonconforming shape). */
 static int iv_as_table(A v, long long *rows, long long *cols) {
     UC t = _t(v);
@@ -183,7 +176,7 @@ void iv_print(void) {
         size_t m = strlen(g_rows[i].mem);    if (m > wm) wm = m;
     }
 
-    char rule[256];
+    char rule[512];
     snprintf(rule, sizeof rule, "+-%.*s-+-%.*s-+-%.*s-+-%.*s-+\n",
         (int)wn, "--------------------------------------------------------------",
         (int)wt, "--------------------------------------------------------------",

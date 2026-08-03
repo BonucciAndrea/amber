@@ -1,7 +1,17 @@
+/* Feature-test macro must precede every system header (a.h pulls in
+ * <unistd.h> on its very first line) or a strict `-std=c99` build hides
+ * BSD-ism declarations like MAP_ANON that mm() below already relies on.
+ * This does not change any evaluation/memory logic -- it only unlocks
+ * declarations the code already uses. */
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include"arena.h"
 #include<unistd.h>
 #include"inspect.h" // \v rich variable inspector
+#include"ast.h"     // \ast AST visualizer
+#include"trace.h"   // \trace execution profiler
 #if defined(__x86_64__)
  #define AMARCH "x86-64"
 #elif defined(__aarch64__)
@@ -100,6 +110,28 @@ A gg(A x/*1*/)_(//get value of global
 A*gp(A x/*1*/)_(U i=gi(x);x(0);gv+i)//get pointer to global
 A gns(U k)_(I a[L(gk)];U n=0;F(gn,I(gk[i]>>32==k,a[n++]=gk[i]))aV(tS,n,a))//list namespace
 
+// try_rewrite: apply the K-level `qrw` SQL-syntax rewriter (defined in
+// qsql.k, e.g. `select sym,px from t`) to raw input text, IF qrw is
+// currently defined (i.e. the stdlib has been loaded). Copies the
+// rewritten text into `buf` (size `n`) and returns it; falls back to the
+// untouched `raw` pointer if qrw isn't loaded or the rewrite itself fails,
+// so it is always safe to call. Used by \trace (trace.c) so tracing a
+// SQL-style query traces the plain-K expression it rewrites to -- exactly
+// what the interactive REPL's own line1 already does (see repl.k).
+S try_rewrite(S raw, C *buf, N n) {
+    A nm = sym("qrw");
+    W k = gkk(nm);
+    U i = fL(gk, gn, k);
+    if (i >= gn || !gv[i]) return raw;      // qsql.k not loaded: leave as-is
+    A f = _R(gv[i]);
+    A y = _1(f, aCz(raw));                  // qrw[raw] -> rewritten string (or 0 on error)
+    if (!y || _t(y) != tC) { if (y) mr(y); return raw; }
+    N m = _n(y); if (m >= n) m = n - 1;
+    MC(buf, _C(y), m); buf[m] = 0;
+    mr(y);
+    return buf;
+}
+
 Z A bs0(S s)_(en0())
 Z A bsbs(S s)_(exit(0);0)
 Z A bscd(S s)_(P(!*s,C b[256];getcwd(b,SZ b)?eo0():aCz(b))chdir(s)?eo0():au)
@@ -111,7 +143,14 @@ Z A bst(S s)_(L n=s[-1]=='t'&&*s==':'?++s,pl(&s):1;S p=s;A x=N(pk(&p,10));x=N(cp
 // each non-function global to inspect.[ch] for classification/formatting.
 Z V iv_render(V){iv_begin();F(gn,I(gv[i],A x=gv[i];I(TU(_t(x)),continue)W k=gk[i];U ns=(U)(k>>32),sy=(U)k;C nb[80];I(ns,snprintf(nb,SZ nb,"%s.%s",su(ns),su(sy)))E(snprintf(nb,SZ nb,"%s",su(sy)))iv_add(nb,x)))iv_print();}
 Z A bsv(S s)_(iv_render();au)
+// \ast <expr>: parse-only tree visualizer (ast.h). Never compiles/runs `s`.
+Z A bsast(S s)_(ast_cmd(s))
+// \trace <expr>: timed parse/compile/exec/print wrapper (trace.h). Evaluates
+// `s` exactly like a normal line, plus prints a phase-timing breakdown.
+Z A bstrc(S s)_(trace_cmd(s))
 Z A bs_(S*p)_(C b[256];S s=*p,e=strchrnul(s,10);P(e-s+1>=L(b),ez0())MC(b,s,e-s);b[e-s]=0;*p=e+!!*e;C c=*b,d=b[1];P(c=='c'&&d=='d'&&(!b[2]||b[2]==32),bscd(b+2+(b[2]==32)))
+ P(!strncmp(b,"trace",5)&&(!b[5]||b[5]==32),bstrc(b+5+(b[5]==32)))
+ P(!strncmp(b,"ast",3)&&(!b[3]||b[3]==32),bsast(b+3+(b[3]==32)))
  P(!d||d==10||d==32||d==':',G(&bsl,bst,bsd,bsbs,bsf,bsv,bsm,bs0)[si("ltd\\fvm",c)](b+1+(d==32)))K1("0x0a\\`x(,,\"/bin/sh\"),,:",aCz(b)))
 
 Z A evs1(S*p)_(S s=*p;P(*s=='\\',++*p;bs_(p))A x=pk((V*)p,10);N(x);x=N(cpl(aCm(s,*p),x,0));x(run(x,0,0)))

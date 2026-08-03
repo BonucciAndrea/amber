@@ -1,4 +1,52 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+#include"arena.h"
+#include"diagnostic.h"
+// ---- HFT as-of join kernel ------------------------------------------------
+// branch-free lower_bound over a sorted long slice a[lo,hi): first i with a[i]>=key.
+// The ternaries lower to cmov under -O3, so there are no data-dependent branches.
+Z U ajlb(CO L*RES a,U lo,U hi,L key){
+ U n=hi-lo,pos=lo;
+ while(n>0){U half=n>>1,mid=pos+half;int lt=a[mid]<key;pos=lt?mid+1:pos;n=lt?n-half-1:half;}
+ return pos;}
+// aj[syms;trade;quote] as-of match kernel.  x=(qt;tt;gb;ge)  (marshalled by aj in amber.k)
+//  qt     sorted long quote-timestamp vector (ascending within each group slice)
+//  tt     long trade-timestamp vector (length nt)
+//  gb,ge  per-trade group slice [base,end) into qt (length nt)
+// returns long vector m (length nt): global index of the most-recent quote whose
+//  timestamp is on-or-before the trade, or 0N (NL) when the slice is empty or no quote
+//  precedes the trade.  O(nt*log w); one arena scratch buffer, no per-row malloc.
+A ajc(A x){
+ P(_t(x)-tA||_n(x)-4,et(x))
+ A*e=(A*)_V(x);
+ A QT=N(cL(_R(e[0]))),TT=N(cL(_R(e[1]))),GB=N(cL(_R(e[2]))),GE=N(cL(_R(e[3])));
+ CO L*qt=_V(QT),*tt=_V(TT),*gb=_V(GB),*ge=_V(GE);
+ U nt=_n(TT);
+ A out=aL(nt);L*m=_V(out);
+ arena_reset();                              // start a fresh scratch region for this eval
+ L*w=(L*)arena_alloc((N)nt*SZ(L));           // transient match-index vector (zero-alloc bump)
+ F(nt,
+   L b=gb[i],en=ge[i];
+   I(b==NL||en==NL||en<=b,w[i]=NL;continue)
+   U j=ajlb(qt,(U)b,(U)en,tt[i]+1);          // first quote strictly after the trade
+   w[i]=(j>(U)b)?(L)(j-1):NL;)               // step back to on-or-before, else null
+ F(nt,m[i]=w[i])
+ arena_reset();                              // rewind scratch at end of the eval cycle
+ mr(QT);mr(TT);mr(GB);mr(GE);
+ return x(out);}
+// arena self-test builtin (`arn): exercise bump / reset / overflow -> 1 on success.
+A1(arnT,arena_init(1<<16);B ok=1;
+ C*p=(C*)arena_alloc(100),*q=(C*)arena_alloc(200);ok&=!!p&&!!q&&(q>=p+100);
+ F(100,p[i]=(C)i)ok&=p[42]==42;ok&=arena_used()>=300;
+ arena_reset();ok&=arena_used()==0;
+ C*big=(C*)arena_alloc(1<<20);ok&=!!big;I(big,big[0]=7;big[(1<<20)-1]=9;ok&=big[0]==7&&big[(1<<20)-1]==9)
+ arena_reset();ok&=arena_used()==0;x(al((L)ok)))
+// diagnostic self-test builtin (`dgn): render the reference report, verify its structure.
+A1(dgnT,CO C*src="x:1 2 3\n  prices + sizes\n";
+ U pp=(U)(strstr(src,"prices")-src),sp=(U)(strstr(src,"sizes")-src);
+ Span pr=span_at(src,pp,pp+6),se=span_at(src,sp,sp+5);C buf[2048];
+ report_diagnostic(buf,SZ buf,"E0104","Vector length mismatch","test.k",pr,&se,1,"Both vectors must have matching lengths for element-wise `+`.",0);
+ B ok=!!strstr(buf,"error[E0104]: Vector length mismatch")&&!!strstr(buf,"--> test.k:2:")&&!!strstr(buf,"prices + sizes")&&!!strstr(buf,"^^^^^^")&&!!strstr(buf,"= help:");
+ x(al((L)ok)))
 Z A1(sam,x)V_;T_;U _K(A x/*0*/)_(X(R2(tu,tw,1)Rv(2)Rx(x>>48&15)Ropqr(xk))0)
 X1(mkn,RmMA(e1f(mkn,x))Rt(x(_R(cn[xt])))R_(x(rsz(xN,_R(cn[xt])))))
 A1(iei,/*0*/0x2332211004>>(xv*(xtv&&xv<10u)<<2)&15)
@@ -55,8 +103,8 @@ Z A1(qpa,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=3;x)//amber: `p par
 Z A1(qga,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=4;x)//amber: `g grouped
 Z A1(qat,UC a=(_tP(x)||!LH(tG,_t(x),tS))?0:_at(x);x(0);a?({C b[2]={"\0supg"[a],0};sym(b);}):as(0))//amber: get attribute
 ZN AX(ext,P(n-xK,er8(a,n))V*f=(V*)(x&-1ull>>16);S(n,R(1,((A1*)f)(a[0]))R(2,((A2*)f)(a[0],a[1]))R(3,((A3*)f)(a[0],a[1],a[2]))R(4,((A4*)f)(a[0],a[1],a[2],a[3]))R_(en8(a,n)))0)
-ZN A sym1(I v,A x)_(Z CO C s[][4]={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim"};
- G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,ed)[fI((V*)s,L(s),v)](x))
+ZN A sym1(I v,A x)_(Z CO C s[][4]={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","aj","arn","dgn"};
+ G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,ajc,arnT,dgnT,ed)[fI((V*)s,L(s),v)](x))
 A2(_1,/*01*/P(!xtt,i1(x,y))U k=xK;P(1<k,k==2&&!xtp?prj(x,A8(y,GAP),2):prj(x,&y,1))
  X(Ro(run(x,&y,1))Rp(P(k>7,er(y))I m=xn-1,j=0;Ab8;F(m,b[i]=xA[i+1]==GAP&&!j?j++,y:_R(xA[i+1]))I l=MAX(0,1-j);MC(b+m,&y,8*l);_8(xx,b,m+l))
   Rq(_1(xx,N(_1(xy,y))))Rr(w1(xE,xx,y))Rs(sym1(xv,y))Ru(v1[xv](y))Rw(AK(xv-1<3u&&yK==2?1:ytU?yK:1,AW(xv,aV(tr,1,&y))))Rx(ext(x,&y,1))R_(et(y)))0)

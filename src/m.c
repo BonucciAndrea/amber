@@ -1,4 +1,5 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+#include"arena.h"
 #include<unistd.h>
 #if defined(__x86_64__)
  #define AMARCH "x86-64"
@@ -110,7 +111,7 @@ Z A bs_(S*p)_(C b[256];S s=*p,e=strchrnul(s,10);P(e-s+1>=L(b),ez0())MC(b,s,e-s);
  P(!d||d==10||d==32||d==':',G(&bsl,bst,bsd,bsbs,bsf,bsv,bsm,bs0)[si("ltd\\fvm",c)](b+1+(d==32)))K1("0x0a\\`x(,,\"/bin/sh\"),,:",aCz(b)))
 
 Z A evs1(S*p)_(S s=*p;P(*s=='\\',++*p;bs_(p))A x=pk((V*)p,10);N(x);x=N(cpl(aCm(s,*p),x,0));x(run(x,0,0)))
-A evs(S s,B r)_(W(*s,A x=evs1(&s);P(!x,I(r,s=strchrnul(s,10);s+=!!*s;epr(0))0)I(r,x(out(x)))E(P(!*s,x)x(0))mc())au)
+A evs(S s,B r)_(W(*s,A x=evs1(&s);P(!x,I(r,s=strchrnul(s,10);s+=!!*s;epr(0))0)I(r,x(out(x)))E(P(!*s,x)x(0))mc();arena_reset())au)//arena_reset: rewind HFT scratchpad at end of each eval cycle
 B rep()_(Z C b[256];C*s=b,*q;
  W(1,L n=read(0,s,b-s+SZ b);P(n<=0,0)s+=n;q=memchr(s-n,10,n);
      P(q,C*p=b;W(q,*q=0;evs(p,1);p=q+1;q=memchr(p,10,s-p))MC(b,p,s-p);s+=b-p;1)
@@ -121,7 +122,7 @@ A cns,cn[tn];Z A ce[tn];S*argv,*env;
 V kinit(){Z B l;P(l)l=1;pg=sysconf(_SC_PAGESIZE);A b[32],*c=b;
  F(tS-tA+1,*c++=ce[tA+i]=an(0,tA+i))*c++=ce[tm]=am(emp(tS),emp(tA));_x(ce[tA])=_R(ce[tC]);ce[tM]=ce[tA];F(tn-ti,Q(!ce[i+ti]);ce[i+ti]=ce[tA])//empties
  cn[tA]=ce[tC];*c++=cn[ti]=cn[tl]=al(NL);F(tL-tE+1,cn[tE+i]=cn[ti])*c++=cn[tF]=cn[tf]=af(NF);cn[tC]=cn[tc]=ac(32);cn[tS]=cn[ts]=as(0);F(tn-to,cn[to+i]=au)//nulls
- Q(c-b<=32);cns=aV(tA,c-b,b);}
+ Q(c-b<=32);cns=aV(tA,c-b,b);arena_init(0);}//arena_init: reserve the 16MB HFT scratchpad
 V kargs(I n,S*a){argv=(S*)a;env=(S*)a+n+1;n=MAX(0,n-2);A x=n?aA(n):emp(tA);F(n,xa=aCz(a[2+i]))gk[gn]='x';gv[gn++]=x;}
 A emp(U t)_(_R(ce[t]))
 

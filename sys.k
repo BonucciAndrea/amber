@@ -44,8 +44,8 @@ j.j:{jenc x}                               / value -> JSON string
 j.k:{`j? x}                                / JSON string -> value
 
 / ---- terminal charting : braille line + unicode candlesticks -------------
-plot:{`0:`plt x;}                          / braille line chart:  plot y   or   plot (y;W;H)
-candle:{x:unkey x;p:{[t;n;a;b]t@$[in[a;n];a;b]}[x;cols x];`0:`cdl (p[`open;`o];p[`high;`h];p[`low;`l];p[`close;`c]);}  / candlestick from OHLC table
+plot:{`0:`plt x;}                          / braille line chart:  plot y | plot(y;W;H) | plot(y;W;H;mode)  (mode 0=centre line[default],1=hi/lo band,2=both; big series auto-decimated to screen width)
+candle:{x:unkey x;cn:cols x;p:{[t;n;a;b]t@$[in[a;n];a;b]}[x;cn];oh:(p[`open;`o];p[`high;`h];p[`low;`l];p[`close;`c]);lc:cn@&~in[cn;`open`high`low`close`o`h`l`c`v`vol`volume`sym`s];`0:`cdl $[#lc;oh,,$'x@lc 0;oh];}  / candlestick from OHLC table; a non-OHLC column (e.g. time) labels the x-axis
 
 / ---- arrow : Apache Arrow C Data Interface (zero-dependency, C ABI) -------
 arrow.export:{x:unkey x;`aex (cols x;value flip x)}   / table -> (schemaAddr;arrayAddr) 64-bit C ABI pointers

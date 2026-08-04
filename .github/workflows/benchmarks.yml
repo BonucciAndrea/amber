@@ -1,0 +1,158 @@
+name: comparative benchmarks
+
+# Runs Amber's own test suite, then a comparative timing harness against
+# DuckDB, CBQN, and a K interpreter, on every push to main and every PR.
+# docs/BENCHMARKS.md is auto-updated on main; PRs instead get the same
+# table posted as a sticky (auto-updating) comment so reviewers can see the
+# performance impact of a change without digging through workflow logs.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: benchmarks-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  benchmark:
+    name: build + comparative benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y build-essential curl unzip
+
+      # ---------------------------------------------------------------
+      # 1. Portable single-binary runtimes for DuckDB CLI and CBQN.
+      #    Each download is best-effort: if a release asset URL goes stale
+      #    upstream, the step logs it and continues rather than failing the
+      #    whole workflow -- bench/run_comparative.py already treats a
+      #    missing engine as "not installed" and keeps going, so a partial
+      #    toolset still produces a useful (partial) benchmark table.
+      # ---------------------------------------------------------------
+      - name: Download DuckDB CLI
+        continue-on-error: true
+        run: |
+          set -x
+          mkdir -p /tmp/bench_tools
+          cd /tmp/bench_tools
+          curl -fsSL -o duckdb.zip \
+            "https://github.com/duckdb/duckdb/releases/latest/download/duckdb_cli-linux-amd64.zip"
+          unzip -o duckdb.zip duckdb
+          chmod +x duckdb
+          ./duckdb -c "select 'duckdb ok'"
+
+      - name: Download CBQN
+        continue-on-error: true
+        run: |
+          set -x
+          mkdir -p /tmp/bench_tools
+          cd /tmp/bench_tools
+          curl -fsSL -o cbqn "https://github.com/dzaima/CBQN/releases/latest/download/CBQN-linux-x86_64"
+          chmod +x cbqn
+          ./cbqn -e "•Show 1+1" || true
+
+      - name: Build CBQN from source (fallback if the prebuilt binary above failed)
+        if: hashFiles('/tmp/bench_tools/cbqn') == ''
+        continue-on-error: true
+        run: |
+          set -x
+          git clone --depth 1 https://github.com/dzaima/CBQN /tmp/CBQN-src
+          cd /tmp/CBQN-src
+          make o3n CC=gcc -j"$(nproc)"
+          cp BQN /tmp/bench_tools/cbqn
+          chmod +x /tmp/bench_tools/cbqn
+
+      # ---------------------------------------------------------------
+      # 2. ngn/k for comparative K executions. It's a single C file, so
+      #    building from source is fast and avoids depending on any
+      #    prebuilt-binary release existing. Falls back to nothing (the
+      #    harness marks the K column "not installed") if this ever breaks.
+      # ---------------------------------------------------------------
+      - name: Build ngn/k
+        continue-on-error: true
+        run: |
+          set -x
+          git clone --depth 1 https://github.com/ngn/k /tmp/ngnk-src
+          cd /tmp/ngnk-src
+          gcc -O2 -o /tmp/bench_tools/k k.c || cc -O2 -o /tmp/bench_tools/k k.c
+          chmod +x /tmp/bench_tools/k
+          echo '1+1' | /tmp/bench_tools/k || true
+
+      - name: Report which comparative tools are available
+        run: |
+          ls -la /tmp/bench_tools/ || true
+
+      # ---------------------------------------------------------------
+      # 3. Build Amber natively with maximum optimizations.
+      # ---------------------------------------------------------------
+      - name: Build Amber (gcc -O3 -march=native)
+        run: |
+          CC=gcc AMBER_NATIVE=1 ./build.sh
+          ./amber -e '1+1' >/dev/null 2>&1 || true
+
+      # ---------------------------------------------------------------
+      # 4. Existing unit test suite must pass before we trust any timing.
+      # ---------------------------------------------------------------
+      - name: Run existing unit tests
+        run: |
+          set -e
+          out=$(./amber test.k)
+          echo "$out"
+          echo "$out" | grep -Eq '0 failures'
+
+      # ---------------------------------------------------------------
+      # 5. Comparative benchmark harness.
+      # ---------------------------------------------------------------
+      - name: Run comparative benchmarks
+        env:
+          AMBER_BIN: ${{ github.workspace }}/amber
+          DUCKDB_BIN: /tmp/bench_tools/duckdb
+          CBQN_BIN: /tmp/bench_tools/cbqn
+          K_BIN: /tmp/bench_tools/k
+        run: |
+          python3 bench/run_comparative.py --runs 5 \
+            --out bench/comparative_results.md \
+            --update-docs
+
+      - name: Show results
+        run: cat bench/comparative_results.md
+
+      # ---------------------------------------------------------------
+      # 6a. On main: commit the refreshed docs/BENCHMARKS.md.
+      # ---------------------------------------------------------------
+      - name: Commit updated docs/BENCHMARKS.md
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet -- docs/BENCHMARKS.md; then
+            git add docs/BENCHMARKS.md
+            git commit -m "docs: refresh comparative benchmarks [skip ci]"
+            git push
+          else
+            echo "no benchmark changes to commit"
+          fi
+
+      # ---------------------------------------------------------------
+      # 6b. On PRs: post/update a sticky comment with the results table.
+      # ---------------------------------------------------------------
+      - name: Post sticky PR comment
+        if: github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: comparative-benchmarks
+          path: bench/comparative_results.md
+
+      - name: Upload benchmark artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: comparative-benchmarks
+          path: bench/comparative_results.md

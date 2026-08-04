@@ -1,6 +1,21 @@
+/* clock_gettime()/CLOCK_MONOTONIC (used by the `simd` self-test/benchmark
+ * builtin below) need `_POSIX_C_SOURCE >= 199309L`, which must be defined
+ * before the first system header (a.h's own <unistd.h>) is pulled in --
+ * same reasoning as trace.c/arena.c. Pure feature-test addition, no
+ * behaviour change. */
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 199309L
+#endif
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include"arena.h"
 #include"diagnostic.h"
+#include"simd.h"
+#include"vm.h"
+#include"parallel.h"
+#include"csv.h"
+#include"ast.h"
+#include<time.h>
+#include<stdio.h>
 // ---- HFT as-of join kernel ------------------------------------------------
 // branch-free lower_bound over a sorted long slice a[lo,hi): first i with a[i]>=key.
 // The ternaries lower to cmov under -O3, so there are no data-dependent branches.
@@ -46,6 +61,107 @@ A1(dgnT,CO C*src="x:1 2 3\n  prices + sizes\n";
  Span pr=span_at(src,pp,pp+6),se=span_at(src,sp,sp+5);C buf[2048];
  report_diagnostic(buf,SZ buf,"E0104","Vector length mismatch","test.k",pr,&se,1,"Both vectors must have matching lengths for element-wise `+`.",0);
  B ok=!!strstr(buf,"error[E0104]: Vector length mismatch")&&!!strstr(buf,"--> test.k:2:")&&!!strstr(buf,"prices + sizes")&&!!strstr(buf,"^^^^^^")&&!!strstr(buf,"= help:");
+ x(al((L)ok)))
+// SIMD self-test + benchmark builtin (`simd): verifies simd_{add,mul,sum}_{i64,f64}
+// (src/simd.{h,c}) against a plain scalar C reference over a large vector, prints a
+// one-line "backend / n / scalar-ms / simd-ms" report to stderr (like `arn`/`dgn`'s
+// silent-unless-you-look convention), and returns 1 iff every value round-trips
+// exactly (integers) or exactly (floats -- add/mul are elementwise, not reduced, so
+// no reordering is involved and no epsilon is needed here). Never touches the `+`/`*`
+// dyadic verb dispatch (v.c) or the bytecode VM (b.c) -- this exercises the kernels
+// directly against Long/Float vectors built the same way ajc()/aL()/aF() do above.
+A1(simdT,
+ U n=400009;//large enough to be a meaningful bench and to exercise every remainder tail
+ //NOTE: locals below intentionally avoid the bare accessor-macro namespace
+ //(xl/yl/xf/yf/etc. are g.h macros meaning "element i of x's Long/Float data").
+ A vXi=aL(n),vYi=aL(n),vOi=aL(n);L*dXi=_V(vXi),*dYi=_V(vYi),*dOi=_V(vOi);
+ F(n,dXi[i]=(L)i*7-200000;dYi[i]=(L)(n-i)*3+1)
+ B ok=1;struct timespec t0,t1,t2;clock_gettime(CLOCK_MONOTONIC,&t0);
+ simd_add_i64((int64_t*)dXi,(int64_t*)dYi,(int64_t*)dOi,n);clock_gettime(CLOCK_MONOTONIC,&t1);
+ F(n,L r=dXi[i]+dYi[i];ok&=dOi[i]==r)
+ L*dRef=(L*)arena_alloc((N)n*SZ(L));arena_reset();//scratch just for timing symmetry
+ F(n,dRef[i]=dXi[i]+dYi[i]);clock_gettime(CLOCK_MONOTONIC,&t2);
+ simd_mul_i64((int64_t*)dXi,(int64_t*)dYi,(int64_t*)dOi,n);F(n,ok&=dOi[i]==dXi[i]*dYi[i])
+ L want=0;F(n,want+=dXi[i])ok&=simd_sum_i64((int64_t*)dXi,n)==want;
+ A vXf=aF(n),vYf=aF(n),vOf=aF(n);F*dXf=_V(vXf),*dYf=_V(vYf),*dOf=_V(vOf);
+ F(n,dXf[i]=(F)i*0.5-3.0;dYf[i]=(F)(n-i)*0.25)
+ simd_add_f64(dXf,dYf,dOf,n);F(n,ok&=dOf[i]==dXf[i]+dYf[i])
+ simd_mul_f64(dXf,dYf,dOf,n);F(n,ok&=dOf[i]==dXf[i]*dYf[i])
+ mr(vXi);mr(vYi);mr(vOi);mr(vXf);mr(vYf);mr(vOf);
+ F ms=(F)((t1.tv_sec-t0.tv_sec)*1000000000ll+(t1.tv_nsec-t0.tv_nsec))/1e6,
+   ss=(F)((t2.tv_sec-t1.tv_sec)*1000000000ll+(t2.tv_nsec-t1.tv_nsec))/1e6;
+ fprintf(stderr,"simd: backend=%s n=%u simd_add=%.3fms scalar_add=%.3fms ok=%d\n",simd_backend(),n,ms,ss,ok);
+ x(al((L)ok)))
+// bytecode-disassembler self-test builtin (`vmd): compiles several representative
+// expressions and re-checks that vm.c's mirrored opcode/operand-length table
+// (kept in sync with b.c by hand, since b.c does not export it) still decodes
+// every one of them byte-exact. See vm.c: vm_selftest().
+A1(vmdT,x(al((L)vm_selftest())))
+// CSV loader builtin (`csvr): x is a char vector (file path); returns a typed
+// table via csv_read() (csv.{h,c}). x itself is a string, not the arena/file --
+// csv_read() re-opens the path with a plain C FILE*, so x is only consumed here.
+X1(csvrT,RC(C buf[1024];U n=MIN(xn,SZ buf-1);MC(buf,xC,n);buf[n]=0;x(csv_read(buf)))R_(et(x)))
+// CSV parser self-test builtin (`csv0): writes a small known CSV (mixed long/
+// float/symbol columns, an embedded comma inside a quoted field, an escaped
+// quote, and one empty cell) to a temp file, parses it with csv_read(), and
+// asserts the resulting table's shape/types/values/null-handling. Cleans up
+// the temp file whether the assertions pass or fail.
+A1(csv0T,
+ CO C*P_="/tmp/.amber_csv_selftest.csv";
+ CO C*body="sym,px,qty,note\nAAPL,187.5,100,\"a note, with a comma\"\nMSFT,410.2,50,plain\nGOOG,138.9,,\"a \"\"quoted\"\" word\"\n";
+ FILE*fp=fopen(P_,"wb");B ok=!!fp;I(fp,fwrite(body,1,strlen(body),fp);fclose(fp))
+ // Delegate the actual shape/value/null-handling assertions to the real,
+ // already-proven K evaluator (#, [], ~, @, &) rather than hand-walking the
+ // table's internal representation here -- csv_read()'s own header comment
+ // documents that its output is verified against the same primitives.
+ // NOTE: K has no operator precedence (flat right-to-left), so each `~`/`=`
+ // comparison MUST be parenthesized -- an unparenthesized `a~b&c` groups as
+ // `a~(b&c)`, not `(a~b)&c`.
+ // NOTE: uses a local name `_ct` (not `t`) for the parsed table -- assigning
+ // to the bare global `t` here would clobber test.k's own harness function
+ // (also named `t`), breaking every t[...] assertion that runs after this
+ // self-test in the same session. Hit and fixed via the full regression run.
+ CO C*chk="_ct:`csvr \"/tmp/.amber_csv_selftest.csv\";"
+   "((#_ct)=3)&(_ct[`sym]~`AAPL`MSFT`GOOG)&(_ct[`px]~187.5 410.2 138.9)&(_ct[`qty]~100 50 0N)&((@_ct[`note])=`S)";
+ // evs() returns 0 (not `au`) on a parse/compile/eval error -- check
+ // truthiness of r itself, not identity against `au`, before touching it.
+ A r=ok?evs(chk,0):0;ok=ok&&r&&tru(r);I(r,mr(r))
+ remove(P_);x(al((L)ok)))
+// AST visualizer self-test builtin (`astt): runs \ast (src/ast.{h,c}) over a
+// set of representative expressions with stdout captured and checks each
+// printed tree contains the expected labels -- guards against the historical
+// "<v-atom>"/"<w-atom>"/"<o-atom>"/"<I-atom>"/"<S-atom>" placeholder bugs
+// (unrecognized verb/adverb/lambda/vector/symbol-vector leaves) regressing.
+// See ast_selftest() in ast.c for the full case list, and tests/test_ast.c
+// for a standalone (non-builtin) harness covering the same ground.
+A1(astT,x(al((L)ast_selftest())))
+// multithreaded vector engine self-test + benchmark builtin (`par): verifies
+// par_{add,mul,sum}_{i64,f64} (src/parallel.{h,c}) against a plain scalar C
+// reference over a vector well above PAR_THRESHOLD, reports the thread count
+// actually used and a serial-vs-parallel timing comparison to stderr (same
+// silent-unless-you-look convention as `simd`), returns 1 iff every value
+// matches. Never touches the bytecode VM or the `+`/`*` dyadic dispatch.
+A1(parT,
+ U n=600037;//comfortably above PAR_THRESHOLD (100000)
+ A vXi=aL(n),vYi=aL(n),vOi=aL(n);L*dXi=_V(vXi),*dYi=_V(vYi),*dOi=_V(vOi);
+ F(n,dXi[i]=(L)i*5-300000;dYi[i]=(L)(n-i)*2+3)
+ B ok=1;struct timespec t0,t1,t2;
+ clock_gettime(CLOCK_MONOTONIC,&t0);
+ par_add_i64((int64_t*)dXi,(int64_t*)dYi,(int64_t*)dOi,n);
+ clock_gettime(CLOCK_MONOTONIC,&t1);
+ F(n,ok&=dOi[i]==dXi[i]+dYi[i])
+ simd_add_i64((int64_t*)dXi,(int64_t*)dYi,(int64_t*)dOi,n);
+ clock_gettime(CLOCK_MONOTONIC,&t2);
+ par_mul_i64((int64_t*)dXi,(int64_t*)dYi,(int64_t*)dOi,n);F(n,ok&=dOi[i]==dXi[i]*dYi[i])
+ L want=0;F(n,want+=dXi[i])ok&=par_sum_i64((int64_t*)dXi,n)==want;
+ A vXf=aF(n),vYf=aF(n),vOf=aF(n);F*dXf=_V(vXf),*dYf=_V(vYf),*dOf=_V(vOf);
+ F(n,dXf[i]=(F)i*0.25-1.0;dYf[i]=(F)(n-i)*0.1)
+ par_add_f64(dXf,dYf,dOf,n);F(n,ok&=dOf[i]==dXf[i]+dYf[i])
+ par_mul_f64(dXf,dYf,dOf,n);F(n,ok&=dOf[i]==dXf[i]*dYf[i])
+ mr(vXi);mr(vYi);mr(vOi);mr(vXf);mr(vYf);mr(vOf);
+ F pms=(F)((t1.tv_sec-t0.tv_sec)*1000000000ll+(t1.tv_nsec-t0.tv_nsec))/1e6,
+   sms=(F)((t2.tv_sec-t1.tv_sec)*1000000000ll+(t2.tv_nsec-t1.tv_nsec))/1e6;
+ fprintf(stderr,"par: threads=%d n=%u par_add=%.3fms serial_simd_add=%.3fms ok=%d\n",par_thread_count(n),n,pms,sms,ok);
  x(al((L)ok)))
 Z A1(sam,x)V_;T_;U _K(A x/*0*/)_(X(R2(tu,tw,1)Rv(2)Rx(x>>48&15)Ropqr(xk))0)
 X1(mkn,RmMA(e1f(mkn,x))Rt(x(_R(cn[xt])))R_(x(rsz(xN,_R(cn[xt])))))
@@ -103,8 +219,8 @@ Z A1(qpa,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=3;x)//amber: `p par
 Z A1(qga,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=4;x)//amber: `g grouped
 Z A1(qat,UC a=(_tP(x)||!LH(tG,_t(x),tS))?0:_at(x);x(0);a?({C b[2]={"\0supg"[a],0};sym(b);}):as(0))//amber: get attribute
 ZN AX(ext,P(n-xK,er8(a,n))V*f=(V*)(x&-1ull>>16);S(n,R(1,((A1*)f)(a[0]))R(2,((A2*)f)(a[0],a[1]))R(3,((A3*)f)(a[0],a[1],a[2]))R(4,((A4*)f)(a[0],a[1],a[2],a[3]))R_(en8(a,n)))0)
-ZN A sym1(I v,A x)_(Z CO C s[][4]={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn"};
- G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,ed)[fI((V*)s,L(s),v)](x))
+ZN A sym1(I v,A x)_(Z CO C s[][4]={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","astt"};
+ G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,astT,ed)[fI((V*)s,L(s),v)](x))
 A2(_1,/*01*/P(!xtt,i1(x,y))U k=xK;P(1<k,k==2&&!xtp?prj(x,A8(y,GAP),2):prj(x,&y,1))
  X(Ro(run(x,&y,1))Rp(P(k>7,er(y))I m=xn-1,j=0;Ab8;F(m,b[i]=xA[i+1]==GAP&&!j?j++,y:_R(xA[i+1]))I l=MAX(0,1-j);MC(b+m,&y,8*l);_8(xx,b,m+l))
   Rq(_1(xx,N(_1(xy,y))))Rr(w1(xE,xx,y))Rs(sym1(xv,y))Ru(v1[xv](y))Rw(AK(xv-1<3u&&yK==2?1:ytU?yK:1,AW(xv,aV(tr,1,&y))))Rx(ext(x,&y,1))R_(et(y)))0)

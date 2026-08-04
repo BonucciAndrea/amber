@@ -15,7 +15,7 @@ fi
 # Portable -O3 (+ LTO where supported) by default. Set AMBER_NATIVE=1 for a faster
 # machine-specific build (adds -march=native -funroll-loops; the binary then only runs
 # on this CPU family).
-F="-fsigned-char -fno-math-errno -fno-signed-zeros -fno-stack-protector -fomit-frame-pointer -w -O3"
+F="-fsigned-char -fno-math-errno -fno-signed-zeros -fno-stack-protector -fomit-frame-pointer -w -O3 -pthread"
 LTOTAG=""
 if printf 'int main(){return 0;}' | "$CC" -flto -x c - -o .ltocheck 2>/dev/null; then F="$F -flto"; LTOTAG=" -flto"; fi
 rm -f .ltocheck

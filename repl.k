@@ -76,6 +76,7 @@ $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
   diagnostics
   \ast expr    coloured parse-tree (AST) of an expression, parse-only
   \trace expr  4-phase timing (parse/arena/exec/format) + arena peak memory
+  \disasm expr bytecode disassembly of the real compiled VM output
 
   display knobs:  COLOR:0/1  PREC:n (float decimals; 0N=full)  CROWS:n (preview rows)
 
@@ -380,7 +381,7 @@ DISPLAY
   amfmt x     -> the grid as a list of lines
 
 PARALLEL  (std.k)
-  peach[f;y]  parallel each: fork AMBER_THREADS workers (default 4), f over slices of y
+  peach[f;y]  parallel each: fork AMBER_THREADS workers (default: online CPU count), f over slices of y
               identical to f'y ; best for heavy per-item work.  AMBER_THREADS=1 = serial
               demo:  AMBER_THREADS=8 ./amber examples/peach.k
 

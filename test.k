@@ -120,6 +120,22 @@ t[`arena;`arn 0;1]
 / ---- Rust-style diagnostics (src/diagnostic.c) : formatter structure self-test ----
 t[`diag;`dgn 0;1]
 
+/ ---- SIMD kernels (src/simd.c) : add/mul/sum vs scalar reference, i64+f64 ----
+t[`simd;`simd 0;1]
+
+/ ---- bytecode disassembler (src/vm.c) : decodes real b.c-compiled closures ----
+t[`vmDisasm;`vmd 0;1]
+
+/ ---- multithreaded vector engine (src/parallel.c) : par vs serial-simd ----
+t[`parallel;`para 0;1]
+
+/ ---- native CSV parser (src/csv.c) : shape/type/null round-trip via K primitives ----
+t[`csv;`csv0 0;1]
+
+/ ---- AST visualizer (src/ast.c) : \ast tree labels for verbs/adverbs/lambdas/
+/ hooks/forks/projections/literal vectors -- no "<X-atom>" placeholder regressions ----
+t[`ast;`astt 0;1]
+
 / ---- qSQL-style ----
 st:+`s`v!(`a`b`a`b`a;1 2 3 4 5)
 t[`qwhere;(+qwhere[st;st[`v]>2])`v;3 4 5]

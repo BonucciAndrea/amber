@@ -45,10 +45,10 @@ Run the test suite:
 ./amber test.k
 # ...
 # ================ AMBER TEST SUITE ================
-# 158 tests run, 0 failures
+# 163 tests run, 0 failures
 # ALL TESTS PASSED
 # =================================================
-# (also: ./amber test-fin.k  -> 35,  ./amber test-ext.k -> 79; 272 total)
+# (also: ./amber test-fin.k  -> 35,  ./amber test-ext.k -> 79; 277 total)
 ```
 
 Start an interactive session (a line‑editor wrapper is recommended for history/editing):
@@ -393,7 +393,9 @@ order for floats, and symbol order is interning order). This keeps results exact
 ## 9a. Parallelism — `peach`
 
 `peach[f;y]` is a drop-in parallel replacement for `` f'y `` (each): it forks
-`AMBER_THREADS` worker **processes** (default 4), each applies `f` to a slice of `y`,
+`AMBER_THREADS` worker **processes** (default: the online CPU count, via `sysconf`;
+previously a hardcoded `4`, which oversubscribed small boxes and under-used large ones — see
+[CHANGELOG](CHANGELOG.md)), each applies `f` to a slice of `y`,
 serialises its result and streams it back, and the parent concatenates. The result is
 **identical** to serial `` f'y `` for every value (vectors, symbols, tables, nested, ragged).
 
@@ -645,9 +647,21 @@ functions, `\cd path` change directory, `\grid MODE` set the table border
 
 **Diagnostics:** `\v` a rich workspace inspector (every global as a Name/Type/Shape/Memory
 table — see `src/inspect.{h,c}`); `\ast expr` a colour-coded parse tree, parse-only, nothing is
-executed (`src/ast.{h,c}`); `\trace expr` a 4-phase timing report (parse/arena/exec/format) plus
+executed (`src/ast.{h,c}` — every leaf is typed explicitly, `Int64`/`Float64`/`Symbol`/`Char`/a
+`(TypeName Vector[len])` preview, never a generic placeholder; tacit hooks `(f g)`, forks
+`(f g h)`, and curried projections `1+`/`f[x;;z]` get their own explicit labels; see
+[CHANGELOG](CHANGELOG.md)); `\trace expr` a 4-phase timing report (parse/arena/exec/format) plus
 the arena's peak scratch usage for that evaluation, running the same qSQL rewrite the prompt uses
-so tracing a table or `select …` expression renders correctly (`src/trace.{h,c}`).
+so tracing a table or `select …` expression renders correctly (`src/trace.{h,c}`); `\disasm expr`
+compiles an expression and prints the real bytecode Amber's compiler/VM (`src/b.c`) produces for
+it — locals, constant pool, instruction stream — without executing it (`src/vm.{h,c}`).
+
+**Engine extensions** (all additive, standalone modules — see the README's
+[Engine extensions](../README.md#engine-extensions) section for full detail and benchmarks):
+SIMD vector kernels (`src/simd.{h,c}`, AVX2/NEON/scalar, self-test `` `simd 0``), a
+multithreaded vector engine for arrays over 100,000 elements (`src/parallel.{h,c}`, self-test
+`` `para 0``), and a native CSV parser that reads a file straight into a typed table
+(`src/csv.{h,c}`, `` `csvr "path.csv"``, self-test `` `csv0 0``).
 
 ---
 

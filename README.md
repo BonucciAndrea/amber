@@ -51,6 +51,67 @@ qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                         / vwap by symb
 
 ---
 
+## 🚀 Quick Showcase
+
+One command builds Amber with maximum optimization and runs the full **Mega Demo**: a
+5,000,000-row HFT tick session (VWAP, a tacit 50-period EMA, a native as-of join), a
+10,000,000-element vector-op benchmark (scalar vs native vs `peach`), a couple of `\ast`/
+`\disasm` samples straight from the real parser/compiler, and pointers to the in-browser
+notebook.
+
+```sh
+./demo.sh                    # portable -O3 build
+AMBER_NATIVE=1 ./demo.sh     # -march=native build (fastest on this machine)
+```
+
+`demo/hft_demo.k` — a realistic multi-symbol tick session end to end:
+
+```q
+\l amber.k
+\l fin.k
+gentq N                                                    / N trades, 2N quotes, realistic microstructure
+qby[trades; `sym; (,`vwap)!,{round[4]wavg[x`sz;x`px]}]      / VWAP per symbol
+ema[2%51; pxSeries]                                          / 50-period EMA, tacit call into the C kernel
+taq[trades; quotes]                                          / as-of join: every trade -> its nearest quote
+```
+
+Sample benchmark table from a real run (row counts and timings will vary by machine —
+the script prints its own table every time):
+
+```
+== benchmark summary =======================================
+stage      ms
+----------
+gentq   2381.9
+vwap     151.2
+ema        0.1
+asof      704.0
+------------------------------------------------------------
+total: ~3.2 s end-to-end for 500,000 trades
+```
+
+`demo/bench_showcase.k` — the same 10,000,000-element vector three ways, with a printed
+speedup table:
+
+```
+op   method   ms
+--------------
+add  scalar   ███████████████████░  (per-element `'` each)
+add  vector   ██░                   (native C kernel, auto-SIMD)   ~2-9x faster
+mul  scalar   ██████████████░
+mul  vector   █░                                                    ~2-9x faster
+sum  serial   ░
+sum  peach    ███░   (fork/IPC overhead dominates a cheap reduction --
+                       peach earns its keep on per-task-heavy work, see examples/peach.k)
+```
+
+Prefer to explore interactively? Open `notebooks/Amber-Notebook-Studio.html` directly in a
+browser (no build step) and hit **🚀 Load HFT Demo** in the header — it generates a tick
+session, charts price & volume on a canvas, and benchmarks a naive per-symbol filter against
+the vectorised `qby` call, right there in the page.
+
+---
+
 ## Download & install
 
 Amber compiles from source (portable **C99**, builds clean on `gcc` and `clang`) on first run —

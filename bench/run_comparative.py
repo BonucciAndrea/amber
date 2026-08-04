@@ -155,7 +155,11 @@ def median_runs(cmd_fn, runs, timeout):
 def bench_amber(amber_bin, bench_id, runs, timeout):
     if not amber_bin:
         return None, "not installed"
-    qf = QUERIES / f"k_{bench_id}.k"
+    # Amber gets its own optimized query file (SIMD/attribute/tacit tuning is
+    # engine-specific and not idiomatic ngn/k -- see bench/queries/amber_*.k's
+    # own header comments for what was tried and measured). k_<id>.k is now
+    # used only for the "K" (ngn/k) row's bench_k(), never reused here.
+    qf = QUERIES / f"amber_{bench_id}.k"
     med, err = median_runs(lambda: ([amber_bin, str(qf)], None), runs, timeout)
     return med, (err.decode(errors="replace").strip()[:120] if med is None else None)
 
@@ -266,6 +270,31 @@ def update_docs(table_md):
     print(f"updated {docs}", file=sys.stderr)
 
 
+def check_parity(amber_bin, k_bin, dialect, bench_id):
+    """Run amber_<id>.k and k_<id>.k once each and compare their printed
+    numeric output, so a speed win from bench/queries/amber_*.k's engine-level
+    optimizations can never silently also change the answer. Returns
+    (ok: bool|None, amber_val: str|None, k_val: str|None) -- ok is None if
+    either engine is missing (nothing to compare)."""
+    if not amber_bin or not k_bin:
+        return None, None, None
+    aqf = QUERIES / f"amber_{bench_id}.k"
+    _, aout, _ = run_once([amber_bin, str(aqf)], cwd=str(REPO_ROOT), timeout=60)
+    if dialect == "q":
+        kqf = QUERIES / f"q_{bench_id}.q"
+        _, kout, _ = run_once([k_bin, str(kqf), "-q"], cwd=str(REPO_ROOT), timeout=60)
+    else:
+        kqf = QUERIES / f"k_{bench_id}.k"
+        _, kout, _ = run_once([k_bin, str(kqf)], cwd=str(REPO_ROOT), timeout=60)
+    av = aout.decode(errors="replace").strip()
+    kv = kout.decode(errors="replace").strip()
+    try:
+        ok = abs(float(av) - float(kv)) <= 1e-6 * max(1.0, abs(float(kv)))
+    except ValueError:
+        ok = av == kv
+    return ok, av, kv
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", type=int, default=5)
@@ -284,6 +313,18 @@ def main():
     print(f"cbqn:   {cbqn_bin or 'NOT FOUND'}", file=sys.stderr)
     print(f"k:      {k_bin or 'NOT FOUND'} (dialect={dialect})", file=sys.stderr)
 
+    print("-- numerical parity check (amber_<id>.k vs k_<id>.k) --", file=sys.stderr)
+    parity = {}
+    for bench_id, label, timeout in BENCHMARKS:
+        ok, av, kv = check_parity(amber_bin, k_bin, dialect, bench_id)
+        parity[bench_id] = ok
+        if ok is None:
+            print(f"  {bench_id}: skipped (amber or k not installed)", file=sys.stderr)
+        elif ok:
+            print(f"  {bench_id}: OK  amber={av}  k={kv}", file=sys.stderr)
+        else:
+            print(f"  {bench_id}: MISMATCH  amber={av}  k={kv}", file=sys.stderr)
+
     results = {}
     for bench_id, label, timeout in BENCHMARKS:
         print(f"running {bench_id} ...", file=sys.stderr)
@@ -295,6 +336,12 @@ def main():
         }
 
     table_md = build_table(results, args.runs)
+    if amber_bin and k_bin:
+        if all(v for v in parity.values() if v is not None):
+            table_md = "_Numerical parity check: amber_*.k and k_*.k agree on every benchmark._\n\n" + table_md
+        else:
+            bad = ", ".join(b for b, v in parity.items() if v is False)
+            table_md = f"_\u26a0 Numerical parity check FAILED for: {bad} -- see stderr._\n\n" + table_md
     print(table_md)
 
     if args.out:

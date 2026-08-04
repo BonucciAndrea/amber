@@ -131,7 +131,8 @@ jobs:
           if ! git diff --quiet -- docs/BENCHMARKS.md; then
             git add docs/BENCHMARKS.md
             git commit -m "docs: refresh comparative benchmarks [skip ci]"
-            git push
+            git pull --rebase origin main  # 3. Merges any incoming remote changes
+            git push origin main
           else
             echo "no benchmark changes to commit"
           fi

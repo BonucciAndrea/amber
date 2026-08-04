@@ -4,11 +4,15 @@
 \l qsql.k
 \l temporal.k
 \l sys.k
-\l hdb.k
 \l ipc.k
 / ============================================================================
 / examples/extended.k  -  a tour of the v1.5 modules.  Also a smoke test.
 / run:  ./amber examples/extended.k
+/ Browser/wasm-safe: unlike an earlier version of this file, it no longer
+/ touches hdb.k's on-disk functions (splay/dload/partsave), which shell out
+/ to a real "mkdir" and write real files -- neither exists in a wasm sandbox,
+/ so calling them there is a hard crash (a WebAssembly trap), not a
+/ catchable K error. See examples/hdb_demo.k for that tour, native-only.
 / ============================================================================
 hr:{`0:"";`0:"== ",x," ",(56-#x)#"=";}
 
@@ -41,15 +45,7 @@ hr"4. system namespaces + JSON (sys.k)"
 `0:"j.j of a table  = ",j.j 2#trades
 `0:"j.k parse       = ",`k j.k"{\"a\":1,\"b\":[2,3]}"
 
-hr"5. on-disk data (hdb.k)"
-/ text serialization suits modest tables; use a small slice here
-st:25#trades
-x:splay["/tmp/amber_db/trades";st]
-`0:"splayed & reloaded, rows match: ",$st~dload"/tmp/amber_db/trades"
-x:partsave["/tmp/amber_db/pdb";st;`sym]
-`0:"partitioned by sym, partitions: ",($#parts"/tmp/amber_db/pdb")
-
-hr"6. in-process tickerplant (ipc.k)"
+hr"5. in-process tickerplant (ipc.k)"
 x:u.def[`trade;([]sym:0#`;px:0#0.0)]
 CNT::0
 x:u.sub[`trade;{[nm;d]CNT::CNT+#d}]

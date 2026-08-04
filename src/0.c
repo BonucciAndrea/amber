@@ -26,7 +26,23 @@ I pg=4096;//pagesize
  I pipe(I v[2])_(-1)
  C*getcwd(C*s,N n)_((V*)0)
  I js_in(V*,N);V js_out(CO V*,N),js_log(CO V*),*js_alloc(N),js_time(I*,long*),js_exit(I);
- Z ST{C*a,p[16];N n;}s[8]={{.a=""},{.a=""},//s:storage,
+ // s[] was previously declared s[8] with an initializer list of 2 explicit
+ // entries + however many o/w/fs.h expands to (8 libraries + 12 examples =
+ // 20, as of this build) -- 22 total, way past the declared bound of 8.
+ // That's a real, latent memory-safety bug in the wasm build specifically
+ // (this whole block is wasm-only; the native build never uses this VFS):
+ // C only *warns* ("excess elements in array initializer") on this, it
+ // doesn't error, and still emits all 22 elements' worth of static data --
+ // which silently overruns "s"'s nominal storage into whatever follows it
+ // in the data segment (here, "d[]", the fd table, immediately after).
+ // `ns=L(s)` (sizeof(s)/sizeof(s[0])) was *also* still pinned to 8 by the
+ // explicit bound, regardless of the real element count, so open()'s
+ // linear search over s[0..ns) could never even see files past index 7 by
+ // its own accounting, on top of the overrun. Declaring s[] with no bound
+ // lets the initializer determine the real size (so both problems go away
+ // at once: no overrun, and `ns` is finally correct) and keeps working
+ // automatically as genfs.py's file list grows or shrinks.
+ Z ST{C*a,p[16];N n;}s[]={{.a=""},{.a=""},//s:storage,
   #include"o/w/fs.h"
  };Z ST{C i;N o;}d[8]={{.i=1},{.i=1},{.i=1}};Z CO I ns=L(s),nd=L(d);//d:fd table
  #define FI P((U)f>=nd||!d[f].i,EBADF)I i=d[f].i;//validate fd "f" and get inode "i"
@@ -44,6 +60,21 @@ I pg=4096;//pagesize
  I munmap(I f,I n)_(0)
  I gettimeofday(ST timeval*a,V*b)_(js_time((V*)&a->tv_sec,(V*)&a->tv_usec);0)
  V exit(I v){js_exit(v);}
+ // dup() has no stub here in the same way dup2/fork/execve below do, even
+ // though this whole block is otherwise a complete syscall-shim surface for
+ // the sandbox -- it was simply never called by anything until ast.c's and
+ // vm.c's `astt`/`vmd` self-tests (both unconditionally reachable through
+ // the sym1 dispatch table, so both always get linked in) started calling
+ // plain dup(1) to save/restore stdout around their fd-redirected runs.
+ // Without this, wasm-ld leaves "dup" as an unresolved import that
+ // WebAssembly.instantiate() then rejects outright (no such function on
+ // the JS side) -- every page load fails to boot, not just the self-tests.
+ // Stubbing it to -1 (matching dup2/fork/pipe's existing "unsupported here"
+ // convention) fixes that: both call sites already check for a negative
+ // return and degrade gracefully (ast.c's astT bails out returning 0 --
+ // self-test result "failed", not a crash; vm.c's vmdT simply skips the
+ // stdout redirect and lets disassembly print normally instead of silently).
+ I dup(I f)_(-1)
  I dup2(I f,I v)_(-1)
  I execve(S p,C*CO*a,C*CO*e)_(-1)
  I fork()_(-1)

@@ -35,17 +35,38 @@ __attribute__((export_name("amber_init")))
 void amber_init(void) {
     kinit();
     kargs(1, (S*)dummy_argv);
-    // repl.k (the native REPL's own startup script) loads these four core
-    // libraries before dropping you at a prompt -- do the same here so a
-    // fresh page has `sum`/`qby`/`gentq`/`select`/... available immediately,
-    // matching native ./a's behavior. Individual example files `\l` any
-    // further libraries themselves (hdb.k, ipc.k, temporal.k, sys.k) exactly
-    // like they do natively.
+    // Load the full standard module set repl.k loads natively, in the same
+    // order (amber.k -> fin.k -> std.k -> qsql.k -> temporal.k -> sys.k ->
+    // hdb.k -> ipc.k), so a fresh page has the whole language available
+    // immediately instead of only the first four modules.
+    //
+    // The previous build stopped after qsql.k, which silently broke every
+    // example/homepage snippet that uses `plot`/`candle` (defined in sys.k,
+    // which itself needs temporal.k loaded first for `tsms`/`tsdate`) with
+    // a bare "'value" error -- plot/candle look like core builtins but
+    // aren't, they're thin K wrappers in sys.k around the real `plt`/`cdl`
+    // native ops. Loading temporal.k + sys.k here fixes that class of bug
+    // outright instead of requiring every script to `\l` them first.
+    //
+    // hdb.k and ipc.k are loaded too: both are safe to *load* in the
+    // sandbox (function definitions + two empty-dict globals in ipc.k, no
+    // file/socket I/O happens at load time) even though a few of the
+    // functions they define aren't safe to *call* here -- see amber_read()
+    // above's sibling note in README/CHANGELOG for which ones and why
+    // (hdb.k's splay/dload/partsave shell out to `mkdir` and write real
+    // files, neither of which exist in this sandbox; ipc.k's hopen/hclose/
+    // hsend/hrecv/hsync need a real socket peer). ipc.k's in-process
+    // tickerplant (`u.def`/`u.sub`/`u.pub`/`u.get`) needs neither and works
+    // fine here, which is why the whole file is still worth loading.
     A r;
-    r = bsl("amber.k"); if (r) mr(r);
-    r = bsl("fin.k");   if (r) mr(r);
-    r = bsl("std.k");   if (r) mr(r);
-    r = bsl("qsql.k");  if (r) mr(r);
+    r = bsl("amber.k");    if (r) mr(r);
+    r = bsl("fin.k");      if (r) mr(r);
+    r = bsl("std.k");      if (r) mr(r);
+    r = bsl("qsql.k");     if (r) mr(r);
+    r = bsl("temporal.k"); if (r) mr(r);
+    r = bsl("sys.k");      if (r) mr(r);
+    r = bsl("hdb.k");      if (r) mr(r);
+    r = bsl("ipc.k");      if (r) mr(r);
     // wprint: auto-render tables/keyed-tables (types `M`/`m) via amber.k's
     // own box-drawing formatter (amfmt -- the same one the native REPL's
     // `fmt` uses, minus its `upd[]` step, which shells out to `tput` for

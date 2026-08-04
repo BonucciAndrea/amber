@@ -150,7 +150,20 @@ upper:{c:0+x;`c$c-32*(c>96)&c<123}
 ltrim:{(+/&\x=" ")_x}
 rtrim:{(0-+/&\|x=" ")_x}
 trim:{ltrim rtrim x}
-ss:{[s;p]&{[s;p;i]p~(#p)#i_s}[s;p]'!1+(#s)-#p}
+/ ss: string-search, s for p, -> match-start positions (empty if none/p longer than s).
+/ Guarded explicitly for (#s)<#p: without this, "!1+(#s)-#p" is "!0" (0 candidate
+/ starts), "each" over it correctly gives the generic empty list (), but "&" (where)
+/ applied to a literal, untyped empty list () mishandles it -- a real bug in the C
+/ `whr` kernel's generic-list branch (src/v.c's X1(whr,...), RA case), which is
+/ designed for nested/grouped input and returns a spurious 1-element ",!0" instead
+/ of a clean empty "!0" when x is simply an empty () rather than a nested list. That
+/ single wrong value then propagates through qsql.k's qsplit/sel/exq/upd/del (every
+/ one of them calls ss on whatever's left after stripping the leading keyword, and
+/ "select from t"/"exec ... from t" with no where/by clause is exactly the case
+/ where the remaining separator being searched for, like " where ", is longer than
+/ what's left) -- so this one-line ss fix is what actually fixes "select from t"
+/ and friends. See docs/MISSING.md for the underlying whr bug, tracked separately.
+ss:{[s;p]$[(#s)<#p;!0;&{[s;p;i]p~(#p)#i_s}[s;p]'!1+(#s)-#p]}
 ssr:{[s;f;t]t/f\s}
 sv:{x/y}
 vs:{x\y}

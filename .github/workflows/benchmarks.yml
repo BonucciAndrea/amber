@@ -1,10 +1,5 @@
 name: comparative benchmarks
 
-# Runs Amber's own test suite, then a comparative timing harness against
-# DuckDB, CBQN, and a K interpreter, on every push to main and every PR.
-# docs/BENCHMARKS.md is auto-updated on main; PRs instead get the same
-# table posted as a sticky (auto-updating) comment so reviewers can see the
-# performance impact of a change without digging through workflow logs.
 on:
   push:
     branches: [main]
@@ -27,17 +22,13 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install build tools
-        run: sudo apt-get update && sudo apt-get install -y build-essential curl unzip
+        run: sudo apt-get update && sudo apt-get install -y build-essential curl unzip git make
 
       # ---------------------------------------------------------------
-      # 1. Portable single-binary runtimes for DuckDB CLI and CBQN.
-      #    Each download is best-effort: if a release asset URL goes stale
-      #    upstream, the step logs it and continues rather than failing the
-      #    whole workflow -- bench/run_comparative.py already treats a
-      #    missing engine as "not installed" and keeps going, so a partial
-      #    toolset still produces a useful (partial) benchmark table.
+      # 1. Download DuckDB CLI
       # ---------------------------------------------------------------
       - name: Download DuckDB CLI
+        id: download_duckdb
         continue-on-error: true
         run: |
           set -x
@@ -49,7 +40,11 @@ jobs:
           chmod +x duckdb
           ./duckdb -c "select 'duckdb ok'"
 
+      # ---------------------------------------------------------------
+      # 2. Download CBQN
+      # ---------------------------------------------------------------
       - name: Download CBQN
+        id: download_cbqn
         continue-on-error: true
         run: |
           set -x
@@ -57,10 +52,10 @@ jobs:
           cd /tmp/bench_tools
           curl -fsSL -o cbqn "https://github.com/dzaima/CBQN/releases/latest/download/CBQN-linux-x86_64"
           chmod +x cbqn
-          ./cbqn -e "•Show 1+1" || true
+          ./cbqn -e "•Show 1+1"
 
-      - name: Build CBQN from source (fallback if the prebuilt binary above failed)
-        if: hashFiles('/tmp/bench_tools/cbqn') == ''
+      - name: Build CBQN from source (fallback)
+        if: steps.download_cbqn.outcome != 'success'
         continue-on-error: true
         run: |
           set -x
@@ -71,27 +66,27 @@ jobs:
           chmod +x /tmp/bench_tools/cbqn
 
       # ---------------------------------------------------------------
-      # 2. ngn/k for comparative K executions. It's a single C file, so
-      #    building from source is fast and avoids depending on any
-      #    prebuilt-binary release existing. Falls back to nothing (the
-      #    harness marks the K column "not installed") if this ever breaks.
+      # 3. Build ngn/k from Codeberg
       # ---------------------------------------------------------------
       - name: Build ngn/k
+        id: build_k
         continue-on-error: true
         run: |
           set -x
-          git clone --depth 1 https://github.com/ngn/k /tmp/ngnk-src
+          mkdir -p /tmp/bench_tools
+          git clone --depth 1 https://codeberg.org/ngn/k.git /tmp/ngnk-src
           cd /tmp/ngnk-src
-          gcc -O2 -o /tmp/bench_tools/k k.c || cc -O2 -o /tmp/bench_tools/k k.c
+          make CC=gcc -j"$(nproc)"
+          cp k /tmp/bench_tools/k
           chmod +x /tmp/bench_tools/k
-          echo '1+1' | /tmp/bench_tools/k || true
+          echo '1+1' | /tmp/bench_tools/k
 
-      - name: Report which comparative tools are available
+      - name: Report available comparative tools
         run: |
           ls -la /tmp/bench_tools/ || true
 
       # ---------------------------------------------------------------
-      # 3. Build Amber natively with maximum optimizations.
+      # 4. Build Amber
       # ---------------------------------------------------------------
       - name: Build Amber (gcc -O3 -march=native)
         run: |
@@ -99,7 +94,7 @@ jobs:
           ./amber -e '1+1' >/dev/null 2>&1 || true
 
       # ---------------------------------------------------------------
-      # 4. Existing unit test suite must pass before we trust any timing.
+      # 5. Unit Tests
       # ---------------------------------------------------------------
       - name: Run existing unit tests
         run: |
@@ -109,7 +104,7 @@ jobs:
           echo "$out" | grep -Eq '0 failures'
 
       # ---------------------------------------------------------------
-      # 5. Comparative benchmark harness.
+      # 6. Comparative Benchmarks
       # ---------------------------------------------------------------
       - name: Run comparative benchmarks
         env:
@@ -126,7 +121,7 @@ jobs:
         run: cat bench/comparative_results.md
 
       # ---------------------------------------------------------------
-      # 6a. On main: commit the refreshed docs/BENCHMARKS.md.
+      # 7a. On main: Commit docs/BENCHMARKS.md
       # ---------------------------------------------------------------
       - name: Commit updated docs/BENCHMARKS.md
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -142,7 +137,7 @@ jobs:
           fi
 
       # ---------------------------------------------------------------
-      # 6b. On PRs: post/update a sticky comment with the results table.
+      # 7b. On PRs: Post sticky comment
       # ---------------------------------------------------------------
       - name: Post sticky PR comment
         if: github.event_name == 'pull_request'

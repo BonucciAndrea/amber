@@ -42,11 +42,28 @@ Z I lC(A x)_(XA(F(xn,P(_t(xa)-tC,0))1)0)//list of strings?
 A1(frk,P(!xtA||xn-2,et(x))A y=kv(&x);P(!lC(x)||!ytC,y(ed(x)))x=Ny(e1f(str0,x));S a[xn+1];F(xn,a[i]=_V(xa))a[xn]=0;I p[4];pipe(p);pipe(p+2);I pid=fork();
  P(!pid,dup2(*p,0);dup2(p[3],1);F(4,close(p[i]))exit(execve(*a,(C**)a,(C*CO*)env));0)close(*p);close(p[3]);N(v1c(ai(p[1]),x(y)));close(p[1]);A x=rda(p[2]);wait4(pid,0,0,0);x)
 // amber: fork-based parallel-each.  x=(f;y): apply f to each item of y across
-// AMBER_THREADS worker processes (default 4).  Each worker computes its slice,
+// AMBER_THREADS worker processes (default: online CPU count, see peachCPUs()
+// below).  Each worker computes its slice,
 // serialises the result (`k) and writes it down a pipe; the parent reads each
 // (rda), deserialises (val) and concatenates.  Falls back to serial each for
 // tiny inputs or AMBER_THREADS<2.  Correct because  (. `k v) ~ v  for all v.
-Z I peachNW(){S*e=env;I n=4;if(e)while(*e){S p=*e++;if(!strncmp(p,"AMBER_THREADS=",14)){n=0;S q=p+14;while(*q>='0'&&*q<='9')n=n*10+(*q++-'0');if(n<1)n=4;break;}}return n;}
+// amber: default worker count = actual online CPU count (sysconf), not a
+// hardcoded guess -- previously this always fell back to a fixed 4 regardless
+// of the host, so on a 1-2 core box peach would oversubscribe (fork more
+// workers than there are cores, making it *slower* than serial f'y through
+// pure context-switch/fork overhead) and on a 16+ core box it would leave
+// most cores idle. src/parallel.c's par_thread_count() already solves this
+// correctly for the SIMD/vector engine (online_cpus() via
+// sysconf(_SC_NPROCESSORS_ONLN)); this mirrors that same fix for peach so the
+// two parallel primitives in Amber agree on what "auto" means. AMBER_THREADS
+// still overrides explicitly, unchanged.
+Z I peachCPUs(){
+#if defined(_SC_NPROCESSORS_ONLN)
+ L n=sysconf(_SC_NPROCESSORS_ONLN);if(n>0)return(I)n;
+#endif
+ return 4;//last-resort fallback if sysconf itself is unavailable
+}
+Z I peachNW(){S*e=env;I n=-1;if(e)while(*e){S p=*e++;if(!strncmp(p,"AMBER_THREADS=",14)){n=0;S q=p+14;while(*q>='0'&&*q<='9')n=n*10+(*q++-'0');if(n<1)n=peachCPUs();break;}}return n<0?peachCPUs():n;}
 Z A eachR(A f,A y,U lo,U hi){U m=hi-lo;A u=aA0(m|!m);for(U i=0;i<m;i++){A v=_1(f,ii(y,lo+i));if(!v){mr(u);return 0;}u=psh(u,v);}return sqz(u);}
 A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);U n=_N(dat);I nw=peachNW();if(nw>64)nw=64;
  if(nw<2||n<2){A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}

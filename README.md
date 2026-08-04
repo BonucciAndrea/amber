@@ -14,7 +14,7 @@
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
 ![version](https://img.shields.io/badge/version-1.9-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
-![tests](https://img.shields.io/badge/tests-272%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-277%20passing-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
 
 </div>
@@ -37,6 +37,12 @@ that removes `malloc`/`free` jitter from the eval hot path) · **Rust-style visu
 (`AMBER_DIAG=1` prints gutter-aligned, ANSI-coloured `error[…]` reports with `^^^` underlines) ·
 an options/market-data generator (`genopt`, `gentq`) · Unicode grid modes (`\grid clean|rounded|sharp|heavy`) ·
 and a **CRLF-safe REPL loader** so a Windows checkout runs the library unchanged.
+
+Also new: a **SIMD kernel library** (AVX2 / ARM NEON / scalar) behind `+`-style vector ops ·
+a **multithreaded vector engine** that splits large arrays across cores · a **bytecode
+disassembler** (`\disasm`) for Amber's real compiler/VM · and a **native CSV parser**
+(`` `csvr``) that reads a file straight into a typed table. See
+[Engine extensions](#engine-extensions) below.
 
 ```q
 t:([]sym:`AAPL`MSFT`AAPL; px:187.3 411.2 187.4; sz:100 250 50)   / a table, rendered instantly
@@ -77,6 +83,18 @@ That's it — `./a` compiles the interpreter (portable `-O3`, no `-march=native`
 the prompt; it recompiles automatically whenever the C sources change, so you never run a stale
 build. If `./a` prints **`Permission denied`**, the executable bit was lost in transfer — the
 `chmod +x` line above fixes it (or just run `bash a`).
+
+The default build is portable C99 and always includes `-pthread` (needed by the multithreaded
+vector engine) and the scalar SIMD fallback. For a machine-specific build that turns on **AVX2**
+(x86_64) or **NEON** (Apple Silicon / any `aarch64`) vector kernels, set `AMBER_NATIVE=1`:
+
+```sh
+AMBER_NATIVE=1 ./build.sh      # adds -march=native; check with: `simd 0
+```
+
+`` `simd 0 `` prints which backend actually got selected (`scalar` / `avx2` / `neon`) to stderr.
+NEON activates unconditionally on Apple Silicon regardless of `AMBER_NATIVE`, since `aarch64`
+implies it; `AMBER_NATIVE=1` on Apple Silicon additionally unlocks `-march=native` tuning.
 
 One-shot alternative: `bash install.sh` builds, runs the self-test, and adds an `a` alias to your
 shell rc (`~/.zshrc` on macOS, `~/.bashrc` on Linux). To add the alias by hand:
@@ -142,7 +160,7 @@ Run the guided tours:
 ./amber examples/tick.k     # realistic trades & quotes: as-of/window joins, VWAP, OHLC
 AMBER_THREADS=8 ./amber examples/peach.k   # multi-core speedup demo (serial vs peach)
 ./amber bench.k             # attribute speed benchmark
-./amber test.k              # core suite (158); also test-fin.k (35) + test-ext.k (79) = 272
+./amber test.k              # core suite (163); also test-fin.k (35) + test-ext.k (79) = 277
 bash bench/run.sh           # cross-engine sanity + speed (Amber vs numpy/pandas/…; see BENCHMARKS.md)
 ```
 
@@ -219,23 +237,48 @@ amber> \v
 REPL/library's own internal state (`repl.*`, `PAL`, `GB`, `OUNI`, …) alongside your own — scan
 for the names and types you defined, or `\d yourns` first to narrow the namespace.
 
-**`\ast`** — a colour-coded parse tree (parse-only; nothing is executed):
+**`\ast`** — a colour-coded parse tree (parse-only; nothing is executed, with one unavoidable
+exception — see below):
 
 ```
 amber> \ast (1+2)*3-4
 Root
-└── Binary Op : * (Multiply)     / bold magenta - binary operators
+└── Binary Op : * (Multiply)
     ├── Binary Op : + (Add)
-    │   ├── Scalar : 1            / green - scalar literals
-    │   └── Scalar : 2
+    │   ├── Scalar : 1 (Int64)
+    │   └── Scalar : 2 (Int64)
     └── Binary Op : - (Subtract)
-        ├── Scalar : 3
-        └── Scalar : 4
+        ├── Scalar : 3 (Int64)
+        └── Scalar : 4 (Int64)
 ```
 
-Verbs/adverb-derived verbs render bold cyan, binary operators bold magenta, variables yellow,
-scalars green, vectors plain cyan, function application bold blue, list literals bold green, and
-block separators dim gray — so the shape of an expression reads at a glance.
+Every leaf carries its literal type (`Int64`, `Float64`, `Symbol`, `Char`, or a
+`(TypeName Vector[len])` preview for a literal vector) instead of a generic placeholder, and
+Amber's tacit forms get their own explicit labels — a lambda literal shows its real source text,
+a 2- or 3-verb train is an explicit **Hook**/**Fork**, and a curried/partial application (`1+`,
+`f[x;;z]`) is an explicit **Projection** with a `Blank` node standing in for the omitted argument:
+
+```
+amber> \ast {x+1}[3]
+Root
+└── Apply : Apply
+    ├── Lambda : {x+1} (Lambda)
+    └── Scalar : 3 (Int64)
+
+amber> \ast +/1 2 3
+Root
+└── Verb : +/ (Add Over/Reduce)
+    └── Vector : 0x01 0x02 0x03 (Byte Vector[3])
+```
+
+(A lambda shows its *source text*, never its bytecode — pk() itself compiles `{...}` literals
+eagerly at parse time, the one exception to "nothing is executed"; disassembling what it compiled
+to is `\disasm`'s job, not `\ast`'s.)
+
+Verbs (bare, applied, curried, or the head of a call) render bold cyan, adverbs bold magenta,
+numeric/literal scalars bright green, variables and symbols yellow, and the tree connectors
+themselves dim gray; list literals, statement blocks, and tacit hook/fork train labels get their
+own restrained accent colour so the shape of an expression still reads at a glance.
 
 **`\trace`** — a 4-phase execution profiler (parse → arena setup → execute → format), with a
 Unicode bar chart and the arena's peak scratch usage for that one evaluation. It prints the
@@ -269,6 +312,92 @@ amber> \trace select from t where a>1
 | Total: 276us     Arena peak: 0 B                       |
 +-------------------------------------------------------+
 ```
+
+---
+
+<a name="engine-extensions"></a>
+## Engine extensions: SIMD · parallel · disassembler · CSV
+
+Four additive engine modules, each a standalone `.c`/`.h` pair that never touches core
+evaluation (`a.c`'s dispatch, `b.c`'s compiler/VM, or the `+`/`*`/`+/` verb implementations).
+One of them is an honest reinterpretation of the original ask, explained inline below.
+
+(A fifth module, a `\hl <expr>` command that echoed one line back with ANSI syntax colour, was
+removed — it only ever colorized a line you explicitly ran, not your keystrokes as you typed
+them, which isn't what "live syntax highlighting" means. Genuine live/incremental highlighting
+would require rewriting `repl.k`'s raw-keystroke input loop, which is out of scope for now; see
+[Roadmap](#roadmap).)
+
+**SIMD vector kernels** (`src/simd.{h,c}`) — `simd_add_i64/f64`, `simd_mul_i64/f64`,
+`simd_sum_i64/f64` operate on plain `int64_t*`/`double*` arrays with an AVX2 path
+(`<immintrin.h>`, x86_64), a NEON path (`<arm_neon.h>`, any `aarch64` — Apple Silicon
+included), and a scalar C99 fallback, selected at compile time. `simd_backend()` reports which
+one is active. The arena allocator (`src/arena.c`) was bumped to genuine **32-byte alignment**
+via `posix_memalign` (previously 16-byte, from plain `malloc`) so SIMD loads over arena-backed
+buffers are always aligned. Self-test + benchmark: `` `simd 0 `` (prints backend, size, and a
+SIMD-vs-scalar timing comparison to stderr, returns `1` on success):
+
+```
+$ ./amber
+amber> `simd 0
+simd: backend=scalar n=400009 simd_add=1.44ms scalar_add=1.98ms ok=1
+1
+amber> \\ (rebuilt with AMBER_NATIVE=1)
+simd: backend=avx2 n=400009 simd_add=1.51ms scalar_add=1.76ms ok=1
+```
+
+**Multithreaded vector engine** (`src/parallel.{h,c}`) — `par_add_i64/f64`, `par_mul_i64/f64`,
+`par_sum_i64/f64` split arrays **above 100,000 elements** (`PAR_THRESHOLD`) into one contiguous
+chunk per POSIX thread (`pthread_create`/`pthread_join`), each chunk processed by the SIMD
+kernels above; below the threshold it calls the SIMD kernel directly with no thread overhead.
+Thread count follows the same `AMBER_THREADS` env var `peach` already uses (default: online CPU
+count, capped at 64). Self-test + benchmark: `` `para 0 ``.
+
+**Bytecode disassembler + `\disasm`** (`src/vm.{h,c}`) — Amber's interpreter (`src/b.c`) already
+compiles every expression to a flat opcode array + constant pool and runs it on a real stack
+VM (`cr()`/`cpl()`/`run()`) — the AST is never walked directly at eval time. Rather than bolt on
+a second, disconnected VM, `vm.c` mirrors `b.c`'s real opcode table byte-for-byte and decodes
+the actual compiled bytecode Amber already produces, with a self-consistency check (the decode
+loop must consume exactly the bytecode length). `\disasm <expr>` compiles an expression and
+prints its locals, constant pool, and instruction stream without executing it:
+
+```
+amber> \disasm (1+2)*3-4
+locals (0):
+constants (2):
+  #0  -1
+  #1  3
+bytecode (6 bytes):
+    0  MONAD    1
+    1  CONST    #0
+    2  CONSTDYAD const#1 dyad=3
+    5  MONAD    0
+```
+
+(Amber's real compiler constant-folds `1+2` and `3-4` at compile time — the constant pool holds
+`3` and `-1`, not the original literals — which is exactly the kind of detail a disassembler for
+the *real* VM surfaces that a from-scratch reimplementation would not.)
+
+**Native CSV parser** (`src/csv.{h,c}`) — `` `csvr "path.csv" `` parses a CSV file directly into
+a genuine Amber table (the same `flp(names ! cols)` shape `([]…)` produces — verified against
+`@`, `meta`, and `qwhere`), through the arena allocator, with per-column type inference (Long /
+Float / Symbol), RFC-4180-subset quoted-field handling (embedded commas, `""`-escaped quotes),
+and empty cells mapped to that column's null (`0N`/`0n`/`` ` ``):
+
+```
+amber> t:`csvr "trades.csv"
+amber> meta t
+amber> select from t where px>150
+```
+
+Self-test: `` `csv0 0 `` (round-trips a fixture CSV through the parser and checks shape/values/
+nulls via `#`/`~`/`@` — the same primitives `meta`/`qwhere` already rely on).
+
+**Honest deviations, stated plainly:** (1) no `src/compiler.c` was added — `b.c` already *is*
+the real compiler and VM, so a second one would be redundant/misleading; `vm.c` disassembles
+the real bytecode instead. (2) the NEON path was written against the real ARM64 NEON intrinsics
+and reviewed carefully, but this sandbox has no ARM cross-compiler available to actually build
+and run it — it has not been executed on real Apple Silicon hardware.
 
 ---
 
@@ -387,8 +516,9 @@ Amber uses a terse array notation. A few things that differ from kdb+/q:
   `delete`) with no `sel"…"` wrapper — bare column names like `wavg[sz;px]` just work. This
   line-level rewriting is a REPL convenience; inside a `.k` script use `sel"select …"` (also
   `exq"…"` `upd"…"` `del"…"`) or the functional forms `qselect`/`qby`/`qwhere` directly.
-* **`peach[f;y]` is real multi-core** — it forks `AMBER_THREADS` worker processes (default 4;
-  `=1` forces serial), so heavy per-item work scales across cores with no GIL.
+* **`peach[f;y]` is real multi-core** — it forks `AMBER_THREADS` worker processes (default: the
+  online CPU count, detected via `sysconf`; `=1` forces serial), so heavy per-item work scales
+  across cores with no GIL and it won't oversubscribe a small box or leave a big one idle.
 * **Grids preview Q-style** — `show t` prints the first `CROWS` rows (default 20) then `..`, with
   a dimmed `[N rows x M cols]` footer and ANSI syntax highlighting.
 * **Errors show a `^` caret** under the failing token plus a descriptive message; set
@@ -399,7 +529,8 @@ Amber uses a terse array notation. A few things that differ from kdb+/q:
 
 Full reference: **[docs/AMBER.md](docs/AMBER.md)**. Built-in help: `\` then `\q \j \z` for the Amber
 vocabulary, `\0 \+ \' \`` for the core, `\v \ast \trace` for the session/diagnostic tools (see
-[REPL diagnostics](#repl-diagnostics-v--ast--trace) below).
+[REPL diagnostics](#repl-diagnostics-v--ast--trace) below), and `\disasm` for the bytecode
+disassembler (see [Engine extensions](#engine-extensions)).
 
 ---
 
@@ -431,13 +562,14 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 | file | |
 |------|--|
 | `a`, `build.sh` | launcher (build-if-stale) and portable compile (gcc / clang) |
-| `src/*.c`, `src/*.h` | the interpreter — ngn/k core + Amber extensions (`src/p.c` the `([]…)` parser; `src/ar.c` Arrow; `src/arena.{h,c}` the HFT arena; `src/diagnostic.{h,c}` the Rust-style formatter; the native `aj` kernel in `src/a.c`; `src/inspect.{h,c}` the `\v` inspector; `src/ast.{h,c}` the `\ast` visualiser; `src/trace.{h,c}` the `\trace` profiler; `src/fmtutil.{h,c}` and `src/ansi.h` shared formatting/colour helpers) |
+| `src/*.c`, `src/*.h` | the interpreter — ngn/k core + Amber extensions (`src/p.c` the `([]…)` parser; `src/ar.c` Arrow; `src/arena.{h,c}` the HFT arena, 32-byte aligned; `src/diagnostic.{h,c}` the Rust-style formatter; the native `aj` kernel in `src/a.c`; `src/inspect.{h,c}` the `\v` inspector; `src/ast.{h,c}` the `\ast` visualiser; `src/trace.{h,c}` the `\trace` profiler; `src/fmtutil.{h,c}` and `src/ansi.h` shared formatting/colour helpers; `src/simd.{h,c}` AVX2/NEON/scalar kernels; `src/parallel.{h,c}` the pthreads vector engine; `src/vm.{h,c}` the bytecode disassembler behind `\disasm`; `src/csv.{h,c}` the native CSV parser behind `` `csvr``) |
 | `amber.k` | the q/kdb+ vocabulary (auto-loaded) |
 | `repl.k` | the REPL — banner, grid rendering, `\grid`/`\clear`, help; CRLF-safe module loader |
 | `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |
 | `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` `tick.k` | modules (auto-loaded) |
 | `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `peach.k` · `wj.k` · `graphs.k` · … |
-| `test.k` `test-fin.k` `test-ext.k` | 272-assertion suite (158 + 35 + 79) |
+| `test.k` `test-fin.k` `test-ext.k` | 277-assertion suite (163 + 35 + 79) |
+| `tests/*.c` | standalone C test harnesses: `test_simd.c`/`test_parallel.c` (no Amber dependency), `test_ast.c` (links the full interpreter — ast.c is inherently built on Amber's real parser) |
 | `bench.k` `bench-fin.k` `bench-std.k` `bench/` | attribute / index / window benchmarks; cross-engine harness |
 | `docs/` | `AMBER.md` (reference) · `MISSING.md` (roadmap) · `CHANGELOG.md` (history) · `BENCHMARKS.md` |
 | `.gitattributes` | forces LF checkout of sources so the REPL's line-based loader works on Windows too |

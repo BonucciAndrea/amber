@@ -2,7 +2,7 @@
 / peach.k  -  parallel-each demo.  Embarrassingly-parallel Monte-Carlo, run
 / serially (f'y) and in parallel (peach[f;y]) so you can SEE the speedup.
 / The same shape covers option pricing, per-symbol backtests, bootstraps, etc.
-/   run:  AMBER_THREADS=8 ./amber examples/peach.k     (default 4 workers)
+/   run:  AMBER_THREADS=8 ./amber examples/peach.k     (default: online CPU count)
 / ============================================================================
 \l amber.k
 \l fin.k
@@ -15,7 +15,7 @@ NP:20000000                                          / points per task
 K:16                                                / independent tasks
 tasks:K#NP
 
-`0:"Monte-Carlo pi   ",($K)," tasks x ",($NP)," pts   (workers from $AMBER_THREADS, default 4)\n"
+`0:"Monte-Carlo pi   ",($K)," tasks x ",($NP)," pts   (workers from $AMBER_THREADS, default: online CPU count)\n"
 `0:"----------------------------------------------------------------\n"
 t0:`t[];sr:avg(mcpi'tasks);      st:0.001*`t[]-t0     / serial  each
 t0:`t[];pr:avg(peach[mcpi;tasks]);pt:0.001*`t[]-t0    / parallel each

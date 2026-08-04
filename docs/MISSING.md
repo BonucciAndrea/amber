@@ -148,3 +148,8 @@ tickerplant** `hopen`/`u.*` (§5).
    of always dropping on a new allocation.
 5. **True partitioned/mmap HDB** (§4) — a date-partitioned, memory-mapped on-disk format beyond
    the current text splay, plus `.Q.dpft`/`.Q.en`.
+6. **Live REPL syntax highlighting** — colouring tokens *as you type*, not just on a line you've
+   already run. This needs `repl.k`'s raw-keystroke input loop rewritten to re-tokenize and
+   redraw the current line on every keypress (a fragile, previously-regression-prone path in
+   this project — see CHANGELOG), not a new `\command`. A prior attempt shipped as a `\hl <expr>`
+   one-shot echo command instead and was removed for not matching what "live" means.

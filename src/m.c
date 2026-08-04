@@ -1,3 +1,4 @@
+#include <stdio.h>
 /* Feature-test macro must precede every system header (a.h pulls in
  * <unistd.h> on its very first line) or a strict `-std=c99` build hides
  * BSD-ism declarations like MAP_ANON that mm() below already relies on.
@@ -12,6 +13,7 @@
 #include"inspect.h" // \v rich variable inspector
 #include"ast.h"     // \ast AST visualizer
 #include"trace.h"   // \trace execution profiler
+#include"vm.h"      // \disasm bytecode disassembler
 #if defined(__x86_64__)
  #define AMARCH "x86-64"
 #elif defined(__aarch64__)
@@ -148,8 +150,11 @@ Z A bsast(S s)_(ast_cmd(s))
 // \trace <expr>: timed parse/compile/exec/print wrapper (trace.h). Evaluates
 // `s` exactly like a normal line, plus prints a phase-timing breakdown.
 Z A bstrc(S s)_(trace_cmd(s))
+// \disasm <expr>: compile-only bytecode disassembler (vm.h). Never runs `s`.
+Z A bsvmd(S s)_(vm_disasm_cmd(s))
 Z A bs_(S*p)_(C b[256];S s=*p,e=strchrnul(s,10);P(e-s+1>=L(b),ez0())MC(b,s,e-s);b[e-s]=0;*p=e+!!*e;C c=*b,d=b[1];P(c=='c'&&d=='d'&&(!b[2]||b[2]==32),bscd(b+2+(b[2]==32)))
  P(!strncmp(b,"trace",5)&&(!b[5]||b[5]==32),bstrc(b+5+(b[5]==32)))
+ P(!strncmp(b,"disasm",6)&&(!b[6]||b[6]==32),bsvmd(b+6+(b[6]==32)))
  P(!strncmp(b,"ast",3)&&(!b[3]||b[3]==32),bsast(b+3+(b[3]==32)))
  P(!d||d==10||d==32||d==':',G(&bsl,bst,bsd,bsbs,bsf,bsv,bsm,bs0)[si("ltd\\fvm",c)](b+1+(d==32)))K1("0x0a\\`x(,,\"/bin/sh\"),,:",aCz(b)))
 

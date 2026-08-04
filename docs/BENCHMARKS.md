@@ -125,7 +125,7 @@ Point it at a growler/k binary with `K=/path/to/growler ./run.sh`.
 ## 4. Parallelism — `peach` (multi-core)
 
 `peach[f;y]` runs `f` over the items of `y` across `AMBER_THREADS` worker **processes**
-(default 4) and returns exactly what serial `` f'y `` would. It forks (copy-on-write heap,
+(default: online CPU count) and returns exactly what serial `` f'y `` would. It forks (copy-on-write heap,
 so no shared-memory races and no atomic-refcount tax on the single-threaded core), each
 worker serialises its slice's result back through a pipe, and the parent stitches them in
 order. Correct by construction because `(. `k v) ~ v` for every value.

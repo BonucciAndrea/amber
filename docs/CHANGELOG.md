@@ -1,5 +1,104 @@
 # Changelog
 
+## Unreleased — removed the `\hl` syntax-highlight command
+- **Removed** `src/highlight.{h,c}`, the `\hl <expr>` REPL command, and `tests/test_highlight.c`.
+  `\hl` only ever colorized a line you explicitly ran (`\hl select ...` echoed that one line back
+  with ANSI colour) — it never highlighted your keystrokes *as you typed them*, which is what
+  "REPL live syntax highlighting" actually means. Real live/incremental highlighting would
+  require rewriting `repl.k`'s raw-keystroke input loop (a fragile, previously-regression-prone
+  path in this project), which is a materially different and larger undertaking than a one-shot
+  echo command — removed rather than kept as something that doesn't do what its name promises.
+  See [docs/MISSING.md](MISSING.md) for this as a possible future direction.
+- No other engine extension is affected: SIMD, the multithreaded vector engine, the bytecode
+  disassembler, and the native CSV parser are all unchanged.
+
+## Unreleased — `\ast` visualizer overhaul
+- **Bug fixed: generic `<X-atom>` placeholders.** The previous formatter only understood five
+  atom tags (symbol/int/long/float/char) and treated everything else -- multi-element data
+  vectors (`1 2 3`, `` `a`b`c ``, `"hello"`, ...), verb/adverb atoms appearing bare (inside a
+  hook/fork, or `\ast +` on its own), lambda bodies (`{x+1}`), and the `GAP` sentinel that marks
+  a curried-away argument -- as an opaque "bare atom" and printed a useless `<v-atom>`/
+  `<w-atom>`/`<o-atom>`/`<I-atom>`/`<S-atom>` placeholder. Every one of those shapes now gets an
+  explicit, correctly-typed node: literal vectors preview their contents with a
+  `(TypeName Vector[len])` annotation, scalars are labeled `Int64`/`Float64`/`Symbol`/`Char`,
+  lambda literals show their real source text, and curried/partial applications (`1+`,
+  `f[x;;z]`) render as an explicit **Projection** with a **Blank** node for the omitted slot.
+- **Bug fixed: namespaced identifiers misread.** `.ns.sub` printed as `"ns.ns"` (a duplicated
+  first segment) because the old code read a Symbol Vector's elements via `_A(v)[i]` (an 8-byte
+  `A*`-stride cast) when Symbol Vectors actually store **packed 32-bit ids** -- reading through
+  the wrong stride silently pulled back the wrong bytes. Fixed by reading through
+  `(const I*)_V(v)` everywhere a Symbol Vector's elements are touched.
+- **New: tacit-form annotations.** A 2-verb list `(f g)` is now an explicit **Hook**; a 3-verb
+  list `(f g h)` is an explicit **Fork**; both are recognised by checking whether every list
+  element is itself verb-like, rather than always rendering as a generic list literal.
+- **New palette.** Verbs (bare, applied, curried, or the head of a call) render bold cyan;
+  adverbs bold magenta; numeric/literal scalars bright green; variables/symbols yellow; the
+  tree's Unicode connectors themselves dim gray. A combined glyph like `+/` is colour-split
+  within one label (`+` cyan, `/` magenta) rather than picked as a single node colour.
+- **Memory: arena-backed, not malloc/free.** The whole `ASTNode` tree built for one `\ast`
+  invocation is now bump-allocated from Amber's real scratch region (`arena_alloc()`/
+  `arena_reset()`, `src/arena.h`) instead of `malloc`/`calloc`/`realloc`/`free` -- the same
+  region `src/csv.c`'s transient row grid and `src/trace.c`'s own diagnostics already use.
+  `ast_free()` is now a documented no-op; `arena_reset()` in `ast_cmd()` does the real cleanup.
+  (Amber has no symbol literally named `g_scratch`; `arena_alloc()`/`arena_reset()` *is* its
+  scratch-arena API, used directly.)
+- **Safety: recursion depth guard.** `ast_from_k()`'s walk now refuses to recurse past 64 levels
+  and returns a synthetic "(max depth exceeded)" leaf instead, defense-in-depth alongside pk()'s
+  own (tighter, ~60-level) parser nesting limit.
+- **Tests:** a new `` `astt`` self-test builtin (wired into `test.k`, mirroring `` `arn``/
+  `` `dgn``/`` `simd``/...) plus a new standalone `tests/test_ast.c` harness -- the latter links
+  against the full interpreter (ast.c is inherently built on Amber's real parser/value
+  representation, unlike `tests/test_simd.c`/`test_parallel.c`, which are
+  dependency-free by design) and checks label correctness, a broad no-placeholder regression
+  sweep, ANSI colour coverage for all five required categories, and that moderately deep (but
+  parser-legal) nesting does not crash.
+- **Honest scope note:** `\ast` still never compiles or runs the expression it's shown, with one
+  pre-existing, unavoidable exception documented in `ast.h`'s file header -- `pk()` itself
+  eagerly compiles lambda *literals* (`{...}`) at parse time (see `p.c`), so a compiled closure
+  can appear as a leaf even in an otherwise-uncompiled tree. This module shows that closure's
+  captured *source text*, never its bytecode (that remains `\disasm`'s job, `src/vm.{h,c}`).
+
+## Unreleased — fix `peach` worker-count default
+- **Bug:** `peach[f;y]`'s default worker count (`src/i.c`'s `peachNW()`) was a hardcoded `4`
+  whenever `AMBER_THREADS` was unset, regardless of how many CPUs the host actually had. On a
+  small box (e.g. 2 cores) this **oversubscribed** — forking 4 processes onto 2 cores made
+  `peach` measurably *slower* than serial `` f'y `` through pure fork/context-switch overhead
+  (observed: 0.55x–0.79x "speedup" running `examples/peach.k` in a 2-core sandbox). On a large
+  box it left most cores idle.
+- **Fix:** `peachNW()` now defaults to the actual online CPU count via
+  `sysconf(_SC_NPROCESSORS_ONLN)` (new `peachCPUs()` helper in `src/i.c`), the same approach
+  `src/parallel.c`'s `par_thread_count()`/`online_cpus()` already uses for the SIMD/vector
+  engine — the two parallel primitives in Amber now agree on what "auto" means.
+  `AMBER_THREADS=N` still overrides explicitly and is unchanged. Verified: re-running
+  `examples/peach.k` in the same 2-core sandbox went from ~0.55–0.79x ("speedup") to a genuine
+  ~1.7x.
+- **Cleanup:** removed two stale duplicate source files at the project root (`i.c`, `ar.c`) —
+  leftovers from before the `src/` reorganisation, byte-for-byte identical to their `src/`
+  counterparts except for the fix above, never compiled by `build.sh` (which only builds
+  `src/*.c`), and a source of confusion if edited by mistake.
+
+## Unreleased — engine extensions (SIMD, parallel, disassembler, CSV)
+- **SIMD vector kernels.** `src/simd.{h,c}` — AVX2 (x86_64), ARM NEON (`aarch64`, incl. Apple
+  Silicon), and scalar C99 fallback implementations of `add`/`mul`/`sum` over `int64_t`/`double`
+  arrays, selected at compile time. `src/arena.c`'s bump allocator now guarantees genuine
+  32-byte alignment (`posix_memalign`, up from plain `malloc`'s 16-byte guarantee). Self-test +
+  benchmark: `` `simd 0``. Build with `AMBER_NATIVE=1 ./build.sh` to activate AVX2 on x86_64
+  (NEON activates unconditionally on `aarch64`).
+- **Multithreaded vector engine.** `src/parallel.{h,c}` — splits arrays above 100,000 elements
+  across POSIX threads (`AMBER_THREADS` env var, same convention as `peach`), each chunk
+  processed by the SIMD kernels above. Self-test + benchmark: `` `para 0``.
+- **Bytecode disassembler (`\disasm`).** `src/vm.{h,c}` — Amber's compiler/VM already exists in
+  `src/b.c` (AST is compiled to opcodes + a constant pool, then run on a real stack VM); this
+  mirrors that opcode table byte-for-byte and decodes real compiled bytecode with a
+  self-consistency check, rather than adding a second, disconnected VM. Self-test: `` `vmd 0``.
+- **Native CSV parser.** `src/csv.{h,c}` — `` `csvr "path.csv"`` parses a file straight into a
+  genuine Amber table (`flp(names ! cols)`, the same shape `([]…)` produces) via the arena
+  allocator, with per-column type inference (Long/Float/Symbol), quoted-field handling
+  (embedded commas, `""`-escaped quotes), and null-mapped empty cells. Self-test: `` `csv0 0``.
+- **Test suite:** `test.k` grew from 158 to 161 assertions (one self-test call per module
+  above); `tests/test_simd.c` and `tests/test_parallel.c` are new standalone C harnesses (no
+  Amber dependency) for the SIMD and parallel modules.
+
 ## Unreleased — REPL diagnostics + cleanup
 - **`\v` rich workspace inspector.** `src/inspect.{h,c}` — every currently-defined global as an
   ASCII table (Name / Type / Shape·Length / Memory), with a recursive deep-memory-footprint

@@ -550,6 +550,38 @@ p:arrow.export t                    / table  -> (schemaAddr; arrayAddr)  64-bit 
 arrow.import p                      / (schemaAddr; arrayAddr) -> Amber table
 ```
 
+## Comparative benchmark query files
+
+`bench/run_comparative.py` (see [docs/BENCHMARKS.md §5](docs/BENCHMARKS.md) for the live table,
+refreshed on every push by CI) times Amber against DuckDB, CBQN and ngn/k on three workloads —
+vector sum, vector arithmetic + a tacit EMA, and columnar group-by. Each engine runs its **own**
+query file (`bench/queries/amber_<id>.k` vs `bench/queries/k_<id>.k`, plus `duckdb_<id>.sql` /
+`bqn_<id>.bqn`) — Amber is never scored on a plain ngn/k script reused as-is. Every `amber_*.k`
+file's header comment documents exactly what was tried and measured, including the dead ends:
+
+* **vecsum** — `peach`-chunked parallel summation was tried and measured *slower* (fork/IPC
+  overhead of 30–130ms dwarfs the plain fold's 3–6ms at this size), so the direct
+  `+/!10000000` is what actually runs.
+* **vecarith** — the EMA recurrence is rewritten via the exact `x+a*(y-x)` lerp identity
+  (verified bit-for-bit identical to `a*y+(1-a)*x`) and its temporaries are kept unnamed so the
+  arena reclaims them immediately — a real, correctness-preserving ~10–15% win.
+* **groupby** — bypasses the qSQL `sel"select … by … from …"` layer (400–800ms, dominated by
+  `qwhere`'s unconditional full-table mask-and-copy even with no `where`) for the direct `=`/`@`
+  group-and-gather idiom (~30–40ms). A sorted + `` `pa`` (parted-attribute) variant using the
+  attribute-accelerated `?` binary search was also tried and measured *slower* — sorting
+  1,000,000 rows up front costs more than the single hashed `=` pass it would replace, since
+  there are only 10 groups.
+
+`bench/run_comparative.py` also runs a numerical-parity check before timing anything: it runs
+both engines' query files once and compares their printed output, so a speed win can never
+silently also change the answer — surfaced on stderr and as a note at the top of the generated
+Markdown table.
+
+**Known lexer quirk hit while writing these files:** a `.k` comment line containing *only* a
+bare `/` (no trailing space or text) silently truncates parsing of everything after it, with no
+error. `bench/queries/*.k` works around this with blank lines instead of bare `/` separators;
+see [docs/MISSING.md](docs/MISSING.md) for this tracked as a known engine bug.
+
 ## Why attributes matter
 
 `bench.k` measures `?` (find) on identical data, sorted-attributed vs not:
@@ -631,7 +663,7 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 | `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `peach.k` · `wj.k` · `graphs.k` · … |
 | `test.k` `test-fin.k` `test-ext.k` | 277-assertion suite (163 + 35 + 79) |
 | `tests/*.c` | standalone C test harnesses: `test_simd.c`/`test_parallel.c` (no Amber dependency), `test_ast.c` (links the full interpreter — ast.c is inherently built on Amber's real parser) |
-| `bench.k` `bench-fin.k` `bench-std.k` `bench/` | attribute / index / window benchmarks; cross-engine harness |
+| `bench.k` `bench-fin.k` `bench-std.k` `bench/` | attribute / index / window benchmarks; `bench/run_comparative.py` cross-engine harness (Amber vs DuckDB vs CBQN vs ngn/k — see [docs/BENCHMARKS.md §5](docs/BENCHMARKS.md)); `bench/queries/amber_*.k` and `bench/queries/k_*.k` are separate, independently-tuned scripts per engine (not the same file reused), each `amber_*.k` documenting in its header what optimization was tried, what was measured, and why — see [Comparative benchmark query files](#comparative-benchmark-query-files) |
 | `docs/` | `AMBER.md` (reference) · `MISSING.md` (roadmap) · `CHANGELOG.md` (history) · `BENCHMARKS.md` |
 | `.gitattributes` | forces LF checkout of sources so the REPL's line-based loader works on Windows too |
 

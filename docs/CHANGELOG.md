@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased — separate, independently-tuned comparative benchmark query files
+- **`bench/queries/amber_{vecsum,vecarith,groupby}.k`** added — `bench/run_comparative.py`'s
+  Amber row previously reran the same `k_<id>.k` file used for the "K" (ngn/k) row. Amber now
+  gets its own query file per workload, with a header comment on each documenting what
+  engine-level optimization was tried, what it measured, and — for the ideas that didn't pay
+  off — why not. See the README's
+  [Comparative benchmark query files](../README.md#comparative-benchmark-query-files) section
+  for a summary, or the files themselves for the full detail.
+- **`check_parity()`** added to `bench/run_comparative.py`: runs `amber_<id>.k` and `k_<id>.k`
+  once each before the timed runs and compares their printed output, so a claimed speed win can
+  never silently also be a wrong answer. Reported on stderr and prefixed onto the generated
+  Markdown table.
+- **Known engine bug found and documented** (not fixed here — see docs/MISSING.md): a `.k`
+  comment line containing only a bare `/` with no trailing space or text silently truncates
+  parsing of the rest of the file, with no error raised.
+
 ## Unreleased — removed the `\hl` syntax-highlight command
 - **Removed** `src/highlight.{h,c}`, the `\hl <expr>` REPL command, and `tests/test_highlight.c`.
   `\hl` only ever colorized a line you explicitly ran (`\hl select ...` echoed that one line back

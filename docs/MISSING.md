@@ -124,6 +124,16 @@ Amber text via `` `k``, inverted by `eval`) and `protect` (like `.Q.trp`). Amber
 - **Still missing:** `\c` console dims, a real `\w` (workspace) report (`Q.w` is a placeholder),
   `system"…"`, `getenv`/`setenv`, `\cd`, and editor tooling / a language server.
 
+## 14. Known engine bugs (not q gaps — real defects, tracked here until fixed)
+- **Bare `/` comment line silently truncates the rest of the file.** A `.k` comment line
+  containing *only* `/` — no trailing space, no trailing text — causes the lexer to stop
+  parsing everything after it with no error raised (exit code 0, empty output). A comment line
+  with a trailing space (`` / `` won't repro but `` /  `` with content will) or any actual text
+  after the slash is unaffected. Found while writing `bench/queries/amber_*.k`'s multi-paragraph
+  header comments (worked around there with blank lines instead of bare `/` separators). Root
+  cause not yet isolated to a specific lexer function; needs a repro-minimized case and a fix in
+  the comment-scanning path before this entry can move to "done."
+
 ---
 
 Already done (once gaps): **bare qSQL** `select/exec/update/delete` (1.5), **as-of join** —

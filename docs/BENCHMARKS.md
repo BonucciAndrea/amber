@@ -159,16 +159,16 @@ _Median of 5 runs per cell; process wall-clock time including interpreter startu
 
 | Benchmark | Amber (ms) | DuckDB (ms) | CBQN (ms) | K (ms) |
 |---|---:|---:|---:|---:|
-| Vector sum — 10,000,000 elements (`+/!10000000`) | 1.89 | 31.05 | 8.71 | 1.68 |
-| Vector arithmetic + tacit EMA (1,000,000 elems, 50,000-elem scan) | 16.88 | 27,602.44 | 32.17 | 20.13 |
-| Columnar group-by aggregation (1,000,000 rows, 10 groups) | 20.88 | 103.64 | 33.21 | 21.02 |
+| Vector sum — 10,000,000 elements (`+/!10000000`) | 1.43 | 20.55 | 6.87 | 1.27 |
+| Vector arithmetic + tacit EMA (1,000,000 elems, 50,000-elem scan) | 11.41 | 14,365.90 | 21.87 | 12.19 |
+| Columnar group-by aggregation (1,000,000 rows, 10 groups) | 12.40 | 59.99 | 21.46 | 12.56 |
 
 Speedup relative to Amber (>1× means the other engine is faster):
 
 | Benchmark | DuckDB | CBQN | K |
 |---|---|---|---|
-| Vector sum — 10,000,000 elements (`+/!10000000`) | 16.4× slower than Amber | 4.6× slower than Amber | 1.1× faster than Amber |
-| Vector arithmetic + tacit EMA (1,000,000 elems, 50,000-elem scan) | 1635.4× slower than Amber | 1.9× slower than Amber | 1.2× slower than Amber |
-| Columnar group-by aggregation (1,000,000 rows, 10 groups) | 5.0× slower than Amber | 1.6× slower than Amber | 1.0× slower than Amber |
+| Vector sum — 10,000,000 elements (`+/!10000000`) | 14.4× slower than Amber | 4.8× slower than Amber | 1.1× faster than Amber |
+| Vector arithmetic + tacit EMA (1,000,000 elems, 50,000-elem scan) | 1258.6× slower than Amber | 1.9× slower than Amber | 1.1× slower than Amber |
+| Columnar group-by aggregation (1,000,000 rows, 10 groups) | 4.8× slower than Amber | 1.7× slower than Amber | 1.0× slower than Amber |
 
 <!-- COMPARATIVE_BENCHMARKS:END -->

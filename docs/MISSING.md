@@ -133,6 +133,23 @@ Amber text via `` `k``, inverted by `eval`) and `protect` (like `.Q.trp`). Amber
   header comments (worked around there with blank lines instead of bare `/` separators). Root
   cause not yet isolated to a specific lexer function; needs a repro-minimized case and a fix in
   the comment-scanning path before this entry can move to "done."
+- **`` `&`` (where) on a literal empty generic list returns a spurious non-empty result.**
+  `&()` returns `,!0` (a 1-element list containing an empty vector) instead of the correct `!0`
+  (a plain empty vector) — compare `&!0`, which correctly returns `!0`. Traced to `src/v.c`'s
+  `X1(whr,...)`, the `RA` (generic-list) branch: its embedded K expression
+  `` {$[`A~@x;(,&#'*'x),,'/x@\:!0|/#'x:o'x;,&x]} `` is written for *nested* input (grouping /
+  per-key counts) and mishandles a simply-empty `()`, which also has type `` `A``, falling into
+  that same branch instead of being recognized as "zero elements, nothing to do." Found via
+  `qsql.k`'s `ss` (string search), which calls `&` on the result of `` '``-ing a K-defined
+  predicate over an explicitly empty range whenever the search pattern is longer than the
+  remaining string — exactly the case hit by bare `select from t` / `exec col from t` with no
+  `where`/`by` clause, so this was silently breaking a wide swath of everyday qSQL. Worked
+  around at the K level (`amber.k`'s `ss` now special-cases `(#s)<#p` before ever calling `&`)
+  rather than risk destabilizing `` `&``, which is a widely-used core verb — but the underlying
+  C bug is still there for any *other* caller that happens to construct a literal empty `()` and
+  feed it through `` `&``. Needs a proper fix in `whr`'s `RA` branch (an early `P(!xn,...)`-style
+  guard before the nested-list logic runs) plus a regression test, then this `ss` workaround can
+  be reverted.
 
 ---
 

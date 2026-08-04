@@ -67,6 +67,20 @@ Z I peachNW(){S*e=env;I n=-1;if(e)while(*e){S p=*e++;if(!strncmp(p,"AMBER_THREAD
 Z A eachR(A f,A y,U lo,U hi){U m=hi-lo;A u=aA0(m|!m);for(U i=0;i<m;i++){A v=_1(f,ii(y,lo+i));if(!v){mr(u);return 0;}u=psh(u,v);}return sqz(u);}
 A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);U n=_N(dat);I nw=peachNW();if(nw>64)nw=64;
  if(nw<2||n<2){A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}
+ // fork-based parallelism needs a real pipe()/fork(); neither exists in the
+ // wasm sandbox (src/0.c's wasm branch stubs both to always return -1
+ // there), and this loop never used to check for that, so pipe()/fork()
+ // failing left pr[]/pid[] holding uninitialized fds that the read/wait
+ // loop below then used -- a wasm trap (uncatchable from K), not a clean
+ // error. One throwaway probe pipe() up front detects the unsupported
+ // environment and falls back to the plain serial eachR pass instead,
+ // which is exactly what std.k's own peach wrapper comment already
+ // documents as the intended behavior ("this build is single-threaded, so
+ // peach evaluates sequentially") -- this just makes the C side actually
+ // honor that instead of assuming fork() always succeeds. No effect on a
+ // real fork()-capable build: the probe pipe costs two fds, immediately
+ // closed, once per peach call.
+ {I pp[2];if(pipe(pp)<0){A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}close(pp[0]);close(pp[1]);}
  if((U)nw>n)nw=n;I pr[128],pid[64];U base=n/nw,rem=n%nw,lo=0;
  for(I w=0;w<nw;w++){U hi=lo+base+((U)w<rem);pipe(pr+2*w);pid[w]=fork();
   if(!pid[w]){close(pr[2*w]);A r=eachR(fn,dat,lo,hi);if(!r)_exit(3);v1c(ai(pr[2*w+1]),kst(r));close(pr[2*w+1]);_exit(0);}

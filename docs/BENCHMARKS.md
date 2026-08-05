@@ -167,19 +167,19 @@ _Median of 5 timed runs after 2 warm-up passes. Kernel time only — process sta
 
 | Benchmark | C (-O3) | Amber | Amber qSQL | ngn/k | CBQN | J | Uiua | NumPy | Julia | DuckDB |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M | 12.08 | 85.61 | 102.19 | _not installed_ | 74.24 | _not installed_ | _not installed_ | 70.20 | _not installed_ | _not installed_ |
-| Reductions — `sum + max + dot`, 10M elements | 32.84 | 53.20 | 109.63 | _not installed_ | 15.44 | _not installed_ | _not installed_ | 15.60 | _not installed_ | _not installed_ |
-| Group-by aggregation — 100 groups over 10M rows | 14.65 | 223.25 | 330.77 | _not installed_ | 82.87 | _not installed_ | _not installed_ | 15.42 | _not installed_ | _not installed_ |
-| Inner join — 1M left rows against 1,000 sparse keys | 1.38 | 183.77 | 199.65 | _not installed_ | 3.51 | _not installed_ | _not installed_ | 26.01 | _not installed_ | _not installed_ |
+| Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M | 9.25 | 62.55 | 78.18 | 321.14 | 42.02 | 150.21 | 849.44 | 37.49 | 9.34 | 29.00 |
+| Reductions — `sum + max + dot`, 10M elements | 25.92 | 38.63 | 94.94 | 293.96 | 6.45 | 135.87 | 769.07 | 11.71 | 23.35 | 39.00 |
+| Group-by aggregation — 100 groups over 10M rows | 7.32 | 70.11 | 147.74 | 328.11 | 40.79 | 185.55 | 1,765.94 | 13.70 | 7.00 | 20.00 |
+| Inner join — 1M left rows against 1,000 sparse keys | 0.98 | 181.34 | 183.15 | 440.77 | 2.41 | 121.49 | 781.91 | 13.95 | 12.52 | 12.00 |
 
 Relative to the C baseline (lower is better; 1.00× means it matched plain C):
 
 | Benchmark | C (-O3) | Amber | Amber qSQL | ngn/k | CBQN | J | Uiua | NumPy | Julia | DuckDB |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M | 1.00× | 7.09× | 8.46× | — | 6.15× | — | — | 5.81× | — | — |
-| Reductions — `sum + max + dot`, 10M elements | 1.00× | 1.62× | 3.34× | — | 0.47× | — | — | 0.48× | — | — |
-| Group-by aggregation — 100 groups over 10M rows | 1.00× | 15.24× | 22.57× | — | 5.66× | — | — | 1.05× | — | — |
-| Inner join — 1M left rows against 1,000 sparse keys | 1.00× | 133.61× | 145.15× | — | 2.55× | — | — | 18.91× | — | — |
+| Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M | 1.00× | 6.76× | 8.45× | 34.70× | 4.54× | 16.23× | 91.79× | 4.05× | 1.01× | 3.13× |
+| Reductions — `sum + max + dot`, 10M elements | 1.00× | 1.49× | 3.66× | 11.34× | 0.25× | 5.24× | 29.68× | 0.45× | 0.90× | 1.50× |
+| Group-by aggregation — 100 groups over 10M rows | 1.00× | 9.58× | 20.19× | 44.83× | 5.57× | 25.35× | 241.30× | 1.87× | 0.96× | 2.73× |
+| Inner join — 1M left rows against 1,000 sparse keys | 1.00× | 185.45× | 187.31× | 450.78× | 2.47× | 124.25× | 799.67× | 14.27× | 12.81× | 12.27× |
 
 **Timing mode per engine** — `kernel` means the engine timed its own kernel with a monotonic clock; `net` means it has no usable in-language clock and was measured as _total process time − startup baseline_:
 
@@ -188,13 +188,13 @@ Relative to the C baseline (lower is better; 1.00× means it matched plain C):
 | C (-O3) | baseline | kernel | — |
 | Amber | array primitives | kernel | — |
 | Amber qSQL | query layer | kernel | — |
-| ngn/k | array primitives | — | — |
-| CBQN | array primitives | kernel | 4.43 |
-| J | array primitives | — | — |
-| Uiua | array primitives | — | — |
+| ngn/k | array primitives | net | 2.20 |
+| CBQN | array primitives | kernel | 3.47 |
+| J | array primitives | net | 51.87 |
+| Uiua | array primitives | net | 24.00 |
 | NumPy | array primitives | kernel | — |
-| Julia | scalar loops (JIT) | — | — |
-| DuckDB | query layer | — | — |
+| Julia | scalar loops (JIT) | kernel | — |
+| DuckDB | query layer | kernel | 13.96 |
 
 Amber appears twice on purpose: `Amber` is array-primitive code (the fair peer of ngn/k, CBQN, J and Uiua) and `Amber qSQL` goes through the `select … by … from` layer (the fair peer of DuckDB's SQL planner). Reporting only the faster of the two would be choosing whichever comparison flatters Amber.
 

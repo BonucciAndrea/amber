@@ -43,7 +43,8 @@ jobs:
           echo "$out" | grep -Eq '0 failures'
 
       - name: Combinatorial matrix + qSQL matrix + fuzz + C unit tests
-        run: chmod +x run_tests.sh
+        run: cd tests
+          chmod +x run_tests.sh
           ./run_tests.sh
 
       - name: Smoke examples
@@ -92,7 +93,8 @@ jobs:
           echo "$out" | grep -Eq '0 failures'
 
       - name: Combinatorial matrix + qSQL matrix + fuzz + C unit tests
-        run: chmod +x run_tests.sh
+        run: cd tests
+          chmod +x run_tests.sh
           ./run_tests.sh
 
       - name: Smoke examples

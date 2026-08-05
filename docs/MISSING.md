@@ -192,11 +192,12 @@ behaviour shows up as a test failure rather than a silent regression.
 - **Unknown `by` key does not raise.** `select t:sum px by nosuchkey from t` groups by nulls
   instead of rejecting the query the way kdb+ does. Root cause is core dict semantics — `` b#+t``
   on a missing key yields nulls — so a fix belongs in `qbc`/`sel`'s validation, not in `#`.
-- **A trapped error still renders a diagnostic to stderr.** `.[f;args;handler]` (and `protect`,
-  documented as `.Q.trp`-like) catches the error correctly, but the Rust-style diagnostic has
-  already been printed by the time the handler runs. Scripts that deliberately provoke errors —
-  including this repo's own test suites — have to discard stderr. A proper fix means deferring
-  rendering from error-creation time to the top-level `evs()` loop.
+- **A trapped error still renders a diagnostic to stderr *by default*.** `.[f;args;handler]`
+  (and `protect`, documented as `.Q.trp`-like) catches the error correctly, but the Rust-style
+  report is written at error-creation time, before the handler runs. Rather than defer rendering
+  (which would change what an interactive line prints), 1.9 adds the `` `diag`` runtime switch:
+  `` `diag 0`` suppresses the report and returns the previous setting, `` `diag 1`` restores it.
+  `tests/harness.k` uses it. Code that catches errors in bulk should do the same.
 - **No long-typed infinity literal.** `0w`/`-0w` exist for floats; `0W`/`-0W` do not parse, so
   the identity elements of `&/`/`|/` over an empty long vector can only be obtained from the
   primitives themselves.
@@ -205,6 +206,10 @@ behaviour shows up as a test failure rather than a silent regression.
 - **Attribute syntax is `` `sa``/`` `ua``/`` `pa``/`` `ga`` (set) and `` `at`` (get), not kdb's
   `` `s#``/`` `u#``/`` `p#``/`` `g#``.** Several doc passages still write `s#` informally when
   describing the sorted attribute; the working syntax is `` `at(`sa 1 2 3)``.
+- **`f [a;b]` with a space is not a call.** K reads `[a;b]` as a bracketed statement block, so
+  the expression silently evaluates to a discarded projection `f[b;]` — no error, no output.
+  Bit this repo's own qSQL suite (42 of 93 cases stopped running while the suite still reported
+  "ALL TESTS PASSED"); `tests/harness.k`'s `hexpect[n]` now guards against it.
 - **A bare `/` on a line of its own opens a block comment** that runs to the next line starting
   with `\`, silently truncating the rest of the file with no error. Standard K, but a sharp edge;
   `tests/harness.k` carries a warning comment about it.

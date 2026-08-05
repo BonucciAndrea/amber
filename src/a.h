@@ -115,6 +115,7 @@ L cfm(CO A*,I),gl_(A),gl(A),iw(A,U,L),now(),pl(S*),minfZ(L,A),addfB(CO V*,U),add
 S su(U),pID(S);
 W pu(S*);
 F gf(A);
+EX I amdiag;//stderr-diagnostic switch (e.c); see `diag
 EX A1*v1[];EX A2*v2[];EX AA*v8[];EX A gv[4096],cns,cn[],ci[2][5];EX I pg;EX TY(CO C[])vc,TS,Tw,TR,TT,TX,Tk;EX S*argv,*env;
 
 //                    0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25

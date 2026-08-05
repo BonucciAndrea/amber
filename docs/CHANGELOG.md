@@ -61,6 +61,11 @@
   `sf()` no longer emits the leading `-` for it. `0%0` and `(-0w)+0w` now print `0n`.
 - **`deltas` and `ratios` raised `'length` on an empty argument** (`amber.k`). `0,-1_()` is a
   one-element vector, so `x-0,-1_x` mismatched. Both now return the empty vector, as q does.
+- **`sum`/`prd` of an empty FLOAT vector returned an integer.** `amber.k`'s wrappers
+  short-circuit an empty argument to the literal `0`/`1`, dropping the float type that the
+  underlying `+/`/`*/` reductions get right (`+/0#0.0` is `0.0`, but `sum 0#0.0` was `0`). This
+  surfaced as `select t:sum px from none` producing an int column. Both now return `0.0`/`1.0`
+  for a float argument.
 - **`med` of an empty vector returned `0.0`** while `avg`/`dev`/`var` return the float null; it
   now returns `0n` like the rest of the aggregation family.
 - **`qselect` was broken for more than one aggregation** (`amber.k`).
@@ -73,6 +78,16 @@
   space in front of it; and even once split, an empty projection ignored the grouping entirely.
   `qsplit0` handles the position-0 case and the empty projection now aggregates each non-key
   column with `last`, matching q.
+
+### New: `` `diag`` — runtime control of the stderr diagnostic
+Amber renders its Rust-style diagnostic at error **creation** time, so code that catches an error
+with `.[f;args;handler]` has already had the full report splashed across stderr. That is right for
+an interactive line and wrong for anything whose job is to provoke errors it then handles — a test
+suite's must-raise cases, `protect`, a retry loop — which drowned the terminal in red for errors
+it dealt with perfectly. `` `diag 0`` turns the report off and returns the previous setting;
+`` `diag 1`` turns it back on. The compact caret text is untouched: it is buffered and still
+handed to the trap handler and to `` `err``, so nothing is lost. The existing `AMBER_DIAG=0`
+environment variable still works and now just seeds the initial value.
 
 ### Diagnostics
 - **`\trace`'s "Arena peak" was always `0 B`.** It reported `max(used-before, used-after)`, and
@@ -96,21 +111,42 @@
   call the exported branch-free `amlb()`.
 
 ### Tests
-- **`tests/harness.k`** — shared assertion harness (`t`, `tv`, `te`, `tk`, `hreport`). Every
-  assertion is trapped, so a failing or throwing case can never abort a suite or hide the cases
-  after it.
-- **`tests/test_matrix.k`** — 308-case combinatorial matrix: every primitive against every
+- **`tests/harness.k`** — shared assertion harness (`t`, `tv`, `te`, `tk`, `hexpect`, `hreport`).
+  Every assertion is trapped, so a failing or throwing case can never abort a suite or hide the
+  cases after it.
+- **Suites are self-locating.** `\l amber.k` resolves against the *current working directory*, so
+  a suite written that way only runs from the repo root — `amber /path/to/tests/test_matrix.k`
+  died with a bare `'io`. Each suite now derives the repo root from its own script path
+  (`` `argv 1``, the same trick `repl.k` uses) and runs from anywhere.
+- **Suites exit non-zero on failure**, so CI and `tests/run_tests.sh` can gate on status as well
+  as on the printed report.
+- **`hexpect[n]` assertion-count guard.** In K, `f [a;b]` **with a space** is not a call: the
+  parser reads `[a;b]` as a bracketed statement block and quietly builds a projection that is
+  then discarded — no error, no output, the assertion simply never runs. An earlier revision of
+  `tests/test_qsql.k` lost 42 of its 93 cases to exactly this **and still printed
+  "ALL TESTS PASSED"**. Each suite now declares how many assertions it expects to record and
+  fails if the number disagrees.
+- **`tests/test_qsql.k` is written in the bare `select … from t` syntax** users actually type,
+  put through the same `qrw` rewrite `repl.k`'s `line1` applies to every input line, instead of
+  the `sel"…"` wrapper — so the suite exercises the rewriter and the query engine together, on
+  the user's own code path. Section 9 asserts the explicit wrapper gives an identical answer.
+- **`tests/test_matrix.k`** — 309-case combinatorial matrix: every primitive against every
   element type (Long / Float / Boolean / Char / Symbol / nested list / dict / table) at sizes
   0, 1, 10 and 100 000+, including the 99 999 / 100 000 / 100 001 / 250 000 sizes that straddle
   `PAR_THRESHOLD`. Cases assert invariants (shape, algebraic identity, vector-kernel-vs-scalar-
   reference agreement) rather than frozen literals.
-- **`tests/test_qsql.k`** — 78-case qSQL matrix over the full clause lattice, multi-key `by`,
+- **`tests/test_qsql.k`** — 94-case qSQL matrix over the full clause lattice, multi-key `by`,
   empty / single-row / heavily-duplicated tables, the bare-qSQL rewriter, and malformed queries.
 - **`tests/fuzz.py`** — malformed-input and deep-nesting crash fuzzer (unbalanced brackets,
   dangling adverbs, truncated qSQL, 20 000-deep nesting, out-of-range literals). Asserts a clean
   K error, never a signal or a hang.
 - **`tests/run_tests.sh`** — one entry point for all suites plus the C unit tests; `--asan`
   rebuilds under AddressSanitizer + UBSan and re-runs everything, including the fuzzer.
+- **The suites are quiet on success.** `tests/harness.k` calls `` `diag 0`` on load and restores
+  the previous setting in `hreport`, so a run that provokes ~35 deliberate errors prints its
+  summary and nothing else instead of ~35 full-colour diagnostic blocks. A case that fails
+  unexpectedly still reports the error kind on its own FAIL line (`FAIL raised: 'length  <-
+  deltas 0#0`), so nothing is hidden.
 - CI (`.github/workflows/ci.yml`) now runs the new suites and the fuzzer on every push.
 
 ## Unreleased — separate, independently-tuned comparative benchmark query files

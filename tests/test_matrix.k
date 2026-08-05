@@ -1,8 +1,11 @@
-\l amber.k
-\l tests/harness.k
 / ============================================================================
 / tests/test_matrix.k  -  combinatorial primitive x type x size matrix.
 / GNU AGPLv3 - see LICENSE and NOTICE.
+/ ----------------------------------------------------------------------------
+/ Run it from anywhere:
+/     ./amber tests/test_matrix.k
+/     /path/to/amber /path/to/amber/tests/test_matrix.k
+/ Exits non-zero if any case fails.
 / ----------------------------------------------------------------------------
 / Rather than hard-coding thousands of literal expectations (which rot), every
 / case asserts an INVARIANT that must hold regardless of the concrete data:
@@ -12,8 +15,16 @@
 / multi-threaded (PAR_THRESHOLD = 100000) code paths.
 / Amber has no long-typed infinity literal (0W), so empty-input identity
 / elements are taken from the primitives themselves rather than written out.
+/ ----------------------------------------------------------------------------
+/ Standalone cases use tv[tag;"expr";want], which evaluates the expression
+/ INSIDE the trap. The plain t[tag;got;want] form evaluates `got` in the
+/ caller, so one throwing expression would abort the whole file and print no
+/ report at all -- which is exactly what a broken engine makes it do.
 / ============================================================================
-
+DIR:{$[#p:"/"/-1_"/"\x;p;"."]}`argv 1
+LOAD:{{. x^(`c$13)}'0:x;}
+LOAD DIR,"/../amber.k"
+LOAD DIR,"/harness.k"
 / ---- generators: one builder per type, parameterised by length -------------
 gI:{$[x;1+!x;0#0]}                        / Long vector, all positive
 gJ:{$[x;(!x)-_x%2;0#0]}                   / Long vector spanning negatives
@@ -97,61 +108,61 @@ small:0 1 10
  t[`$"bigLen.",$n;     #x+y;    n];
  t[`$"bigMaxIsLast.",$n; |/x;   x@-1+#x];
  }'99999 100000 100001 250000;
-t[`sumBig;   +/1+!100000;      5000050000];
-t[`sumParF;  0.5>abs(+/0.0+1+!200000)-20000100000.0; 1b];
-t[`mulBig;   +/(1+!100000)*2;  10000100000];
+tv[`sumBig;"+/1+!100000";5000050000];
+tv[`sumParF;"0.5>abs(+/0.0+1+!200000)-20000100000.0";1b];
+tv[`mulBig;"+/(1+!100000)*2";10000100000];
 
 / ============================ 4. empty / singleton ==========================
-t[`emptySum;    +/0#0;        0];
-t[`emptyPrd;    */0#0;        1];
-t[`emptyCount;  #0#0;         0];
-t[`emptyRev;    |0#0;         0#0];
-t[`emptyAsc;    <0#0;         0#0];
-t[`emptyDist;   ?0#0;         0#0];
-t[`emptyDeltas; deltas 0#0;   0#0];
-t[`emptyRatios; ratios 0#0;   0#0];
-t[`emptySums;   sums 0#0;     0#0];
-t[`emptyAvg;    avg 0#0;      0n];
-t[`emptyMed;    med 0#0;      0n];
-t[`emptyWhere;  &0#0b;        0#0];
-t[`emptyGrp;    #=0#0;        0];
-t[`emptyCat;    (0#0),0#0;    0#0];
-t[`emptyTake;   #0#0#0;       0];
-t[`emptyIdx;    (0#0)@0 1;    0N 0N];
+tv[`emptySum;"+/0#0";0];
+tv[`emptyPrd;"*/0#0";1];
+tv[`emptyCount;"#0#0";0];
+tv[`emptyRev;"|0#0";0#0];
+tv[`emptyAsc;"<0#0";0#0];
+tv[`emptyDist;"?0#0";0#0];
+tv[`emptyDeltas;"deltas 0#0";0#0];
+tv[`emptyRatios;"ratios 0#0";0#0];
+tv[`emptySums;"sums 0#0";0#0];
+tv[`emptyAvg;"avg 0#0";0n];
+tv[`emptyMed;"med 0#0";0n];
+tv[`emptyWhere;"&0#0b";0#0];
+tv[`emptyGrp;"#=0#0";0];
+tv[`emptyCat;"(0#0),0#0";0#0];
+tv[`emptyTake;"#0#0#0";0];
+tv[`emptyIdx;"(0#0)@0 1";0N 0N];
 tk[`emptyFlip;  "+(0#`)!0#0"];
-t[`atomVsOne;   (,1)~1;       0b];
-t[`oneCount;    #,1;          1];
-t[`oneSum;      +/,7;         7];
-t[`oneRev;      |,1;          ,1];
-t[`oneAsc;      <,5;          ,0];
-t[`oneDist;     ?,3;          ,3];
-t[`enlEnl;      #,,1;         1];
-t[`oneVsAtom;   (+/,7)~+/7;   1b];
+tv[`atomVsOne;"(,1)~1";0b];
+tv[`oneCount;"#,1";1];
+tv[`oneSum;"+/,7";7];
+tv[`oneRev;"|,1";,1];
+tv[`oneAsc;"<,5";,0];
+tv[`oneDist;"?,3";,3];
+tv[`enlEnl;"#,,1";1];
+tv[`oneVsAtom;"(+/,7)~+/7";1b];
 
 / ======================== 5. special / null values ==========================
 / NOTE: like kdb+, Amber does NOT propagate the LONG null through arithmetic --
 / 0N is LLONG_MIN and 0N+1 wraps to -0W. Float nulls (0n) DO propagate.
-t[`nullAddI;     0N+1;      -9223372036854775807];
-t[`nullAddF;     0n+1.0;    0n];
-t[`infAdd;       0w+1.0;    0w];
-t[`infNeg;       (-0w)+1.0; -0w];
-t[`nanFromInf;   (-0w)+0w;  0n];
-t[`divZeroF;     1%0;       0w];
-t[`divNegZero;   -1%0;      -0w];
-t[`zeroOverZero; 0%0;       0n];
-t[`nullEqNull;   0N=0N;     1b];
-t[`nanEqNan;     0n=0n;     1b];
-t[`nullMatch;    0N~0N;     1b];
-t[`nanNotNeg;    ($0%0)~"0n"; 1b];
-t[`idxOOB;       1 2 3@5;   0N];
-t[`idxNeg;       1 2 3@-1;  0N];
-t[`idxNull;      1 2 3@0N;  0N];
-t[`findMiss;     1 2 3?9;   0N];
-t[`findMissS;    `a`b?`z;   0N];
-t[`fillNull;     0^1 0N 3;  1 0 3];
-t[`nullNoPropSum; ($+/1 0N 3)~$0N+4; 1b];
-t[`nullSort;     #<0N 1 0N 2; 4];
-t[`nullDistinct; #?0N 0N 1; 2];
+tv[`nullAddI;"0N+1";-9223372036854775807];
+tv[`nullAddF;"0n+1.0";0n];
+tv[`infAdd;"0w+1.0";0w];
+tv[`infNeg;"(-0w)+1.0";-0w];
+tv[`nanFromInf;"(-0w)+0w";0n];
+tv[`divZeroF;"1%0";0w];
+tv[`divNegZero;"-1%0";-0w];
+tv[`zeroOverZero;"0%0";0n];
+tv[`nullEqNull;"0N=0N";1b];
+tv[`nanEqNan;"0n=0n";1b];
+tv[`nullMatch;"0N~0N";1b];
+tv[`nanNotNeg;"($0%0)~\"0n\"";1b];
+tv[`idxOOB;"1 2 3@5";0N];
+tv[`idxNeg;"1 2 3@-1";0N];
+tv[`idxNull;"1 2 3@0N";0N];
+tv[`findMiss;"1 2 3?9";0N];
+tv[`findMissS;"`a`b?`z";0N];
+tv[`fillNull;"0^1 0N 3";1 0 3];
+tv[`nullNoPropSum;"($+/1 0N 3)~$0N+4";1b];
+tv[`nullSort;"#<0N 1 0N 2";4];
+tv[`nullDistinct;"#?0N 0N 1";2];
 
 / ==================== 6. sort / distinct / group / index ====================
 {[n]
@@ -170,34 +181,34 @@ t[`nullDistinct; #?0N 0N 1; 2];
  }'small;
 / attributes: Amber spells these `sa/`ua/`pa/`ga (setter) and `at (getter),
 / NOT kdb's `s#/`u#/`p#/`g# -- see README "Attributes".
-t[`attrSorted;   `at(`sa 1 2 3);   `s];
-t[`attrUnique;   `at(`ua 3 1 2);   `u];
-t[`attrParted;   `at(`pa 1 1 2 2); `p];
-t[`attrGrouped;  `at(`ga 3 1 2);   `g];
-t[`attrNone;     `at 1 2 3;      `];
-t[`attrValue;    `sa 1 2 3;      1 2 3];
-t[`attrAscSets;  `at asc 3 1 2;  `s];
-t[`attrBinFind;  (`sa 1 3 5 7 9)?7; 3];
-t[`attrBinMiss;  (`sa 1 3 5 7 9)?4; 0N];
-t[`sortBigIdem;  (asc asc 100000#1000 3 7 2)~asc 100000#1000 3 7 2; 1b];
-t[`sortBigOrder; &/~0>deltas asc(-1+!50000)|0;                      1b];
-t[`sortBigLen;   #asc 100000#7 1 9;                                 100000];
-t[`distinctBig;  #?100000#1 2 3;                                    3];
-t[`groupBig;     #=100000#1 2 3 4;                                  4];
+tv[`attrSorted;"`at(`sa 1 2 3)";`s];
+tv[`attrUnique;"`at(`ua 3 1 2)";`u];
+tv[`attrParted;"`at(`pa 1 1 2 2)";`p];
+tv[`attrGrouped;"`at(`ga 3 1 2)";`g];
+tv[`attrNone;"`at 1 2 3";`];
+tv[`attrValue;"`sa 1 2 3";1 2 3];
+tv[`attrAscSets;"`at asc 3 1 2";`s];
+tv[`attrBinFind;"(`sa 1 3 5 7 9)?7";3];
+tv[`attrBinMiss;"(`sa 1 3 5 7 9)?4";0N];
+tv[`sortBigIdem;"(asc asc 100000#1000 3 7 2)~asc 100000#1000 3 7 2";1b];
+tv[`sortBigOrder;"&/~0>deltas asc(-1+!50000)|0";1b];
+tv[`sortBigLen;"#asc 100000#7 1 9";100000];
+tv[`distinctBig;"#?100000#1 2 3";3];
+tv[`groupBig;"#=100000#1 2 3 4";4];
 
 / ======================== 7. take / drop / slice ============================
-t[`take3;      3#1 2 3 4 5;   1 2 3];
-t[`takeNeg;    -3#1 2 3 4 5;  3 4 5];
-t[`takeOver;   #5#1 2;        5];
-t[`takeZero;   0#1 2 3;       0#0];
-t[`drop2;      2_1 2 3 4;     3 4];
-t[`dropNeg;    -2_1 2 3 4;    1 2];
-t[`dropAll;    9_1 2 3;       0#0];
-t[`dropNegAll; -9_1 2 3;      0#0];
-t[`sliceLen;   #2_5#!100;     3];
-t[`takeDropId; (3#1 2 3 4 5),3_1 2 3 4 5; 1 2 3 4 5];
-t[`reshape;    2 3#!6;        (0 1 2;3 4 5)];
-t[`reshapeLen; #,/2 3#!6;     6];
+tv[`take3;"3#1 2 3 4 5";1 2 3];
+tv[`takeNeg;"-3#1 2 3 4 5";3 4 5];
+tv[`takeOver;"#5#1 2";5];
+tv[`takeZero;"0#1 2 3";0#0];
+tv[`drop2;"2_1 2 3 4";3 4];
+tv[`dropNeg;"-2_1 2 3 4";1 2];
+tv[`dropAll;"9_1 2 3";0#0];
+tv[`dropNegAll;"-9_1 2 3";0#0];
+tv[`sliceLen;"#2_5#!100";3];
+tv[`takeDropId;"(3#1 2 3 4 5),3_1 2 3 4 5";1 2 3 4 5];
+tv[`reshape;"2 3#!6";(0 1 2;3 4 5)];
+tv[`reshapeLen;"#,/2 3#!6";6];
 
 / ==================== 8. type mismatches must ERROR, not crash ==============
 te[`symPlusInt;   "`a`b+1 2"];
@@ -220,36 +231,41 @@ tk[`symCat;       "`a,`b"];
 
 / ============================ 9. dictionaries ===============================
 d:`a`b`c!1 2 3
-t[`dictKeys;      !d;      `a`b`c];
-t[`dictVals;      . d;     1 2 3];
-t[`dictIdx;       d`b;     2];
-t[`dictCount;     #d;      3];
-t[`dictAdd;       . d+1;   2 3 4];
-t[`dictMissing;   d`zz;    0N];
-t[`dictRoundtrip; (!d)!. d; d];
-t[`emptyDictCount; #(0#`)!0#0; 0];
+tv[`dictKeys;"!d";`a`b`c];
+tv[`dictVals;". d";1 2 3];
+tv[`dictIdx;"d`b";2];
+tv[`dictCount;"#d";3];
+tv[`dictAdd;". d+1";2 3 4];
+tv[`dictMissing;"d`zz";0N];
+tv[`dictRoundtrip;"(!d)!. d";d];
+tv[`emptyDictCount;"#(0#`)!0#0";0];
 tk[`emptyDictKeys; "!(0#`)!0#0"];
 
 / ============================ 10. nested lists ==============================
 nl:(1 2;3 4 5;0#0)
-t[`nestCount;   #nl;         3];
-t[`nestLens;    #'nl;        2 3 0];
-t[`nestRaze;    ,/nl;        1 2 3 4 5];
-t[`nestFirst;   *nl;         1 2];
-t[`nestRev;     |nl;         (0#0;3 4 5;1 2)];
-t[`nestEachSum; +/'nl;       3 12 0];
-t[`nestDeep;    #,/,/((,1;,2);(,3;,4)); 4];
-t[`nestRagged;  #,/(!3;!5);  8];
+tv[`nestCount;"#nl";3];
+tv[`nestLens;"#'nl";2 3 0];
+tv[`nestRaze;",/nl";1 2 3 4 5];
+tv[`nestFirst;"*nl";1 2];
+tv[`nestRev;"|nl";(0#0;3 4 5;1 2)];
+tv[`nestEachSum;"+/'nl";3 12 0];
+tv[`nestDeep;"#,/,/((,1;,2);(,3;,4))";4];
+tv[`nestRagged;"#,/(!3;!5)";8];
 
 / ======================== 11. compound pipelines ============================
 p:1+!1000
-t[`pipeGrpAgg;   +/. {+/p x}'=3!p;                  +/p];
-t[`pipeSortTake; +/5#desc p;                        4990];
-t[`pipeScanRed;  |/sums p;                          +/p];
-t[`pipeMaskId;   +/p@&p>500;                        (+/p)-+/p@&~p>500];
-t[`pipeChain;    +/(2*p@&p>500)%2;                  0.0++/p@&p>500];
-t[`pipeFloat;    0.001>abs(+/(0.5+0.0+!5000)%2.0)-0.5*+/0.5+0.0+!5000; 1b];
-t[`pipeBig;      +/(1+!100000)@&0=2!1+!100000;      2500050000];
-t[`pipeNested;   +/,/{!x}'1 2 3;                    4];
+tv[`pipeGrpAgg;"+/. {+/p x}'=3!p";+/p];
+tv[`pipeSortTake;"+/5#desc p";4990];
+tv[`pipeScanRed;"|/sums p";+/p];
+tv[`pipeMaskId;"+/p@&p>500";(+/p)-+/p@&~p>500];
+tv[`pipeChain;"+/(2*p@&p>500)%2";0.0++/p@&p>500];
+tv[`pipeFloat;"0.001>abs(+/(0.5+0.0+!5000)%2.0)-0.5*+/0.5+0.0+!5000";1b];
+tv[`pipeBig;"+/(1+!100000)@&0=2!1+!100000";2500050000];
+tv[`pipeNested;"+/,/{!x}'1 2 3";4];
 
+/ Guard against a silently skipped block (see tests/harness.k): this is the
+/ exact number of assertions this file is expected to record. Bump it when
+/ you add or remove cases -- if it ever disagrees, some of them stopped running.
+hexpect[308]
 hreport"AMBER COMBINATORIAL MATRIX"
+$[FAILN;`exit 1;]

@@ -23,7 +23,7 @@ index 98b394e..373f6e3 100644
          run: |
            set -e
 diff --git a/README.md b/README.md
-index 1cd5633..5ae6939 100644
+index 1cd5633..8e81bd3 100644
 --- a/README.md
 +++ b/README.md
 @@ -213,6 +213,13 @@ Big tables print Q-style — the first `CROWS` rows (default 20) then `..`; set
@@ -40,18 +40,42 @@ index 1cd5633..5ae6939 100644
  Run the guided tours:
  
  ```sh
-@@ -221,7 +228,9 @@ Run the guided tours:
+@@ -221,7 +228,10 @@ Run the guided tours:
  ./amber examples/tick.k     # realistic trades & quotes: as-of/window joins, VWAP, OHLC
  AMBER_THREADS=8 ./amber examples/peach.k   # multi-core speedup demo (serial vs peach)
  ./amber bench.k             # attribute speed benchmark
 -./amber test.k              # core suite (163); also test-fin.k (35) + test-ext.k (79) = 277
 +./amber test.k              # core suite (163); also test-fin.k (35) + test-ext.k (79)
 +tests/run_tests.sh          # EVERYTHING: build + all K suites + C unit tests + fuzz pass
++./amber tests/test_matrix.k # the suites are self-locating - run them from any directory
 +tests/run_tests.sh --asan   # ... and re-run it all under AddressSanitizer + UBSan
  bash bench/run.sh           # cross-engine sanity + speed (Amber vs numpy/pandas/…; see BENCHMARKS.md)
  ```
  
-@@ -349,12 +358,26 @@ expression's normal result first, then the report (timings vary run to run):
+@@ -271,6 +281,22 @@ success.
+ 
+ ---
+ 
++### Turning the report off
++
++The diagnostic is rendered when the error is *created*, so code that catches an error with
++`.[f;args;handler]` still sees it on stderr. Since **1.9** that is switchable at runtime —
++useful for anything that provokes errors on purpose (a test suite, `protect`, a retry loop):
++
++```
++prev:`diag 0        / suppress the report, returns the previous setting (1)
++.[{1+`a};,0;{"caught"}]     / no output at all
++`diag prev          / restore
++```
++
++The compact `'type` caret line is not suppressed — it is buffered and still handed to the trap
++handler and to `` `err``, so a caught error can always be inspected. `AMBER_DIAG=0` in the
++environment still works and seeds the initial value.
++
+ ## REPL diagnostics (`\v` · `\ast` · `\trace`)
+ 
+ Three zero-dependency session commands for inspecting the workspace and the evaluator itself —
+@@ -349,12 +375,26 @@ expression's normal result first, then the report (timings vary run to run):
  amber> \trace (1+2)*3-4
  -3
  +-------------------------------------------------------+
@@ -63,10 +87,10 @@ index 1cd5633..5ae6939 100644
 +| Arena          38ns  [                    ]   0.9%    |
 +| Execute       1.1us  [■■■■■               ]  24.8%    |
 +| Format        2.8us  [■■■■■■■■■■■■■       ]  63.8%    |
-++-------------------------------------------------------+
-+| Total: 4.3us      Arena peak: 0 B                     |
  +-------------------------------------------------------+
 -| Total: 135us     Arena peak: 0 B                       |
++| Total: 4.3us      Arena peak: 0 B                     |
+++-------------------------------------------------------+
 +```
 +
 +Since **1.9** the timer prints `ns` / `us` / `ms` as appropriate (sub-microsecond phases used to
@@ -83,15 +107,15 @@ index 1cd5633..5ae6939 100644
  +-------------------------------------------------------+
  ```
  
-@@ -661,10 +684,15 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
+@@ -661,10 +701,15 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
  | `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |
  | `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` `tick.k` | modules (auto-loaded) |
  | `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `peach.k` · `wj.k` · `graphs.k` · … |
 -| `test.k` `test-fin.k` `test-ext.k` | 277-assertion suite (163 + 35 + 79) |
 +| `test.k` `test-fin.k` `test-ext.k` | legacy assertion suites (163 + 35 + 79) |
-+| `tests/harness.k` | shared assertion harness — `t` (value), `tv` (trapped expression), `te` (must-raise), `tk` (must-not-raise), `hreport` |
-+| `tests/test_matrix.k` | **308-case combinatorial matrix**: every primitive × every element type × sizes 0 / 1 / 10 / 100 000+ (crossing the SIMD and `PAR_THRESHOLD` boundaries), asserted as invariants (shape, algebraic identity, vector-kernel-vs-scalar-reference) rather than frozen literals |
-+| `tests/test_qsql.k` | **78-case qSQL matrix**: the full `select`/`exec`/`update`/`delete` clause lattice, multi-key `by`, empty / single-row / heavily-duplicated tables, the bare-qSQL rewriter, and malformed queries asserted to raise cleanly |
++| `tests/harness.k` | shared assertion harness — `t` (value), `tv` (trapped expression), `te` (must-raise), `tk` (must-not-raise), `hexpect` (assertion-count guard), `hreport` |
++| `tests/test_matrix.k` | **309-case combinatorial matrix**: every primitive × every element type × sizes 0 / 1 / 10 / 100 000+ (crossing the SIMD and `PAR_THRESHOLD` boundaries), asserted as invariants (shape, algebraic identity, vector-kernel-vs-scalar-reference) rather than frozen literals |
++| `tests/test_qsql.k` | **94-case qSQL matrix**, written in the **bare `select … from t` syntax you actually type** (run through the same `qrw` rewrite the REPL applies): the full `select`/`exec`/`update`/`delete` clause lattice, multi-key `by`, empty / single-row / heavily-duplicated tables, and malformed queries asserted to raise cleanly |
 +| `tests/fuzz.py` | malformed-input & deep-nesting crash fuzzer — asserts a clean K error, never a signal or a hang |
 +| `tests/run_tests.sh` | runs all of the above (`--asan` re-runs everything under ASan + UBSan) |
  | `tests/*.c` | standalone C test harnesses: `test_simd.c`/`test_parallel.c` (no Amber dependency), `test_ast.c` (links the full interpreter — ast.c is inherently built on Amber's real parser) |
@@ -102,9 +126,20 @@ index 1cd5633..5ae6939 100644
  
  ## Roadmap
 diff --git a/amber.k b/amber.k
-index abd7192..8755f43 100644
+index abd7192..65e5fc2 100644
 --- a/amber.k
 +++ b/amber.k
+@@ -39,8 +39,8 @@ xlog:{(`ln y)%`ln x}
+ round:{[d;x]p:*/d#10;(_0.5+x*p)%p}
+ 
+ / ---- aggregations ----------------------------------------------------------
+-sum:{$[0=#x;0;+/x]}
+-prd:{$[0=#x;1;*/x]}
++sum:{$[0=#x;$[`F=@x;0.0;0];+/x]}       / empty: keep the float type (+/ already does)
++prd:{$[0=#x;$[`F=@x;1.0;1];*/x]}       / empty: keep the float type
+ min:{&/x}
+ max:{|/x}
+ avg:{(+/x)%#x}
 @@ -53,15 +53,15 @@ sdev:{sqrt svar x}
  cov:{avg[x*y]-avg[x]*avg y}
  scov:{(n*cov[x;y])%-1+n:#x}
@@ -139,10 +174,10 @@ index abd7192..8755f43 100644
  xgroup:{[k;t]k:k,();g:=rows[k#+t];kt:+k!+!g;vc:except[cols t;k];+(+kt),vc!{[t;iv;c]((+t)c)@/:iv}[t;value g]'vc}
  ungroup:{[x]t:unkey x;d:+t;v:value d;m:{`A=@x}'v;cnt:#:'*v@&m;+(!d)!{[cnt;m;c]$[m;raze c;raze cnt#'c]}[cnt]'[m;v]}
 diff --git a/docs/CHANGELOG.md b/docs/CHANGELOG.md
-index dab8fe3..3376104 100644
+index dab8fe3..cfdc81d 100644
 --- a/docs/CHANGELOG.md
 +++ b/docs/CHANGELOG.md
-@@ -1,5 +1,118 @@
+@@ -1,5 +1,154 @@
  # Changelog
  
 +## 1.9 — version unification, memory/UB audit, and a combinatorial test suite
@@ -206,6 +241,11 @@ index dab8fe3..3376104 100644
 +  `sf()` no longer emits the leading `-` for it. `0%0` and `(-0w)+0w` now print `0n`.
 +- **`deltas` and `ratios` raised `'length` on an empty argument** (`amber.k`). `0,-1_()` is a
 +  one-element vector, so `x-0,-1_x` mismatched. Both now return the empty vector, as q does.
++- **`sum`/`prd` of an empty FLOAT vector returned an integer.** `amber.k`'s wrappers
++  short-circuit an empty argument to the literal `0`/`1`, dropping the float type that the
++  underlying `+/`/`*/` reductions get right (`+/0#0.0` is `0.0`, but `sum 0#0.0` was `0`). This
++  surfaced as `select t:sum px from none` producing an int column. Both now return `0.0`/`1.0`
++  for a float argument.
 +- **`med` of an empty vector returned `0.0`** while `avg`/`dev`/`var` return the float null; it
 +  now returns `0n` like the rest of the aggregation family.
 +- **`qselect` was broken for more than one aggregation** (`amber.k`).
@@ -218,6 +258,16 @@ index dab8fe3..3376104 100644
 +  space in front of it; and even once split, an empty projection ignored the grouping entirely.
 +  `qsplit0` handles the position-0 case and the empty projection now aggregates each non-key
 +  column with `last`, matching q.
++
++### New: `` `diag`` — runtime control of the stderr diagnostic
++Amber renders its Rust-style diagnostic at error **creation** time, so code that catches an error
++with `.[f;args;handler]` has already had the full report splashed across stderr. That is right for
++an interactive line and wrong for anything whose job is to provoke errors it then handles — a test
++suite's must-raise cases, `protect`, a retry loop — which drowned the terminal in red for errors
++it dealt with perfectly. `` `diag 0`` turns the report off and returns the previous setting;
++`` `diag 1`` turns it back on. The compact caret text is untouched: it is buffered and still
++handed to the trap handler and to `` `err``, so nothing is lost. The existing `AMBER_DIAG=0`
++environment variable still works and now just seeds the initial value.
 +
 +### Diagnostics
 +- **`\trace`'s "Arena peak" was always `0 B`.** It reported `max(used-before, used-after)`, and
@@ -241,31 +291,52 @@ index dab8fe3..3376104 100644
 +  call the exported branch-free `amlb()`.
 +
 +### Tests
-+- **`tests/harness.k`** — shared assertion harness (`t`, `tv`, `te`, `tk`, `hreport`). Every
-+  assertion is trapped, so a failing or throwing case can never abort a suite or hide the cases
-+  after it.
-+- **`tests/test_matrix.k`** — 308-case combinatorial matrix: every primitive against every
++- **`tests/harness.k`** — shared assertion harness (`t`, `tv`, `te`, `tk`, `hexpect`, `hreport`).
++  Every assertion is trapped, so a failing or throwing case can never abort a suite or hide the
++  cases after it.
++- **Suites are self-locating.** `\l amber.k` resolves against the *current working directory*, so
++  a suite written that way only runs from the repo root — `amber /path/to/tests/test_matrix.k`
++  died with a bare `'io`. Each suite now derives the repo root from its own script path
++  (`` `argv 1``, the same trick `repl.k` uses) and runs from anywhere.
++- **Suites exit non-zero on failure**, so CI and `tests/run_tests.sh` can gate on status as well
++  as on the printed report.
++- **`hexpect[n]` assertion-count guard.** In K, `f [a;b]` **with a space** is not a call: the
++  parser reads `[a;b]` as a bracketed statement block and quietly builds a projection that is
++  then discarded — no error, no output, the assertion simply never runs. An earlier revision of
++  `tests/test_qsql.k` lost 42 of its 93 cases to exactly this **and still printed
++  "ALL TESTS PASSED"**. Each suite now declares how many assertions it expects to record and
++  fails if the number disagrees.
++- **`tests/test_qsql.k` is written in the bare `select … from t` syntax** users actually type,
++  put through the same `qrw` rewrite `repl.k`'s `line1` applies to every input line, instead of
++  the `sel"…"` wrapper — so the suite exercises the rewriter and the query engine together, on
++  the user's own code path. Section 9 asserts the explicit wrapper gives an identical answer.
++- **`tests/test_matrix.k`** — 309-case combinatorial matrix: every primitive against every
 +  element type (Long / Float / Boolean / Char / Symbol / nested list / dict / table) at sizes
 +  0, 1, 10 and 100 000+, including the 99 999 / 100 000 / 100 001 / 250 000 sizes that straddle
 +  `PAR_THRESHOLD`. Cases assert invariants (shape, algebraic identity, vector-kernel-vs-scalar-
 +  reference agreement) rather than frozen literals.
-+- **`tests/test_qsql.k`** — 78-case qSQL matrix over the full clause lattice, multi-key `by`,
++- **`tests/test_qsql.k`** — 94-case qSQL matrix over the full clause lattice, multi-key `by`,
 +  empty / single-row / heavily-duplicated tables, the bare-qSQL rewriter, and malformed queries.
 +- **`tests/fuzz.py`** — malformed-input and deep-nesting crash fuzzer (unbalanced brackets,
 +  dangling adverbs, truncated qSQL, 20 000-deep nesting, out-of-range literals). Asserts a clean
 +  K error, never a signal or a hang.
 +- **`tests/run_tests.sh`** — one entry point for all suites plus the C unit tests; `--asan`
 +  rebuilds under AddressSanitizer + UBSan and re-runs everything, including the fuzzer.
++- **The suites are quiet on success.** `tests/harness.k` calls `` `diag 0`` on load and restores
++  the previous setting in `hreport`, so a run that provokes ~35 deliberate errors prints its
++  summary and nothing else instead of ~35 full-colour diagnostic blocks. A case that fails
++  unexpectedly still reports the error kind on its own FAIL line (`FAIL raised: 'length  <-
++  deltas 0#0`), so nothing is hidden.
 +- CI (`.github/workflows/ci.yml`) now runs the new suites and the fuzzer on every push.
 +
  ## Unreleased — separate, independently-tuned comparative benchmark query files
  - **`bench/queries/amber_{vecsum,vecarith,groupby}.k`** added — `bench/run_comparative.py`'s
    Amber row previously reran the same `k_<id>.k` file used for the "K" (ngn/k) row. Amber now
 diff --git a/docs/MISSING.md b/docs/MISSING.md
-index 89cc765..01d0f40 100644
+index 89cc765..11ce361 100644
 --- a/docs/MISSING.md
 +++ b/docs/MISSING.md
-@@ -180,3 +180,31 @@ tickerplant** `hopen`/`u.*` (§5).
+@@ -180,3 +180,36 @@ tickerplant** `hopen`/`u.*` (§5).
     redraw the current line on every keypress (a fragile, previously-regression-prone path in
     this project — see CHANGELOG), not a new `\command`. A prior attempt shipped as a `\hl <expr>`
     one-shot echo command instead and was removed for not matching what "live" means.
@@ -281,11 +352,12 @@ index 89cc765..01d0f40 100644
 +- **Unknown `by` key does not raise.** `select t:sum px by nosuchkey from t` groups by nulls
 +  instead of rejecting the query the way kdb+ does. Root cause is core dict semantics — `` b#+t``
 +  on a missing key yields nulls — so a fix belongs in `qbc`/`sel`'s validation, not in `#`.
-+- **A trapped error still renders a diagnostic to stderr.** `.[f;args;handler]` (and `protect`,
-+  documented as `.Q.trp`-like) catches the error correctly, but the Rust-style diagnostic has
-+  already been printed by the time the handler runs. Scripts that deliberately provoke errors —
-+  including this repo's own test suites — have to discard stderr. A proper fix means deferring
-+  rendering from error-creation time to the top-level `evs()` loop.
++- **A trapped error still renders a diagnostic to stderr *by default*.** `.[f;args;handler]`
++  (and `protect`, documented as `.Q.trp`-like) catches the error correctly, but the Rust-style
++  report is written at error-creation time, before the handler runs. Rather than defer rendering
++  (which would change what an interactive line prints), 1.9 adds the `` `diag`` runtime switch:
++  `` `diag 0`` suppresses the report and returns the previous setting, `` `diag 1`` restores it.
++  `tests/harness.k` uses it. Code that catches errors in bulk should do the same.
 +- **No long-typed infinity literal.** `0w`/`-0w` exist for floats; `0W`/`-0W` do not parse, so
 +  the identity elements of `&/`/`|/` over an empty long vector can only be obtained from the
 +  primitives themselves.
@@ -294,6 +366,10 @@ index 89cc765..01d0f40 100644
 +- **Attribute syntax is `` `sa``/`` `ua``/`` `pa``/`` `ga`` (set) and `` `at`` (get), not kdb's
 +  `` `s#``/`` `u#``/`` `p#``/`` `g#``.** Several doc passages still write `s#` informally when
 +  describing the sorted attribute; the working syntax is `` `at(`sa 1 2 3)``.
++- **`f [a;b]` with a space is not a call.** K reads `[a;b]` as a bracketed statement block, so
++  the expression silently evaluates to a discarded projection `f[b;]` — no error, no output.
++  Bit this repo's own qSQL suite (42 of 93 cases stopped running while the suite still reported
++  "ALL TESTS PASSED"); `tests/harness.k`'s `hexpect[n]` now guards against it.
 +- **A bare `/` on a line of its own opens a block comment** that runs to the next line starting
 +  with `\`, silently truncating the rest of the file with no error. Standard K, but a sharp edge;
 +  `tests/harness.k` carries a warning comment about it.
@@ -508,7 +584,7 @@ index 6ba3bf2..4e21292 100644
  A3(ars,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzc)Q(ztZC)
   ZE(z=gZ(zR);z(ars(x,y,z)))
 diff --git a/src/a.c b/src/a.c
-index a192bc8..f8af0d6 100644
+index a192bc8..c376a44 100644
 --- a/src/a.c
 +++ b/src/a.c
 @@ -19,7 +19,11 @@
@@ -585,7 +661,25 @@ index a192bc8..f8af0d6 100644
          RI(U n=yn;
           X(RA(A z=aA(n);F(n|!n,za=io(x,yi))y(0);I(!zn,zx=mkn(zx))sqz(z))
             RB(x=cG(xR);x(i1(x,y)))
-@@ -240,14 +263,25 @@ Z A set(A x,L i,A y/*1i1*/)_(Q(MINE(x));
+@@ -217,10 +240,15 @@ Z A1(qsa,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=1;x)//amber: `s sor
+ Z A1(qua,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=2;x)//amber: `u unique
+ Z A1(qpa,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=3;x)//amber: `p parted
+ Z A1(qga,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=4;x)//amber: `g grouped
++// amber: `diag 0 / `diag 1 -- turn the Rust-style stderr diagnostic off/on at
++// runtime, returning the PREVIOUS setting so a caller can restore it. Needed by
++// anything that deliberately provokes errors it then catches (tests/harness.k,
++// std.k's protect); see the note above amdiag in e.c.
++Z A1(qdiag,I(amdiag<0,amdiag=1)I v=amdiag;I(_tz(x),amdiag=!!gl_(x))x(0);ai(v))
+ Z A1(qat,UC a=(_tP(x)||!LH(tG,_t(x),tS))?0:_at(x);x(0);a?({C b[2]={"\0supg"[a],0};sym(b);}):as(0))//amber: get attribute
+ ZN AX(ext,P(n-xK,er8(a,n))V*f=(V*)(x&-1ull>>16);S(n,R(1,((A1*)f)(a[0]))R(2,((A2*)f)(a[0],a[1]))R(3,((A3*)f)(a[0],a[1],a[2]))R(4,((A4*)f)(a[0],a[1],a[2],a[3]))R_(en8(a,n)))0)
+-ZN A sym1(I v,A x)_(Z CO C s[][4]={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","astt"};
+- G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,astT,ed)[fI((V*)s,L(s),v)](x))
++ZN A sym1(I v,A x)_(Z CO C s[][4]={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","astt","diag"};
++ G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,astT,qdiag,ed)[fI((V*)s,L(s),v)](x))
+ A2(_1,/*01*/P(!xtt,i1(x,y))U k=xK;P(1<k,k==2&&!xtp?prj(x,A8(y,GAP),2):prj(x,&y,1))
+  X(Ro(run(x,&y,1))Rp(P(k>7,er(y))I m=xn-1,j=0;Ab8;F(m,b[i]=xA[i+1]==GAP&&!j?j++,y:_R(xA[i+1]))I l=MAX(0,1-j);MC(b+m,&y,8*l);_8(xx,b,m+l))
+   Rq(_1(xx,N(_1(xy,y))))Rr(w1(xE,xx,y))Rs(sym1(xv,y))Ru(v1[xv](y))Rw(AK(xv-1<3u&&yK==2?1:ytU?yK:1,AW(xv,aV(tr,1,&y))))Rx(ext(x,&y,1))R_(et(y)))0)
+@@ -240,14 +268,25 @@ Z A set(A x,L i,A y/*1i1*/)_(Q(MINE(x));
     RM(A z=kv(&x);z=mut(z);Q(ztA);I(ytT&&yN-zn,x(y(el(z))))I j=i;F(zn,za=set(mut(za),j,ii(y,i));P(!za,za=au;x(y(z(0)))))y(aM(x,z)))
     RB(set(cG(x),i,y))
     R_(P(knd(x)-knd(y)-tC+tc,set(blw(x),i,y))I(xtZ,N(sup(&x,&y)))C w=xw-3;!w?xg=yv:w==1?xh=yv:w==2?xi=yv:(xl=gl(y));x))0)
@@ -617,7 +711,7 @@ index a192bc8..f8af0d6 100644
     R_(et(x)))0)
  Z A3(a3,/*100*/a8(A8(x,y,z),3))
 diff --git a/src/a.h b/src/a.h
-index 2e3544b..9203176 100644
+index 2e3544b..1534ab3 100644
 --- a/src/a.h
 +++ b/src/a.h
 @@ -68,6 +68,15 @@
@@ -636,7 +730,7 @@ index 2e3544b..9203176 100644
  #define REFB  1
  #define MINE(x) (_r(x)==REFB)
  
-@@ -99,6 +108,7 @@ V cyc(V*,U,U),eS(A,U),eQ(S,U,U),exit(I),hexC(S,U,C*),kargs(I,S*),kinit(),*memmem
+@@ -99,12 +108,14 @@ V cyc(V*,U,U),eS(A,U),eQ(S,U,U),exit(I),hexC(S,U,C*),kargs(I,S*),kinit(),*memmem
  B id0(UC),mtc_(A,A),tru(A);
  C*sf(C*,L),*sl(C*,L),sup(A*,A*),tZ(L),*strchrnul(S,I);
  U gi(A);
@@ -644,7 +738,14 @@ index 2e3544b..9203176 100644
  I qA(A,A),qf(F,F),rnk(A);
  U _K(A),si(S,C),_N(A),js_eval(C*,U,C*,U),fG(CO G*,U,G),fI(CO I*,U,I),fL(CO L*,U,L),us(S);
  L cfm(CO A*,I),gl_(A),gl(A),iw(A,U,L),now(),pl(S*),minfZ(L,A),addfB(CO V*,U),addfZ(L,A),pf(S*);
-@@ -172,7 +182,7 @@ enum         {au=Lt(tu),FLP,NEG,FIR,SQR,TIL,WHR,REV,ASC,DSC,GRP,NOT,ENL,NUL,LEN,
+ S su(U),pID(S);
+ W pu(S*);
+ F gf(A);
++EX I amdiag;//stderr-diagnostic switch (e.c); see `diag
+ EX A1*v1[];EX A2*v2[];EX AA*v8[];EX A gv[4096],cns,cn[],ci[2][5];EX I pg;EX TY(CO C[])vc,TS,Tw,TR,TT,TX,Tk;EX S*argv,*env;
+ 
+ //                    0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25
+@@ -172,7 +183,7 @@ enum         {au=Lt(tu),FLP,NEG,FIR,SQR,TIL,WHR,REV,ASC,DSC,GRP,NOT,ENL,NUL,LEN,
  #define WFL 0x7ff0000000000000ll
  #define NF (*(F*)A(NFL))
  #define WF (*(F*)A(WFL))
@@ -858,6 +959,44 @@ index 6af9515..086e261 100644
   W((c=*b++),S(c,                                                                                    //          |BYTES |          STACK        |         EFFECT
    C32(bu,U(*s=v1[c-bu](*s)))                                                                        //monad     |bu+m  |.. x -> monads[m][x]   |
    C32(bv,A x=*s++;U(*s=x(v2[c-bv](x,*s))))                                                          //dyad      |bv+d  |.. y x -> dyads[d][x;y]|
+diff --git a/src/e.c b/src/e.c
+index c752356..dafe36a 100644
+--- a/src/e.c
++++ b/src/e.c
+@@ -2,6 +2,18 @@
+ #include"diagnostic.h"
+ #include<stdlib.h>
+ Z C b[4096],*r=b;Z U d;
++// amber: is the Rust-style stderr diagnostic (src/diagnostic.c) enabled?
++//   -1 = not resolved yet, resolve from $AMBER_DIAG on first use
++//    0 = off, 1 = on
++// Errors are rendered at CREATION time, which means a caller that goes on to
++// catch the error with .[f;args;handler] has already had the full diagnostic
++// splashed across stderr. That is right for an interactive line and wrong for
++// code whose whole job is to provoke errors (a test suite's must-raise cases,
++// `protect`, any retry loop), which drowned in red for errors it handled
++// perfectly. `diag 0 turns the report off and returns the previous setting;
++// the compact caret text is unaffected -- it is buffered in b[] and still
++// handed to the trap handler and to `err, so nothing is lost.
++I amdiag=-1;
+ NI A err0(S s)_(r=b;d=0;N n=MIN(SL(s),32);r=b;*r++='\'';MC(r,s,n);r+=n;*r++=10;0)
+ ZN A err1(A x,S s)_(x(0);err0(s))
+ ZN A err8(CO A*a,U n,S s)_(mrn(n,a);err0(s))
+@@ -17,10 +29,12 @@ NI V eQ(S s,U n,U i){
+ // eS renders the source location of a runtime/parse/type error.  All such errors
+ // funnel through here, so they are ALSO shown as a Rust-style diagnostic
+ // (src/diagnostic.c) on top of the compact caret line.  This is ON by default;
+-// set AMBER_DIAG=0 in the environment to suppress the diagnostic report.
++// set AMBER_DIAG=0 in the environment, or call `diag 0 at runtime, to suppress
++// the diagnostic report (the compact caret line is unaffected either way).
+ // The source noun (xV) is length-prefixed, not NUL-terminated, so copy a bounded,
+ // NUL-terminated slice before handing it to the (C-string) formatter.
+-NI V eS(A x/*0*/,U i)_(I(({S d=getenv("AMBER_DIAG");!d||*d!='0';}),
++NI V eS(A x/*0*/,U i)_(I(amdiag<0,amdiag=({S d=getenv("AMBER_DIAG");!d||*d!='0';}))
++ I(amdiag,
+   C sb[1024];U n=xn<SZ sb-1?xn:SZ sb-1;MC(sb,xV,n);sb[n]=0;U io=i<n?i:n;
+   Span sp=span_at(sb,io,io+1);report_diagnostic_stderr("E0001","evaluation error","<amber>",sp,0,0,"the caret marks the offending token"))
+  eQ(xV,xn,i))
 diff --git a/src/h.c b/src/h.c
 index c7975d7..e89dd40 100644
 --- a/src/h.c

@@ -112,8 +112,23 @@ static int is_applicable(A e) {
  * no symbol literally named `g_scratch`; arena_alloc()/arena_reset() *is*
  * its scratch-arena API, and this module uses it directly. */
 
+/* arena_alloc() is documented as able to return NULL (arena.h): the slab is
+ * exhausted AND the overflow malloc failed. Every one of ast_new()'s ~30 call
+ * sites immediately dereferences the result, so returning NULL here would
+ * just move the segfault. Instead, fall back to a single static sentinel node
+ * so the tree stays walkable and the printed output degrades to a truncation
+ * marker rather than crashing the REPL. */
+static ASTNode ast_oom_node;
+
 ASTNode *ast_new(ASTKind kind, const char *label, const char *annotation) {
     ASTNode *n = (ASTNode *)arena_alloc(sizeof *n);
+    if (!n) {                          /* out of scratch: degrade, don't crash */
+        n = &ast_oom_node;
+        memset(n, 0, sizeof *n);
+        n->kind = AST_SCALAR;
+        snprintf(n->label, sizeof n->label, "%s", "<oom>");
+        return n;
+    }
     memset(n, 0, sizeof *n);
     n->kind = kind;
     if (label)      snprintf(n->label,      sizeof n->label,      "%s", label);
@@ -122,9 +137,12 @@ ASTNode *ast_new(ASTKind kind, const char *label, const char *annotation) {
 }
 
 void ast_add_child(ASTNode *parent, ASTNode *child) {
+    if (!parent || !child) return;    /* defensive: never NULL in practice */
+    if (parent == &ast_oom_node) return;          /* shared OOM sentinel     */
     if (parent->nchildren >= parent->cap) {
         int newcap = parent->cap ? parent->cap * 2 : 4;
         ASTNode **grown = (ASTNode **)arena_alloc((size_t)newcap * sizeof *grown);
+        if (!grown) return;           /* drop the child rather than segfault */
         if (parent->nchildren) memcpy(grown, parent->children, (size_t)parent->nchildren * sizeof *grown);
         parent->children = grown;
         parent->cap = newcap;

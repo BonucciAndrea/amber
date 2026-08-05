@@ -68,6 +68,15 @@
 #define PC    __builtin_popcountll
 #define SL    __builtin_strlen
 #define SQ    __builtin_sqrt
+// ---- release identity ----------------------------------------------------
+// THE canonical version of the Amber interpreter. Everything that reports a
+// version -- the REPL banner (repl.k, via `bi`), `amber --version`, and the
+// WASM bindings -- reads it from here, so a release bump is a one-line change
+// and the components can no longer drift apart (they did: the banner said
+// v1.7 while README.md already advertised 1.9).
+#define AMBER_VERSION_MAJOR 1
+#define AMBER_VERSION_MINOR 9
+#define AMBER_VERSION M2(AMBER_VERSION_MAJOR) "." M2(AMBER_VERSION_MINOR)
 #define REFB  1
 #define MINE(x) (_r(x)==REFB)
 
@@ -99,6 +108,7 @@ V cyc(V*,U,U),eS(A,U),eQ(S,U,U),exit(I),hexC(S,U,C*),kargs(I,S*),kinit(),*memmem
 B id0(UC),mtc_(A,A),tru(A);
 C*sf(C*,L),*sl(C*,L),sup(A*,A*),tZ(L),*strchrnul(S,I);
 U gi(A);
+U amlb(CO L*RES,U,U,L);//branch-free lower_bound over a sorted long slice (a.c)
 I qA(A,A),qf(F,F),rnk(A);
 U _K(A),si(S,C),_N(A),js_eval(C*,U,C*,U),fG(CO G*,U,G),fI(CO I*,U,I),fL(CO L*,U,L),us(S);
 L cfm(CO A*,I),gl_(A),gl(A),iw(A,U,L),now(),pl(S*),minfZ(L,A),addfB(CO V*,U),addfZ(L,A),pf(S*);
@@ -172,7 +182,7 @@ enum         {au=Lt(tu),FLP,NEG,FIR,SQR,TIL,WHR,REV,ASC,DSC,GRP,NOT,ENL,NUL,LEN,
 #define WFL 0x7ff0000000000000ll
 #define NF (*(F*)A(NFL))
 #define WF (*(F*)A(WFL))
-#define NL (1ll<<63)
+#define NL ((L)(1ull<<63))
 #define WL (~NL)
 #define K(s,a...) ({Z A f;k8(&f,s,A(a),L(A(a)));})
 #define K1(s,x)   ({Z A f;k1(&f,s,x);})

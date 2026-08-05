@@ -1,5 +1,118 @@
 # Changelog
 
+## 1.9 — version unification, memory/UB audit, and a combinatorial test suite
+
+### Version
+- **One canonical version string.** `AMBER_VERSION` now lives in `src/a.h` and is the only
+  place a release is bumped. `binfo` (`` `bi 0``) returns it as a 5th element, the REPL banner
+  reads it from there (it was hard-coded `v1.7` while the README already advertised 1.9), and
+  `amber --version` prints it.
+- **`amber --help` / `-h` and `amber --version` / `-v` added.** `main()` previously treated
+  `argv[1]` unconditionally as a script path, so `amber --version` tried to open a file called
+  `--version` and failed with an `'io` error. `--help` also lists the full `\`-command reference.
+
+### Bugs fixed — memory safety and undefined behaviour
+- **Out-of-bounds stack read in `a8()` (amend), `src/a.c`.** The `MC()` calls copied a fixed
+  8-slot's worth of argument pointers (40/48/56/64 bytes) out of the caller's `a[]` regardless of
+  how many arguments were passed. `a` is not always an 8-element buffer — `run()` (`src/b.c`)
+  passes a pointer straight into its own dynamically sized stack frame — so every amend with
+  `n<8` read past the end of live storage. Reproduced by AddressSanitizer as
+  *dynamic-stack-buffer-overflow* on `test-fin.k` and four `examples/*.k`. Each copy is now
+  clamped to the real argument count.
+- **`NL` (the long null) was undefined behaviour.** `#define NL (1ll<<63)` shifts into the sign
+  bit of a signed type. UBSan flagged it from 17 different sites across `a.c`, `h.c`, `p.c`,
+  `r.c`, `f.c`, `s.c`, `c.c`, `i.c`, `3.c` and `csv.c`. Now `((L)(1ull<<63))`, same bits,
+  defined semantics. The same treatment was applied to the remaining signed-shift sites in
+  `1.c` (`neg`), `2.c` (`ozZ`), `3.c` (`mmmf`, `mxms`) and `p.c` (`pf`), and to `su()`'s
+  `1<<31` in `m.c`.
+- **Intentional integer wrap was undefined behaviour in the arithmetic kernels** (`src/2.c`,
+  `src/v.c`). `aLL/aII/aHH/aGG`, `alL/aiI/ahH/agG`, the widest-width multiplies and `tilV()`'s
+  packed-lane counter all rely on two's-complement wraparound, which `oZZ()`/`ozZ()` then detect
+  after the fact — but signed overflow is UB, so the optimiser is entitled to assume it never
+  happens and delete the very check that depends on it. All of them now do the arithmetic in the
+  unsigned counterpart type: identical instructions, defined semantics.
+- **Use-after-reset in the `` `simd`` self-test** (`src/a.c`). `arena_reset()` was called
+  immediately after `arena_alloc()` and *before* the 400 009-element reference loop that wrote
+  into the block, so every store landed in scratch the allocator had already rewound.
+- **`memcpy(dst, NULL, 0)` in `run()`** (`src/b.c`) — undefined per the `nonnull` attribute on
+  `memcpy`; now guarded.
+- **`arena_alloc()` bounds check could wrap.** `off + bytes <= a_cap` overflows for a large
+  `bytes` on a 32-bit target (wasm32), silently passing the check and returning a short block.
+  Rewritten as `bytes <= a_cap - off`, which cannot wrap. The overflow-block path got the same
+  treatment, and `ajc()` now rejects an element count whose byte size would overflow `size_t`.
+- **`arena_init()` leaked tracked overflow blocks** when a previous slab reservation had failed
+  (`a_base == 0`), because it reset `a_over` to 0 without freeing the list.
+- **`arena_used()` under-reported.** It returned only the slab bump cursor, ignoring live
+  overflow blocks; it now counts both.
+- **`ast_new()` / `ast_add_child()` dereferenced a possibly-NULL `arena_alloc()`** (`src/ast.c`).
+  `ast_new()` now degrades to a static sentinel node — returning NULL would only move the
+  segfault, since all ~30 call sites dereference the result immediately.
+- **`mmap()` failure test used a pointer-to-`char` cast** (`src/m.c`): `(L)p == (C)p`. Replaced
+  with a plain `p == MAP_FAILED`.
+
+### Bugs fixed — language semantics
+- **A computed float null never matched the `0n` literal.** IEEE has no single NaN bit pattern:
+  `0n` is the positive quiet NaN, but every NaN the FPU *computes* (`0%0`, `0w-0w`,
+  `avg 0#0`, …) is the default NaN, which on x86-64 has the sign bit set. `~` compared bytes, so
+  `(0%0)~0n` was `0b` even though both sides print as `0n` and both answer `1b` to `^`. `mtc_()`
+  now compares float payloads value-wise with all NaNs treated as one value (only on the path
+  where the byte-wise fast path has already failed, so equal data still costs one `memcmp`).
+- **The float formatter printed `-0n`** for any computed NaN. A NaN has no meaningful sign;
+  `sf()` no longer emits the leading `-` for it. `0%0` and `(-0w)+0w` now print `0n`.
+- **`deltas` and `ratios` raised `'length` on an empty argument** (`amber.k`). `0,-1_()` is a
+  one-element vector, so `x-0,-1_x` mismatched. Both now return the empty vector, as q does.
+- **`med` of an empty vector returned `0.0`** while `avg`/`dev`/`var` return the float null; it
+  now returns `0n` like the rest of the aggregation family.
+- **`qselect` was broken for more than one aggregation** (`amber.k`).
+  `select a:sum px, b:max sz from t` built the dict `` `a`b!(210.0;6)`` and flipping it raised
+  `'length`; the single-aggregate case only *appeared* to work because the each-result happened
+  to be a one-item list. Each aggregate result is now joined onto `()` so an atom becomes a
+  one-row column.
+- **`select by sym from t` (a `by` clause with no projection) raised `'value`** (`qsql.k`). The
+  `" by "` split never matched, because when the by-clause is the whole select-part it has no
+  space in front of it; and even once split, an empty projection ignored the grouping entirely.
+  `qsplit0` handles the position-0 case and the empty projection now aggregates each non-key
+  column with `last`, matching q.
+
+### Diagnostics
+- **`\trace`'s "Arena peak" was always `0 B`.** It reported `max(used-before, used-after)`, and
+  every arena consumer rewinds the slab before returning. `arena.c` now maintains a true
+  high-water mark (`arena_peak()` / `arena_reset_peak()`) that survives `arena_reset()`.
+- **`\trace` timings below one microsecond rendered as `0us`;** the formatter now prints
+  `ns` / `us` / `ms` as appropriate.
+- **`\trace`'s report box is square again** — the bar glyph is 3 bytes but 1 column wide, and the
+  old `printf` field widths counted bytes, leaving the right-hand border ragged.
+- The `` `arn`` self-test now genuinely exercises the arena **overflow** path it advertises. It
+  asked for 1 MB against a >=16 MB slab (`arena_init(1<<16)` only rewinds an already-larger slab,
+  it never shrinks it), so the overflow branch was never taken; it now requests
+  `arena_capacity() + 64 KB` and also asserts that the peak survives a rewind.
+
+### Dead code and duplication removed
+- `src/3.c`: deleted the unused static helpers `minfB`, `maxfB` and `eqlsL`.
+- `src/a.c`, `src/h.c`, `src/w.c`, `src/i.c`: removed unused / write-only locals (`m`, `p`, `u`)
+  and a discarded expression value (`f>2&&close(f)`).
+- **One canonical `lower_bound`.** `ajlb()` (`src/a.c`) and `wjlb()` (`src/i.c`) were the same
+  contract under two names with different (branch-free vs branchy) codegen. Both join kernels now
+  call the exported branch-free `amlb()`.
+
+### Tests
+- **`tests/harness.k`** — shared assertion harness (`t`, `tv`, `te`, `tk`, `hreport`). Every
+  assertion is trapped, so a failing or throwing case can never abort a suite or hide the cases
+  after it.
+- **`tests/test_matrix.k`** — 308-case combinatorial matrix: every primitive against every
+  element type (Long / Float / Boolean / Char / Symbol / nested list / dict / table) at sizes
+  0, 1, 10 and 100 000+, including the 99 999 / 100 000 / 100 001 / 250 000 sizes that straddle
+  `PAR_THRESHOLD`. Cases assert invariants (shape, algebraic identity, vector-kernel-vs-scalar-
+  reference agreement) rather than frozen literals.
+- **`tests/test_qsql.k`** — 78-case qSQL matrix over the full clause lattice, multi-key `by`,
+  empty / single-row / heavily-duplicated tables, the bare-qSQL rewriter, and malformed queries.
+- **`tests/fuzz.py`** — malformed-input and deep-nesting crash fuzzer (unbalanced brackets,
+  dangling adverbs, truncated qSQL, 20 000-deep nesting, out-of-range literals). Asserts a clean
+  K error, never a signal or a hang.
+- **`tests/run_tests.sh`** — one entry point for all suites plus the C unit tests; `--asan`
+  rebuilds under AddressSanitizer + UBSan and re-runs everything, including the fuzzer.
+- CI (`.github/workflows/ci.yml`) now runs the new suites and the fuzzer on every push.
+
 ## Unreleased — separate, independently-tuned comparative benchmark query files
 - **`bench/queries/amber_{vecsum,vecarith,groupby}.k`** added — `bench/run_comparative.py`'s
   Amber row previously reran the same `k_<id>.k` file used for the "K" (ngn/k) row. Amber now

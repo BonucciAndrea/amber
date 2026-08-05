@@ -47,7 +47,7 @@ __attribute((weak, visibility("default"))) V kinit();
 Z ST{V*p;W n;B f;}reg[128];Z U nreg;Z UC pnd[128];Z U npnd;
 Z V mc(){P(!npnd)F(npnd,U j=pnd[i];munmap(reg[j].p,reg[j].n);reg[j].p=0)npnd=0;U j=0;F(nreg,I(reg[i].p,MC(reg+j,reg+i,SZ*reg);j++))nreg=j;}
 Z A mu(V*p)_(F(nreg,P(reg[i].p==p,pnd[npnd++]=i;0))die("UNMAP"))
-Z V*mm(W n,U f)_(V*p=mmap(0,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_ANON,-1,0);P((L)p==(C)p,(V*)0)I(nreg==L(reg),mc();I(nreg==L(reg),die("MMAP")))reg[nreg++]=(TY(*reg)){p,n,f};p)
+Z V*mm(W n,U f)_(V*p=mmap(0,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_ANON,-1,0);P(p==MAP_FAILED,(V*)0)I(nreg==L(reg),mc();I(nreg==L(reg),die("MMAP")))reg[nreg++]=(TY(*reg)){p,n,f};p)
 A mf(U f,U i,U n)_(V*p=mm(pg+n,1);P(!p,eo0())P(mmap(p+pg,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_FIXED,f,i)!=p+pg,mu(p);eo0())A x=AP(p+pg);xb=0;xr=REFB;xT=tC;xn=n;x)
 
 Z A bkt[24];DBG(Z U lck;)
@@ -99,7 +99,7 @@ A AN(U n,A x)_(xn=n;x)
 A1(AZ,xT=tG;x)
 
 Z C s0[1<<16],*s1=s0+1;
-S su(U u)_(P(u&1<<31,s0-(I)u)Z W r;r=u;(V*)&r)
+S su(U u)_(P(u&1u<<31,s0-(I)u)Z W r;r=u;(V*)&r)
 U us(S s)_(U n=SL(s);P(n<4||(n==4&&!(s[3]&128)),U v=0;MC(&v,s,n);v)S p=s0+1;W(p<s1,P(!strcmp(p,s),s0-p)p+=SL(p)+1)n++;P(s1+n>s0+SZ s0,die("SYMS"))MC(s1,s,n);s1+=n;s0-s1+n)
 A sym(S s)_(as(us(s)))
 
@@ -181,8 +181,10 @@ W ov_(S s,W v)_(os(s);o8(v);ow("\n",1);v)
 ZN V od(L v){C b[32];ow(b,sl(b,v)-b);}
 ZN V osd(S s,L v){os(s);od(v);}
 ZN A1(ox,o8(x);osd(" b",xb);C t=xT;os(" t");I(LH(1,t,tn),ow(&TS[t],1))E(od(t))osd(" r",xr);osd(" n",xn);F(MIN(5,cap(x)/8),os(" ");o8(xl))os("\n");x)
-// amber: engine metadata -> (heapBytes; nRegions; arch; compiler)  (used by the REPL banner)
-A1(binfo,L tot=0,nr=0;F(nreg,I(reg[i].p,tot+=reg[i].n;nr++))A a[]={al(tot),al(nr),aCz(AMARCH),aCz(AMCC)};x(aV(tA,4,a)))
+// amber: engine metadata -> (heapBytes; nRegions; arch; compiler; version)
+// (used by the REPL banner and by `amber --version`; version comes from
+// AMBER_VERSION in a.h so there is exactly one place to bump on a release)
+A1(binfo,L tot=0,nr=0;F(nreg,I(reg[i].p,tot+=reg[i].n;nr++))A a[]={al(tot),al(nr),aCz(AMARCH),aCz(AMCC),aCz(AMBER_VERSION)};x(aV(tA,5,a)))
 #define RGS(a...) F(nreg,B f=reg[i].f;V*p=reg[i].p,*q=f?p:p+reg[i].n;a)
 #define OBS(a...) RGS(A x=(A)(p+HD*!f+pg*f),y=(A)q;W(x<y,a;x+=HD<<xb))
 #define XYS(a...) OBS(I(xtR,F(xn|!xn,A y=xa;a)))

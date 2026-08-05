@@ -17,7 +17,7 @@ A slc(A x/*0*/,U i,U j)_(Q(xtT&&i<=j&&i<=xN)N n=j-i;XE(I v=*xL;aE(v+i,v+j))A y=a
 Z A chp(L n,A x/*1*/)_(P(n<0,ed(x))L m=(xn+n-1)/n;A y=aA(m);F(m|!m,ya=slc(x,n*i,MIN(xn,n*i+n)))x(0);I(!m,yx=mkn(yx))y)
 Z A2(rsh,/*01*/XE(x=gZ(xR);x(rsh(x,y)))YE(rsh(x,gZ(y)))YmM(en(y))Yt(rsh(x,enl(y)))Q(xtZ);N r=xn;P(!r,fir(y))P(r>256,ez(y))x=Ny(cL(xR));L s[r];MC(s,xV,r<<3);x(0);
  I(r==2,P(*s==NL,chp(s[1],y))P(s[1]==NL,K2("{$[(0<x)&~x!#y;(x;(-x)!#y)#y;((-x)!(#y)*!x)_y]}",az(*s),y)))P(r==1&&*s==NL,y)I(!yn,y=enl(fir(y)))
- L p[r],m=1;F(r,L d=s[r-1-i];P(d<0||m*d<0,ed(y))p[i]=m*=MAX(1,d))y=N(rsz(m,y));F(r-1,L d=s[r-1-i];I(d,y=N(chp(MAX(1,d),y)))E(y=N(e1f(rs0,chp(1,y)))))rsz(*s,y))
+ L m=1;F(r,L d=s[r-1-i];P(d<0||m*d<0,ed(y))m*=MAX(1,d))y=N(rsz(m,y));F(r-1,L d=s[r-1-i];I(d,y=N(chp(MAX(1,d),y)))E(y=N(e1f(rs0,chp(1,y)))))rsz(*s,y))
 X2(hsh,/*01*/Ril(rsz(gl_(x),y))RU(flt(x,y,1))RT(P(ytm||ytM&&xtS,y(aV(yt,2,A(xR,y1(xR)))))XZ(rsh(x,y))et(y))R_(et(y)))
 A drp(L n,A x/*1*/)_(X(Rm(A y=kv(&x);am(Ny(drp(n,x)),Nx(drp(n,y))))RM(A y=kv(&x);aM(x,Nx(e2f(und,az(n),y))))Rt(er(x))RE(Lij x(0);aE(MAX(i,MIN(j,i+n)),MAX(i,MIN(j,j+n))))
  R_(P(n==NL,rs0(x))L m=xn;n=MAX(-m,MIN(m,n));P(-n<(W)m&&MINE(x),I(xtA,mrn(-n,xA+m+n))AN(m+n,x))x(slc(x,MAX(0,n),m+MIN(0,n)))))0)

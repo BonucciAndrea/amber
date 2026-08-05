@@ -53,15 +53,15 @@ sdev:{sqrt svar x}
 cov:{avg[x*y]-avg[x]*avg y}
 scov:{(n*cov[x;y])%-1+n:#x}
 cor:{cov[x;y]%dev[x]*dev y}
-med:{a:x@<x;n:#a;m:_n%2;$[2!n;0.0+a m;avg a@m-1 0]}
+med:{$[0=#x;0n;[a:x@<x;n:#a;m:_n%2;$[2!n;0.0+a m;avg a@m-1 0]]]}
 all:{~|/x=0}
 any:{~&/x=0}
 sums:{+\x}
 prds:{*\x}
 mins:{&\x}
 maxs:{|\x}
-deltas:{x-0,-1_x}
-ratios:{x%1,-1_x}
+deltas:{$[#x;x-0,-1_x;x]}
+ratios:{$[#x;x%1,-1_x;x]}
 differ:{~~':x}
 prev:{-1_0N,x}
 next:{1_x,0N}
@@ -138,7 +138,12 @@ wj:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:xasc[c;q];qd:+q;cs:wjcode'aggs[;1];$[|/
 
 / ---- qSQL-style select / group-by --------------------------------------------
 qwhere:{[t;m]t@&m}
-qselect:{[t;a]+(!a)!{[t;f]f t}[t]'value a}
+/ qselect: each aggregate's result is joined onto () so an ATOM becomes a
+/ 1-row column. Without that, `select a:sum px, b:max sz from t` built the
+/ dict `a`b!(210.0;6) and flipping it raised 'length -- the single-aggregate
+/ case only appeared to work because the each-result happened to be a 1-item
+/ list whose single item was the atom. (),x leaves genuine vectors untouched.
+qselect:{[t;a]+(!a)!{[t;f](),f t}[t]'value a}
 qby:{[t;b;a]b:b,();g:=rows[b#+t];kt:+b!+!g;subs:atr[t]'value g;vt:+(!a)!{[subs;f]f'subs}[subs]'value a;kt!vt}
 xgroup:{[k;t]k:k,();g:=rows[k#+t];kt:+k!+!g;vc:except[cols t;k];+(+kt),vc!{[t;iv;c]((+t)c)@/:iv}[t;value g]'vc}
 ungroup:{[x]t:unkey x;d:+t;v:value d;m:{`A=@x}'v;cnt:#:'*v@&m;+(!d)!{[cnt;m;c]$[m;raze c;raze cnt#'c]}[cnt]'[m;v]}

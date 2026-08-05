@@ -19,7 +19,11 @@
 // ---- HFT as-of join kernel ------------------------------------------------
 // branch-free lower_bound over a sorted long slice a[lo,hi): first i with a[i]>=key.
 // The ternaries lower to cmov under -O3, so there are no data-dependent branches.
-Z U ajlb(CO L*RES a,U lo,U hi,L key){
+// amber: THE lower_bound for every sorted-long probe in the engine (aj, wj).
+// Previously duplicated as ajlb() here and wjlb() in i.c with identical
+// semantics but different (branchy vs branch-free) codegen; now one exported
+// definition, so both join kernels get the cmov version.
+U amlb(CO L*RES a,U lo,U hi,L key){
  U n=hi-lo,pos=lo;
  while(n>0){U half=n>>1,mid=pos+half;int lt=a[mid]<key;pos=lt?mid+1:pos;n=lt?n-half-1:half;}
  return pos;}
@@ -38,11 +42,15 @@ A ajc(A x){
  U nt=_n(TT);
  A out=aL(nt);L*m=_V(out);
  arena_reset();                              // start a fresh scratch region for this eval
+ // On a 32-bit target (wasm32) size_t is 32 bits, so nt*sizeof(L) can wrap and
+ // silently request a short buffer that the loop below then runs off the end of.
+ P((N)nt>((N)-1)/SZ(L),mr(QT);mr(TT);mr(GB);mr(GE);mr(out);ez(x))
  L*w=(L*)arena_alloc((N)nt*SZ(L));           // transient match-index vector (zero-alloc bump)
+ P(!w,mr(QT);mr(TT);mr(GB);mr(GE);mr(out);eo(x))
  F(nt,
    L b=gb[i],en=ge[i];
    I(b==NL||en==NL||en<=b,w[i]=NL;continue)
-   U j=ajlb(qt,(U)b,(U)en,tt[i]+1);          // first quote strictly after the trade
+   U j=amlb(qt,(U)b,(U)en,tt[i]+1);          // first quote strictly after the trade
    w[i]=(j>(U)b)?(L)(j-1):NL;)               // step back to on-or-before, else null
  F(nt,m[i]=w[i])
  arena_reset();                              // rewind scratch at end of the eval cycle
@@ -54,7 +62,17 @@ A1(arnT,arena_init(1<<16);B ok=1;
  F(100,p[i]=(C)i)ok&=p[42]==42;ok&=arena_used()>=300;
  arena_reset();ok&=arena_used()==0;
  C*big=(C*)arena_alloc(1<<20);ok&=!!big;I(big,big[0]=7;big[(1<<20)-1]=9;ok&=big[0]==7&&big[(1<<20)-1]==9)
- arena_reset();ok&=arena_used()==0;x(al((L)ok)))
+ arena_reset();ok&=arena_used()==0;
+ // Genuinely exercise the OVERFLOW path: ask for strictly more than the slab
+ // holds so arena_alloc() has to fall back to a tracked heap block. The old
+ // version asked for 1 MB against a >=16 MB slab (arena_init(1<<16) only
+ // rewinds an already-larger slab, it never shrinks it), so the overflow
+ // branch this self-test advertises was never actually taken.
+ {N big2=arena_capacity()+(1<<16);C*ov=(C*)arena_alloc(big2);ok&=!!ov;
+  I(ov,ov[0]=3;ov[big2-1]=5;ok&=ov[0]==3&&ov[big2-1]==5;ok&=arena_used()>=big2)
+  arena_reset();ok&=arena_used()==0;}
+ ok&=arena_peak()>=(N)(1<<20);//peak survives the rewind
+ x(al((L)ok)))
 // diagnostic self-test builtin (`dgn): render the reference report, verify its structure.
 A1(dgnT,CO C*src="x:1 2 3\n  prices + sizes\n";
  U pp=(U)(strstr(src,"prices")-src),sp=(U)(strstr(src,"sizes")-src);
@@ -79,8 +97,13 @@ A1(simdT,
  B ok=1;struct timespec t0,t1,t2;clock_gettime(CLOCK_MONOTONIC,&t0);
  simd_add_i64((int64_t*)dXi,(int64_t*)dYi,(int64_t*)dOi,n);clock_gettime(CLOCK_MONOTONIC,&t1);
  F(n,L r=dXi[i]+dYi[i];ok&=dOi[i]==r)
- L*dRef=(L*)arena_alloc((N)n*SZ(L));arena_reset();//scratch just for timing symmetry
- F(n,dRef[i]=dXi[i]+dYi[i]);clock_gettime(CLOCK_MONOTONIC,&t2);
+ //NOTE: the arena_reset() below MUST come after the reference loop. It used
+ //to sit immediately after the arena_alloc(), so every one of the n stores
+ //into dRef[] landed in scratch the allocator had already rewound and was
+ //free to hand out again -- a use-after-reset that only happened to be
+ //harmless because nothing else allocated in between.
+ L*dRef=(L*)arena_alloc((N)n*SZ(L));P(!dRef,mr(vXi);mr(vYi);mr(vOi);x(al(0)))//scratch just for timing symmetry
+ F(n,dRef[i]=dXi[i]+dYi[i]);clock_gettime(CLOCK_MONOTONIC,&t2);arena_reset();
  simd_mul_i64((int64_t*)dXi,(int64_t*)dYi,(int64_t*)dOi,n);F(n,ok&=dOi[i]==dXi[i]*dYi[i])
  L want=0;F(n,want+=dXi[i])ok&=simd_sum_i64((int64_t*)dXi,n)==want;
  A vXf=aF(n),vYf=aF(n),vOf=aF(n);F*dXf=_V(vXf),*dYf=_V(vYf),*dOf=_V(vOf);
@@ -198,7 +221,7 @@ A2(i1,/*01*/P(y==GAP||y==au,xR)
         RE(L i=*yL,j=yL[1];P(0<=i&&i<j&&j<xN,y(0);slc(x,i,j))i1(x,gZ(y)))
         R4(tB,tG,tH,tC,i1(x,cI(y)))
         R_(et(y))
-        RL(U m=xn;A z=aI(yn);My(F(yn+3&-4,L v=yl;zi=v|-(v!=(I)v)))i1(x,z))
+        RL(A z=aI(yn);My(F(yn+3&-4,L v=yl;zi=v|-(v!=(I)v)))i1(x,z))
         RI(U n=yn;
          X(RA(A z=aA(n);F(n|!n,za=io(x,yi))y(0);I(!zn,zx=mkn(zx))sqz(z))
            RB(x=cG(xR);x(i1(x,y)))
@@ -240,14 +263,25 @@ Z A set(A x,L i,A y/*1i1*/)_(Q(MINE(x));
    RM(A z=kv(&x);z=mut(z);Q(ztA);I(ytT&&yN-zn,x(y(el(z))))I j=i;F(zn,za=set(mut(za),j,ii(y,i));P(!za,za=au;x(y(z(0)))))y(aM(x,z)))
    RB(set(cG(x),i,y))
    R_(P(knd(x)-knd(y)-tC+tc,set(blw(x),i,y))I(xtZ,N(sup(&x,&y)))C w=xw-3;!w?xg=yv:w==1?xh=yv:w==2?xi=yv:(xl=gl(y));x))0)
+// amber: the MC()s below used to copy a fixed 8-slot's worth of argument
+// pointers (56/48/40/64 bytes) out of the caller's `a[]` no matter how many
+// arguments were actually passed. `a` is not always an 8-element buffer --
+// run() (b.c) hands over a pointer straight into its own dynamically sized
+// stack frame -- so every amend with n<8 read past the end of live storage
+// (ASan: dynamic-stack-buffer-overflow, reproducible on test-fin.k and four
+// examples). The extra slots were never *used* (each recursive call is bounded
+// by n), so this is a pure read overrun -- but it is still one, and on a
+// stack-probing/tagged-memory target it faults. AC() clamps each copy to the
+// number of arguments that actually exist.
+#define AC(d,s,c) {I c_=(I)(c);I(c_>0,MC(d,s,8u*(U)c_))}
 AA(a8,/*10..0*/A x=*a,y=a[1];
- X(RE(Ab8;*b=gZ(x);MC(b+1,a+1,56);a8(b,n))
-   RT_E(P(y==au,mRn(n-2,a+2);Ab8;*b=a[2];b[1]=x;MC(b+2,a+3,40);e8(AP1,b,n-1))
-    Yzc(L i=gl_(y);P(i>=(W)xn,ei(x))x=mut(x);Ab8;*b=ii(x,i);MC(b+1,a+3,40);mRn(n-3,b+1);A z=a[2];set(x,i,Nx(z8(b,n-2))))
+ X(RE(Ab8;*b=gZ(x);AC(b+1,a+1,n-1);a8(b,n))
+   RT_E(P(y==au,mRn(n-2,a+2);Ab8;*b=a[2];b[1]=x;AC(b+2,a+3,n-3);e8(AP1,b,n-1))
+    Yzc(L i=gl_(y);P(i>=(W)xn,ei(x))x=mut(x);Ab8;*b=ii(x,i);AC(b+1,a+3,n-3);mRn(n-3,b+1);A z=a[2];set(x,i,Nx(z8(b,n-2))))
     I(ytZC&&n==4,A z=a[2],u=a[3];P(xtZ&&ztv&&utzZ&&(0xcf&1<<zv),ara(x,y,z,u))P(xtC&&z==av&&utcC,cC(N(ara(x,y,z,u)))))Yt(et(x))mRn(n-1,a+1);f8(AP1,a,n))
    Rm(A z=Nx(fnd(xx,yR));ZT(z(0);mRn(n-1,a+1);f8(AP1,a,n))x=mut(x);I(ztl,z=mut(z);F(zN,I(zl==NL,zl=xN;PSH(xx,ztt?yR:ii(y,i));PSH(xy,ie(a[2],xy)))))
-    Ab8;*b=xy;b[1]=z;MC(b+2,a+2,48);xy=au;xy=Nx(z(a8(b,n)));x)
-   RM(Ab8;MC(b,a,64);YsS(*b=flp(x);flp(N(a8(b,n))))*b=blw(x);sqz(N(a8(b,n))))
+    Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);xy=au;xy=Nx(z(a8(b,n)));x)
+   RM(Ab8;AC(b,a,n);YsS(*b=flp(x);flp(N(a8(b,n))))*b=blw(x);sqz(N(a8(b,n))))
    RU(mRn(n-1,a+1);x(x8(a+1,n-1)))
    R_(et(x)))0)
 Z A3(a3,/*100*/a8(A8(x,y,z),3))

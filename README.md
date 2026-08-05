@@ -213,6 +213,13 @@ Big tables print Q-style — the first `CROWS` rows (default 20) then `..`; set 
 to shorten. The cap is applied before formatting, so previewing a million-row table is
 instant.
 
+Check the interpreter version, or list every option and REPL command:
+
+```sh
+./amber --version           # amber 1.9
+./amber --help              # options + the full \-command reference
+```
+
 Run the guided tours:
 
 ```sh
@@ -221,7 +228,9 @@ Run the guided tours:
 ./amber examples/tick.k     # realistic trades & quotes: as-of/window joins, VWAP, OHLC
 AMBER_THREADS=8 ./amber examples/peach.k   # multi-core speedup demo (serial vs peach)
 ./amber bench.k             # attribute speed benchmark
-./amber test.k              # core suite (163); also test-fin.k (35) + test-ext.k (79) = 277
+./amber test.k              # core suite (163); also test-fin.k (35) + test-ext.k (79)
+tests/run_tests.sh          # EVERYTHING: build + all K suites + C unit tests + fuzz pass
+tests/run_tests.sh --asan   # ... and re-run it all under AddressSanitizer + UBSan
 bash bench/run.sh           # cross-engine sanity + speed (Amber vs numpy/pandas/…; see BENCHMARKS.md)
 ```
 
@@ -349,12 +358,26 @@ expression's normal result first, then the report (timings vary run to run):
 amber> \trace (1+2)*3-4
 -3
 +-------------------------------------------------------+
-| Parse         11us  [■■                  ]   8.2% |
-| Arena          5us  [■                   ]   4.3% |
-| Execute        4us  [■                   ]   3.7% |
-| Format       113us  [■■■■■■■■■■■■■■■■■   ]  83.9% |
+| Parse         454ns  [■■                  ]  10.5%    |
+| Arena          38ns  [                    ]   0.9%    |
+| Execute       1.1us  [■■■■■               ]  24.8%    |
+| Format        2.8us  [■■■■■■■■■■■■■       ]  63.8%    |
 +-------------------------------------------------------+
-| Total: 135us     Arena peak: 0 B                       |
+| Total: 4.3us      Arena peak: 0 B                     |
++-------------------------------------------------------+
+```
+
+Since **1.9** the timer prints `ns` / `us` / `ms` as appropriate (sub-microsecond phases used to
+render as a flat `0us`), and **Arena peak** is a true high-water mark taken from
+`arena_peak()` — it used to be `max(used-before, used-after)`, and since every arena consumer
+rewinds the slab before returning, that was `0 B` for literally every expression. Only
+expressions that actually reach an arena-backed kernel (`aj`, `wj`, `` `csvr``, `\ast`) report a
+non-zero peak:
+
+```
+amber> \trace aj[`s`t;tr;qt]
+...
+| Total: 335.4us    Arena peak: 32 B                    |
 +-------------------------------------------------------+
 ```
 
@@ -661,10 +684,15 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 | `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |
 | `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` `tick.k` | modules (auto-loaded) |
 | `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `peach.k` · `wj.k` · `graphs.k` · … |
-| `test.k` `test-fin.k` `test-ext.k` | 277-assertion suite (163 + 35 + 79) |
+| `test.k` `test-fin.k` `test-ext.k` | legacy assertion suites (163 + 35 + 79) |
+| `tests/harness.k` | shared assertion harness — `t` (value), `tv` (trapped expression), `te` (must-raise), `tk` (must-not-raise), `hreport` |
+| `tests/test_matrix.k` | **308-case combinatorial matrix**: every primitive × every element type × sizes 0 / 1 / 10 / 100 000+ (crossing the SIMD and `PAR_THRESHOLD` boundaries), asserted as invariants (shape, algebraic identity, vector-kernel-vs-scalar-reference) rather than frozen literals |
+| `tests/test_qsql.k` | **78-case qSQL matrix**: the full `select`/`exec`/`update`/`delete` clause lattice, multi-key `by`, empty / single-row / heavily-duplicated tables, the bare-qSQL rewriter, and malformed queries asserted to raise cleanly |
+| `tests/fuzz.py` | malformed-input & deep-nesting crash fuzzer — asserts a clean K error, never a signal or a hang |
+| `tests/run_tests.sh` | runs all of the above (`--asan` re-runs everything under ASan + UBSan) |
 | `tests/*.c` | standalone C test harnesses: `test_simd.c`/`test_parallel.c` (no Amber dependency), `test_ast.c` (links the full interpreter — ast.c is inherently built on Amber's real parser) |
 | `bench.k` `bench-fin.k` `bench-std.k` `bench/` | attribute / index / window benchmarks; `bench/run_comparative.py` cross-engine harness (Amber vs DuckDB vs CBQN vs ngn/k — see [docs/BENCHMARKS.md §5](docs/BENCHMARKS.md)); `bench/queries/amber_*.k` and `bench/queries/k_*.k` are separate, independently-tuned scripts per engine (not the same file reused), each `amber_*.k` documenting in its header what optimization was tried, what was measured, and why — see [Comparative benchmark query files](#comparative-benchmark-query-files) |
-| `docs/` | `AMBER.md` (reference) · `MISSING.md` (roadmap) · `CHANGELOG.md` (history) · `BENCHMARKS.md` |
+| `docs/` | `AMBER.md` (reference) · `MISSING.md` (roadmap + known leniencies) · `CHANGELOG.md` (history) · `BENCHMARKS.md` · `AUDIT-1.9.md` (the 1.9 security/correctness audit report) |
 | `.gitattributes` | forces LF checkout of sources so the REPL's line-based loader works on Windows too |
 
 ## Roadmap

@@ -40,7 +40,7 @@ Z A2(cf,/*01*/A z=yR,u;W(1,zR;u=x1(z);B(!u)P(mtc_(u,y)||mtc_(u,z),y(u(z)))z=z(u)
 Z A ns(A x,L m,A y/*0m1*/)_(A z=aA0(m+1);F(m,PSH(z,yR);y=x1(y);B(!y))y?PSH(z,y):z(y))
 Z A nf(A x,L m,A y/*0m1*/)_(F(m,y=N(x1(y)))y)
 Z A3(ws,/*001*/A u=enl(zR);W(1,A w=y1(zR);B(!w,u=u(0))B(!tru(w))z=x1(z);P(!z,u(0))PSH(u,zR))z(u))
-Z A3(wf,/*001*/A u=0;W(1,A w=y1(zR);B(!w,z=z(0))B(!tru(w))z=x1(z);P(!z,0))z)
+Z A3(wf,/*001*/W(1,A w=y1(zR);B(!w,z=z(0))B(!tru(w))z=x1(z);P(!z,0))z)
 Z A nS(A x,L m,CO A*a,U n/*0m1n*/)_(P(n==1,ns(x,m,*a))P(m<0,mrn(n,a);ed0())P(m<n,mrn(n-m-1,a+m+1);sqz(aV(tA,m+1,a)))
  A z=aA(m+n),*b=zA;zn=n;MC(zA,a,64);F(m+1-n,mRn(n,b);b[n]=Nz(x8(b,n));zn++;b++)sqz(z))
 Z A wS(A x,A y,CO A*a,U n/*001n*/)_(P(n==1,ws(x,y,*a))Ab8;MC(b,a,64);mRn(n,b);A z=sqz(aV(tA,n,b));

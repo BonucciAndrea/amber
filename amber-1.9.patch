@@ -1,0 +1,1191 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 98b394e..373f6e3 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -42,6 +42,9 @@ jobs:
+           echo "$out"
+           echo "$out" | grep -Eq '0 failures'
+ 
++      - name: Combinatorial matrix + qSQL matrix + fuzz + C unit tests
++        run: tests/run_tests.sh
++
+       - name: Smoke examples
+         run: |
+           set -e
+@@ -87,6 +90,9 @@ jobs:
+           echo "$out"
+           echo "$out" | grep -Eq '0 failures'
+ 
++      - name: Combinatorial matrix + qSQL matrix + fuzz + C unit tests
++        run: tests/run_tests.sh
++
+       - name: Smoke examples
+         run: |
+           set -e
+diff --git a/README.md b/README.md
+index 1cd5633..5ae6939 100644
+--- a/README.md
++++ b/README.md
+@@ -213,6 +213,13 @@ Big tables print Q-style — the first `CROWS` rows (default 20) then `..`; set
+ to shorten. The cap is applied before formatting, so previewing a million-row table is
+ instant.
+ 
++Check the interpreter version, or list every option and REPL command:
++
++```sh
++./amber --version           # amber 1.9
++./amber --help              # options + the full \-command reference
++```
++
+ Run the guided tours:
+ 
+ ```sh
+@@ -221,7 +228,9 @@ Run the guided tours:
+ ./amber examples/tick.k     # realistic trades & quotes: as-of/window joins, VWAP, OHLC
+ AMBER_THREADS=8 ./amber examples/peach.k   # multi-core speedup demo (serial vs peach)
+ ./amber bench.k             # attribute speed benchmark
+-./amber test.k              # core suite (163); also test-fin.k (35) + test-ext.k (79) = 277
++./amber test.k              # core suite (163); also test-fin.k (35) + test-ext.k (79)
++tests/run_tests.sh          # EVERYTHING: build + all K suites + C unit tests + fuzz pass
++tests/run_tests.sh --asan   # ... and re-run it all under AddressSanitizer + UBSan
+ bash bench/run.sh           # cross-engine sanity + speed (Amber vs numpy/pandas/…; see BENCHMARKS.md)
+ ```
+ 
+@@ -349,12 +358,26 @@ expression's normal result first, then the report (timings vary run to run):
+ amber> \trace (1+2)*3-4
+ -3
+ +-------------------------------------------------------+
+-| Parse         11us  [■■                  ]   8.2% |
+-| Arena          5us  [■                   ]   4.3% |
+-| Execute        4us  [■                   ]   3.7% |
+-| Format       113us  [■■■■■■■■■■■■■■■■■   ]  83.9% |
++| Parse         454ns  [■■                  ]  10.5%    |
++| Arena          38ns  [                    ]   0.9%    |
++| Execute       1.1us  [■■■■■               ]  24.8%    |
++| Format        2.8us  [■■■■■■■■■■■■■       ]  63.8%    |
+++-------------------------------------------------------+
++| Total: 4.3us      Arena peak: 0 B                     |
+ +-------------------------------------------------------+
+-| Total: 135us     Arena peak: 0 B                       |
++```
++
++Since **1.9** the timer prints `ns` / `us` / `ms` as appropriate (sub-microsecond phases used to
++render as a flat `0us`), and **Arena peak** is a true high-water mark taken from
++`arena_peak()` — it used to be `max(used-before, used-after)`, and since every arena consumer
++rewinds the slab before returning, that was `0 B` for literally every expression. Only
++expressions that actually reach an arena-backed kernel (`aj`, `wj`, `` `csvr``, `\ast`) report a
++non-zero peak:
++
++```
++amber> \trace aj[`s`t;tr;qt]
++...
++| Total: 335.4us    Arena peak: 32 B                    |
+ +-------------------------------------------------------+
+ ```
+ 
+@@ -661,10 +684,15 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
+ | `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |
+ | `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` `tick.k` | modules (auto-loaded) |
+ | `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `peach.k` · `wj.k` · `graphs.k` · … |
+-| `test.k` `test-fin.k` `test-ext.k` | 277-assertion suite (163 + 35 + 79) |
++| `test.k` `test-fin.k` `test-ext.k` | legacy assertion suites (163 + 35 + 79) |
++| `tests/harness.k` | shared assertion harness — `t` (value), `tv` (trapped expression), `te` (must-raise), `tk` (must-not-raise), `hreport` |
++| `tests/test_matrix.k` | **308-case combinatorial matrix**: every primitive × every element type × sizes 0 / 1 / 10 / 100 000+ (crossing the SIMD and `PAR_THRESHOLD` boundaries), asserted as invariants (shape, algebraic identity, vector-kernel-vs-scalar-reference) rather than frozen literals |
++| `tests/test_qsql.k` | **78-case qSQL matrix**: the full `select`/`exec`/`update`/`delete` clause lattice, multi-key `by`, empty / single-row / heavily-duplicated tables, the bare-qSQL rewriter, and malformed queries asserted to raise cleanly |
++| `tests/fuzz.py` | malformed-input & deep-nesting crash fuzzer — asserts a clean K error, never a signal or a hang |
++| `tests/run_tests.sh` | runs all of the above (`--asan` re-runs everything under ASan + UBSan) |
+ | `tests/*.c` | standalone C test harnesses: `test_simd.c`/`test_parallel.c` (no Amber dependency), `test_ast.c` (links the full interpreter — ast.c is inherently built on Amber's real parser) |
+ | `bench.k` `bench-fin.k` `bench-std.k` `bench/` | attribute / index / window benchmarks; `bench/run_comparative.py` cross-engine harness (Amber vs DuckDB vs CBQN vs ngn/k — see [docs/BENCHMARKS.md §5](docs/BENCHMARKS.md)); `bench/queries/amber_*.k` and `bench/queries/k_*.k` are separate, independently-tuned scripts per engine (not the same file reused), each `amber_*.k` documenting in its header what optimization was tried, what was measured, and why — see [Comparative benchmark query files](#comparative-benchmark-query-files) |
+-| `docs/` | `AMBER.md` (reference) · `MISSING.md` (roadmap) · `CHANGELOG.md` (history) · `BENCHMARKS.md` |
++| `docs/` | `AMBER.md` (reference) · `MISSING.md` (roadmap + known leniencies) · `CHANGELOG.md` (history) · `BENCHMARKS.md` · `AUDIT-1.9.md` (the 1.9 security/correctness audit report) |
+ | `.gitattributes` | forces LF checkout of sources so the REPL's line-based loader works on Windows too |
+ 
+ ## Roadmap
+diff --git a/amber.k b/amber.k
+index abd7192..8755f43 100644
+--- a/amber.k
++++ b/amber.k
+@@ -53,15 +53,15 @@ sdev:{sqrt svar x}
+ cov:{avg[x*y]-avg[x]*avg y}
+ scov:{(n*cov[x;y])%-1+n:#x}
+ cor:{cov[x;y]%dev[x]*dev y}
+-med:{a:x@<x;n:#a;m:_n%2;$[2!n;0.0+a m;avg a@m-1 0]}
++med:{$[0=#x;0n;[a:x@<x;n:#a;m:_n%2;$[2!n;0.0+a m;avg a@m-1 0]]]}
+ all:{~|/x=0}
+ any:{~&/x=0}
+ sums:{+\x}
+ prds:{*\x}
+ mins:{&\x}
+ maxs:{|\x}
+-deltas:{x-0,-1_x}
+-ratios:{x%1,-1_x}
++deltas:{$[#x;x-0,-1_x;x]}
++ratios:{$[#x;x%1,-1_x;x]}
+ differ:{~~':x}
+ prev:{-1_0N,x}
+ next:{1_x,0N}
+@@ -138,7 +138,12 @@ wj:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:xasc[c;q];qd:+q;cs:wjcode'aggs[;1];$[|/
+ 
+ / ---- qSQL-style select / group-by --------------------------------------------
+ qwhere:{[t;m]t@&m}
+-qselect:{[t;a]+(!a)!{[t;f]f t}[t]'value a}
++/ qselect: each aggregate's result is joined onto () so an ATOM becomes a
++/ 1-row column. Without that, `select a:sum px, b:max sz from t` built the
++/ dict `a`b!(210.0;6) and flipping it raised 'length -- the single-aggregate
++/ case only appeared to work because the each-result happened to be a 1-item
++/ list whose single item was the atom. (),x leaves genuine vectors untouched.
++qselect:{[t;a]+(!a)!{[t;f](),f t}[t]'value a}
+ qby:{[t;b;a]b:b,();g:=rows[b#+t];kt:+b!+!g;subs:atr[t]'value g;vt:+(!a)!{[subs;f]f'subs}[subs]'value a;kt!vt}
+ xgroup:{[k;t]k:k,();g:=rows[k#+t];kt:+k!+!g;vc:except[cols t;k];+(+kt),vc!{[t;iv;c]((+t)c)@/:iv}[t;value g]'vc}
+ ungroup:{[x]t:unkey x;d:+t;v:value d;m:{`A=@x}'v;cnt:#:'*v@&m;+(!d)!{[cnt;m;c]$[m;raze c;raze cnt#'c]}[cnt]'[m;v]}
+diff --git a/docs/CHANGELOG.md b/docs/CHANGELOG.md
+index dab8fe3..3376104 100644
+--- a/docs/CHANGELOG.md
++++ b/docs/CHANGELOG.md
+@@ -1,5 +1,118 @@
+ # Changelog
+ 
++## 1.9 — version unification, memory/UB audit, and a combinatorial test suite
++
++### Version
++- **One canonical version string.** `AMBER_VERSION` now lives in `src/a.h` and is the only
++  place a release is bumped. `binfo` (`` `bi 0``) returns it as a 5th element, the REPL banner
++  reads it from there (it was hard-coded `v1.7` while the README already advertised 1.9), and
++  `amber --version` prints it.
++- **`amber --help` / `-h` and `amber --version` / `-v` added.** `main()` previously treated
++  `argv[1]` unconditionally as a script path, so `amber --version` tried to open a file called
++  `--version` and failed with an `'io` error. `--help` also lists the full `\`-command reference.
++
++### Bugs fixed — memory safety and undefined behaviour
++- **Out-of-bounds stack read in `a8()` (amend), `src/a.c`.** The `MC()` calls copied a fixed
++  8-slot's worth of argument pointers (40/48/56/64 bytes) out of the caller's `a[]` regardless of
++  how many arguments were passed. `a` is not always an 8-element buffer — `run()` (`src/b.c`)
++  passes a pointer straight into its own dynamically sized stack frame — so every amend with
++  `n<8` read past the end of live storage. Reproduced by AddressSanitizer as
++  *dynamic-stack-buffer-overflow* on `test-fin.k` and four `examples/*.k`. Each copy is now
++  clamped to the real argument count.
++- **`NL` (the long null) was undefined behaviour.** `#define NL (1ll<<63)` shifts into the sign
++  bit of a signed type. UBSan flagged it from 17 different sites across `a.c`, `h.c`, `p.c`,
++  `r.c`, `f.c`, `s.c`, `c.c`, `i.c`, `3.c` and `csv.c`. Now `((L)(1ull<<63))`, same bits,
++  defined semantics. The same treatment was applied to the remaining signed-shift sites in
++  `1.c` (`neg`), `2.c` (`ozZ`), `3.c` (`mmmf`, `mxms`) and `p.c` (`pf`), and to `su()`'s
++  `1<<31` in `m.c`.
++- **Intentional integer wrap was undefined behaviour in the arithmetic kernels** (`src/2.c`,
++  `src/v.c`). `aLL/aII/aHH/aGG`, `alL/aiI/ahH/agG`, the widest-width multiplies and `tilV()`'s
++  packed-lane counter all rely on two's-complement wraparound, which `oZZ()`/`ozZ()` then detect
++  after the fact — but signed overflow is UB, so the optimiser is entitled to assume it never
++  happens and delete the very check that depends on it. All of them now do the arithmetic in the
++  unsigned counterpart type: identical instructions, defined semantics.
++- **Use-after-reset in the `` `simd`` self-test** (`src/a.c`). `arena_reset()` was called
++  immediately after `arena_alloc()` and *before* the 400 009-element reference loop that wrote
++  into the block, so every store landed in scratch the allocator had already rewound.
++- **`memcpy(dst, NULL, 0)` in `run()`** (`src/b.c`) — undefined per the `nonnull` attribute on
++  `memcpy`; now guarded.
++- **`arena_alloc()` bounds check could wrap.** `off + bytes <= a_cap` overflows for a large
++  `bytes` on a 32-bit target (wasm32), silently passing the check and returning a short block.
++  Rewritten as `bytes <= a_cap - off`, which cannot wrap. The overflow-block path got the same
++  treatment, and `ajc()` now rejects an element count whose byte size would overflow `size_t`.
++- **`arena_init()` leaked tracked overflow blocks** when a previous slab reservation had failed
++  (`a_base == 0`), because it reset `a_over` to 0 without freeing the list.
++- **`arena_used()` under-reported.** It returned only the slab bump cursor, ignoring live
++  overflow blocks; it now counts both.
++- **`ast_new()` / `ast_add_child()` dereferenced a possibly-NULL `arena_alloc()`** (`src/ast.c`).
++  `ast_new()` now degrades to a static sentinel node — returning NULL would only move the
++  segfault, since all ~30 call sites dereference the result immediately.
++- **`mmap()` failure test used a pointer-to-`char` cast** (`src/m.c`): `(L)p == (C)p`. Replaced
++  with a plain `p == MAP_FAILED`.
++
++### Bugs fixed — language semantics
++- **A computed float null never matched the `0n` literal.** IEEE has no single NaN bit pattern:
++  `0n` is the positive quiet NaN, but every NaN the FPU *computes* (`0%0`, `0w-0w`,
++  `avg 0#0`, …) is the default NaN, which on x86-64 has the sign bit set. `~` compared bytes, so
++  `(0%0)~0n` was `0b` even though both sides print as `0n` and both answer `1b` to `^`. `mtc_()`
++  now compares float payloads value-wise with all NaNs treated as one value (only on the path
++  where the byte-wise fast path has already failed, so equal data still costs one `memcmp`).
++- **The float formatter printed `-0n`** for any computed NaN. A NaN has no meaningful sign;
++  `sf()` no longer emits the leading `-` for it. `0%0` and `(-0w)+0w` now print `0n`.
++- **`deltas` and `ratios` raised `'length` on an empty argument** (`amber.k`). `0,-1_()` is a
++  one-element vector, so `x-0,-1_x` mismatched. Both now return the empty vector, as q does.
++- **`med` of an empty vector returned `0.0`** while `avg`/`dev`/`var` return the float null; it
++  now returns `0n` like the rest of the aggregation family.
++- **`qselect` was broken for more than one aggregation** (`amber.k`).
++  `select a:sum px, b:max sz from t` built the dict `` `a`b!(210.0;6)`` and flipping it raised
++  `'length`; the single-aggregate case only *appeared* to work because the each-result happened
++  to be a one-item list. Each aggregate result is now joined onto `()` so an atom becomes a
++  one-row column.
++- **`select by sym from t` (a `by` clause with no projection) raised `'value`** (`qsql.k`). The
++  `" by "` split never matched, because when the by-clause is the whole select-part it has no
++  space in front of it; and even once split, an empty projection ignored the grouping entirely.
++  `qsplit0` handles the position-0 case and the empty projection now aggregates each non-key
++  column with `last`, matching q.
++
++### Diagnostics
++- **`\trace`'s "Arena peak" was always `0 B`.** It reported `max(used-before, used-after)`, and
++  every arena consumer rewinds the slab before returning. `arena.c` now maintains a true
++  high-water mark (`arena_peak()` / `arena_reset_peak()`) that survives `arena_reset()`.
++- **`\trace` timings below one microsecond rendered as `0us`;** the formatter now prints
++  `ns` / `us` / `ms` as appropriate.
++- **`\trace`'s report box is square again** — the bar glyph is 3 bytes but 1 column wide, and the
++  old `printf` field widths counted bytes, leaving the right-hand border ragged.
++- The `` `arn`` self-test now genuinely exercises the arena **overflow** path it advertises. It
++  asked for 1 MB against a >=16 MB slab (`arena_init(1<<16)` only rewinds an already-larger slab,
++  it never shrinks it), so the overflow branch was never taken; it now requests
++  `arena_capacity() + 64 KB` and also asserts that the peak survives a rewind.
++
++### Dead code and duplication removed
++- `src/3.c`: deleted the unused static helpers `minfB`, `maxfB` and `eqlsL`.
++- `src/a.c`, `src/h.c`, `src/w.c`, `src/i.c`: removed unused / write-only locals (`m`, `p`, `u`)
++  and a discarded expression value (`f>2&&close(f)`).
++- **One canonical `lower_bound`.** `ajlb()` (`src/a.c`) and `wjlb()` (`src/i.c`) were the same
++  contract under two names with different (branch-free vs branchy) codegen. Both join kernels now
++  call the exported branch-free `amlb()`.
++
++### Tests
++- **`tests/harness.k`** — shared assertion harness (`t`, `tv`, `te`, `tk`, `hreport`). Every
++  assertion is trapped, so a failing or throwing case can never abort a suite or hide the cases
++  after it.
++- **`tests/test_matrix.k`** — 308-case combinatorial matrix: every primitive against every
++  element type (Long / Float / Boolean / Char / Symbol / nested list / dict / table) at sizes
++  0, 1, 10 and 100 000+, including the 99 999 / 100 000 / 100 001 / 250 000 sizes that straddle
++  `PAR_THRESHOLD`. Cases assert invariants (shape, algebraic identity, vector-kernel-vs-scalar-
++  reference agreement) rather than frozen literals.
++- **`tests/test_qsql.k`** — 78-case qSQL matrix over the full clause lattice, multi-key `by`,
++  empty / single-row / heavily-duplicated tables, the bare-qSQL rewriter, and malformed queries.
++- **`tests/fuzz.py`** — malformed-input and deep-nesting crash fuzzer (unbalanced brackets,
++  dangling adverbs, truncated qSQL, 20 000-deep nesting, out-of-range literals). Asserts a clean
++  K error, never a signal or a hang.
++- **`tests/run_tests.sh`** — one entry point for all suites plus the C unit tests; `--asan`
++  rebuilds under AddressSanitizer + UBSan and re-runs everything, including the fuzzer.
++- CI (`.github/workflows/ci.yml`) now runs the new suites and the fuzzer on every push.
++
+ ## Unreleased — separate, independently-tuned comparative benchmark query files
+ - **`bench/queries/amber_{vecsum,vecarith,groupby}.k`** added — `bench/run_comparative.py`'s
+   Amber row previously reran the same `k_<id>.k` file used for the "K" (ngn/k) row. Amber now
+diff --git a/docs/MISSING.md b/docs/MISSING.md
+index 89cc765..01d0f40 100644
+--- a/docs/MISSING.md
++++ b/docs/MISSING.md
+@@ -180,3 +180,31 @@ tickerplant** `hopen`/`u.*` (§5).
+    redraw the current line on every keypress (a fragile, previously-regression-prone path in
+    this project — see CHANGELOG), not a new `\command`. A prior attempt shipped as a `\hl <expr>`
+    one-shot echo command instead and was removed for not matching what "live" means.
++
++
++---
++
++## Known leniencies (accepted, not bugs) — recorded 1.9
++
++Surfaced by the qSQL matrix (`tests/test_qsql.k`) and pinned there with `tk[...]` so a change in
++behaviour shows up as a test failure rather than a silent regression.
++
++- **Unknown `by` key does not raise.** `select t:sum px by nosuchkey from t` groups by nulls
++  instead of rejecting the query the way kdb+ does. Root cause is core dict semantics — `` b#+t``
++  on a missing key yields nulls — so a fix belongs in `qbc`/`sel`'s validation, not in `#`.
++- **A trapped error still renders a diagnostic to stderr.** `.[f;args;handler]` (and `protect`,
++  documented as `.Q.trp`-like) catches the error correctly, but the Rust-style diagnostic has
++  already been printed by the time the handler runs. Scripts that deliberately provoke errors —
++  including this repo's own test suites — have to discard stderr. A proper fix means deferring
++  rendering from error-creation time to the top-level `evs()` loop.
++- **No long-typed infinity literal.** `0w`/`-0w` exist for floats; `0W`/`-0W` do not parse, so
++  the identity elements of `&/`/`|/` over an empty long vector can only be obtained from the
++  primitives themselves.
++- **`5#0#0` promotes byte/narrow-int nulls to long nulls.** `cn[tG]` aliases the long null, so a
++  take from an empty narrow vector widens the element type.
++- **Attribute syntax is `` `sa``/`` `ua``/`` `pa``/`` `ga`` (set) and `` `at`` (get), not kdb's
++  `` `s#``/`` `u#``/`` `p#``/`` `g#``.** Several doc passages still write `s#` informally when
++  describing the sorted attribute; the working syntax is `` `at(`sa 1 2 3)``.
++- **A bare `/` on a line of its own opens a block comment** that runs to the next line starting
++  with `\`, silently truncating the rest of the file with no error. Standard K, but a sharp edge;
++  `tests/harness.k` carries a warning comment about it.
+diff --git a/qsql.k b/qsql.k
+index d9d61fe..8d7d718 100644
+--- a/qsql.k
++++ b/qsql.k
+@@ -9,6 +9,12 @@
+ 
+ / ---- parsing helpers ------------------------------------------------------
+ qsplit:{[s;kw]i:ss[s;kw];$[#i;(trim(*i)#s;trim((*i)+#kw)_s;1b);(trim s;"";0b)]}   / split on first kw
++/ split on kw, also matching kw with its leading space stripped at position 0 --
++/ needed for `select by sym from t`, where the by-clause IS the whole
++/ select-part and so has no space in front of it to match " by " against.
++qsplit0:{[s;kw]$[(s~*i:qsplit[s;kw])&((#kw)-1)<#s;$[(1_kw)~(-1+#kw)#s;("";trim(-1+#kw)_s;1b);i];i]}
++/ last-of-each-column aggregation, used for a `by` with no explicit projection
++qlastf:{[c]{[c;x]last x c}[c]}
+ qcut:{[s]d:sums(s="[")-s="]";b:0,&(s=",")&d=0;trim'{$[#x;$[","=*x;1_x;x];x]}'b _ s}  / comma-split at depth 0
+ qname:{[s]d:sums(s="[")-s="]";i:&(s=":")&d=0;$[#i;(trim(*i)#s;trim(1+*i)_s);("";trim s)]}  / name:expr
+ qword:{((x>64)&x<91)|((x>96)&x<123)|((x>47)&x<58)|x=95}                            / word-char mask
+@@ -21,7 +27,7 @@ qnm:{[i;it]p:qname it;$[#p 0;`$p 0;qsimple p 1;`$p 1;`$"x",$i]}
+ qnull:{$[in[@x;`I`i];0N;in[@x;`F`f];0n;in[@x;`S`s];`;in[@x;`C`c];" ";0N]}
+ 
+ / ---- select ---------------------------------------------------------------
+-sel:{[s]s:trim s;s:$[(6#s)~"select";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r3:qsplit[r2 0;" by "];selp:r3 0;u:. r2 1;t:qwhere[u;qmask[u;wh]];C:cols u;$[(selp~,"*")|0=#selp;t;[it:qcut selp;d:(qnm'[!#it;it])!{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;qby[t;qbc r3 1;d];qselect[t;d]]]]}
++sel:{[s]s:trim s;s:$[(6#s)~"select";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r3:qsplit0[r2 0;" by "];selp:r3 0;u:. r2 1;t:qwhere[u;qmask[u;wh]];C:cols u;$[(selp~,"*")|0=#selp;$[r3 2;[bk:qbc r3 1;nk:except[C;bk];qby[t;bk;nk!qlastf'nk]];t];[it:qcut selp;d:(qnm'[!#it;it])!{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;qby[t;qbc r3 1;d];qselect[t;d]]]]}
+ 
+ / ---- exec  (return one column / expression, not a table) ------------------
+ exq:{[s]s:trim s;s:$[(4#s)~"exec";trim 4_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];r2:qsplit[r 0;" from "];u:. r2 1;t:qwhere[u;qmask[u;wh]];(qfn[cols u;(qname trim r2 0)1])t}
+diff --git a/repl.k b/repl.k
+index 70bafb5..8805328 100644
+--- a/repl.k
++++ b/repl.k
+@@ -37,8 +37,8 @@ line:line1@line0@
+ $["repl.k"~basename`argv 1;{cmds::@[cmds;x[1]1;:;{y;`0:x}2_x]}'{(&x~\:80#"-")_x:(1+*&x~\:,"/")_-1_x}@0:`argv 1;];
+ / `bi 0 (process/build info) can throw 'domain on non-Linux builds (e.g. macOS);
+ / trap it so the banner still renders.  Returns (heap;used;arch;compiler).
+-binfo:{.[{`bi 0};,0;(10485760;0;"arm64";"Darwin")]}
+-run:{m:binfo[];`1:(`c$27),"[4q";`1:"Amber v1.7 (",(m 2),"; ",(m 3),") — Columnar Time-Series Engine\nMemory: ",($0.1*_0.5+(m 0)%104857.6)," MB heap reserved | \\ for help command, \\\\ to exit\n\n",prompt;{line@1:`}::/`;}
++binfo:{.[{`bi 0};,0;(10485760;0;"arm64";"Darwin";"1.9")]}
++run:{m:binfo[];`1:(`c$27),"[4q";`1:"Amber v",(m 4)," (",(m 2),"; ",(m 3),") — Columnar Time-Series Engine\nMemory: ",($0.1*_0.5+(m 0)%104857.6)," MB heap reserved | \\ for help command, \\\\ to exit\n\n",prompt;{line@1:`}::/`;}
+ \d .
+ / load the Amber library by ABSOLUTE path derived from this script's own location,
+ / so it works no matter what the current working directory is.
+diff --git a/src/0.c b/src/0.c
+index 468480d..452edc3 100644
+--- a/src/0.c
++++ b/src/0.c
+@@ -18,7 +18,33 @@ I pg=4096;//pagesize
+ //__builtin_ia32_ldmxcsr(__builtin_ia32_stmxcsr()|1<<6|1<<15); //daz,ftz
+ #ifndef shared
+ #ifndef ldstatic
+- I main(I n,S*a)_(kinit();kargs(n,a);I r=0;I(n<2,repl())J(!bsl(a[1]),r=1;epr(0))Q(bsm(""));r)
++ // amber: option handling. `main` used to treat argv[1] unconditionally as a
++ // script path, so `amber --version` tried to open a file called "--version"
++ // and failed with an io error. Both options are handled before kinit() so
++ // they cost nothing at normal start-up.
++ Z CO C USAGE[]=
++  "amber " AMBER_VERSION " - ultra-light K-family array interpreter\n"
++  "\n"
++  "usage: amber [options] [script.k [args...]]\n"
++  "       amber                     start the bare REPL (no stdlib)\n"
++  "       ./a                       start the full REPL (loads repl.k + stdlib)\n"
++  "\n"
++  "options:\n"
++  "  -h, --help       show this message and exit\n"
++  "  -v, --version    print the interpreter version and exit\n"
++  "\n"
++  "REPL commands:\n"
++  "  \\               help menu            \\\\              exit\n"
++  "  \\l FILE         load a K script      \\t[:n] EXPR     time EXPR (n reps, ms)\n"
++  "  \\v              inspect globals      \\d NS          set namespace\n"
++  "  \\ast EXPR       parse tree           \\disasm EXPR   bytecode listing\n"
++  "  \\trace EXPR     phase timings + arena high-water mark\n"
++  "  \\cd DIR         change directory     \\m             heap consistency check\n";
++ Z I opt(S s)_(!strcmp(s,"-h")||!strcmp(s,"--help")?1:!strcmp(s,"-v")||!strcmp(s,"--version")?2:0)
++ I main(I n,S*a)_(I(n>1,I o=opt(a[1]);
++   P(o==1,write(1,USAGE,SL(USAGE));0)
++   P(o==2,write(1,"amber " AMBER_VERSION "\n",SL("amber " AMBER_VERSION "\n"));0))
++  kinit();kargs(n,a);I r=0;I(n<2,repl())J(!bsl(a[1]),r=1;epr(0))Q(bsm(""));r)
+ #endif
+ #endif
+ 
+diff --git a/src/1.c b/src/1.c
+index 472d183..9594ef1 100644
+--- a/src/1.c
++++ b/src/1.c
+@@ -1,12 +1,12 @@
+ #include<math.h> // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+ #include"a.h"
+-X1(neg,RE(neg(gZ(x)))Rilc(az(-gl(x)))Rf(af(-gf(x)))RC(neg(cG(x)))RmMA(e1f(neg,x))RB(neg(cG(x)))R_(et(x))
+- RGHILF(U n=xn;I(xw-3<3&&minfZ(0,x)==-1<<(8<<xw-3)-1,x=ct(tH+xw-3,x))A y=MINE(x)?x:an(n,xt),z=x-y?x:au;n=((n<<xw-3)+31&~31)>>xw-3;
+-  Mz(X(C(tG,F(n,yg=-xg))C(tH,F(n,yh=-xh))C(tI,F(n,yi=-xi))C(tL,F(n,yl=-xl))D(F(n,yf=-xf))))y))
++X1(neg,RE(neg(gZ(x)))Rilc(az((L)(0-(W)gl(x))))Rf(af(-gf(x)))RC(neg(cG(x)))RmMA(e1f(neg,x))RB(neg(cG(x)))R_(et(x))
++ RGHILF(U n=xn;I(xw-3<3&&minfZ(0,x)==(L)(~0ull<<((8<<(xw-3))-1)),x=ct(tH+xw-3,x))A y=MINE(x)?x:an(n,xt),z=x-y?x:au;n=((n<<xw-3)+31&~31)>>xw-3;
++  Mz(X(C(tG,F(n,yg=-xg))C(tH,F(n,yh=-xh))C(tI,F(n,yi=-xi))C(tL,F(n,yl=(L)(0-(W)xl)))D(F(n,yf=-xf))))y))
+ X1(not,RmMA(e1f(not,x))RU(x(ai(x==au)))
+  RB(x=mut(x);W*a=xV;F((xn+255&-256)>>6,*a++^=-1)x)R_(eql(xtsS?as(0):ai(0),x)))
+ X1(nul,RmMA(e1f(nul,x))RU(x(ai(x==au)))RB(whr(len(x)))RF(A y=aG(xn);Mx(F(xn,yg=xf!=xf))y)Rf(x(ai(*xF!=*xF)))R_(eql(cn[xt],x)))
+-X1(flr,RmMA(e1f(flr,x))RcC(K1("{`c$x+32*~\"A[\"'x}",x))RsS(cS(flr(str(x))))RilEBGHIL(x)RfF(A y=an(xn,xt+tl-tf);Mx(F(yn,yl=xf<0?(L)xf-(xf<(L)xf):(L)xf))y)R_(et(x)))
++X1(flr,RmMA(e1f(flr,x))RcC(K1("{`c$x+32*~\"A[\"'x}",x))RsS(cS(flr(str(x))))RilEBGHIL(x)RfF(A y=an(xn,xt+tl-tf);Mx(F(yn,yl=xf<0?(L)((W)(L)xf-(W)(xf<(L)xf)):(L)xf))y)R_(et(x)))
+ 
+ #define M(k,f) X1(k,RfF(A y=MINE(x)?x:an(xn,xt);F(xn+3&~3,yf=f(xf));x-y?x(y):y)RmMA(e1f(k,x))R_(k(N(cF(x)))))
+ M(ksin,sin)M(kcos,cos)M(klog,log)M(kexp,exp)M(sqr,SQ)
+diff --git a/src/2.c b/src/2.c
+index d07f39a..e1f5792 100644
+--- a/src/2.c
++++ b/src/2.c
+@@ -1,7 +1,17 @@
+ #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+ Z CO W msk[]={0x8080808080808080ll,0x8000800080008000ll,0x8000000080000000ll};
+ #define M(o,f,T) ZN V f(CO V*RES a,CO V*RES b,V*RES c,U n){CO T*x=AL(a),*y=AL(b);T*r=AL(c);F(n,Fj(32/SZ(T),*r++=*x++o*y++))}
+- M(+,aFF,F)M(*,mFF,F)M(/,dFF,F)M(+,aLL,L)M(+,aII,I)M(+,aHH,H)M(+,aGG,G)
++ M(+,aFF,F)M(*,mFF,F)M(/,dFF,F)
++#undef M
++// amber: the INTEGER add kernels wrap on purpose -- oZZ()/ozZ() below detect
++// the overflow after the fact from the result's sign bits and the caller
++// re-runs one width wider. Signed overflow is undefined behaviour in C
++// though, so the optimiser is entitled to assume it never happens and delete
++// the very check that depends on it (UBSan flags this on examples/graphs.k).
++// Doing the addition in the unsigned counterpart type is defined two's
++// complement wraparound and compiles to the identical instruction.
++#define M(f,T,UT) ZN V f(CO V*RES a,CO V*RES b,V*RES c,U n){CO T*x=AL(a),*y=AL(b);T*r=AL(c);F(n,Fj(32/SZ(T),*r++=(T)((UT)*x++ + (UT)*y++)))}
++ M(aLL,L,W)M(aII,I,U)M(aHH,H,UH)M(aGG,G,UC)
+ #undef M
+ ZN A amdFF(A x,A y,U f)_(U n=xn;P(n-yn,el(y))A z=MINE(y)?y:aF(n);G(&aFF,0,mFF,dFF)[f-1](xV,yV,zV,n+3>>2);y-z?y(z):z)
+ ZN B oZZ(CO W*x,CO W*y,CO W*r,U n,U w)_(x=AL(x);y=AL(y);r=AL(r);W t[4]={};F(((W)n<<w)+31>>5,Fj(4,t[j]|=(*r^*x)&(*r^*y);r++;x++;y++))!!((t[0]|t[1]|t[2]|t[3])&msk[w]))
+@@ -12,13 +22,14 @@ Z A mulZZ(A x,A y,U f)_(U n=yn,i=0,w=MAX(xw-3,yw-3);P(xw-3-w,x=ct(tG+w,xR);x(mul
+  S4(w,W(i<n,I v=(I)xg*yg;B(v-(G)v)zg=v;i++),
+       W(i<n,I v=(I)xh*yh;B(v-(H)v)zh=v;i++),
+       W(i<n,L v=(L)xi*yi;B(v-(I)v)zi=v;i++),
+-      W(i<n,zl=xl*yl;i++))
++      W(i<n,zl=(L)((W)xl*(W)yl);i++))
+  P(i<n,z(0);x=ct(tG+w+1,xR);x(mulZZ(x,ct(tG+w+1,y),f)))y(z))
+ 
+-#define M(f,T) ZN V f(L v,V*RES b,V*RES c,U n){CO T*y=AL(b);T*r=AL(c);F(n,Fj(32/SZ(T),*r++=v+*y++))}
+- M(alL,L)M(aiI,I)M(ahH,H)M(agG,G)
++// scalar-plus-vector add: same intentional wrap, same defined-behaviour form.
++#define M(f,T,UT) ZN V f(L v,V*RES b,V*RES c,U n){CO T*y=AL(b);T*r=AL(c);F(n,Fj(32/SZ(T),*r++=(T)((UT)v + (UT)*y++)))}
++ M(alL,L,W)M(aiI,I,U)M(ahH,H,UH)M(agG,G,UC)
+ #undef M
+-ZN B ozZ(L v,CO W*y,CO W*r,U n,U w)_(r=AL(r);y=AL(y);F(3-w,v|=v<<(8<<w+i))W t[4]={};F(((W)n<<w)+31>>5,Fj(4,t[j]|=(*r^v)&(*r^*y);r++;y++))!!((t[0]|t[1]|t[2]|t[3])&msk[w]))
++ZN B ozZ(L v,CO W*y,CO W*r,U n,U w)_(r=AL(r);y=AL(y);F(3-w,v|=(L)((W)v<<(8<<(w+i))))W t[4]={};F(((W)n<<w)+31>>5,Fj(4,t[j]|=(*r^v)&(*r^*y);r++;y++))!!((t[0]|t[1]|t[2]|t[3])&msk[w]))
+ Z A addzZ(L v,A y,U f)_(U n=yn,w=MAX(tZ(v)-tG,yw-3);y=ct(tG+w,y);A z=an(n,yt);G(&agG,ahH,aiI,alL)[w](v,yV,zV,n+(31>>w)>>5-w);
+  P(w<3&&ozZ(v,yV,zV,n,w),z(0);y=ct(tG+w+1,y);addzZ(v,y,f))y(z))
+ 
+@@ -26,7 +37,7 @@ Z A mulzZ(L a,A y,U f)_(U n=yn,i=0,w=MAX(tZ(a)-tG,yw-3);y=ct(tG+w,y);A z=an(n,yt
+  S4(w,W(i<n,I v=a*yg;B(v-(G)v)zg=v;i++),
+       W(i<n,I v=a*yh;B(v-(H)v)zh=v;i++),
+       W(i<n,L v=a*yi;B(v-(I)v)zi=v;i++),
+-      W(i<n,zl=a*yl;i++))
++      W(i<n,zl=(L)((W)a*(W)yl);i++))
+  i<n?mulzZ(a,ct(tG+w+1,z(y)),f):y(z))
+ 
+ Z A modzZ(L m,A y,U f)_(P(!m,y)
+@@ -73,7 +84,18 @@ Z A dvdfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);U n=zn+3&-4;SIMD F(n,zf=v/yf)y-z?y(
+ Z A dvdFf(A x,F v,U f)_(A z=aF(xn);SIMD F(xn,zf=xf/v)z)
+ Z A dvdzZ(L v,A y,U f)_(dvdfF(v,cF(y),f))
+ Z A dvdZZ(A x,A y,U f)_(x=cF(xR);x(amdFF(x,cF(y),f)))
+-Z A arizz(L a,L b,U f)_(P(f==4,af((F)a/b))az(f==1?a+b:f==3?a*b:f==5?(!a?b:a<0?(b<0?-1-~b/-a:b/-a):(b%a+a)%a):f==6?MIN(a,b):f==7?MAX(a,b):f==8?a<b:f==9?a>b:f==10?a==b:0))
++// amber: scalar-scalar fallback arithmetic. Every step that can involve the
++// long null (0N == LLONG_MIN) is done in the unsigned counterpart type:
++// `-a`, `a+b`, `a*b` and the modulo fix-up all overflow signed range for
++// extreme operands (found by tests/fuzz.py under UBSan, e.g. `2!-0w`), which
++// is undefined behaviour. Same bits, defined semantics -- Amber's integer
++// arithmetic has always been documented as wrapping, not trapping.
++#define NEGW(v) ((L)(0-(W)(v)))
++Z A arizz(L a,L b,U f)_(P(f==4,af((F)a/b))
++ az(f==1?(L)((W)a+(W)b)
++   :f==3?(L)((W)a*(W)b)
++   :f==5?(!a?b:a<0?(b<0?(L)((W)-1-(W)(~b/NEGW(a))):b/NEGW(a)):(L)(((W)((L)((W)(b%a)+(W)a)%a))))
++   :f==6?MIN(a,b):f==7?MAX(a,b):f==8?a<b:f==9?a>b:f==10?a==b:0))
+ Z A arizZ(L v,A y,U f)_(A(&addzZ,0,mulzZ,dvdzZ,modzZ,mmmzZ,mmmzZ,cmpzZ,cmpzZ,cmpzZ)[f-1](v,y,f))
+ Z A ariZZ(A x,A y,U f)_(P(xn-yn,el(y))A(&addZZ,0,mulZZ,dvdZZ,0,mmmZZ,mmmZZ,cmpZZ,cmpZZ,cmpZZ)[f-1](x,y,f))
+ ZN A ariz(A x,A y,U f){S(xtT<<1|ytT,R(0,arizz(gl_(x),gl(y),f))R(1,arizZ(gl_(x),y,f))R(2,P(f==4,ari(x,cF(y)))arizZ(gl(y),xR,f-8<2u?f^8^9:f))R_(ariZZ(x,y,f)))}
+diff --git a/src/3.c b/src/3.c
+index 6ba3bf2..4e21292 100644
+--- a/src/3.c
++++ b/src/3.c
+@@ -13,12 +13,10 @@ Z L mulfG(CO V*a,U n)_(CO G*p=a;L r=1;F(n,r*=*p++)r)
+ Z L mulfH(CO V*a,U n)_(CO H*p=a;L r=1;F(n,r*=*p++)r)
+ Z L mulfI(CO V*a,U n)_(CO I*p=a;L r=1;F(n,r*=*p++)r)
+ Z L mulfL(CO V*a,U n)_(CO L*p=a;L r=1;F(n,r*=*p++)r)
+-Z L minfB(CO V*a,U n)_(CO W*p=a;F(n>>6,P(~*p++,0))n&=63;n?!!~(*p|(-1ll<<n)):1)
+ Z L minfG(CO V*a,U n)_(CO G*p=a;G r=(1u  << 7)-1;F(n,r=MIN(r,p[i]))r)
+ Z L minfH(CO V*a,U n)_(CO H*p=a;H r=(1u  <<15)-1;F(n,r=MIN(r,p[i]))r)
+ Z L minfI(CO V*a,U n)_(CO I*p=a;I r=(1u  <<31)-1;F(n,r=MIN(r,p[i]))r)
+ Z L minfL(CO V*a,U n)_(CO L*p=a;L r=(1ull<<63)-1;F(n,r=MIN(r,p[i]))r)
+-Z L maxfB(CO V*a,U n)_(CO W*p=a;F(n>>6,P( *p++,1))n&=63;n?!!(*p&~(-1ll<<n)):0)
+ Z L maxfG(CO V*a,U n)_(CO G*p=a;G r=(1u  << 7)  ;F(n,r=MAX(r,p[i]))r)
+ Z L maxfH(CO V*a,U n)_(CO H*p=a;H r=(1u  <<15)  ;F(n,r=MAX(r,p[i]))r)
+ Z L maxfI(CO V*a,U n)_(CO I*p=a;I r=(1u  <<31)  ;F(n,r=MAX(r,p[i]))r)
+@@ -29,7 +27,7 @@ Z L mulfZ(L v,A x/*0*/)_(v*    G(&mulfG,mulfH,mulfI,mulfL)[xw-3](xV,xn) )
+ Z L maxfZ(L v,A x/*0*/)_(MAX(v,G(&maxfG,maxfH,maxfI,maxfL)[xw-3](xV,xn)))
+ Z A3(admf,/*010*/B i=xv==3;U n=zn;P((y&&ytf)||ztF,F v=y?gf(cF(y)):i;z=cF(zR);Mz(I(i,F(n,v*=zf))E(F(n,v+=zf)))af(v))L v=y?gl(y):i;az((i?mulfZ:addfZ)(v,z)))
+ Z A3(subf,/*010*/y=y?neg(y):zn?mul(ai(-2),ii(z,0)):ai(0);neg(admf(ADD,y,z)))
+-Z A3(mmmf,/*010*/B i=xv==7;P((y&&ytf)||ztF,y=of1(y?cF(y):aV(tf,1,A((L)i<<63|WFL)));z=of1(cF(zR));of0(N(z(mmmf(x,y,z)))))L v=y?gl(y):i?-WL:WL;az(zn?(i?maxfZ:minfZ)(v,z):v))
++Z A3(mmmf,/*010*/B i=xv==7;P((y&&ytf)||ztF,y=of1(y?cF(y):aV(tf,1,A((L)((W)i<<63)|WFL)));z=of1(cF(zR));of0(N(z(mmmf(x,y,z)))))L v=y?gl(y):i?-WL:WL;az(zn?(i?maxfZ:minfZ)(v,z):v))
+ A3(arf,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzfc)Q(ztZFC)
+  ZE(P(ztE&&x==ADD&&!y,L i=*zL,j=zL[1];az((j-i)*(j+i-1)/2))z=gZ(zR);z(arf(x,y,z)))
+  ZB(z=cG(zR);z(arf(x,y,z)))
+@@ -41,10 +39,9 @@ Z A3(adms,/*010*/L w=y?gl(y):x==MUL;U n=zn;I b=1;L v=w;C t=tG+zw-3;A u=an(n,t);
+  I(x==ADD,F4(zw-3,n,ug=v+=zg;B(v-(G)v,b=0),uh=v+=zh;B(v-(H)v,b=0),ui=v+=zi;B(v-(I)v,b=0),ul=v+=zl))
+  E(       F4(zw-3,n,ug=v*=zg;B(v-(G)v,b=0),uh=v*=zh;B(v-(H)v,b=0),ui=v*=zi;B(v-(I)v,b=0),ul=v*=zl))P(b,u)z=ct(t+1,u(zR));z(adms(x,az(w),z)))
+ Z A3(subs,/*010*/y=neg(y?y:mul(ai(2),ii(z,0)));neg(adms(ADD,y,z)))
+-Z A3(mxms,/*010*/P((!y||ytz)&&ztZ,L v=y?gl(y):-WL,l=-1ll<<(1<<zw)-1,h=~l;U n=zn;I(v<=l||h<=v,P(v>=0,rsz(n,az(v)))v=v<0?l:h)
++Z A3(mxms,/*010*/P((!y||ytz)&&ztZ,L v=y?gl(y):-WL,l=(L)(~0ull<<((1<<zw)-1)),h=~l;U n=zn;I(v<=l||h<=v,P(v>=0,rsz(n,az(v)))v=v<0?l:h)
+                                   A u=an(n,zt);F4(zw-3,n,ug=v=MAX(v,zg),uh=v=MAX(v,zh),ui=v=MAX(v,zi),ul=v=MAX(v,zl))u)___s(x,y,z))
+ Z A3(mnms,/*010*/P((!y||ytz)&&ztZ,z=inv(zR);z(inv(mxms(MXM,y?az(~gl(y)):0,z))))___s(x,y,z))
+-Z A eqlsL(L v,A x/*0*/)_(A y=aG(xn);F4(xw-3,xn,yg=v=v==xg,yg=v=v==xh,yg=v=v==xi,yg=v=v==xl)y)
+ Z A3(eqls,/*010*/U n=zn,i=!y;L v=gl(y?y:io(z,0)),a=v;A u=aG(n);S4(zw-3,W(i<n,ug=v=v==zg;i++),W(i<n,ug=v=v==zh;i++),W(i<n,ug=v=v==zi;i++),W(i<n,ug=v=v==zl;i++))y||!n?u:a4(u,ai(0),av,az(a)))
+ A3(ars,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzc)Q(ztZC)
+  ZE(z=gZ(zR);z(ars(x,y,z)))
+diff --git a/src/a.c b/src/a.c
+index a192bc8..f8af0d6 100644
+--- a/src/a.c
++++ b/src/a.c
+@@ -19,7 +19,11 @@
+ // ---- HFT as-of join kernel ------------------------------------------------
+ // branch-free lower_bound over a sorted long slice a[lo,hi): first i with a[i]>=key.
+ // The ternaries lower to cmov under -O3, so there are no data-dependent branches.
+-Z U ajlb(CO L*RES a,U lo,U hi,L key){
++// amber: THE lower_bound for every sorted-long probe in the engine (aj, wj).
++// Previously duplicated as ajlb() here and wjlb() in i.c with identical
++// semantics but different (branchy vs branch-free) codegen; now one exported
++// definition, so both join kernels get the cmov version.
++U amlb(CO L*RES a,U lo,U hi,L key){
+  U n=hi-lo,pos=lo;
+  while(n>0){U half=n>>1,mid=pos+half;int lt=a[mid]<key;pos=lt?mid+1:pos;n=lt?n-half-1:half;}
+  return pos;}
+@@ -38,11 +42,15 @@ A ajc(A x){
+  U nt=_n(TT);
+  A out=aL(nt);L*m=_V(out);
+  arena_reset();                              // start a fresh scratch region for this eval
++ // On a 32-bit target (wasm32) size_t is 32 bits, so nt*sizeof(L) can wrap and
++ // silently request a short buffer that the loop below then runs off the end of.
++ P((N)nt>((N)-1)/SZ(L),mr(QT);mr(TT);mr(GB);mr(GE);mr(out);ez(x))
+  L*w=(L*)arena_alloc((N)nt*SZ(L));           // transient match-index vector (zero-alloc bump)
++ P(!w,mr(QT);mr(TT);mr(GB);mr(GE);mr(out);eo(x))
+  F(nt,
+    L b=gb[i],en=ge[i];
+    I(b==NL||en==NL||en<=b,w[i]=NL;continue)
+-   U j=ajlb(qt,(U)b,(U)en,tt[i]+1);          // first quote strictly after the trade
++   U j=amlb(qt,(U)b,(U)en,tt[i]+1);          // first quote strictly after the trade
+    w[i]=(j>(U)b)?(L)(j-1):NL;)               // step back to on-or-before, else null
+  F(nt,m[i]=w[i])
+  arena_reset();                              // rewind scratch at end of the eval cycle
+@@ -54,7 +62,17 @@ A1(arnT,arena_init(1<<16);B ok=1;
+  F(100,p[i]=(C)i)ok&=p[42]==42;ok&=arena_used()>=300;
+  arena_reset();ok&=arena_used()==0;
+  C*big=(C*)arena_alloc(1<<20);ok&=!!big;I(big,big[0]=7;big[(1<<20)-1]=9;ok&=big[0]==7&&big[(1<<20)-1]==9)
+- arena_reset();ok&=arena_used()==0;x(al((L)ok)))
++ arena_reset();ok&=arena_used()==0;
++ // Genuinely exercise the OVERFLOW path: ask for strictly more than the slab
++ // holds so arena_alloc() has to fall back to a tracked heap block. The old
++ // version asked for 1 MB against a >=16 MB slab (arena_init(1<<16) only
++ // rewinds an already-larger slab, it never shrinks it), so the overflow
++ // branch this self-test advertises was never actually taken.
++ {N big2=arena_capacity()+(1<<16);C*ov=(C*)arena_alloc(big2);ok&=!!ov;
++  I(ov,ov[0]=3;ov[big2-1]=5;ok&=ov[0]==3&&ov[big2-1]==5;ok&=arena_used()>=big2)
++  arena_reset();ok&=arena_used()==0;}
++ ok&=arena_peak()>=(N)(1<<20);//peak survives the rewind
++ x(al((L)ok)))
+ // diagnostic self-test builtin (`dgn): render the reference report, verify its structure.
+ A1(dgnT,CO C*src="x:1 2 3\n  prices + sizes\n";
+  U pp=(U)(strstr(src,"prices")-src),sp=(U)(strstr(src,"sizes")-src);
+@@ -79,8 +97,13 @@ A1(simdT,
+  B ok=1;struct timespec t0,t1,t2;clock_gettime(CLOCK_MONOTONIC,&t0);
+  simd_add_i64((int64_t*)dXi,(int64_t*)dYi,(int64_t*)dOi,n);clock_gettime(CLOCK_MONOTONIC,&t1);
+  F(n,L r=dXi[i]+dYi[i];ok&=dOi[i]==r)
+- L*dRef=(L*)arena_alloc((N)n*SZ(L));arena_reset();//scratch just for timing symmetry
+- F(n,dRef[i]=dXi[i]+dYi[i]);clock_gettime(CLOCK_MONOTONIC,&t2);
++ //NOTE: the arena_reset() below MUST come after the reference loop. It used
++ //to sit immediately after the arena_alloc(), so every one of the n stores
++ //into dRef[] landed in scratch the allocator had already rewound and was
++ //free to hand out again -- a use-after-reset that only happened to be
++ //harmless because nothing else allocated in between.
++ L*dRef=(L*)arena_alloc((N)n*SZ(L));P(!dRef,mr(vXi);mr(vYi);mr(vOi);x(al(0)))//scratch just for timing symmetry
++ F(n,dRef[i]=dXi[i]+dYi[i]);clock_gettime(CLOCK_MONOTONIC,&t2);arena_reset();
+  simd_mul_i64((int64_t*)dXi,(int64_t*)dYi,(int64_t*)dOi,n);F(n,ok&=dOi[i]==dXi[i]*dYi[i])
+  L want=0;F(n,want+=dXi[i])ok&=simd_sum_i64((int64_t*)dXi,n)==want;
+  A vXf=aF(n),vYf=aF(n),vOf=aF(n);F*dXf=_V(vXf),*dYf=_V(vYf),*dOf=_V(vOf);
+@@ -198,7 +221,7 @@ A2(i1,/*01*/P(y==GAP||y==au,xR)
+         RE(L i=*yL,j=yL[1];P(0<=i&&i<j&&j<xN,y(0);slc(x,i,j))i1(x,gZ(y)))
+         R4(tB,tG,tH,tC,i1(x,cI(y)))
+         R_(et(y))
+-        RL(U m=xn;A z=aI(yn);My(F(yn+3&-4,L v=yl;zi=v|-(v!=(I)v)))i1(x,z))
++        RL(A z=aI(yn);My(F(yn+3&-4,L v=yl;zi=v|-(v!=(I)v)))i1(x,z))
+         RI(U n=yn;
+          X(RA(A z=aA(n);F(n|!n,za=io(x,yi))y(0);I(!zn,zx=mkn(zx))sqz(z))
+            RB(x=cG(xR);x(i1(x,y)))
+@@ -240,14 +263,25 @@ Z A set(A x,L i,A y/*1i1*/)_(Q(MINE(x));
+    RM(A z=kv(&x);z=mut(z);Q(ztA);I(ytT&&yN-zn,x(y(el(z))))I j=i;F(zn,za=set(mut(za),j,ii(y,i));P(!za,za=au;x(y(z(0)))))y(aM(x,z)))
+    RB(set(cG(x),i,y))
+    R_(P(knd(x)-knd(y)-tC+tc,set(blw(x),i,y))I(xtZ,N(sup(&x,&y)))C w=xw-3;!w?xg=yv:w==1?xh=yv:w==2?xi=yv:(xl=gl(y));x))0)
++// amber: the MC()s below used to copy a fixed 8-slot's worth of argument
++// pointers (56/48/40/64 bytes) out of the caller's `a[]` no matter how many
++// arguments were actually passed. `a` is not always an 8-element buffer --
++// run() (b.c) hands over a pointer straight into its own dynamically sized
++// stack frame -- so every amend with n<8 read past the end of live storage
++// (ASan: dynamic-stack-buffer-overflow, reproducible on test-fin.k and four
++// examples). The extra slots were never *used* (each recursive call is bounded
++// by n), so this is a pure read overrun -- but it is still one, and on a
++// stack-probing/tagged-memory target it faults. AC() clamps each copy to the
++// number of arguments that actually exist.
++#define AC(d,s,c) {I c_=(I)(c);I(c_>0,MC(d,s,8u*(U)c_))}
+ AA(a8,/*10..0*/A x=*a,y=a[1];
+- X(RE(Ab8;*b=gZ(x);MC(b+1,a+1,56);a8(b,n))
+-   RT_E(P(y==au,mRn(n-2,a+2);Ab8;*b=a[2];b[1]=x;MC(b+2,a+3,40);e8(AP1,b,n-1))
+-    Yzc(L i=gl_(y);P(i>=(W)xn,ei(x))x=mut(x);Ab8;*b=ii(x,i);MC(b+1,a+3,40);mRn(n-3,b+1);A z=a[2];set(x,i,Nx(z8(b,n-2))))
++ X(RE(Ab8;*b=gZ(x);AC(b+1,a+1,n-1);a8(b,n))
++   RT_E(P(y==au,mRn(n-2,a+2);Ab8;*b=a[2];b[1]=x;AC(b+2,a+3,n-3);e8(AP1,b,n-1))
++    Yzc(L i=gl_(y);P(i>=(W)xn,ei(x))x=mut(x);Ab8;*b=ii(x,i);AC(b+1,a+3,n-3);mRn(n-3,b+1);A z=a[2];set(x,i,Nx(z8(b,n-2))))
+     I(ytZC&&n==4,A z=a[2],u=a[3];P(xtZ&&ztv&&utzZ&&(0xcf&1<<zv),ara(x,y,z,u))P(xtC&&z==av&&utcC,cC(N(ara(x,y,z,u)))))Yt(et(x))mRn(n-1,a+1);f8(AP1,a,n))
+    Rm(A z=Nx(fnd(xx,yR));ZT(z(0);mRn(n-1,a+1);f8(AP1,a,n))x=mut(x);I(ztl,z=mut(z);F(zN,I(zl==NL,zl=xN;PSH(xx,ztt?yR:ii(y,i));PSH(xy,ie(a[2],xy)))))
+-    Ab8;*b=xy;b[1]=z;MC(b+2,a+2,48);xy=au;xy=Nx(z(a8(b,n)));x)
+-   RM(Ab8;MC(b,a,64);YsS(*b=flp(x);flp(N(a8(b,n))))*b=blw(x);sqz(N(a8(b,n))))
++    Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);xy=au;xy=Nx(z(a8(b,n)));x)
++   RM(Ab8;AC(b,a,n);YsS(*b=flp(x);flp(N(a8(b,n))))*b=blw(x);sqz(N(a8(b,n))))
+    RU(mRn(n-1,a+1);x(x8(a+1,n-1)))
+    R_(et(x)))0)
+ Z A3(a3,/*100*/a8(A8(x,y,z),3))
+diff --git a/src/a.h b/src/a.h
+index 2e3544b..9203176 100644
+--- a/src/a.h
++++ b/src/a.h
+@@ -68,6 +68,15 @@
+ #define PC    __builtin_popcountll
+ #define SL    __builtin_strlen
+ #define SQ    __builtin_sqrt
++// ---- release identity ----------------------------------------------------
++// THE canonical version of the Amber interpreter. Everything that reports a
++// version -- the REPL banner (repl.k, via `bi`), `amber --version`, and the
++// WASM bindings -- reads it from here, so a release bump is a one-line change
++// and the components can no longer drift apart (they did: the banner said
++// v1.7 while README.md already advertised 1.9).
++#define AMBER_VERSION_MAJOR 1
++#define AMBER_VERSION_MINOR 9
++#define AMBER_VERSION M2(AMBER_VERSION_MAJOR) "." M2(AMBER_VERSION_MINOR)
+ #define REFB  1
+ #define MINE(x) (_r(x)==REFB)
+ 
+@@ -99,6 +108,7 @@ V cyc(V*,U,U),eS(A,U),eQ(S,U,U),exit(I),hexC(S,U,C*),kargs(I,S*),kinit(),*memmem
+ B id0(UC),mtc_(A,A),tru(A);
+ C*sf(C*,L),*sl(C*,L),sup(A*,A*),tZ(L),*strchrnul(S,I);
+ U gi(A);
++U amlb(CO L*RES,U,U,L);//branch-free lower_bound over a sorted long slice (a.c)
+ I qA(A,A),qf(F,F),rnk(A);
+ U _K(A),si(S,C),_N(A),js_eval(C*,U,C*,U),fG(CO G*,U,G),fI(CO I*,U,I),fL(CO L*,U,L),us(S);
+ L cfm(CO A*,I),gl_(A),gl(A),iw(A,U,L),now(),pl(S*),minfZ(L,A),addfB(CO V*,U),addfZ(L,A),pf(S*);
+@@ -172,7 +182,7 @@ enum         {au=Lt(tu),FLP,NEG,FIR,SQR,TIL,WHR,REV,ASC,DSC,GRP,NOT,ENL,NUL,LEN,
+ #define WFL 0x7ff0000000000000ll
+ #define NF (*(F*)A(NFL))
+ #define WF (*(F*)A(WFL))
+-#define NL (1ll<<63)
++#define NL ((L)(1ull<<63))
+ #define WL (~NL)
+ #define K(s,a...) ({Z A f;k8(&f,s,A(a),L(A(a)));})
+ #define K1(s,x)   ({Z A f;k1(&f,s,x);})
+diff --git a/src/amber_wasm.c b/src/amber_wasm.c
+index ca7995f..469d44c 100644
+--- a/src/amber_wasm.c
++++ b/src/amber_wasm.c
+@@ -5,6 +5,11 @@
+ // shims, which this file sits directly on top of). The ABI here matches
+ // amber-notepad's amber.js exactly (see that file's AmberVM class):
+ //
++//   amber_version()- returns a pointer to the NUL-terminated interpreter
++//                     version string ("1.9"), taken from AMBER_VERSION in
++//                     a.h -- the same single source of truth the REPL banner
++//                     and `amber --version` read, so the browser build can
++//                     never advertise a version the native build doesn't.
+ //   amber_init()   - called once after instantiate; kinit() + a dummy argv
+ //                     so `.z`-style env access doesn't dereference NULL.
+ //   amber_inbuf()  - returns a pointer JS writes the next NUL-terminated
+@@ -31,6 +36,9 @@ static char g_inbuf[INBUF_SZ];
+ 
+ static const char *dummy_argv[2] = {"amber", 0};
+ 
++__attribute__((export_name("amber_version")))
++const char *amber_version(void) { return AMBER_VERSION; }
++
+ __attribute__((export_name("amber_init")))
+ void amber_init(void) {
+     kinit();
+diff --git a/src/arena.c b/src/arena.c
+index c5028b0..84e2041 100644
+--- a/src/arena.c
++++ b/src/arena.c
+@@ -27,6 +27,7 @@
+  * up to ARENA_ALIGN so the returned payload is aligned like the slab path. */
+ typedef struct OverflowBlock {
+     struct OverflowBlock *next;
++    size_t                bytes;   /* payload size, so arena_used() can count it */
+     /* payload follows, starting ARENA_ALIGN bytes in */
+ } OverflowBlock;
+ 
+@@ -34,6 +35,17 @@ static __thread unsigned char *a_base = 0;  /* slab start                */
+ static __thread size_t         a_cap  = 0;  /* slab capacity in bytes    */
+ static __thread size_t         a_off  = 0;  /* bump cursor (bytes used)  */
+ static __thread OverflowBlock  *a_over = 0; /* head of overflow list     */
++static __thread size_t         a_ovf  = 0;  /* bytes live in overflow blocks */
++static __thread size_t         a_peak = 0;  /* high-water mark since last reset_peak */
++
++/* Re-derive the high-water mark after every hand-out. `arena_used()` alone
++ * cannot serve as a peak gauge because arena_reset() rewinds it to 0 -- any
++ * consumer that samples it after the fact (e.g. \trace) would always read 0.
++ * See arena_peak()/arena_reset_peak() in arena.h. */
++static void note_peak(void) {
++    size_t live = a_off + a_ovf;
++    if (live > a_peak) a_peak = live;
++}
+ 
+ static size_t align_up(size_t n, size_t a) { return (n + (a - 1)) & ~(a - 1); }
+ 
+@@ -55,10 +67,14 @@ void arena_init(size_t capacity) {
+         if (capacity <= a_cap) { arena_reset(); return; } /* fits: just rewind */
+         arena_free();                                     /* grow: re-reserve  */
+     }
++    /* Never drop the overflow list on the floor here: if a previous slab
++     * reservation failed (a_base==0) every arena_alloc() re-enters
++     * arena_init(), and blindly zeroing a_over would leak every tracked
++     * overflow block allocated in between. arena_reset() releases them. */
++    arena_reset();
+     a_base = (unsigned char *)aligned_xalloc(capacity);
+     a_cap  = a_base ? capacity : 0;
+     a_off  = 0;
+-    a_over = 0;
+ }
+ 
+ void *arena_alloc(size_t bytes) {
+@@ -66,8 +82,14 @@ void *arena_alloc(size_t bytes) {
+     if (!a_base) arena_init(ARENA_DEFAULT);
+ 
+     size_t off = align_up(a_off, ARENA_ALIGN);
+-    if (a_base && off + bytes <= a_cap) {   /* fast path: pure pointer bump */
++    /* `off + bytes <= a_cap` would wrap for a huge `bytes` (reachable on a
++     * 32-bit target such as wasm32, where size_t is 32 bits and an element
++     * count * element width can overflow), silently passing the bounds check
++     * and handing back a short block. Compare against the remaining space
++     * instead -- that form cannot overflow. */
++    if (a_base && off <= a_cap && bytes <= a_cap - off) { /* fast path: pointer bump */
+         a_off = off + bytes;
++        note_peak();
+         return a_base + off;
+     }
+ 
+@@ -76,10 +98,14 @@ void *arena_alloc(size_t bytes) {
+      * short allocation. */
+     {
+         size_t hdr = align_up(sizeof(OverflowBlock), ARENA_ALIGN);
++        if (bytes > (size_t)-1 - hdr) return 0;   /* hdr+bytes would wrap */
+         OverflowBlock *b = (OverflowBlock *)aligned_xalloc(hdr + bytes);
+         if (!b) return 0;
+-        b->next = a_over;
+-        a_over  = b;
++        b->next  = a_over;
++        b->bytes = bytes;
++        a_over   = b;
++        a_ovf   += bytes;
++        note_peak();
+         return (unsigned char *)b + hdr;
+     }
+ }
+@@ -90,6 +116,7 @@ void arena_reset(void) {
+         free(a_over);
+         a_over = n;
+     }
++    a_ovf = 0;
+     a_off = 0;
+ }
+ 
+@@ -101,5 +128,10 @@ void arena_free(void) {
+     a_off  = 0;
+ }
+ 
+-size_t arena_used(void)     { return a_off; }
++/* Bytes handed out and not yet rewound -- slab bump cursor PLUS any live
++ * overflow blocks. Counting only a_off (as this did before) under-reported
++ * every allocation that spilled past the slab. */
++size_t arena_used(void)     { return a_off + a_ovf; }
+ size_t arena_capacity(void) { return a_cap; }
++size_t arena_peak(void)     { return a_peak; }
++void   arena_reset_peak(void) { a_peak = a_off + a_ovf; }
+diff --git a/src/arena.h b/src/arena.h
+index 2ffc258..9a93907 100644
+--- a/src/arena.h
++++ b/src/arena.h
+@@ -38,10 +38,20 @@ void   arena_reset(void);
+ /* Release the slab and all overflow blocks back to the system. */
+ void   arena_free(void);
+ 
+-/* Introspection (bytes currently handed out, and slab capacity). */
++/* Introspection (bytes currently handed out -- slab bump cursor plus any live
++ * overflow blocks -- and slab capacity). */
+ size_t arena_used(void);
+ size_t arena_capacity(void);
+ 
++/* High-water mark of arena_used() since the last arena_reset_peak().
++ * arena_reset() deliberately does NOT clear this: a consumer that wants to
++ * know how much scratch an evaluation actually touched has to sample it
++ * after the evaluation has already rewound the slab (this is exactly what
++ * \trace does), so the peak must survive the rewind. Call
++ * arena_reset_peak() immediately before the region you want to measure. */
++size_t arena_peak(void);
++void   arena_reset_peak(void);
++
+ #ifdef __cplusplus
+ }
+ #endif
+diff --git a/src/ast.c b/src/ast.c
+index 2433419..803eec5 100644
+--- a/src/ast.c
++++ b/src/ast.c
+@@ -112,8 +112,23 @@ static int is_applicable(A e) {
+  * no symbol literally named `g_scratch`; arena_alloc()/arena_reset() *is*
+  * its scratch-arena API, and this module uses it directly. */
+ 
++/* arena_alloc() is documented as able to return NULL (arena.h): the slab is
++ * exhausted AND the overflow malloc failed. Every one of ast_new()'s ~30 call
++ * sites immediately dereferences the result, so returning NULL here would
++ * just move the segfault. Instead, fall back to a single static sentinel node
++ * so the tree stays walkable and the printed output degrades to a truncation
++ * marker rather than crashing the REPL. */
++static ASTNode ast_oom_node;
++
+ ASTNode *ast_new(ASTKind kind, const char *label, const char *annotation) {
+     ASTNode *n = (ASTNode *)arena_alloc(sizeof *n);
++    if (!n) {                          /* out of scratch: degrade, don't crash */
++        n = &ast_oom_node;
++        memset(n, 0, sizeof *n);
++        n->kind = AST_SCALAR;
++        snprintf(n->label, sizeof n->label, "%s", "<oom>");
++        return n;
++    }
+     memset(n, 0, sizeof *n);
+     n->kind = kind;
+     if (label)      snprintf(n->label,      sizeof n->label,      "%s", label);
+@@ -122,9 +137,12 @@ ASTNode *ast_new(ASTKind kind, const char *label, const char *annotation) {
+ }
+ 
+ void ast_add_child(ASTNode *parent, ASTNode *child) {
++    if (!parent || !child) return;    /* defensive: never NULL in practice */
++    if (parent == &ast_oom_node) return;          /* shared OOM sentinel     */
+     if (parent->nchildren >= parent->cap) {
+         int newcap = parent->cap ? parent->cap * 2 : 4;
+         ASTNode **grown = (ASTNode **)arena_alloc((size_t)newcap * sizeof *grown);
++        if (!grown) return;           /* drop the child rather than segfault */
+         if (parent->nchildren) memcpy(grown, parent->children, (size_t)parent->nchildren * sizeof *grown);
+         parent->children = grown;
+         parent->cap = newcap;
+diff --git a/src/b.c b/src/b.c
+index 6af9515..086e261 100644
+--- a/src/b.c
++++ b/src/b.c
+@@ -12,7 +12,7 @@ Z CO C di[]={                     [ba]= 1, 1, 3, 3, 3, 3, 3, 3, 2, 2, 1, 1, 1, 1
+ ds[]={[bv]=n1,n1,n1,   p1,   p1,  [ba]= 1, 1,-1,-1,-1,-1,-1,-1, 1,-1, 1, 0,-1, 0, 1,-1, 0, 1},      //stack size delta
+ ks[]={                            [ba]=-1,-1, 0, 0, 0, 0, 0, 0, 0, 0,-1, 1, 0, 0, 0, 0, 0, 0};      //stack size delta (coefficient for the next byte)
+ #define BG (b+=2,b[-2]|(U)b[-1]<<8)                                                                 //read a 2-byte little-endian global/var index
+-AX(run,Q(xto)Z I d;P(++d>2048,es8(a,n))P(n-xk,er8(a,n))UC*b=_V(xy),c,nl=_n(xA[3]);A l[nl+*b++],*s=l+L(l);MS(l,0,SZ l);MC(l,a,8*n);//virtual machine
++AX(run,Q(xto)Z I d;P(++d>2048,es8(a,n))P(n-xk,er8(a,n))UC*b=_V(xy),c,nl=_n(xA[3]);A l[nl+*b++],*s=l+L(l);MS(l,0,SZ l);I(n,MC(l,a,8*n))//virtual machine
+  W((c=*b++),S(c,                                                                                    //          |BYTES |          STACK        |         EFFECT
+   C32(bu,U(*s=v1[c-bu](*s)))                                                                        //monad     |bu+m  |.. x -> monads[m][x]   |
+   C32(bv,A x=*s++;U(*s=x(v2[c-bv](x,*s))))                                                          //dyad      |bv+d  |.. y x -> dyads[d][x;y]|
+diff --git a/src/h.c b/src/h.c
+index c7975d7..e89dd40 100644
+--- a/src/h.c
++++ b/src/h.c
+@@ -17,7 +17,7 @@ A slc(A x/*0*/,U i,U j)_(Q(xtT&&i<=j&&i<=xN)N n=j-i;XE(I v=*xL;aE(v+i,v+j))A y=a
+ Z A chp(L n,A x/*1*/)_(P(n<0,ed(x))L m=(xn+n-1)/n;A y=aA(m);F(m|!m,ya=slc(x,n*i,MIN(xn,n*i+n)))x(0);I(!m,yx=mkn(yx))y)
+ Z A2(rsh,/*01*/XE(x=gZ(xR);x(rsh(x,y)))YE(rsh(x,gZ(y)))YmM(en(y))Yt(rsh(x,enl(y)))Q(xtZ);N r=xn;P(!r,fir(y))P(r>256,ez(y))x=Ny(cL(xR));L s[r];MC(s,xV,r<<3);x(0);
+  I(r==2,P(*s==NL,chp(s[1],y))P(s[1]==NL,K2("{$[(0<x)&~x!#y;(x;(-x)!#y)#y;((-x)!(#y)*!x)_y]}",az(*s),y)))P(r==1&&*s==NL,y)I(!yn,y=enl(fir(y)))
+- L p[r],m=1;F(r,L d=s[r-1-i];P(d<0||m*d<0,ed(y))p[i]=m*=MAX(1,d))y=N(rsz(m,y));F(r-1,L d=s[r-1-i];I(d,y=N(chp(MAX(1,d),y)))E(y=N(e1f(rs0,chp(1,y)))))rsz(*s,y))
++ L m=1;F(r,L d=s[r-1-i];P(d<0||m*d<0,ed(y))m*=MAX(1,d))y=N(rsz(m,y));F(r-1,L d=s[r-1-i];I(d,y=N(chp(MAX(1,d),y)))E(y=N(e1f(rs0,chp(1,y)))))rsz(*s,y))
+ X2(hsh,/*01*/Ril(rsz(gl_(x),y))RU(flt(x,y,1))RT(P(ytm||ytM&&xtS,y(aV(yt,2,A(xR,y1(xR)))))XZ(rsh(x,y))et(y))R_(et(y)))
+ A drp(L n,A x/*1*/)_(X(Rm(A y=kv(&x);am(Ny(drp(n,x)),Nx(drp(n,y))))RM(A y=kv(&x);aM(x,Nx(e2f(und,az(n),y))))Rt(er(x))RE(Lij x(0);aE(MAX(i,MIN(j,i+n)),MAX(i,MIN(j,j+n))))
+  R_(P(n==NL,rs0(x))L m=xn;n=MAX(-m,MIN(m,n));P(-n<(W)m&&MINE(x),I(xtA,mrn(-n,xA+m+n))AN(m+n,x))x(slc(x,MAX(0,n),m+MIN(0,n)))))0)
+diff --git a/src/i.c b/src/i.c
+index 9a34376..1160187 100644
+--- a/src/i.c
++++ b/src/i.c
+@@ -25,7 +25,7 @@ Z A frm(I f,N i,N n)_(L m=lseek(f,0,SEEK_END);P(m<0,eo0())n=MIN(n,MAX(0,m-i));n?
+ Z A fr(A x/*1*/,N i,N n)_(Xz(frs(gl(x),i,n))I f=N(o(x,O_RDONLY));P(f<3,frs(f,i,n))I m=fm(f);x=(S_ISDIR(m)?frd:S_ISREG(m)?frm:frs)(f,i,n);close(f);x)              // read
+ Z A fws(I f,S s,N n)_(W(n>0,L k=write(f,s,n);P(k<0,eo0())P(!k,au)s+=k;n-=k)au)                                                                                    // write stream
+ Z A fwm(I f,S s,N n)_(ftruncate(f,n);V*p=mmap(0,n,PROT_READ|PROT_WRITE,MAP_SHARED,f,0);MC(p,s,n);munmap(p,n);au)                                                  // write through mmap
+-Z X2(fw,Ril(I f=gl_(x);My(x=(f<3||!S_ISREG(fm(f))?fws:fwm)(f,yV,yn))x)R_(I f=N(o(xR,O_RDWR|O_CREAT|O_TRUNC));A z=v1c(ai(f),y);f>2&&close(f);z))                   // write
++Z X2(fw,Ril(I f=gl_(x);My(x=(f<3||!S_ISREG(fm(f))?fws:fwm)(f,yV,yn))x)R_(I f=N(o(xR,O_RDWR|O_CREAT|O_TRUNC));A z=v1c(ai(f),y);I(f>2,close(f))z))                   // write
+ ZN A dle()_(C*e=dlerror();I(e,os(e);os("\n"))eo0())
+ A1(opn,Xz(x)ai(N(o(x,O_RDWR|O_CREAT))))                                                                                     // <s
+ A cls(L n)_(close(n);au)                                                                                                    // >i
+@@ -95,7 +95,6 @@ A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);U n=_N(dat);I n
+ //  gb,ge long group-slice [base,end) in q per trade row (length nt)
+ // returns list of nt-length result columns (tF for avg/float-source, tL otherwise).
+ // O(log g) range probe per row + one contiguous slice sweep; no per-row K objects.
+-Z U wjlb(CO L*RES p,U lo,U hi,L v){while(lo<hi){U m=(lo+hi)>>1;if(p[m]<v)lo=m+1;else hi=m;}return lo;}//first i in [lo,hi): p[i]>=v
+ A wjc(A x){
+  P(_t(x)-tA||_n(x)-7,et(x))
+  A*e=(A*)_V(x);
+@@ -116,7 +115,7 @@ A wjc(A x){
+   for(U i=0;i<nt;i++){
+    L b=GB[i],en=GE[i];U lo,hi;
+    if(b==NL||en==NL||en<=b){lo=0;hi=0;}
+-   else{lo=wjlb(T,(U)b,(U)en,W0[i]);hi=wjlb(T,(U)b,(U)en,W1[i]+1);}
++   else{lo=amlb(T,(U)b,(U)en,W0[i]);hi=amlb(T,(U)b,(U)en,W1[i]+1);}
+    U m=hi-lo;
+    if(c==6){ol[i]=(L)m;continue;}
+    if(flo){F r;
+diff --git a/src/m.c b/src/m.c
+index 3901b29..0240061 100644
+--- a/src/m.c
++++ b/src/m.c
+@@ -47,7 +47,7 @@ __attribute((weak, visibility("default"))) V kinit();
+ Z ST{V*p;W n;B f;}reg[128];Z U nreg;Z UC pnd[128];Z U npnd;
+ Z V mc(){P(!npnd)F(npnd,U j=pnd[i];munmap(reg[j].p,reg[j].n);reg[j].p=0)npnd=0;U j=0;F(nreg,I(reg[i].p,MC(reg+j,reg+i,SZ*reg);j++))nreg=j;}
+ Z A mu(V*p)_(F(nreg,P(reg[i].p==p,pnd[npnd++]=i;0))die("UNMAP"))
+-Z V*mm(W n,U f)_(V*p=mmap(0,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_ANON,-1,0);P((L)p==(C)p,(V*)0)I(nreg==L(reg),mc();I(nreg==L(reg),die("MMAP")))reg[nreg++]=(TY(*reg)){p,n,f};p)
++Z V*mm(W n,U f)_(V*p=mmap(0,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_ANON,-1,0);P(p==MAP_FAILED,(V*)0)I(nreg==L(reg),mc();I(nreg==L(reg),die("MMAP")))reg[nreg++]=(TY(*reg)){p,n,f};p)
+ A mf(U f,U i,U n)_(V*p=mm(pg+n,1);P(!p,eo0())P(mmap(p+pg,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_FIXED,f,i)!=p+pg,mu(p);eo0())A x=AP(p+pg);xb=0;xr=REFB;xT=tC;xn=n;x)
+ 
+ Z A bkt[24];DBG(Z U lck;)
+@@ -99,7 +99,7 @@ A AN(U n,A x)_(xn=n;x)
+ A1(AZ,xT=tG;x)
+ 
+ Z C s0[1<<16],*s1=s0+1;
+-S su(U u)_(P(u&1<<31,s0-(I)u)Z W r;r=u;(V*)&r)
++S su(U u)_(P(u&1u<<31,s0-(I)u)Z W r;r=u;(V*)&r)
+ U us(S s)_(U n=SL(s);P(n<4||(n==4&&!(s[3]&128)),U v=0;MC(&v,s,n);v)S p=s0+1;W(p<s1,P(!strcmp(p,s),s0-p)p+=SL(p)+1)n++;P(s1+n>s0+SZ s0,die("SYMS"))MC(s1,s,n);s1+=n;s0-s1+n)
+ A sym(S s)_(as(us(s)))
+ 
+@@ -181,8 +181,10 @@ W ov_(S s,W v)_(os(s);o8(v);ow("\n",1);v)
+ ZN V od(L v){C b[32];ow(b,sl(b,v)-b);}
+ ZN V osd(S s,L v){os(s);od(v);}
+ ZN A1(ox,o8(x);osd(" b",xb);C t=xT;os(" t");I(LH(1,t,tn),ow(&TS[t],1))E(od(t))osd(" r",xr);osd(" n",xn);F(MIN(5,cap(x)/8),os(" ");o8(xl))os("\n");x)
+-// amber: engine metadata -> (heapBytes; nRegions; arch; compiler)  (used by the REPL banner)
+-A1(binfo,L tot=0,nr=0;F(nreg,I(reg[i].p,tot+=reg[i].n;nr++))A a[]={al(tot),al(nr),aCz(AMARCH),aCz(AMCC)};x(aV(tA,4,a)))
++// amber: engine metadata -> (heapBytes; nRegions; arch; compiler; version)
++// (used by the REPL banner and by `amber --version`; version comes from
++// AMBER_VERSION in a.h so there is exactly one place to bump on a release)
++A1(binfo,L tot=0,nr=0;F(nreg,I(reg[i].p,tot+=reg[i].n;nr++))A a[]={al(tot),al(nr),aCz(AMARCH),aCz(AMCC),aCz(AMBER_VERSION)};x(aV(tA,5,a)))
+ #define RGS(a...) F(nreg,B f=reg[i].f;V*p=reg[i].p,*q=f?p:p+reg[i].n;a)
+ #define OBS(a...) RGS(A x=(A)(p+HD*!f+pg*f),y=(A)q;W(x<y,a;x+=HD<<xb))
+ #define XYS(a...) OBS(I(xtR,F(xn|!xn,A y=xa;a)))
+diff --git a/src/o.c b/src/o.c
+index 0cfd995..f203a44 100644
+--- a/src/o.c
++++ b/src/o.c
+@@ -1,5 +1,19 @@
+ #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+ 
++// amber: NaN-aware float compare for `~` (match).
++// IEEE gives no single bit pattern for "not a number": the `0n` LITERAL is the
++// positive quiet NaN 0x7ff8..., but every NaN the FPU *computes* (0%0, 0w-0w,
++// avg of an empty vector, ...) is the default NaN, which on x86-64 has the
++// sign bit set (0xfff8...). A plain memcmp therefore reported
++//   (0%0)~0n  ->  0b
++// even though both sides print as "0n" and both answer 1b to `^` (is-null),
++// so there was no way to write a working equality test against a computed
++// float null. K's `~` is "match", and a null matches a null, so compare
++// float payloads value-wise with all NaNs treated as one value. Only reached
++// when the byte-wise fast path has already failed, so equal data still costs
++// exactly one memcmp.
++Z B mtcF(CO F*a,CO F*b,U n){F(n,F u=a[i],v=b[i];I(u!=v&&!(u!=u&&v!=v),return 0))return 1;}
++
+ NI B mtc_(A x,A y/*00*/)_(
+  P(x==y,1)
+  P(xt==yt&&((1<<ti|1<<tc|1<<ts|1<<tu|1<<tv|1<<tw|1<<tx)&1<<xt),xv==yv)
+@@ -8,7 +22,9 @@ NI B mtc_(A x,A y/*00*/)_(
+  YE(mtc_(y,x))
+  P(xtZ&&ytZ&&xt-yt&&xn==yn,C t=MAX(xt,yt);x=ct(t,xR);y=ct(t,yR);x(y(!memcmp(xV,yV,((W)xn<<xw)+7>>3))))
+  P(xt-yt||xtP||(xtr&&xE-yE)||xn-yn,0)
+- P(!xtR||(LH(tB,xt,tS)&&xt==yt&&xn==yn),!memcmp(xV,yV,((W)xn<<Tw[xt])+7>>3))
++ P(!xtR||(LH(tB,xt,tS)&&xt==yt&&xn==yn),
++   B e=!memcmp(xV,yV,((W)xn<<Tw[xt])+7>>3);
++   e||!(xtf||xtF)?e:mtcF(xV,yV,xtf?1u:xn))
+  F(xn|!xn,P(!mtc_(xa,ya),0))1)
+ 
+ A2(mtc,/*01*/y(ai(mtc_(x,y))))
+diff --git a/src/p.c b/src/p.c
+index 3a3d4bd..d365d05 100644
+--- a/src/p.c
++++ b/src/p.c
+@@ -8,14 +8,22 @@ Z S pw(S s)_(W(*s==32,s++)s)
+ Z A1(p1,x&&xn==1?fir(x):x)                                                                          //singleton list to atom
+ S pID(S s)_(W(id1(*s),s+=0xe555>>((UC)*s>>4&-2)&3)s)                                                //parse identifier
+ W pu(S*p)_(S s=*p;W v=0;C c=*s;W(C09(c),v=10*v+c-'0';c=*++s)*p-s?*p=s,v:NL)                         //parse unsigned long
+-L pl(S*p)_(B m=**p=='-';*p+=m;(1-2*m)*pu(p))                                                        //parse long
++L pl(S*p)_(B m=**p=='-';*p+=m;(L)((W)(1-2*m)*pu(p)))                                                        //parse long
+ Z L plN(S*p)_(L v=pl(p);!v&&**p=='N'?(*p)++,NL:v)                                                   //parse long (with support for nulls)
+-Z L pfu(S*p)_(L v=pu(p);S s=*p;C c=*s;P(c=='w',(*p)++;WFL)P(c=='n',(*p)++;v^NFL)I e=0;              //parse float unsigned
+- I(c=='.',c=*++s;W(C09(c),I(v<(1ull<<63)/10,v=10*v+c-'0';e--)c=*++s))
+- I(c=='e',s++;e+=pl(&s);P(e<-308,0)P(e>308,WFL))
++// amber: pu() signals "no digits consumed" by returning NL, and pl() then
++// propagates that as a full-range long. Feeding it straight into the int
++// exponent accumulator (`e+=pl(&s)`) is signed overflow -- undefined
++// behaviour reachable from a malformed literal such as `1.5e` or `1.5each`,
++// found by tests/fuzz.py under UBSan. Both the mantissa and the exponent are
++// now normalised before use: a no-digit mantissa reads as 0, and the exponent
++// is accumulated in L and clamped to the +/-309 the power table covers
++// before it is narrowed to I.
++Z L pfu(S*p)_(L v=pu(p);I(v==NL,v=0)S s=*p;C c=*s;P(c=='w',(*p)++;WFL)P(c=='n',(*p)++;v^NFL)I e=0;  //parse float unsigned
++ I(c=='.',c=*++s;W(C09(c),I((W)v<(1ull<<63)/10,v=(L)(10*(W)v+(W)(c-'0'));e--)c=*++s))
++ I(c=='e',s++;L d=pl(&s);I(d==NL,d=0)d+=e;e=(I)MAX(-400ll,MIN(400ll,d));P(e<-308,0)P(e>308,WFL))
+  Z F t[309];I(!*t,*t=1;F(308,t[i+1]=10*t[i]))
+  *p=s;*(L*)A(e<0?v/t[-e]:v*t[e]))
+-L pf(S*p)_(B m=**p=='-';(*p)+=m;L v=(L)m<<63|pfu(p);(*p)+=**p=='f';v)                               //parse float
++L pf(S*p)_(B m=**p=='-';(*p)+=m;L v=(L)((W)m<<63)|pfu(p);(*p)+=**p=='f';v)                               //parse float
+ Z A pV(C t,TY(pl)*f)_(L a[1<<9];U n=0;                                                              //parse ints or floats
+  W(1,L v=f(&s);P(n>=L(a),ez0())a[n++]=v;S p=pw(s);B(p==s||!num(p))s=p)aV(t,n,a))
+ Z A0(pZ,S p=s;W(*p-'0'<2u,p++)                                                                      //parse ints
+@@ -49,15 +57,15 @@ Z L ymd2days(L y,L m,L d){L wy=y-(m<=2);L era=(wy>=0?wy:wy-399)/400;L yoe=wy-era
+ //   HH:MM[:SS[.mmm]]              -> time atom (ms of day)
+ //   YYYY.MM.DD                    -> date atom (days; needs TWO dots, so floats X.Y are untouched)
+ //   YYYY.MM.DDD HH:MM:SS.fffffffff-> timestamp atom (ns).  Returns 0 (s unchanged) on no match.
+-Z A pTmp(){S p=s;if(!C09(*p))return 0;L a=0;S q=p;while(C09(*q)){a=10*a+(*q-'0');q++;}
+- if(*q==':'){q++;L mi=0;while(C09(*q)){mi=10*mi+(*q-'0');q++;}L sc=0,ms=0;
+-  if(*q==':'){q++;while(C09(*q)){sc=10*sc+(*q-'0');q++;}if(*q=='.'){q++;I nd=0;while(C09(*q)&&nd<3){ms=10*ms+(*q-'0');q++;nd++;}while(nd<3){ms*=10;nd++;}while(C09(*q))q++;}}
++Z A pTmp(){S p=s;if(!C09(*p))return 0;W a=0;S q=p;while(C09(*q)){a=10*a+(W)(*q-'0');q++;}
++ if(*q==':'){q++;W mi=0;while(C09(*q)){mi=10*mi+(W)(*q-'0');q++;}W sc=0,ms=0;
++  if(*q==':'){q++;while(C09(*q)){sc=10*sc+(W)(*q-'0');q++;}if(*q=='.'){q++;I nd=0;while(C09(*q)&&nd<3){ms=10*ms+(W)(*q-'0');q++;nd++;}while(nd<3){ms*=10;nd++;}while(C09(*q))q++;}}
+   s=q;return atm((I)(3600000*a+60000*mi+1000*sc+ms));}
+- if(*q=='.'){S q2=q+1;if(!C09(*q2))return 0;L mo=0;while(C09(*q2)){mo=10*mo+(*q2-'0');q2++;}if(*q2!='.')return 0;q2++;if(!C09(*q2))return 0;L dy=0;while(C09(*q2)){dy=10*dy+(*q2-'0');q2++;}
+-  L days=ymd2days(a,mo,dy);
+-  if(*q2=='D'){q2++;L hh=0;while(C09(*q2)){hh=10*hh+(*q2-'0');q2++;}if(*q2!=':')return 0;q2++;L mi=0;while(C09(*q2)){mi=10*mi+(*q2-'0');q2++;}L sc=0,ns=0;
+-   if(*q2==':'){q2++;while(C09(*q2)){sc=10*sc+(*q2-'0');q2++;}if(*q2=='.'){q2++;I nd=0;while(C09(*q2)&&nd<9){ns=10*ns+(*q2-'0');q2++;nd++;}while(nd<9){ns*=10;nd++;}while(C09(*q2))q2++;}}
+-   s=q2;return antp(days*86400000000000LL+3600000000000LL*hh+60000000000LL*mi+1000000000LL*sc+ns);}
++ if(*q=='.'){S q2=q+1;if(!C09(*q2))return 0;W mo=0;while(C09(*q2)){mo=10*mo+(W)(*q2-'0');q2++;}if(*q2!='.')return 0;q2++;if(!C09(*q2))return 0;W dy=0;while(C09(*q2)){dy=10*dy+(W)(*q2-'0');q2++;}
++  L days=ymd2days((L)a,(L)mo,(L)dy);
++  if(*q2=='D'){q2++;W hh=0;while(C09(*q2)){hh=10*hh+(W)(*q2-'0');q2++;}if(*q2!=':')return 0;q2++;W mi=0;while(C09(*q2)){mi=10*mi+(W)(*q2-'0');q2++;}W sc=0,ns=0;
++   if(*q2==':'){q2++;while(C09(*q2)){sc=10*sc+(W)(*q2-'0');q2++;}if(*q2=='.'){q2++;I nd=0;while(C09(*q2)&&nd<9){ns=10*ns+(W)(*q2-'0');q2++;nd++;}while(nd<9){ns*=10;nd++;}while(C09(*q2))q2++;}}
++   s=q2;return antp((L)((W)days*86400000000000ULL+3600000000000ULL*hh+60000000000ULL*mi+1000000000ULL*sc+ns));}
+   s=q2;return adt((I)days);}
+  return 0;}
+ Z A pt(C*v)_(C c=*s;                                                                                //parse term
+diff --git a/src/s.c b/src/s.c
+index 8bc5d47..36ae274 100644
+--- a/src/s.c
++++ b/src/s.c
+@@ -38,7 +38,7 @@ Z I l10p5(I x)_(x*732923>>20)
+ Z I p5b(I x)_(x*1217359>>19)
+ Z I mp5(W x,U p)_(F(p,W q=x/5;P((U)x-5*(U)q,0)x=q)1)
+ Z I mp2(W x,U p)_(!(x&((1ll<<p)-1)))
+-C*sf(C*s,L d)_(W x=d,m=x<<12>>12;I e=x<<1>>53;I(x>>63,*s++='-')P(e==2047,P(!m,MC(s,"0w",2)+2)s=sl(s,m^1ll<<51);*s++='n';s)P(!m&&!e,MC(s,"0.0",3)+3)
++C*sf(C*s,L d)_(W x=d,m=x<<12>>12;I e=x<<1>>53;I(x>>63&&!(e==2047&&m),*s++='-')P(e==2047,P(!m,MC(s,"0w",2)+2)s=sl(s,m^1ll<<51);*s++='n';s)P(!m&&!e,MC(s,"0.0",3)+3)
+  m|=(W)!!e<<52;e+=!e-1077;I t,ev=!(m&1),h=m<<12||e<-1075,u0=0,w0=0;W u,v,w;m<<=2;I(!**I5,initp5())
+  I(e>1,t=l10p2(e)-(e>7);u=msha(m,I5[L(I5)-1-t],t-e+p5b( t)+125,&v,&w,h);I(t<22,!(m%5)?u0=mp5(m,t):ev?w0=mp5(m-1-h,t):(v-=mp5(m+2,t))))
+  E( t=e+l10p5(-e)-(e<3);u=msha(m,P5[       -t],t-e-p5b(-t)+124,&v,&w,h);I(t<e+2,u0=1;ev?w0=h:--v)J(t<e+63,u0=mp2(m,t-e)))
+diff --git a/src/trace.c b/src/trace.c
+index 41bc26c..069b203 100644
+--- a/src/trace.c
++++ b/src/trace.c
+@@ -43,31 +43,53 @@ static void render_bar(double frac, char *buf, size_t buflen) {
+ 
+ /* Format a nanosecond duration as e.g. "142us" or "3.20ms". */
+ static void fmt_ns(long ns, char *buf, size_t buflen) {
+-    if (ns >= 1000000L) snprintf(buf, buflen, "%.2fms", ns / 1e6);
+-    else                snprintf(buf, buflen, "%ldus", ns / 1000);
++    if      (ns >= 1000000L) snprintf(buf, buflen, "%.2fms", ns / 1e6);
++    else if (ns >= 1000L)    snprintf(buf, buflen, "%.1fus", ns / 1e3);
++    else                     snprintf(buf, buflen, "%ldns", ns);
++}
++
++/* Every row is composed to exactly INNER printable columns before the closing
++ * "|" is added. The bar glyph is 3 bytes but 1 column wide, so the previous
++ * plain printf() field widths counted bytes and left the right-hand border
++ * ragged; RULE/INNER keep the box square. */
++#define INNER 55
++
++static void print_row(const char *body, int cols) {
++    printf("| %s%*s |\n", body, cols < INNER - 2 ? (INNER - 2) - cols : 0, "");
++}
++
++static void print_rule(void) {
++    char r[INNER + 3];
++    r[0] = '+';
++    for (int i = 1; i <= INNER; i++) r[i] = '-';
++    r[INNER + 1] = '+'; r[INNER + 2] = 0;
++    printf("%s\n", r);
+ }
+ 
+ static void print_phase(const char *name, long ns, long total_ns) {
+-    char t[24], bar[BAR_WIDTH * 3 + 1], pct[16];
++    char t[24], bar[BAR_WIDTH * 3 + 1], line[160];
+     fmt_ns(ns, t, sizeof t);
+     render_bar(total_ns > 0 ? (double)ns / (double)total_ns : 0, bar, sizeof bar);
+-    snprintf(pct, sizeof pct, "%5.1f%%", total_ns > 0 ? 100.0 * ns / total_ns : 0.0);
+-    printf("| %-9s %8s  [%s] %s |\n", name, t, bar, pct);
++    snprintf(line, sizeof line, "%-9s %9s  [%s] %5.1f%%",
++             name, t, bar, total_ns > 0 ? 100.0 * ns / total_ns : 0.0);
++    /* printable columns: name9 sp time9 sp2 '[' bar ']' sp pct6 */
++    print_row(line, 9 + 1 + 9 + 2 + 1 + BAR_WIDTH + 1 + 1 + 6);
+ }
+ 
+ static void print_report(const TraceMetrics *m) {
+-    printf("+-------------------------------------------------------+\n");
++    print_rule();
+     print_phase("Parse",   m->parse_ns, m->total_ns);
+     print_phase("Arena",   m->arena_ns, m->total_ns);
+     print_phase("Execute", m->exec_ns,  m->total_ns);
+     print_phase("Format",  m->fmt_ns,   m->total_ns);
+-    printf("+-------------------------------------------------------+\n");
++    print_rule();
+ 
+-    char tot[16], mem[16];
++    char tot[16], mem[16], line[160];
+     fmt_ns(m->total_ns, tot, sizeof tot);
+     fmt_bytes((double)m->arena_peak, mem, sizeof mem);
+-    printf("| Total: %-8s  Arena peak: %-8s                  |\n", tot, mem);
+-    printf("+-------------------------------------------------------+\n");
++    snprintf(line, sizeof line, "Total: %-10s Arena peak: %-10s", tot, mem);
++    print_row(line, (int)strlen(line));
++    print_rule();
+ }
+ 
+ A trace_cmd(S s) {
+@@ -88,11 +110,12 @@ A trace_cmd(S s) {
+     if (!parsed) { printf("\\trace: parse error\n"); return au; }
+ 
+     arena_reset();
++    arena_reset_peak();          /* start the high-water gauge from here */
+     m.arena_before = arena_used();
+     clock_gettime(CLOCK_MONOTONIC, &t2);            /* b) arena setup       */
+ 
+     A compiled = cpl(aCm(input, p), parsed, 0);
+-    if (!compiled) { printf("\\trace: compile error\n"); return au; }
++    if (!compiled) { printf("\\trace: compile error\n"); arena_reset(); return au; }
+     A result = run(compiled, 0, 0);                 /* c) engine execution  */
+     clock_gettime(CLOCK_MONOTONIC, &t3);
+     mr(compiled);                                    /* release the closure  */
+@@ -109,7 +132,13 @@ A trace_cmd(S s) {
+     m.exec_ns  = ns_between(t2, t3);
+     m.fmt_ns   = ns_between(t3, t4);
+     m.total_ns = m.parse_ns + m.arena_ns + m.exec_ns + m.fmt_ns;
+-    m.arena_peak = m.arena_after > m.arena_before ? m.arena_after : m.arena_before;
++    /* Every arena consumer (ajc/wjc/csv/ast) rewinds the slab before it
++     * returns, so both `arena_before` and `arena_after` are ~always 0 and the
++     * old max() of the two reported "0 B" for literally every expression.
++     * arena_peak() is a true high-water mark maintained inside arena.c and
++     * survives arena_reset(), so it reports what the evaluation really used. */
++    m.arena_peak = arena_peak();
++    if (m.arena_peak < m.arena_after) m.arena_peak = m.arena_after;
+ 
+     print_report(&m);
+     return au;
+diff --git a/src/v.c b/src/v.c
+index 8b52810..9363e1b 100644
+--- a/src/v.c
++++ b/src/v.c
+@@ -5,9 +5,15 @@ X1(flp,Rt(enl(enl(x)))R_(enl(x))RM(A y=kv(&x);am(x,y))RB(flp(cG(x)))
+   P(!t,F(n|!n,A z=aA(m);Fj(m,zA[j]=ii(xA[j],i))I(!zn,zx=mkn(zx))ya=sqz(z))x(0);I(!yn,yx=mkn(yx))y)
+   U w=Tw[t]-3;Fj(n|!n,A z=yA[j]=an(m,t);S4(w,F(m,zg=_G(xa)[j]),F(m,zh=_H(xa)[j]),F(m,zi=_I(xa)[j]),F(m|!m,zl=_L(xa)[j])I(TR(t),I(!m,zx=mkn(_R(zx)))yA[j]=sqz(mRa(z)))))
+   x(0);I(!n,yx=mkn(yx))y))
+-V tilV(V*p,L v,L n,U w){L*a=p,k=G(0x101010101010101ll,0x1000100010001ll,1ll<<32|1,1)[w],d=k<<3-w;v*=k;v+=G(0x706050403020100ll,0x3000200010000ll,1ll<<32,0)[w];
+- F((n-1>>3-w)+4&-4,a[i]=v;v+=d)}
+-X1(til,RA(K1("{x@'!#'x}",x))Ril(L n=gl(x);n*=n!=-n;aE(MIN(0,n),MAX(0,n)))REBGHIL(K1("{(*a)#'&'x#'1_a:|*\\|x,1}",x))RmM(x(_R(xx)))Ro(val(x))RS(gns(_v(jS(x))))Rs(gns(xv))R_(et(x)))
++// amber: this fills a packed multi-lane counter (w selects 1/2/4/8-byte lanes),
++// so the accumulator is *meant* to carry across lane boundaries and wrap at
++// 64 bits. Done in L that is signed overflow -- undefined behaviour, and UBSan
++// flags it on examples/practice.k. W (unsigned) gives the same bits with
++// defined semantics; the stored value is cast back to L unchanged.
++V tilV(V*p,L v,L n,U w){L*a=p;W k=(W)G(0x101010101010101ll,0x1000100010001ll,1ll<<32|1,1)[w],d=k<<(3-w),q=(W)v;
++ q*=k;q+=(W)G(0x706050403020100ll,0x3000200010000ll,1ll<<32,0)[w];
++ F((n-1>>3-w)+4&-4,a[i]=(L)q;q+=d)}
++X1(til,RA(K1("{x@'!#'x}",x))Ril(L n=gl(x);I(n==NL,n=0)aE(MIN(0,n),MAX(0,n)))REBGHIL(K1("{(*a)#'&'x#'1_a:|*\\|x,1}",x))RmM(x(_R(xx)))Ro(val(x))RS(gns(_v(jS(x))))Rs(gns(xv))R_(et(x)))
+ X1(whr,Ril(whr(enl(x)))RA(K1("{$[`A~@x;(,&#'*'x),,'/x@\\:!0|/#'x:o'x;,&x]}",x))Rm(A y=kv(&x);x(x1(Nx(whr(y)))))RE(whr(gZ(x)))R_(et(x))
+  RB(U m=xn,n=addfB(xV,m);A y=aI(n);I*r=yV;Mx(F(m+7>>3,C v=xg;W(v,U j=CTZ(v);v&=~(1<<j);*r++=i<<3|j)))Q(r-yI==n);y)
+  RGHIL(L m=xn,n=addfZ(0,x);P(n<0||minfZ(0,x)<0,ed(x))C t=tZ(m-!!m);P(t>tI,ez(x))A y=an(n,t);I w=xw-3;
+diff --git a/src/w.c b/src/w.c
+index 2aee2ce..c92561f 100644
+--- a/src/w.c
++++ b/src/w.c
+@@ -40,7 +40,7 @@ Z A2(cf,/*01*/A z=yR,u;W(1,zR;u=x1(z);B(!u)P(mtc_(u,y)||mtc_(u,z),y(u(z)))z=z(u)
+ Z A ns(A x,L m,A y/*0m1*/)_(A z=aA0(m+1);F(m,PSH(z,yR);y=x1(y);B(!y))y?PSH(z,y):z(y))
+ Z A nf(A x,L m,A y/*0m1*/)_(F(m,y=N(x1(y)))y)
+ Z A3(ws,/*001*/A u=enl(zR);W(1,A w=y1(zR);B(!w,u=u(0))B(!tru(w))z=x1(z);P(!z,u(0))PSH(u,zR))z(u))
+-Z A3(wf,/*001*/A u=0;W(1,A w=y1(zR);B(!w,z=z(0))B(!tru(w))z=x1(z);P(!z,0))z)
++Z A3(wf,/*001*/W(1,A w=y1(zR);B(!w,z=z(0))B(!tru(w))z=x1(z);P(!z,0))z)
+ Z A nS(A x,L m,CO A*a,U n/*0m1n*/)_(P(n==1,ns(x,m,*a))P(m<0,mrn(n,a);ed0())P(m<n,mrn(n-m-1,a+m+1);sqz(aV(tA,m+1,a)))
+  A z=aA(m+n),*b=zA;zn=n;MC(zA,a,64);F(m+1-n,mRn(n,b);b[n]=Nz(x8(b,n));zn++;b++)sqz(z))
+ Z A wS(A x,A y,CO A*a,U n/*001n*/)_(P(n==1,ws(x,y,*a))Ab8;MC(b,a,64);mRn(n,b);A z=sqz(aV(tA,n,b));
+diff --git a/tests/test_ast.c b/tests/test_ast.c
+index b849d9d..fb3b54e 100644
+--- a/tests/test_ast.c
++++ b/tests/test_ast.c
+@@ -6,8 +6,9 @@
+  * ast.c is inherently built on Amber's own parser and value representation
+  * (pk(), su(), the tu/tv/tw/to/tS/... type tags) -- there is no meaningful
+  * "AST of an expression" without Amber's real parser producing it. So this
+- * test links against the WHOLE interpreter (every src object file except
+- * 0.c, which owns main()) and calls kinit() itself before touching pk()/
++ * test links against the WHOLE interpreter (every src object file, with
++ * 0.c compiled -Dldstatic -- the guard 0.c already wraps main() in -- so it
++ * still supplies `pg` and the non-wasm js_eval() stub but no main()) and calls kinit() itself before touching pk()/
+  * ast_cmd(), the same startup 0.c's own main() does.
+  *
+  * It captures ast_cmd()'s stdout (it prints straight to stdout, like

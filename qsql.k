@@ -9,6 +9,12 @@
 
 / ---- parsing helpers ------------------------------------------------------
 qsplit:{[s;kw]i:ss[s;kw];$[#i;(trim(*i)#s;trim((*i)+#kw)_s;1b);(trim s;"";0b)]}   / split on first kw
+/ split on kw, also matching kw with its leading space stripped at position 0 --
+/ needed for `select by sym from t`, where the by-clause IS the whole
+/ select-part and so has no space in front of it to match " by " against.
+qsplit0:{[s;kw]$[(s~*i:qsplit[s;kw])&((#kw)-1)<#s;$[(1_kw)~(-1+#kw)#s;("";trim(-1+#kw)_s;1b);i];i]}
+/ last-of-each-column aggregation, used for a `by` with no explicit projection
+qlastf:{[c]{[c;x]last x c}[c]}
 qcut:{[s]d:sums(s="[")-s="]";b:0,&(s=",")&d=0;trim'{$[#x;$[","=*x;1_x;x];x]}'b _ s}  / comma-split at depth 0
 qname:{[s]d:sums(s="[")-s="]";i:&(s=":")&d=0;$[#i;(trim(*i)#s;trim(1+*i)_s);("";trim s)]}  / name:expr
 qword:{((x>64)&x<91)|((x>96)&x<123)|((x>47)&x<58)|x=95}                            / word-char mask
@@ -21,7 +27,7 @@ qnm:{[i;it]p:qname it;$[#p 0;`$p 0;qsimple p 1;`$p 1;`$"x",$i]}                 
 qnull:{$[in[@x;`I`i];0N;in[@x;`F`f];0n;in[@x;`S`s];`;in[@x;`C`c];" ";0N]}
 
 / ---- select ---------------------------------------------------------------
-sel:{[s]s:trim s;s:$[(6#s)~"select";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r3:qsplit[r2 0;" by "];selp:r3 0;u:. r2 1;t:qwhere[u;qmask[u;wh]];C:cols u;$[(selp~,"*")|0=#selp;t;[it:qcut selp;d:(qnm'[!#it;it])!{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;qby[t;qbc r3 1;d];qselect[t;d]]]]}
+sel:{[s]s:trim s;s:$[(6#s)~"select";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r3:qsplit0[r2 0;" by "];selp:r3 0;u:. r2 1;t:qwhere[u;qmask[u;wh]];C:cols u;$[(selp~,"*")|0=#selp;$[r3 2;[bk:qbc r3 1;nk:except[C;bk];qby[t;bk;nk!qlastf'nk]];t];[it:qcut selp;d:(qnm'[!#it;it])!{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;qby[t;qbc r3 1;d];qselect[t;d]]]]}
 
 / ---- exec  (return one column / expression, not a table) ------------------
 exq:{[s]s:trim s;s:$[(4#s)~"exec";trim 4_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];r2:qsplit[r 0;" from "];u:. r2 1;t:qwhere[u;qmask[u;wh]];(qfn[cols u;(qname trim r2 0)1])t}

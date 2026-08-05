@@ -5,6 +5,11 @@
 // shims, which this file sits directly on top of). The ABI here matches
 // amber-notepad's amber.js exactly (see that file's AmberVM class):
 //
+//   amber_version()- returns a pointer to the NUL-terminated interpreter
+//                     version string ("1.9"), taken from AMBER_VERSION in
+//                     a.h -- the same single source of truth the REPL banner
+//                     and `amber --version` read, so the browser build can
+//                     never advertise a version the native build doesn't.
 //   amber_init()   - called once after instantiate; kinit() + a dummy argv
 //                     so `.z`-style env access doesn't dereference NULL.
 //   amber_inbuf()  - returns a pointer JS writes the next NUL-terminated
@@ -30,6 +35,9 @@
 static char g_inbuf[INBUF_SZ];
 
 static const char *dummy_argv[2] = {"amber", 0};
+
+__attribute__((export_name("amber_version")))
+const char *amber_version(void) { return AMBER_VERSION; }
 
 __attribute__((export_name("amber_init")))
 void amber_init(void) {

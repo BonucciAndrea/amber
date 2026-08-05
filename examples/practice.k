@@ -26,7 +26,7 @@ ex"qby[tb;`sym;`n`tot!({#x};{sum x`sz})]"
 ex"xdesc[`px;tb]"
 
 `0:"";`0:"--- a mini market session ---"
-zz:gentq 50
+gentq 50
 ex"count trades"
 ex"symstats trades"
 ex"3#tsym[aj[`sym`time;trades;quotes];`time]"

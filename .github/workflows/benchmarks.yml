@@ -100,7 +100,9 @@ jobs:
           set -x
           cd /tmp/bench_tools
           curl -fsSL -o uiua.tar.gz \
-            "https://github.com/uiua-lang/uiua/releases/latest/download/uiua-x86_64-unknown-linux-gnu.tar.gz"
+            "https://github.com/uiua-lang/uiua/releases/latest/download/uiua-x86_64-unknown-linux-gnu.tar.gz" || \
+          curl -fsSL -o uiua.tar.gz \
+            "https://github.com/uiua-lang/uiua/releases/latest/download/uiua-x86_64-unknown-linux-musl.tar.gz"
           tar xzf uiua.tar.gz
           chmod +x uiua
           ./uiua --version
@@ -111,7 +113,7 @@ jobs:
         continue-on-error: true
         run: |
           set -x
-          cargo install uiua --locked --no-default-features
+          cargo install uiua --locked --features binary
           cp "$HOME/.cargo/bin/uiua" /tmp/bench_tools/uiua
           /tmp/bench_tools/uiua --version
           echo "UIUA_BIN=/tmp/bench_tools/uiua" >> "$GITHUB_ENV"
@@ -168,13 +170,15 @@ jobs:
         run: |
           set -x
           cd /tmp/bench_tools
-          curl -fsSL -o j.tar.gz \
-            "https://www.jsoftware.com/download/j904/install/j904_linux64.tar.gz"
-          mkdir -p j904 && tar xzf j.tar.gz -C j904 --strip-components=1
-          chmod +x j904/bin/jconsole j904/bin/* || true
+          curl -fsSL -o j.tar.gz "https://www.jsoftware.com/download/j9.5/install/j9.5_linux64.tar.gz" || \
+          curl -fsSL -o j.tar.gz "https://www.jsoftware.com/download/j9.6/install/j9.6_linux64.tar.gz" || \
+          curl -fsSL -o j.tar.gz "https://www.jsoftware.com/download/j9.4/install/j9.4_linux64.tar.gz"
+          
+          mkdir -p j900 && tar xzf j.tar.gz -C j900 --strip-components=1
+          chmod +x j900/bin/jconsole j900/bin/* || true
           echo 'exit 0' > /tmp/bench_tools/jprobe.ijs
-          j904/bin/jconsole /tmp/bench_tools/jprobe.ijs
-          echo "J_BIN=/tmp/bench_tools/j904/bin/jconsole" >> "$GITHUB_ENV"
+          j900/bin/jconsole /tmp/bench_tools/jprobe.ijs
+          echo "J_BIN=/tmp/bench_tools/j900/bin/jconsole" >> "$GITHUB_ENV"
 
       # ---------------------------------------------------------------
       # 8. Native C baseline (the floor every engine is measured against)
@@ -209,7 +213,10 @@ jobs:
       # 10. Unit tests (a benchmark of a broken build is worthless)
       # ---------------------------------------------------------------
       - name: Run test suites
-        run: tests/run_tests.sh --quick
+        run: |
+            cd tests
+            chmod +x run_tests.sh
+            tests/run_tests.sh --quick
 
       # ---------------------------------------------------------------
       # 11. Comparative benchmarks

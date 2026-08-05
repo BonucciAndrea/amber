@@ -12,7 +12,7 @@
 **A low-latency array language — columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.9-orange)
+![version](https://img.shields.io/badge/version-1.9.1-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
 ![tests](https://img.shields.io/badge/tests-277%20passing-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
@@ -30,6 +30,11 @@ AGPLv3 implementation of the K array language. Amber keeps that engine's speed a
 footprint and layers a q/kdb+ vocabulary, C-level column attributes, native temporal types,
 `([]…)` table syntax, a tick/HFT toolkit, and a modern REPL on top. (The attribution is
 recorded in [NOTICE](NOTICE), as the AGPLv3 requires.)
+
+New in **1.9.1**: the `select … by … from` query layer now groups and probes on **raw column
+vectors** instead of boxing one K object per row, making group-by **24.7x** faster and inner
+join **19.3x** faster (both now within ~1.1-1.5x of hand-written Amber array code); the CBQN
+benchmark scripts compile and self-time correctly. See [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 New in **1.9**: a **native C `aj` as-of-join kernel** (branch-free `lower_bound` over sorted
 nanosecond timestamps) · an **HFT zero-allocation arena** (thread-local 16 MB bump allocator
@@ -216,7 +221,7 @@ instant.
 Check the interpreter version, or list every option and REPL command:
 
 ```sh
-./amber --version           # amber 1.9
+./amber --version           # amber 1.9.1
 ./amber --help              # options + the full \-command reference
 ```
 
@@ -639,10 +644,10 @@ picking whichever comparison flatters Amber; the gap between the rows *is* the q
 overhead and is meant to be visible.
 
 **Timing excludes startup.** Engines that can time their own kernel (Amber, C, NumPy, Julia,
-DuckDB) do so with a monotonic clock after warm-up passes, and the harness uses that number
-directly. Engines with no usable in-language clock (ngn/k, CBQN, Uiua, J) are measured as
-*total process time − a measured startup baseline*. The results table labels which mode produced
-each cell, so the two are never silently mixed.
+DuckDB and — since 1.9.1 — CBQN, via `•MonoTime`) do so with a monotonic clock after warm-up
+passes, and the harness uses that number directly. Engines with no usable in-language clock
+(ngn/k, Uiua, J) are measured as *total process time − a measured startup baseline*. The results
+table labels which mode produced each cell, so the two are never silently mixed.
 
 **Known lexer quirk hit while writing these files:** a `.k` comment line containing *only* a
 bare `/` (no trailing space or text) silently truncates parsing of everything after it, with no

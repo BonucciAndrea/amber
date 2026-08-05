@@ -90,11 +90,16 @@ Each engine also prints `CHECK = sum(a) + 3*sum(b)` (≤ 4e10, exact) so a diver
    monotonic clock, after `--warmup` untimed passes (default 2), and reports the median of
    `--runs` timed passes. Data generation is outside the timed region for every engine.
    Engines with no usable in-language clock fall back to `total process time − measured startup
-   baseline`; the results table labels which mode each cell used.
+   baseline`; the results table labels which mode each cell used. As of **1.9.1** CBQN times its
+   own kernel with `•MonoTime`, so it is measured on the same basis as C, Amber, NumPy and
+   Julia rather than being charged for data generation.
 4. **Same types.** float64 values, int64 (or exactly-representable float64) keys, everywhere.
 5. **Two Amber rows.** `amber` uses array primitives (the fair peer of K/BQN/J/Uiua);
    `amber-qsql` goes through the `select … by … from` query layer (the fair peer of DuckDB SQL).
    Reporting only the faster one would be picking whichever comparison flatters Amber.
+   Since **1.9.1** that layer groups and probes on raw column vectors rather than boxing a K
+   object per row, so the gap between the two rows is the query layer's real overhead (~1.1-1.5x
+   on group-by and join) rather than an allocation artefact.
 
 ## 5. Protocol
 
@@ -108,5 +113,7 @@ TIME_MS <median kernel milliseconds, float>
 ```
 
 `TIME_MS` may be omitted by an engine with no clock; the runner then falls back to subtracting a
-measured startup baseline. Anything else on stdout is ignored, so engines that unavoidably print
+measured startup baseline. BQN scripts must not depend on `•args` being bound — the runner passes
+no arguments, and several BQN environments do not provide it at all; take defaults instead (see
+`bench/queries/bqn_*.bqn` for the `•BQN`+`⎊` wrapper used here). Anything else on stdout is ignored, so engines that unavoidably print
 a banner are still usable.

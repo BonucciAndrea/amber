@@ -1,5 +1,80 @@
 # Changelog
 
+## 1.9.1 — qSQL runs on raw column vectors; CBQN benchmarks fixed
+
+### `select … by … from` no longer boxes a K object per row
+`qby`, `xgroup` and `ij` all grouped and probed through `rows:{+. x}`, which flips a table's
+column dict into **one boxed K value per row**. A 10-million-row `select … by …` therefore
+allocated 10M transient objects in the refcounted heap purely so they could be hashed and thrown
+away — 7.9 s of the 8.4 s such a query took, against **87 ms** for the native vector group-by
+over the very same data.
+
+The query layer now hands the **raw column vectors** straight to the C kernel's vector `=`
+(group), `?` (find) and `@` (index) primitives:
+
+- **`qgrp[t;b]`** (new, `amber.k`) returns `(key-value columns; group row-index vectors)`.
+  A single-column `by` groups the column itself. A multi-column `by` is rank-encoded per column
+  (`?x` distinct, `u?x` find) and mixed radix-style into one dense integer key, so distinct
+  tuples still get distinct codes — with a `2^53` cardinality guard that falls back to the old
+  path rather than risk a collision. Key **values** are recovered by indexing the raw columns
+  with each group's first row, one gather per by-column instead of a flip over every row.
+- **`ij`** rank-encodes both sides over one shared code space, so the probe is a native vector
+  `?` on a flat integer vector. Single-key joins skip the encode and probe the raw key column.
+- **`qproj`/`qrefs`** (new, `qsql.k`) narrow a table to the columns an aggregate can actually
+  reach before `qby` materialises its per-group sub-tables. `atr` indexes *every* column it is
+  handed, so on a wide table this stopped copying dozens of unread columns per group; the cost
+  now scales with columns **used**, not columns **present**.
+
+Group ordering is unchanged (first appearance), and the outputs are byte-identical to 1.9 across
+a differential suite covering single- and multi-column `by`, `where`, `update … by`, `xgroup`,
+single- and multi-key `ij`, and empty tables. The 94-case `tests/test_qsql.k` matrix passes
+unchanged.
+
+Median kernel ms, 10M rows, same machine. The 1.9.1 column is `bench/run_comparative.py
+--runs 5 --warmup 2`; the 1.9 column is the same benchmark script run against an unmodified
+1.9 checkout (median of 3 timed passes after 1 warm-up):
+
+| workload | 1.9 qSQL | 1.9.1 qSQL | speed-up | 1.9.1 vs Amber array code |
+|---|---:|---:|---:|---:|
+| group-by (100 groups over 10M rows) | 8,171.7 | 330.8 | **24.7x** | 1.48x |
+| inner join (1M rows against 1,000 sparse keys) | 3,858.9 | 199.7 | **19.3x** | 1.09x |
+| vector arithmetic + mask | 107.6 | 102.2 | — | 1.19x |
+| reductions (sum · max · dot) | 105.7 | 109.6 | — | 2.06x |
+
+`arith` and `reduce` never touched `qby`; their gap over the array-primitive row is qSQL's fixed
+per-call parse-and-compile cost, not a per-row cost, and is unchanged.
+
+### CBQN benchmark scripts compile and self-time
+Every `bench/queries/bqn_*.bqn` file failed to compile, so **every CBQN cell in the published
+table was an error rather than a measurement**:
+
+- **Identifier roles.** BQN takes a name's role from its first letter — an initial capital is a
+  **function**, lowercase is a **subject**. The files opened with `N ← 10000000`, binding a
+  number to a function-role name, and CBQN rejected the whole file up front with *"Role of the
+  two sides in assignment must match"*. All data names are now lowercase (`n`, `m`, `kn`, `gn`,
+  `chk`); only genuine functions (`Kern`, `Time`, `Arg`) are capitalised.
+- **`•args` is now optional and safe.** Not every BQN environment binds `•args` — the online
+  REPL and `•Import`-ed scopes have no argv, and naming it directly there fails with *"Unknown
+  system values: •args"* before a line runs. The reference now goes through `•BQN`, which keeps
+  it out of the file's own compilation unit, wrapped in `⎊` (Catch) so "no arguments present"
+  yields the documented default instead of a crash. The scripts run identically under
+  `cbqn file.bqn`, under the harness (which passes no arguments), and pasted into a browser REPL.
+- **Kernel timing.** The files now time themselves with `•MonoTime` and report `TIME_MS`, so the
+  10M-element vectors are materialised *before* the clock starts. Previously CBQN had no clock,
+  so the harness fell back to net-of-startup wall time and charged CBQN for data generation as
+  well as for the query.
+- The join uses `⊐` (Index of) — the same lookup Amber spells `kr?kl` — instead of sorting and
+  binary-searching with `⍋`.
+
+CBQN now passes the correctness gate on all four workloads with answers exactly equal to the C
+reference (`17187568834`, `2515218396283`, `260496190510`, `665380820688`).
+
+### Version
+`AMBER_VERSION` in `src/a.h` gains an explicit `AMBER_VERSION_PATCH`, so `./amber --version`,
+the REPL banner and the WASM `amber_version()` export all report **1.9.1** from the single
+source of truth.
+
+
 ## Unreleased — comparative benchmark suite rebuilt for cross-engine fairness
 
 ### Two shortcuts removed from the old suite

@@ -25,9 +25,20 @@ qmask:{[t;w]$[0=#w;(#t)#1b;&/{[t;c]qfn[cols t;c]t}[t]'qcut w]}                  
 qbc:{[byp]`$'{(qname x)1}'qcut byp}                                                / by-clause -> symbol cols
 qnm:{[i;it]p:qname it;$[#p 0;`$p 0;qsimple p 1;`$p 1;`$"x",$i]}                     / item -> column name
 qnull:{$[in[@x;`I`i];0N;in[@x;`F`f];0n;in[@x;`S`s];`;in[@x;`C`c];" ";0N]}
+/ qrefs: the column names an expression actually mentions.  Same tokenisation
+/ qidsub uses to REWRITE identifiers into x`col, so the set returned here is
+/ exactly the set of columns the compiled aggregate can reach.
+qrefs:{[C;s]$[0=#s;0#`;[m:qword 0+s;bnd:&differ m;tk:bnd _ s;fl:m bnd;sy:`$'tk;?sy@&fl&{[C;y]in[y;C]}[C]'sy]]}
+/ qproj: narrow a table to `cs` before a group-by.  qby materialises one
+/ sub-table per group (atr), which indexes EVERY column it is handed -- on a
+/ wide table that copied dozens of columns per group that no aggregate ever
+/ read.  Projecting first makes that cost scale with columns USED, not columns
+/ present.  Only ever narrows, so it cannot change a result.
+qproj:{[t;cs]+(?cs)#+t}
+
 
 / ---- select ---------------------------------------------------------------
-sel:{[s]s:trim s;s:$[(6#s)~"select";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r3:qsplit0[r2 0;" by "];selp:r3 0;u:. r2 1;t:qwhere[u;qmask[u;wh]];C:cols u;$[(selp~,"*")|0=#selp;$[r3 2;[bk:qbc r3 1;nk:except[C;bk];qby[t;bk;nk!qlastf'nk]];t];[it:qcut selp;d:(qnm'[!#it;it])!{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;qby[t;qbc r3 1;d];qselect[t;d]]]]}
+sel:{[s]s:trim s;s:$[(6#s)~"select";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r3:qsplit0[r2 0;" by "];selp:r3 0;u:. r2 1;t:qwhere[u;qmask[u;wh]];C:cols u;$[(selp~,"*")|0=#selp;$[r3 2;[bk:qbc r3 1;nk:except[C;bk];qby[t;bk;nk!qlastf'nk]];t];[it:qcut selp;d:(qnm'[!#it;it])!{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;[bk:qbc r3 1;qby[qproj[t;bk,(,/qrefs[C]'{(qname x)1}'it)];bk;d]];qselect[t;d]]]]}
 
 / ---- exec  (return one column / expression, not a table) ------------------
 exq:{[s]s:trim s;s:$[(4#s)~"exec";trim 4_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];r2:qsplit[r 0;" from "];u:. r2 1;t:qwhere[u;qmask[u;wh]];(qfn[cols u;(qname trim r2 0)1])t}

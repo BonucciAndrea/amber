@@ -37,7 +37,7 @@ line:line1@line0@
 $["repl.k"~basename`argv 1;{cmds::@[cmds;x[1]1;:;{y;`0:x}2_x]}'{(&x~\:80#"-")_x:(1+*&x~\:,"/")_-1_x}@0:`argv 1;];
 / `bi 0 (process/build info) can throw 'domain on non-Linux builds (e.g. macOS);
 / trap it so the banner still renders.  Returns (heap;used;arch;compiler).
-binfo:{.[{`bi 0};,0;(10485760;0;"arm64";"Darwin";"1.9")]}
+binfo:{.[{`bi 0};,0;(10485760;0;"arm64";"Darwin";"1.9.1")]}
 run:{m:binfo[];`1:(`c$27),"[4q";`1:"Amber v",(m 4)," (",(m 2),"; ",(m 3),") — Columnar Time-Series Engine\nMemory: ",($0.1*_0.5+(m 0)%104857.6)," MB heap reserved | \\ for help command, \\\\ to exit\n\n",prompt;{line@1:`}::/`;}
 \d .
 / load the Amber library by ABSOLUTE path derived from this script's own location,

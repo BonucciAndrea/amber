@@ -1,5 +1,10 @@
 # Amber 1.9 — Security, Correctness, Hygiene & Documentation Audit
 
+> **Historical record.** This report documents the audit of release **1.9** and is left as
+> written; the version strings and figures below are the ones 1.9 produced. The current release
+> is **1.9.1** — on this checkout the reproduce steps below print `amber 1.9.1`, and the qSQL and
+> CBQN benchmark changes are described in [CHANGELOG.md](CHANGELOG.md).
+
 **Repository:** https://github.com/BonucciAndrea/amber
 **Scope:** every `.c`, `.h`, `.k`, doc and test in the tree (≈6 200 lines of C plus the K library).
 **Method:** full read of the core (`a.h`, `a.c`, `m.c`, `arena.*`, `ast.c`, `trace.c`, `p.c`, `o.c`,

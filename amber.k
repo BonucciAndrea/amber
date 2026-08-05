@@ -104,7 +104,12 @@ insert:{[t;r]t,r}
 
 / ---- joins -----------------------------------------------------------------
 lj:{[t;kt]yk:rows[!kt];xk:+. (keys kt)#+t;i:yk?xk;vc:cols value kt;+(+t),vc!{y@x}[i]'value value kt}
-ij:{[t;kt]yk:rows[!kt];xk:+. (keys kt)#+t;i:yk?xk;j:&~^i;+(+atr[t;j]),(cols value kt)!{y@x}[i@j]'value value kt}
+/ ij: the probe used to box every left row AND every right key row (rows[...])
+/ purely to feed `?`.  Both sides are now rank-encoded column-wise -- jointly,
+/ over one shared code space -- so the lookup is a native vector `?` on a flat
+/ integer vector.  Single-key joins (the common case) skip the encode entirely
+/ and probe the raw key column.
+ij:{[t;kt]kc:keys kt;kd:+!kt;td:+t;yc:kd kc;xc:td kc;p:$[1=#kc;(*yc;*xc);qcard[yc,'xc]<qEXACT;[e:qenc yc,'xc;n:#*yc;(n#e;n _ e)];(rows[!kt];+. kc#td)];i:(p 0)?p 1;j:&~^i;+(+atr[t;j]),(cols value kt)!{y@x}[i@j]'value value kt}
 gc:{[t;n;ot;c]$[in[c;cols t];(+t)c;n#0#(+ot)c]}
 uj:{[x;y]c:distinct cols[x],cols y;+c!{[x;y;c]gc[x;#x;y;c],gc[y;#y;x;c]}[x;y]'c}
 pj:{[t;kt]yk:rows[!kt];xk:+. (keys kt)#+t;i:(#yk)^yk?xk;vt:value kt;vc:cols vt;+(+t),vc!{[i;t;vt;c]((+t)c)+((vt c),0)@i}[i;t;vt]'vc}
@@ -144,8 +149,32 @@ qwhere:{[t;m]t@&m}
 / case only appeared to work because the each-result happened to be a 1-item
 / list whose single item was the atom. (),x leaves genuine vectors untouched.
 qselect:{[t;a]+(!a)!{[t;f](),f t}[t]'value a}
-qby:{[t;b;a]b:b,();g:=rows[b#+t];kt:+b!+!g;subs:atr[t]'value g;vt:+(!a)!{[subs;f]f'subs}[subs]'value a;kt!vt}
-xgroup:{[k;t]k:k,();g:=rows[k#+t];kt:+k!+!g;vc:except[cols t;k];+(+kt),vc!{[t;iv;c]((+t)c)@/:iv}[t;value g]'vc}
+/ ---- raw-column grouping: the qSQL fast path --------------------------------
+/ qby/xgroup/ij used to group with  =rows[cols#+t] .  rows:{+. x} flips the
+/ column dict into ONE BOXED K OBJECT PER ROW, so a 10M-row group-by allocated
+/ 10M transient objects in the refcounted heap and then grouped *those*: 7.9s of
+/ the 8.4s a `select .. by .. from ..` took, against 87ms for the native vector
+/ group-by over the same data.  Nothing about the query needed those tuples --
+/ they existed only to be hashed and discarded.  The helpers below hand the RAW
+/ column vectors straight to the C kernel's vector `=` (group), `?` (find) and
+/ `@` (index) primitives instead.
+/ qenc: fold a list of columns into ONE dense integer key per row, rank-encoding
+/ each column (`?x` distinct, `u?x` find) and mixing radix-style.  Distinct
+/ tuples get distinct codes, so `=` over the result groups EXACTLY as grouping
+/ the tuples would -- without ever materialising a tuple.
+qenc:{[c]{[a;v]u:?v;(a*#u)+u?v}/[(#*c)#0;c]}
+/ qcard: product of per-column cardinalities as a float, so the radix mix can be
+/ checked against the exactly-representable integer range; past 2^53 we fall
+/ back to the old boxed-row path rather than risk a collision.
+qcard:{[c]{x*y}/[1.0;{1.0*#?x}'c]}
+qEXACT:9007199254740992.0
+/ qgrp[t;b] -> (key-value columns;group row-index vectors).  Key order is
+/ first-appearance, identical to the =rows[...] this replaces.  Key VALUES come
+/ from indexing the raw columns with each group's first row (`*:'`) -- one
+/ gather per by-column, instead of a flip over every row in the table.
+qgrp:{[t;b]d:+t;bc:d b;g:$[1=#b;=*bc;qcard[bc]<qEXACT;=qenc bc;=rows[b#+t]];iv:value g;(bc@\:*:'iv;iv)}
+qby:{[t;b;a]b:b,();r:qgrp[t;b];kt:+b!r 0;iv:r 1;subs:atr[t]'iv;vt:+(!a)!{[subs;f]f'subs}[subs]'value a;kt!vt}
+xgroup:{[k;t]k:k,();r:qgrp[t;k];kt:+k!r 0;vc:except[cols t;k];+(+kt),vc!{[t;iv;c]((+t)c)@/:iv}[t;r 1]'vc}
 ungroup:{[x]t:unkey x;d:+t;v:value d;m:{`A=@x}'v;cnt:#:'*v@&m;+(!d)!{[cnt;m;c]$[m;raze c;raze cnt#'c]}[cnt]'[m;v]}
 fby:{[fc;g]f:fc 0;d:fc 1;gi:=g;iv:value gi;agg:{[f;d;i]f d@i}[f;d]'iv;@[(#g)#*agg;raze iv;:;raze(#:'iv)#'agg]}
 

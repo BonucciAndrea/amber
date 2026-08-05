@@ -216,7 +216,7 @@ jobs:
         run: |
             cd tests
             chmod +x run_tests.sh
-            tests/run_tests.sh --quick
+            ./run_tests.sh
 
       # ---------------------------------------------------------------
       # 11. Comparative benchmarks

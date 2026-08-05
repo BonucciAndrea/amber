@@ -180,3 +180,31 @@ tickerplant** `hopen`/`u.*` (§5).
    redraw the current line on every keypress (a fragile, previously-regression-prone path in
    this project — see CHANGELOG), not a new `\command`. A prior attempt shipped as a `\hl <expr>`
    one-shot echo command instead and was removed for not matching what "live" means.
+
+
+---
+
+## Known leniencies (accepted, not bugs) — recorded 1.9
+
+Surfaced by the qSQL matrix (`tests/test_qsql.k`) and pinned there with `tk[...]` so a change in
+behaviour shows up as a test failure rather than a silent regression.
+
+- **Unknown `by` key does not raise.** `select t:sum px by nosuchkey from t` groups by nulls
+  instead of rejecting the query the way kdb+ does. Root cause is core dict semantics — `` b#+t``
+  on a missing key yields nulls — so a fix belongs in `qbc`/`sel`'s validation, not in `#`.
+- **A trapped error still renders a diagnostic to stderr.** `.[f;args;handler]` (and `protect`,
+  documented as `.Q.trp`-like) catches the error correctly, but the Rust-style diagnostic has
+  already been printed by the time the handler runs. Scripts that deliberately provoke errors —
+  including this repo's own test suites — have to discard stderr. A proper fix means deferring
+  rendering from error-creation time to the top-level `evs()` loop.
+- **No long-typed infinity literal.** `0w`/`-0w` exist for floats; `0W`/`-0W` do not parse, so
+  the identity elements of `&/`/`|/` over an empty long vector can only be obtained from the
+  primitives themselves.
+- **`5#0#0` promotes byte/narrow-int nulls to long nulls.** `cn[tG]` aliases the long null, so a
+  take from an empty narrow vector widens the element type.
+- **Attribute syntax is `` `sa``/`` `ua``/`` `pa``/`` `ga`` (set) and `` `at`` (get), not kdb's
+  `` `s#``/`` `u#``/`` `p#``/`` `g#``.** Several doc passages still write `s#` informally when
+  describing the sorted attribute; the working syntax is `` `at(`sa 1 2 3)``.
+- **A bare `/` on a line of its own opens a block comment** that runs to the next line starting
+  with `\`, silently truncating the rest of the file with no error. Standard K, but a sharp edge;
+  `tests/harness.k` carries a warning comment about it.

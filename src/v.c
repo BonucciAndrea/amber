@@ -5,9 +5,15 @@ X1(flp,Rt(enl(enl(x)))R_(enl(x))RM(A y=kv(&x);am(x,y))RB(flp(cG(x)))
   P(!t,F(n|!n,A z=aA(m);Fj(m,zA[j]=ii(xA[j],i))I(!zn,zx=mkn(zx))ya=sqz(z))x(0);I(!yn,yx=mkn(yx))y)
   U w=Tw[t]-3;Fj(n|!n,A z=yA[j]=an(m,t);S4(w,F(m,zg=_G(xa)[j]),F(m,zh=_H(xa)[j]),F(m,zi=_I(xa)[j]),F(m|!m,zl=_L(xa)[j])I(TR(t),I(!m,zx=mkn(_R(zx)))yA[j]=sqz(mRa(z)))))
   x(0);I(!n,yx=mkn(yx))y))
-V tilV(V*p,L v,L n,U w){L*a=p,k=G(0x101010101010101ll,0x1000100010001ll,1ll<<32|1,1)[w],d=k<<3-w;v*=k;v+=G(0x706050403020100ll,0x3000200010000ll,1ll<<32,0)[w];
- F((n-1>>3-w)+4&-4,a[i]=v;v+=d)}
-X1(til,RA(K1("{x@'!#'x}",x))Ril(L n=gl(x);n*=n!=-n;aE(MIN(0,n),MAX(0,n)))REBGHIL(K1("{(*a)#'&'x#'1_a:|*\\|x,1}",x))RmM(x(_R(xx)))Ro(val(x))RS(gns(_v(jS(x))))Rs(gns(xv))R_(et(x)))
+// amber: this fills a packed multi-lane counter (w selects 1/2/4/8-byte lanes),
+// so the accumulator is *meant* to carry across lane boundaries and wrap at
+// 64 bits. Done in L that is signed overflow -- undefined behaviour, and UBSan
+// flags it on examples/practice.k. W (unsigned) gives the same bits with
+// defined semantics; the stored value is cast back to L unchanged.
+V tilV(V*p,L v,L n,U w){L*a=p;W k=(W)G(0x101010101010101ll,0x1000100010001ll,1ll<<32|1,1)[w],d=k<<(3-w),q=(W)v;
+ q*=k;q+=(W)G(0x706050403020100ll,0x3000200010000ll,1ll<<32,0)[w];
+ F((n-1>>3-w)+4&-4,a[i]=(L)q;q+=d)}
+X1(til,RA(K1("{x@'!#'x}",x))Ril(L n=gl(x);I(n==NL,n=0)aE(MIN(0,n),MAX(0,n)))REBGHIL(K1("{(*a)#'&'x#'1_a:|*\\|x,1}",x))RmM(x(_R(xx)))Ro(val(x))RS(gns(_v(jS(x))))Rs(gns(xv))R_(et(x)))
 X1(whr,Ril(whr(enl(x)))RA(K1("{$[`A~@x;(,&#'*'x),,'/x@\\:!0|/#'x:o'x;,&x]}",x))Rm(A y=kv(&x);x(x1(Nx(whr(y)))))RE(whr(gZ(x)))R_(et(x))
  RB(U m=xn,n=addfB(xV,m);A y=aI(n);I*r=yV;Mx(F(m+7>>3,C v=xg;W(v,U j=CTZ(v);v&=~(1<<j);*r++=i<<3|j)))Q(r-yI==n);y)
  RGHIL(L m=xn,n=addfZ(0,x);P(n<0||minfZ(0,x)<0,ed(x))C t=tZ(m-!!m);P(t>tI,ez(x))A y=an(n,t);I w=xw-3;

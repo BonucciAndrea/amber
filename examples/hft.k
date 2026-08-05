@@ -7,7 +7,7 @@
 hr:{`0:"";`0:"== ",x," ",(56-#x)#"=";}
 
 hr"1. build a TAQ session (gentq sets globals: trades, quotes)"
-zz:gentq 2000
+gentq 2000
 `0:"trades: ",($#trades),"   quotes: ",$#quotes
 `0:"trades meta (note `s on time and `p on sym):"
 show meta trades

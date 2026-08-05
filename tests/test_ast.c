@@ -6,8 +6,9 @@
  * ast.c is inherently built on Amber's own parser and value representation
  * (pk(), su(), the tu/tv/tw/to/tS/... type tags) -- there is no meaningful
  * "AST of an expression" without Amber's real parser producing it. So this
- * test links against the WHOLE interpreter (every src object file except
- * 0.c, which owns main()) and calls kinit() itself before touching pk()/
+ * test links against the WHOLE interpreter (every src object file, with
+ * 0.c compiled -Dldstatic -- the guard 0.c already wraps main() in -- so it
+ * still supplies `pg` and the non-wasm js_eval() stub but no main()) and calls kinit() itself before touching pk()/
  * ast_cmd(), the same startup 0.c's own main() does.
  *
  * It captures ast_cmd()'s stdout (it prints straight to stdout, like

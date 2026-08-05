@@ -27,6 +27,7 @@
  * up to ARENA_ALIGN so the returned payload is aligned like the slab path. */
 typedef struct OverflowBlock {
     struct OverflowBlock *next;
+    size_t                bytes;   /* payload size, so arena_used() can count it */
     /* payload follows, starting ARENA_ALIGN bytes in */
 } OverflowBlock;
 
@@ -34,6 +35,17 @@ static __thread unsigned char *a_base = 0;  /* slab start                */
 static __thread size_t         a_cap  = 0;  /* slab capacity in bytes    */
 static __thread size_t         a_off  = 0;  /* bump cursor (bytes used)  */
 static __thread OverflowBlock  *a_over = 0; /* head of overflow list     */
+static __thread size_t         a_ovf  = 0;  /* bytes live in overflow blocks */
+static __thread size_t         a_peak = 0;  /* high-water mark since last reset_peak */
+
+/* Re-derive the high-water mark after every hand-out. `arena_used()` alone
+ * cannot serve as a peak gauge because arena_reset() rewinds it to 0 -- any
+ * consumer that samples it after the fact (e.g. \trace) would always read 0.
+ * See arena_peak()/arena_reset_peak() in arena.h. */
+static void note_peak(void) {
+    size_t live = a_off + a_ovf;
+    if (live > a_peak) a_peak = live;
+}
 
 static size_t align_up(size_t n, size_t a) { return (n + (a - 1)) & ~(a - 1); }
 
@@ -55,10 +67,14 @@ void arena_init(size_t capacity) {
         if (capacity <= a_cap) { arena_reset(); return; } /* fits: just rewind */
         arena_free();                                     /* grow: re-reserve  */
     }
+    /* Never drop the overflow list on the floor here: if a previous slab
+     * reservation failed (a_base==0) every arena_alloc() re-enters
+     * arena_init(), and blindly zeroing a_over would leak every tracked
+     * overflow block allocated in between. arena_reset() releases them. */
+    arena_reset();
     a_base = (unsigned char *)aligned_xalloc(capacity);
     a_cap  = a_base ? capacity : 0;
     a_off  = 0;
-    a_over = 0;
 }
 
 void *arena_alloc(size_t bytes) {
@@ -66,8 +82,14 @@ void *arena_alloc(size_t bytes) {
     if (!a_base) arena_init(ARENA_DEFAULT);
 
     size_t off = align_up(a_off, ARENA_ALIGN);
-    if (a_base && off + bytes <= a_cap) {   /* fast path: pure pointer bump */
+    /* `off + bytes <= a_cap` would wrap for a huge `bytes` (reachable on a
+     * 32-bit target such as wasm32, where size_t is 32 bits and an element
+     * count * element width can overflow), silently passing the bounds check
+     * and handing back a short block. Compare against the remaining space
+     * instead -- that form cannot overflow. */
+    if (a_base && off <= a_cap && bytes <= a_cap - off) { /* fast path: pointer bump */
         a_off = off + bytes;
+        note_peak();
         return a_base + off;
     }
 
@@ -76,10 +98,14 @@ void *arena_alloc(size_t bytes) {
      * short allocation. */
     {
         size_t hdr = align_up(sizeof(OverflowBlock), ARENA_ALIGN);
+        if (bytes > (size_t)-1 - hdr) return 0;   /* hdr+bytes would wrap */
         OverflowBlock *b = (OverflowBlock *)aligned_xalloc(hdr + bytes);
         if (!b) return 0;
-        b->next = a_over;
-        a_over  = b;
+        b->next  = a_over;
+        b->bytes = bytes;
+        a_over   = b;
+        a_ovf   += bytes;
+        note_peak();
         return (unsigned char *)b + hdr;
     }
 }
@@ -90,6 +116,7 @@ void arena_reset(void) {
         free(a_over);
         a_over = n;
     }
+    a_ovf = 0;
     a_off = 0;
 }
 
@@ -101,5 +128,10 @@ void arena_free(void) {
     a_off  = 0;
 }
 
-size_t arena_used(void)     { return a_off; }
+/* Bytes handed out and not yet rewound -- slab bump cursor PLUS any live
+ * overflow blocks. Counting only a_off (as this did before) under-reported
+ * every allocation that spilled past the slab. */
+size_t arena_used(void)     { return a_off + a_ovf; }
 size_t arena_capacity(void) { return a_cap; }
+size_t arena_peak(void)     { return a_peak; }
+void   arena_reset_peak(void) { a_peak = a_off + a_ovf; }

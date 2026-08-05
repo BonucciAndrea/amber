@@ -8,14 +8,22 @@ Z S pw(S s)_(W(*s==32,s++)s)                                                    
 Z A1(p1,x&&xn==1?fir(x):x)                                                                          //singleton list to atom
 S pID(S s)_(W(id1(*s),s+=0xe555>>((UC)*s>>4&-2)&3)s)                                                //parse identifier
 W pu(S*p)_(S s=*p;W v=0;C c=*s;W(C09(c),v=10*v+c-'0';c=*++s)*p-s?*p=s,v:NL)                         //parse unsigned long
-L pl(S*p)_(B m=**p=='-';*p+=m;(1-2*m)*pu(p))                                                        //parse long
+L pl(S*p)_(B m=**p=='-';*p+=m;(L)((W)(1-2*m)*pu(p)))                                                        //parse long
 Z L plN(S*p)_(L v=pl(p);!v&&**p=='N'?(*p)++,NL:v)                                                   //parse long (with support for nulls)
-Z L pfu(S*p)_(L v=pu(p);S s=*p;C c=*s;P(c=='w',(*p)++;WFL)P(c=='n',(*p)++;v^NFL)I e=0;              //parse float unsigned
- I(c=='.',c=*++s;W(C09(c),I(v<(1ull<<63)/10,v=10*v+c-'0';e--)c=*++s))
- I(c=='e',s++;e+=pl(&s);P(e<-308,0)P(e>308,WFL))
+// amber: pu() signals "no digits consumed" by returning NL, and pl() then
+// propagates that as a full-range long. Feeding it straight into the int
+// exponent accumulator (`e+=pl(&s)`) is signed overflow -- undefined
+// behaviour reachable from a malformed literal such as `1.5e` or `1.5each`,
+// found by tests/fuzz.py under UBSan. Both the mantissa and the exponent are
+// now normalised before use: a no-digit mantissa reads as 0, and the exponent
+// is accumulated in L and clamped to the +/-309 the power table covers
+// before it is narrowed to I.
+Z L pfu(S*p)_(L v=pu(p);I(v==NL,v=0)S s=*p;C c=*s;P(c=='w',(*p)++;WFL)P(c=='n',(*p)++;v^NFL)I e=0;  //parse float unsigned
+ I(c=='.',c=*++s;W(C09(c),I((W)v<(1ull<<63)/10,v=(L)(10*(W)v+(W)(c-'0'));e--)c=*++s))
+ I(c=='e',s++;L d=pl(&s);I(d==NL,d=0)d+=e;e=(I)MAX(-400ll,MIN(400ll,d));P(e<-308,0)P(e>308,WFL))
  Z F t[309];I(!*t,*t=1;F(308,t[i+1]=10*t[i]))
  *p=s;*(L*)A(e<0?v/t[-e]:v*t[e]))
-L pf(S*p)_(B m=**p=='-';(*p)+=m;L v=(L)m<<63|pfu(p);(*p)+=**p=='f';v)                               //parse float
+L pf(S*p)_(B m=**p=='-';(*p)+=m;L v=(L)((W)m<<63)|pfu(p);(*p)+=**p=='f';v)                               //parse float
 Z A pV(C t,TY(pl)*f)_(L a[1<<9];U n=0;                                                              //parse ints or floats
  W(1,L v=f(&s);P(n>=L(a),ez0())a[n++]=v;S p=pw(s);B(p==s||!num(p))s=p)aV(t,n,a))
 Z A0(pZ,S p=s;W(*p-'0'<2u,p++)                                                                      //parse ints
@@ -49,15 +57,15 @@ Z L ymd2days(L y,L m,L d){L wy=y-(m<=2);L era=(wy>=0?wy:wy-399)/400;L yoe=wy-era
 //   HH:MM[:SS[.mmm]]              -> time atom (ms of day)
 //   YYYY.MM.DD                    -> date atom (days; needs TWO dots, so floats X.Y are untouched)
 //   YYYY.MM.DDD HH:MM:SS.fffffffff-> timestamp atom (ns).  Returns 0 (s unchanged) on no match.
-Z A pTmp(){S p=s;if(!C09(*p))return 0;L a=0;S q=p;while(C09(*q)){a=10*a+(*q-'0');q++;}
- if(*q==':'){q++;L mi=0;while(C09(*q)){mi=10*mi+(*q-'0');q++;}L sc=0,ms=0;
-  if(*q==':'){q++;while(C09(*q)){sc=10*sc+(*q-'0');q++;}if(*q=='.'){q++;I nd=0;while(C09(*q)&&nd<3){ms=10*ms+(*q-'0');q++;nd++;}while(nd<3){ms*=10;nd++;}while(C09(*q))q++;}}
+Z A pTmp(){S p=s;if(!C09(*p))return 0;W a=0;S q=p;while(C09(*q)){a=10*a+(W)(*q-'0');q++;}
+ if(*q==':'){q++;W mi=0;while(C09(*q)){mi=10*mi+(W)(*q-'0');q++;}W sc=0,ms=0;
+  if(*q==':'){q++;while(C09(*q)){sc=10*sc+(W)(*q-'0');q++;}if(*q=='.'){q++;I nd=0;while(C09(*q)&&nd<3){ms=10*ms+(W)(*q-'0');q++;nd++;}while(nd<3){ms*=10;nd++;}while(C09(*q))q++;}}
   s=q;return atm((I)(3600000*a+60000*mi+1000*sc+ms));}
- if(*q=='.'){S q2=q+1;if(!C09(*q2))return 0;L mo=0;while(C09(*q2)){mo=10*mo+(*q2-'0');q2++;}if(*q2!='.')return 0;q2++;if(!C09(*q2))return 0;L dy=0;while(C09(*q2)){dy=10*dy+(*q2-'0');q2++;}
-  L days=ymd2days(a,mo,dy);
-  if(*q2=='D'){q2++;L hh=0;while(C09(*q2)){hh=10*hh+(*q2-'0');q2++;}if(*q2!=':')return 0;q2++;L mi=0;while(C09(*q2)){mi=10*mi+(*q2-'0');q2++;}L sc=0,ns=0;
-   if(*q2==':'){q2++;while(C09(*q2)){sc=10*sc+(*q2-'0');q2++;}if(*q2=='.'){q2++;I nd=0;while(C09(*q2)&&nd<9){ns=10*ns+(*q2-'0');q2++;nd++;}while(nd<9){ns*=10;nd++;}while(C09(*q2))q2++;}}
-   s=q2;return antp(days*86400000000000LL+3600000000000LL*hh+60000000000LL*mi+1000000000LL*sc+ns);}
+ if(*q=='.'){S q2=q+1;if(!C09(*q2))return 0;W mo=0;while(C09(*q2)){mo=10*mo+(W)(*q2-'0');q2++;}if(*q2!='.')return 0;q2++;if(!C09(*q2))return 0;W dy=0;while(C09(*q2)){dy=10*dy+(W)(*q2-'0');q2++;}
+  L days=ymd2days((L)a,(L)mo,(L)dy);
+  if(*q2=='D'){q2++;W hh=0;while(C09(*q2)){hh=10*hh+(W)(*q2-'0');q2++;}if(*q2!=':')return 0;q2++;W mi=0;while(C09(*q2)){mi=10*mi+(W)(*q2-'0');q2++;}W sc=0,ns=0;
+   if(*q2==':'){q2++;while(C09(*q2)){sc=10*sc+(W)(*q2-'0');q2++;}if(*q2=='.'){q2++;I nd=0;while(C09(*q2)&&nd<9){ns=10*ns+(W)(*q2-'0');q2++;nd++;}while(nd<9){ns*=10;nd++;}while(C09(*q2))q2++;}}
+   s=q2;return antp((L)((W)days*86400000000000ULL+3600000000000ULL*hh+60000000000ULL*mi+1000000000ULL*sc+ns));}
   s=q2;return adt((I)days);}
  return 0;}
 Z A pt(C*v)_(C c=*s;                                                                                //parse term

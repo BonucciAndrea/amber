@@ -38,9 +38,19 @@ void   arena_reset(void);
 /* Release the slab and all overflow blocks back to the system. */
 void   arena_free(void);
 
-/* Introspection (bytes currently handed out, and slab capacity). */
+/* Introspection (bytes currently handed out -- slab bump cursor plus any live
+ * overflow blocks -- and slab capacity). */
 size_t arena_used(void);
 size_t arena_capacity(void);
+
+/* High-water mark of arena_used() since the last arena_reset_peak().
+ * arena_reset() deliberately does NOT clear this: a consumer that wants to
+ * know how much scratch an evaluation actually touched has to sample it
+ * after the evaluation has already rewound the slab (this is exactly what
+ * \trace does), so the peak must survive the rewind. Call
+ * arena_reset_peak() immediately before the region you want to measure. */
+size_t arena_peak(void);
+void   arena_reset_peak(void);
 
 #ifdef __cplusplus
 }

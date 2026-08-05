@@ -17,7 +17,7 @@
 hr:{`0:"";`0:"== ",x," ",(56-#x)#"=";}
 
 hr"1. qSQL template (qsql.k)"
-zz:gentq 2000
+gentq 2000
 `0:"select vwap by symbol, where px>100:"
 show sel"select vwap:round[4]wavg[sz;px],n:#px by sym from trades where px>100"
 `0:"update: add a notional column (first 3 rows):"

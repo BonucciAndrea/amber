@@ -1,7 +1,17 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 Z CO W msk[]={0x8080808080808080ll,0x8000800080008000ll,0x8000000080000000ll};
 #define M(o,f,T) ZN V f(CO V*RES a,CO V*RES b,V*RES c,U n){CO T*x=AL(a),*y=AL(b);T*r=AL(c);F(n,Fj(32/SZ(T),*r++=*x++o*y++))}
- M(+,aFF,F)M(*,mFF,F)M(/,dFF,F)M(+,aLL,L)M(+,aII,I)M(+,aHH,H)M(+,aGG,G)
+ M(+,aFF,F)M(*,mFF,F)M(/,dFF,F)
+#undef M
+// amber: the INTEGER add kernels wrap on purpose -- oZZ()/ozZ() below detect
+// the overflow after the fact from the result's sign bits and the caller
+// re-runs one width wider. Signed overflow is undefined behaviour in C
+// though, so the optimiser is entitled to assume it never happens and delete
+// the very check that depends on it (UBSan flags this on examples/graphs.k).
+// Doing the addition in the unsigned counterpart type is defined two's
+// complement wraparound and compiles to the identical instruction.
+#define M(f,T,UT) ZN V f(CO V*RES a,CO V*RES b,V*RES c,U n){CO T*x=AL(a),*y=AL(b);T*r=AL(c);F(n,Fj(32/SZ(T),*r++=(T)((UT)*x++ + (UT)*y++)))}
+ M(aLL,L,W)M(aII,I,U)M(aHH,H,UH)M(aGG,G,UC)
 #undef M
 ZN A amdFF(A x,A y,U f)_(U n=xn;P(n-yn,el(y))A z=MINE(y)?y:aF(n);G(&aFF,0,mFF,dFF)[f-1](xV,yV,zV,n+3>>2);y-z?y(z):z)
 ZN B oZZ(CO W*x,CO W*y,CO W*r,U n,U w)_(x=AL(x);y=AL(y);r=AL(r);W t[4]={};F(((W)n<<w)+31>>5,Fj(4,t[j]|=(*r^*x)&(*r^*y);r++;x++;y++))!!((t[0]|t[1]|t[2]|t[3])&msk[w]))
@@ -12,13 +22,14 @@ Z A mulZZ(A x,A y,U f)_(U n=yn,i=0,w=MAX(xw-3,yw-3);P(xw-3-w,x=ct(tG+w,xR);x(mul
  S4(w,W(i<n,I v=(I)xg*yg;B(v-(G)v)zg=v;i++),
       W(i<n,I v=(I)xh*yh;B(v-(H)v)zh=v;i++),
       W(i<n,L v=(L)xi*yi;B(v-(I)v)zi=v;i++),
-      W(i<n,zl=xl*yl;i++))
+      W(i<n,zl=(L)((W)xl*(W)yl);i++))
  P(i<n,z(0);x=ct(tG+w+1,xR);x(mulZZ(x,ct(tG+w+1,y),f)))y(z))
 
-#define M(f,T) ZN V f(L v,V*RES b,V*RES c,U n){CO T*y=AL(b);T*r=AL(c);F(n,Fj(32/SZ(T),*r++=v+*y++))}
- M(alL,L)M(aiI,I)M(ahH,H)M(agG,G)
+// scalar-plus-vector add: same intentional wrap, same defined-behaviour form.
+#define M(f,T,UT) ZN V f(L v,V*RES b,V*RES c,U n){CO T*y=AL(b);T*r=AL(c);F(n,Fj(32/SZ(T),*r++=(T)((UT)v + (UT)*y++)))}
+ M(alL,L,W)M(aiI,I,U)M(ahH,H,UH)M(agG,G,UC)
 #undef M
-ZN B ozZ(L v,CO W*y,CO W*r,U n,U w)_(r=AL(r);y=AL(y);F(3-w,v|=v<<(8<<w+i))W t[4]={};F(((W)n<<w)+31>>5,Fj(4,t[j]|=(*r^v)&(*r^*y);r++;y++))!!((t[0]|t[1]|t[2]|t[3])&msk[w]))
+ZN B ozZ(L v,CO W*y,CO W*r,U n,U w)_(r=AL(r);y=AL(y);F(3-w,v|=(L)((W)v<<(8<<(w+i))))W t[4]={};F(((W)n<<w)+31>>5,Fj(4,t[j]|=(*r^v)&(*r^*y);r++;y++))!!((t[0]|t[1]|t[2]|t[3])&msk[w]))
 Z A addzZ(L v,A y,U f)_(U n=yn,w=MAX(tZ(v)-tG,yw-3);y=ct(tG+w,y);A z=an(n,yt);G(&agG,ahH,aiI,alL)[w](v,yV,zV,n+(31>>w)>>5-w);
  P(w<3&&ozZ(v,yV,zV,n,w),z(0);y=ct(tG+w+1,y);addzZ(v,y,f))y(z))
 
@@ -26,7 +37,7 @@ Z A mulzZ(L a,A y,U f)_(U n=yn,i=0,w=MAX(tZ(a)-tG,yw-3);y=ct(tG+w,y);A z=an(n,yt
  S4(w,W(i<n,I v=a*yg;B(v-(G)v)zg=v;i++),
       W(i<n,I v=a*yh;B(v-(H)v)zh=v;i++),
       W(i<n,L v=a*yi;B(v-(I)v)zi=v;i++),
-      W(i<n,zl=a*yl;i++))
+      W(i<n,zl=(L)((W)a*(W)yl);i++))
  i<n?mulzZ(a,ct(tG+w+1,z(y)),f):y(z))
 
 Z A modzZ(L m,A y,U f)_(P(!m,y)
@@ -73,7 +84,18 @@ Z A dvdfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);U n=zn+3&-4;SIMD F(n,zf=v/yf)y-z?y(
 Z A dvdFf(A x,F v,U f)_(A z=aF(xn);SIMD F(xn,zf=xf/v)z)
 Z A dvdzZ(L v,A y,U f)_(dvdfF(v,cF(y),f))
 Z A dvdZZ(A x,A y,U f)_(x=cF(xR);x(amdFF(x,cF(y),f)))
-Z A arizz(L a,L b,U f)_(P(f==4,af((F)a/b))az(f==1?a+b:f==3?a*b:f==5?(!a?b:a<0?(b<0?-1-~b/-a:b/-a):(b%a+a)%a):f==6?MIN(a,b):f==7?MAX(a,b):f==8?a<b:f==9?a>b:f==10?a==b:0))
+// amber: scalar-scalar fallback arithmetic. Every step that can involve the
+// long null (0N == LLONG_MIN) is done in the unsigned counterpart type:
+// `-a`, `a+b`, `a*b` and the modulo fix-up all overflow signed range for
+// extreme operands (found by tests/fuzz.py under UBSan, e.g. `2!-0w`), which
+// is undefined behaviour. Same bits, defined semantics -- Amber's integer
+// arithmetic has always been documented as wrapping, not trapping.
+#define NEGW(v) ((L)(0-(W)(v)))
+Z A arizz(L a,L b,U f)_(P(f==4,af((F)a/b))
+ az(f==1?(L)((W)a+(W)b)
+   :f==3?(L)((W)a*(W)b)
+   :f==5?(!a?b:a<0?(b<0?(L)((W)-1-(W)(~b/NEGW(a))):b/NEGW(a)):(L)(((W)((L)((W)(b%a)+(W)a)%a))))
+   :f==6?MIN(a,b):f==7?MAX(a,b):f==8?a<b:f==9?a>b:f==10?a==b:0))
 Z A arizZ(L v,A y,U f)_(A(&addzZ,0,mulzZ,dvdzZ,modzZ,mmmzZ,mmmzZ,cmpzZ,cmpzZ,cmpzZ)[f-1](v,y,f))
 Z A ariZZ(A x,A y,U f)_(P(xn-yn,el(y))A(&addZZ,0,mulZZ,dvdZZ,0,mmmZZ,mmmZZ,cmpZZ,cmpZZ,cmpZZ)[f-1](x,y,f))
 ZN A ariz(A x,A y,U f){S(xtT<<1|ytT,R(0,arizz(gl_(x),gl(y),f))R(1,arizZ(gl_(x),y,f))R(2,P(f==4,ari(x,cF(y)))arizZ(gl(y),xR,f-8<2u?f^8^9:f))R_(ariZZ(x,y,f)))}

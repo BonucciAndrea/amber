@@ -25,7 +25,7 @@ Z A frm(I f,N i,N n)_(L m=lseek(f,0,SEEK_END);P(m<0,eo0())n=MIN(n,MAX(0,m-i));n?
 Z A fr(A x/*1*/,N i,N n)_(Xz(frs(gl(x),i,n))I f=N(o(x,O_RDONLY));P(f<3,frs(f,i,n))I m=fm(f);x=(S_ISDIR(m)?frd:S_ISREG(m)?frm:frs)(f,i,n);close(f);x)              // read
 Z A fws(I f,S s,N n)_(W(n>0,L k=write(f,s,n);P(k<0,eo0())P(!k,au)s+=k;n-=k)au)                                                                                    // write stream
 Z A fwm(I f,S s,N n)_(ftruncate(f,n);V*p=mmap(0,n,PROT_READ|PROT_WRITE,MAP_SHARED,f,0);MC(p,s,n);munmap(p,n);au)                                                  // write through mmap
-Z X2(fw,Ril(I f=gl_(x);My(x=(f<3||!S_ISREG(fm(f))?fws:fwm)(f,yV,yn))x)R_(I f=N(o(xR,O_RDWR|O_CREAT|O_TRUNC));A z=v1c(ai(f),y);f>2&&close(f);z))                   // write
+Z X2(fw,Ril(I f=gl_(x);My(x=(f<3||!S_ISREG(fm(f))?fws:fwm)(f,yV,yn))x)R_(I f=N(o(xR,O_RDWR|O_CREAT|O_TRUNC));A z=v1c(ai(f),y);I(f>2,close(f))z))                   // write
 ZN A dle()_(C*e=dlerror();I(e,os(e);os("\n"))eo0())
 A1(opn,Xz(x)ai(N(o(x,O_RDWR|O_CREAT))))                                                                                     // <s
 A cls(L n)_(close(n);au)                                                                                                    // >i
@@ -95,7 +95,6 @@ A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);U n=_N(dat);I n
 //  gb,ge long group-slice [base,end) in q per trade row (length nt)
 // returns list of nt-length result columns (tF for avg/float-source, tL otherwise).
 // O(log g) range probe per row + one contiguous slice sweep; no per-row K objects.
-Z U wjlb(CO L*RES p,U lo,U hi,L v){while(lo<hi){U m=(lo+hi)>>1;if(p[m]<v)lo=m+1;else hi=m;}return lo;}//first i in [lo,hi): p[i]>=v
 A wjc(A x){
  P(_t(x)-tA||_n(x)-7,et(x))
  A*e=(A*)_V(x);
@@ -116,7 +115,7 @@ A wjc(A x){
   for(U i=0;i<nt;i++){
    L b=GB[i],en=GE[i];U lo,hi;
    if(b==NL||en==NL||en<=b){lo=0;hi=0;}
-   else{lo=wjlb(T,(U)b,(U)en,W0[i]);hi=wjlb(T,(U)b,(U)en,W1[i]+1);}
+   else{lo=amlb(T,(U)b,(U)en,W0[i]);hi=amlb(T,(U)b,(U)en,W1[i]+1);}
    U m=hi-lo;
    if(c==6){ol[i]=(L)m;continue;}
    if(flo){F r;

@@ -1,5 +1,19 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 
+// amber: NaN-aware float compare for `~` (match).
+// IEEE gives no single bit pattern for "not a number": the `0n` LITERAL is the
+// positive quiet NaN 0x7ff8..., but every NaN the FPU *computes* (0%0, 0w-0w,
+// avg of an empty vector, ...) is the default NaN, which on x86-64 has the
+// sign bit set (0xfff8...). A plain memcmp therefore reported
+//   (0%0)~0n  ->  0b
+// even though both sides print as "0n" and both answer 1b to `^` (is-null),
+// so there was no way to write a working equality test against a computed
+// float null. K's `~` is "match", and a null matches a null, so compare
+// float payloads value-wise with all NaNs treated as one value. Only reached
+// when the byte-wise fast path has already failed, so equal data still costs
+// exactly one memcmp.
+Z B mtcF(CO F*a,CO F*b,U n){F(n,F u=a[i],v=b[i];I(u!=v&&!(u!=u&&v!=v),return 0))return 1;}
+
 NI B mtc_(A x,A y/*00*/)_(
  P(x==y,1)
  P(xt==yt&&((1<<ti|1<<tc|1<<ts|1<<tu|1<<tv|1<<tw|1<<tx)&1<<xt),xv==yv)
@@ -8,7 +22,9 @@ NI B mtc_(A x,A y/*00*/)_(
  YE(mtc_(y,x))
  P(xtZ&&ytZ&&xt-yt&&xn==yn,C t=MAX(xt,yt);x=ct(t,xR);y=ct(t,yR);x(y(!memcmp(xV,yV,((W)xn<<xw)+7>>3))))
  P(xt-yt||xtP||(xtr&&xE-yE)||xn-yn,0)
- P(!xtR||(LH(tB,xt,tS)&&xt==yt&&xn==yn),!memcmp(xV,yV,((W)xn<<Tw[xt])+7>>3))
+ P(!xtR||(LH(tB,xt,tS)&&xt==yt&&xn==yn),
+   B e=!memcmp(xV,yV,((W)xn<<Tw[xt])+7>>3);
+   e||!(xtf||xtF)?e:mtcF(xV,yV,xtf?1u:xn))
  F(xn|!xn,P(!mtc_(xa,ya),0))1)
 
 A2(mtc,/*01*/y(ai(mtc_(x,y))))

@@ -42,7 +42,7 @@ hd"8. sorted uniform sample  ->  linear CDF"
 plot (asc 300?1.0;100;12)
 
 / ---- 5. financial series (simulated ticks) --------------------------------
-gentq 6000
+zz:gentq 6000
 px:trades`px
 hd"9. AAPL trade prices"
 plot (100_px;110;16)

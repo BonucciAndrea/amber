@@ -8,7 +8,7 @@
 \l amber.k
 \l fin.k
 
-gentq 5000                                       / sets globals: trades, quotes
+zz:gentq 5000                                        / sets globals: trades, quotes
 
 / trailing window: from WIN ms before each trade, up to the trade time itself.
 WIN:60000                                        / 60-second look-back

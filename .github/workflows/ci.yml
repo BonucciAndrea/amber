@@ -33,7 +33,9 @@ jobs:
         run: cc --version || clang --version || gcc --version
 
       - name: Build
-        run: ./build.sh
+        run: |
+          chmod +x build.sh
+          ./build.sh
 
       - name: Test suite
         run: |
@@ -84,7 +86,9 @@ jobs:
             | xargs -0 sed -i 's/\r$//'
 
       - name: Build
-        run: ./build.sh
+        run: |
+          chmod +x build.sh
+          ./build.sh
 
       - name: Test suite
         run: |

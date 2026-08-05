@@ -15,10 +15,11 @@ hr"setting & reading attributes"
 hr"sorted / parted => binary-search find (O(log n))"
 v:asc 2000000?9999999
 `0:"attribute: ",$`at v
-`0:"v ? 1234567 -> ",$v?1234567
+needle:v 1234567                       / a value we KNOW is in v (picked from v itself)
+`0:"v ? needle  -> ",$v?needle
 
 hr"grouped attribute + a group index give O(1) per-key row access"
-gentq 100000
+zz:gentq 100000
 `0:"trades sym attribute (set by gentq): ",$`at trades`sym
 g:bysym trades
 `0:"rows for `AAPL (O(1) via index): ",$#symrows[trades;g;`AAPL]

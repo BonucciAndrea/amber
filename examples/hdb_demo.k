@@ -13,7 +13,7 @@
 / own file so extended.k stays safe to run in-browser (see extended.k's own
 / header note). Run natively:  ./amber examples/hdb_demo.k
 / ============================================================================
-gentq 2000
+zz:gentq 2000
 hr:{`0:"";`0:"== ",x," ",(56-#x)#"=";}
 
 hr"on-disk data (hdb.k)"

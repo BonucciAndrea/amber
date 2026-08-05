@@ -21,13 +21,15 @@ show meta t
 hr"sorted attribute makes search O(log n)"
 v:asc 1000000?100000000
 p["attribute of v  = ";`at v]
-p["v ? 42 999      = ";v?42 999]
+needle:v 42 999                        / two values we KNOW are in v (picked from v itself)
+p["v ? needle      = ";v?needle]
 
 hr"group-by aggregate -> keyed table"
 show qby[t; `sym; `tot`n!({sum x`qty};{#x})]
 
-hr"a keyed table"
-show xkey[`sym; t]
+hr"a keyed table (key must be unique; xkey keeps the LAST row per key)"
+u:([]id:1 2 3 4; sym:`a`b`c`d; px:10 20 30 40; qty:5 6 7 8)
+show xkey[`id; u]
 
 hr"strings"
 `0:"upper           = ",upper"amber"

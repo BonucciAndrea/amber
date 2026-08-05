@@ -230,6 +230,7 @@ AMBER_THREADS=8 ./amber examples/peach.k   # multi-core speedup demo (serial vs 
 ./amber bench.k             # attribute speed benchmark
 ./amber test.k              # core suite (163); also test-fin.k (35) + test-ext.k (79)
 tests/run_tests.sh          # EVERYTHING: build + all K suites + C unit tests + fuzz pass
+./amber tests/test_matrix.k # the suites are self-locating - run them from any directory
 tests/run_tests.sh --asan   # ... and re-run it all under AddressSanitizer + UBSan
 bash bench/run.sh           # cross-engine sanity + speed (Amber vs numpy/pandas/…; see BENCHMARKS.md)
 ```
@@ -279,6 +280,22 @@ Turn it on for a session and leave it: it costs one `getenv` per error and never
 success.
 
 ---
+
+### Turning the report off
+
+The diagnostic is rendered when the error is *created*, so code that catches an error with
+`.[f;args;handler]` still sees it on stderr. Since **1.9** that is switchable at runtime —
+useful for anything that provokes errors on purpose (a test suite, `protect`, a retry loop):
+
+```
+prev:`diag 0        / suppress the report, returns the previous setting (1)
+.[{1+`a};,0;{"caught"}]     / no output at all
+`diag prev          / restore
+```
+
+The compact `'type` caret line is not suppressed — it is buffered and still handed to the trap
+handler and to `` `err``, so a caught error can always be inspected. `AMBER_DIAG=0` in the
+environment still works and seeds the initial value.
 
 ## REPL diagnostics (`\v` · `\ast` · `\trace`)
 
@@ -685,9 +702,9 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 | `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` `tick.k` | modules (auto-loaded) |
 | `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `peach.k` · `wj.k` · `graphs.k` · … |
 | `test.k` `test-fin.k` `test-ext.k` | legacy assertion suites (163 + 35 + 79) |
-| `tests/harness.k` | shared assertion harness — `t` (value), `tv` (trapped expression), `te` (must-raise), `tk` (must-not-raise), `hreport` |
-| `tests/test_matrix.k` | **308-case combinatorial matrix**: every primitive × every element type × sizes 0 / 1 / 10 / 100 000+ (crossing the SIMD and `PAR_THRESHOLD` boundaries), asserted as invariants (shape, algebraic identity, vector-kernel-vs-scalar-reference) rather than frozen literals |
-| `tests/test_qsql.k` | **78-case qSQL matrix**: the full `select`/`exec`/`update`/`delete` clause lattice, multi-key `by`, empty / single-row / heavily-duplicated tables, the bare-qSQL rewriter, and malformed queries asserted to raise cleanly |
+| `tests/harness.k` | shared assertion harness — `t` (value), `tv` (trapped expression), `te` (must-raise), `tk` (must-not-raise), `hexpect` (assertion-count guard), `hreport` |
+| `tests/test_matrix.k` | **309-case combinatorial matrix**: every primitive × every element type × sizes 0 / 1 / 10 / 100 000+ (crossing the SIMD and `PAR_THRESHOLD` boundaries), asserted as invariants (shape, algebraic identity, vector-kernel-vs-scalar-reference) rather than frozen literals |
+| `tests/test_qsql.k` | **94-case qSQL matrix**, written in the **bare `select … from t` syntax you actually type** (run through the same `qrw` rewrite the REPL applies): the full `select`/`exec`/`update`/`delete` clause lattice, multi-key `by`, empty / single-row / heavily-duplicated tables, and malformed queries asserted to raise cleanly |
 | `tests/fuzz.py` | malformed-input & deep-nesting crash fuzzer — asserts a clean K error, never a signal or a hang |
 | `tests/run_tests.sh` | runs all of the above (`--asan` re-runs everything under ASan + UBSan) |
 | `tests/*.c` | standalone C test harnesses: `test_simd.c`/`test_parallel.c` (no Amber dependency), `test_ast.c` (links the full interpreter — ast.c is inherently built on Amber's real parser) |

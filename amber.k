@@ -39,8 +39,8 @@ xlog:{(`ln y)%`ln x}
 round:{[d;x]p:*/d#10;(_0.5+x*p)%p}
 
 / ---- aggregations ----------------------------------------------------------
-sum:{$[0=#x;0;+/x]}
-prd:{$[0=#x;1;*/x]}
+sum:{$[0=#x;$[`F=@x;0.0;0];+/x]}       / empty: keep the float type (+/ already does)
+prd:{$[0=#x;$[`F=@x;1.0;1];*/x]}       / empty: keep the float type
 min:{&/x}
 max:{|/x}
 avg:{(+/x)%#x}

@@ -7,9 +7,10 @@
 `-Wall -Wextra` warning triage, an AddressSanitizer + UndefinedBehaviorSanitizer build run over
 every suite and example, and a purpose-built malformed-input fuzzer (`tests/fuzz.py`).
 
-**Result:** 24 defects fixed, 6 dead/duplicated code items removed, version unified at 1.9,
-386 new test assertions added on top of the existing 198, and every suite passes clean under
-ASan + UBSan with no leaks and no crashes across 1 629 fuzz cases.
+**Result:** 26 defects fixed, 6 dead/duplicated code items removed, version unified at 1.9,
+403 new test assertions added on top of the existing 198, and every suite passes clean under
+ASan + UBSan with no leaks and no crashes across 1 629 fuzz cases. The suites are
+mutation-checked (§5.1): deliberately reintroducing each fixed bug turns them red.
 
 ---
 
@@ -19,8 +20,8 @@ ASan + UBSan with no leaks and no crashes across 1 629 fuzz cases.
 |---|---|---|
 | `./amber test.k` | 163 pass | 163 pass |
 | `./amber test-fin.k` | 35 pass | 35 pass |
-| `tests/test_matrix.k` | — | **308 pass** (new) |
-| `tests/test_qsql.k` | — | **78 pass** (new) |
+| `tests/test_matrix.k` | — | **309 pass** (new) |
+| `tests/test_qsql.k` | — | **94 pass** (new) |
 | `tests/test_simd.c` / `test_parallel.c` | not wired into any runner | pass, wired |
 | `tests/test_ast.c` | did not link as documented | pass, wired |
 | UBSan diagnostics on the suites + examples | **27 distinct sites** | 0 |
@@ -199,6 +200,24 @@ projection ignored the grouping entirely and returned the ungrouped table. `qspl
 position-0 case, and an empty projection now aggregates every non-key column with `last`,
 matching q.
 
+**C6 — `sum`/`prd` of an empty float vector returned an integer.** `amber.k`
+The wrappers short-circuit an empty argument to the literal `0`/`1`, discarding the float type
+that the underlying reductions get right (`+/0#0.0` is `0.0`, but `sum 0#0.0` was `0`). Surfaced
+by the qSQL suite as `select t:sum px from none` producing an int column. Both wrappers now
+return `0.0`/`1.0` for a float argument.
+
+**C7 — a caught error still splashed a full diagnostic across stderr.** `src/e.c`, `src/a.c`
+Amber renders its Rust-style report at error **creation** time, so `.[f;args;handler]` — and
+`protect`, documented as `.Q.trp`-like — had already printed the whole thing by the time the
+handler ran. Correct for an interactive line, wrong for anything that provokes errors on purpose:
+the new test suites' ~35 must-raise cases produced ~35 full-colour error blocks on a run that
+passed cleanly, which made a working suite look catastrophically broken. Rather than defer
+rendering (which would change what an interactive line prints), 1.9 adds a runtime switch:
+`` `diag 0`` suppresses the report and returns the previous setting, `` `diag 1`` restores it.
+The compact caret text is untouched — still buffered, still handed to the handler and to
+`` `err``. `tests/harness.k` uses it, so the suites are silent on success and still report the
+error kind on any unexpected FAIL.
+
 ### 4.4 System diagnostics (`\trace`, `\ast`)
 
 **D1 — "Arena peak" was always `0 B`.** `src/trace.c`, `src/arena.{c,h}`
@@ -245,10 +264,52 @@ grammar are covered by assertion in `tests/test_matrix.k` and `tests/test_qsql.k
 | file | what it does |
 |---|---|
 | `tests/harness.k` | shared assertion harness: `t` (value), `tv` (expression evaluated **inside** the trap), `te` (must raise), `tk` (must not raise), `hreport`. Every assertion is trapped, so a failing or throwing case can never abort a suite or hide the cases after it |
-| `tests/test_matrix.k` | **308 cases.** Every primitive against every element type (Long, Float, Boolean, Char, Symbol, nested list, dict, table) at sizes 0, 1, 10 and 100 000+, including 99 999 / 100 000 / 100 001 / 250 000 to straddle `PAR_THRESHOLD`. Eleven groups: shape invariants, algebraic identities, vector-kernel-vs-scalar-reference agreement, empty/singleton, special values (`0N` `0n` `0w` `-0w` NaN), sort/distinct/group/index, take/drop/slice, type mismatches that must raise, dictionaries, nested lists, compound pipelines |
-| `tests/test_qsql.k` | **78 cases.** The full `select`/`exec`/`update`/`delete` clause lattice, multi-key `by`, aggregations over empty / single-row / heavily-duplicated (1 000-row, 2-key) tables, the functional `qexec` form, the bare-qSQL rewriter `qrw`, and 17 malformed queries asserted to raise cleanly |
+| `tests/test_matrix.k` | **309 cases.** Every primitive against every element type (Long, Float, Boolean, Char, Symbol, nested list, dict, table) at sizes 0, 1, 10 and 100 000+, including 99 999 / 100 000 / 100 001 / 250 000 to straddle `PAR_THRESHOLD`. Eleven groups: shape invariants, algebraic identities, vector-kernel-vs-scalar-reference agreement, empty/singleton, special values (`0N` `0n` `0w` `-0w` NaN), sort/distinct/group/index, take/drop/slice, type mismatches that must raise, dictionaries, nested lists, compound pipelines |
+| `tests/test_qsql.k` | **94 cases,** written in the bare `select … from t` syntax. The full `select`/`exec`/`update`/`delete` clause lattice, multi-key `by`, aggregations over empty / single-row / heavily-duplicated (1 000-row, 2-key) tables, the functional `qexec` form, the bare-qSQL rewriter `qrw`, and 17 malformed queries asserted to raise cleanly |
 | `tests/fuzz.py` | malformed-input and deep-nesting crash fuzzer; runs each child in a throwaway directory so it cannot litter the tree |
 | `tests/run_tests.sh` | one entry point: build → all K suites → the three C unit tests → fuzz. `--asan` rebuilds under ASan + UBSan and re-runs everything |
+
+### 5.1 Suite integrity — three defects in the tests themselves
+
+The first cut of these suites had four problems that made them unreliable, all now fixed:
+
+1. **They only ran from the repo root.** `\l amber.k` resolves against the *current working
+   directory*, so `amber /path/to/tests/test_matrix.k` died with a bare `'io`. Each suite now
+   derives the repo root from its own script path (`` `argv 1``), the same trick `repl.k` uses.
+2. **42 of `test_qsql.k`'s 93 cases silently never ran — and it printed "ALL TESTS PASSED".**
+   In K, `f [a;b]` **with a space** is not a call: the parser reads `[a;b]` as a bracketed
+   statement block and quietly builds a projection that is then thrown away. No error, no
+   output. The suites now call `hexpect[n]` to assert exactly how many assertions were recorded,
+   which catches any silently skipped block regardless of cause.
+3. **The run looked catastrophic even when it passed.** ~35 deliberate must-raise cases each
+   printed a full Rust-style diagnostic to stderr, because Amber renders at error-creation time
+   (C7). Fixed at the engine level with the new `` `diag`` switch, which `tests/harness.k` now
+   uses; the suites print their summary and nothing else.
+4. **One throwing expression aborted the whole file.** `t[tag; got; want]` evaluates `got` in the
+   caller, outside the trap — so a genuinely broken engine made the suite print *no report at
+   all*. All 98 standalone cases were converted to `tv[tag;"expr";want]`, which evaluates inside
+   the trap; suites also `exit 1` on failure so status can be gated on.
+
+**Mutation check.** To prove the suites are not vacuous, each fixed defect was reintroduced and
+the suites re-run:
+
+| mutation | detected |
+|---|---|
+| revert `deltas` empty guard (`amber.k`) | `emptyDeltas` FAIL |
+| revert `med` empty → `0.0` (`amber.k`) | `emptyMed` FAIL |
+| revert `sum` float-empty type fix (`amber.k`) | `emptyAggVal` FAIL |
+| revert `qselect` multi-aggregate fix (`amber.k`) | `selTwoAgg` FAIL |
+| revert `select by sym from t` fix (`qsql.k`) | `selByNoProj`, `selByCount`, `byOnly` FAIL |
+| revert NaN-aware match (`src/o.c`) | `emptyAvg`, `nanFromInf`, `zeroOverZero` FAIL — and the message reads `got<0n> want<0n>`, which is precisely the bug |
+| off-by-one in the i64 add kernel (`src/2.c`) | 13 FAIL across sizes 1, 10 and 100 000 (all three code paths) |
+| reintroduce the `f [a;b]` space bug in one call | `assertionCount` FAIL |
+
+Failure output stays diagnosable despite the quiet mode — e.g. reverting the `deltas` fix gives:
+
+```
+309 tests run, 1 failures
+  emptyDeltas: FAIL raised: 'length  <-  deltas 0#0
+```
 
 **Design note.** The matrix asserts *invariants* — shape and type preservation, algebraic
 identities, agreement between the vectorised C kernel and a scalar K reference, and stability of
@@ -271,11 +332,8 @@ up as a test failure, and written up in `docs/MISSING.md`:
 1. **An unknown `by` key does not raise** — `select t:sum px by nosuchkey from t` groups by nulls.
    Root cause is core dict semantics (`` b#+t`` on a missing key yields nulls), so a fix belongs
    in `sel`/`qbc` validation, not in `#`.
-2. **A trapped error still renders a diagnostic to stderr.** `.[f;args;handler]` (and `protect`,
-   documented as `.Q.trp`-like) catches the error correctly, but the Rust-style diagnostic has
-   already been printed by the time the handler runs. Scripts that deliberately provoke errors —
-   including these suites — must discard stderr. A proper fix means deferring rendering from
-   error-creation time to the top-level `evs()` loop: a larger change than this audit's brief.
+2. ~~A trapped error still renders a diagnostic to stderr.~~ **Fixed** — see C7: the new
+   `` `diag`` runtime switch. Left in this list only to note that it is no longer a limitation.
 3. **No long-typed infinity literal** (`0W`/`-0W` do not parse; `0w`/`-0w` are float-only).
 4. **`5#0#0` widens narrow-int nulls to long nulls** — `cn[tG]` aliases the long null.
 5. **Attribute syntax is `` `sa``/`` `ua``/`` `pa``/`` `ga`` + `` `at``**, not kdb's `` `s#`` etc.
@@ -302,8 +360,8 @@ Final run on this checkout:
 ```
 test.k               163 tests run, 0 failures
 test-fin.k            35 tests run, 0 failures
-tests/test_matrix.k  308 tests run, 0 failures
-tests/test_qsql.k     78 tests run, 0 failures
+tests/test_matrix.k  309 tests run, 0 failures
+tests/test_qsql.k     94 tests run, 0 failures
 tests/test_simd.c    PASS      tests/test_parallel.c  PASS      tests/test_ast.c  PASS
 fuzz: 1629 cases, 0 crashes, 0 hangs
 ALL SUITES PASSED

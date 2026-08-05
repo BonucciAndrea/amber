@@ -10,6 +10,9 @@
 # Exit status is 0 iff every suite reports "0 failures" and the fuzzer finds
 # no crashes or hangs.
 set -u
+# The K suites locate their own modules from `argv 1 and run from any cwd; this
+# cd is only so build.sh, the C unit tests and the o/ scratch dir land in the
+# repo root.
 cd "$(dirname "$(readlink -f "$0")")/.."
 ASAN=0; QUICK=0
 for a in "$@"; do case "$a" in --asan) ASAN=1;; --quick) QUICK=1;; esac; done
@@ -20,10 +23,14 @@ run_k(){ # run_k <binary> <script> <label>
   # Amber renders a diagnostic to stderr even for errors that .[f;a;h] goes on
   # to trap, and the suites deliberately provoke many such errors (te[...]), so
   # stderr is kept aside and only shown when the suite actually fails.
-  err=$(mktemp); out=$("$1" "$2" 2>"$err")
+  err=$(mktemp); out=$("$1" "$2" 2>"$err"); rc=$?
   echo "$out" | grep -vE '^(simd|par):'
-  if echo "$out" | grep -Eq '0 failures'; then echo "  -> PASS ($3)"
-  else echo "  -> FAIL ($3)"; sed -n '1,40p' "$err"; fail=1; fi
+  # Three independent gates: the suite must exit 0, it must actually print a
+  # report (a suite that dies mid-file prints nothing at all), and that report
+  # must say 0 failures.
+  if [ "$rc" = 0 ] && echo "$out" | grep -Eq 'tests run' && echo "$out" | grep -Eq '0 failures'
+  then echo "  -> PASS ($3)"
+  else echo "  -> FAIL ($3) rc=$rc"; sed -n '1,40p' "$err"; fail=1; fi
   rm -f "$err"
 }
 
@@ -77,12 +84,12 @@ if [ "$ASAN" = 1 ]; then
   export ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=print_stacktrace=1
   for s in $SUITES; do
     say "$s (asan+ubsan)"
-    out=$(o/san/amber "$s" 2>&1)
+    out=$(o/san/amber "$s" 2>&1); rc=$?
     echo "$out" | grep -vE '^(simd|par):' | tail -8
     if echo "$out" | grep -Eq 'runtime error:|AddressSanitizer:|LeakSanitizer:'; then
       echo "  -> FAIL (sanitizer diagnostics above)"; fail=1
-    elif echo "$out" | grep -Eq '0 failures'; then echo "  -> PASS"
-    else echo "  -> FAIL"; fail=1; fi
+    elif [ "$rc" = 0 ] && echo "$out" | grep -Eq '0 failures'; then echo "  -> PASS"
+    else echo "  -> FAIL rc=$rc"; fail=1; fi
   done
   say "fuzz under sanitizers"
   if python3 tests/fuzz.py --amber o/san/amber --cases 800 --timeout 30; then echo "  -> PASS"

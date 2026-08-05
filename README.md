@@ -593,29 +593,56 @@ arrow.import p                      / (schemaAddr; arrayAddr) -> Amber table
 ## Comparative benchmark query files
 
 `bench/run_comparative.py` (see [docs/BENCHMARKS.md §5](docs/BENCHMARKS.md) for the live table,
-refreshed on every push by CI) times Amber against DuckDB, CBQN and ngn/k on three workloads —
-vector sum, vector arithmetic + a tacit EMA, and columnar group-by. Each engine runs its **own**
-query file (`bench/queries/amber_<id>.k` vs `bench/queries/k_<id>.k`, plus `duckdb_<id>.sql` /
-`bqn_<id>.bqn`) — Amber is never scored on a plain ngn/k script reused as-is. Every `amber_*.k`
-file's header comment documents exactly what was tried and measured, including the dead ends:
+refreshed on every push by CI) times **ten engines** on four workloads. The workloads, the data
+model and the fairness rules are specified once, in **[`bench/SPEC.md`](bench/SPEC.md)**; every
+engine implements that document and nothing else.
 
-* **vecsum** — `peach`-chunked parallel summation was tried and measured *slower* (fork/IPC
-  overhead of 30–130ms dwarfs the plain fold's 3–6ms at this size), so the direct
-  `+/!10000000` is what actually runs.
-* **vecarith** — the EMA recurrence is rewritten via the exact `x+a*(y-x)` lerp identity
-  (verified bit-for-bit identical to `a*y+(1-a)*x`) and its temporaries are kept unnamed so the
-  arena reclaims them immediately — a real, correctness-preserving ~10–15% win.
-* **groupby** — bypasses the qSQL `sel"select … by … from …"` layer (400–800ms, dominated by
-  `qwhere`'s unconditional full-table mask-and-copy even with no `where`) for the direct `=`/`@`
-  group-and-gather idiom (~30–40ms). A sorted + `` `pa`` (parted-attribute) variant using the
-  attribute-accelerated `?` binary search was also tried and measured *slower* — sorting
-  1,000,000 rows up front costs more than the single hashed `=` pass it would replace, since
-  there are only 10 groups.
+| engine | file | peer group |
+|---|---|---|
+| C (`gcc -O3 -march=native`) | `bench/queries/c_bench.c` | the floor everything is measured against |
+| Amber (array primitives) | `bench/queries/amber_bench.k` | ngn/k · CBQN · J · Uiua |
+| Amber (qSQL layer) | `bench/queries/amberq_bench.k` | DuckDB SQL |
+| ngn/k | `bench/queries/k_<id>.k` | array primitives |
+| CBQN | `bench/queries/bqn_<id>.bqn` | array primitives |
+| J | `bench/queries/j_<id>.ijs` | array primitives |
+| Uiua | `bench/queries/uiua_<id>.ua` | array primitives |
+| NumPy | `bench/queries/numpy_bench.py` | array primitives |
+| Julia | `bench/queries/julia_bench.jl` | scalar loops (JIT) |
+| DuckDB | `bench/queries/duckdb_<id>.sql` | query layer |
 
-`bench/run_comparative.py` also runs a numerical-parity check before timing anything: it runs
-both engines' query files once and compares their printed output, so a speed win can never
-silently also change the answer — surfaced on stderr and as a note at the top of the generated
-Markdown table.
+Workloads: **vector arithmetic + boolean masking**, **reductions** (sum · max · dot over 10M
+elements), **group-by aggregation** (100 groups over 10M rows), and an **inner join** (1M left
+rows against 1,000 sparse keys).
+
+**How fairness is enforced, not just claimed.** Every answer in this suite is an integer that
+fits in float64 exactly, and every sum is over such integers, so the result is independent of
+summation order — SIMD pairwise, Kahan-compensated and naive left-fold summation all produce the
+identical bit pattern. The harness therefore compares answers **exactly** against the C
+reference and prints **WRONG** in place of a time for any engine that disagrees. Each engine also
+emits a checksum of its *input* data, so a divergence in the generator is caught separately
+(**BADDATA**). You cannot win a cell in this table by computing something cheaper.
+
+Two shortcuts the previous suite contained, both now removed and documented in `SPEC.md`:
+
+* **`+/!10000000` is O(1) in Amber.** `src/3.c`'s `arf` constant-folds a sum over a *range* into
+  the closed form `n(n-1)/2`. The old `vecsum` benchmark was exactly that expression, so Amber
+  "won" it by never touching 10M elements while every other engine ran a real reduction. All
+  data is now materialised before the clock starts.
+* **A dense-key "join" is just an array index.** With right keys `0..K-1`, every array language
+  answers the join with a single gather while DuckDB still builds a hash table. Right keys are
+  now sparse and unsorted, forcing a genuine key lookup everywhere.
+
+**Amber is reported twice, on purpose.** `Amber` is array-primitive code — the fair peer of
+ngn/k, CBQN, J and Uiua. `Amber qSQL` routes the same workloads through the `select … by … from`
+layer — the fair peer of DuckDB's SQL planner. Publishing only the faster of the two would mean
+picking whichever comparison flatters Amber; the gap between the rows *is* the query layer's
+overhead and is meant to be visible.
+
+**Timing excludes startup.** Engines that can time their own kernel (Amber, C, NumPy, Julia,
+DuckDB) do so with a monotonic clock after warm-up passes, and the harness uses that number
+directly. Engines with no usable in-language clock (ngn/k, CBQN, Uiua, J) are measured as
+*total process time − a measured startup baseline*. The results table labels which mode produced
+each cell, so the two are never silently mixed.
 
 **Known lexer quirk hit while writing these files:** a `.k` comment line containing *only* a
 bare `/` (no trailing space or text) silently truncates parsing of everything after it, with no

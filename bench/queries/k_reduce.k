@@ -23,9 +23,6 @@ vr:2.0*0.0+!KK
 kl:kr KK!M#hh
 vl:M#px
 CHK:(+/pa)+3*+/pb
-/ !(=v) yields keys in first-appearance order, NOT sorted: weight by the key
-/ itself, never by position (this exact mistake was caught cross-engine).
-d:=gk
-`0:"BENCH groupby"
+`0:"BENCH reduce"
 `0:"CHECK ",$CHK
-`0:"ANSWER ",$+/(1.0+0.0+!d)*{+/px x}'. d
+`0:"ANSWER ",$(+/px)+(|/px)++/px*py

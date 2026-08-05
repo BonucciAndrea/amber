@@ -172,19 +172,19 @@ _Median of 5 timed runs after 2 warm-up passes. Kernel time only — process sta
 
 | Benchmark | C (-O3) | Amber | Amber qSQL | ngn/k | CBQN | J | Uiua | NumPy | Julia | DuckDB |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M | 11.85 | 74.43 | 90.43 | _not installed_ | 60.18 | _not installed_ | _not installed_ | 66.62 | _not installed_ | _not installed_ |
-| Reductions — `sum + max + dot`, 10M elements | 32.48 | 51.13 | 108.83 | _not installed_ | 13.23 | _not installed_ | _not installed_ | 16.62 | _not installed_ | _not installed_ |
-| Group-by aggregation — 100 groups over 10M rows | 11.78 | 212.91 | 331.73 | _not installed_ | 80.88 | _not installed_ | _not installed_ | 15.89 | _not installed_ | _not installed_ |
-| Inner join — 1M left rows against 1,000 sparse keys | 1.33 | 5.66 | 11.80 | _not installed_ | 3.90 | _not installed_ | _not installed_ | 22.89 | _not installed_ | _not installed_ |
+| Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M | 9.11 | 50.40 | 64.83 | 301.40 | 34.97 | 139.23 | 833.66 | 34.50 | 9.30 | 29.00 |
+| Reductions — `sum + max + dot`, 10M elements | 25.36 | 25.02 | 67.64 | 276.73 | 4.90 | 123.11 | 760.95 | 10.35 | 22.85 | 38.00 |
+| Group-by aggregation — 100 groups over 10M rows | 6.82 | 69.67 | 131.68 | 312.87 | 36.93 | 180.86 | 1,726.78 | 13.11 | 6.54 | 19.00 |
+| Inner join — 1M left rows against 1,000 sparse keys | 0.95 | 4.70 | 11.83 | 409.50 | 2.43 | 109.69 | 769.68 | 13.17 | 11.73 | 10.00 |
 
 Relative to the C baseline (lower is better; 1.00× means it matched plain C):
 
 | Benchmark | C (-O3) | Amber | Amber qSQL | ngn/k | CBQN | J | Uiua | NumPy | Julia | DuckDB |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M | 1.00× | 6.28× | 7.63× | — | 5.08× | — | — | 5.62× | — | — |
-| Reductions — `sum + max + dot`, 10M elements | 1.00× | 1.57× | 3.35× | — | 0.41× | — | — | 0.51× | — | — |
-| Group-by aggregation — 100 groups over 10M rows | 1.00× | 18.08× | 28.17× | — | 6.87× | — | — | 1.35× | — | — |
-| Inner join — 1M left rows against 1,000 sparse keys | 1.00× | 4.25× | 8.85× | — | 2.93× | — | — | 17.17× | — | — |
+| Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M | 1.00× | 5.53× | 7.11× | 33.07× | 3.84× | 15.28× | 91.47× | 3.79× | 1.02× | 3.18× |
+| Reductions — `sum + max + dot`, 10M elements | 1.00× | 0.99× | 2.67× | 10.91× | 0.19× | 4.85× | 30.00× | 0.41× | 0.90× | 1.50× |
+| Group-by aggregation — 100 groups over 10M rows | 1.00× | 10.22× | 19.31× | 45.88× | 5.42× | 26.52× | 253.21× | 1.92× | 0.96× | 2.79× |
+| Inner join — 1M left rows against 1,000 sparse keys | 1.00× | 4.97× | 12.51× | 433.15× | 2.57× | 116.03× | 814.13× | 13.93× | 12.41× | 10.58× |
 
 **Timing mode per engine** — `kernel` means the engine timed its own kernel with a monotonic clock; `net` means it has no usable in-language clock and was measured as _total process time − startup baseline_:
 
@@ -193,13 +193,13 @@ Relative to the C baseline (lower is better; 1.00× means it matched plain C):
 | C (-O3) | baseline | kernel | — |
 | Amber | array primitives | kernel | — |
 | Amber qSQL | query layer | kernel | — |
-| ngn/k | array primitives | — | — |
-| CBQN | array primitives | kernel | 3.51 |
-| J | array primitives | — | — |
-| Uiua | array primitives | — | — |
+| ngn/k | array primitives | net | 1.88 |
+| CBQN | array primitives | kernel | 3.25 |
+| J | array primitives | net | 50.26 |
+| Uiua | array primitives | net | 23.74 |
 | NumPy | array primitives | kernel | — |
-| Julia | scalar loops (JIT) | — | — |
-| DuckDB | query layer | — | — |
+| Julia | scalar loops (JIT) | kernel | — |
+| DuckDB | query layer | kernel | 13.66 |
 
 Amber appears twice on purpose: `Amber` is array-primitive code (the fair peer of ngn/k, CBQN, J and Uiua) and `Amber qSQL` goes through the `select … by … from` layer (the fair peer of DuckDB's SQL planner). Reporting only the faster of the two would be choosing whichever comparison flatters Amber.
 

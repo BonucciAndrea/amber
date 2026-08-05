@@ -1,5 +1,10 @@
 # Amber — sanity checks & benchmarks
 
+> **1.9.2 note — self-benchmark, before vs after.** Integer `?` (find) now builds an index over
+> its left argument instead of rescanning it per probe, which rewrites the inner-join cell;
+> float `+/` vectorises; array payloads are cache-line aligned. Full detail and the
+> before/after table are in [§6](#6-192-self-benchmark--before-vs-after) below.
+>
 > **1.9.1 note.** The `select … by … from` query layer now groups and probes on **raw column
 > vectors** instead of boxing one K object per row: group-by is **24.7x** faster (8,171.7 ms ->
 > 330.8 ms) and inner join **19.3x** faster (3,858.9 ms -> 199.7 ms) on the 10M-row suite,
@@ -167,19 +172,19 @@ _Median of 5 timed runs after 2 warm-up passes. Kernel time only — process sta
 
 | Benchmark | C (-O3) | Amber | Amber qSQL | ngn/k | CBQN | J | Uiua | NumPy | Julia | DuckDB |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M | 9.25 | 62.55 | 78.18 | 321.14 | 42.02 | 150.21 | 849.44 | 37.49 | 9.34 | 29.00 |
-| Reductions — `sum + max + dot`, 10M elements | 25.92 | 38.63 | 94.94 | 293.96 | 6.45 | 135.87 | 769.07 | 11.71 | 23.35 | 39.00 |
-| Group-by aggregation — 100 groups over 10M rows | 7.32 | 70.11 | 147.74 | 328.11 | 40.79 | 185.55 | 1,765.94 | 13.70 | 7.00 | 20.00 |
-| Inner join — 1M left rows against 1,000 sparse keys | 0.98 | 181.34 | 183.15 | 440.77 | 2.41 | 121.49 | 781.91 | 13.95 | 12.52 | 12.00 |
+| Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M | 11.85 | 74.43 | 90.43 | _not installed_ | 60.18 | _not installed_ | _not installed_ | 66.62 | _not installed_ | _not installed_ |
+| Reductions — `sum + max + dot`, 10M elements | 32.48 | 51.13 | 108.83 | _not installed_ | 13.23 | _not installed_ | _not installed_ | 16.62 | _not installed_ | _not installed_ |
+| Group-by aggregation — 100 groups over 10M rows | 11.78 | 212.91 | 331.73 | _not installed_ | 80.88 | _not installed_ | _not installed_ | 15.89 | _not installed_ | _not installed_ |
+| Inner join — 1M left rows against 1,000 sparse keys | 1.33 | 5.66 | 11.80 | _not installed_ | 3.90 | _not installed_ | _not installed_ | 22.89 | _not installed_ | _not installed_ |
 
 Relative to the C baseline (lower is better; 1.00× means it matched plain C):
 
 | Benchmark | C (-O3) | Amber | Amber qSQL | ngn/k | CBQN | J | Uiua | NumPy | Julia | DuckDB |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M | 1.00× | 6.76× | 8.45× | 34.70× | 4.54× | 16.23× | 91.79× | 4.05× | 1.01× | 3.13× |
-| Reductions — `sum + max + dot`, 10M elements | 1.00× | 1.49× | 3.66× | 11.34× | 0.25× | 5.24× | 29.68× | 0.45× | 0.90× | 1.50× |
-| Group-by aggregation — 100 groups over 10M rows | 1.00× | 9.58× | 20.19× | 44.83× | 5.57× | 25.35× | 241.30× | 1.87× | 0.96× | 2.73× |
-| Inner join — 1M left rows against 1,000 sparse keys | 1.00× | 185.45× | 187.31× | 450.78× | 2.47× | 124.25× | 799.67× | 14.27× | 12.81× | 12.27× |
+| Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M | 1.00× | 6.28× | 7.63× | — | 5.08× | — | — | 5.62× | — | — |
+| Reductions — `sum + max + dot`, 10M elements | 1.00× | 1.57× | 3.35× | — | 0.41× | — | — | 0.51× | — | — |
+| Group-by aggregation — 100 groups over 10M rows | 1.00× | 18.08× | 28.17× | — | 6.87× | — | — | 1.35× | — | — |
+| Inner join — 1M left rows against 1,000 sparse keys | 1.00× | 4.25× | 8.85× | — | 2.93× | — | — | 17.17× | — | — |
 
 **Timing mode per engine** — `kernel` means the engine timed its own kernel with a monotonic clock; `net` means it has no usable in-language clock and was measured as _total process time − startup baseline_:
 
@@ -188,14 +193,76 @@ Relative to the C baseline (lower is better; 1.00× means it matched plain C):
 | C (-O3) | baseline | kernel | — |
 | Amber | array primitives | kernel | — |
 | Amber qSQL | query layer | kernel | — |
-| ngn/k | array primitives | net | 2.20 |
-| CBQN | array primitives | kernel | 3.47 |
-| J | array primitives | net | 51.87 |
-| Uiua | array primitives | net | 24.00 |
+| ngn/k | array primitives | — | — |
+| CBQN | array primitives | kernel | 3.51 |
+| J | array primitives | — | — |
+| Uiua | array primitives | — | — |
 | NumPy | array primitives | kernel | — |
-| Julia | scalar loops (JIT) | kernel | — |
-| DuckDB | query layer | kernel | 13.96 |
+| Julia | scalar loops (JIT) | — | — |
+| DuckDB | query layer | — | — |
 
 Amber appears twice on purpose: `Amber` is array-primitive code (the fair peer of ngn/k, CBQN, J and Uiua) and `Amber qSQL` goes through the `select … by … from` layer (the fair peer of DuckDB's SQL planner). Reporting only the faster of the two would be choosing whichever comparison flatters Amber.
 
 <!-- COMPARATIVE_BENCHMARKS:END -->
+
+
+## 6. 1.9.2 self-benchmark — before vs after
+
+Both columns are `bench/run_comparative.py --runs 5 --warmup 2` on the **same machine, same
+data, same harness**: 1.9.1 from `bench/baseline_before.md`, 1.9.2 from
+`bench/comparative_results.md`. Median kernel ms; lower is better.
+
+### Amber — array primitives (`bench/queries/amber_bench.k`)
+
+| Workload | 1.9.1 | 1.9.2 | Change |
+|---|---:|---:|---|
+| Inner join — 1M rows against 1,000 sparse keys | 180.95 | **5.66** | **32.0x faster** |
+| Reductions — sum + max + dot, 10M | 55.50 | 51.13 | 1.09x |
+| Vector arithmetic + mask, 10M | 68.95 | 74.43 | no significant change |
+| Group-by — 100 groups over 10M rows | 204.82 | 212.91 | no significant change |
+
+### Amber — qSQL query layer (`bench/queries/amberq_bench.k`)
+
+| Workload | 1.9.1 | 1.9.2 | Change |
+|---|---:|---:|---|
+| Inner join | 194.30 | **11.80** | **16.5x faster** |
+| Vector arithmetic + mask | 118.36 | 90.43 | 1.31x |
+| Reductions | 106.47 | 108.83 | no significant change |
+| Group-by | 315.81 | 331.73 | no significant change |
+
+**Read the small numbers with care.** On this 2-core sandbox the memory-bound workloads carry a
+±15–20% run-to-run spread: a second independent sample of 1.9.2 gave arith 87.5, reduce 45.8,
+groupby 179.7, join 5.26. Only the **join** change is far outside that band and can be called a
+speed-up from the workload table alone; the arith/reduce/groupby movements above are noise, not
+signal, and are reported as such rather than rounded into a multiplier.
+
+### Micro-kernels — where the change is actually visible
+
+Median of 5 timed passes after 2 warm-ups, measured directly and stable across repeats:
+
+| Kernel | 1.9.1 | 1.9.2 | Change |
+|---|---:|---:|---|
+| `kr?kl` — 1M probes into 1,000 sparse keys | 211.4 | **2.6** | **81x faster** |
+| `vr kr?kl` — probe + gather | 173.9 | **4.6** | **38x faster** |
+| `+/px` — 10M float sum | 8.9 | **6.3** | 1.41x |
+| `+/px*py` — 10M dot product | 18.7 | **15.8** | 1.18x |
+| `\|/px` — 10M float max | 19.3 | 19.3 | unchanged (see below) |
+
+### What did not change, and why
+
+- **No expression fusion.** Amber evaluates eagerly, so `+/ (y+2.5*x) @ & x>50` has already
+  materialised its intermediates before `+/` runs; fusing it needs a lazy/fusing evaluator, not a
+  peephole match. A matcher narrow enough to ship here would have recognised roughly the benchmark
+  expression and nothing else — exactly what §4 of [`bench/SPEC.md`](../bench/SPEC.md) forbids.
+  The vector-arithmetic and group-by rows are therefore unchanged.
+- **`|/` over floats still costs three passes.** It round-trips through the order-preserving
+  `of1`/`of0` transforms, allocating two 80 MB temporaries, and dominates the reductions workload.
+  Applying that transform inline to the raw bit patterns would give an identical result in one
+  pass with no allocation — the clear next win, deliberately not rushed into this release because
+  it touches float total-order and NaN semantics.
+- **64-byte alignment produced no measurable gain** on this CPU (AVX2, no AVX-512). Payloads were
+  already 32-byte aligned, which is what a 256-bit load wants; the change was kept because it is
+  correct for AVX-512 and streaming stores, and it costs 32 bytes per allocation.
+
+The correctness gate passed 100% on every run above: every engine produced the identical exact
+answer and the identical input checksum on all four workloads.

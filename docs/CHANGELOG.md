@@ -1,5 +1,64 @@
 # Changelog
 
+## 1.9.2 — O(n+m) integer lookup, vectorised reductions, cache-line alignment
+
+### `?` (find) no longer scans its left argument per probe
+`x?y` on integer vectors was `fLL`/`fIL`/..., a LINEAR SCAN of `x` for every element of `y`, i.e.
+**O(#x · #y)**. The comparative suite's inner join — 1M left keys probed against 1,000 sparse
+right keys — was therefore 500M comparisons: **180.95 ms, 126x the C baseline**, Amber's worst
+cell by a wide margin.
+
+`src/f.c` now builds an index over `x` once and answers each probe in O(1), in whichever of two
+shapes fits the data:
+
+- **Direct LUT** when the key *range* is small (≤ 64K slots, so the table stays L2-resident):
+  `lut[v-lo] = i`, no hashing at all. This is the case the 256-entry byte path (`fndGx`) already
+  handled; it now covers `tH`/`tI`/`tL` too.
+- **Compact open-addressed hash** otherwise. A flat table is the wrong shape for a *sparse*
+  domain: the benchmark's 1,000 keys span a ~1e6 range, so a direct table is 4 MB and every probe
+  is an L3/DRAM miss — measured at 28 ms, only 7x better than the scan. Sizing the table to the
+  key *count* instead (2·m rounded up — 24 KB here) keeps it in L1 and probes ~10x faster again.
+
+Both fill **backwards**, so the lowest index wins and `?`'s first-occurrence semantics are exact.
+Neither is built unless it beats the scan it replaces, and `` `s#``-sorted `x` keeps its existing
+O(log m) binary search, so this is a pure fast path. Verified against an unmodified 1.9.1 binary
+over 28,429 result lines spanning ranges above and below the LUT cap, negative and 2e9 offsets,
+nulls, self-find and atom find — byte-identical throughout.
+
+### Reductions vectorise
+`+/` over floats was a serialised `v += p[i]` chain running at ~3.5 cycles/element — the latency
+of `addsd`. The compiler may not reassociate it, because IEEE addition is not associative. `sumF`
+in `src/3.c` now keeps **four independent partial sums**, which breaks the dependency and lets the
+vectoriser issue one wide add per group; the integer `addf*` kernels carry `omp parallel for simd
+reduction` hints (`build.sh` probes for `-fopenmp`; without it the four-way unrolling still does
+the work). Measured on 10M elements: `+/` **8.9 → 6.3 ms**, `+/x*y` **18.7 → 15.8 ms**.
+
+This changes results for **inexact** float data by 1–2 ulp — always in the direction of *more*
+accuracy, since pairwise summation beats a left fold (`+/100000#0.1`: 10000.000000018848 →
+9999.999999995287, true value 10000.0). Exactly-representable data — including everything
+`bench/SPEC.md` specifies — is bit-identical, as are `0n`, `0w` and `-0w`. It is the same
+trade-off `simd.c`'s existing `simd_sum_f64()` already makes. All 601 tests pass unchanged.
+
+### Array payloads are cache-line aligned
+`HD` (the array header size, and therefore the alignment of every payload pointer) was 32, which
+left every vector buffer exactly **32 bytes past** a 64-byte boundary — measured `ptr%64 == 32`
+for every allocation size — splitting a cache line on the first wide access of every array. `HD`
+is now 64 and `an()`'s bucket-index constant moves with it; `ARENA_ALIGN` goes 32 → 64 to match.
+All payloads are now 64-byte aligned (verified by probe). Because this touches the core buddy
+allocator it was validated under **AddressSanitizer + UndefinedBehaviorSanitizer** across every
+suite plus the fuzzer, clean.
+
+### Not in this release
+**Expression/loop fusion was not implemented.** Amber evaluates eagerly, so by the time `+/`
+sees its argument the intermediate vectors already exist; fusing `+/ (y+2.5*x) @ & x>50` into one
+pass needs a lazy or fusing evaluator, not a peephole match. A pattern-matcher narrow enough to
+fit this release would have recognised essentially the benchmark expression and little else,
+which is precisely what `bench/SPEC.md` forbids. The vector-arithmetic and group-by workloads are
+therefore **unchanged** in 1.9.2. `|/` over floats also still round-trips through the
+order-preserving `of1`/`of0` transforms (three passes and two 80 MB temporaries); collapsing that
+into one pass is the clear next win for the reductions workload.
+
+
 ## 1.9.1 — qSQL runs on raw column vectors; CBQN benchmarks fixed
 
 ### `select … by … from` no longer boxes a K object per row

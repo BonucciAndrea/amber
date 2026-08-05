@@ -31,7 +31,14 @@
 #define CO const
 #define Z static
 #define SZ sizeof
-#define HD 32ll//header
+// amber 1.9.2: HD is both the array header size AND the allocation granularity,
+// so it is what every payload pointer is aligned to. At 32 it left every vector
+// buffer exactly 32 bytes PAST a cache-line boundary (measured: ptr%64==32 for
+// every size), splitting a 64-byte line on the first AVX access of every array.
+// 64 costs 32 bytes of header per allocation and makes every payload cache-line
+// aligned. The bucket-index constant in an() (m.c) is derived from log2(HD) and
+// moves with it.
+#define HD 64ll//header + payload alignment (one cache line)
 #define NI __attribute__((noinline))
 #define ZN Z NI
 #define TD typedef
@@ -76,7 +83,7 @@
 // v1.7 while README.md already advertised 1.9).
 #define AMBER_VERSION_MAJOR 1
 #define AMBER_VERSION_MINOR 9
-#define AMBER_VERSION_PATCH 1
+#define AMBER_VERSION_PATCH 2
 #define AMBER_VERSION M2(AMBER_VERSION_MAJOR) "." M2(AMBER_VERSION_MINOR) "." M2(AMBER_VERSION_PATCH)
 #define REFB  1
 #define MINE(x) (_r(x)==REFB)

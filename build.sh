@@ -19,7 +19,14 @@ F="-fsigned-char -fno-math-errno -fno-signed-zeros -fno-stack-protector -fomit-f
 LTOTAG=""
 if printf 'int main(){return 0;}' | "$CC" -flto -x c - -o .ltocheck 2>/dev/null; then F="$F -flto"; LTOTAG=" -flto"; fi
 rm -f .ltocheck
-if [ -n "${AMBER_NATIVE:-}" ]; then F="$F -march=native -funroll-loops"; MODE="native -O3$LTOTAG"; else MODE="portable -O3$LTOTAG"; fi
+# OpenMP drives the `omp simd` / `omp parallel for reduction` hints on the
+# reduction kernels in src/3.c. Probed rather than assumed: where it is absent
+# the AMSIMD/AMPAR macros expand to nothing and the hand-unrolled four-way
+# accumulators still carry the vectorisation, so the build never depends on it.
+OMPTAG=""
+if printf '#include <omp.h>\nint main(){return omp_get_max_threads();}' | "$CC" -fopenmp -x c - -o .ompcheck 2>/dev/null; then F="$F -fopenmp"; OMPTAG=" +openmp"; fi
+rm -f .ompcheck
+if [ -n "${AMBER_NATIVE:-}" ]; then F="$F -march=native -funroll-loops"; MODE="native -O3$LTOTAG$OMPTAG"; else MODE="portable -O3$LTOTAG$OMPTAG"; fi
 echo "amber: compiling with $CC ($MODE) ..."
 mkdir -p o
 for f in src/*.c; do "$CC" $F -o "o/$(basename "${f%.c}").o" -c "$f"; done

@@ -12,7 +12,7 @@
 **A low-latency array language — columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.9.1-orange)
+![version](https://img.shields.io/badge/version-1.9.2-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
 ![tests](https://img.shields.io/badge/tests-277%20passing-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
@@ -30,6 +30,11 @@ AGPLv3 implementation of the K array language. Amber keeps that engine's speed a
 footprint and layers a q/kdb+ vocabulary, C-level column attributes, native temporal types,
 `([]…)` table syntax, a tick/HFT toolkit, and a modern REPL on top. (The attribution is
 recorded in [NOTICE](NOTICE), as the AGPLv3 requires.)
+
+New in **1.9.2**: integer `?` (find) builds an index over its left argument instead of scanning
+it per probe, turning the inner-join benchmark from **180.95 ms into 5.66 ms (32x)**; float `+/`
+uses four independent accumulators so it vectorises; array payloads are cache-line aligned. See
+[docs/BENCHMARKS.md](docs/BENCHMARKS.md) for before/after and [docs/CHANGELOG.md](docs/CHANGELOG.md).
 
 New in **1.9.1**: the `select … by … from` query layer now groups and probes on **raw column
 vectors** instead of boxing one K object per row, making group-by **24.7x** faster and inner
@@ -221,7 +226,7 @@ instant.
 Check the interpreter version, or list every option and REPL command:
 
 ```sh
-./amber --version           # amber 1.9.1
+./amber --version           # amber 1.9.2
 ./amber --help              # options + the full \-command reference
 ```
 

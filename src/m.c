@@ -61,7 +61,7 @@ V mRn(U n,CO A*a){F(n,_R(a[i]))}
 V mrn(U n,CO A*a){F(n,mr(a[i]))}
 A1(mRa,mRn(xn,xA);x)
 
-NI A an(U n,C t)_(Q(!lck)Q(tA<=t)Q(t<tn)Q(!TP(t))U i=59-CLZ(HD|HD-1+(((W)n<<Tw[t])+7>>3));A x=mb(i);xb=i;xr=REFB;xT=t;xn=n;_at(x)=0;x)
+NI A an(U n,C t)_(Q(!lck)Q(tA<=t)Q(t<tn)Q(!TP(t))U i=58-CLZ(HD|HD-1+(((W)n<<Tw[t])+7>>3));A x=mb(i);xb=i;xr=REFB;xT=t;xn=n;_at(x)=0;x)
 A aV(C t,U n,CO V*v)_(A x=an(n,t);MC(xV,v,((W)n<<Tw[t])+7>>3);x)
 A aa(U n,A x/*1*/)_(P(MINE(x)&&((W)n<<xw)+7>>3<=cap(x),AN(n,x))A y=an(n,xt);MC(yV,xV,((W)xn<<Tw[xt])+7>>3);I(ytR,I(MINE(x),AZ(x))E(mRn(xn,xA)))x(y))//realloc
 A aA0(U n)_(A x=AN(0,aA(n));xx=emp(tC);x)

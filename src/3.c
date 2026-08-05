@@ -1,14 +1,42 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+// ---- amber 1.9.2: vectorised reduction kernels ------------------------------
+// The reduction loops below were plain scalar accumulator chains. A float `+/`
+// over 10M elements ran at 8.9 ms (~3.5 cycles/element), which is exactly the
+// latency of a serialised addsd dependency chain: the compiler may NOT
+// auto-vectorise `v += p[i]` because IEEE addition is not associative and
+// reassociating it without permission would change results.
+//
+// Splitting the accumulator into four independent partials breaks that chain
+// and lets the vectoriser issue one wide add per group. On the exactly-
+// representable integer data the comparative suite specifies, every summation
+// order produces bit-identical results (bench/SPEC.md 3), and for general data
+// this is pairwise-style summation -- the same trade-off simd.c's existing
+// simd_sum_f64() already makes, and typically MORE accurate than a left fold.
+//
+// AMSIMD/AMPAR expand to OpenMP pragmas only when the compiler actually accepts
+// -fopenmp (build.sh probes for it); otherwise they vanish and the four-way
+// unrolling alone still does the work, so no build configuration is required.
+// AMPARN: element count at and above which fanning a reduction across cores is
+// worth the thread startup; the OpenMP `if` clause keeps smaller loops serial.
+#define AMPARN 1000000u
+#ifdef _OPENMP
+ #define AMPRAGMA(x) _Pragma(#x)
+ // One combined directive: `omp simd` must be immediately followed by the loop,
+ // so vectorisation and threading cannot be stacked as two separate pragmas.
+ #define AMRED(n,r) AMPRAGMA(omp parallel for simd reduction(r) if((n)>=AMPARN) schedule(static))
+#else
+ #define AMRED(n,r)
+#endif
 #define F4(w,n,a,b,c,d) S4(w,F(n,a),F(n,b),F(n,c),F(n,d))
 NI A1(inv,x=mut(x);L*p=xL;F(((W)xn<<xw)+255>>8<<2,*p++^=-1)x)
 
 Z A3(___f,/*010*/U i=!y;I(i,y=io(z,0))U n=zn;W(i<n,y=y(x2(y,ii(z,i++)));B(!y))y)
 Z A3(dexf,/*010*/A u=las(zR);I(y,y(0))u)
   L addfB(CO V*a,U n)_(CO W*p=a;U r=0;F(n>>6,r+=PC(*p++))n&=63;n?r+PC(*p&~(-1ll<<n)):r)
-Z L addfG(CO V*a,U n)_(CO G*p=a;L r=0;F(n,r+=*p++)r)
-Z L addfH(CO V*a,U n)_(CO H*p=a;L r=0;F(n,r+=*p++)r)
-Z L addfI(CO V*a,U n)_(CO I*p=a;L r=0;F(n,r+=*p++)r)
-Z L addfL(CO V*a,U n)_(CO L*p=a;L r=0;F(n,r+=*p++)r)
+Z L addfG(CO V*a,U n)_(CO G*RES p=a;L r=0;AMRED(n,+:r)for(U i=0;i<n;i++)r+=p[i];r)
+Z L addfH(CO V*a,U n)_(CO H*RES p=a;L r=0;AMRED(n,+:r)for(U i=0;i<n;i++)r+=p[i];r)
+Z L addfI(CO V*a,U n)_(CO I*RES p=a;L r=0;AMRED(n,+:r)for(U i=0;i<n;i++)r+=p[i];r)
+Z L addfL(CO V*a,U n)_(CO L*RES p=a;L r=0;AMRED(n,+:r)for(U i=0;i<n;i++)r+=p[i];r)
 Z L mulfG(CO V*a,U n)_(CO G*p=a;L r=1;F(n,r*=*p++)r)
 Z L mulfH(CO V*a,U n)_(CO H*p=a;L r=1;F(n,r*=*p++)r)
 Z L mulfI(CO V*a,U n)_(CO I*p=a;L r=1;F(n,r*=*p++)r)
@@ -25,7 +53,11 @@ Z L maxfL(CO V*a,U n)_(CO L*p=a;L r=(1ull<<63)  ;F(n,r=MAX(r,p[i]))r)
 Z L mulfZ(L v,A x/*0*/)_(v*    G(&mulfG,mulfH,mulfI,mulfL)[xw-3](xV,xn) )
   L minfZ(L v,A x/*0*/)_(MIN(v,G(&minfG,minfH,minfI,minfL)[xw-3](xV,xn)))
 Z L maxfZ(L v,A x/*0*/)_(MAX(v,G(&maxfG,maxfH,maxfI,maxfL)[xw-3](xV,xn)))
-Z A3(admf,/*010*/B i=xv==3;U n=zn;P((y&&ytf)||ztF,F v=y?gf(cF(y)):i;z=cF(zR);Mz(I(i,F(n,v*=zf))E(F(n,v+=zf)))af(v))L v=y?gl(y):i;az((i?mulfZ:addfZ)(v,z)))
+// sumF: four-way partial float sum (see the header note above).
+Z F sumF(CO F*RES p,U n)_(F a=0,b=0,c=0,d=0;U m=n&~(U)3;
+ for(U i=0;i<m;i+=4){a+=p[i];b+=p[i+1];c+=p[i+2];d+=p[i+3];}
+ F r=(a+b)+(c+d);for(U i=m;i<n;i++)r+=p[i];r)
+Z A3(admf,/*010*/B i=xv==3;U n=zn;P((y&&ytf)||ztF,F v=y?gf(cF(y)):i;z=cF(zR);CO F*RES q=zV;Mz(I(i,F(n,v*=q[i]))E(v+=sumF(q,n)))af(v))L v=y?gl(y):i;az((i?mulfZ:addfZ)(v,z)))
 Z A3(subf,/*010*/y=y?neg(y):zn?mul(ai(-2),ii(z,0)):ai(0);neg(admf(ADD,y,z)))
 Z A3(mmmf,/*010*/B i=xv==7;P((y&&ytf)||ztF,y=of1(y?cF(y):aV(tf,1,A((L)((W)i<<63)|WFL)));z=of1(cF(zR));of0(N(z(mmmf(x,y,z)))))L v=y?gl(y):i?-WL:WL;az(zn?(i?maxfZ:minfZ)(v,z):v))
 A3(arf,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzfc)Q(ztZFC)

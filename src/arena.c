@@ -2,7 +2,7 @@
  * GNU AGPLv3 - see LICENSE and NOTICE.  See arena.h for the contract.
  *
  * Alignment: the slab base and every overflow block are allocated with
- * posix_memalign() at ARENA_ALIGN (32 bytes) -- one AVX2 __m256i/__m256d
+ * posix_memalign() at ARENA_ALIGN (64 bytes) -- a full cache line, so one
  * register's width, and a multiple of NEON's 16-byte registers too -- so
  * that bump-allocated scratch handed to src/simd.c's kernels (or to any
  * other 256-bit-SIMD-friendly consumer) starts life aligned, not just
@@ -19,7 +19,7 @@
 #include <stdlib.h>
 
 #define ARENA_DEFAULT ((size_t)16u * 1024u * 1024u) /* 16 MB per thread */
-#define ARENA_ALIGN   ((size_t)32u)                 /* AVX2/NEON-friendly alignment */
+#define ARENA_ALIGN   ((size_t)64u)                 /* full cache line: AVX2/AVX-512 friendly */
 
 /* Overflow blocks: when a single tick asks for more than the slab holds we
  * fall back to an aligned heap allocation but remember the block so

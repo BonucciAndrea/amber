@@ -1,3 +1,289 @@
+diff --git a/.github/workflows/benchmarks.yml b/.github/workflows/benchmarks.yml
+index 8b3324a..e1b8480 100644
+--- a/.github/workflows/benchmarks.yml
++++ b/.github/workflows/benchmarks.yml
+@@ -4,6 +4,7 @@ on:
+   push:
+     branches: [main]
+   pull_request:
++  workflow_dispatch:
+ 
+ concurrency:
+   group: benchmarks-${{ github.ref }}
+@@ -13,46 +14,53 @@ permissions:
+   contents: write
+   pull-requests: write
+ 
++# Every engine install is best-effort (continue-on-error) and every step writes
++# its binary path into $GITHUB_ENV. bench/run_comparative.py reports any engine
++# whose binary is missing as "not installed" instead of failing, so one broken
++# upstream download can never take the whole job down.
+ jobs:
+   benchmark:
+     name: build + comparative benchmarks
+     runs-on: ubuntu-latest
+-    timeout-minutes: 30
++    timeout-minutes: 60
+     steps:
+       - uses: actions/checkout@v4
+ 
+       - name: Install build tools
+-        run: sudo apt-get update && sudo apt-get install -y build-essential curl unzip git make
++        run: sudo apt-get update && sudo apt-get install -y build-essential curl unzip git make xz-utils
++
++      - name: Create tool directory
++        run: mkdir -p /tmp/bench_tools
+ 
+       # ---------------------------------------------------------------
+-      # 1. Download DuckDB CLI
++      # 1. DuckDB CLI
+       # ---------------------------------------------------------------
+       - name: Download DuckDB CLI
+         id: download_duckdb
+         continue-on-error: true
+         run: |
+           set -x
+-          mkdir -p /tmp/bench_tools
+           cd /tmp/bench_tools
+           curl -fsSL -o duckdb.zip \
+             "https://github.com/duckdb/duckdb/releases/latest/download/duckdb_cli-linux-amd64.zip"
+           unzip -o duckdb.zip duckdb
+           chmod +x duckdb
+           ./duckdb -c "select 'duckdb ok'"
++          echo "DUCKDB_BIN=/tmp/bench_tools/duckdb" >> "$GITHUB_ENV"
+ 
+       # ---------------------------------------------------------------
+-      # 2. Download CBQN
++      # 2. CBQN
+       # ---------------------------------------------------------------
+       - name: Download CBQN
+         id: download_cbqn
+         continue-on-error: true
+         run: |
+           set -x
+-          mkdir -p /tmp/bench_tools
+           cd /tmp/bench_tools
+           curl -fsSL -o cbqn "https://github.com/dzaima/CBQN/releases/latest/download/CBQN-linux-x86_64"
+           chmod +x cbqn
+           ./cbqn -e "•Show 1+1"
++          echo "CBQN_BIN=/tmp/bench_tools/cbqn" >> "$GITHUB_ENV"
+ 
+       - name: Build CBQN from source (fallback)
+         if: steps.download_cbqn.outcome != 'success'
+@@ -64,56 +72,158 @@ jobs:
+           make o3n CC=gcc -j"$(nproc)"
+           cp BQN /tmp/bench_tools/cbqn
+           chmod +x /tmp/bench_tools/cbqn
++          echo "CBQN_BIN=/tmp/bench_tools/cbqn" >> "$GITHUB_ENV"
+ 
+       # ---------------------------------------------------------------
+-      # 3. Build ngn/k from Codeberg
++      # 3. ngn/k
+       # ---------------------------------------------------------------
+       - name: Build ngn/k
+         id: build_k
+         continue-on-error: true
+         run: |
+           set -x
+-          mkdir -p /tmp/bench_tools
+           git clone --depth 1 https://codeberg.org/ngn/k.git /tmp/ngnk-src
+           cd /tmp/ngnk-src
+           make CC=gcc -j"$(nproc)"
+           cp k /tmp/bench_tools/k
+           chmod +x /tmp/bench_tools/k
+           echo '1+1' | /tmp/bench_tools/k
++          echo "K_BIN=/tmp/bench_tools/k" >> "$GITHUB_ENV"
+ 
+-      - name: Report available comparative tools
++      # ---------------------------------------------------------------
++      # 4. Uiua  (release binary, cargo fallback)
++      # ---------------------------------------------------------------
++      - name: Download Uiua
++        id: download_uiua
++        continue-on-error: true
+         run: |
+-          ls -la /tmp/bench_tools/ || true
++          set -x
++          cd /tmp/bench_tools
++          curl -fsSL -o uiua.tar.gz \
++            "https://github.com/uiua-lang/uiua/releases/latest/download/uiua-x86_64-unknown-linux-gnu.tar.gz"
++          tar xzf uiua.tar.gz
++          chmod +x uiua
++          ./uiua --version
++          echo "UIUA_BIN=/tmp/bench_tools/uiua" >> "$GITHUB_ENV"
++
++      - name: Install Uiua via cargo (fallback)
++        if: steps.download_uiua.outcome != 'success'
++        continue-on-error: true
++        run: |
++          set -x
++          cargo install uiua --locked --no-default-features
++          cp "$HOME/.cargo/bin/uiua" /tmp/bench_tools/uiua
++          /tmp/bench_tools/uiua --version
++          echo "UIUA_BIN=/tmp/bench_tools/uiua" >> "$GITHUB_ENV"
++
++      # ---------------------------------------------------------------
++      # 5. Julia
++      # ---------------------------------------------------------------
++      - name: Set up Julia
++        id: setup_julia
++        continue-on-error: true
++        uses: julia-actions/setup-julia@v2
++        with:
++          version: '1'
++
++      - name: Record Julia path
++        if: steps.setup_julia.outcome == 'success'
++        continue-on-error: true
++        run: |
++          julia --version
++          echo "JULIA_BIN=$(command -v julia)" >> "$GITHUB_ENV"
++
++      - name: Download Julia (standalone fallback)
++        if: steps.setup_julia.outcome != 'success'
++        continue-on-error: true
++        run: |
++          set -x
++          cd /tmp/bench_tools
++          curl -fsSL -o julia.tar.gz \
++            "https://julialang-s3.julialang.org/bin/linux/x64/1.10/julia-1.10.4-linux-x86_64.tar.gz"
++          tar xzf julia.tar.gz
++          ln -sf /tmp/bench_tools/julia-1.10.4/bin/julia /tmp/bench_tools/julia
++          /tmp/bench_tools/julia --version
++          echo "JULIA_BIN=/tmp/bench_tools/julia" >> "$GITHUB_ENV"
+ 
+       # ---------------------------------------------------------------
+-      # 4. Build Amber
++      # 6. Python + NumPy
++      # ---------------------------------------------------------------
++      - name: Install NumPy
++        id: install_numpy
++        continue-on-error: true
++        run: |
++          set -x
++          python3 -m pip install --upgrade pip
++          python3 -m pip install numpy
++          python3 -c "import numpy; print('numpy', numpy.__version__)"
++          echo "PYTHON_BIN=$(command -v python3)" >> "$GITHUB_ENV"
++
++      # ---------------------------------------------------------------
++      # 7. J (jconsole)
++      # ---------------------------------------------------------------
++      - name: Download J
++        id: download_j
++        continue-on-error: true
++        run: |
++          set -x
++          cd /tmp/bench_tools
++          curl -fsSL -o j.tar.gz \
++            "https://www.jsoftware.com/download/j904/install/j904_linux64.tar.gz"
++          mkdir -p j904 && tar xzf j.tar.gz -C j904 --strip-components=1
++          chmod +x j904/bin/jconsole j904/bin/* || true
++          echo 'exit 0' > /tmp/bench_tools/jprobe.ijs
++          j904/bin/jconsole /tmp/bench_tools/jprobe.ijs
++          echo "J_BIN=/tmp/bench_tools/j904/bin/jconsole" >> "$GITHUB_ENV"
++
++      # ---------------------------------------------------------------
++      # 8. Native C baseline (the floor every engine is measured against)
++      # ---------------------------------------------------------------
++      - name: Build C baseline (gcc -O3 -march=native)
++        id: build_c
++        continue-on-error: true
++        run: |
++          set -x
++          gcc -O3 -march=native -o /tmp/bench_tools/c_bench bench/queries/c_bench.c -lm
++          /tmp/bench_tools/c_bench reduce 1 0
++          echo "C_BENCH_BIN=/tmp/bench_tools/c_bench" >> "$GITHUB_ENV"
++
++      # ---------------------------------------------------------------
++      # 9. Amber
+       # ---------------------------------------------------------------
+       - name: Build Amber (gcc -O3 -march=native)
+         run: |
+           CC=gcc AMBER_NATIVE=1 ./build.sh
+-          ./amber -e '1+1' >/dev/null 2>&1 || true
++          ./amber --version
++          echo "AMBER_BIN=${GITHUB_WORKSPACE}/amber" >> "$GITHUB_ENV"
++
++      - name: Report available comparative tools
++        run: |
++          ls -la /tmp/bench_tools/ || true
++          echo "AMBER_BIN=${AMBER_BIN:-}"
++          for v in DUCKDB_BIN CBQN_BIN K_BIN UIUA_BIN JULIA_BIN PYTHON_BIN J_BIN C_BENCH_BIN; do
++            eval "echo \"$v=\${$v:-<missing>}\""
++          done
+ 
+       # ---------------------------------------------------------------
+-      # 5. Unit Tests
++      # 10. Unit tests (a benchmark of a broken build is worthless)
+       # ---------------------------------------------------------------
+-      - name: Run existing unit tests
+-        run: |
+-          set -e
+-          out=$(./amber test.k)
+-          echo "$out"
+-          echo "$out" | grep -Eq '0 failures'
++      - name: Run test suites
++        run: tests/run_tests.sh --quick
+ 
+       # ---------------------------------------------------------------
+-      # 6. Comparative Benchmarks
++      # 11. Comparative benchmarks
+       # ---------------------------------------------------------------
++      # Add --fail-on-wrong to turn a cross-engine answer mismatch into a red
++      # build. It is off by default only because a syntax error in one of the
++      # less-common engines would otherwise block unrelated PRs; the mismatch
++      # is still reported prominently at the top of the results table.
+       - name: Run comparative benchmarks
+         env:
+           AMBER_BIN: ${{ github.workspace }}/amber
+-          DUCKDB_BIN: /tmp/bench_tools/duckdb
+-          CBQN_BIN: /tmp/bench_tools/cbqn
+-          K_BIN: /tmp/bench_tools/k
+         run: |
+-          python3 bench/run_comparative.py --runs 5 \
++          python3 bench/run_comparative.py \
++            --runs 5 --warmup 2 \
+             --out bench/comparative_results.md \
+             --update-docs
+ 
+@@ -121,7 +231,7 @@ jobs:
+         run: cat bench/comparative_results.md
+ 
+       # ---------------------------------------------------------------
+-      # 7a. On main: Commit docs/BENCHMARKS.md
++      # 12a. On main: commit docs/BENCHMARKS.md
+       # ---------------------------------------------------------------
+       - name: Commit updated docs/BENCHMARKS.md
+         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+@@ -131,15 +241,15 @@ jobs:
+           if ! git diff --quiet -- docs/BENCHMARKS.md; then
+             git add docs/BENCHMARKS.md
+             git commit -m "docs: refresh comparative benchmarks [skip ci]"
+-            git stash --include-untracked  # 1. Stashes remaining dirty build/log files
+-            git pull --rebase origin main  # 2. Rebase cleanly on top of remote main
+-            git push origin main           # 3. Push the commit
++            git stash --include-untracked
++            git pull --rebase origin main
++            git push origin main
+           else
+             echo "no benchmark changes to commit"
+           fi
+ 
+       # ---------------------------------------------------------------
+-      # 7b. On PRs: Post sticky comment
++      # 12b. On PRs: sticky comment
+       # ---------------------------------------------------------------
+       - name: Post sticky PR comment
+         if: github.event_name == 'pull_request'
+@@ -152,4 +262,6 @@ jobs:
+         uses: actions/upload-artifact@v4
+         with:
+           name: comparative-benchmarks
+-          path: bench/comparative_results.md
++          path: |
++            bench/comparative_results.md
++            bench/SPEC.md
 diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
 index 98b394e..373f6e3 100644
 --- a/.github/workflows/ci.yml
@@ -23,7 +309,7 @@ index 98b394e..373f6e3 100644
          run: |
            set -e
 diff --git a/README.md b/README.md
-index 1cd5633..8e81bd3 100644
+index 1cd5633..11cdbdb 100644
 --- a/README.md
 +++ b/README.md
 @@ -213,6 +213,13 @@ Big tables print Q-style — the first `CROWS` rows (default 20) then `..`; set
@@ -107,7 +393,87 @@ index 1cd5633..8e81bd3 100644
  +-------------------------------------------------------+
  ```
  
-@@ -661,10 +701,15 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
+@@ -553,29 +593,56 @@ arrow.import p                      / (schemaAddr; arrayAddr) -> Amber table
+ ## Comparative benchmark query files
+ 
+ `bench/run_comparative.py` (see [docs/BENCHMARKS.md §5](docs/BENCHMARKS.md) for the live table,
+-refreshed on every push by CI) times Amber against DuckDB, CBQN and ngn/k on three workloads —
+-vector sum, vector arithmetic + a tacit EMA, and columnar group-by. Each engine runs its **own**
+-query file (`bench/queries/amber_<id>.k` vs `bench/queries/k_<id>.k`, plus `duckdb_<id>.sql` /
+-`bqn_<id>.bqn`) — Amber is never scored on a plain ngn/k script reused as-is. Every `amber_*.k`
+-file's header comment documents exactly what was tried and measured, including the dead ends:
+-
+-* **vecsum** — `peach`-chunked parallel summation was tried and measured *slower* (fork/IPC
+-  overhead of 30–130ms dwarfs the plain fold's 3–6ms at this size), so the direct
+-  `+/!10000000` is what actually runs.
+-* **vecarith** — the EMA recurrence is rewritten via the exact `x+a*(y-x)` lerp identity
+-  (verified bit-for-bit identical to `a*y+(1-a)*x`) and its temporaries are kept unnamed so the
+-  arena reclaims them immediately — a real, correctness-preserving ~10–15% win.
+-* **groupby** — bypasses the qSQL `sel"select … by … from …"` layer (400–800ms, dominated by
+-  `qwhere`'s unconditional full-table mask-and-copy even with no `where`) for the direct `=`/`@`
+-  group-and-gather idiom (~30–40ms). A sorted + `` `pa`` (parted-attribute) variant using the
+-  attribute-accelerated `?` binary search was also tried and measured *slower* — sorting
+-  1,000,000 rows up front costs more than the single hashed `=` pass it would replace, since
+-  there are only 10 groups.
+-
+-`bench/run_comparative.py` also runs a numerical-parity check before timing anything: it runs
+-both engines' query files once and compares their printed output, so a speed win can never
+-silently also change the answer — surfaced on stderr and as a note at the top of the generated
+-Markdown table.
++refreshed on every push by CI) times **ten engines** on four workloads. The workloads, the data
++model and the fairness rules are specified once, in **[`bench/SPEC.md`](bench/SPEC.md)**; every
++engine implements that document and nothing else.
++
++| engine | file | peer group |
++|---|---|---|
++| C (`gcc -O3 -march=native`) | `bench/queries/c_bench.c` | the floor everything is measured against |
++| Amber (array primitives) | `bench/queries/amber_bench.k` | ngn/k · CBQN · J · Uiua |
++| Amber (qSQL layer) | `bench/queries/amberq_bench.k` | DuckDB SQL |
++| ngn/k | `bench/queries/k_<id>.k` | array primitives |
++| CBQN | `bench/queries/bqn_<id>.bqn` | array primitives |
++| J | `bench/queries/j_<id>.ijs` | array primitives |
++| Uiua | `bench/queries/uiua_<id>.ua` | array primitives |
++| NumPy | `bench/queries/numpy_bench.py` | array primitives |
++| Julia | `bench/queries/julia_bench.jl` | scalar loops (JIT) |
++| DuckDB | `bench/queries/duckdb_<id>.sql` | query layer |
++
++Workloads: **vector arithmetic + boolean masking**, **reductions** (sum · max · dot over 10M
++elements), **group-by aggregation** (100 groups over 10M rows), and an **inner join** (1M left
++rows against 1,000 sparse keys).
++
++**How fairness is enforced, not just claimed.** Every answer in this suite is an integer that
++fits in float64 exactly, and every sum is over such integers, so the result is independent of
++summation order — SIMD pairwise, Kahan-compensated and naive left-fold summation all produce the
++identical bit pattern. The harness therefore compares answers **exactly** against the C
++reference and prints **WRONG** in place of a time for any engine that disagrees. Each engine also
++emits a checksum of its *input* data, so a divergence in the generator is caught separately
++(**BADDATA**). You cannot win a cell in this table by computing something cheaper.
++
++Two shortcuts the previous suite contained, both now removed and documented in `SPEC.md`:
++
++* **`+/!10000000` is O(1) in Amber.** `src/3.c`'s `arf` constant-folds a sum over a *range* into
++  the closed form `n(n-1)/2`. The old `vecsum` benchmark was exactly that expression, so Amber
++  "won" it by never touching 10M elements while every other engine ran a real reduction. All
++  data is now materialised before the clock starts.
++* **A dense-key "join" is just an array index.** With right keys `0..K-1`, every array language
++  answers the join with a single gather while DuckDB still builds a hash table. Right keys are
++  now sparse and unsorted, forcing a genuine key lookup everywhere.
++
++**Amber is reported twice, on purpose.** `Amber` is array-primitive code — the fair peer of
++ngn/k, CBQN, J and Uiua. `Amber qSQL` routes the same workloads through the `select … by … from`
++layer — the fair peer of DuckDB's SQL planner. Publishing only the faster of the two would mean
++picking whichever comparison flatters Amber; the gap between the rows *is* the query layer's
++overhead and is meant to be visible.
++
++**Timing excludes startup.** Engines that can time their own kernel (Amber, C, NumPy, Julia,
++DuckDB) do so with a monotonic clock after warm-up passes, and the harness uses that number
++directly. Engines with no usable in-language clock (ngn/k, CBQN, Uiua, J) are measured as
++*total process time − a measured startup baseline*. The results table labels which mode produced
++each cell, so the two are never silently mixed.
+ 
+ **Known lexer quirk hit while writing these files:** a `.k` comment line containing *only* a
+ bare `/` (no trailing space or text) silently truncates parsing of everything after it, with no
+@@ -661,10 +728,15 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
  | `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |
  | `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` `tick.k` | modules (auto-loaded) |
  | `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `peach.k` · `wj.k` · `graphs.k` · … |
@@ -173,13 +539,1185 @@ index abd7192..65e5fc2 100644
  qby:{[t;b;a]b:b,();g:=rows[b#+t];kt:+b!+!g;subs:atr[t]'value g;vt:+(!a)!{[subs;f]f'subs}[subs]'value a;kt!vt}
  xgroup:{[k;t]k:k,();g:=rows[k#+t];kt:+k!+!g;vc:except[cols t;k];+(+kt),vc!{[t;iv;c]((+t)c)@/:iv}[t;value g]'vc}
  ungroup:{[x]t:unkey x;d:+t;v:value d;m:{`A=@x}'v;cnt:#:'*v@&m;+(!d)!{[cnt;m;c]$[m;raze c;raze cnt#'c]}[cnt]'[m;v]}
+diff --git a/bench/queries/amber_groupby.k b/bench/queries/amber_groupby.k
+deleted file mode 100644
+index d00d28a..0000000
+--- a/bench/queries/amber_groupby.k
++++ /dev/null
+@@ -1,40 +0,0 @@
+-/ amber_groupby.k -- Amber-specific columnar group-by aggregation (bench id:
+-/ groupby). Companion to k_groupby.k (the "K" row's script); this file is
+-/ what runs for the "Amber" row, per bench/run_comparative.py.
+-
+-/ Same workload and same deterministic data as k_groupby.k: sum(px) by sym
+-/ over a 1,000,000-row table, 10 groups (`sym:10!i`), final answer +/ of the
+-/ 10 group sums (49999500.0 -- order-independent, since every row belongs to
+-/ exactly one group, so this equals the grand total of px regardless of how
+-/ the groups are computed).
+-
+-/ Optimization: this bypasses the qSQL layer (qsql.k's `sel"select sum px by
+-/ sym from t"`) entirely and calls the underlying group/gather primitives
+-/ directly. Measured head-to-head on this machine: `sel"select sum px by
+-/ sym from t"` costs ~400-800ms for this table, while the direct form below
+-/ costs ~30-40ms -- a 10-20x difference. The qSQL layer's overhead isn't the
+-/ grouping itself (its own `qby` in amber.k does the *same* single `=` pass
+-/ + per-group gather this file does); it's `qwhere`/`qmask` unconditionally
+-/ allocating a full-length boolean mask and re-gathering the *entire* table
+-/ through it even when there's no WHERE clause, plus compiling the select
+-/ expression from a string via `.` on every call. For a 1,000,000-row table
+-/ with no filter, that's a wholly avoidable full-table copy.
+-
+-/ Also tried: pre-sorting the table by `sym` and tagging it with the
+-/ engine's `pa` (parted) column attribute, then finding each of the 10
+-/ groups' contiguous index ranges via `?` (which *does* get a real
+-/ attribute-accelerated binary-search fast path for sorted/parted data --
+-/ see src/f.c and examples/attributes.k) instead of a hashed `=` pass.
+-/ Measured slower in practice (~45ms) than the direct hashed form below:
+-/ sorting 1,000,000 rows up front costs more than the single O(n) hash pass
+-/ it would save, since there are only 10 groups (the hash pass is already
+-/ cheap) and `=` needs to touch every row exactly once either way. Column
+-/ attributes pay off here for point lookups/joins on already-sorted data
+-/ (see fin.k's gentq/xasc, and bench-fin.k), not for building a fresh
+-/ grouping from scratch -- so the plain grouped-index idiom below, without
+-/ an upfront sort, is what actually wins for this shape of workload.
+-n:1000000
+-i:!n
+-px:0.001*100000!2654435761*i
+-sym:10!i
+-+/{+/px x}'=sym
+diff --git a/bench/queries/amber_vecarith.k b/bench/queries/amber_vecarith.k
+deleted file mode 100644
+index 7f75bfc..0000000
+--- a/bench/queries/amber_vecarith.k
++++ /dev/null
+@@ -1,44 +0,0 @@
+-/ amber_vecarith.k -- Amber-specific vector arithmetic + tacit EMA (bench id:
+-/ vecarith). Companion to k_vecarith.k (the "K" row's script); this file is
+-/ what runs for the "Amber" row, per bench/run_comparative.py.
+-
+-/ Same workload and same deterministic (RNG-free) data as k_vecarith.k, so
+-/ results are directly comparable:
+-/   - 1,000,000-element vector arithmetic + reduction: y=(px*2)-px%3, s=+/y
+-/   - a tacit exponential moving average, scanned over the first 50,000
+-/     elements of px, seeded with px[0]
+-/   - final answer: s + last(ema scan)
+-
+-/ Optimizations applied (both verified bit-exact against k_vecarith.k's
+-/ 83332549.92064743 -- see bench/run_comparative.py's parity check):
+-
+-/  1. Tacit EMA recurrence, algebraically simplified from a lerp expressed
+-/     as "a*y + (1-a)*x" (2 muls, 1 sub, 1 add, 3 temporaries per scan step)
+-/     to the equivalent "x + a*(y-x)" (1 sub, 1 mul, 1 add, 2 temporaries).
+-/     This is the standard "lerp(x,y,a) = x + a*(y-x)" identity -- same
+-/     value, less arithmetic and one fewer scratch allocation per step of
+-/     the 50,000-step scan. Because it's an *exact* algebraic reassociation
+-/     of the same operations in the same left-to-right order (not a
+-/     reordering of floating-point summation), it reproduces the identical
+-/     IEEE-754 rounding at every step -- confirmed bit-for-bit against the
+-/     original formula before adopting it.
+-/  2. `y` and `s` are no longer bound to top-level names. In this engine,
+-/     named globals are held live in the session's symbol table for the
+-/     rest of the script, so the 1,000,000-element `y` vector and the
+-/     scalar `s` would otherwise outlive their single use. Inlining them
+-/     into the final expression lets the arena reclaim that memory as soon
+-/     as the expression finishes evaluating, instead of pinning an 8MB
+-/     vector for no reason. Pure evaluation-order change -- doesn't affect
+-/     the arithmetic or the result.
+-
+-/ (The scan itself is an inherently sequential recurrence -- each step
+-/ depends on the previous one's output -- so it isn't a parallel-each or
+-/ SIMD-reduction candidate the way vecsum's plain fold is; see
+-/ amber_vecsum.k for why peach didn't pay off there either.)
+-n:1000000
+-i:!n
+-px:0.001*100000!2654435761*i
+-a:0.1
+-ema:{x+a*y-x}
+-e:ema\[px[0];50000#px]
+-(+/((px*2.0)-px%3.0))+e[-1+#e]
+diff --git a/bench/queries/amber_vecsum.k b/bench/queries/amber_vecsum.k
+deleted file mode 100644
+index 957d7a2..0000000
+--- a/bench/queries/amber_vecsum.k
++++ /dev/null
+@@ -1,27 +0,0 @@
+-/ amber_vecsum.k -- Amber-specific vector sum (bench id: vecsum).
+-/ Companion to k_vecsum.k (the idiomatic ngn/k script run for the "K" row);
+-/ this file is what actually runs for the "Amber" row of the comparative
+-/ table, per bench/run_comparative.py's bench_amber().
+-
+-/ Workload: sum the integers 0..9,999,999 (`+/!10000000`).
+-
+-/ What was tried, and why the plain form won:
+-/   This engine exposes real multithreading to K scripts via `peach` (see
+-/   std.k / examples/peach.k, backed by src/parallel.c's worker pool), so
+-/   the obvious "engine-level" idea is to chunk the range into N pieces and
+-/   sum each chunk on its own worker: `+/peach[{+/x};(K,n%K)#!n]`. Measured
+-/   head-to-head on this machine (nproc=2): the naive single-threaded
+-/   `+/!10000000` runs in ~3-6ms wall-clock, while the peach-chunked version
+-/   costs ~30-130ms -- worker-fork/IPC overhead alone is 10-40x the entire
+-/   cost of the reduction itself. `+/` over a freshly-materialized, flat,
+-/   contiguous int range is already a single tight pass with no allocation
+-/   churn beyond the range vector itself, so there is no headroom for
+-/   threading to recover at this problem size; peach exists for genuinely
+-/   heavy per-task work (Monte Carlo, per-symbol backtests), not a 10M-elem
+-/   integer fold. Sum of a contiguous integer range is also exact and
+-/   order-independent, so correctness wasn't the blocker here -- raw
+-/   throughput was, and the direct form wins it outright.
+-/ Result: kept the same direct, contiguous, single-pass form as k_vecsum.k.
+-/ Values (0..9,999,999) are exact in int64, so this matches k_vecsum.k's
+-/ output bit-for-bit: 49999995000000.
+-+/!10000000
+diff --git a/bench/queries/bqn_groupby.bqn b/bench/queries/bqn_groupby.bqn
+index 9875174..22f9442 100644
+--- a/bench/queries/bqn_groupby.bqn
++++ b/bench/queries/bqn_groupby.bqn
+@@ -1,7 +1,29 @@
+-n ← 1000000
+-i ← ↕n
+-px ← 0.001×100000|2654435761×i
+-sym ← 10|i
+-grouped ← sym ⊔ px
+-sums ← +´¨ grouped
+-•Show +´sums
++# CBQN implementation of bench/SPEC.md. GNU AGPLv3 - see LICENSE and NOTICE.
++# One file per workload and no argument parsing, deliberately: this file could
++# not be executed in the environment it was written in, so it avoids every
++# construct that is not strictly needed. CI is its first real run; the harness
++# reports a clear "error" cell if it does not work rather than failing the job.
++# No in-language timer is used either -- run_comparative.py measures this engine
++# as (total process time - startup baseline) and labels the cell accordingly.
++# Data is fully materialised before the kernel; no range-sum shortcuts.
++N ← 10000000
++M ← 1000000
++K ← 1000
++G ← 100
++h  ← 1048573 | 262147 × ↕N
++a  ← 1000 | h
++b  ←  997 | h
++x  ← 0 + a
++y  ← 0 + b
++gk ← G | a
++kr ← 1048573 | 7919 × ↕K
++vr ← 2 × ↕K
++kl ← kr ⊏˜ K | M ↑ h
++vl ← M ↑ x
++CHECK ← (+´a) + 3 × +´b
++# ⊔ buckets by key value, so bucket i holds group i: the weight is the
++# index itself, never a positional 1..G vector over first-appearance order.
++sums ← +´¨ gk ⊔ x
++•Out "BENCH groupby"
++•Out "CHECK " ∾ •Repr CHECK
++•Out "ANSWER " ∾ •Repr +´ (1 + ↕≠sums) × sums
+diff --git a/bench/queries/bqn_vecarith.bqn b/bench/queries/bqn_vecarith.bqn
+deleted file mode 100644
+index 800535f..0000000
+--- a/bench/queries/bqn_vecarith.bqn
++++ /dev/null
+@@ -1,9 +0,0 @@
+-n ← 1000000
+-i ← ↕n
+-px ← 0.001×100000|2654435761×i
+-y ← (px×2.0)-px÷3.0
+-s ← +´y
+-a ← 0.1
+-Ema ← {(a×𝕩)+(1-a)×𝕨}
+-folded ← Ema` 50000↑px
+-•Show s+¯1⊑folded
+diff --git a/bench/queries/bqn_vecsum.bqn b/bench/queries/bqn_vecsum.bqn
+deleted file mode 100644
+index 3270e97..0000000
+--- a/bench/queries/bqn_vecsum.bqn
++++ /dev/null
+@@ -1 +0,0 @@
+-⟨⟩ ⋄ •Show +´ ↕10000000
+diff --git a/bench/queries/duckdb_groupby.sql b/bench/queries/duckdb_groupby.sql
+index db75beb..4a0217c 100644
+--- a/bench/queries/duckdb_groupby.sql
++++ b/bench/queries/duckdb_groupby.sql
+@@ -1,6 +1,17 @@
+--- Columnar group-by aggregation on a 1,000,000-row table: sum(px) by
+--- sym (10 groups).
+-CREATE OR REPLACE TABLE g AS
+-  SELECT i, (i % 10) AS sym, 0.001 * ((2654435761 * i) % 100000) AS px
+-  FROM range(1000000) t(i);
+-SELECT SUM(s) FROM (SELECT sym, SUM(px) AS s FROM g GROUP BY sym);
++-- DuckDB implementation of bench/SPEC.md. GNU AGPLv3.
++-- Table creation is intentionally OUTSIDE the timed statement: every array
++-- engine likewise gets its vectors materialised before the clock starts.
++-- .timer on makes DuckDB report per-statement wall time; run_comparative.py
++-- reads the LAST 'Run Time (s): real' line, i.e. the timed query after the
++-- warm-up execution above it.
++.timer off
++CREATE OR REPLACE TABLE d AS
++  SELECT i,
++         ((262147::BIGINT * i) % 1048573) % 1000 AS a,
++         ((262147::BIGINT * i) % 1048573) % 997  AS b,
++         (((262147::BIGINT * i) % 1048573) % 1000) % 100 AS g
++  FROM range(10000000) t(i);
++SELECT 'CHECK ' || (sum(a) + 3 * sum(b))::BIGINT::VARCHAR FROM d;
++SELECT sum((g + 1) * s) FROM (SELECT g, sum(a::DOUBLE) AS s FROM d GROUP BY g);
++.timer on
++SELECT 'ANSWER ' || printf('%.17g', sum((g + 1) * s)) FROM (SELECT g, sum(a::DOUBLE) AS s FROM d GROUP BY g);
+diff --git a/bench/queries/duckdb_vecarith.sql b/bench/queries/duckdb_vecarith.sql
+deleted file mode 100644
+index 08fc833..0000000
+--- a/bench/queries/duckdb_vecarith.sql
++++ /dev/null
+@@ -1,21 +0,0 @@
+--- Vector arithmetic (1,000,000 elements) + a tacit EMA over the first
+--- 50,000 of them. EMA is capped well below the full 1M because it's
+--- expressed as a recursive CTE (SQL has no native scan/fold primitive),
+--- which is structurally disadvantaged vs a real array language's scan
+--- adverb -- that's an intentional, honest part of what this benchmark
+--- measures, not a limitation the harness is trying to hide.
+-CREATE OR REPLACE TABLE t AS
+-  SELECT i, 0.001 * ((2654435761 * i) % 100000) AS px
+-  FROM range(1000000) t(i);
+-
+-CREATE OR REPLACE TABLE arith AS
+-  SELECT SUM(px * 2.0 - px / 3.0) AS s FROM t;
+-
+-WITH RECURSIVE ema(i, e) AS (
+-  SELECT 0, px FROM t WHERE i = 0
+-  UNION ALL
+-  SELECT t.i, 0.1 * t.px + 0.9 * ema.e
+-  FROM t JOIN ema ON t.i = ema.i + 1
+-  WHERE t.i < 50000
+-)
+-SELECT (SELECT s FROM arith) + (SELECT e FROM ema ORDER BY i DESC LIMIT 1) AS result;
+diff --git a/bench/queries/duckdb_vecsum.sql b/bench/queries/duckdb_vecsum.sql
+deleted file mode 100644
+index 5eb36fd..0000000
+--- a/bench/queries/duckdb_vecsum.sql
++++ /dev/null
+@@ -1,2 +0,0 @@
+--- 10,000,000 element vector sum, DuckDB's native range() generator.
+-SELECT SUM(i) FROM range(10000000) t(i);
+diff --git a/bench/queries/k_groupby.k b/bench/queries/k_groupby.k
+index d7508d0..6b502eb 100644
+--- a/bench/queries/k_groupby.k
++++ b/bench/queries/k_groupby.k
+@@ -1,9 +1,31 @@
+-/ Columnar group-by aggregation on a 1,000,000-row table: sum(px) by sym
+-/ (10 groups), via the standard ngn/k idiom `{+/px x}'=sym` -- also used by
+-/ this repo's existing bench/bench_k.k, so amber and ngn/k share one file.
+-n:1000000
+-i:!n
+-px:0.001*100000!2654435761*i
+-sym:10!i
+-r:{+/px x}'=sym
+-+/r
++/ ngn/k implementation of bench/SPEC.md -- see that file for the data model,
++/ the exactness argument and the fairness rules. GNU AGPLv3.
++/ ngn/k has no portable in-language monotonic clock, so this file prints no
++/ TIME_MS line; bench/run_comparative.py falls back to
++/   total process time - measured startup baseline
++/ for this engine and labels the cell accordingly.
++/ Data is fully materialised before the kernel runs -- in particular this file
++/ never uses `+/!n`, which some K engines (Amber included) constant-fold to a
++/ closed form.
++N:10000000
++M:1000000
++KK:1000
++G:100
++ii:!N
++hh:1048573!262147*ii
++pa:1000!hh
++pb:997!hh
++px:0.0+pa
++py:0.0+pb
++gk:G!pa
++kr:1048573!7919*!KK
++vr:2.0*0.0+!KK
++kl:kr KK!M#hh
++vl:M#px
++CHK:(+/pa)+3*+/pb
++/ !(=v) yields keys in first-appearance order, NOT sorted: weight by the key
++/ itself, never by position (this exact mistake was caught cross-engine).
++d:=gk
++`0:"BENCH groupby"
++`0:"CHECK ",$CHK
++`0:"ANSWER ",$+/(1.0+0.0+!d)*{+/px x}'. d
+diff --git a/bench/queries/k_vecarith.k b/bench/queries/k_vecarith.k
+deleted file mode 100644
+index 8e9c599..0000000
+--- a/bench/queries/k_vecarith.k
++++ /dev/null
+@@ -1,13 +0,0 @@
+-/ Vector arithmetic (1,000,000 elements, elementwise ops + reduction) followed
+-/ by a tacit exponential moving average via the scan adverb (\). Deterministic
+-/ dataset (closed formula, no RNG) so timing is stable and reproducible,
+-/ matching the convention used by the rest of bench/ in this repo.
+-n:1000000
+-i:!n
+-px:0.001*100000!2654435761*i
+-y:(px*2.0)-px%3.0
+-s:+/y
+-a:0.1
+-ema:{(a*y)+(1-a)*x}
+-e:ema\[px[0];50000#px]
+-s+e[-1+#e]
+diff --git a/bench/queries/k_vecsum.k b/bench/queries/k_vecsum.k
+deleted file mode 100644
+index 639a2c3..0000000
+--- a/bench/queries/k_vecsum.k
++++ /dev/null
+@@ -1,4 +0,0 @@
+-/ 10,000,000 element vector sum. Same idiom Amber's own bench.k uses; this
+-/ file's k-dialect (ngn/k-derived) is also what Amber itself accepts, so the
+-/ harness runs this exact file for both the `amber` and `k` (ngn/k) rows.
+-+/!10000000
+diff --git a/bench/queries/q_groupby.q b/bench/queries/q_groupby.q
+deleted file mode 100644
+index f98bb39..0000000
+--- a/bench/queries/q_groupby.q
++++ /dev/null
+@@ -1,8 +0,0 @@
+-/ kdb+/q dialect fallback for columnar group-by aggregation.
+-n:1000000; i:til n;
+-px:0.001*(2654435761*i) mod 100000;
+-sym:i mod 10;
+-t:([]sym;px);
+-r:select sum px by sym from t;
+--1 string sum r`px;
+-\\
+diff --git a/bench/queries/q_vecarith.q b/bench/queries/q_vecarith.q
+deleted file mode 100644
+index b885b66..0000000
+--- a/bench/queries/q_vecarith.q
++++ /dev/null
+@@ -1,9 +0,0 @@
+-/ kdb+/q dialect fallback for vector arithmetic + tacit EMA.
+-n:1000000; i:til n;
+-px:0.001*(2654435761*i) mod 100000;
+-y:(px*2.0)-px%3.0;
+-s:sum y;
+-ema:{[a;x;y] a*y+(1-a)*x};
+-folded:(ema[0.1]/)\[px[0];50000#px];
+--1 string s+last folded;
+-\\
+diff --git a/bench/queries/q_vecsum.q b/bench/queries/q_vecsum.q
+deleted file mode 100644
+index c3c4efd..0000000
+--- a/bench/queries/q_vecsum.q
++++ /dev/null
+@@ -1,4 +0,0 @@
+-/ kdb+/q dialect fallback (used only if a k-dialect ngn/k binary isn't found
+-/ but a q binary is -- see bench/run_comparative.py's engine detection).
+--1 string sum til 10000000;
+-\\
+diff --git a/bench/run_comparative.py b/bench/run_comparative.py
+old mode 100644
+new mode 100755
+index 3f338c1..6dcc913
+--- a/bench/run_comparative.py
++++ b/bench/run_comparative.py
+@@ -1,39 +1,57 @@
+ #!/usr/bin/env python3
+ """
+-bench/run_comparative.py — comparative benchmark harness for Amber.
+-
+-Runs the same three workloads across Amber, DuckDB (CLI), CBQN, and a K
+-interpreter (ngn/k, or kdb+/q as a fallback dialect), 5 times each, and
+-reports the median wall-clock time in milliseconds per engine plus a
+-speedup multiplier relative to Amber, as a Markdown table.
+-
+-Workloads:
+-  1. vecsum      10,000,000-element vector sum                (`+/!10000000`)
+-  2. vecarith    1,000,000-element vector arithmetic + a tacit EMA scan
+-  3. groupby     columnar sum-by-group aggregation on a 1,000,000-row table
+-
+-Engine binaries are found via environment variables, each with a sensible
+-default so this also runs unmodified on a laptop with the tools on PATH:
+-
+-  AMBER_BIN   default: ./amber (relative to the repo root)
+-  DUCKDB_BIN  default: duckdb
+-  CBQN_BIN    default: cbqn (falls back to bqn)
+-  K_BIN       default: first of k, ngn-k, q found on PATH
+-  K_DIALECT   auto | k | q   (auto-detects by dialect-probing K_BIN)
+-
+-Any engine whose binary isn't found is skipped (reported as "not installed"
+-in the table) rather than failing the whole run -- this script is meant to
+-degrade gracefully both on a bare laptop and in CI before the "download the
+-tools" step has run everything it possibly can.
++bench/run_comparative.py -- comparative benchmark harness for Amber.
++
++Implements the protocol in bench/SPEC.md across ten engines:
++
++  amber        Amber, array primitives          (peer of k / bqn / j / uiua)
++  amber-qsql   Amber, select..by..from layer    (peer of duckdb SQL)
++  k            ngn/k
++  bqn          CBQN
++  duckdb       DuckDB CLI
++  julia        Julia
++  numpy        Python + NumPy
++  uiua         Uiua
++  j            J (jconsole)
++  c            native C, gcc -O3 -march=native  (the floor)
++
++WHAT THIS HARNESS ENFORCES (rather than merely documenting):
++
++  * Every engine prints ANSWER. All ten answers are exactly representable in
++    float64 and order-independent by construction (SPEC.md §3), so the runner
++    compares them EXACTLY against the C reference. An engine that disagrees is
++    reported as WRONG and its time is withheld -- you cannot win this table by
++    computing something cheaper.
++  * Every engine prints CHECK, a checksum of its INPUT data. A divergence in
++    the generator is therefore caught separately from a divergence in the
++    result, and reported as BADDATA.
++  * Timing excludes process startup. Engines that can time their own kernel
++    print TIME_MS and that is used directly ("kernel" mode). Engines with no
++    usable in-language clock are measured as
++        total wall time - startup baseline
++    where the baseline is measured once per engine by running a do-nothing
++    script ("net" mode). The mode is printed per cell so the two are never
++    silently mixed.
++  * Warm-up passes run before timing (JIT/branch-predictor/page-cache), and
++    the reported figure is the median of --runs timed passes.
++
++Engine binaries come from environment variables, each with a sensible default:
++
++  AMBER_BIN   DUCKDB_BIN  CBQN_BIN  K_BIN
++  JULIA_BIN   PYTHON_BIN  UIUA_BIN  J_BIN  C_BENCH_BIN
++
++Any engine whose binary is missing is reported "not installed" rather than
++failing the run, so this degrades gracefully on a laptop and in CI.
+ 
+ Usage:
+-  bench/run_comparative.py                     # print the table to stdout
+-  bench/run_comparative.py --update-docs        # also patch docs/BENCHMARKS.md
+-  bench/run_comparative.py --out results.md     # also write the table to a file
+-  bench/run_comparative.py --runs 5             # override the run count (default 5)
++  bench/run_comparative.py                    # print the table
++  bench/run_comparative.py --runs 5 --warmup 2
++  bench/run_comparative.py --out results.md --update-docs
++  bench/run_comparative.py --only amber,c --benchmarks reduce
+ """
+ import argparse
+ import os
++import re
+ import shutil
+ import statistics
+ import subprocess
+@@ -45,223 +63,316 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
+ QUERIES = Path(__file__).resolve().parent / "queries"
+ 
+ BENCHMARKS = [
+-    # (id, human label, timeout seconds per run)
+-    ("vecsum", "Vector sum — 10,000,000 elements (`+/!10000000`)", 30),
+-    ("vecarith", "Vector arithmetic + tacit EMA (1,000,000 elems, 50,000-elem scan)", 60),
+-    ("groupby", "Columnar group-by aggregation (1,000,000 rows, 10 groups)", 30),
++    ("arith",   "Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M", 300),
++    ("reduce",  "Reductions — `sum + max + dot`, 10M elements", 300),
++    ("groupby", "Group-by aggregation — 100 groups over 10M rows", 600),
++    ("join",    "Inner join — 1M left rows against 1,000 sparse keys", 600),
+ ]
+ 
+-
+-def which(name):
+-    return shutil.which(name)
+-
+-
+-def find_amber():
+-    env = os.environ.get("AMBER_BIN")
+-    if env and Path(env).exists():
+-        return str(Path(env).resolve())
+-    cand = REPO_ROOT / "amber"
+-    if cand.exists():
+-        return str(cand)
+-    return which("amber")
+-
+-
+-def find_duckdb():
+-    env = os.environ.get("DUCKDB_BIN")
+-    if env and (Path(env).exists() or which(env)):
+-        return env
+-    for cand in ("/tmp/bench_tools/duckdb", "duckdb"):
+-        if Path(cand).exists() or which(cand):
+-            return cand
+-    return None
++# engine id -> (display label, peer-group note)
++ENGINES = [
++    ("c",          "C (-O3)",      "baseline"),
++    ("amber",      "Amber",        "array primitives"),
++    ("amber-qsql", "Amber qSQL",   "query layer"),
++    ("k",          "ngn/k",        "array primitives"),
++    ("bqn",        "CBQN",         "array primitives"),
++    ("j",          "J",            "array primitives"),
++    ("uiua",       "Uiua",         "array primitives"),
++    ("numpy",      "NumPy",        "array primitives"),
++    ("julia",      "Julia",        "scalar loops (JIT)"),
++    ("duckdb",     "DuckDB",       "query layer"),
++]
+ 
+ 
+-def find_cbqn():
+-    env = os.environ.get("CBQN_BIN")
+-    if env and (Path(env).exists() or which(env)):
+-        return env
+-    for cand in ("/tmp/bench_tools/cbqn", "cbqn", "bqn"):
+-        if Path(cand).exists() or which(cand):
+-            return cand
+-    return None
++def which(name):
++    return shutil.which(name) if name else None
+ 
+ 
+-def find_k():
+-    env = os.environ.get("K_BIN")
+-    if env and (Path(env).exists() or which(env)):
+-        return env
+-    for cand in ("/tmp/bench_tools/k", "k", "ngn-k", "q"):
+-        if Path(cand).exists() or which(cand):
+-            return cand
++def resolve(env_var, candidates):
++    v = os.environ.get(env_var)
++    if v and (Path(v).exists() or which(v)):
++        return v
++    for c in candidates:
++        if Path(c).exists() or which(c):
++            return c
+     return None
+ 
+ 
+-def detect_k_dialect(k_bin):
+-    """ngn/k and kdb+/q share a lot of syntax but diverge on group/scan/mod.
+-    Probe with a tiny script that only parses cleanly in one dialect."""
+-    forced = os.environ.get("K_DIALECT", "auto")
+-    if forced in ("k", "q"):
+-        return forced
+-    if k_bin and Path(k_bin).name == "q":
+-        return "q"
+-    # k-dialect probe: `10!23` is "23 mod 10" in ngn/k -> 3. In q, `!` on two
+-    # ints with this arg order errors/behaves differently, so a clean "3" is
+-    # a strong signal we're talking to a k-family interpreter.
+-    try:
+-        r = subprocess.run([k_bin, "-e", "10!23"] if False else [k_bin],
+-                            input="10!23\n", capture_output=True, text=True, timeout=5)
+-        if "3" in r.stdout:
+-            return "k"
+-    except Exception:
+-        pass
+-    return "q"
+-
+-
+-def run_once(cmd, stdin_path=None, cwd=None, timeout=30):
+-    """Run one benchmark process, return elapsed wall-clock ms, or None on failure."""
++def find_bins():
++    return {
++        "amber":      resolve("AMBER_BIN",   [str(REPO_ROOT / "amber"), "amber"]),
++        "amber-qsql": resolve("AMBER_BIN",   [str(REPO_ROOT / "amber"), "amber"]),
++        "k":          resolve("K_BIN",       ["/tmp/bench_tools/k", "k", "ngn-k"]),
++        "bqn":        resolve("CBQN_BIN",    ["/tmp/bench_tools/cbqn", "cbqn", "bqn"]),
++        "duckdb":     resolve("DUCKDB_BIN",  ["/tmp/bench_tools/duckdb", "duckdb"]),
++        "julia":      resolve("JULIA_BIN",   ["/tmp/bench_tools/julia", "julia"]),
++        "numpy":      resolve("PYTHON_BIN",  [sys.executable or "python3", "python3"]),
++        "uiua":       resolve("UIUA_BIN",    ["/tmp/bench_tools/uiua", "uiua"]),
++        "j":          resolve("J_BIN",       ["/tmp/bench_tools/jconsole", "jconsole", "ijconsole"]),
++        "c":          resolve("C_BENCH_BIN", ["/tmp/bench_tools/c_bench", str(REPO_ROOT / "c_bench")]),
++    }
++
++
++def cmd_for(engine, binpath, bench_id, runs, warmup):
++    """Return (argv, stdin_path_or_None). Engines that self-time get runs/warmup."""
++    q = QUERIES
++    if engine == "amber":
++        return [binpath, str(q / "amber_bench.k"), bench_id, str(runs), str(warmup)], None
++    if engine == "amber-qsql":
++        return [binpath, str(q / "amberq_bench.k"), bench_id, str(runs), str(warmup)], None
++    if engine == "numpy":
++        return [binpath, str(q / "numpy_bench.py"), bench_id, str(runs), str(warmup)], None
++    if engine == "julia":
++        return [binpath, "--startup-file=no", str(q / "julia_bench.jl"), bench_id,
++                str(runs), str(warmup)], None
++    if engine == "c":
++        return [binpath, bench_id, str(runs), str(warmup)], None
++    # ---- engines with one file per workload and no argv / no clock ----
++    if engine == "k":
++        return [binpath, str(q / f"k_{bench_id}.k")], None
++    if engine == "bqn":
++        return [binpath, str(q / f"bqn_{bench_id}.bqn")], None
++    if engine == "uiua":
++        return [binpath, "run", str(q / f"uiua_{bench_id}.ua")], None
++    if engine == "j":
++        return [binpath, str(q / f"j_{bench_id}.ijs")], None
++    if engine == "duckdb":
++        return [binpath, "-batch", "-noheader", "-list", ":memory:"], q / f"duckdb_{bench_id}.sql"
++    raise KeyError(engine)
++
++
++def noop_cmd(engine, binpath):
++    """A do-nothing invocation, for measuring this engine's startup baseline."""
++    tmp = REPO_ROOT / "bench" / ".noop"
++    tmp.mkdir(exist_ok=True)
++    files = {
++        "k":    (tmp / "noop.k",    "0\n"),
++        "bqn":  (tmp / "noop.bqn",  "0\n"),
++        "uiua": (tmp / "noop.ua",   "0\n"),
++        "j":    (tmp / "noop.ijs",  "exit 0\n"),
++    }
++    if engine in files:
++        p, body = files[engine]
++        p.write_text(body)
++        if engine == "uiua":
++            return [binpath, "run", str(p)], None
++        return [binpath, str(p)], None
++    if engine == "duckdb":
++        p = tmp / "noop.sql"
++        p.write_text("SELECT 1;\n")
++        return [binpath, "-batch", "-noheader", "-list", ":memory:"], p
++    return None, None
++
++
++def run_once(cmd, stdin_path=None, timeout=300):
+     t0 = time.perf_counter()
+     try:
+         if stdin_path is not None:
+             with open(stdin_path, "rb") as f:
+-                r = subprocess.run(cmd, stdin=f, capture_output=True, cwd=cwd, timeout=timeout)
++                r = subprocess.run(cmd, stdin=f, capture_output=True,
++                                   cwd=str(REPO_ROOT), timeout=timeout)
+         else:
+-            r = subprocess.run(cmd, capture_output=True, cwd=cwd, timeout=timeout)
++            r = subprocess.run(cmd, capture_output=True, cwd=str(REPO_ROOT), timeout=timeout)
+     except subprocess.TimeoutExpired:
+-        return None, b"", b"TIMEOUT"
+-    except FileNotFoundError:
+-        return None, b"", b"NOT FOUND"
+-    elapsed_ms = (time.perf_counter() - t0) * 1000.0
++        return None, "", "timeout"
++    except (FileNotFoundError, PermissionError) as e:
++        return None, "", f"not runnable ({e.__class__.__name__})"
++    total_ms = (time.perf_counter() - t0) * 1000.0
++    out = r.stdout.decode(errors="replace")
++    err = r.stderr.decode(errors="replace")
+     if r.returncode != 0:
+-        return None, r.stdout, r.stderr
+-    return elapsed_ms, r.stdout, r.stderr
+-
+-
+-def median_runs(cmd_fn, runs, timeout):
+-    """cmd_fn() -> (cmd_list, stdin_path or None). Returns (median_ms or None, last_error)."""
+-    times = []
+-    last_err = b""
++        return None, out, (err.strip().splitlines() or ["exit %d" % r.returncode])[-1][:120]
++    return total_ms, out, err
++
++
++NUM = r"[-+0-9.eE]+"
++RE_ANSWER = re.compile(r"ANSWER\s+(" + NUM + r")")
++RE_CHECK = re.compile(r"CHECK\s+(" + NUM + r")")
++RE_TIME = re.compile(r"TIME_MS\s+(" + NUM + r")")
++# DuckDB's ".timer on" output, used when the engine has no TIME_MS line
++RE_DUCK_TIMER = re.compile(r"Run Time \(s\):\s*real\s+([0-9.]+)")
++
++
++def parse_output(text):
++    """Return (answer|None, check|None, kernel_ms|None)."""
++    ans = chk = kms = None
++    m = RE_ANSWER.findall(text)
++    if m:
++        try:
++            ans = float(m[-1])
++        except ValueError:
++            ans = None
++    m = RE_CHECK.findall(text)
++    if m:
++        try:
++            chk = int(float(m[-1]))
++        except ValueError:
++            chk = None
++    m = RE_TIME.findall(text)
++    if m:
++        try:
++            kms = float(m[-1])
++        except ValueError:
++            kms = None
++    if kms is None:
++        m = RE_DUCK_TIMER.findall(text)
++        if m:
++            kms = float(m[-1]) * 1000.0
++    return ans, chk, kms
++
++
++def measure_startup(engine, binpath, timeout=60):
++    """Median wall time of a do-nothing script: this engine's fixed overhead."""
++    cmd, stdin_path = noop_cmd(engine, binpath)
++    if cmd is None:
++        return 0.0
++    ts = []
++    for _ in range(3):
++        ms, _, _ = run_once(cmd, stdin_path, timeout=timeout)
++        if ms is not None:
++            ts.append(ms)
++    return statistics.median(ts) if ts else 0.0
++
++
++def bench_engine(engine, binpath, bench_id, runs, warmup, timeout, startup_ms):
++    """Returns dict(ms, mode, answer, check, error)."""
++    if not binpath:
++        return dict(ms=None, mode="", answer=None, check=None, error="not installed")
++    cmd, stdin_path = cmd_for(engine, binpath, bench_id, runs, warmup)
++
++    first_ms, out, err = run_once(cmd, stdin_path, timeout=timeout)
++    if first_ms is None:
++        return dict(ms=None, mode="", answer=None, check=None, error=err or "failed")
++    answer, check, kernel_ms = parse_output(out)
++
++    if kernel_ms is not None:
++        # The script did its own warm-up + median internally.
++        return dict(ms=kernel_ms, mode="kernel", answer=answer, check=check, error=None)
++
++    # No in-language clock: warm up by discarding the first run (already done
++    # above), then take the median of `runs` more, minus this engine's startup.
++    totals = []
+     for _ in range(runs):
+-        cmd, stdin_path = cmd_fn()
+-        ms, out, err = run_once(cmd, stdin_path=stdin_path, cwd=str(REPO_ROOT), timeout=timeout)
++        ms, out2, err2 = run_once(cmd, stdin_path, timeout=timeout)
+         if ms is None:
+-            last_err = err
+-            continue
+-        times.append(ms)
+-    if not times:
+-        return None, last_err
+-    return statistics.median(times), b""
+-
+-
+-def bench_amber(amber_bin, bench_id, runs, timeout):
+-    if not amber_bin:
+-        return None, "not installed"
+-    # Amber gets its own optimized query file (SIMD/attribute/tacit tuning is
+-    # engine-specific and not idiomatic ngn/k -- see bench/queries/amber_*.k's
+-    # own header comments for what was tried and measured). k_<id>.k is now
+-    # used only for the "K" (ngn/k) row's bench_k(), never reused here.
+-    qf = QUERIES / f"amber_{bench_id}.k"
+-    med, err = median_runs(lambda: ([amber_bin, str(qf)], None), runs, timeout)
+-    return med, (err.decode(errors="replace").strip()[:120] if med is None else None)
+-
+-
+-def bench_k(k_bin, dialect, bench_id, runs, timeout):
+-    if not k_bin:
+-        return None, "not installed"
+-    if dialect == "q":
+-        qf = QUERIES / f"q_{bench_id}.q"
+-        med, err = median_runs(lambda: ([k_bin, str(qf), "-q"], None), runs, timeout)
+-    else:
+-        qf = QUERIES / f"k_{bench_id}.k"
+-        med, err = median_runs(lambda: ([k_bin, str(qf)], None), runs, timeout)
+-    return med, (err.decode(errors="replace").strip()[:120] if med is None else None)
+-
+-
+-def bench_bqn(bqn_bin, bench_id, runs, timeout):
+-    if not bqn_bin:
+-        return None, "not installed"
+-    qf = QUERIES / f"bqn_{bench_id}.bqn"
+-    med, err = median_runs(lambda: ([bqn_bin, str(qf)], None), runs, timeout)
+-    return med, (err.decode(errors="replace").strip()[:120] if med is None else None)
+-
+-
+-def bench_duckdb(duckdb_bin, bench_id, runs, timeout):
+-    if not duckdb_bin:
+-        return None, "not installed"
+-    qf = QUERIES / f"duckdb_{bench_id}.sql"
+-    med, err = median_runs(lambda: ([duckdb_bin, "-batch", ":memory:"], qf), runs, timeout)
+-    return med, (err.decode(errors="replace").strip()[:120] if med is None else None)
++            return dict(ms=None, mode="", answer=answer, check=check, error=err2 or "failed")
++        totals.append(ms)
++        a2, c2, _ = parse_output(out2)
++        if a2 is not None:
++            answer = a2
++        if c2 is not None:
++            check = c2
++    net = max(0.0, statistics.median(totals) - startup_ms)
++    return dict(ms=net, mode="net", answer=answer, check=check, error=None)
+ 
+ 
+ def fmt_ms(v):
+-    if v is None:
+-        return None
+-    return f"{v:,.2f}"
+-
+-
+-def fmt_speedup(amber_ms, other_ms):
+-    if amber_ms is None or other_ms is None:
+-        return "—"
+-    ratio = amber_ms / other_ms
+-    if ratio >= 1.0:
+-        return f"{ratio:.1f}× faster than Amber"
+-    return f"{1/ratio:.1f}× slower than Amber"
+-
+-
+-def build_table(results, runs):
+-    """results: {bench_id: {'amber':(ms,err), 'duckdb':(ms,err), 'cbqn':(ms,err), 'k':(ms,err,label)}}"""
+-    lines = []
+-    lines.append(f"_Median of {runs} runs per cell; process wall-clock time including interpreter startup. "
+-                  f"Generated by `bench/run_comparative.py`._")
+-    lines.append("")
+-    lines.append("| Benchmark | Amber (ms) | DuckDB (ms) | CBQN (ms) | K (ms) |")
+-    lines.append("|---|---:|---:|---:|---:|")
+-    for bench_id, label in [(b[0], b[1]) for b in BENCHMARKS]:
+-        row = results[bench_id]
+-        amber_ms, _ = row["amber"]
+-        duck_ms, duck_err = row["duckdb"]
+-        bqn_ms, bqn_err = row["cbqn"]
+-        k_ms, k_err = row["k"]
+-
+-        def cell(ms, err):
+-            if ms is not None:
+-                return fmt_ms(ms)
+-            return f"_{err}_" if err else "_error_"
+-
+-        lines.append(f"| {label} | {cell(amber_ms, None)} | {cell(duck_ms, duck_err)} | "
+-                      f"{cell(bqn_ms, bqn_err)} | {cell(k_ms, k_err)} |")
+-    lines.append("")
+-    lines.append("Speedup relative to Amber (>1× means the other engine is faster):")
+-    lines.append("")
+-    lines.append("| Benchmark | DuckDB | CBQN | K |")
+-    lines.append("|---|---|---|---|")
+-    for bench_id, label in [(b[0], b[1]) for b in BENCHMARKS]:
+-        row = results[bench_id]
+-        amber_ms, _ = row["amber"]
+-        duck_ms, _ = row["duckdb"]
+-        bqn_ms, _ = row["cbqn"]
+-        k_ms, _ = row["k"]
+-        lines.append(f"| {label} | {fmt_speedup(amber_ms, duck_ms)} | "
+-                      f"{fmt_speedup(amber_ms, bqn_ms)} | {fmt_speedup(amber_ms, k_ms)} |")
+-    return "\n".join(lines) + "\n"
+-
+-
+-START_MARK = "<!-- COMPARATIVE_BENCHMARKS:START (auto-generated by bench/run_comparative.py -- do not edit by hand) -->"
++    return f"{v:,.2f}" if v is not None else "—"
++
++
++def build_table(results, ref, runs, warmup, engines, benchmarks, startup):
++    L = []
++    L.append(f"_Median of {runs} timed runs after {warmup} warm-up passes. "
++             f"Kernel time only — process startup is excluded (see below). "
++             f"Generated by `bench/run_comparative.py`; workloads defined in "
++             f"[`bench/SPEC.md`](SPEC.md)._")
++    L.append("")
++
++    # ---- correctness gate first: a wrong answer voids the time ----
++    bad = []
++    for bid, _, _ in benchmarks:
++        for eid, label, _ in engines:
++            r = results[bid][eid]
++            if r["error"] or r["ms"] is None:
++                continue
++            if ref[bid] is not None and r["answer"] is not None and r["answer"] != ref[bid]:
++                bad.append(f"{label}/{bid}: answer {r['answer']!r} != reference {ref[bid]!r}")
++            if ref["check"] is not None and r["check"] is not None and r["check"] != ref["check"]:
++                bad.append(f"{label}/{bid}: input checksum {r['check']} != {ref['check']}")
++    if bad:
++        L.append("> **⚠ Correctness gate FAILED — these cells are reported as WRONG and their "
++                 "times are withheld:**")
++        L.append(">")
++        for b in bad:
++            L.append(f"> - {b}")
++    else:
++        L.append("> ✅ Correctness gate passed: every engine produced the identical exact answer "
++                 "and the identical input checksum on every workload.")
++    L.append("")
++
++    hdr = "| Benchmark | " + " | ".join(l for _, l, _ in engines) + " |"
++    sep = "|---|" + "---:|" * len(engines)
++    L.append(hdr)
++    L.append(sep)
++    for bid, blabel, _ in benchmarks:
++        cells = []
++        for eid, _, _ in engines:
++            r = results[bid][eid]
++            if r["error"]:
++                cells.append(f"_{r['error']}_")
++            elif r["ms"] is None:
++                cells.append("_error_")
++            elif ref[bid] is not None and r["answer"] is not None and r["answer"] != ref[bid]:
++                cells.append("**WRONG**")
++            elif ref["check"] is not None and r["check"] is not None and r["check"] != ref["check"]:
++                cells.append("**BADDATA**")
++            else:
++                cells.append(fmt_ms(r["ms"]))
++        L.append(f"| {blabel} | " + " | ".join(cells) + " |")
++    L.append("")
++
++    L.append("Relative to the C baseline (lower is better; 1.00× means it matched plain C):")
++    L.append("")
++    L.append(hdr)
++    L.append(sep)
++    for bid, blabel, _ in benchmarks:
++        base = results[bid]["c"]["ms"]
++        cells = []
++        for eid, _, _ in engines:
++            r = results[bid][eid]
++            ok = (not r["error"] and r["ms"] is not None
++                  and (ref[bid] is None or r["answer"] == ref[bid]))
++            if not ok or not base:
++                cells.append("—")
++            else:
++                cells.append(f"{r['ms'] / base:.2f}×")
++        L.append(f"| {blabel} | " + " | ".join(cells) + " |")
++    L.append("")
++
++    L.append("**Timing mode per engine** — `kernel` means the engine timed its own kernel with a "
++             "monotonic clock; `net` means it has no usable in-language clock and was measured as "
++             "_total process time − startup baseline_:")
++    L.append("")
++    L.append("| Engine | Peer group | Mode | Startup baseline (ms) |")
++    L.append("|---|---|---|---:|")
++    for eid, label, peer in engines:
++        modes = {results[b][eid]["mode"] for b, _, _ in benchmarks} - {""}
++        mode = "/".join(sorted(modes)) or "—"
++        sb = startup.get(eid)
++        L.append(f"| {label} | {peer} | {mode} | {fmt_ms(sb) if sb else '—'} |")
++    L.append("")
++    L.append("Amber appears twice on purpose: `Amber` is array-primitive code (the fair peer of "
++             "ngn/k, CBQN, J and Uiua) and `Amber qSQL` goes through the `select … by … from` "
++             "layer (the fair peer of DuckDB's SQL planner). Reporting only the faster of the two "
++             "would be choosing whichever comparison flatters Amber.")
++    return "\n".join(L) + "\n"
++
++
++START_MARK = ("<!-- COMPARATIVE_BENCHMARKS:START (auto-generated by "
++              "bench/run_comparative.py -- do not edit by hand) -->")
+ END_MARK = "<!-- COMPARATIVE_BENCHMARKS:END -->"
+ 
+ 
+ def update_docs(table_md):
+     docs = REPO_ROOT / "docs" / "BENCHMARKS.md"
+-    section = (
+-        "\n## 5. Automated CI comparative benchmarks (Amber vs DuckDB vs CBQN vs K)\n\n"
+-        f"{START_MARK}\n\n{table_md}\n{END_MARK}\n"
+-    )
++    section = ("\n## 5. Automated CI comparative benchmarks\n\n"
++               f"{START_MARK}\n\n{table_md}\n{END_MARK}\n")
+     if docs.exists():
+         text = docs.read_text()
+         if START_MARK in text and END_MARK in text:
+             pre = text.split(START_MARK)[0].rstrip("\n")
+             post = text.split(END_MARK)[1]
+-            new_section = f"{START_MARK}\n\n{table_md}\n{END_MARK}"
+-            text = pre + "\n\n" + new_section + post
++            text = pre + "\n\n" + f"{START_MARK}\n\n{table_md}\n{END_MARK}" + post
+         else:
+             text = text.rstrip("\n") + "\n" + section
+     else:
+@@ -270,87 +381,86 @@ def update_docs(table_md):
+     print(f"updated {docs}", file=sys.stderr)
+ 
+ 
+-def check_parity(amber_bin, k_bin, dialect, bench_id):
+-    """Run amber_<id>.k and k_<id>.k once each and compare their printed
+-    numeric output, so a speed win from bench/queries/amber_*.k's engine-level
+-    optimizations can never silently also change the answer. Returns
+-    (ok: bool|None, amber_val: str|None, k_val: str|None) -- ok is None if
+-    either engine is missing (nothing to compare)."""
+-    if not amber_bin or not k_bin:
+-        return None, None, None
+-    aqf = QUERIES / f"amber_{bench_id}.k"
+-    _, aout, _ = run_once([amber_bin, str(aqf)], cwd=str(REPO_ROOT), timeout=60)
+-    if dialect == "q":
+-        kqf = QUERIES / f"q_{bench_id}.q"
+-        _, kout, _ = run_once([k_bin, str(kqf), "-q"], cwd=str(REPO_ROOT), timeout=60)
+-    else:
+-        kqf = QUERIES / f"k_{bench_id}.k"
+-        _, kout, _ = run_once([k_bin, str(kqf)], cwd=str(REPO_ROOT), timeout=60)
+-    av = aout.decode(errors="replace").strip()
+-    kv = kout.decode(errors="replace").strip()
+-    try:
+-        ok = abs(float(av) - float(kv)) <= 1e-6 * max(1.0, abs(float(kv)))
+-    except ValueError:
+-        ok = av == kv
+-    return ok, av, kv
+-
+-
+ def main():
+     ap = argparse.ArgumentParser()
+     ap.add_argument("--runs", type=int, default=5)
+-    ap.add_argument("--update-docs", action="store_true")
++    ap.add_argument("--warmup", type=int, default=2)
+     ap.add_argument("--out", type=str, default=None)
++    ap.add_argument("--update-docs", action="store_true")
++    ap.add_argument("--only", type=str, default=None, help="comma-separated engine ids")
++    ap.add_argument("--benchmarks", type=str, default=None, help="comma-separated bench ids")
++    ap.add_argument("--fail-on-wrong", action="store_true",
++                    help="exit non-zero if any engine disagrees with the reference answer")
+     args = ap.parse_args()
+ 
+-    amber_bin = find_amber()
+-    duckdb_bin = find_duckdb()
+-    cbqn_bin = find_cbqn()
+-    k_bin = find_k()
+-    dialect = detect_k_dialect(k_bin) if k_bin else "k"
+-
+-    print(f"amber:  {amber_bin or 'NOT FOUND'}", file=sys.stderr)
+-    print(f"duckdb: {duckdb_bin or 'NOT FOUND'}", file=sys.stderr)
+-    print(f"cbqn:   {cbqn_bin or 'NOT FOUND'}", file=sys.stderr)
+-    print(f"k:      {k_bin or 'NOT FOUND'} (dialect={dialect})", file=sys.stderr)
+-
+-    print("-- numerical parity check (amber_<id>.k vs k_<id>.k) --", file=sys.stderr)
+-    parity = {}
+-    for bench_id, label, timeout in BENCHMARKS:
+-        ok, av, kv = check_parity(amber_bin, k_bin, dialect, bench_id)
+-        parity[bench_id] = ok
+-        if ok is None:
+-            print(f"  {bench_id}: skipped (amber or k not installed)", file=sys.stderr)
+-        elif ok:
+-            print(f"  {bench_id}: OK  amber={av}  k={kv}", file=sys.stderr)
+-        else:
+-            print(f"  {bench_id}: MISMATCH  amber={av}  k={kv}", file=sys.stderr)
+-
+-    results = {}
+-    for bench_id, label, timeout in BENCHMARKS:
+-        print(f"running {bench_id} ...", file=sys.stderr)
+-        results[bench_id] = {
+-            "amber": bench_amber(amber_bin, bench_id, args.runs, timeout),
+-            "duckdb": bench_duckdb(duckdb_bin, bench_id, args.runs, timeout),
+-            "cbqn": bench_bqn(cbqn_bin, bench_id, args.runs, timeout),
+-            "k": bench_k(k_bin, dialect, bench_id, args.runs, timeout),
+-        }
+-
+-    table_md = build_table(results, args.runs)
+-    if amber_bin and k_bin:
+-        if all(v for v in parity.values() if v is not None):
+-            table_md = "_Numerical parity check: amber_*.k and k_*.k agree on every benchmark._\n\n" + table_md
+-        else:
+-            bad = ", ".join(b for b, v in parity.items() if v is False)
+-            table_md = f"_\u26a0 Numerical parity check FAILED for: {bad} -- see stderr._\n\n" + table_md
++    engines = ENGINES
++    if args.only:
++        keep = {s.strip() for s in args.only.split(",")}
++        engines = [e for e in ENGINES if e[0] in keep]
++    benchmarks = BENCHMARKS
++    if args.benchmarks:
++        keep = {s.strip() for s in args.benchmarks.split(",")}
++        benchmarks = [b for b in BENCHMARKS if b[0] in keep]
++
++    bins = find_bins()
++    for eid, label, _ in engines:
++        print(f"{label:12s} {bins.get(eid) or 'NOT FOUND'}", file=sys.stderr)
++
++    print("-- measuring startup baselines --", file=sys.stderr)
++    startup = {}
++    for eid, label, _ in engines:
++        b = bins.get(eid)
++        startup[eid] = measure_startup(eid, b) if b else None
++        if startup.get(eid):
++            print(f"  {label:12s} {startup[eid]:8.2f} ms", file=sys.stderr)
++
++    results = {b[0]: {} for b in benchmarks}
++    for bid, blabel, timeout in benchmarks:
++        for eid, label, _ in engines:
++            print(f"running {bid}/{eid} ...", file=sys.stderr)
++            results[bid][eid] = bench_engine(eid, bins.get(eid), bid, args.runs,
++                                             args.warmup, timeout, startup.get(eid) or 0.0)
++            r = results[bid][eid]
++            print(f"  -> {r['error'] or ('%.2f ms (%s) answer=%r' % (r['ms'], r['mode'], r['answer']))}",
++                  file=sys.stderr)
++
++    # Reference answers: prefer C, else the first engine that produced one.
++    ref = {"check": None}
++    for bid, _, _ in benchmarks:
++        a = results[bid].get("c", {}).get("answer")
++        if a is None:
++            for eid, _, _ in engines:
++                if results[bid][eid]["answer"] is not None:
++                    a = results[bid][eid]["answer"]
++                    break
++        ref[bid] = a
++    for bid, _, _ in benchmarks:
++        for eid, _, _ in engines:
++            c = results[bid][eid]["check"]
++            if c is not None:
++                ref["check"] = c
++                break
++        if ref["check"] is not None:
++            break
++
++    table_md = build_table(results, ref, args.runs, args.warmup, engines, benchmarks, startup)
+     print(table_md)
+ 
+     if args.out:
+         Path(args.out).write_text(table_md)
+         print(f"wrote {args.out}", file=sys.stderr)
+-
+     if args.update_docs:
+         update_docs(table_md)
+ 
++    if args.fail_on_wrong:
++        for bid, _, _ in benchmarks:
++            for eid, _, _ in engines:
++                r = results[bid][eid]
++                if r["ms"] is not None and ref[bid] is not None and r["answer"] != ref[bid]:
++                    print("correctness gate failed", file=sys.stderr)
++                    return 1
++    return 0
++
+ 
+ if __name__ == "__main__":
+-    main()
++    sys.exit(main())
 diff --git a/docs/CHANGELOG.md b/docs/CHANGELOG.md
-index dab8fe3..cfdc81d 100644
+index dab8fe3..58fa111 100644
 --- a/docs/CHANGELOG.md
 +++ b/docs/CHANGELOG.md
-@@ -1,5 +1,154 @@
+@@ -1,5 +1,207 @@
  # Changelog
  
++## Unreleased — comparative benchmark suite rebuilt for cross-engine fairness
++
++### Two shortcuts removed from the old suite
++- **`+/!10000000` measured an O(1) closed form in Amber.** `src/3.c`'s `arf` constant-folds a sum
++  over a *range* into `n(n-1)/2`, so the `vecsum` benchmark had Amber returning the answer without
++  touching 10M elements while DuckDB, CBQN and ngn/k ran real reductions. All benchmark data is
++  now materialised before the timer starts.
++- **The join was really an array index.** With right keys `0..K-1`, every array language answers
++  with a single gather while DuckDB still builds a hash table. Right keys are now sparse and
++  unsorted (`(7919*j) mod 1048573`), which forces a genuine key lookup in every engine.
++- **The old generator overflowed 53 bits.** `2654435761 * i` exceeds `2^53` for `i > 3.4e6`, so
++  f64-only engines (Uiua, JS) would have silently generated *different data* from the int64
++  engines. The multiplier is now `262147`, keeping every intermediate under `2^53`.
++
++### New: `bench/SPEC.md`
++The data model, the four workloads, the exact-arithmetic argument and the fairness rules are now
++specified in one document that every engine implements. Every answer is an integer exactly
++representable in float64, and every sum is over such integers, so the result is **independent of
++summation order** — SIMD pairwise, Kahan and naive left-fold summation all agree bit-for-bit.
++There is therefore no floating-point excuse for a mismatch.
++
++### `bench/run_comparative.py` rewritten
++- **Ten engines**: C (`-O3 -march=native`, the floor), Amber (array primitives), Amber (qSQL),
++  ngn/k, CBQN, J, Uiua, NumPy, Julia, DuckDB.
++- **Four workloads**: vector arithmetic + masking, reductions (sum/max/dot over 10M), group-by
++  (100 groups over 10M rows), inner join (1M rows against 1,000 sparse keys).
++- **Correctness gate.** Answers are compared *exactly* against the C reference; a disagreeing
++  engine is printed as **WRONG** and its time is withheld. Each engine also emits a checksum of
++  its input data, so a generator divergence is caught separately as **BADDATA**. `--fail-on-wrong`
++  turns either into a non-zero exit.
++- **Startup excluded.** Engines that can time their own kernel do so with a monotonic clock after
++  warm-up passes; engines with no in-language clock are measured as *total − startup baseline*,
++  with the baseline measured per engine from a do-nothing script. The table labels which mode
++  produced each cell.
++- **Amber is reported twice** — primitives (peer of K/BQN/J/Uiua) and qSQL (peer of DuckDB SQL) —
++  because publishing only the faster row would be picking the flattering comparison.
++
++### `.github/workflows/benchmarks.yml`
++Adds Uiua (release binary, cargo fallback), Julia (`julia-actions/setup-julia`, standalone
++fallback), Python + NumPy, J (jconsole) and the native C baseline. Every install is
++`continue-on-error` and exports its path via `$GITHUB_ENV` (`UIUA_BIN`, `JULIA_BIN`, `PYTHON_BIN`,
++`J_BIN`, `C_BENCH_BIN`, …); a missing engine is reported as "not installed" instead of failing the
++job. The workflow's `./amber -e '1+1'` smoke test — `-e` is not an Amber flag and the call only
++survived because of a trailing `|| true` — is replaced with `./amber --version`.
++
++### Caveat recorded honestly
++The Amber, NumPy and C implementations were executed and cross-checked during development: all
++three agree exactly on all four workloads. The ngn/k files were additionally verified by running
++them under Amber (same K dialect family). **CBQN, DuckDB, Julia, Uiua and J could not be executed
++in the authoring environment** — CI is their first real run. They are written defensively (one
++file per workload, no argument parsing, no in-language timer where it was not certain) and the
++harness reports a clear per-cell error rather than failing the job.
++
 +## 1.9 — version unification, memory/UB audit, and a combinatorial test suite
 +
 +### Version

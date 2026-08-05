@@ -12,6 +12,6 @@ CREATE OR REPLACE TABLE d AS
          (((262147::BIGINT * i) % 1048573) % 1000) % 100 AS g
   FROM range(10000000) t(i);
 SELECT 'CHECK ' || (sum(a) + 3 * sum(b))::BIGINT::VARCHAR FROM d;
-SELECT sum((g + 1) * s) FROM (SELECT g, sum(a::DOUBLE) AS s FROM d GROUP BY g);
+SELECT sum(a::DOUBLE) + max(a::DOUBLE) + sum(a::DOUBLE * b::DOUBLE) FROM d;
 .timer on
-SELECT 'ANSWER ' || printf('%.17g', sum((g + 1) * s)) FROM (SELECT g, sum(a::DOUBLE) AS s FROM d GROUP BY g);
+SELECT 'ANSWER ' || printf('%.17g', sum(a::DOUBLE) + max(a::DOUBLE) + sum(a::DOUBLE * b::DOUBLE)) FROM d;

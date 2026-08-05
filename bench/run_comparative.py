@@ -1,39 +1,57 @@
 #!/usr/bin/env python3
 """
-bench/run_comparative.py — comparative benchmark harness for Amber.
+bench/run_comparative.py -- comparative benchmark harness for Amber.
 
-Runs the same three workloads across Amber, DuckDB (CLI), CBQN, and a K
-interpreter (ngn/k, or kdb+/q as a fallback dialect), 5 times each, and
-reports the median wall-clock time in milliseconds per engine plus a
-speedup multiplier relative to Amber, as a Markdown table.
+Implements the protocol in bench/SPEC.md across ten engines:
 
-Workloads:
-  1. vecsum      10,000,000-element vector sum                (`+/!10000000`)
-  2. vecarith    1,000,000-element vector arithmetic + a tacit EMA scan
-  3. groupby     columnar sum-by-group aggregation on a 1,000,000-row table
+  amber        Amber, array primitives          (peer of k / bqn / j / uiua)
+  amber-qsql   Amber, select..by..from layer    (peer of duckdb SQL)
+  k            ngn/k
+  bqn          CBQN
+  duckdb       DuckDB CLI
+  julia        Julia
+  numpy        Python + NumPy
+  uiua         Uiua
+  j            J (jconsole)
+  c            native C, gcc -O3 -march=native  (the floor)
 
-Engine binaries are found via environment variables, each with a sensible
-default so this also runs unmodified on a laptop with the tools on PATH:
+WHAT THIS HARNESS ENFORCES (rather than merely documenting):
 
-  AMBER_BIN   default: ./amber (relative to the repo root)
-  DUCKDB_BIN  default: duckdb
-  CBQN_BIN    default: cbqn (falls back to bqn)
-  K_BIN       default: first of k, ngn-k, q found on PATH
-  K_DIALECT   auto | k | q   (auto-detects by dialect-probing K_BIN)
+  * Every engine prints ANSWER. All ten answers are exactly representable in
+    float64 and order-independent by construction (SPEC.md §3), so the runner
+    compares them EXACTLY against the C reference. An engine that disagrees is
+    reported as WRONG and its time is withheld -- you cannot win this table by
+    computing something cheaper.
+  * Every engine prints CHECK, a checksum of its INPUT data. A divergence in
+    the generator is therefore caught separately from a divergence in the
+    result, and reported as BADDATA.
+  * Timing excludes process startup. Engines that can time their own kernel
+    print TIME_MS and that is used directly ("kernel" mode). Engines with no
+    usable in-language clock are measured as
+        total wall time - startup baseline
+    where the baseline is measured once per engine by running a do-nothing
+    script ("net" mode). The mode is printed per cell so the two are never
+    silently mixed.
+  * Warm-up passes run before timing (JIT/branch-predictor/page-cache), and
+    the reported figure is the median of --runs timed passes.
 
-Any engine whose binary isn't found is skipped (reported as "not installed"
-in the table) rather than failing the whole run -- this script is meant to
-degrade gracefully both on a bare laptop and in CI before the "download the
-tools" step has run everything it possibly can.
+Engine binaries come from environment variables, each with a sensible default:
+
+  AMBER_BIN   DUCKDB_BIN  CBQN_BIN  K_BIN
+  JULIA_BIN   PYTHON_BIN  UIUA_BIN  J_BIN  C_BENCH_BIN
+
+Any engine whose binary is missing is reported "not installed" rather than
+failing the run, so this degrades gracefully on a laptop and in CI.
 
 Usage:
-  bench/run_comparative.py                     # print the table to stdout
-  bench/run_comparative.py --update-docs        # also patch docs/BENCHMARKS.md
-  bench/run_comparative.py --out results.md     # also write the table to a file
-  bench/run_comparative.py --runs 5             # override the run count (default 5)
+  bench/run_comparative.py                    # print the table
+  bench/run_comparative.py --runs 5 --warmup 2
+  bench/run_comparative.py --out results.md --update-docs
+  bench/run_comparative.py --only amber,c --benchmarks reduce
 """
 import argparse
 import os
+import re
 import shutil
 import statistics
 import subprocess
@@ -45,223 +63,316 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 QUERIES = Path(__file__).resolve().parent / "queries"
 
 BENCHMARKS = [
-    # (id, human label, timeout seconds per run)
-    ("vecsum", "Vector sum — 10,000,000 elements (`+/!10000000`)", 30),
-    ("vecarith", "Vector arithmetic + tacit EMA (1,000,000 elems, 50,000-elem scan)", 60),
-    ("groupby", "Columnar group-by aggregation (1,000,000 rows, 10 groups)", 30),
+    ("arith",   "Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M", 300),
+    ("reduce",  "Reductions — `sum + max + dot`, 10M elements", 300),
+    ("groupby", "Group-by aggregation — 100 groups over 10M rows", 600),
+    ("join",    "Inner join — 1M left rows against 1,000 sparse keys", 600),
+]
+
+# engine id -> (display label, peer-group note)
+ENGINES = [
+    ("c",          "C (-O3)",      "baseline"),
+    ("amber",      "Amber",        "array primitives"),
+    ("amber-qsql", "Amber qSQL",   "query layer"),
+    ("k",          "ngn/k",        "array primitives"),
+    ("bqn",        "CBQN",         "array primitives"),
+    ("j",          "J",            "array primitives"),
+    ("uiua",       "Uiua",         "array primitives"),
+    ("numpy",      "NumPy",        "array primitives"),
+    ("julia",      "Julia",        "scalar loops (JIT)"),
+    ("duckdb",     "DuckDB",       "query layer"),
 ]
 
 
 def which(name):
-    return shutil.which(name)
+    return shutil.which(name) if name else None
 
 
-def find_amber():
-    env = os.environ.get("AMBER_BIN")
-    if env and Path(env).exists():
-        return str(Path(env).resolve())
-    cand = REPO_ROOT / "amber"
-    if cand.exists():
-        return str(cand)
-    return which("amber")
-
-
-def find_duckdb():
-    env = os.environ.get("DUCKDB_BIN")
-    if env and (Path(env).exists() or which(env)):
-        return env
-    for cand in ("/tmp/bench_tools/duckdb", "duckdb"):
-        if Path(cand).exists() or which(cand):
-            return cand
+def resolve(env_var, candidates):
+    v = os.environ.get(env_var)
+    if v and (Path(v).exists() or which(v)):
+        return v
+    for c in candidates:
+        if Path(c).exists() or which(c):
+            return c
     return None
 
 
-def find_cbqn():
-    env = os.environ.get("CBQN_BIN")
-    if env and (Path(env).exists() or which(env)):
-        return env
-    for cand in ("/tmp/bench_tools/cbqn", "cbqn", "bqn"):
-        if Path(cand).exists() or which(cand):
-            return cand
-    return None
+def find_bins():
+    return {
+        "amber":      resolve("AMBER_BIN",   [str(REPO_ROOT / "amber"), "amber"]),
+        "amber-qsql": resolve("AMBER_BIN",   [str(REPO_ROOT / "amber"), "amber"]),
+        "k":          resolve("K_BIN",       ["/tmp/bench_tools/k", "k", "ngn-k"]),
+        "bqn":        resolve("CBQN_BIN",    ["/tmp/bench_tools/cbqn", "cbqn", "bqn"]),
+        "duckdb":     resolve("DUCKDB_BIN",  ["/tmp/bench_tools/duckdb", "duckdb"]),
+        "julia":      resolve("JULIA_BIN",   ["/tmp/bench_tools/julia", "julia"]),
+        "numpy":      resolve("PYTHON_BIN",  [sys.executable or "python3", "python3"]),
+        "uiua":       resolve("UIUA_BIN",    ["/tmp/bench_tools/uiua", "uiua"]),
+        "j":          resolve("J_BIN",       ["/tmp/bench_tools/jconsole", "jconsole", "ijconsole"]),
+        "c":          resolve("C_BENCH_BIN", ["/tmp/bench_tools/c_bench", str(REPO_ROOT / "c_bench")]),
+    }
 
 
-def find_k():
-    env = os.environ.get("K_BIN")
-    if env and (Path(env).exists() or which(env)):
-        return env
-    for cand in ("/tmp/bench_tools/k", "k", "ngn-k", "q"):
-        if Path(cand).exists() or which(cand):
-            return cand
-    return None
+def cmd_for(engine, binpath, bench_id, runs, warmup):
+    """Return (argv, stdin_path_or_None). Engines that self-time get runs/warmup."""
+    q = QUERIES
+    if engine == "amber":
+        return [binpath, str(q / "amber_bench.k"), bench_id, str(runs), str(warmup)], None
+    if engine == "amber-qsql":
+        return [binpath, str(q / "amberq_bench.k"), bench_id, str(runs), str(warmup)], None
+    if engine == "numpy":
+        return [binpath, str(q / "numpy_bench.py"), bench_id, str(runs), str(warmup)], None
+    if engine == "julia":
+        return [binpath, "--startup-file=no", str(q / "julia_bench.jl"), bench_id,
+                str(runs), str(warmup)], None
+    if engine == "c":
+        return [binpath, bench_id, str(runs), str(warmup)], None
+    # ---- engines with one file per workload and no argv / no clock ----
+    if engine == "k":
+        return [binpath, str(q / f"k_{bench_id}.k")], None
+    if engine == "bqn":
+        return [binpath, str(q / f"bqn_{bench_id}.bqn")], None
+    if engine == "uiua":
+        return [binpath, "run", str(q / f"uiua_{bench_id}.ua")], None
+    if engine == "j":
+        return [binpath, str(q / f"j_{bench_id}.ijs")], None
+    if engine == "duckdb":
+        return [binpath, "-batch", "-noheader", "-list", ":memory:"], q / f"duckdb_{bench_id}.sql"
+    raise KeyError(engine)
 
 
-def detect_k_dialect(k_bin):
-    """ngn/k and kdb+/q share a lot of syntax but diverge on group/scan/mod.
-    Probe with a tiny script that only parses cleanly in one dialect."""
-    forced = os.environ.get("K_DIALECT", "auto")
-    if forced in ("k", "q"):
-        return forced
-    if k_bin and Path(k_bin).name == "q":
-        return "q"
-    # k-dialect probe: `10!23` is "23 mod 10" in ngn/k -> 3. In q, `!` on two
-    # ints with this arg order errors/behaves differently, so a clean "3" is
-    # a strong signal we're talking to a k-family interpreter.
-    try:
-        r = subprocess.run([k_bin, "-e", "10!23"] if False else [k_bin],
-                            input="10!23\n", capture_output=True, text=True, timeout=5)
-        if "3" in r.stdout:
-            return "k"
-    except Exception:
-        pass
-    return "q"
+def noop_cmd(engine, binpath):
+    """A do-nothing invocation, for measuring this engine's startup baseline."""
+    tmp = REPO_ROOT / "bench" / ".noop"
+    tmp.mkdir(exist_ok=True)
+    files = {
+        "k":    (tmp / "noop.k",    "0\n"),
+        "bqn":  (tmp / "noop.bqn",  "0\n"),
+        "uiua": (tmp / "noop.ua",   "0\n"),
+        "j":    (tmp / "noop.ijs",  "exit 0\n"),
+    }
+    if engine in files:
+        p, body = files[engine]
+        p.write_text(body)
+        if engine == "uiua":
+            return [binpath, "run", str(p)], None
+        return [binpath, str(p)], None
+    if engine == "duckdb":
+        p = tmp / "noop.sql"
+        p.write_text("SELECT 1;\n")
+        return [binpath, "-batch", "-noheader", "-list", ":memory:"], p
+    return None, None
 
 
-def run_once(cmd, stdin_path=None, cwd=None, timeout=30):
-    """Run one benchmark process, return elapsed wall-clock ms, or None on failure."""
+def run_once(cmd, stdin_path=None, timeout=300):
     t0 = time.perf_counter()
     try:
         if stdin_path is not None:
             with open(stdin_path, "rb") as f:
-                r = subprocess.run(cmd, stdin=f, capture_output=True, cwd=cwd, timeout=timeout)
+                r = subprocess.run(cmd, stdin=f, capture_output=True,
+                                   cwd=str(REPO_ROOT), timeout=timeout)
         else:
-            r = subprocess.run(cmd, capture_output=True, cwd=cwd, timeout=timeout)
+            r = subprocess.run(cmd, capture_output=True, cwd=str(REPO_ROOT), timeout=timeout)
     except subprocess.TimeoutExpired:
-        return None, b"", b"TIMEOUT"
-    except FileNotFoundError:
-        return None, b"", b"NOT FOUND"
-    elapsed_ms = (time.perf_counter() - t0) * 1000.0
+        return None, "", "timeout"
+    except (FileNotFoundError, PermissionError) as e:
+        return None, "", f"not runnable ({e.__class__.__name__})"
+    total_ms = (time.perf_counter() - t0) * 1000.0
+    out = r.stdout.decode(errors="replace")
+    err = r.stderr.decode(errors="replace")
     if r.returncode != 0:
-        return None, r.stdout, r.stderr
-    return elapsed_ms, r.stdout, r.stderr
+        return None, out, (err.strip().splitlines() or ["exit %d" % r.returncode])[-1][:120]
+    return total_ms, out, err
 
 
-def median_runs(cmd_fn, runs, timeout):
-    """cmd_fn() -> (cmd_list, stdin_path or None). Returns (median_ms or None, last_error)."""
-    times = []
-    last_err = b""
+NUM = r"[-+0-9.eE]+"
+RE_ANSWER = re.compile(r"ANSWER\s+(" + NUM + r")")
+RE_CHECK = re.compile(r"CHECK\s+(" + NUM + r")")
+RE_TIME = re.compile(r"TIME_MS\s+(" + NUM + r")")
+# DuckDB's ".timer on" output, used when the engine has no TIME_MS line
+RE_DUCK_TIMER = re.compile(r"Run Time \(s\):\s*real\s+([0-9.]+)")
+
+
+def parse_output(text):
+    """Return (answer|None, check|None, kernel_ms|None)."""
+    ans = chk = kms = None
+    m = RE_ANSWER.findall(text)
+    if m:
+        try:
+            ans = float(m[-1])
+        except ValueError:
+            ans = None
+    m = RE_CHECK.findall(text)
+    if m:
+        try:
+            chk = int(float(m[-1]))
+        except ValueError:
+            chk = None
+    m = RE_TIME.findall(text)
+    if m:
+        try:
+            kms = float(m[-1])
+        except ValueError:
+            kms = None
+    if kms is None:
+        m = RE_DUCK_TIMER.findall(text)
+        if m:
+            kms = float(m[-1]) * 1000.0
+    return ans, chk, kms
+
+
+def measure_startup(engine, binpath, timeout=60):
+    """Median wall time of a do-nothing script: this engine's fixed overhead."""
+    cmd, stdin_path = noop_cmd(engine, binpath)
+    if cmd is None:
+        return 0.0
+    ts = []
+    for _ in range(3):
+        ms, _, _ = run_once(cmd, stdin_path, timeout=timeout)
+        if ms is not None:
+            ts.append(ms)
+    return statistics.median(ts) if ts else 0.0
+
+
+def bench_engine(engine, binpath, bench_id, runs, warmup, timeout, startup_ms):
+    """Returns dict(ms, mode, answer, check, error)."""
+    if not binpath:
+        return dict(ms=None, mode="", answer=None, check=None, error="not installed")
+    cmd, stdin_path = cmd_for(engine, binpath, bench_id, runs, warmup)
+
+    first_ms, out, err = run_once(cmd, stdin_path, timeout=timeout)
+    if first_ms is None:
+        return dict(ms=None, mode="", answer=None, check=None, error=err or "failed")
+    answer, check, kernel_ms = parse_output(out)
+
+    if kernel_ms is not None:
+        # The script did its own warm-up + median internally.
+        return dict(ms=kernel_ms, mode="kernel", answer=answer, check=check, error=None)
+
+    # No in-language clock: warm up by discarding the first run (already done
+    # above), then take the median of `runs` more, minus this engine's startup.
+    totals = []
     for _ in range(runs):
-        cmd, stdin_path = cmd_fn()
-        ms, out, err = run_once(cmd, stdin_path=stdin_path, cwd=str(REPO_ROOT), timeout=timeout)
+        ms, out2, err2 = run_once(cmd, stdin_path, timeout=timeout)
         if ms is None:
-            last_err = err
-            continue
-        times.append(ms)
-    if not times:
-        return None, last_err
-    return statistics.median(times), b""
-
-
-def bench_amber(amber_bin, bench_id, runs, timeout):
-    if not amber_bin:
-        return None, "not installed"
-    # Amber gets its own optimized query file (SIMD/attribute/tacit tuning is
-    # engine-specific and not idiomatic ngn/k -- see bench/queries/amber_*.k's
-    # own header comments for what was tried and measured). k_<id>.k is now
-    # used only for the "K" (ngn/k) row's bench_k(), never reused here.
-    qf = QUERIES / f"amber_{bench_id}.k"
-    med, err = median_runs(lambda: ([amber_bin, str(qf)], None), runs, timeout)
-    return med, (err.decode(errors="replace").strip()[:120] if med is None else None)
-
-
-def bench_k(k_bin, dialect, bench_id, runs, timeout):
-    if not k_bin:
-        return None, "not installed"
-    if dialect == "q":
-        qf = QUERIES / f"q_{bench_id}.q"
-        med, err = median_runs(lambda: ([k_bin, str(qf), "-q"], None), runs, timeout)
-    else:
-        qf = QUERIES / f"k_{bench_id}.k"
-        med, err = median_runs(lambda: ([k_bin, str(qf)], None), runs, timeout)
-    return med, (err.decode(errors="replace").strip()[:120] if med is None else None)
-
-
-def bench_bqn(bqn_bin, bench_id, runs, timeout):
-    if not bqn_bin:
-        return None, "not installed"
-    qf = QUERIES / f"bqn_{bench_id}.bqn"
-    med, err = median_runs(lambda: ([bqn_bin, str(qf)], None), runs, timeout)
-    return med, (err.decode(errors="replace").strip()[:120] if med is None else None)
-
-
-def bench_duckdb(duckdb_bin, bench_id, runs, timeout):
-    if not duckdb_bin:
-        return None, "not installed"
-    qf = QUERIES / f"duckdb_{bench_id}.sql"
-    med, err = median_runs(lambda: ([duckdb_bin, "-batch", ":memory:"], qf), runs, timeout)
-    return med, (err.decode(errors="replace").strip()[:120] if med is None else None)
+            return dict(ms=None, mode="", answer=answer, check=check, error=err2 or "failed")
+        totals.append(ms)
+        a2, c2, _ = parse_output(out2)
+        if a2 is not None:
+            answer = a2
+        if c2 is not None:
+            check = c2
+    net = max(0.0, statistics.median(totals) - startup_ms)
+    return dict(ms=net, mode="net", answer=answer, check=check, error=None)
 
 
 def fmt_ms(v):
-    if v is None:
-        return None
-    return f"{v:,.2f}"
+    return f"{v:,.2f}" if v is not None else "—"
 
 
-def fmt_speedup(amber_ms, other_ms):
-    if amber_ms is None or other_ms is None:
-        return "—"
-    ratio = amber_ms / other_ms
-    if ratio >= 1.0:
-        return f"{ratio:.1f}× faster than Amber"
-    return f"{1/ratio:.1f}× slower than Amber"
+def build_table(results, ref, runs, warmup, engines, benchmarks, startup):
+    L = []
+    L.append(f"_Median of {runs} timed runs after {warmup} warm-up passes. "
+             f"Kernel time only — process startup is excluded (see below). "
+             f"Generated by `bench/run_comparative.py`; workloads defined in "
+             f"[`bench/SPEC.md`](SPEC.md)._")
+    L.append("")
+
+    # ---- correctness gate first: a wrong answer voids the time ----
+    bad = []
+    for bid, _, _ in benchmarks:
+        for eid, label, _ in engines:
+            r = results[bid][eid]
+            if r["error"] or r["ms"] is None:
+                continue
+            if ref[bid] is not None and r["answer"] is not None and r["answer"] != ref[bid]:
+                bad.append(f"{label}/{bid}: answer {r['answer']!r} != reference {ref[bid]!r}")
+            if ref["check"] is not None and r["check"] is not None and r["check"] != ref["check"]:
+                bad.append(f"{label}/{bid}: input checksum {r['check']} != {ref['check']}")
+    if bad:
+        L.append("> **⚠ Correctness gate FAILED — these cells are reported as WRONG and their "
+                 "times are withheld:**")
+        L.append(">")
+        for b in bad:
+            L.append(f"> - {b}")
+    else:
+        L.append("> ✅ Correctness gate passed: every engine produced the identical exact answer "
+                 "and the identical input checksum on every workload.")
+    L.append("")
+
+    hdr = "| Benchmark | " + " | ".join(l for _, l, _ in engines) + " |"
+    sep = "|---|" + "---:|" * len(engines)
+    L.append(hdr)
+    L.append(sep)
+    for bid, blabel, _ in benchmarks:
+        cells = []
+        for eid, _, _ in engines:
+            r = results[bid][eid]
+            if r["error"]:
+                cells.append(f"_{r['error']}_")
+            elif r["ms"] is None:
+                cells.append("_error_")
+            elif ref[bid] is not None and r["answer"] is not None and r["answer"] != ref[bid]:
+                cells.append("**WRONG**")
+            elif ref["check"] is not None and r["check"] is not None and r["check"] != ref["check"]:
+                cells.append("**BADDATA**")
+            else:
+                cells.append(fmt_ms(r["ms"]))
+        L.append(f"| {blabel} | " + " | ".join(cells) + " |")
+    L.append("")
+
+    L.append("Relative to the C baseline (lower is better; 1.00× means it matched plain C):")
+    L.append("")
+    L.append(hdr)
+    L.append(sep)
+    for bid, blabel, _ in benchmarks:
+        base = results[bid]["c"]["ms"]
+        cells = []
+        for eid, _, _ in engines:
+            r = results[bid][eid]
+            ok = (not r["error"] and r["ms"] is not None
+                  and (ref[bid] is None or r["answer"] == ref[bid]))
+            if not ok or not base:
+                cells.append("—")
+            else:
+                cells.append(f"{r['ms'] / base:.2f}×")
+        L.append(f"| {blabel} | " + " | ".join(cells) + " |")
+    L.append("")
+
+    L.append("**Timing mode per engine** — `kernel` means the engine timed its own kernel with a "
+             "monotonic clock; `net` means it has no usable in-language clock and was measured as "
+             "_total process time − startup baseline_:")
+    L.append("")
+    L.append("| Engine | Peer group | Mode | Startup baseline (ms) |")
+    L.append("|---|---|---|---:|")
+    for eid, label, peer in engines:
+        modes = {results[b][eid]["mode"] for b, _, _ in benchmarks} - {""}
+        mode = "/".join(sorted(modes)) or "—"
+        sb = startup.get(eid)
+        L.append(f"| {label} | {peer} | {mode} | {fmt_ms(sb) if sb else '—'} |")
+    L.append("")
+    L.append("Amber appears twice on purpose: `Amber` is array-primitive code (the fair peer of "
+             "ngn/k, CBQN, J and Uiua) and `Amber qSQL` goes through the `select … by … from` "
+             "layer (the fair peer of DuckDB's SQL planner). Reporting only the faster of the two "
+             "would be choosing whichever comparison flatters Amber.")
+    return "\n".join(L) + "\n"
 
 
-def build_table(results, runs):
-    """results: {bench_id: {'amber':(ms,err), 'duckdb':(ms,err), 'cbqn':(ms,err), 'k':(ms,err,label)}}"""
-    lines = []
-    lines.append(f"_Median of {runs} runs per cell; process wall-clock time including interpreter startup. "
-                  f"Generated by `bench/run_comparative.py`._")
-    lines.append("")
-    lines.append("| Benchmark | Amber (ms) | DuckDB (ms) | CBQN (ms) | K (ms) |")
-    lines.append("|---|---:|---:|---:|---:|")
-    for bench_id, label in [(b[0], b[1]) for b in BENCHMARKS]:
-        row = results[bench_id]
-        amber_ms, _ = row["amber"]
-        duck_ms, duck_err = row["duckdb"]
-        bqn_ms, bqn_err = row["cbqn"]
-        k_ms, k_err = row["k"]
-
-        def cell(ms, err):
-            if ms is not None:
-                return fmt_ms(ms)
-            return f"_{err}_" if err else "_error_"
-
-        lines.append(f"| {label} | {cell(amber_ms, None)} | {cell(duck_ms, duck_err)} | "
-                      f"{cell(bqn_ms, bqn_err)} | {cell(k_ms, k_err)} |")
-    lines.append("")
-    lines.append("Speedup relative to Amber (>1× means the other engine is faster):")
-    lines.append("")
-    lines.append("| Benchmark | DuckDB | CBQN | K |")
-    lines.append("|---|---|---|---|")
-    for bench_id, label in [(b[0], b[1]) for b in BENCHMARKS]:
-        row = results[bench_id]
-        amber_ms, _ = row["amber"]
-        duck_ms, _ = row["duckdb"]
-        bqn_ms, _ = row["cbqn"]
-        k_ms, _ = row["k"]
-        lines.append(f"| {label} | {fmt_speedup(amber_ms, duck_ms)} | "
-                      f"{fmt_speedup(amber_ms, bqn_ms)} | {fmt_speedup(amber_ms, k_ms)} |")
-    return "\n".join(lines) + "\n"
-
-
-START_MARK = "<!-- COMPARATIVE_BENCHMARKS:START (auto-generated by bench/run_comparative.py -- do not edit by hand) -->"
+START_MARK = ("<!-- COMPARATIVE_BENCHMARKS:START (auto-generated by "
+              "bench/run_comparative.py -- do not edit by hand) -->")
 END_MARK = "<!-- COMPARATIVE_BENCHMARKS:END -->"
 
 
 def update_docs(table_md):
     docs = REPO_ROOT / "docs" / "BENCHMARKS.md"
-    section = (
-        "\n## 5. Automated CI comparative benchmarks (Amber vs DuckDB vs CBQN vs K)\n\n"
-        f"{START_MARK}\n\n{table_md}\n{END_MARK}\n"
-    )
+    section = ("\n## 5. Automated CI comparative benchmarks\n\n"
+               f"{START_MARK}\n\n{table_md}\n{END_MARK}\n")
     if docs.exists():
         text = docs.read_text()
         if START_MARK in text and END_MARK in text:
             pre = text.split(START_MARK)[0].rstrip("\n")
             post = text.split(END_MARK)[1]
-            new_section = f"{START_MARK}\n\n{table_md}\n{END_MARK}"
-            text = pre + "\n\n" + new_section + post
+            text = pre + "\n\n" + f"{START_MARK}\n\n{table_md}\n{END_MARK}" + post
         else:
             text = text.rstrip("\n") + "\n" + section
     else:
@@ -270,87 +381,86 @@ def update_docs(table_md):
     print(f"updated {docs}", file=sys.stderr)
 
 
-def check_parity(amber_bin, k_bin, dialect, bench_id):
-    """Run amber_<id>.k and k_<id>.k once each and compare their printed
-    numeric output, so a speed win from bench/queries/amber_*.k's engine-level
-    optimizations can never silently also change the answer. Returns
-    (ok: bool|None, amber_val: str|None, k_val: str|None) -- ok is None if
-    either engine is missing (nothing to compare)."""
-    if not amber_bin or not k_bin:
-        return None, None, None
-    aqf = QUERIES / f"amber_{bench_id}.k"
-    _, aout, _ = run_once([amber_bin, str(aqf)], cwd=str(REPO_ROOT), timeout=60)
-    if dialect == "q":
-        kqf = QUERIES / f"q_{bench_id}.q"
-        _, kout, _ = run_once([k_bin, str(kqf), "-q"], cwd=str(REPO_ROOT), timeout=60)
-    else:
-        kqf = QUERIES / f"k_{bench_id}.k"
-        _, kout, _ = run_once([k_bin, str(kqf)], cwd=str(REPO_ROOT), timeout=60)
-    av = aout.decode(errors="replace").strip()
-    kv = kout.decode(errors="replace").strip()
-    try:
-        ok = abs(float(av) - float(kv)) <= 1e-6 * max(1.0, abs(float(kv)))
-    except ValueError:
-        ok = av == kv
-    return ok, av, kv
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--runs", type=int, default=5)
-    ap.add_argument("--update-docs", action="store_true")
+    ap.add_argument("--warmup", type=int, default=2)
     ap.add_argument("--out", type=str, default=None)
+    ap.add_argument("--update-docs", action="store_true")
+    ap.add_argument("--only", type=str, default=None, help="comma-separated engine ids")
+    ap.add_argument("--benchmarks", type=str, default=None, help="comma-separated bench ids")
+    ap.add_argument("--fail-on-wrong", action="store_true",
+                    help="exit non-zero if any engine disagrees with the reference answer")
     args = ap.parse_args()
 
-    amber_bin = find_amber()
-    duckdb_bin = find_duckdb()
-    cbqn_bin = find_cbqn()
-    k_bin = find_k()
-    dialect = detect_k_dialect(k_bin) if k_bin else "k"
+    engines = ENGINES
+    if args.only:
+        keep = {s.strip() for s in args.only.split(",")}
+        engines = [e for e in ENGINES if e[0] in keep]
+    benchmarks = BENCHMARKS
+    if args.benchmarks:
+        keep = {s.strip() for s in args.benchmarks.split(",")}
+        benchmarks = [b for b in BENCHMARKS if b[0] in keep]
 
-    print(f"amber:  {amber_bin or 'NOT FOUND'}", file=sys.stderr)
-    print(f"duckdb: {duckdb_bin or 'NOT FOUND'}", file=sys.stderr)
-    print(f"cbqn:   {cbqn_bin or 'NOT FOUND'}", file=sys.stderr)
-    print(f"k:      {k_bin or 'NOT FOUND'} (dialect={dialect})", file=sys.stderr)
+    bins = find_bins()
+    for eid, label, _ in engines:
+        print(f"{label:12s} {bins.get(eid) or 'NOT FOUND'}", file=sys.stderr)
 
-    print("-- numerical parity check (amber_<id>.k vs k_<id>.k) --", file=sys.stderr)
-    parity = {}
-    for bench_id, label, timeout in BENCHMARKS:
-        ok, av, kv = check_parity(amber_bin, k_bin, dialect, bench_id)
-        parity[bench_id] = ok
-        if ok is None:
-            print(f"  {bench_id}: skipped (amber or k not installed)", file=sys.stderr)
-        elif ok:
-            print(f"  {bench_id}: OK  amber={av}  k={kv}", file=sys.stderr)
-        else:
-            print(f"  {bench_id}: MISMATCH  amber={av}  k={kv}", file=sys.stderr)
+    print("-- measuring startup baselines --", file=sys.stderr)
+    startup = {}
+    for eid, label, _ in engines:
+        b = bins.get(eid)
+        startup[eid] = measure_startup(eid, b) if b else None
+        if startup.get(eid):
+            print(f"  {label:12s} {startup[eid]:8.2f} ms", file=sys.stderr)
 
-    results = {}
-    for bench_id, label, timeout in BENCHMARKS:
-        print(f"running {bench_id} ...", file=sys.stderr)
-        results[bench_id] = {
-            "amber": bench_amber(amber_bin, bench_id, args.runs, timeout),
-            "duckdb": bench_duckdb(duckdb_bin, bench_id, args.runs, timeout),
-            "cbqn": bench_bqn(cbqn_bin, bench_id, args.runs, timeout),
-            "k": bench_k(k_bin, dialect, bench_id, args.runs, timeout),
-        }
+    results = {b[0]: {} for b in benchmarks}
+    for bid, blabel, timeout in benchmarks:
+        for eid, label, _ in engines:
+            print(f"running {bid}/{eid} ...", file=sys.stderr)
+            results[bid][eid] = bench_engine(eid, bins.get(eid), bid, args.runs,
+                                             args.warmup, timeout, startup.get(eid) or 0.0)
+            r = results[bid][eid]
+            print(f"  -> {r['error'] or ('%.2f ms (%s) answer=%r' % (r['ms'], r['mode'], r['answer']))}",
+                  file=sys.stderr)
 
-    table_md = build_table(results, args.runs)
-    if amber_bin and k_bin:
-        if all(v for v in parity.values() if v is not None):
-            table_md = "_Numerical parity check: amber_*.k and k_*.k agree on every benchmark._\n\n" + table_md
-        else:
-            bad = ", ".join(b for b, v in parity.items() if v is False)
-            table_md = f"_\u26a0 Numerical parity check FAILED for: {bad} -- see stderr._\n\n" + table_md
+    # Reference answers: prefer C, else the first engine that produced one.
+    ref = {"check": None}
+    for bid, _, _ in benchmarks:
+        a = results[bid].get("c", {}).get("answer")
+        if a is None:
+            for eid, _, _ in engines:
+                if results[bid][eid]["answer"] is not None:
+                    a = results[bid][eid]["answer"]
+                    break
+        ref[bid] = a
+    for bid, _, _ in benchmarks:
+        for eid, _, _ in engines:
+            c = results[bid][eid]["check"]
+            if c is not None:
+                ref["check"] = c
+                break
+        if ref["check"] is not None:
+            break
+
+    table_md = build_table(results, ref, args.runs, args.warmup, engines, benchmarks, startup)
     print(table_md)
 
     if args.out:
         Path(args.out).write_text(table_md)
         print(f"wrote {args.out}", file=sys.stderr)
-
     if args.update_docs:
         update_docs(table_md)
 
+    if args.fail_on_wrong:
+        for bid, _, _ in benchmarks:
+            for eid, _, _ in engines:
+                r = results[bid][eid]
+                if r["ms"] is not None and ref[bid] is not None and r["answer"] != ref[bid]:
+                    print("correctness gate failed", file=sys.stderr)
+                    return 1
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

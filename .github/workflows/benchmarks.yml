@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: benchmarks-${{ github.ref }}
@@ -13,46 +14,53 @@ permissions:
   contents: write
   pull-requests: write
 
+# Every engine install is best-effort (continue-on-error) and every step writes
+# its binary path into $GITHUB_ENV. bench/run_comparative.py reports any engine
+# whose binary is missing as "not installed" instead of failing, so one broken
+# upstream download can never take the whole job down.
 jobs:
   benchmark:
     name: build + comparative benchmarks
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
 
       - name: Install build tools
-        run: sudo apt-get update && sudo apt-get install -y build-essential curl unzip git make
+        run: sudo apt-get update && sudo apt-get install -y build-essential curl unzip git make xz-utils
+
+      - name: Create tool directory
+        run: mkdir -p /tmp/bench_tools
 
       # ---------------------------------------------------------------
-      # 1. Download DuckDB CLI
+      # 1. DuckDB CLI
       # ---------------------------------------------------------------
       - name: Download DuckDB CLI
         id: download_duckdb
         continue-on-error: true
         run: |
           set -x
-          mkdir -p /tmp/bench_tools
           cd /tmp/bench_tools
           curl -fsSL -o duckdb.zip \
             "https://github.com/duckdb/duckdb/releases/latest/download/duckdb_cli-linux-amd64.zip"
           unzip -o duckdb.zip duckdb
           chmod +x duckdb
           ./duckdb -c "select 'duckdb ok'"
+          echo "DUCKDB_BIN=/tmp/bench_tools/duckdb" >> "$GITHUB_ENV"
 
       # ---------------------------------------------------------------
-      # 2. Download CBQN
+      # 2. CBQN
       # ---------------------------------------------------------------
       - name: Download CBQN
         id: download_cbqn
         continue-on-error: true
         run: |
           set -x
-          mkdir -p /tmp/bench_tools
           cd /tmp/bench_tools
           curl -fsSL -o cbqn "https://github.com/dzaima/CBQN/releases/latest/download/CBQN-linux-x86_64"
           chmod +x cbqn
           ./cbqn -e "•Show 1+1"
+          echo "CBQN_BIN=/tmp/bench_tools/cbqn" >> "$GITHUB_ENV"
 
       - name: Build CBQN from source (fallback)
         if: steps.download_cbqn.outcome != 'success'
@@ -64,56 +72,158 @@ jobs:
           make o3n CC=gcc -j"$(nproc)"
           cp BQN /tmp/bench_tools/cbqn
           chmod +x /tmp/bench_tools/cbqn
+          echo "CBQN_BIN=/tmp/bench_tools/cbqn" >> "$GITHUB_ENV"
 
       # ---------------------------------------------------------------
-      # 3. Build ngn/k from Codeberg
+      # 3. ngn/k
       # ---------------------------------------------------------------
       - name: Build ngn/k
         id: build_k
         continue-on-error: true
         run: |
           set -x
-          mkdir -p /tmp/bench_tools
           git clone --depth 1 https://codeberg.org/ngn/k.git /tmp/ngnk-src
           cd /tmp/ngnk-src
           make CC=gcc -j"$(nproc)"
           cp k /tmp/bench_tools/k
           chmod +x /tmp/bench_tools/k
           echo '1+1' | /tmp/bench_tools/k
-
-      - name: Report available comparative tools
-        run: |
-          ls -la /tmp/bench_tools/ || true
+          echo "K_BIN=/tmp/bench_tools/k" >> "$GITHUB_ENV"
 
       # ---------------------------------------------------------------
-      # 4. Build Amber
+      # 4. Uiua  (release binary, cargo fallback)
+      # ---------------------------------------------------------------
+      - name: Download Uiua
+        id: download_uiua
+        continue-on-error: true
+        run: |
+          set -x
+          cd /tmp/bench_tools
+          curl -fsSL -o uiua.tar.gz \
+            "https://github.com/uiua-lang/uiua/releases/latest/download/uiua-x86_64-unknown-linux-gnu.tar.gz"
+          tar xzf uiua.tar.gz
+          chmod +x uiua
+          ./uiua --version
+          echo "UIUA_BIN=/tmp/bench_tools/uiua" >> "$GITHUB_ENV"
+
+      - name: Install Uiua via cargo (fallback)
+        if: steps.download_uiua.outcome != 'success'
+        continue-on-error: true
+        run: |
+          set -x
+          cargo install uiua --locked --no-default-features
+          cp "$HOME/.cargo/bin/uiua" /tmp/bench_tools/uiua
+          /tmp/bench_tools/uiua --version
+          echo "UIUA_BIN=/tmp/bench_tools/uiua" >> "$GITHUB_ENV"
+
+      # ---------------------------------------------------------------
+      # 5. Julia
+      # ---------------------------------------------------------------
+      - name: Set up Julia
+        id: setup_julia
+        continue-on-error: true
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: '1'
+
+      - name: Record Julia path
+        if: steps.setup_julia.outcome == 'success'
+        continue-on-error: true
+        run: |
+          julia --version
+          echo "JULIA_BIN=$(command -v julia)" >> "$GITHUB_ENV"
+
+      - name: Download Julia (standalone fallback)
+        if: steps.setup_julia.outcome != 'success'
+        continue-on-error: true
+        run: |
+          set -x
+          cd /tmp/bench_tools
+          curl -fsSL -o julia.tar.gz \
+            "https://julialang-s3.julialang.org/bin/linux/x64/1.10/julia-1.10.4-linux-x86_64.tar.gz"
+          tar xzf julia.tar.gz
+          ln -sf /tmp/bench_tools/julia-1.10.4/bin/julia /tmp/bench_tools/julia
+          /tmp/bench_tools/julia --version
+          echo "JULIA_BIN=/tmp/bench_tools/julia" >> "$GITHUB_ENV"
+
+      # ---------------------------------------------------------------
+      # 6. Python + NumPy
+      # ---------------------------------------------------------------
+      - name: Install NumPy
+        id: install_numpy
+        continue-on-error: true
+        run: |
+          set -x
+          python3 -m pip install --upgrade pip
+          python3 -m pip install numpy
+          python3 -c "import numpy; print('numpy', numpy.__version__)"
+          echo "PYTHON_BIN=$(command -v python3)" >> "$GITHUB_ENV"
+
+      # ---------------------------------------------------------------
+      # 7. J (jconsole)
+      # ---------------------------------------------------------------
+      - name: Download J
+        id: download_j
+        continue-on-error: true
+        run: |
+          set -x
+          cd /tmp/bench_tools
+          curl -fsSL -o j.tar.gz \
+            "https://www.jsoftware.com/download/j904/install/j904_linux64.tar.gz"
+          mkdir -p j904 && tar xzf j.tar.gz -C j904 --strip-components=1
+          chmod +x j904/bin/jconsole j904/bin/* || true
+          echo 'exit 0' > /tmp/bench_tools/jprobe.ijs
+          j904/bin/jconsole /tmp/bench_tools/jprobe.ijs
+          echo "J_BIN=/tmp/bench_tools/j904/bin/jconsole" >> "$GITHUB_ENV"
+
+      # ---------------------------------------------------------------
+      # 8. Native C baseline (the floor every engine is measured against)
+      # ---------------------------------------------------------------
+      - name: Build C baseline (gcc -O3 -march=native)
+        id: build_c
+        continue-on-error: true
+        run: |
+          set -x
+          gcc -O3 -march=native -o /tmp/bench_tools/c_bench bench/queries/c_bench.c -lm
+          /tmp/bench_tools/c_bench reduce 1 0
+          echo "C_BENCH_BIN=/tmp/bench_tools/c_bench" >> "$GITHUB_ENV"
+
+      # ---------------------------------------------------------------
+      # 9. Amber
       # ---------------------------------------------------------------
       - name: Build Amber (gcc -O3 -march=native)
         run: |
           CC=gcc AMBER_NATIVE=1 ./build.sh
-          ./amber -e '1+1' >/dev/null 2>&1 || true
+          ./amber --version
+          echo "AMBER_BIN=${GITHUB_WORKSPACE}/amber" >> "$GITHUB_ENV"
 
-      # ---------------------------------------------------------------
-      # 5. Unit Tests
-      # ---------------------------------------------------------------
-      - name: Run existing unit tests
+      - name: Report available comparative tools
         run: |
-          set -e
-          out=$(./amber test.k)
-          echo "$out"
-          echo "$out" | grep -Eq '0 failures'
+          ls -la /tmp/bench_tools/ || true
+          echo "AMBER_BIN=${AMBER_BIN:-}"
+          for v in DUCKDB_BIN CBQN_BIN K_BIN UIUA_BIN JULIA_BIN PYTHON_BIN J_BIN C_BENCH_BIN; do
+            eval "echo \"$v=\${$v:-<missing>}\""
+          done
 
       # ---------------------------------------------------------------
-      # 6. Comparative Benchmarks
+      # 10. Unit tests (a benchmark of a broken build is worthless)
       # ---------------------------------------------------------------
+      - name: Run test suites
+        run: tests/run_tests.sh --quick
+
+      # ---------------------------------------------------------------
+      # 11. Comparative benchmarks
+      # ---------------------------------------------------------------
+      # Add --fail-on-wrong to turn a cross-engine answer mismatch into a red
+      # build. It is off by default only because a syntax error in one of the
+      # less-common engines would otherwise block unrelated PRs; the mismatch
+      # is still reported prominently at the top of the results table.
       - name: Run comparative benchmarks
         env:
           AMBER_BIN: ${{ github.workspace }}/amber
-          DUCKDB_BIN: /tmp/bench_tools/duckdb
-          CBQN_BIN: /tmp/bench_tools/cbqn
-          K_BIN: /tmp/bench_tools/k
         run: |
-          python3 bench/run_comparative.py --runs 5 \
+          python3 bench/run_comparative.py \
+            --runs 5 --warmup 2 \
             --out bench/comparative_results.md \
             --update-docs
 
@@ -121,7 +231,7 @@ jobs:
         run: cat bench/comparative_results.md
 
       # ---------------------------------------------------------------
-      # 7a. On main: Commit docs/BENCHMARKS.md
+      # 12a. On main: commit docs/BENCHMARKS.md
       # ---------------------------------------------------------------
       - name: Commit updated docs/BENCHMARKS.md
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -131,15 +241,15 @@ jobs:
           if ! git diff --quiet -- docs/BENCHMARKS.md; then
             git add docs/BENCHMARKS.md
             git commit -m "docs: refresh comparative benchmarks [skip ci]"
-            git stash --include-untracked  # 1. Stashes remaining dirty build/log files
-            git pull --rebase origin main  # 2. Rebase cleanly on top of remote main
-            git push origin main           # 3. Push the commit
+            git stash --include-untracked
+            git pull --rebase origin main
+            git push origin main
           else
             echo "no benchmark changes to commit"
           fi
 
       # ---------------------------------------------------------------
-      # 7b. On PRs: Post sticky comment
+      # 12b. On PRs: sticky comment
       # ---------------------------------------------------------------
       - name: Post sticky PR comment
         if: github.event_name == 'pull_request'
@@ -152,4 +262,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: comparative-benchmarks
-          path: bench/comparative_results.md
+          path: |
+            bench/comparative_results.md
+            bench/SPEC.md

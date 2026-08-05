@@ -21,9 +21,10 @@ vr ← 2 × ↕K
 kl ← kr ⊏˜ K | M ↑ h
 vl ← M ↑ x
 CHECK ← (+´a) + 3 × +´b
-# ⊔ buckets by key value, so bucket i holds group i: the weight is the
-# index itself, never a positional 1..G vector over first-appearance order.
-sums ← +´¨ gk ⊔ x
-•Out "BENCH groupby"
+# kr is sparse and unsorted, so ⍋ (bins) performs a real key search.
+ord ← ⍋kr
+krS ← ord ⊏ kr
+vrS ← ord ⊏ vr
+•Out "BENCH join"
 •Out "CHECK " ∾ •Repr CHECK
-•Out "ANSWER " ∾ •Repr +´ (1 + ↕≠sums) × sums
+•Out "ANSWER " ∾ •Repr +´ vl × vrS ⊏˜ krS ⍋ kl

@@ -1,5 +1,58 @@
 # Changelog
 
+## Unreleased — comparative benchmark suite rebuilt for cross-engine fairness
+
+### Two shortcuts removed from the old suite
+- **`+/!10000000` measured an O(1) closed form in Amber.** `src/3.c`'s `arf` constant-folds a sum
+  over a *range* into `n(n-1)/2`, so the `vecsum` benchmark had Amber returning the answer without
+  touching 10M elements while DuckDB, CBQN and ngn/k ran real reductions. All benchmark data is
+  now materialised before the timer starts.
+- **The join was really an array index.** With right keys `0..K-1`, every array language answers
+  with a single gather while DuckDB still builds a hash table. Right keys are now sparse and
+  unsorted (`(7919*j) mod 1048573`), which forces a genuine key lookup in every engine.
+- **The old generator overflowed 53 bits.** `2654435761 * i` exceeds `2^53` for `i > 3.4e6`, so
+  f64-only engines (Uiua, JS) would have silently generated *different data* from the int64
+  engines. The multiplier is now `262147`, keeping every intermediate under `2^53`.
+
+### New: `bench/SPEC.md`
+The data model, the four workloads, the exact-arithmetic argument and the fairness rules are now
+specified in one document that every engine implements. Every answer is an integer exactly
+representable in float64, and every sum is over such integers, so the result is **independent of
+summation order** — SIMD pairwise, Kahan and naive left-fold summation all agree bit-for-bit.
+There is therefore no floating-point excuse for a mismatch.
+
+### `bench/run_comparative.py` rewritten
+- **Ten engines**: C (`-O3 -march=native`, the floor), Amber (array primitives), Amber (qSQL),
+  ngn/k, CBQN, J, Uiua, NumPy, Julia, DuckDB.
+- **Four workloads**: vector arithmetic + masking, reductions (sum/max/dot over 10M), group-by
+  (100 groups over 10M rows), inner join (1M rows against 1,000 sparse keys).
+- **Correctness gate.** Answers are compared *exactly* against the C reference; a disagreeing
+  engine is printed as **WRONG** and its time is withheld. Each engine also emits a checksum of
+  its input data, so a generator divergence is caught separately as **BADDATA**. `--fail-on-wrong`
+  turns either into a non-zero exit.
+- **Startup excluded.** Engines that can time their own kernel do so with a monotonic clock after
+  warm-up passes; engines with no in-language clock are measured as *total − startup baseline*,
+  with the baseline measured per engine from a do-nothing script. The table labels which mode
+  produced each cell.
+- **Amber is reported twice** — primitives (peer of K/BQN/J/Uiua) and qSQL (peer of DuckDB SQL) —
+  because publishing only the faster row would be picking the flattering comparison.
+
+### `.github/workflows/benchmarks.yml`
+Adds Uiua (release binary, cargo fallback), Julia (`julia-actions/setup-julia`, standalone
+fallback), Python + NumPy, J (jconsole) and the native C baseline. Every install is
+`continue-on-error` and exports its path via `$GITHUB_ENV` (`UIUA_BIN`, `JULIA_BIN`, `PYTHON_BIN`,
+`J_BIN`, `C_BENCH_BIN`, …); a missing engine is reported as "not installed" instead of failing the
+job. The workflow's `./amber -e '1+1'` smoke test — `-e` is not an Amber flag and the call only
+survived because of a trailing `|| true` — is replaced with `./amber --version`.
+
+### Caveat recorded honestly
+The Amber, NumPy and C implementations were executed and cross-checked during development: all
+three agree exactly on all four workloads. The ngn/k files were additionally verified by running
+them under Amber (same K dialect family). **CBQN, DuckDB, Julia, Uiua and J could not be executed
+in the authoring environment** — CI is their first real run. They are written defensively (one
+file per workload, no argument parsing, no in-language timer where it was not certain) and the
+harness reports a clear per-cell error rather than failing the job.
+
 ## 1.9 — version unification, memory/UB audit, and a combinatorial test suite
 
 ### Version

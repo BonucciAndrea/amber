@@ -197,6 +197,7 @@ jobs:
       # ---------------------------------------------------------------
       - name: Build Amber (gcc -O3 -march=native)
         run: |
+          chmod +x build.sh
           CC=gcc AMBER_NATIVE=1 ./build.sh
           ./amber --version
           echo "AMBER_BIN=${GITHUB_WORKSPACE}/amber" >> "$GITHUB_ENV"

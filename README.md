@@ -670,7 +670,7 @@ Results are identical; only the time differs. `asc` / `xasc` set the attribute f
 Amber uses a terse array notation. A few things that differ from kdb+/q:
 
 * **Two-argument library functions take brackets:** `aj[c;x;y]`, `lj[t;kt]`, `in[x;y]`,
-  `xasc[`sym;t]`. Built-in symbols (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) are still infix.
+  ``xasc[`sym;t]``. Built-in symbols (``+ - * % ! & | < > = ~ , ^ # _ $ ? @ .``) are still infix.
 * **No `>=` / `<=`** — write `~a<b` and `~a>b`.
 * **qSQL is bare — at the prompt:** type `select … by … from … where …` (also `exec` / `update` /
   `delete`) with no `sel"…"` wrapper — bare column names like `wavg[sz;px]` just work. This
@@ -688,7 +688,7 @@ Amber uses a terse array notation. A few things that differ from kdb+/q:
   auto-renders as a grid.
 
 Full reference: **[docs/AMBER.md](docs/AMBER.md)**. Built-in help: `\` then `\q \j \z` for the Amber
-vocabulary, `\0 \+ \' \`` for the core, `\v \ast \trace` for the session/diagnostic tools (see
+vocabulary, ``\0 \+ \` \'`` for the core, `\v \ast \trace` for the session/diagnostic tools (see
 [REPL diagnostics](#repl-diagnostics-v--ast--trace) below), and `\disasm` for the bytecode
 disassembler (see [Engine extensions](#engine-extensions)).
 

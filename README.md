@@ -12,7 +12,7 @@
 **A low-latency array language — columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.9.3-orange)
+![version](https://img.shields.io/badge/version-1.9.4-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
 ![tests](https://img.shields.io/badge/tests-277%20passing-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
@@ -30,6 +30,20 @@ AGPLv3 implementation of the K array language. Amber keeps that engine's speed a
 footprint and layers a q/kdb+ vocabulary, C-level column attributes, native temporal types,
 `([]…)` table syntax, a tick/HFT toolkit, and a modern REPL on top. (The attribution is
 recorded in [NOTICE](NOTICE), as the AGPLv3 requires.)
+
+New in **1.9.4**: errors are reported **once**, as a polished Rust-style diagnostic with a
+category-specific code, a token-spanning underline, an inline label and actionable help — the
+duplicate legacy ngn/k block is gone. See [docs/AMBER.md §9b′](docs/AMBER.md).
+
+```text
+error[E0101]: Undefined variable `prices`
+ --> <amber>:1:3
+  |
+1 | y:prices+1
+  |   ^^^^^^ not found in this scope
+  |
+  = help: Verify that the variable is defined in the current scope or check for typos.
+```
 
 New in **1.9.3**: a **compact binary serializer** — `-8!x` encodes any K value to a byte
 vector and `-9!y` decodes it back, byte-exact including attributes, nulls and infinities.
@@ -237,7 +251,7 @@ instant.
 Check the interpreter version, or list every option and REPL command:
 
 ```sh
-./amber --version           # amber 1.9.3
+./amber --version           # amber 1.9.4
 ./amber --help              # options + the full \-command reference
 ```
 

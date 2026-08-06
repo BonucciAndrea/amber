@@ -11,7 +11,12 @@ fmt:{upd[];$[(::)~x;"";|/(@x)=`m`M;("\n"/amfmt x),"\n";(1<#x)&|/`m`M`A=@x;mMA x;
 fmtx:{$[(::)~x;"";`k[x],"\n"]}
 / error ergonomics: expand the one-word error to descriptive text, keep the core's ^ caret.
 edesc:`compile`domain`index`length`nyi`io`parse`rank`stack`type`value`limit!("compile: expression could not be compiled";"domain: value outside the valid domain for this operation";"index: index out of range";"length: operands have mismatched counts";"nyi: not implemented for these types";"io: input/output error";"parse: malformed expression";"rank: wrong number of arguments";"stack: call depth exceeded";"type: wrong type for this operation";"value: undefined name or empty value";"limit: implementation limit reached")
-onerr:{b:`err[];lns:"\n"\b;h:$[#lns;*lns;""];nm:`$$[(0<#h)&"'"~*h;1_h;h];`0:$[(0<#h)&|/nm=!edesc;("'",edesc nm),"\n","\n"/1_lns;b];}
+/ 1.9.4: when the rich stderr diagnostic is enabled (the default) the core has
+/ ALREADY printed a full report for this error, so echoing the descriptive
+/ legacy text here would show the same failure twice in two formats. Print it
+/ only when diagnostics are off (`diag 0), so nothing is ever swallowed.
+/ `diag with a non-numeric argument reads the setting without changing it.
+onerr:{$[0<`diag(::);;[b:`err[];lns:"\n"\b;h:$[#lns;*lns;""];nm:`$$[(0<#h)&"'"~*h;1_h;h];`0:$[(0<#h)&|/nm=!edesc;("'",edesc nm),"\n","\n"/1_lns;b]]];}
 / \grid clean|rounded|sharp|heavy : set the table border mode (root global GRID, via eval).
 gridcmd:{p:" "\x;$[1<#p;[m:`$p 1;$[4>`clean`rounded`sharp`heavy?m;[.:("GRID:`",$m);`1:"grid: ",($m),"\n"];`1:"grid: modes are clean rounded sharp heavy\n"]];`1:"grid: ",($(.:"GRID")),"\n"]}
 / \clear : clear the terminal (scrollback + screen, cursor home).
@@ -37,7 +42,7 @@ line:line1@line0@
 $["repl.k"~basename`argv 1;{cmds::@[cmds;x[1]1;:;{y;`0:x}2_x]}'{(&x~\:80#"-")_x:(1+*&x~\:,"/")_-1_x}@0:`argv 1;];
 / `bi 0 (process/build info) can throw 'domain on non-Linux builds (e.g. macOS);
 / trap it so the banner still renders.  Returns (heap;used;arch;compiler).
-binfo:{.[{`bi 0};,0;(10485760;0;"arm64";"Darwin";"1.9.3")]}
+binfo:{.[{`bi 0};,0;(10485760;0;"arm64";"Darwin";"1.9.4")]}
 run:{m:binfo[];`1:(`c$27),"[4q";`1:"Amber v",(m 4)," (",(m 2),"; ",(m 3),") — Columnar Time-Series Engine\nMemory: ",($0.1*_0.5+(m 0)%104857.6)," MB heap reserved | \\ for help command, \\\\ to exit\n\n",prompt;{line@1:`}::/`;}
 \d .
 / load the Amber library by ABSOLUTE path derived from this script's own location,

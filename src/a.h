@@ -99,7 +99,18 @@
 #else
 #define AM_TLS __thread
 #endif
-EX AM_TLS bool ray_rc_sync;
+// AM_TLS_IE: thread-local with the INITIAL-EXEC model -- a single %fs-relative
+// load, no __tls_get_addr() call. General-dynamic (the default in a PIE binary)
+// turns every access into a function call, which is fatal on the allocator's
+// hot path (bkt[] is hit by every aF/aL/aC/an). Initial-exec is valid for TLS
+// defined in the main executable (which never gets dlopen'd), exactly our case.
+// Fall back to plain AM_TLS on compilers without the attribute or on wasm.
+#if !defined(wasm) && (defined(__GNUC__) || defined(__clang__))
+#define AM_TLS_IE AM_TLS __attribute__((tls_model("initial-exec")))
+#else
+#define AM_TLS_IE AM_TLS
+#endif
+EX AM_TLS_IE bool ray_rc_sync;
 // retain one reference to a heap object's refcount word (_r(x) is a U).
 #define RC_INC(x) do{if(ray_rc_sync)__atomic_fetch_add(&_r(x),1u,__ATOMIC_RELAXED);else _r(x)++;}while(0)
 // atomically drop one reference, yielding the PREVIOUS count (post-decrement

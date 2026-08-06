@@ -14,8 +14,8 @@ set -u
 # cd is only so build.sh, the C unit tests and the o/ scratch dir land in the
 # repo root.
 cd "$(dirname "$(readlink -f "$0")")/.."
-ASAN=0; QUICK=0
-for a in "$@"; do case "$a" in --asan) ASAN=1;; --quick) QUICK=1;; esac; done
+ASAN=0; QUICK=0; TSAN=0
+for a in "$@"; do case "$a" in --asan) ASAN=1;; --tsan) TSAN=1;; --quick) QUICK=1;; esac; done
 
 fail=0
 say(){ printf '\n\033[1m== %s\033[0m\n' "$*"; }
@@ -108,6 +108,34 @@ if [ "$ASAN" = 1 ]; then
   say "fuzz under sanitizers"
   if python3 tests/fuzz.py --amber o/san/amber --cases 800 --timeout 30; then echo "  -> PASS"
   else echo "  -> FAIL"; fail=1; fi
+fi
+
+if [ "$TSAN" = 1 ]; then
+  # ThreadSanitizer: the real race detector for peach's thread pool. `address`
+  # and `thread` instrumentation are mutually exclusive (the compiler rejects
+  # combining them), so TSan is its own build, separate from --asan. Every suite
+  # is run with the pool forced to 4 lanes so concurrent workers -- the lock-free
+  # per-thread allocator (bkt[]), the thread-local PRNG, the atomic refcounts and
+  # the pool's own sync -- are all actually exercised under the detector.
+  say "sanitizer build (ThreadSanitizer)"
+  mkdir -p o/tsan
+  CC="${CC:-cc}"
+  for f in src/*.c; do
+    $CC -fsigned-char -g -O1 -w -pthread -fsanitize=thread \
+        -fno-omit-frame-pointer -c "$f" -o "o/tsan/$(basename "${f%.c}").o" || exit 1
+  done
+  $CC -fsigned-char -g -O1 -w -pthread -fsanitize=thread \
+      -o o/tsan/amber o/tsan/*.o -lm -ldl || exit 1
+  export TSAN_OPTIONS="halt_on_error=0 report_signal_unsafe=0 exitcode=99"
+  for s in $SUITES; do
+    say "$s (tsan, AMBER_THREADS=4)"
+    out=$(AMBER_THREADS=4 o/tsan/amber "$s" 2>&1); rc=$?
+    echo "$out" | grep -vE '^(simd|par):' | tail -6
+    if echo "$out" | grep -Eq 'ThreadSanitizer: (data race|lock-order|deadlock)'; then
+      echo "  -> FAIL (ThreadSanitizer diagnostics above)"; fail=1
+    elif echo "$out" | grep -Eq '0 failures'; then echo "  -> PASS (0 races)"
+    else echo "  -> FAIL rc=$rc"; fail=1; fi
+  done
 fi
 
 say "result"

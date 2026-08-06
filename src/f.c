@@ -83,7 +83,7 @@ Z A fndL(A x,A y,B srt)_(
 
 Z A1(fN,A y=_R(cn[tl]);x(xtt?y:rsz(xN,y)))
 
-Z AM_TLS L t[256];// per-call char/byte find scratch; thread-local for peach workers
+Z AM_TLS_IE L t[256];// per-call char/byte find scratch; thread-local for peach workers
 Z X1(fndGx,
  R_(fN(x))
  RmMA(e1f(fndGx,x))

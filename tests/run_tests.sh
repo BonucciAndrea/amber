@@ -37,8 +37,13 @@ run_k(){ # run_k <binary> <script> <label>
 say "build"
 ./build.sh || exit 1
 
-SUITES="test.k test-fin.k tests/test_matrix.k tests/test_qsql.k"
+SUITES="test.k test-fin.k tests/test_matrix.k tests/test_qsql.k examples/peach_verify.k"
 for s in $SUITES; do say "$s"; run_k ./amber "$s" native; done
+
+# peach is the thread-pool primitive: run its verifier again with the pool
+# forced to several lanes so CI actually exercises concurrent workers (the
+# default may pick 1 lane on a single-core runner). Same 0-failures gate.
+say "examples/peach_verify.k (AMBER_THREADS=4)"; ( export AMBER_THREADS=4; run_k ./amber examples/peach_verify.k "threads=4" )
 
 if [ "$QUICK" = 0 ]; then
   say "C unit tests (tests/*.c)"
@@ -75,11 +80,20 @@ if [ "$ASAN" = 1 ]; then
   say "sanitizer build (ASan + UBSan)"
   mkdir -p o/san
   CC="${CC:-cc}"
+  # UBSan's `object-size` sub-check is disabled: Amber deliberately stores every
+  # array's header (refcount, length, type, bucket) at NEGATIVE offsets from the
+  # payload pointer (see the _r/_n/_T/_A macros in a.h), so __builtin_object_size
+  # sees "too small" an object and false-positives on those perfectly valid
+  # header loads. This is intrinsic to the tagged/arena representation and
+  # predates -- and is unrelated to -- the peach thread pool; every other UBSan
+  # check (signed overflow, alignment, null, bounds, VLA, ...) stays on, and the
+  # whole suite (peach included) is clean under AMBER_THREADS with it.
+  SAN="-fsanitize=address,undefined -fno-sanitize=object-size"
   for f in src/*.c; do
-    $CC -fsigned-char -g -O1 -w -pthread -fsanitize=address,undefined \
+    $CC -fsigned-char -g -O1 -w -pthread $SAN \
         -fno-omit-frame-pointer -c "$f" -o "o/san/$(basename "${f%.c}").o" || exit 1
   done
-  $CC -fsigned-char -g -O1 -w -pthread -fsanitize=address,undefined \
+  $CC -fsigned-char -g -O1 -w -pthread $SAN \
       -o o/san/amber o/san/*.o -lm -ldl || exit 1
   export ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=print_stacktrace=1
   for s in $SUITES; do

@@ -44,18 +44,49 @@
 __attribute((weak, visibility("default"))) V kinit();
 #endif
 
+// ---- allocator serialization for peach's thread pool ----------------------
+// Amber's object allocator (the bkt[] free lists and the reg[] mmap region
+// table below) is process-global and was written single-threaded. peachC runs
+// the evaluator on several worker threads at once, so every path that mutates
+// that shared state -- mb() (pop a chunk), m0() (push a freed chunk),
+// mm()/mu()/mc() (grow/retire mmap regions) and us() (append to the symbol
+// intern table) -- takes this ONE recursive lock. It is engaged ONLY when
+// ray_rc_sync is set (i.e. inside a peach dispatch); ALK()/AUL() compile to a
+// single predictable branch otherwise, so ordinary single-threaded evaluation
+// pays nothing. Recursive because m0() frees a container's children by
+// re-entering m0(), and mb()->mm()->mc() nest, all on the same thread.
+#if !defined(wasm)
+#include<pthread.h>
+Z pthread_mutex_t g_alloc_mx;
+Z V alloc_lock_init(){pthread_mutexattr_t a;pthread_mutexattr_init(&a);pthread_mutexattr_settype(&a,PTHREAD_MUTEX_RECURSIVE);pthread_mutex_init(&g_alloc_mx,&a);pthread_mutexattr_destroy(&a);}
+#define ALK() do{if(ray_rc_sync)pthread_mutex_lock(&g_alloc_mx);}while(0)
+#define AUL() do{if(ray_rc_sync)pthread_mutex_unlock(&g_alloc_mx);}while(0)
+#else
+#define alloc_lock_init() ((void)0)
+#define ALK() ((void)0)
+#define AUL() ((void)0)
+#endif
+
 Z ST{V*p;W n;B f;}reg[128];Z U nreg;Z UC pnd[128];Z U npnd;
-Z V mc(){P(!npnd)F(npnd,U j=pnd[i];munmap(reg[j].p,reg[j].n);reg[j].p=0)npnd=0;U j=0;F(nreg,I(reg[i].p,MC(reg+j,reg+i,SZ*reg);j++))nreg=j;}
-Z A mu(V*p)_(F(nreg,P(reg[i].p==p,pnd[npnd++]=i;0))die("UNMAP"))
-Z V*mm(W n,U f)_(V*p=mmap(0,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_ANON,-1,0);P(p==MAP_FAILED,(V*)0)I(nreg==L(reg),mc();I(nreg==L(reg),die("MMAP")))reg[nreg++]=(TY(*reg)){p,n,f};p)
+Z V mc(){ALK();I(npnd,F(npnd,U j=pnd[i];munmap(reg[j].p,reg[j].n);reg[j].p=0)npnd=0;U j=0;F(nreg,I(reg[i].p,MC(reg+j,reg+i,SZ*reg);j++))nreg=j)AUL();}
+Z A mu(V*p){ALK();F(nreg,I(reg[i].p==p,pnd[npnd++]=i;AUL();return 0;))AUL();return die("UNMAP");}
+Z V*mm(W n,U f){ALK();V*p=mmap(0,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_ANON,-1,0);I(p==MAP_FAILED,AUL();return(V*)0;)I(nreg==L(reg),mc();I(nreg==L(reg),die("MMAP")))reg[nreg++]=(TY(*reg)){p,n,f};AUL();return p;}
 A mf(U f,U i,U n)_(V*p=mm(pg+n,1);P(!p,eo0())P(mmap(p+pg,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_FIXED,f,i)!=p+pg,mu(p);eo0())A x=AP(p+pg);xb=0;xr=REFB;xT=tC;xn=n;x)
 
 Z A bkt[24];DBG(Z U lck;)
 Z W cap(A x/*0*/)_((HD<<xb)-HD)
-Z A mb(U i)_(P(i>=L(bkt),V*p=mm(HD<<i,0);P(!p,die("OOM"))AP(p+HD))A x=bkt[i];P(x,bkt[i]=xX;DBG(xX=0);x)x=mb(i+1);A y=x+(HD<<i);MS(yV-HD,0,HD);yb=i;yX=bkt[i];bkt[i]=y;x)
-A1(m0,DBG(lck++;)Q(x)XP(0)P(xr>REFB,xr--;0)I(TR(xT),mrn(xn|!xn,xA);xT=tL)U i=xb;P(!i,mu(xV-pg))P(i>=L(bkt),mu(xV-HD))xX=bkt[i];bkt[i]=x;xr=0;x)
+Z A mb(U i){ALK();I(i>=L(bkt),V*p=mm(HD<<i,0);P(!p,die("OOM"))A r=AP(p+HD);AUL();return r;)A x=bkt[i];I(x,bkt[i]=xX;DBG(xX=0;)AUL();return x;)x=mb(i+1);A y=x+(HD<<i);MS(yV-HD,0,HD);yb=i;yX=bkt[i];bkt[i]=y;AUL();return x;}
+// release one reference (r0). The decrement is atomic in a peach scope (RC_DECV)
+// and plain otherwise; only the LAST owner (previous count == REFB) proceeds to
+// return the chunk to the shared free lists, and only that tail is serialized by
+// the allocator lock -- the common "still shared, just decrement" case takes no
+// lock at all.
+A m0(A x){DBG(lck++;)Q(x)XP(0)I(RC_DECV(x)>REFB,return 0;)ALK();
+ I(TR(xT),mrn(xn|!xn,xA);xT=tL)U i=xb;A r;
+ I(!i,r=mu(xV-pg);AUL();return r;)I(i>=L(bkt),r=mu(xV-HD);AUL();return r;)
+ xX=bkt[i];bkt[i]=x;xr=0;AUL();return x;}
 DBG(A1(m1,lck--;P(!x||!xb,0)MS(xV,0xab,cap(x));xn=-1;xT=0;0))
-A1(_R,Q(x)XP(x)xr++;x)
+A1(_R,Q(x)XP(x)RC_INC(x);x)
 A1(mr,DBG(m1)(m0(x)))
 V mRn(U n,CO A*a){F(n,_R(a[i]))}
 V mrn(U n,CO A*a){F(n,mr(a[i]))}
@@ -100,7 +131,14 @@ A1(AZ,xT=tG;x)
 
 Z C s0[1<<16],*s1=s0+1;
 S su(U u)_(P(u&1u<<31,s0-(I)u)Z W r;r=u;(V*)&r)
-U us(S s)_(U n=SL(s);P(n<4||(n==4&&!(s[3]&128)),U v=0;MC(&v,s,n);v)S p=s0+1;W(p<s1,P(!strcmp(p,s),s0-p)p+=SL(p)+1)n++;P(s1+n>s0+SZ s0,die("SYMS"))MC(s1,s,n);s1+=n;s0-s1+n)
+// Symbol intern. Short symbols (<=4 bytes without the high bit) are packed into
+// the id itself and never touch the shared table, so they need no lock. The
+// table-append path (scan for an existing name, else copy the bytes and bump
+// s1) mutates s0/s1 shared across peach workers -- serialized by the allocator
+// lock, engaged only in a ray_rc_sync scope.
+U us(S s){U n=SL(s);I(n<4||(n==4&&!(s[3]&128)),U v=0;MC(&v,s,n);return v;)
+ ALK();S p=s0+1;W(p<s1,I(!strcmp(p,s),U r=(U)(s0-p);AUL();return r;)p+=SL(p)+1)
+ n++;I(s1+n>s0+SZ s0,AUL();die("SYMS");)MC(s1,s,n);s1+=n;U r=(U)(s0-s1+n);AUL();return r;}
 A sym(S s)_(as(us(s)))
 
 Z U gd,gn;Z W gk[4096];A gv[4096];
@@ -167,7 +205,7 @@ B rep()_(Z C b[256];C*s=b,*q;
 V repl(){W(rep())}
 
 A cns,cn[tn];Z A ce[tn];S*argv,*env;
-V kinit(){Z B l;P(l)l=1;pg=sysconf(_SC_PAGESIZE);A b[32],*c=b;
+V kinit(){Z B l;P(l)l=1;alloc_lock_init();pg=sysconf(_SC_PAGESIZE);A b[32],*c=b;
  F(tS-tA+1,*c++=ce[tA+i]=an(0,tA+i))*c++=ce[tm]=am(emp(tS),emp(tA));_x(ce[tA])=_R(ce[tC]);ce[tM]=ce[tA];F(tn-ti,Q(!ce[i+ti]);ce[i+ti]=ce[tA])//empties
  cn[tA]=ce[tC];*c++=cn[ti]=cn[tl]=al(NL);F(tL-tE+1,cn[tE+i]=cn[ti])*c++=cn[tF]=cn[tf]=af(NF);cn[tC]=cn[tc]=ac(32);cn[tS]=cn[ts]=as(0);F(tn-to,cn[to+i]=au)//nulls
  Q(c-b<=32);cns=aV(tA,c-b,b);arena_init(0);}//arena_init: reserve the 16MB HFT scratchpad

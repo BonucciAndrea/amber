@@ -1,0 +1,732 @@
+diff --git a/bench/run.sh b/bench/run.sh
+old mode 100644
+new mode 100755
+diff --git a/build.sh b/build.sh
+old mode 100644
+new mode 100755
+diff --git a/demo.sh b/demo.sh
+old mode 100644
+new mode 100755
+diff --git a/examples/peach.k b/examples/peach.k
+index e7f40b3..e790b44 100644
+--- a/examples/peach.k
++++ b/examples/peach.k
+@@ -3,12 +3,15 @@
+ / serially (f'y) and in parallel (peach[f;y]) so you can SEE the speedup.
+ / The same shape covers option pricing, per-symbol backtests, bootstraps, etc.
+ /   run:  AMBER_THREADS=8 ./amber examples/peach.k     (default: online CPU count)
+-/ Note on the wasm/browser build: `peach` there falls back to running
+-/ sequentially (no real fork() in a wasm sandbox -- see peachC's own comment
+-/ in src/i.c), matching std.k's peach wrapper's documented behavior. NP below
+-/ is sized to keep the *fallback* serial pass well under a second even at
+-/ that reduced speed; bump it back up if you're running this natively and
+-/ want a heavier, more dramatic speedup number.
++/ peach dispatches 1,024-element morsels across a persistent POSIX thread pool
++/ (src/peachpool.c); each worker draws its own decorrelated random stream, so
++/ the parallel pi estimate is an independent Monte-Carlo run, not a replay of
++/ the serial one (expect it to agree to ~3 digits, not bit-for-bit).
++/ Note on the wasm/browser build: there are no threads in a wasm sandbox, so
++/ `peach` there evaluates sequentially (see peachC in src/i.c), matching
++/ std.k's peach wrapper. NP below is sized to keep even that serial fallback
++/ well under a second; bump it up on a many-core native box for a heavier,
++/ more dramatic speedup number.
+ / ============================================================================
+ \l amber.k
+ \l fin.k
+diff --git a/examples/peach_verify.k b/examples/peach_verify.k
+index de0c332..e4da557 100644
+--- a/examples/peach_verify.k
++++ b/examples/peach_verify.k
+@@ -3,17 +3,26 @@
+ / GNU AGPLv3 - see LICENSE and NOTICE.
+ / ----------------------------------------------------------------------------
+ / Run:  ./amber examples/peach_verify.k
+-/       AMBER_THREADS=4 ./amber examples/peach_verify.k    / exercise the fork path
++/       AMBER_THREADS=4 ./amber examples/peach_verify.k    / exercise the thread pool
+ / 
+-/ Four things are checked, in order:
++/ peach now runs on a PERSISTENT POSIX thread pool (src/peachpool.c): workers
++/ pull 1,024-element morsels and evaluate f straight into shared result slots,
++/ under scoped atomic refcounting (ray_rc_sync) -- no fork(), no pipe, no
++/ binary IPC on the hot path. -8!/-9! (src/ser.c) stays as the `!`-verb
++/ serializer and is still verified here in its own right.
++/ 
++/ Five things are checked, in order:
+ /   1. (-9! -8! x) ~ x  over every shape the serializer claims to support.
+ /   2. peach returns exactly what serial each returns, for every result shape
+-/      (atoms, symbols, nested lists, dicts, tables) -- i.e. the binary wire
+-/      round trip is transparent to the caller.
+-/   3. peach over a large input, to show the parent's accumulate loop no longer
+-/      leaks a whole result vector per chunk (1.9.3 fix) and stays linear.
++/      (atoms, symbols, nested lists, dicts, tables) -- the thread pool is
++/      transparent to the caller.
++/   3. peach over a large input: correct values AND flat memory across repeats
++/      (workers write pre-allocated slots; no per-chunk accumulator realloc).
+ /   4. an error raised INSIDE a worker surfaces as a clean, trappable K error
+ /      rather than a hang, a wrong answer, or a crash.
++/   5. thread stress: inputs far larger than one morsel, so several workers run
++/      concurrently, exercising the thread-local arith/format state and the
++/      allocator + symbol-intern lock -- results must still be exact.
+ / Exits non-zero if anything fails, so it can be wired into CI as-is.
+ / ============================================================================
+ dir:{$[#p:"/"/-1_"/"\x;p;"."]}`argv 1
+@@ -70,8 +79,9 @@ sa:`sa 1 2 3 4 5
+ ok["sorted attribute preserved";(`at sa)~`at -9!-8!sa]
+ ok["sorted attribute value"    ;(`at -9!-8!sa)~`s]
+ 
+-/ malformed input must be rejected cleanly, never crash: -9! parses bytes that
+-/ in the peach case came from another process and may be truncated.
++/ malformed input must be rejected cleanly, never crash: -9! is a parser for
++/ untrusted/possibly-truncated bytes (its `!`-verb contract), independent of
++/ whether peach uses it.
+ bad:{[nm;g]ok[nm;"caught"~.[g;,0;{[e]"caught"}]];}
+ bad["reject empty input"    ;{-9!""}]
+ bad["reject garbage header" ;{-9!"XXXXXXXX"}]
+@@ -127,11 +137,26 @@ e1:.[{[q]peach[{$[x=5;x+`sym;x]};!10]};,0;{[e]"caught"}]
+ ok["worker error is trapped";e1~"caught"]
+ e2:.[{[q]peach[{$[x=400;x+`sym;x]};!1000]};,0;{[e]"caught"}]
+ ok["error deep in a chunk"  ;e2~"caught"]
+-/ the interpreter must still be usable afterwards: no orphaned pipes, no
+-/ zombie workers, no wedged global error state.
++/ the interpreter must still be usable afterwards: the persistent worker
++/ threads are re-armed for the next dispatch, no wedged global error state.
+ ok["peach works after error";(peach[{x+1};!30])~1+!30]
+ ok["serial each after error";({x+1}'!5)~1+!5]
+ 
++/ ---- 5. thread stress: many morsels run concurrently ----------------------
++/ M is well above TASK_GRAIN (1024), so the work is split into several morsels
++/ that different worker threads run at the same time. If any per-thread state
++/ (the arithmetic op register, the VM depth, the prng, the error buffer) or any
++/ shared table (the object allocator, the symbol intern table) were not made
++/ thread-safe, these would mismatch serial each or crash under a sanitizer.
++sec"5. thread stress across morsels"
++M:5000
++ok["multi-morsel arithmetic";(peach[{1+x*2};!M])~1+2*!M]
++ok["multi-morsel intern"     ;(peach[{`$"k",$x};!M])~{`$"k",$x}'!M]
++ok["multi-morsel alloc/reduce";(peach[{+/!x+1};!M])~{+/!x+1}'!M]
++ok["multi-morsel nested"     ;(peach[{(x;x*x;$x)};!M])~{(x;x*x;$x)}'!M]
++/ forcing many lanes must not change the answer vs a single lane
++ok["multi-morsel over floats";(peach[{0.5*x*x};!M])~{0.5*x*x}'!M]
++
+ / ---- summary ----------------------------------------------------------------
+ `0:""
+ `0:"================ PEACH / SERIALIZER VERIFY ================"
+diff --git a/install.sh b/install.sh
+old mode 100644
+new mode 100755
+diff --git a/src/2.c b/src/2.c
+index 1fe394d..de6d8c0 100644
+--- a/src/2.c
++++ b/src/2.c
+@@ -111,7 +111,11 @@ ZN A arif(A x,A y,U f)_(C t=xt,u=yt;
+  P(f==10,ariz(x,y,f))
+  x=of1(xR);y=ari(x,of1(y));x(f<8&&y?of0(y):y))
+ 
+-Z U f;//0=dex,1=add,2=sub,3=mul,4=dvd,5=mod,6=mnm,7=mxm,8=ltn,9=gtn,10=eql
++// Thread-local: `f` is ari()'s implicit op-selector, set-then-read (and
++// save/restored across nested arith) within a single top-level call. Each peach
++// worker evaluates arithmetic concurrently, so this per-call register must be
++// per-thread or one worker's op would leak into another's nested ari().
++Z AM_TLS U f;//0=dex,1=add,2=sub,3=mul,4=dvd,5=mod,6=mnm,7=mxm,8=ltn,9=gtn,10=eql
+ // amber: native temporal scalar arithmetic.  date/time/timestamp atoms carry
+ // their base units (days/ms/ns); + and - keep the temporal type, temporal-minus-
+ // same-temporal yields a plain int (a difference), comparisons yield bool.
+diff --git a/src/a.c b/src/a.c
+index 097ed4d..394007f 100644
+--- a/src/a.c
++++ b/src/a.c
+@@ -16,6 +16,10 @@
+ #include"ast.h"
+ #include<time.h>
+ #include<stdio.h>
++// Definition of the scoped-atomic-refcount flag declared in a.h. Thread-local,
++// default false: every thread starts in the fast serial (non-atomic) refcount
++// mode and only peachC (src/i.c) flips it true around a parallel dispatch.
++AM_TLS B ray_rc_sync=false;
+ // ---- HFT as-of join kernel ------------------------------------------------
+ // branch-free lower_bound over a sorted long slice a[lo,hi): first i with a[i]>=key.
+ // The ternaries lower to cmov under -O3, so there are no data-dependent branches.
+diff --git a/src/a.h b/src/a.h
+index 24bee6a..60a94b9 100644
+--- a/src/a.h
++++ b/src/a.h
+@@ -88,6 +88,24 @@
+ #define REFB  1
+ #define MINE(x) (_r(x)==REFB)
+ 
++// ---- scoped atomic refcounting (ray_rc_sync) -----------------------------
++// A single thread-local flag flips retain/release between the fast serial path
++// (plain xr++/xr--) and C11-relaxed/acq-rel atomics. peachC (src/i.c) sets it
++// true only for the duration of a parallel dispatch, on every worker AND the
++// parent, so ordinary single-threaded evaluation pays nothing but one
++// perfectly-predicted branch -- no lock, no atomic, no memory barrier.
++#if defined(__STDC_VERSION__) && __STDC_VERSION__>=201112L && !defined(__STDC_NO_THREADS__)
++#define AM_TLS _Thread_local
++#else
++#define AM_TLS __thread
++#endif
++EX AM_TLS bool ray_rc_sync;
++// retain one reference to a heap object's refcount word (_r(x) is a U).
++#define RC_INC(x) do{if(ray_rc_sync)__atomic_fetch_add(&_r(x),1u,__ATOMIC_RELAXED);else _r(x)++;}while(0)
++// atomically drop one reference, yielding the PREVIOUS count (post-decrement
++// semantics, matching _r(x)-- ). A result of REFB means "I was the last owner".
++#define RC_DECV(x) (ray_rc_sync?__atomic_fetch_sub(&_r(x),1u,__ATOMIC_ACQ_REL):_r(x)--)
++
+ TD void V;TD bool B;TD char G,C;TD char unsigned UC;TD CO C*S;TD short H;TD unsigned short UH;TD int I;TD unsigned int U;TD long long L;TD double F;TD size_t N;
+ TD unsigned long long W,A,A0(),A1(A),A2(A,A),A3(A,A,A),A4(A,A,A,A),AA(CO A*,U),AX(A,CO A*,U);
+ 
+@@ -114,6 +132,8 @@ A aa(U,A),ii(A,U),io(A,L),aE(L,L),af(F),aCm(S,S),aCn(S,U),apc(A,C),an(U,C),aV(C,
+  AT(W,A),AW(C,A),AK(C,A),AO(UC,A),AN(U,A),w1(U,A,A),w2(U,A,A,A),w8(U,A,CO A*,U),*gp(A);
+ V cyc(V*,U,U),eS(A,U),eQ(S,U,U),exit(I),hexC(S,U,C*),kargs(I,S*),kinit(),*memmem(CO V*,N,CO V*,N),mrn(U,CO A*),mRn(U,CO A*),repl(),tilV(V*,L,L,U);
+ B id0(UC),mtc_(A,A),tru(A);
++V par_prng_perturb(W);//decorrelate a peach worker's thread-local prng stream (r.c)
++A peach_pool(A,A,U,I);//persistent thread-pool morsel-driven peach (src/peachpool.c)
+ C*sf(C*,L),*sl(C*,L),sup(A*,A*),tZ(L),*strchrnul(S,I);
+ U gi(A);
+ U amlb(CO L*RES,U,U,L);//branch-free lower_bound over a sorted long slice (a.c)
+diff --git a/src/b.c b/src/b.c
+index 086e261..bb7e01e 100644
+--- a/src/b.c
++++ b/src/b.c
+@@ -12,7 +12,7 @@ Z CO C di[]={                     [ba]= 1, 1, 3, 3, 3, 3, 3, 3, 2, 2, 1, 1, 1, 1
+ ds[]={[bv]=n1,n1,n1,   p1,   p1,  [ba]= 1, 1,-1,-1,-1,-1,-1,-1, 1,-1, 1, 0,-1, 0, 1,-1, 0, 1},      //stack size delta
+ ks[]={                            [ba]=-1,-1, 0, 0, 0, 0, 0, 0, 0, 0,-1, 1, 0, 0, 0, 0, 0, 0};      //stack size delta (coefficient for the next byte)
+ #define BG (b+=2,b[-2]|(U)b[-1]<<8)                                                                 //read a 2-byte little-endian global/var index
+-AX(run,Q(xto)Z I d;P(++d>2048,es8(a,n))P(n-xk,er8(a,n))UC*b=_V(xy),c,nl=_n(xA[3]);A l[nl+*b++],*s=l+L(l);MS(l,0,SZ l);I(n,MC(l,a,8*n))//virtual machine
++AX(run,Q(xto)Z AM_TLS I d;P(++d>2048,es8(a,n))/*d: per-thread VM recursion depth (peach workers run the VM concurrently)*/P(n-xk,er8(a,n))UC*b=_V(xy),c,nl=_n(xA[3]);A l[nl+*b++],*s=l+L(l);MS(l,0,SZ l);I(n,MC(l,a,8*n))//virtual machine
+  W((c=*b++),S(c,                                                                                    //          |BYTES |          STACK        |         EFFECT
+   C32(bu,U(*s=v1[c-bu](*s)))                                                                        //monad     |bu+m  |.. x -> monads[m][x]   |
+   C32(bv,A x=*s++;U(*s=x(v2[c-bv](x,*s))))                                                          //dyad      |bv+d  |.. y x -> dyads[d][x;y]|
+diff --git a/src/e.c b/src/e.c
+index ef993e4..5df834c 100644
+--- a/src/e.c
++++ b/src/e.c
+@@ -1,7 +1,13 @@
+ #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+ #include"diagnostic.h"
+ #include<stdlib.h>
+-Z C b[4096],*r=b;Z U d;
++// Thread-local error scratch: each peach worker that raises an error formats it
++// into its OWN buffer (the parent re-raises a single clean 'worker error, so a
++// worker's text is only ever read by that same worker). `r` is (re)pointed at
++// `b` by err0() at the start of every error -- which always runs before eS(),
++// try(), epr() or err() read the buffer -- so it needs no static initializer
++// (a thread-local one cannot take the address of another thread-local anyway).
++Z AM_TLS C b[4096];Z AM_TLS C*r;Z AM_TLS U d;
+ // amber: is the Rust-style stderr diagnostic (src/diagnostic.c) enabled?
+ //   -1 = not resolved yet, resolve from $AMBER_DIAG on first use
+ //    0 = off, 1 = on
+diff --git a/src/f.c b/src/f.c
+index 8e9e9f4..d92a4e6 100644
+--- a/src/f.c
++++ b/src/f.c
+@@ -83,7 +83,7 @@ Z A fndL(A x,A y,B srt)_(
+ 
+ Z A1(fN,A y=_R(cn[tl]);x(xtt?y:rsz(xN,y)))
+ 
+-Z L t[256];
++Z AM_TLS L t[256];// per-call char/byte find scratch; thread-local for peach workers
+ Z X1(fndGx,
+  R_(fN(x))
+  RmMA(e1f(fndGx,x))
+diff --git a/src/i.c b/src/i.c
+index 965d53c..b0d55c3 100644
+--- a/src/i.c
++++ b/src/i.c
+@@ -65,70 +65,36 @@ Z I peachCPUs(){
+ }
+ Z I peachNW(){S*e=env;I n=-1;if(e)while(*e){S p=*e++;if(!strncmp(p,"AMBER_THREADS=",14)){n=0;S q=p+14;while(*q>='0'&&*q<='9')n=n*10+(*q++-'0');if(n<1)n=peachCPUs();break;}}return n<0?peachCPUs():n;}
+ Z A eachR(A f,A y,U lo,U hi){U m=hi-lo;A u=aA0(m|!m);for(U i=0;i<m;i++){A v=_1(f,ii(y,lo+i));if(!v){mr(u);return 0;}u=psh(u,v);}return sqz(u);}
++// amber 1.9.5: thread-pool parallel-each.  peach[f;y] applies f to each item of
++// y across a PERSISTENT pool of POSIX worker threads (src/peachpool.c), which
++// replaces the old fork()+pipe()+(-8!/-9!) model this function used to carry.
++// Workers pull 1,024-element morsels and evaluate f straight into shared result
++// slots -- no process spawn, no pipe write, no binary (de)serialisation on the
++// hot path.  Correctness rests on scoped atomic refcounting (ray_rc_sync in
++// a.h) and the ray_rc_sync-gated allocator/symbol-table lock in src/m.c, so the
++// result is bit-identical to serial f'y across every datatype, list and table.
++//
++// A plain serial each is used when the input is trivially small (n<2), only one
++// lane was asked for (AMBER_THREADS<2 / a single CPU), the call is already
++// nested inside a peach dispatch (a worker's own f invoked peach again -- caught
++// via ray_rc_sync), or the target has no pthreads (-Dwasm).  (-8!/-9! itself
++// still lives in src/ser.c: it remains the `!`-verb serializer and is exercised
++// directly by examples/peach_verify.k -- only peach's use of it is gone.)
+ A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);U n=_N(dat);I nw=peachNW();if(nw>64)nw=64;
+- if(nw<2||n<2){A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}
+- // fork-based parallelism needs a real pipe()/fork(); neither exists in the
+- // wasm sandbox (src/0.c's wasm branch stubs both to always return -1
+- // there), and this loop never used to check for that, so pipe()/fork()
+- // failing left pr[]/pid[] holding uninitialized fds that the read/wait
+- // loop below then used -- a wasm trap (uncatchable from K), not a clean
+- // error. One throwaway probe pipe() up front detects the unsupported
+- // environment and falls back to the plain serial eachR pass instead,
+- // which is exactly what std.k's own peach wrapper comment already
+- // documents as the intended behavior ("this build is single-threaded, so
+- // peach evaluates sequentially") -- this just makes the C side actually
+- // honor that instead of assuming fork() always succeeds. No effect on a
+- // real fork()-capable build: the probe pipe costs two fds, immediately
+- // closed, once per peach call.
+- {I pp[2];if(pipe(pp)<0){A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}close(pp[0]);close(pp[1]);}
+- if((U)nw>n)nw=n;I pr[128],pid[64];U base=n/nw,rem=n%nw,lo=0;
+- for(I w=0;w<nw;w++){U hi=lo+base+((U)w<rem);pipe(pr+2*w);pid[w]=fork();
+-  if(!pid[w]){close(pr[2*w]);A r=eachR(fn,dat,lo,hi);if(!r)_exit(3);
+-   /* amber 1.9.3: ship the chunk as BINARY (-8!) instead of `k text. The text
+-    * path formatted every element and the parent reparsed it, which cost more
+-    * than the work being parallelised on small-payload maps and could not
+-    * represent attributes or nested empties faithfully at all. ser8 fails
+-    * closed: a chunk that cannot be encoded exits non-zero rather than
+-    * writing a short buffer the parent would misparse. */
+-   A b=ser8(r);if(!b)_exit(4);
+-   v1c(ai(pr[2*w+1]),b);close(pr[2*w+1]);_exit(0);}
+-  close(pr[2*w+1]);lo=hi;}
+- /* Parent collection. Three bugs lived in the one line this replaces:
+-  *   1. LEAK. `out=cat(out,part)` -- cat() is A2(cat,cat11(xR,y)): it bumps
+-  *      x's refcount and hands that extra reference to cat11. The caller's own
+-  *      reference to the OLD out was therefore never released, so every chunk
+-  *      past the first leaked a whole accumulated result vector. Worse, the
+-  *      surviving refcount made MINE(out) false inside aa(), so the append
+-  *      could not grow in place and reallocated the whole accumulator every
+-  *      time -- O(total^2) copying on top of the leak. Calling cat11 directly,
+-  *      which OWNS both arguments, fixes both at once: nothing is left holding
+-  *      a stray reference, and out is uniquely owned so the append extends in
+-  *      place. (Bumping and then releasing -- cat() plus mr(old) -- plugs the
+-  *      leak but keeps the refcount at 2 during the call, so it would still
+-  *      reallocate every chunk.)
+-  *   2. EXIT STATUS IGNORED. wait4(pid,0,0,0) discarded the child's status, so
+-  *      a worker that died on a signal or exited non-zero (eachR returning 0,
+-  *      or ser8 failing) was indistinguishable from success: the parent just
+-  *      saw a short/empty pipe and silently produced a WRONG result. Status is
+-  *      now inspected and any failure becomes a clean K error.
+-  *   3. UNVALIDATED DECODE. val(rda(...)) assumed the pipe held a parseable
+-  *      value; des9 returns 0 on a truncated or corrupt buffer and that is now
+-  *      treated as a worker failure rather than dereferenced.
+-  * Every child is still waited for even after a failure is detected, so no
+-  * zombie is left behind and no pipe fd is orphaned (rda() closes its own). */
+- A out=0;I bad=0;
+- for(I w=0;w<nw;w++){
+-  A raw=rda(pr[2*w]);                 /* rda() closes the read fd itself */
+-  A part=raw?des9(raw):0;             /* des9() consumes raw            */
+-  I st=0;wait4(pid[w],&st,0,0);
+-  I ok=part&&WIFEXITED(st)&&!WEXITSTATUS(st)&&!WIFSIGNALED(st);
+-  I(!ok,bad=1;I(part,mr(part))continue)
+-  I(!out,out=part)
+-  E(out=cat11(out,part);)   /* cat11 owns BOTH: no stray ref, grows in place */
+- }
++#if defined(wasm)
++ {A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}                 // no threads in the wasm sandbox
++#else
++ if(nw<2||n<2||ray_rc_sync){A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}
++ // Warm the lazily-initialised float format/parse tables (src/s.c I5/P5,
++ // src/p.c powers) on THIS parent thread, so no worker is ever the first to
++ // touch them and race on their one-time build.
++ {C wb[64];L wd;F wv=1.5;MC(&wd,&wv,8);sf(wb,wd);S ws="1.5";pf(&ws);}
++ A r=peach_pool(fn,dat,n,nw);
+  mr(fn);mr(dat);
+- I(bad||!out,I(out,mr(out))return x(err0("worker error in peach")))
+- return x(sqz(out));}
++ P(!r,x(err0("worker error in peach")))
++ return x(r);
++#endif
++}
+ // amber: window-join C kernel.  x=(qt;qcols;codes;w0;w1;gb;ge)  (marshalled by wj in amber.k)
+ //  qt    sorted long vector (ordering column; ascending within each group slice)
+ //  qcols list of numeric vectors (tF or tL) aligned to qt, one per aggregate
+diff --git a/src/m.c b/src/m.c
+index d65fdc1..6b8f073 100644
+--- a/src/m.c
++++ b/src/m.c
+@@ -44,18 +44,49 @@
+ __attribute((weak, visibility("default"))) V kinit();
+ #endif
+ 
++// ---- allocator serialization for peach's thread pool ----------------------
++// Amber's object allocator (the bkt[] free lists and the reg[] mmap region
++// table below) is process-global and was written single-threaded. peachC runs
++// the evaluator on several worker threads at once, so every path that mutates
++// that shared state -- mb() (pop a chunk), m0() (push a freed chunk),
++// mm()/mu()/mc() (grow/retire mmap regions) and us() (append to the symbol
++// intern table) -- takes this ONE recursive lock. It is engaged ONLY when
++// ray_rc_sync is set (i.e. inside a peach dispatch); ALK()/AUL() compile to a
++// single predictable branch otherwise, so ordinary single-threaded evaluation
++// pays nothing. Recursive because m0() frees a container's children by
++// re-entering m0(), and mb()->mm()->mc() nest, all on the same thread.
++#if !defined(wasm)
++#include<pthread.h>
++Z pthread_mutex_t g_alloc_mx;
++Z V alloc_lock_init(){pthread_mutexattr_t a;pthread_mutexattr_init(&a);pthread_mutexattr_settype(&a,PTHREAD_MUTEX_RECURSIVE);pthread_mutex_init(&g_alloc_mx,&a);pthread_mutexattr_destroy(&a);}
++#define ALK() do{if(ray_rc_sync)pthread_mutex_lock(&g_alloc_mx);}while(0)
++#define AUL() do{if(ray_rc_sync)pthread_mutex_unlock(&g_alloc_mx);}while(0)
++#else
++#define alloc_lock_init() ((void)0)
++#define ALK() ((void)0)
++#define AUL() ((void)0)
++#endif
++
+ Z ST{V*p;W n;B f;}reg[128];Z U nreg;Z UC pnd[128];Z U npnd;
+-Z V mc(){P(!npnd)F(npnd,U j=pnd[i];munmap(reg[j].p,reg[j].n);reg[j].p=0)npnd=0;U j=0;F(nreg,I(reg[i].p,MC(reg+j,reg+i,SZ*reg);j++))nreg=j;}
+-Z A mu(V*p)_(F(nreg,P(reg[i].p==p,pnd[npnd++]=i;0))die("UNMAP"))
+-Z V*mm(W n,U f)_(V*p=mmap(0,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_ANON,-1,0);P(p==MAP_FAILED,(V*)0)I(nreg==L(reg),mc();I(nreg==L(reg),die("MMAP")))reg[nreg++]=(TY(*reg)){p,n,f};p)
++Z V mc(){ALK();I(npnd,F(npnd,U j=pnd[i];munmap(reg[j].p,reg[j].n);reg[j].p=0)npnd=0;U j=0;F(nreg,I(reg[i].p,MC(reg+j,reg+i,SZ*reg);j++))nreg=j)AUL();}
++Z A mu(V*p){ALK();F(nreg,I(reg[i].p==p,pnd[npnd++]=i;AUL();return 0;))AUL();return die("UNMAP");}
++Z V*mm(W n,U f){ALK();V*p=mmap(0,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_ANON,-1,0);I(p==MAP_FAILED,AUL();return(V*)0;)I(nreg==L(reg),mc();I(nreg==L(reg),die("MMAP")))reg[nreg++]=(TY(*reg)){p,n,f};AUL();return p;}
+ A mf(U f,U i,U n)_(V*p=mm(pg+n,1);P(!p,eo0())P(mmap(p+pg,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_FIXED,f,i)!=p+pg,mu(p);eo0())A x=AP(p+pg);xb=0;xr=REFB;xT=tC;xn=n;x)
+ 
+ Z A bkt[24];DBG(Z U lck;)
+ Z W cap(A x/*0*/)_((HD<<xb)-HD)
+-Z A mb(U i)_(P(i>=L(bkt),V*p=mm(HD<<i,0);P(!p,die("OOM"))AP(p+HD))A x=bkt[i];P(x,bkt[i]=xX;DBG(xX=0);x)x=mb(i+1);A y=x+(HD<<i);MS(yV-HD,0,HD);yb=i;yX=bkt[i];bkt[i]=y;x)
+-A1(m0,DBG(lck++;)Q(x)XP(0)P(xr>REFB,xr--;0)I(TR(xT),mrn(xn|!xn,xA);xT=tL)U i=xb;P(!i,mu(xV-pg))P(i>=L(bkt),mu(xV-HD))xX=bkt[i];bkt[i]=x;xr=0;x)
++Z A mb(U i){ALK();I(i>=L(bkt),V*p=mm(HD<<i,0);P(!p,die("OOM"))A r=AP(p+HD);AUL();return r;)A x=bkt[i];I(x,bkt[i]=xX;DBG(xX=0;)AUL();return x;)x=mb(i+1);A y=x+(HD<<i);MS(yV-HD,0,HD);yb=i;yX=bkt[i];bkt[i]=y;AUL();return x;}
++// release one reference (r0). The decrement is atomic in a peach scope (RC_DECV)
++// and plain otherwise; only the LAST owner (previous count == REFB) proceeds to
++// return the chunk to the shared free lists, and only that tail is serialized by
++// the allocator lock -- the common "still shared, just decrement" case takes no
++// lock at all.
++A m0(A x){DBG(lck++;)Q(x)XP(0)I(RC_DECV(x)>REFB,return 0;)ALK();
++ I(TR(xT),mrn(xn|!xn,xA);xT=tL)U i=xb;A r;
++ I(!i,r=mu(xV-pg);AUL();return r;)I(i>=L(bkt),r=mu(xV-HD);AUL();return r;)
++ xX=bkt[i];bkt[i]=x;xr=0;AUL();return x;}
+ DBG(A1(m1,lck--;P(!x||!xb,0)MS(xV,0xab,cap(x));xn=-1;xT=0;0))
+-A1(_R,Q(x)XP(x)xr++;x)
++A1(_R,Q(x)XP(x)RC_INC(x);x)
+ A1(mr,DBG(m1)(m0(x)))
+ V mRn(U n,CO A*a){F(n,_R(a[i]))}
+ V mrn(U n,CO A*a){F(n,mr(a[i]))}
+@@ -100,7 +131,14 @@ A1(AZ,xT=tG;x)
+ 
+ Z C s0[1<<16],*s1=s0+1;
+ S su(U u)_(P(u&1u<<31,s0-(I)u)Z W r;r=u;(V*)&r)
+-U us(S s)_(U n=SL(s);P(n<4||(n==4&&!(s[3]&128)),U v=0;MC(&v,s,n);v)S p=s0+1;W(p<s1,P(!strcmp(p,s),s0-p)p+=SL(p)+1)n++;P(s1+n>s0+SZ s0,die("SYMS"))MC(s1,s,n);s1+=n;s0-s1+n)
++// Symbol intern. Short symbols (<=4 bytes without the high bit) are packed into
++// the id itself and never touch the shared table, so they need no lock. The
++// table-append path (scan for an existing name, else copy the bytes and bump
++// s1) mutates s0/s1 shared across peach workers -- serialized by the allocator
++// lock, engaged only in a ray_rc_sync scope.
++U us(S s){U n=SL(s);I(n<4||(n==4&&!(s[3]&128)),U v=0;MC(&v,s,n);return v;)
++ ALK();S p=s0+1;W(p<s1,I(!strcmp(p,s),U r=(U)(s0-p);AUL();return r;)p+=SL(p)+1)
++ n++;I(s1+n>s0+SZ s0,AUL();die("SYMS");)MC(s1,s,n);s1+=n;U r=(U)(s0-s1+n);AUL();return r;}
+ A sym(S s)_(as(us(s)))
+ 
+ Z U gd,gn;Z W gk[4096];A gv[4096];
+@@ -167,7 +205,7 @@ B rep()_(Z C b[256];C*s=b,*q;
+ V repl(){W(rep())}
+ 
+ A cns,cn[tn];Z A ce[tn];S*argv,*env;
+-V kinit(){Z B l;P(l)l=1;pg=sysconf(_SC_PAGESIZE);A b[32],*c=b;
++V kinit(){Z B l;P(l)l=1;alloc_lock_init();pg=sysconf(_SC_PAGESIZE);A b[32],*c=b;
+  F(tS-tA+1,*c++=ce[tA+i]=an(0,tA+i))*c++=ce[tm]=am(emp(tS),emp(tA));_x(ce[tA])=_R(ce[tC]);ce[tM]=ce[tA];F(tn-ti,Q(!ce[i+ti]);ce[i+ti]=ce[tA])//empties
+  cn[tA]=ce[tC];*c++=cn[ti]=cn[tl]=al(NL);F(tL-tE+1,cn[tE+i]=cn[ti])*c++=cn[tF]=cn[tf]=af(NF);cn[tC]=cn[tc]=ac(32);cn[tS]=cn[ts]=as(0);F(tn-to,cn[to+i]=au)//nulls
+  Q(c-b<=32);cns=aV(tA,c-b,b);arena_init(0);}//arena_init: reserve the 16MB HFT scratchpad
+diff --git a/src/peachpool.c b/src/peachpool.c
+new file mode 100644
+index 0000000..a55c4e2
+--- /dev/null
++++ b/src/peachpool.c
+@@ -0,0 +1,171 @@
++/* peachpool.c  -  see peachpool.h.
++ * GNU AGPLv3 - see LICENSE and NOTICE. */
++#if !defined(wasm)
++#include "a.h"
++#include "peachpool.h"
++#include <pthread.h>
++#include <stdlib.h>
++
++/* ---- one live job at a time --------------------------------------------
++ * peach dispatches are serialised: only the parent thread publishes a job,
++ * and a `peach` reached from inside a worker (nested peach) falls back to a
++ * serial each in src/i.c (it sees ray_rc_sync already set), so this single
++ * shared Job is never contended for publication. */
++typedef struct {
++    A f, dat;            /* borrowed from the caller (peachC owns/frees them) */
++    A *out;              /* result slots [0,n), pre-zeroed by the dispatcher  */
++    U n, grain;
++    U cursor;            /* next morsel start; grabbed via __atomic_fetch_add */
++    volatile int err;    /* set by the first worker whose f() raised          */
++} Job;
++
++typedef struct {
++    pthread_mutex_t mx;
++    pthread_cond_t  cv_work, cv_done, cv_ready;
++    pthread_t      *th;
++    int nth;             /* live worker threads (does NOT count the parent)   */
++    int gen;             /* bumped once per dispatch; workers wake on a change */
++    int active;          /* workers still processing the current generation   */
++    int ready;           /* workers that have parked at least once (startup)  */
++    int shutdown;
++    Job job;
++} Pool;
++
++static Pool P;
++static pthread_mutex_t init_mx = PTHREAD_MUTEX_INITIALIZER;
++static int P_ready = 0;
++
++/* Grab morsels until the input is exhausted. Runs on every worker AND on the
++ * dispatching parent. Per-index work is byte-for-byte the serial each step:
++ * ii(dat,i) makes the owned element, _1(f,item) applies f (consuming item and
++ * returning 0 on error), and the owned result lands in its own slot. */
++static void run_morsels(Job *j) {
++    for (;;) {
++        U t = __atomic_fetch_add(&j->cursor, j->grain, __ATOMIC_RELAXED);
++        if (t >= j->n) break;
++        U hi = t + j->grain; if (hi > j->n) hi = j->n;
++        for (U i = t; i < hi; i++) {
++            if (j->err) break;                 /* another slice already failed */
++            A item = ii(j->dat, i);
++            A v = _1(j->f, item);
++            if (!v) { j->err = 1; break; }
++            j->out[i] = v;
++        }
++    }
++}
++
++static void *worker(void *arg) {
++    long idx = (long)arg;
++    ray_rc_sync = true;                    /* a worker only ever runs peach work */
++    par_prng_perturb((W)(idx + 1));        /* its own decorrelated random stream */
++    pthread_mutex_lock(&P.mx);
++    int mygen = P.gen;
++    /* Announce we have latched our baseline generation and are about to park.
++     * pool_init() blocks until every worker has done this, so the FIRST dispatch
++     * (which bumps gen under mx) cannot slip past a worker that hadn't yet
++     * chosen its baseline -- the lost-wakeup that would otherwise hang the join.
++     * Later dispatches are safe without help: a worker between finishing a job
++     * and re-parking re-tests gen and picks up the new generation directly. */
++    P.ready++;
++    pthread_cond_broadcast(&P.cv_ready);
++    for (;;) {
++        while (P.gen == mygen && !P.shutdown) pthread_cond_wait(&P.cv_work, &P.mx);
++        if (P.shutdown) { pthread_mutex_unlock(&P.mx); return 0; }
++        mygen = P.gen;
++        pthread_mutex_unlock(&P.mx);
++
++        run_morsels(&P.job);
++
++        pthread_mutex_lock(&P.mx);
++        if (--P.active == 0) pthread_cond_broadcast(&P.cv_done);
++    }
++}
++
++/* Clean teardown at process exit so LeakSanitizer sees no live threads or a
++ * dangling P.th allocation. */
++static void pool_shutdown(void) {
++    if (!P_ready) return;
++    pthread_mutex_lock(&P.mx);
++    P.shutdown = 1; P.gen++;
++    pthread_cond_broadcast(&P.cv_work);
++    pthread_mutex_unlock(&P.mx);
++    for (int i = 0; i < P.nth; i++) pthread_join(P.th[i], 0);
++    free(P.th); P.th = 0; P_ready = 0;
++}
++
++/* Lazily build the pool the first time peach runs natively. `nw_total` is the
++ * desired concurrency INCLUDING the parent, so nw_total-1 worker threads are
++ * spawned; the parent makes up the difference. Sized once (AMBER_THREADS is
++ * fixed per process); later, smaller jobs simply leave some workers idle. */
++static void pool_init(int nw_total) {
++    pthread_mutex_lock(&init_mx);
++    if (!P_ready) {
++        int want = nw_total - 1; if (want < 0) want = 0;
++        pthread_mutex_init(&P.mx, 0);
++        pthread_cond_init(&P.cv_work, 0);
++        pthread_cond_init(&P.cv_done, 0);
++        pthread_cond_init(&P.cv_ready, 0);
++        P.gen = 0; P.active = 0; P.ready = 0; P.shutdown = 0; P.nth = 0;
++        P.th = (pthread_t *)malloc(sizeof(pthread_t) * (want ? want : 1));
++        if (P.th) {
++            for (int i = 0; i < want; i++) {
++                if (pthread_create(&P.th[i], 0, worker, (void *)(long)i) == 0) P.nth++;
++                else break;               /* run with however many we got */
++            }
++        }
++        /* Wait until every spawned worker has parked before returning, so the
++         * first dispatch cannot outrun a still-starting worker. */
++        pthread_mutex_lock(&P.mx);
++        while (P.ready < P.nth) pthread_cond_wait(&P.cv_ready, &P.mx);
++        pthread_mutex_unlock(&P.mx);
++        atexit(pool_shutdown);
++        P_ready = 1;
++    }
++    pthread_mutex_unlock(&init_mx);
++}
++
++/* Apply f to each of dat's n items across nw-way parallelism (nw counts the
++ * parent). Returns the assembled result -- identical to serial f'dat -- or 0 if
++ * any worker's f() raised. f and dat are borrowed. Caller guarantees n>=2 and
++ * nw>=2 and that we are NOT already inside a peach scope. */
++A peach_pool(A f, A dat, U n, I nw) {
++    pool_init((int)nw);
++
++    A *out = (A *)calloc((size_t)n, sizeof(A));   /* zeroed: unfilled slots stay 0 */
++    if (!out) {                                   /* OOM: let the caller go serial */
++        A u = aA0(n); for (U i = 0; i < n; i++) { A v = _1(f, ii(dat, i)); if (!v) { mr(u); return 0; } u = psh(u, v); } return sqz(u);
++    }
++
++    ray_rc_sync = true;                           /* parent joins the parallel scope */
++
++    pthread_mutex_lock(&P.mx);
++    P.job.f = f; P.job.dat = dat; P.job.out = out;
++    P.job.n = n; P.job.grain = TASK_GRAIN; P.job.cursor = 0; P.job.err = 0;
++    P.active = P.nth;                             /* each worker decrements once */
++    P.gen++;
++    pthread_cond_broadcast(&P.cv_work);
++    pthread_mutex_unlock(&P.mx);
++
++    run_morsels(&P.job);                          /* parent pulls its share */
++
++    pthread_mutex_lock(&P.mx);
++    while (P.active > 0) pthread_cond_wait(&P.cv_done, &P.mx);
++    pthread_mutex_unlock(&P.mx);
++
++    int err = P.job.err;
++    ray_rc_sync = false;                          /* back to serial before assembling */
++
++    if (err) {
++        for (U i = 0; i < n; i++) if (out[i]) mr(out[i]);
++        free(out);
++        return 0;
++    }
++    /* Assemble one general list and squeeze it -- exactly what serial each does,
++     * so the result is bit-identical (typed vector when uniform, list otherwise). */
++    A r = aA(n); A *e = (A *)_V(r);
++    for (U i = 0; i < n; i++) e[i] = out[i];
++    AN(n, r); free(out);
++    return sqz(r);
++}
++
++#endif /* !wasm */
+diff --git a/src/peachpool.h b/src/peachpool.h
+new file mode 100644
+index 0000000..68783c5
+--- /dev/null
++++ b/src/peachpool.h
+@@ -0,0 +1,29 @@
++/* peachpool.h  -  Amber persistent thread-pool for parallel-each (`peach`).
++ * GNU AGPLv3 - see LICENSE and NOTICE.
++ *
++ * A single persistent pool of POSIX worker threads, created once (lazily, on
++ * the first native `peach` call) and reused for every subsequent dispatch --
++ * replacing the old fork()+pipe()+ser8/des9 model in src/i.c. Work is handed
++ * out in fixed-size morsels through a lock-free atomic ticket cursor; each
++ * worker (and the dispatching parent, which also participates) evaluates the
++ * K function `f` over its slice and writes the owned result straight into a
++ * pre-allocated shared result slot -- no serialisation, no IPC, no copies.
++ *
++ * Correctness under threads rests on two things done elsewhere:
++ *   - scoped atomic refcounting (a.h's ray_rc_sync / RC_INC / RC_DECV), so the
++ *     shared `f` and `dat` can be retained/released from several threads; and
++ *   - the allocator + symbol-table lock in src/m.c (also gated on ray_rc_sync),
++ *     so concurrent object allocation is safe.
++ *
++ * WASM / no-pthread builds (-Dwasm) compile this file to nothing; src/i.c keeps
++ * the plain serial each there, exactly as before.
++ */
++#ifndef AMBER_PEACHPOOL_H
++#define AMBER_PEACHPOOL_H
++
++/* Elements per morsel. Large enough that per-morsel ticket + dispatch overhead
++ * is negligible against the work, small enough that load stays balanced across
++ * workers even when per-element cost is uneven. */
++#define TASK_GRAIN 1024
++
++#endif /* AMBER_PEACHPOOL_H */
+diff --git a/src/r.c b/src/r.c
+index 6d8ba5a..f9e8f55 100644
+--- a/src/r.c
++++ b/src/r.c
+@@ -9,9 +9,14 @@
+ //l:{r:s;t::&4;{$[x;t::t X's;];f[]}''d;s::t;r} /long jump
+ //`0:{"{",(","/x),"},"}'{"0x",`hex@`c$(8#256)\x}''+l'!4
+ #define M 4
+-Z W s[][M]={{0xd5a986ae75c9a33b,0x9c57a73dcd5e41b7,0x3fe497b4dd1be68d,0x3f57adc392affdef},{0x1016d8e3483a8f0f,0xcb0c33c0e78feede,0x7b5dda788f9f577d,0xf1e01f806161118a},
+- {0x81f9e6260eb8e5df,0x5943e008d9222efa,0x8f514f6e6fb18ba4,0x6dacfe2135f9599e},{0xfa9b718d8d0769bf,0x4d46d3d50833e8c9,0x696678daaa7b4cc6,0x3cb5c708d53cc982}};//prng state
+-Z W b[M];Z U nb;//buf
++// xoshiro256+ state, output buffer and cursor are thread-local: peach workers
++// generate random numbers concurrently (e.g. Monte-Carlo `np?1.0`), and a shared
++// `nb` cursor would underflow `b[--nb]` past 0 under a data race (an ASan
++// global-buffer-overflow). Each thread keeps its own stream; par_prng_perturb()
++// (called once per worker) decorrelates them from the parent's.
++Z AM_TLS W s[][M]={{0xd5a986ae75c9a33b,0x9c57a73dcd5e41b7,0x3fe497b4dd1be68d,0x3f57adc392affdef},{0x1016d8e3483a8f0f,0xcb0c33c0e78feede,0x7b5dda788f9f577d,0xf1e01f806161118a},
++ {0x81f9e6260eb8e5df,0x5943e008d9222efa,0x8f514f6e6fb18ba4,0x6dacfe2135f9599e},{0xfa9b718d8d0769bf,0x4d46d3d50833e8c9,0x696678daaa7b4cc6,0x3cb5c708d53cc982}};
++Z AM_TLS W b[M];Z AM_TLS U nb;//buf
+ X1(prng,Ru(aV(tL,4*M,s))REGHIL(P(xn-4*M,el(x))MC(s,xV,SZ s);nb=0;x(au))Ril(W v=gl(x);I(!v,v=now())F(4,Fj(M,s[i][j]=v=v*6364136223846793005+1442695040888963407/*knuth mmix*/))au)R_(et(x)))
+ Z V h(U x,U y){F(M,s[x][i]^=s[y][i])}
+ Z V r4(){nb=M;W t[M];F(M,b[i]=s[0][i]+s[3][i])F(M,t[i]=s[1][i]<<17)h(2,0);h(3,1);h(1,2);h(0,3);F(M,s[2][i]^=t[i])F(M,s[3][i]=(s[3][i]<<45|s[3][i]>>19))}//next 4*64 bits
+@@ -19,6 +24,11 @@ Z W r()_(I(nb<4,r4())b[--nb])//random 64 bits
+ Z U ri(W m)_((U)r()*m>>32)//random int mod m
+ Z W rw(W m)_(m>>32?r()%m:ri(m))
+ Z F rf()_(W v=1023ll<<52|(r()&-1ull>>12);-1+*(F*)&v)//random float 0..1
++// Mix a per-worker salt into THIS thread's prng state so peach workers each draw
++// an independent stream instead of all replaying the parent's identical one.
++// SplitMix64 diffusion -- decorrelation only, no cryptographic claim. nb reset
++// so the next r() refills from the perturbed state.
++V par_prng_perturb(W salt){W z=salt;F(4,Fj(M,z+=0x9e3779b97f4a7c15ull;W t=z;t=(t^t>>30)*0xbf58476d1ce4e5b9ull;t=(t^t>>27)*0x94d049bb133111ebull;s[i][j]^=t^t>>31))nb=0;}
+ 
+ Z A rt(U n,C t)_(A x=an(n,t);F(((W)n<<Tw[t])+255>>8,r4();MC(xV+(i<<5),b,32))x)//roll n full-range (including negative) items of type t (int of a specific width or char)
+ Z CO W msk[]={0xffffffffffffffffll,0x5555555555555555ll,0x1111111111111111ll,0x0101010101010101ll,0x0001000100010001ll,0x0000000100000001ll,0x0000000000000001ll};
+diff --git a/std.k b/std.k
+index 9577755..b7bebd2 100644
+--- a/std.k
++++ b/std.k
+@@ -42,10 +42,13 @@ bool:{0<x}
+ cast:{[t;x]$[t~`long;`i$x;t~`int;`i$x;t~`float;`f$x;t~`char;`c$x;t~`sym;`$x;t~`bool;0<x;`$$[`C=@x;x;$x]]}
+ 
+ / ---- peach : parallel each ------------------------------------------------
+-/ NOTE: this build is single-threaded, so peach evaluates sequentially with
+-/ each's semantics. Written as its own verb so code using peach is portable
+-/ to a threaded build; also exposed as .Q.fc (parallel-on-cut) in sys.k.
+-peach:{`pe(x;y)}                                         / parallel each: fork AMBER_THREADS workers (C)
++/ peach[f;y] applies f to each item of y across a PERSISTENT pool of POSIX
++/ worker threads (src/peachpool.c), sized by $AMBER_THREADS (default: online
++/ CPU count). It is transparent: the result is identical to serial f'y for
++/ every datatype, list and table. Native builds run it truly in parallel;
++/ the wasm build has no threads and evaluates sequentially. Also exposed as
++/ .Q.fc (parallel-on-cut) in sys.k.
++peach:{`pe(x;y)}                                         / parallel each: thread-pool workers (C, src/i.c peachC)
+ 
+ / ---- timing ---------------------------------------------------------------
+ / ts"expr"  ->  evaluates expr, prints elapsed ms, returns the result.
+diff --git a/tests/run_tests.sh b/tests/run_tests.sh
+old mode 100644
+new mode 100755
+index 0a5653f..7e712f7
+--- a/tests/run_tests.sh
++++ b/tests/run_tests.sh
+@@ -37,9 +37,14 @@ run_k(){ # run_k <binary> <script> <label>
+ say "build"
+ ./build.sh || exit 1
+ 
+-SUITES="test.k test-fin.k tests/test_matrix.k tests/test_qsql.k"
++SUITES="test.k test-fin.k tests/test_matrix.k tests/test_qsql.k examples/peach_verify.k"
+ for s in $SUITES; do say "$s"; run_k ./amber "$s" native; done
+ 
++# peach is the thread-pool primitive: run its verifier again with the pool
++# forced to several lanes so CI actually exercises concurrent workers (the
++# default may pick 1 lane on a single-core runner). Same 0-failures gate.
++say "examples/peach_verify.k (AMBER_THREADS=4)"; ( export AMBER_THREADS=4; run_k ./amber examples/peach_verify.k "threads=4" )
++
+ if [ "$QUICK" = 0 ]; then
+   say "C unit tests (tests/*.c)"
+   mkdir -p o/t
+@@ -75,11 +80,20 @@ if [ "$ASAN" = 1 ]; then
+   say "sanitizer build (ASan + UBSan)"
+   mkdir -p o/san
+   CC="${CC:-cc}"
++  # UBSan's `object-size` sub-check is disabled: Amber deliberately stores every
++  # array's header (refcount, length, type, bucket) at NEGATIVE offsets from the
++  # payload pointer (see the _r/_n/_T/_A macros in a.h), so __builtin_object_size
++  # sees "too small" an object and false-positives on those perfectly valid
++  # header loads. This is intrinsic to the tagged/arena representation and
++  # predates -- and is unrelated to -- the peach thread pool; every other UBSan
++  # check (signed overflow, alignment, null, bounds, VLA, ...) stays on, and the
++  # whole suite (peach included) is clean under AMBER_THREADS with it.
++  SAN="-fsanitize=address,undefined -fno-sanitize=object-size"
+   for f in src/*.c; do
+-    $CC -fsigned-char -g -O1 -w -pthread -fsanitize=address,undefined \
++    $CC -fsigned-char -g -O1 -w -pthread $SAN \
+         -fno-omit-frame-pointer -c "$f" -o "o/san/$(basename "${f%.c}").o" || exit 1
+   done
+-  $CC -fsigned-char -g -O1 -w -pthread -fsanitize=address,undefined \
++  $CC -fsigned-char -g -O1 -w -pthread $SAN \
+       -o o/san/amber o/san/*.o -lm -ldl || exit 1
+   export ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=print_stacktrace=1
+   for s in $SUITES; do

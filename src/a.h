@@ -88,6 +88,24 @@
 #define REFB  1
 #define MINE(x) (_r(x)==REFB)
 
+// ---- scoped atomic refcounting (ray_rc_sync) -----------------------------
+// A single thread-local flag flips retain/release between the fast serial path
+// (plain xr++/xr--) and C11-relaxed/acq-rel atomics. peachC (src/i.c) sets it
+// true only for the duration of a parallel dispatch, on every worker AND the
+// parent, so ordinary single-threaded evaluation pays nothing but one
+// perfectly-predicted branch -- no lock, no atomic, no memory barrier.
+#if defined(__STDC_VERSION__) && __STDC_VERSION__>=201112L && !defined(__STDC_NO_THREADS__)
+#define AM_TLS _Thread_local
+#else
+#define AM_TLS __thread
+#endif
+EX AM_TLS bool ray_rc_sync;
+// retain one reference to a heap object's refcount word (_r(x) is a U).
+#define RC_INC(x) do{if(ray_rc_sync)__atomic_fetch_add(&_r(x),1u,__ATOMIC_RELAXED);else _r(x)++;}while(0)
+// atomically drop one reference, yielding the PREVIOUS count (post-decrement
+// semantics, matching _r(x)-- ). A result of REFB means "I was the last owner".
+#define RC_DECV(x) (ray_rc_sync?__atomic_fetch_sub(&_r(x),1u,__ATOMIC_ACQ_REL):_r(x)--)
+
 TD void V;TD bool B;TD char G,C;TD char unsigned UC;TD CO C*S;TD short H;TD unsigned short UH;TD int I;TD unsigned int U;TD long long L;TD double F;TD size_t N;
 TD unsigned long long W,A,A0(),A1(A),A2(A,A),A3(A,A,A),A4(A,A,A,A),AA(CO A*,U),AX(A,CO A*,U);
 
@@ -114,6 +132,8 @@ A aa(U,A),ii(A,U),io(A,L),aE(L,L),af(F),aCm(S,S),aCn(S,U),apc(A,C),an(U,C),aV(C,
  AT(W,A),AW(C,A),AK(C,A),AO(UC,A),AN(U,A),w1(U,A,A),w2(U,A,A,A),w8(U,A,CO A*,U),*gp(A);
 V cyc(V*,U,U),eS(A,U),eQ(S,U,U),exit(I),hexC(S,U,C*),kargs(I,S*),kinit(),*memmem(CO V*,N,CO V*,N),mrn(U,CO A*),mRn(U,CO A*),repl(),tilV(V*,L,L,U);
 B id0(UC),mtc_(A,A),tru(A);
+V par_prng_perturb(W);//decorrelate a peach worker's thread-local prng stream (r.c)
+A peach_pool(A,A,U,I);//persistent thread-pool morsel-driven peach (src/peachpool.c)
 C*sf(C*,L),*sl(C*,L),sup(A*,A*),tZ(L),*strchrnul(S,I);
 U gi(A);
 U amlb(CO L*RES,U,U,L);//branch-free lower_bound over a sorted long slice (a.c)

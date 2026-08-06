@@ -1,7 +1,13 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include"diagnostic.h"
 #include<stdlib.h>
-Z C b[4096],*r=b;Z U d;
+// Thread-local error scratch: each peach worker that raises an error formats it
+// into its OWN buffer (the parent re-raises a single clean 'worker error, so a
+// worker's text is only ever read by that same worker). `r` is (re)pointed at
+// `b` by err0() at the start of every error -- which always runs before eS(),
+// try(), epr() or err() read the buffer -- so it needs no static initializer
+// (a thread-local one cannot take the address of another thread-local anyway).
+Z AM_TLS C b[4096];Z AM_TLS C*r;Z AM_TLS U d;
 // amber: is the Rust-style stderr diagnostic (src/diagnostic.c) enabled?
 //   -1 = not resolved yet, resolve from $AMBER_DIAG on first use
 //    0 = off, 1 = on

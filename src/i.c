@@ -65,70 +65,36 @@ Z I peachCPUs(){
 }
 Z I peachNW(){S*e=env;I n=-1;if(e)while(*e){S p=*e++;if(!strncmp(p,"AMBER_THREADS=",14)){n=0;S q=p+14;while(*q>='0'&&*q<='9')n=n*10+(*q++-'0');if(n<1)n=peachCPUs();break;}}return n<0?peachCPUs():n;}
 Z A eachR(A f,A y,U lo,U hi){U m=hi-lo;A u=aA0(m|!m);for(U i=0;i<m;i++){A v=_1(f,ii(y,lo+i));if(!v){mr(u);return 0;}u=psh(u,v);}return sqz(u);}
+// amber 1.9.5: thread-pool parallel-each.  peach[f;y] applies f to each item of
+// y across a PERSISTENT pool of POSIX worker threads (src/peachpool.c), which
+// replaces the old fork()+pipe()+(-8!/-9!) model this function used to carry.
+// Workers pull 1,024-element morsels and evaluate f straight into shared result
+// slots -- no process spawn, no pipe write, no binary (de)serialisation on the
+// hot path.  Correctness rests on scoped atomic refcounting (ray_rc_sync in
+// a.h) and the ray_rc_sync-gated allocator/symbol-table lock in src/m.c, so the
+// result is bit-identical to serial f'y across every datatype, list and table.
+//
+// A plain serial each is used when the input is trivially small (n<2), only one
+// lane was asked for (AMBER_THREADS<2 / a single CPU), the call is already
+// nested inside a peach dispatch (a worker's own f invoked peach again -- caught
+// via ray_rc_sync), or the target has no pthreads (-Dwasm).  (-8!/-9! itself
+// still lives in src/ser.c: it remains the `!`-verb serializer and is exercised
+// directly by examples/peach_verify.k -- only peach's use of it is gone.)
 A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);U n=_N(dat);I nw=peachNW();if(nw>64)nw=64;
- if(nw<2||n<2){A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}
- // fork-based parallelism needs a real pipe()/fork(); neither exists in the
- // wasm sandbox (src/0.c's wasm branch stubs both to always return -1
- // there), and this loop never used to check for that, so pipe()/fork()
- // failing left pr[]/pid[] holding uninitialized fds that the read/wait
- // loop below then used -- a wasm trap (uncatchable from K), not a clean
- // error. One throwaway probe pipe() up front detects the unsupported
- // environment and falls back to the plain serial eachR pass instead,
- // which is exactly what std.k's own peach wrapper comment already
- // documents as the intended behavior ("this build is single-threaded, so
- // peach evaluates sequentially") -- this just makes the C side actually
- // honor that instead of assuming fork() always succeeds. No effect on a
- // real fork()-capable build: the probe pipe costs two fds, immediately
- // closed, once per peach call.
- {I pp[2];if(pipe(pp)<0){A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}close(pp[0]);close(pp[1]);}
- if((U)nw>n)nw=n;I pr[128],pid[64];U base=n/nw,rem=n%nw,lo=0;
- for(I w=0;w<nw;w++){U hi=lo+base+((U)w<rem);pipe(pr+2*w);pid[w]=fork();
-  if(!pid[w]){close(pr[2*w]);A r=eachR(fn,dat,lo,hi);if(!r)_exit(3);
-   /* amber 1.9.3: ship the chunk as BINARY (-8!) instead of `k text. The text
-    * path formatted every element and the parent reparsed it, which cost more
-    * than the work being parallelised on small-payload maps and could not
-    * represent attributes or nested empties faithfully at all. ser8 fails
-    * closed: a chunk that cannot be encoded exits non-zero rather than
-    * writing a short buffer the parent would misparse. */
-   A b=ser8(r);if(!b)_exit(4);
-   v1c(ai(pr[2*w+1]),b);close(pr[2*w+1]);_exit(0);}
-  close(pr[2*w+1]);lo=hi;}
- /* Parent collection. Three bugs lived in the one line this replaces:
-  *   1. LEAK. `out=cat(out,part)` -- cat() is A2(cat,cat11(xR,y)): it bumps
-  *      x's refcount and hands that extra reference to cat11. The caller's own
-  *      reference to the OLD out was therefore never released, so every chunk
-  *      past the first leaked a whole accumulated result vector. Worse, the
-  *      surviving refcount made MINE(out) false inside aa(), so the append
-  *      could not grow in place and reallocated the whole accumulator every
-  *      time -- O(total^2) copying on top of the leak. Calling cat11 directly,
-  *      which OWNS both arguments, fixes both at once: nothing is left holding
-  *      a stray reference, and out is uniquely owned so the append extends in
-  *      place. (Bumping and then releasing -- cat() plus mr(old) -- plugs the
-  *      leak but keeps the refcount at 2 during the call, so it would still
-  *      reallocate every chunk.)
-  *   2. EXIT STATUS IGNORED. wait4(pid,0,0,0) discarded the child's status, so
-  *      a worker that died on a signal or exited non-zero (eachR returning 0,
-  *      or ser8 failing) was indistinguishable from success: the parent just
-  *      saw a short/empty pipe and silently produced a WRONG result. Status is
-  *      now inspected and any failure becomes a clean K error.
-  *   3. UNVALIDATED DECODE. val(rda(...)) assumed the pipe held a parseable
-  *      value; des9 returns 0 on a truncated or corrupt buffer and that is now
-  *      treated as a worker failure rather than dereferenced.
-  * Every child is still waited for even after a failure is detected, so no
-  * zombie is left behind and no pipe fd is orphaned (rda() closes its own). */
- A out=0;I bad=0;
- for(I w=0;w<nw;w++){
-  A raw=rda(pr[2*w]);                 /* rda() closes the read fd itself */
-  A part=raw?des9(raw):0;             /* des9() consumes raw            */
-  I st=0;wait4(pid[w],&st,0,0);
-  I ok=part&&WIFEXITED(st)&&!WEXITSTATUS(st)&&!WIFSIGNALED(st);
-  I(!ok,bad=1;I(part,mr(part))continue)
-  I(!out,out=part)
-  E(out=cat11(out,part);)   /* cat11 owns BOTH: no stray ref, grows in place */
- }
+#if defined(wasm)
+ {A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}                 // no threads in the wasm sandbox
+#else
+ if(nw<2||n<2||ray_rc_sync){A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}
+ // Warm the lazily-initialised float format/parse tables (src/s.c I5/P5,
+ // src/p.c powers) on THIS parent thread, so no worker is ever the first to
+ // touch them and race on their one-time build.
+ {C wb[64];L wd;F wv=1.5;MC(&wd,&wv,8);sf(wb,wd);S ws="1.5";pf(&ws);}
+ A r=peach_pool(fn,dat,n,nw);
  mr(fn);mr(dat);
- I(bad||!out,I(out,mr(out))return x(err0("worker error in peach")))
- return x(sqz(out));}
+ P(!r,x(err0("worker error in peach")))
+ return x(r);
+#endif
+}
 // amber: window-join C kernel.  x=(qt;qcols;codes;w0;w1;gb;ge)  (marshalled by wj in amber.k)
 //  qt    sorted long vector (ordering column; ascending within each group slice)
 //  qcols list of numeric vectors (tF or tL) aligned to qt, one per aggregate

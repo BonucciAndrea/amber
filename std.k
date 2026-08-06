@@ -42,10 +42,13 @@ bool:{0<x}
 cast:{[t;x]$[t~`long;`i$x;t~`int;`i$x;t~`float;`f$x;t~`char;`c$x;t~`sym;`$x;t~`bool;0<x;`$$[`C=@x;x;$x]]}
 
 / ---- peach : parallel each ------------------------------------------------
-/ NOTE: this build is single-threaded, so peach evaluates sequentially with
-/ each's semantics. Written as its own verb so code using peach is portable
-/ to a threaded build; also exposed as .Q.fc (parallel-on-cut) in sys.k.
-peach:{`pe(x;y)}                                         / parallel each: fork AMBER_THREADS workers (C)
+/ peach[f;y] applies f to each item of y across a PERSISTENT pool of POSIX
+/ worker threads (src/peachpool.c), sized by $AMBER_THREADS (default: online
+/ CPU count). It is transparent: the result is identical to serial f'y for
+/ every datatype, list and table. Native builds run it truly in parallel;
+/ the wasm build has no threads and evaluates sequentially. Also exposed as
+/ .Q.fc (parallel-on-cut) in sys.k.
+peach:{`pe(x;y)}                                         / parallel each: thread-pool workers (C, src/i.c peachC)
 
 / ---- timing ---------------------------------------------------------------
 / ts"expr"  ->  evaluates expr, prints elapsed ms, returns the result.

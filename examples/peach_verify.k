@@ -3,17 +3,26 @@
 / GNU AGPLv3 - see LICENSE and NOTICE.
 / ----------------------------------------------------------------------------
 / Run:  ./amber examples/peach_verify.k
-/       AMBER_THREADS=4 ./amber examples/peach_verify.k    / exercise the fork path
+/       AMBER_THREADS=4 ./amber examples/peach_verify.k    / exercise the thread pool
 / 
-/ Four things are checked, in order:
+/ peach now runs on a PERSISTENT POSIX thread pool (src/peachpool.c): workers
+/ pull 1,024-element morsels and evaluate f straight into shared result slots,
+/ under scoped atomic refcounting (ray_rc_sync) -- no fork(), no pipe, no
+/ binary IPC on the hot path. -8!/-9! (src/ser.c) stays as the `!`-verb
+/ serializer and is still verified here in its own right.
+/ 
+/ Five things are checked, in order:
 /   1. (-9! -8! x) ~ x  over every shape the serializer claims to support.
 /   2. peach returns exactly what serial each returns, for every result shape
-/      (atoms, symbols, nested lists, dicts, tables) -- i.e. the binary wire
-/      round trip is transparent to the caller.
-/   3. peach over a large input, to show the parent's accumulate loop no longer
-/      leaks a whole result vector per chunk (1.9.3 fix) and stays linear.
+/      (atoms, symbols, nested lists, dicts, tables) -- the thread pool is
+/      transparent to the caller.
+/   3. peach over a large input: correct values AND flat memory across repeats
+/      (workers write pre-allocated slots; no per-chunk accumulator realloc).
 /   4. an error raised INSIDE a worker surfaces as a clean, trappable K error
 /      rather than a hang, a wrong answer, or a crash.
+/   5. thread stress: inputs far larger than one morsel, so several workers run
+/      concurrently, exercising the thread-local arith/format state and the
+/      allocator + symbol-intern lock -- results must still be exact.
 / Exits non-zero if anything fails, so it can be wired into CI as-is.
 / ============================================================================
 dir:{$[#p:"/"/-1_"/"\x;p;"."]}`argv 1
@@ -70,8 +79,9 @@ sa:`sa 1 2 3 4 5
 ok["sorted attribute preserved";(`at sa)~`at -9!-8!sa]
 ok["sorted attribute value"    ;(`at -9!-8!sa)~`s]
 
-/ malformed input must be rejected cleanly, never crash: -9! parses bytes that
-/ in the peach case came from another process and may be truncated.
+/ malformed input must be rejected cleanly, never crash: -9! is a parser for
+/ untrusted/possibly-truncated bytes (its `!`-verb contract), independent of
+/ whether peach uses it.
 bad:{[nm;g]ok[nm;"caught"~.[g;,0;{[e]"caught"}]];}
 bad["reject empty input"    ;{-9!""}]
 bad["reject garbage header" ;{-9!"XXXXXXXX"}]
@@ -127,10 +137,25 @@ e1:.[{[q]peach[{$[x=5;x+`sym;x]};!10]};,0;{[e]"caught"}]
 ok["worker error is trapped";e1~"caught"]
 e2:.[{[q]peach[{$[x=400;x+`sym;x]};!1000]};,0;{[e]"caught"}]
 ok["error deep in a chunk"  ;e2~"caught"]
-/ the interpreter must still be usable afterwards: no orphaned pipes, no
-/ zombie workers, no wedged global error state.
+/ the interpreter must still be usable afterwards: the persistent worker
+/ threads are re-armed for the next dispatch, no wedged global error state.
 ok["peach works after error";(peach[{x+1};!30])~1+!30]
 ok["serial each after error";({x+1}'!5)~1+!5]
+
+/ ---- 5. thread stress: many morsels run concurrently ----------------------
+/ M is well above TASK_GRAIN (1024), so the work is split into several morsels
+/ that different worker threads run at the same time. If any per-thread state
+/ (the arithmetic op register, the VM depth, the prng, the error buffer) or any
+/ shared table (the object allocator, the symbol intern table) were not made
+/ thread-safe, these would mismatch serial each or crash under a sanitizer.
+sec"5. thread stress across morsels"
+M:5000
+ok["multi-morsel arithmetic";(peach[{1+x*2};!M])~1+2*!M]
+ok["multi-morsel intern"     ;(peach[{`$"k",$x};!M])~{`$"k",$x}'!M]
+ok["multi-morsel alloc/reduce";(peach[{+/!x+1};!M])~{+/!x+1}'!M]
+ok["multi-morsel nested"     ;(peach[{(x;x*x;$x)};!M])~{(x;x*x;$x)}'!M]
+/ forcing many lanes must not change the answer vs a single lane
+ok["multi-morsel over floats";(peach[{0.5*x*x};!M])~{0.5*x*x}'!M]
 
 / ---- summary ----------------------------------------------------------------
 `0:""

@@ -3,12 +3,15 @@
 / serially (f'y) and in parallel (peach[f;y]) so you can SEE the speedup.
 / The same shape covers option pricing, per-symbol backtests, bootstraps, etc.
 /   run:  AMBER_THREADS=8 ./amber examples/peach.k     (default: online CPU count)
-/ Note on the wasm/browser build: `peach` there falls back to running
-/ sequentially (no real fork() in a wasm sandbox -- see peachC's own comment
-/ in src/i.c), matching std.k's peach wrapper's documented behavior. NP below
-/ is sized to keep the *fallback* serial pass well under a second even at
-/ that reduced speed; bump it back up if you're running this natively and
-/ want a heavier, more dramatic speedup number.
+/ peach dispatches 1,024-element morsels across a persistent POSIX thread pool
+/ (src/peachpool.c); each worker draws its own decorrelated random stream, so
+/ the parallel pi estimate is an independent Monte-Carlo run, not a replay of
+/ the serial one (expect it to agree to ~3 digits, not bit-for-bit).
+/ Note on the wasm/browser build: there are no threads in a wasm sandbox, so
+/ `peach` there evaluates sequentially (see peachC in src/i.c), matching
+/ std.k's peach wrapper. NP below is sized to keep even that serial fallback
+/ well under a second; bump it up on a many-core native box for a heavier,
+/ more dramatic speedup number.
 / ============================================================================
 \l amber.k
 \l fin.k

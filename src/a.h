@@ -83,7 +83,7 @@
 // v1.7 while README.md already advertised 1.9).
 #define AMBER_VERSION_MAJOR 1
 #define AMBER_VERSION_MINOR 9
-#define AMBER_VERSION_PATCH 2
+#define AMBER_VERSION_PATCH 3
 #define AMBER_VERSION M2(AMBER_VERSION_MAJOR) "." M2(AMBER_VERSION_MINOR) "." M2(AMBER_VERSION_PATCH)
 #define REFB  1
 #define MINE(x) (_r(x)==REFB)
@@ -201,6 +201,8 @@ enum         {au=Lt(tu),FLP,NEG,FIR,SQR,TIL,WHR,REV,ASC,DSC,GRP,NOT,ENL,NUL,LEN,
 #define M(t,m) A0 e##t##0;A1 e##t;AA e##t##8;
  ERR
 #undef M
+// ---- binary serializer (src/ser.c): -8!x encode, -9!y decode ----
+A1 ser8,des9;
 #define N(x,a...) ({A r_=(x);P(!r_,a;0)r_;})//error pass-through
 
 // ---- Apache Arrow C Data Interface (ABI-stable structs; no libarrow linkage) ----

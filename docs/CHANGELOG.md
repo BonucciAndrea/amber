@@ -1,5 +1,94 @@
 # Changelog
 
+## 1.9.3 — binary serializer (`-8!`/`-9!`), binary IPC for `peach`, three `peach` bugs fixed
+
+### New: compact binary serialization
+`-8!x` encodes any K value into a contiguous byte vector (`tC`); `-9!y` decodes it back.
+`(-9! -8! x) ~ x` holds for every supported shape — verified over 60 cases in the new
+`examples/peach_verify.k`.
+
+Amber's only wire format was previously TEXT: `` `k `` rendered a value and `` . `` reparsed it.
+That could not represent everything (attributes were dropped, and nested empties and some
+null/infinity edge cases do not reparse to themselves), and it cost a full format-then-parse
+round trip on every transfer.
+
+Format: a 4-byte `"AMB"`+version header, then one recursive node per value —
+
+| shape | encoding |
+|---|---|
+| packed atoms (`ti` `tc` `tu` `tv` `tw` `tx` `tdt` `ttm`) | tag + `i32` value |
+| symbol atom (`ts`) | tag + `u32` length + name bytes |
+| ref-carrying (`tA` `tM` `tm`) | tag + attr + `u64` count + recursive children |
+| symbol vector (`tS`) | tag + attr + count + per-element length-prefixed names |
+| all other heap types | tag + attr + count + raw payload bytes |
+
+Because the last case copies the payload verbatim and recovers the element width from the tag via
+`Tw[t]`, bit vectors (`tB`, one bit per element) and the narrower date/time widths need no special
+case, and **nulls and infinities survive exactly** — they are just their bit patterns (`0N` is
+`1<<63`, `0w` is the f64 infinity), never routed through a decimal formatter that could round.
+
+Two details that are easy to get wrong and are covered by tests:
+
+- **Attributes travel.** `_at(x)` (0=none, 1=`` `s``-sorted) rides in the attr byte of every heap
+  node, so a sorted column arrives still flagged sorted and keeps the O(log n) binary-search path
+  in `fnd()` on the far side instead of silently degrading to a scan.
+- **Symbols are shipped by NAME, not by id.** Symbol ids are process-local: a forked `peach`
+  worker can intern a symbol the parent has never seen, so raw 32-bit ids would decode to the
+  wrong name (or garbage) in the parent. Every symbol is written as its name and re-interned with
+  `us()` on the way in.
+- **Empty general lists keep their type witness.** `()` is allocated with room for one element,
+  count forced to 0, and slot 0 holding an empty `tC` (`aA0`); `mtc_` compares that witness
+  because it loops `xn|!xn` times. The encoder therefore writes `max(n,1)` children for every
+  ref-carrying type, or `(-9!-8!())~()` would be false.
+
+`-9!` parses untrusted bytes, so every read is bounds-checked, the recursion is depth-limited, and
+a truncated, corrupt or over-long buffer yields a clean `'domain` — never a read past the end and
+never a half-built object left unfreed. Lambdas and projections (`to`/`tp`/`tq`/`tr`) are
+deliberately **not** supported and raise `'type`: serializing a closure means serializing its
+captured environment and bytecode, which is a much larger feature than a data wire format.
+
+`-8!`/`-9!` occupy the negative-integer `!` slots, exactly as in q. Only `-8` and `-9` on a
+genuine integer atom are intercepted; every other left argument — negative ones included — and
+every char atom still reach `mod()` unchanged, so no existing `!` behaviour moves.
+
+### `peach` now uses the binary wire, and three bugs are fixed
+`src/i.c`'s worker previously wrote `kst(r)` (text) and the parent ran `val(rda(...))`. Workers
+now write `-8!` bytes and the parent decodes with `-9!`. The parent's collection loop was one
+line, and it had three distinct defects:
+
+1. **A leak, and quadratic copying.** `out = cat(out, part)` — `cat` is `A2(cat,cat11(xR,y))`: it
+   bumps `out`'s refcount and hands that *extra* reference to `cat11`. The caller's own reference
+   to the previous accumulator was never released, so every chunk past the first leaked an entire
+   result vector. The surviving refcount also made `MINE(out)` false inside `aa()`, so the append
+   could not grow in place and reallocated the whole accumulator each time — O(total²) copying on
+   top of the leak. Fixed by calling `cat11` directly, which **owns both** arguments: nothing is
+   left holding a stray reference and `out` stays uniquely owned, so the append extends in place.
+   (Bumping and then releasing — `cat` plus `mr(old)` — plugs the leak but keeps the refcount at 2
+   during the call, so it would still reallocate every chunk.)
+2. **Worker exit status was discarded.** `wait4(pid, 0, 0, 0)` ignored the status word, so a
+   worker that died on a signal or exited non-zero was indistinguishable from success — the parent
+   simply saw a short pipe and produced a **silently wrong result**. The status is now inspected
+   with `WIFEXITED`/`WEXITSTATUS`/`WIFSIGNALED` and any failure becomes a clean, trappable
+   `'worker error in peach`.
+3. **Unvalidated decode.** `val(rda(...))` assumed the pipe held a parseable value. `-9!` returns
+   0 on a truncated or corrupt buffer, and that is now treated as a worker failure rather than
+   dereferenced.
+
+Every child is still waited for even after a failure is detected, so no zombie is left behind and
+no pipe fd is orphaned (`rda()` closes its own read end).
+
+Measured on this 2-core sandbox, `peach` over 500,000 items under `AMBER_THREADS=4`: **~23 ms**,
+with total reserved heap **identical** before and after three further passes (1,073,741,824 bytes
+both times) and a peak RSS of **11.5 MB**. Before the fix the same loop grew without bound.
+
+### New: `examples/peach_verify.k`
+A runnable verifier (also suitable for CI — it exits non-zero on any failure) covering the
+serializer round trip across every supported shape, attribute preservation, malformed-input
+rejection, `peach` result-shape equivalence against serial `'`, the 500k scaling/flat-memory
+check, and worker error propagation including that the interpreter is still usable afterwards.
+**60 tests, 0 failures.**
+
+
 ## 1.9.2 — O(n+m) integer lookup, vectorised reductions, cache-line alignment
 
 ### `?` (find) no longer scans its left argument per probe

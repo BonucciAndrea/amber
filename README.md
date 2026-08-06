@@ -12,7 +12,7 @@
 **A low-latency array language — columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.9.2-orange)
+![version](https://img.shields.io/badge/version-1.9.3-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
 ![tests](https://img.shields.io/badge/tests-277%20passing-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
@@ -30,6 +30,13 @@ AGPLv3 implementation of the K array language. Amber keeps that engine's speed a
 footprint and layers a q/kdb+ vocabulary, C-level column attributes, native temporal types,
 `([]…)` table syntax, a tick/HFT toolkit, and a modern REPL on top. (The attribution is
 recorded in [NOTICE](NOTICE), as the AGPLv3 requires.)
+
+New in **1.9.3**: a **compact binary serializer** — `-8!x` encodes any K value to a byte
+vector and `-9!y` decodes it back, byte-exact including attributes, nulls and infinities.
+`peach` now ships worker results over that binary wire instead of formatting and reparsing text,
+and three bugs in its parent collection loop are fixed (a per-chunk leak, an ignored worker exit
+status, and an unvalidated decode). See [docs/CHANGELOG.md](docs/CHANGELOG.md) and
+`examples/peach_verify.k`.
 
 New in **1.9.2**: integer `?` (find) builds an index over its left argument instead of scanning
 it per probe, turning the inner-join benchmark from **180.95 ms into 5.66 ms (32x)**; float `+/`
@@ -215,6 +222,10 @@ v:asc 2000000?1000000000                     / `s attribute set by asc
 `at v                                        / `s
 v ? 12345 67890                              / O(log n)  (see bench.k: ~1000x faster)
 
+/ binary serialization: -8! encodes any value to bytes, -9! decodes it back
+b:-8!+`a`b!(1 2 3;4 5 6)     / table -> compact byte vector
+(-9!b)~+`a`b!(1 2 3;4 5 6)   / 1b  -- exact, attributes and nulls included
+
 / multi-core: peach runs f over items in parallel worker processes (no GIL)
 peach[{avg x?1.0}; 8#1000000]                / 8 heavy tasks across AMBER_THREADS cores
 ```
@@ -226,7 +237,7 @@ instant.
 Check the interpreter version, or list every option and REPL command:
 
 ```sh
-./amber --version           # amber 1.9.2
+./amber --version           # amber 1.9.3
 ./amber --help              # options + the full \-command reference
 ```
 

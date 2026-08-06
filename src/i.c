@@ -44,8 +44,8 @@ A1(frk,P(!xtA||xn-2,et(x))A y=kv(&x);P(!lC(x)||!ytC,y(ed(x)))x=Ny(e1f(str0,x));S
 // amber: fork-based parallel-each.  x=(f;y): apply f to each item of y across
 // AMBER_THREADS worker processes (default: online CPU count, see peachCPUs()
 // below).  Each worker computes its slice,
-// serialises the result (`k) and writes it down a pipe; the parent reads each
-// (rda), deserialises (val) and concatenates.  Falls back to serial each for
+// serialises the result (-8!, binary; was `k text before 1.9.3) and writes it
+// down a pipe; the parent reads each (rda), deserialises (-9!) and concatenates.  Falls back to serial each for
 // tiny inputs or AMBER_THREADS<2.  Correct because  (. `k v) ~ v  for all v.
 // amber: default worker count = actual online CPU count (sysconf), not a
 // hardcoded guess -- previously this always fell back to a fixed 4 regardless
@@ -83,10 +83,52 @@ A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);U n=_N(dat);I n
  {I pp[2];if(pipe(pp)<0){A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}close(pp[0]);close(pp[1]);}
  if((U)nw>n)nw=n;I pr[128],pid[64];U base=n/nw,rem=n%nw,lo=0;
  for(I w=0;w<nw;w++){U hi=lo+base+((U)w<rem);pipe(pr+2*w);pid[w]=fork();
-  if(!pid[w]){close(pr[2*w]);A r=eachR(fn,dat,lo,hi);if(!r)_exit(3);v1c(ai(pr[2*w+1]),kst(r));close(pr[2*w+1]);_exit(0);}
+  if(!pid[w]){close(pr[2*w]);A r=eachR(fn,dat,lo,hi);if(!r)_exit(3);
+   /* amber 1.9.3: ship the chunk as BINARY (-8!) instead of `k text. The text
+    * path formatted every element and the parent reparsed it, which cost more
+    * than the work being parallelised on small-payload maps and could not
+    * represent attributes or nested empties faithfully at all. ser8 fails
+    * closed: a chunk that cannot be encoded exits non-zero rather than
+    * writing a short buffer the parent would misparse. */
+   A b=ser8(r);if(!b)_exit(4);
+   v1c(ai(pr[2*w+1]),b);close(pr[2*w+1]);_exit(0);}
   close(pr[2*w+1]);lo=hi;}
- A out=0;for(I w=0;w<nw;w++){A part=val(rda(pr[2*w]));out=out?cat(out,part):part;wait4(pid[w],0,0,0);}
- mr(fn);mr(dat);return x(sqz(out));}
+ /* Parent collection. Three bugs lived in the one line this replaces:
+  *   1. LEAK. `out=cat(out,part)` -- cat() is A2(cat,cat11(xR,y)): it bumps
+  *      x's refcount and hands that extra reference to cat11. The caller's own
+  *      reference to the OLD out was therefore never released, so every chunk
+  *      past the first leaked a whole accumulated result vector. Worse, the
+  *      surviving refcount made MINE(out) false inside aa(), so the append
+  *      could not grow in place and reallocated the whole accumulator every
+  *      time -- O(total^2) copying on top of the leak. Calling cat11 directly,
+  *      which OWNS both arguments, fixes both at once: nothing is left holding
+  *      a stray reference, and out is uniquely owned so the append extends in
+  *      place. (Bumping and then releasing -- cat() plus mr(old) -- plugs the
+  *      leak but keeps the refcount at 2 during the call, so it would still
+  *      reallocate every chunk.)
+  *   2. EXIT STATUS IGNORED. wait4(pid,0,0,0) discarded the child's status, so
+  *      a worker that died on a signal or exited non-zero (eachR returning 0,
+  *      or ser8 failing) was indistinguishable from success: the parent just
+  *      saw a short/empty pipe and silently produced a WRONG result. Status is
+  *      now inspected and any failure becomes a clean K error.
+  *   3. UNVALIDATED DECODE. val(rda(...)) assumed the pipe held a parseable
+  *      value; des9 returns 0 on a truncated or corrupt buffer and that is now
+  *      treated as a worker failure rather than dereferenced.
+  * Every child is still waited for even after a failure is detected, so no
+  * zombie is left behind and no pipe fd is orphaned (rda() closes its own). */
+ A out=0;I bad=0;
+ for(I w=0;w<nw;w++){
+  A raw=rda(pr[2*w]);                 /* rda() closes the read fd itself */
+  A part=raw?des9(raw):0;             /* des9() consumes raw            */
+  I st=0;wait4(pid[w],&st,0,0);
+  I ok=part&&WIFEXITED(st)&&!WEXITSTATUS(st)&&!WIFSIGNALED(st);
+  I(!ok,bad=1;I(part,mr(part))continue)
+  I(!out,out=part)
+  E(out=cat11(out,part);)   /* cat11 owns BOTH: no stray ref, grows in place */
+ }
+ mr(fn);mr(dat);
+ I(bad||!out,I(out,mr(out))return x(err0("worker error in peach")))
+ return x(sqz(out));}
 // amber: window-join C kernel.  x=(qt;qcols;codes;w0;w1;gb;ge)  (marshalled by wj in amber.k)
 //  qt    sorted long vector (ordering column; ascending within each group slice)
 //  qcols list of numeric vectors (tF or tL) aligned to qt, one per aggregate

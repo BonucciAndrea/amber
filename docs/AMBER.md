@@ -396,8 +396,18 @@ order for floats, and symbol order is interning order). This keeps results exact
 `AMBER_THREADS` worker **processes** (default: the online CPU count, via `sysconf`;
 previously a hardcoded `4`, which oversubscribed small boxes and under-used large ones — see
 [CHANGELOG](CHANGELOG.md)), each applies `f` to a slice of `y`,
-serialises its result and streams it back, and the parent concatenates. The result is
+serialises its result with the binary serializer (`-8!`, §10b — it was `` `k `` text before
+1.9.3) and streams it back, and the parent decodes it with `-9!` and concatenates. The result is
 **identical** to serial `` f'y `` for every value (vectors, symbols, tables, nested, ragged).
+
+Since 1.9.3 a worker that fails — an error raised inside `f`, a signal, a chunk that cannot be
+encoded — is detected via the child's exit status and surfaced as a clean, trappable
+`'worker error in peach`, instead of the parent silently returning a short result. Every child is
+still reaped, so no zombies and no orphaned pipes are left behind:
+
+```k
+.[{peach[{$[x=5;'"boom";x]};!10]};,0;{[e]"caught: ",e}]   / 'worker error in peach
+```
 
 ```k
 peach[{avg x?1.0}; 8#1000000]        / 8 heavy tasks, one per worker, across cores
@@ -531,6 +541,46 @@ like[("cat";"dog";"cab");"c*"]/ 101b
 ```
 
 ---
+
+## 10b. Binary serialization — `-8!` · `-9!`
+
+`-8!x` encodes any K value into a compact, contiguous byte vector (`tC`); `-9!y` decodes that
+vector back into the original value. The round trip is exact:
+
+```k
+(-9! -8! x) ~ x            / true for every supported shape
+b:-8!+`a`b!(1 2 3;4 5 6)   / a table -> bytes
+-9!b                       / -> the identical table
+```
+
+| | |
+|---|---|
+| `-8!x` | encode `x` to a byte vector |
+| `-9!y` | decode a byte vector produced by `-8!` |
+
+**What round-trips.** Atoms (`` `i `` `` `l `` `` `f `` `` `c `` `` `s ``, date, time, timestamp),
+every vector type including bit vectors, symbol vectors, general/nested lists, dictionaries,
+tables, keyed tables, empty vectors and the empty general list, nulls (`0N`, `0n`), infinities
+(`0w`, `-0w`), and **column attributes** — a `` `s``-sorted column arrives still sorted and keeps
+the O(log n) binary-search path in `?`.
+
+Two things worth knowing:
+
+- **Symbols travel as names, not ids.** Symbol ids are process-local, so shipping raw ids across a
+  `peach` fork (or between runs) would decode to the wrong name. Names are re-interned on decode.
+- **Functions are not supported.** Lambdas, projections, compositions and derived verbs raise
+  `'type`: serializing a closure means serializing its captured environment and bytecode, which is
+  a different feature from a data wire format.
+
+`-9!` is a parser for bytes that may have come from another process, so it is bounds-checked and
+depth-limited throughout; a truncated, corrupt or over-long buffer raises a clean `'domain` rather
+than reading past the end.
+
+`-8!`/`-9!` occupy the negative-integer `!` slots, as in q. Only `-8` and `-9` on an integer atom
+are intercepted — every other left argument still means `mod`.
+
+`peach` uses this as its worker wire format (§9a). See `examples/peach_verify.k` for the full
+verification suite.
 
 ## 10a. Temporal
 

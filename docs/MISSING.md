@@ -106,8 +106,12 @@ prefix sums; `mmin`/`mmax` are O(n·w) window scans) plus **`ema`** (C kernel, O
 `parse`/`eval`/`reval` are implemented, along with a **text** `ser`/`deser` round-trip (portable
 Amber text via `` `k``, inverted by `eval`) and `protect` (like `.Q.trp`). Amber also has
 `sv vs ss ssr like`, string casts, and `` `k`` (k-repr).
-- **Still missing:** the **binary** serialiser `-8!`/`-9!` (current `ser`/`deser` is text, not the
-  compact IPC encoding — this is the top "nice next step" below), `-18!` (compress), `-11!`
+- **Done in 1.9.3:** the **binary** serialiser `-8!`/`-9!` (`src/ser.c`). `-8!x` encodes any K
+  value to a contiguous byte vector and `-9!y` decodes it back byte-exact, preserving attributes,
+  nulls, infinities, nested empties and symbol *names* (not process-local ids). `peach` now uses
+  it as its worker wire format instead of `` `k `` text. Lambdas/projections are deliberately
+  out of scope and raise `'type`. Verified by `examples/peach_verify.k` (60 cases).
+- **Still missing:** `-18!` (compress), `-11!`
   (replay log), the full `$` cast matrix (guid, byte), typed file reader `("SIF";",")0:file`,
   `vs`/`sv` for base-N and temporal, `md5`, `.Q.btoa` (base64).
 
@@ -116,7 +120,8 @@ Amber text via `` `k``, inverted by `eval`) and `protect` (like `.Q.trp`). Amber
 (`\ts`) times an expression.
 - **Still missing:** kdb-style secondary threads (`-s`), a *parallel* `.Q.fc` (Amber's is a
   sequential fallback), map-reduce over on-disk partitions, and compression. `peach` currently
-  ships each worker's result back as **text** (`` `k``) — a binary serialiser (§11) would cut
+  shipped each worker's result back as **text** (`` `k``) until 1.9.3; it now uses the binary
+  serialiser (§11), which cut
   that transfer cost.
 
 ## 13. Console / environment niceties — partial
@@ -163,7 +168,7 @@ vectorised in 1.5, **native C kernel** in 1.9, **multi-core `peach`** (1.6, fork
 tickerplant** `hopen`/`u.*` (§5).
 
 ### Nice next steps (highest value first)
-1. **Binary serialiser (`` -8!``/`` -9!``)** — the single biggest remaining lever. `peach` and
+1. ~~**Binary serialiser (`` -8!``/`` -9!``)**~~ — **done in 1.9.3** (`src/ser.c`). `peach` and
    the on-disk / IPC layers all currently move values as **text** (`` `k ``) and re-parse them.
    A compact binary encode/decode would cut that transfer cost, widen the range of workloads where
    `peach` beats serial `'`, and unlock a real (binary-wire) IPC and a binary on-disk format.

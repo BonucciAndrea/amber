@@ -455,23 +455,77 @@ never the stored values.
 
 =======
 >>>>>>> main:AMBER.md
-## 9b′. Error ergonomics — descriptive text · caret · Rust-style diagnostics
+## 9b′. Error ergonomics — Rust-style diagnostics
 
-On an error the REPL prints the offending input line with a `^` caret under the failing operator
-or verb (from the C core), and expands the terse one-word error into a description
-(`'length: operands have mismatched counts`, `'value: undefined name or empty value`).
+Every error is rendered **once**, as a single Rust-compiler-style report: a category-specific
+`error[CODE]` line, a `-->` locator, a gutter-aligned source line, an underline spanning the whole
+offending **token**, an inline label naming what is wrong, and an actionable `= help:` note.
 
+```text
+error[E0101]: Undefined variable `prices`
+ --> <amber>:1:3
+  |
+1 | y:prices+1
+  |   ^^^^^^ not found in this scope
+  |
+  = help: Verify that the variable is defined in the current scope or check for typos.
 ```
-'length: operands have mismatched counts
- prices+sizes
-       ^
+
+```text
+error[E0103]: Vector length mismatch
+ --> <amber>:1:6
+  |
+1 | 1 2 3+1 2
+  |      ^ operands have different counts
+  |
+  = help: Conforming operations require vectors of matching lengths or atom-vector pairs.
 ```
 
-**Rust-style diagnostics (on by default).** Every parse / type / domain error is *also* rendered
-as a Rust-compiler-style report — an `error[CODE]` line, a `-->` locator, a gutter-aligned source
-line, per-span `^^^` underlines and a `= help:` note, ANSI-coloured on a colour terminal — printed
-above the compact caret line. It is enabled by default (one `getenv` per error); set
-**`AMBER_DIAG=0`** to suppress it and keep only the terse one-line errors.
+```text
+error[E0105]: Syntax or parse error
+ --> <amber>:1:4
+  |
+1 | (1+
+  |    ^ unexpected token here
+  |
+  = help: Check for unbalanced brackets (), [], {}, unterminated strings, or invalid syntax.
+```
+
+Before 1.9.4 the same failure printed **twice** — the report above, immediately followed by the
+legacy ngn/k block (`'value` / source line / bare `^`). The compact form is still built (it is
+what `.[f;args;handler]` receives and what `` `err`` returns), it is simply no longer echoed to
+stderr once a rich report has been shown. Disable diagnostics and the compact form is printed
+instead, so an error is never silently swallowed.
+
+### Error code matrix
+
+| Code | Category | Title | Raised when |
+|---|---|---|---|
+| `E0101` | `value` | Undefined variable or value | A name is referenced that is not bound in any enclosing scope |
+| `E0102` | `type` | Type mismatch or invalid operand type | A primitive was handed an operand type it has no case for |
+| `E0103` | `length` | Vector length mismatch | Conforming operands have different counts |
+| `E0104` | `domain` | Out of domain operation | The value is outside the operation's mathematical domain |
+| `E0105` | `parse` | Syntax or parse error | Unbalanced brackets, unterminated string, malformed expression |
+| `E0106` | `index` | Index out of bounds | An index is negative or past the end |
+| `E0107` | `rank` | Function rank mismatch | Wrong number of arguments for the function's rank |
+| `E0108` | `limit` | Resource or allocation limit exceeded | Vector size, recursion depth or memory limit hit |
+| `E0109` | `io` | Input/output failure | File or socket open/read/write failed |
+| `E0110` | `stack` | Call stack depth exceeded | Recursion deeper than the interpreter stack allows |
+| `E0111` | `compile` | Expression could not be compiled | Parses, but cannot be compiled |
+| `E0112` | `nyi` | Operation not implemented for these types | Primitive has no implementation for these operands yet |
+
+### Reading a report
+
+* **Underlines span the token, not a byte.** The core widens a bare error offset to the full
+  identifier, operator or string literal before rendering, so a six-character name is underlined
+  `^^^^^^`. Secondary/context spans use `~~~~~` in a different colour so they read as context
+  rather than as the fault site.
+* **The offending token is named.** For an undefined name it is promoted into the title itself
+  (``Undefined variable `prices` ``); other categories carry it in the inline label.
+* **The gutter is a single unbroken vertical rule.** Line numbers are right-aligned and dimmed,
+  and every row places its `|` in the same column regardless of line-number width.
+
+### Turning it off
 
 ```sh
 ./amber                 # interactive REPL — diagnostics shown automatically
@@ -479,21 +533,21 @@ above the compact caret line. It is enabled by default (one `getenv` per error);
 AMBER_DIAG=0 ./amber    # opt out: compact one-line errors only
 ```
 
-```text
-error[E0104]: Vector length mismatch
-  --> test.k:12:8
-   |
-12 |   prices + sizes
-   |   ^^^^^^   ^^^^^
-   |
-   = help: Both vectors must have matching lengths for element-wise `+`.
-```
+`` `diag 0`` does the same at runtime and returns the previous setting, which is what
+`tests/harness.k` and `std.k`'s `protect` use so a suite that deliberately provokes errors it
+then catches does not drown stderr in red. `` `diag`` with a non-numeric argument reads the
+setting without changing it.
 
-The renderer is `src/diagnostic.{h,c}`: a `Span` (`src`, `start`, `end`, 1-based `line`/`col`) and
-`report_diagnostic()`, wired into the runtime error path (`src/e.c`, `eS`) through which all errors
-funnel. Exercise it directly from Amber with the `` `dgn `` self-test builtin (`` `dgn 0`` → `1`
-when the rendered report matches its expected shape); the arena allocator has the matching
-`` `arn 0`` → `1`.
+### Implementation
+
+`src/diagnostic.{h,c}` holds the renderer: a `Span` (`src`, `start`, `end`, 1-based `line`/`col`),
+`report_diagnostic_ex()` (code, title, label, secondary spans, help, note, colour) and the
+back-compatible `report_diagnostic()`. The palette lives in `src/ansi.h` so other consumers can
+match it. `src/e.c` owns the category catalogue (`edtab`), the token widener (`etok`) and `eD()`,
+which every error path funnels through — the evaluator/compiler via `eS()` (`src/b.c`) and the
+parser directly (`src/p.c`). Exercise it from Amber with the `` `dgn`` self-test builtin
+(`` `dgn 0`` → `1`), which checks the layout, the underline characters, the inline label, gutter
+alignment, ANSI suppression when colour is off, and the complete category → code matrix above.
 
 ---
 

@@ -61,6 +61,25 @@ void report_diagnostic_stderr(const char *code, const char *title,
                               const Span *secondary, size_t nsecondary,
                               const char *help);
 
+/* Extended form. Adds the two things a bare caret cannot express:
+ *   label  inline annotation printed immediately after the primary underline,
+ *          on the same row -- "^^^ not found in this scope". This is what makes
+ *          a report readable without moving your eyes off the code line.
+ *   note   a second `= note:` line under `= help:`, for context that is
+ *          explanatory rather than actionable.
+ * Both may be NULL. Secondary spans are underlined with `~` (and coloured
+ * differently) so they read as context rather than as the fault site. */
+size_t report_diagnostic_ex(char *buf, size_t buflen,
+                            const char *code, const char *title,
+                            const char *file, Span primary, const char *label,
+                            const Span *secondary, size_t nsecondary,
+                            const char *help, const char *note, int color);
+
+void report_diagnostic_ex_stderr(const char *code, const char *title,
+                                 const char *file, Span primary, const char *label,
+                                 const Span *secondary, size_t nsecondary,
+                                 const char *help, const char *note);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,5 +1,78 @@
 # Changelog
 
+## 1.9.4 — one error, one report: Rust-style diagnostics across every category
+
+### Errors print once
+An error used to be reported **twice**: `eS()` rendered the Rust-style report to stderr at error
+*creation* time, and then the legacy ngn/k caret block accumulated in `b[]` was dumped to stderr
+again on the way out (`epr()` for a script, `onerr` in `repl.k` for the REPL). Every failing
+script showed the same failure in two different formats, back to back.
+
+`b[]` is deliberately **unchanged** — it is what `.[f;args;handler]` hands a trap handler and what
+`` `err`` returns, a documented and test-covered contract. What changed is that a new flag
+(`amdiagshown`, set by the renderer, cleared when an error starts or is consumed) tells `epr()` to
+stay quiet when a rich report has already been shown, and `repl.k`'s `onerr` to skip its
+descriptive echo. With diagnostics off (`AMBER_DIAG=0` / `` `diag 0``) the compact form is printed
+exactly as before, so nothing is ever silently swallowed.
+
+### Every category has a code, a title and actionable help
+`E0001: evaluation error` and `= help: the caret marks the offending token` are gone. `src/e.c`
+now carries a catalogue keyed by the category name that `err0()` already writes into the error
+buffer, so the lookup needed no new plumbing through the interpreter:
+
+| Code | Category | Title | Raised when |
+|---|---|---|---|
+| `E0101` | `value` | Undefined variable or value | A name is referenced that is not bound in any enclosing scope |
+| `E0102` | `type` | Type mismatch or invalid operand type | A primitive was handed an operand type it has no case for |
+| `E0103` | `length` | Vector length mismatch | Conforming operands have different counts |
+| `E0104` | `domain` | Out of domain operation | The value is outside the operation's mathematical domain |
+| `E0105` | `parse` | Syntax or parse error | Unbalanced brackets, unterminated string, malformed expression |
+| `E0106` | `index` | Index out of bounds | An index is negative or past the end |
+| `E0107` | `rank` | Function rank mismatch | Wrong number of arguments for the function's rank |
+| `E0108` | `limit` | Resource or allocation limit exceeded | Vector size, recursion depth or memory limit hit |
+| `E0109` | `io` | Input/output failure | File or socket open/read/write failed |
+| `E0110` | `stack` | Call stack depth exceeded | Recursion deeper than the interpreter stack allows |
+| `E0111` | `compile` | Expression could not be compiled | Parses, but cannot be compiled |
+| `E0112` | `nyi` | Operation not implemented for these types | Primitive has no implementation for these operands yet |
+
+### The parser reports like everything else
+`src/p.c` called `eQ()` directly, so a syntax error was the one category that still printed only
+the legacy block. The renderer is now factored into `eD()` (raw source bytes in, report out) and
+the parser calls it, so `E0105` looks like every other category.
+
+### Underlines span tokens, and name them
+A bare offset is widened to the whole token before rendering (`etok`): identifiers expand over
+their full name, string literals over the whole literal, operators stay one character. So an
+undefined `prices` is underlined `^^^^^^`, not `^`. The token is then named — promoted into the
+title for undefined names (``Undefined variable `prices` ``), carried in the inline label
+otherwise.
+
+### Visual polish
+* Gutter rows all place `|` in the same column, matching `rustc` exactly; line numbers are
+  right-aligned and dimmed so they read as navigation, not content.
+* Inline labels sit at the end of the underline row, so the explanation is on the same visual line
+  as the thing it explains.
+* Secondary spans underline with `~` in blue; the primary always wins where they overlap, so the
+  fault site can never be masked by context.
+* Palette moved to `src/ansi.h` and switched to the bright (9x/6x) variants, which stay legible on
+  light terminals where plain `3x` red does not.
+* SGR codes are emitted once per **run** rather than once per glyph — a six-character underline
+  was previously six colour+reset pairs, which bloated captured output and made logs unreadable.
+* `report_diagnostic_ex()` adds inline labels and a `= note:` line; `report_diagnostic()` is kept
+  as a wrapper so existing callers are untouched.
+
+### `` `dgn`` self-test extended
+Now checks the full layout (code, title, locator, `^^^` primary vs `~~~` secondary, inline label,
+help and note), that colour-off output contains **no** ANSI bytes at all, that every gutter bar
+lands in the same column, and the complete category → code matrix — plus that an unknown category
+reports absence rather than crashing.
+
+### Validation
+601 tests + `examples/peach_verify.k` (60) pass, C unit tests pass, fuzzer clean (1,629 cases),
+and everything is clean under AddressSanitizer + UndefinedBehaviorSanitizer with leak detection,
+including every diagnostic path.
+
+
 ## 1.9.3 — binary serializer (`-8!`/`-9!`), binary IPC for `peach`, three `peach` bugs fixed
 
 ### New: compact binary serialization

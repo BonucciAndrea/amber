@@ -83,7 +83,7 @@
 // v1.7 while README.md already advertised 1.9).
 #define AMBER_VERSION_MAJOR 1
 #define AMBER_VERSION_MINOR 9
-#define AMBER_VERSION_PATCH 3
+#define AMBER_VERSION_PATCH 4
 #define AMBER_VERSION M2(AMBER_VERSION_MAJOR) "." M2(AMBER_VERSION_MINOR) "." M2(AMBER_VERSION_PATCH)
 #define REFB  1
 #define MINE(x) (_r(x)==REFB)
@@ -124,6 +124,9 @@ S su(U),pID(S);
 W pu(S*);
 F gf(A);
 EX I amdiag;//stderr-diagnostic switch (e.c); see `diag
+CO C*edinfo(CO C*,I);//error-catalogue accessor for the `dgn self-test (e.c)
+V eD(CO C*,U,U);//render a rich diagnostic from raw source bytes (e.c)
+EX I amdiagshown;//set when a rich diagnostic was already rendered for the current error (e.c)
 EX A1*v1[];EX A2*v2[];EX AA*v8[];EX A gv[4096],cns,cn[],ci[2][5];EX I pg;EX TY(CO C[])vc,TS,Tw,TR,TT,TX,Tk;EX S*argv,*env;
 
 //                    0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25

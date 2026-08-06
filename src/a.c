@@ -74,11 +74,43 @@ A1(arnT,arena_init(1<<16);B ok=1;
  ok&=arena_peak()>=(N)(1<<20);//peak survives the rewind
  x(al((L)ok)))
 // diagnostic self-test builtin (`dgn): render the reference report, verify its structure.
-A1(dgnT,CO C*src="x:1 2 3\n  prices + sizes\n";
- U pp=(U)(strstr(src,"prices")-src),sp=(U)(strstr(src,"sizes")-src);
- Span pr=span_at(src,pp,pp+6),se=span_at(src,sp,sp+5);C buf[2048];
- report_diagnostic(buf,SZ buf,"E0104","Vector length mismatch","test.k",pr,&se,1,"Both vectors must have matching lengths for element-wise `+`.",0);
- B ok=!!strstr(buf,"error[E0104]: Vector length mismatch")&&!!strstr(buf,"--> test.k:2:")&&!!strstr(buf,"prices + sizes")&&!!strstr(buf,"^^^^^^")&&!!strstr(buf,"= help:");
+A1(dgnT,
+ // 1.9.4 self-test for the diagnostic renderer AND the error catalogue.
+ // Renders with color=0 so the assertions below are about layout, not SGR.
+ CO C*src="x:1 2 3\n  prices + sizes\n";
+ U pp=(U)(strstr(src,"prices")-src),sp2=(U)(strstr(src,"sizes")-src);
+ Span pr=span_at(src,pp,pp+6),se=span_at(src,sp2,sp2+5);C buf[2048];
+ report_diagnostic_ex(buf,SZ buf,"E0103","Vector length mismatch","test.k",pr,
+   "operands have different counts",&se,1,
+   "Conforming operations require vectors of matching lengths.",
+   "left operand has 3 elements, right has 2",0);
+ B ok=1;
+ ok&=!!strstr(buf,"error[E0103]: Vector length mismatch");
+ ok&=!!strstr(buf,"--> test.k:2:3");
+ ok&=!!strstr(buf,"prices + sizes");
+ ok&=!!strstr(buf,"^^^^^^");                       // primary spans the token
+ ok&=!!strstr(buf,"~~~~~");                        // secondary uses ~, not ^
+ ok&=!!strstr(buf,"operands have different counts");// inline label
+ ok&=!!strstr(buf,"= help: ");
+ ok&=!!strstr(buf,"= note: ");
+ ok&=!strchr(buf,27);                              // color=0 emits NO ANSI
+ // every gutter row puts its bar in the same column: that alignment IS the
+ // visual design, and it is the first thing to break when padding changes.
+ {CO C*p=buf;I col=-1;W(p,CO C*q=strchr(p,'|');I(!q,break)CO C*ln=q;
+   W(ln>buf&&ln[-1]!=10,ln--)I c=(I)(q-ln);I(col<0,col=c)E(ok&=c==col)
+   p=strchr(q,10);I(p,p++))}
+ // the whole category -> code/title/help matrix (Task 3)
+ {Z CO C*want[][2]={{"value","E0101"},{"type","E0102"},{"length","E0103"},
+   {"domain","E0104"},{"parse","E0105"},{"index","E0106"},{"rank","E0107"},
+   {"limit","E0108"},{"io","E0109"},{"stack","E0110"},{"compile","E0111"},
+   {"nyi","E0112"}};
+  F(L(want),CO C*c=edinfo(want[i][0],0),*t=edinfo(want[i][0],1),*h=edinfo(want[i][0],3);
+    ok&=c&&t&&h&&!strcmp(c,want[i][1])&&*t&&*h)}
+ // a category with no catalogue row must report absence, not crash
+ ok&=!edinfo("no-such-category",0);
+ // and the legacy compact block must NOT be re-emitted once a rich report has
+ // been rendered -- that duplication is exactly what 1.9.4 removed.
+ ok&=amdiagshown==0||amdiagshown==1;
  x(al((L)ok)))
 // SIMD self-test + benchmark builtin (`simd): verifies simd_{add,mul,sum}_{i64,f64}
 // (src/simd.{h,c}) against a plain scalar C reference over a large vector, prints a

@@ -19,7 +19,7 @@
 // Definition of the scoped-atomic-refcount flag declared in a.h. Thread-local,
 // default false: every thread starts in the fast serial (non-atomic) refcount
 // mode and only peachC (src/i.c) flips it true around a parallel dispatch.
-AM_TLS B ray_rc_sync=false;
+AM_TLS_IE B ray_rc_sync=false;
 // ---- HFT as-of join kernel ------------------------------------------------
 // branch-free lower_bound over a sorted long slice a[lo,hi): first i with a[i]>=key.
 // The ternaries lower to cmov under -O3, so there are no data-dependent branches.

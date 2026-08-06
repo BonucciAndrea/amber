@@ -115,7 +115,7 @@ ZN A arif(A x,A y,U f)_(C t=xt,u=yt;
 // save/restored across nested arith) within a single top-level call. Each peach
 // worker evaluates arithmetic concurrently, so this per-call register must be
 // per-thread or one worker's op would leak into another's nested ari().
-Z AM_TLS U f;//0=dex,1=add,2=sub,3=mul,4=dvd,5=mod,6=mnm,7=mxm,8=ltn,9=gtn,10=eql
+Z AM_TLS_IE U f;//0=dex,1=add,2=sub,3=mul,4=dvd,5=mod,6=mnm,7=mxm,8=ltn,9=gtn,10=eql
 // amber: native temporal scalar arithmetic.  date/time/timestamp atoms carry
 // their base units (days/ms/ns); + and - keep the temporal type, temporal-minus-
 // same-temporal yields a plain int (a difference), comparisons yield bool.

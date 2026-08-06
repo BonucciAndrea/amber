@@ -140,4 +140,11 @@ A2(ari,C t=xt,u=yt;U v=1<<t|1<<u;
 #define M(s,i) A2(s,U o=f;f=i;x=ari(x,y);f=o;x)
  M(add,1)M(mul,3)M(dvd,4)M(mod,5)M(mnm,6)M(mxm,7)M(ltn,8)M(gtn,9)M(eql,10)
 #undef M
-A2(dex,y)A2(sub,P(_t(x)>=tdt||_t(y)>=tdt,tari(x,y,2))add(x,N(neg(y))))X2(exc,RMT(ytm||rnk(x)<0?ed(y):ytt?exc(x,rsz(xN,y)):xN-yN?el(y):am(xR,y))Rs(x=rsz(yN,x);x(exc(x,y)))Rilc(mod(x,y))R_(et(y)))
+A2(dex,y)A2(sub,P(_t(x)>=tdt||_t(y)>=tdt,tari(x,y,2))add(x,N(neg(y))))X2(exc,RMT(ytm||rnk(x)<0?ed(y):ytt?exc(x,rsz(xN,y)):xN-yN?el(y):am(xR,y))Rs(x=rsz(yN,x);x(exc(x,y)))Rilc(/* amber 1.9.3: `!` with a negative integer left argument is the
+ * q-family system-verb slot -- -8!x serialises to a byte vector and -9!y
+ * deserialises it (src/ser.c). Only -8 and -9, and only on a genuine
+ * integer atom, are intercepted; every other left argument (negative ones
+ * included) and every char atom still reach mod() exactly as before, so no
+ * existing `!` behaviour moves. */
+ I(_t(x)-tc,L sv_=gl_(x);I(sv_==-8||sv_==-9,mr(x);return sv_==-8?ser8(y):des9(y)))
+ mod(x,y))R_(et(y)))

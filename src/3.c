@@ -23,32 +23,82 @@
  #define AMPRAGMA(x) _Pragma(#x)
  // One combined directive: `omp simd` must be immediately followed by the loop,
  // so vectorisation and threading cannot be stacked as two separate pragmas.
- #define AMRED(n,r) AMPRAGMA(omp parallel for simd reduction(r) if((n)>=AMPARN) schedule(static))
+ // Variadic, because the four-way kernels below reduce over a LIST of partials
+ // (reduction(*:a,b,c,d)): a fixed two-parameter macro cannot carry that, the
+ // commas inside the clause get read as extra macro arguments.
+ #define AMPFOR(...) AMPRAGMA(omp parallel for simd reduction(__VA_ARGS__) schedule(static))
 #else
- #define AMRED(n,r)
+ #define AMPFOR(...)
 #endif
+// AMRED(n,body,clause...): run `body` threaded when the vector is big enough to
+// pay for a team, and as a PLAIN serial loop otherwise. Body comes first because
+// the reduction clause contains commas (`*:a,b,c,d`) that only a trailing
+// __VA_ARGS__ can absorb.
+//
+// This replaces `#pragma omp parallel for ... if(n>=AMPARN)`. The `if` clause
+// only promises serial *semantics*: GCC still outlines the loop body into an
+// _omp_fn and enters a one-thread region, so the sub-threshold path pays region
+// setup AND loses the inlining/unrolling the plain loop would have had. Measured
+// on addfL (`+/` over longs), if-clause vs. this hard branch:
+//    n=1e3  0.6us vs 0.2us (3.3x)   n=1e4  3.5us vs 1.6us (2.2x)
+//    n=1e5  32.7us vs 16.2us (2.0x) n=1e6-1 432us vs 237us (1.8x)
+// and at/above the threshold the two are identical (within 1%), since the same
+// pragma runs. Interactive qSQL aggregates are overwhelmingly sub-threshold, so
+// this is the path that matters most.
+#define AMRED(n,body,...) I((n)>=AMPARN,AMPFOR(__VA_ARGS__) body)E(body)
+// ---- four-way partial reduction kernels -------------------------------------
+// `*/`, `&/` and `|/` were left as single-accumulator scalar chains when `+/`
+// was split in 1.9.2, so every element cost one imul (3-cycle latency) or one
+// cmov on a serialised dependency chain. Splitting into four independent
+// partials breaks the chain -- the same fix, and the same justification, as
+// sumF below. Unlike float addition these ARE exactly reassociable: integer
+// min/max trivially, and two's-complement multiplication is associative under
+// wraparound, so every partitioning gives bit-identical results (verified
+// against the pre-patch binary over all four widths x 16 lengths).
+//
+// MUL4 accumulates in W (unsigned), not L, for the reason src/2.c's integer add
+// kernels give: `*/` over longs overflows almost immediately (UBSan flags
+// `*/2000000#3` on the old code as "signed integer overflow ... cannot be
+// represented in type long long"), and signed overflow is undefined behaviour
+// that entitles the optimiser to assume the reassociation away. Unsigned
+// wraparound is defined, emits the identical imul, and casts back unchanged.
+// Every width accumulates into 64 bits, so no ISA has a vector form -- the
+// four-way split is the whole win here (2.2x-6.0x).
+#define MUL4(T) CO T*RES p=a;W a0=1,b0=1,c0=1,d0=1;U m=n&~(U)3;\
+ AMRED(n,for(U i=0;i<m;i+=4){a0*=(W)p[i];b0*=(W)p[i+1];c0*=(W)p[i+2];d0*=(W)p[i+3];},*:a0,b0,c0,d0)\
+ W r=a0*b0*c0*d0;for(U i=m;i<n;i++)r*=(W)p[i];(L)r
+// MNM4: four-way min/max. Used for the 64-bit width ONLY. Baseline x86-64 is
+// SSE2, which has no 64-bit signed compare, so GCC cannot vectorise a long
+// min/max reduction at all and the cmov chain is pure latency -- unrolling wins
+// 2.1x-2.5x. At 8/16/32 bits the plain loop DOES vectorise (pcmpgtd + blend),
+// and hand-unrolling it measured 2-7x SLOWER because the strided access defeats
+// the vectoriser; those widths keep the plain form and take only RES + AMRED.
+#define MNM4(T,id,OP,cl) CO T*RES p=a;T a0=id,b0=id,c0=id,d0=id;U m=n&~(U)3;\
+ AMRED(n,for(U i=0;i<m;i+=4){a0=OP(a0,p[i]);b0=OP(b0,p[i+1]);c0=OP(c0,p[i+2]);d0=OP(d0,p[i+3]);},cl:a0,b0,c0,d0)\
+ T r=OP(OP(a0,b0),OP(c0,d0));for(U i=m;i<n;i++)r=OP(r,p[i]);(L)r
+#define MNM1(T,id,OP,cl) CO T*RES p=a;T r=id;AMRED(n,for(U i=0;i<n;i++)r=OP(r,p[i]);,cl:r)(L)r
 #define F4(w,n,a,b,c,d) S4(w,F(n,a),F(n,b),F(n,c),F(n,d))
 NI A1(inv,x=mut(x);L*p=xL;F(((W)xn<<xw)+255>>8<<2,*p++^=-1)x)
 
 Z A3(___f,/*010*/U i=!y;I(i,y=io(z,0))U n=zn;W(i<n,y=y(x2(y,ii(z,i++)));B(!y))y)
 Z A3(dexf,/*010*/A u=las(zR);I(y,y(0))u)
   L addfB(CO V*a,U n)_(CO W*p=a;U r=0;F(n>>6,r+=PC(*p++))n&=63;n?r+PC(*p&~(-1ll<<n)):r)
-Z L addfG(CO V*a,U n)_(CO G*RES p=a;L r=0;AMRED(n,+:r)for(U i=0;i<n;i++)r+=p[i];r)
-Z L addfH(CO V*a,U n)_(CO H*RES p=a;L r=0;AMRED(n,+:r)for(U i=0;i<n;i++)r+=p[i];r)
-Z L addfI(CO V*a,U n)_(CO I*RES p=a;L r=0;AMRED(n,+:r)for(U i=0;i<n;i++)r+=p[i];r)
-Z L addfL(CO V*a,U n)_(CO L*RES p=a;L r=0;AMRED(n,+:r)for(U i=0;i<n;i++)r+=p[i];r)
-Z L mulfG(CO V*a,U n)_(CO G*p=a;L r=1;F(n,r*=*p++)r)
-Z L mulfH(CO V*a,U n)_(CO H*p=a;L r=1;F(n,r*=*p++)r)
-Z L mulfI(CO V*a,U n)_(CO I*p=a;L r=1;F(n,r*=*p++)r)
-Z L mulfL(CO V*a,U n)_(CO L*p=a;L r=1;F(n,r*=*p++)r)
-Z L minfG(CO V*a,U n)_(CO G*p=a;G r=(1u  << 7)-1;F(n,r=MIN(r,p[i]))r)
-Z L minfH(CO V*a,U n)_(CO H*p=a;H r=(1u  <<15)-1;F(n,r=MIN(r,p[i]))r)
-Z L minfI(CO V*a,U n)_(CO I*p=a;I r=(1u  <<31)-1;F(n,r=MIN(r,p[i]))r)
-Z L minfL(CO V*a,U n)_(CO L*p=a;L r=(1ull<<63)-1;F(n,r=MIN(r,p[i]))r)
-Z L maxfG(CO V*a,U n)_(CO G*p=a;G r=(1u  << 7)  ;F(n,r=MAX(r,p[i]))r)
-Z L maxfH(CO V*a,U n)_(CO H*p=a;H r=(1u  <<15)  ;F(n,r=MAX(r,p[i]))r)
-Z L maxfI(CO V*a,U n)_(CO I*p=a;I r=(1u  <<31)  ;F(n,r=MAX(r,p[i]))r)
-Z L maxfL(CO V*a,U n)_(CO L*p=a;L r=(1ull<<63)  ;F(n,r=MAX(r,p[i]))r)
+Z L addfG(CO V*a,U n)_(CO G*RES p=a;L r=0;AMRED(n,for(U i=0;i<n;i++)r+=p[i];,+:r)r)
+Z L addfH(CO V*a,U n)_(CO H*RES p=a;L r=0;AMRED(n,for(U i=0;i<n;i++)r+=p[i];,+:r)r)
+Z L addfI(CO V*a,U n)_(CO I*RES p=a;L r=0;AMRED(n,for(U i=0;i<n;i++)r+=p[i];,+:r)r)
+Z L addfL(CO V*a,U n)_(CO L*RES p=a;L r=0;AMRED(n,for(U i=0;i<n;i++)r+=p[i];,+:r)r)
+Z L mulfG(CO V*a,U n)_(MUL4(G))
+Z L mulfH(CO V*a,U n)_(MUL4(H))
+Z L mulfI(CO V*a,U n)_(MUL4(I))
+Z L mulfL(CO V*a,U n)_(MUL4(L))
+Z L minfG(CO V*a,U n)_(MNM1(G,(G)((1u  << 7)-1),MIN,min))
+Z L minfH(CO V*a,U n)_(MNM1(H,(H)((1u  <<15)-1),MIN,min))
+Z L minfI(CO V*a,U n)_(MNM1(I,(I)((1u  <<31)-1),MIN,min))
+Z L minfL(CO V*a,U n)_(MNM4(L,(L)((1ull<<63)-1),MIN,min))
+Z L maxfG(CO V*a,U n)_(MNM1(G,(G)(1u  << 7),MAX,max))
+Z L maxfH(CO V*a,U n)_(MNM1(H,(H)(1u  <<15),MAX,max))
+Z L maxfI(CO V*a,U n)_(MNM1(I,(I)(1u  <<31),MAX,max))
+Z L maxfL(CO V*a,U n)_(MNM4(L,(L)(1ull<<63),MAX,max))
   L addfZ(L v,A x/*0*/)_(v+    G(&addfG,addfH,addfI,addfL)[xw-3](xV,xn) )
 Z L mulfZ(L v,A x/*0*/)_(v*    G(&mulfG,mulfH,mulfI,mulfL)[xw-3](xV,xn) )
   L minfZ(L v,A x/*0*/)_(MIN(v,G(&minfG,minfH,minfI,minfL)[xw-3](xV,xn)))

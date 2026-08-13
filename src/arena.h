@@ -35,6 +35,24 @@ void  *arena_alloc(size_t bytes);
  * Call once per tick / evaluation cycle. */
 void   arena_reset(void);
 
+/* Scoped scratch: arena_mark() snapshots the bump cursor AND the overflow-list
+ * head, arena_release() rewinds to that snapshot -- freeing exactly the
+ * overflow blocks taken since the mark and nothing older.
+ *
+ * arena_reset() alone is a whole-tick rewind, which is the right granularity
+ * for "one expression, one scratch lifetime" but the wrong one for a kernel
+ * that runs MANY times inside a single expression: `{asc x}'1000#,v` would hold
+ * 1000 generations of radix ping-pong buffers live at once, because nothing
+ * rewinds until the statement ends. A kernel that marks on entry and releases
+ * on exit keeps its peak footprint at one generation regardless of how often it
+ * is called, and still costs nothing on the slab fast path (two stores).
+ *
+ * Marks nest, but must be released in LIFO order -- releasing an outer mark
+ * while an inner one is live invalidates the inner scratch. */
+typedef struct { size_t off; void *over; } ArenaMark;
+ArenaMark arena_mark(void);
+void      arena_release(ArenaMark m);
+
 /* Release the slab and all overflow blocks back to the system. */
 void   arena_free(void);
 

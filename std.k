@@ -10,15 +10,34 @@
 
 / ---- moving / window aggregates -------------------------------------------
 / kdb semantics: a growing window for the first w-1 points, then a fixed w.
-/ msum/mavg/mvar/mdev/mcount are O(n) (prefix sums); mmin/mmax are O(n*w).
+/ .
+/ All of msum/mavg/mvar/mdev/mmin/mmax now run as SINGLE-PASS O(n) C kernels
+/ (`mw, src/v.c).  msum/mavg/mvar/mdev carry a running difference
+/     new_sum = old_sum + incoming - outgoing
+/ so they touch each element twice and materialise nothing; mmin/mmax use a
+/ monotonic index deque, which makes them O(n) *independent of the window* --
+/ the K definitions below were O(n*w) AND built one index vector plus one slice
+/ per element.  Nulls (0n) are treated as absent rather than poisoning every
+/ later element, which is what kdb does; on null-free input the results are
+/ identical to the K definitions.
+/ .
+/ Each wrapper keeps its original K definition as mXXXK and falls back to it
+/ whenever the kernel declines the input (unsupported type, w<1, empty vector).
+/ `mw signals that by returning the generic empty list (), hence the `A type
+/ test -- every value the kernel can actually produce is a flat F/I vector.
 mcount:{[w;x]w&1+!#x}                                    / window element count
-msum:{[w;x]s:sums 0.0+x;s-(w#0.0),(-w)_s}               / moving sum   (prefix diff)
-mavg:{[w;x]msum[w;x]%mcount[w;x]}                        / moving average
+msumK:{[w;x]s:sums 0.0+x;s-(w#0.0),(-w)_s}               / moving sum   (prefix diff)
+mavgK:{[w;x]msumK[w;x]%mcount[w;x]}                      / moving average
+mvarK:{[w;x]m:mavgK[w;x];(mavgK[w;x*x])-m*m}             / moving variance (population)
+mminK:{[w;x]{[w;x;j]&/x@(0|1+j-w)+!(1+j)&w}[w;x]'!#x}    / moving min  (window)
+mmaxK:{[w;x]{[w;x;j]|/x@(0|1+j-w)+!(1+j)&w}[w;x]'!#x}    / moving max  (window)
+msum:{[w;x]$[`A~@r:`mw(0;w;x);msumK[w;x];r]}             / O(n) running difference
+mavg:{[w;x]$[`A~@r:`mw(1;w;x);mavgK[w;x];r]}
+mvar:{[w;x]$[`A~@r:`mw(2;w;x);mvarK[w;x];r]}
+mdev:{[w;x]$[`A~@r:`mw(3;w;x);sqrt mvarK[w;x];r]}        / moving standard deviation
+mmin:{[w;x]$[`A~@r:`mw(4;w;x);mminK[w;x];r]}             / O(n) monotonic deque
+mmax:{[w;x]$[`A~@r:`mw(5;w;x);mmaxK[w;x];r]}
 mprd:{[w;x]exp msum[w;log 0.0+x]}                        / moving product
-mvar:{[w;x]m:mavg[w;x];(mavg[w;x*x])-m*m}               / moving variance (population)
-mdev:{[w;x]sqrt mvar[w;x]}                               / moving standard deviation
-mmin:{[w;x]{[w;x;j]&/x@(0|1+j-w)+!(1+j)&w}[w;x]'!#x}     / moving min  (window)
-mmax:{[w;x]{[w;x;j]|/x@(0|1+j-w)+!(1+j)&w}[w;x]'!#x}     / moving max  (window)
 / moving weighted / correlation helpers
 dot:{+/x*y}                                              / vector dot product
 mmu:{[x;y]yc:+y;{[yc;r]{[r;c]+/r*c}[r]'yc}[yc]'x}        / matrix multiply  x mmu y

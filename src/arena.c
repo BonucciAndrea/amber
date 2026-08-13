@@ -110,6 +110,29 @@ void *arena_alloc(size_t bytes) {
     }
 }
 
+/* Scoped rewind -- see arena.h. Overflow blocks are a singly-linked LIFO list
+ * (arena_alloc pushes at the head), so "everything allocated since the mark" is
+ * exactly the prefix of that list down to the head recorded by the mark. */
+ArenaMark arena_mark(void) {
+    ArenaMark m;
+    m.off  = a_off;
+    m.over = (void *)a_over;
+    return m;
+}
+
+void arena_release(ArenaMark m) {
+    while (a_over && (void *)a_over != m.over) {
+        OverflowBlock *n = a_over->next;
+        a_ovf -= a_over->bytes;
+        free(a_over);
+        a_over = n;
+    }
+    /* Defensive: a release that does not find its mark in the list (a caller
+     * that released out of LIFO order, or a reset in between) must not leave
+     * the cursor pointing past freed scratch. */
+    if (m.off <= a_off) a_off = m.off;
+}
+
 void arena_reset(void) {
     while (a_over) {
         OverflowBlock *n = a_over->next;

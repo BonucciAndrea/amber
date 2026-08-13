@@ -97,8 +97,16 @@ xkey:{[k;t]k:k,();d:+t;(+k#d)!+(except[cols t;k])#d}
 unkey:{$[iskeyed x;+(+!x),+.x;x]}
 xcolall:{[nm;t]+nm!. t}
 xcols:{[c;t]c:c,();+(c,except[cols t;c])#+t}
-xasc:{[c;t]c:c,();o:<+(+t)c;t:t@o;d:+t;+d,(1#c)!`sa'd@1#c}
-xdesc:{[c;t]c:c,();t@>+(+t)c}
+/ xasc / xdesc: `xs (src/a.c) grades the table's key columns with a stable
+/ multi-column LSD radix sort straight off the columns' raw C arrays -- no
+/ per-row K objects, no boxed comparisons -- and returns () when it meets a
+/ column type it does not handle, in which case the original `<+(+t)c` grade
+/ below still runs.  Symbol columns are collated BY NAME (via a dense rank of
+/ the DISTINCT ids), which is the collation `<` on a symbol vector gives and the
+/ one ajsorted's contiguity note assumes.  Descending is the same sort with
+/ complemented keys, which reproduces `>`'s "ties in ascending index order".
+xasc:{[c;t]c:c,();o:`xs(value c#+t;0b);o:$[#o;o;<+(+t)c];t:t@o;d:+t;+d,(1#c)!`sa'd@1#c}
+xdesc:{[c;t]c:c,();o:`xs(value c#+t;1b);o:$[#o;o;>+(+t)c];t@o}
 meta:{d:+unkey x;xkey[`c;+`c`t`a!(!d;{@*x}'value d;{`at x}'value d)]}
 insert:{[t;r]t,r}
 

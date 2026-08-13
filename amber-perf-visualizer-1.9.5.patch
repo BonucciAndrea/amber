@@ -1,0 +1,999 @@
+diff --git a/src/a.c b/src/a.c
+index 0d7e803..d2fd496 100644
+--- a/src/a.c
++++ b/src/a.c
+@@ -31,33 +31,75 @@ U amlb(CO L*RES a,U lo,U hi,L key){
+  U n=hi-lo,pos=lo;
+  while(n>0){U half=n>>1,mid=pos+half;int lt=a[mid]<key;pos=lt?mid+1:pos;n=lt?n-half-1:half;}
+  return pos;}
++// branch-free upper_bound: first i in [lo,hi) with a[i]>key.
++// amber: aj used to spell this amlb(...,key+1), which is signed overflow --
++// undefined behaviour -- when a trade timestamp is WL (and UBSan flags it).
++// Comparing <= directly is the same cmov sequence with no key arithmetic at all,
++// so the overflow simply cannot arise. Exported alongside amlb because wj's
++// upper window edge (w1) needs exactly the same "+1" and had the same hazard.
++U amub(CO L*RES a,U lo,U hi,L key){
++ U n=hi-lo,pos=lo;
++ while(n>0){U half=n>>1,mid=pos+half;int le=a[mid]<=key;pos=le?mid+1:pos;n=le?n-half-1:half;}
++ return pos;}
+ // aj[syms;trade;quote] as-of match kernel.  x=(qt;tt;gb;ge)  (marshalled by aj in amber.k)
+ //  qt     sorted long quote-timestamp vector (ascending within each group slice)
+ //  tt     long trade-timestamp vector (length nt)
+ //  gb,ge  per-trade group slice [base,end) into qt (length nt)
+ // returns long vector m (length nt): global index of the most-recent quote whose
+ //  timestamp is on-or-before the trade, or 0N (NL) when the slice is empty or no quote
+-//  precedes the trade.  O(nt*log w); one arena scratch buffer, no per-row malloc.
++//  precedes the trade.
++//
++// amber 1.9.5 kernel overhaul:
++//  * Raw contiguous primitive column pointers (CO L*RES) are extracted ONCE up
++//    front; the row loop never re-derives a base pointer or re-reads an object
++//    header, so every access is a plain indexed load off a register.
++//  * Two-pointer merge fast path. Rows of a real trade table arrive already
++//    sorted by (group,time) -- amber.k xasc's the quote side and the trade side
++//    is normally ascending within each symbol -- so consecutive rows usually
++//    share a group slice AND have non-decreasing timestamps. In that case the
++//    previous row's answer is a valid lower bound for this row's, and the cursor
++//    just walks forward: the whole run costs O(run + slice) instead of
++//    O(run * log slice), i.e. the O(N+M) merge the join wants. The moment
++//    monotonicity actually breaks (a new slice, or a timestamp that goes
++//    backwards) the row falls back to the branch-free binary probe, so the
++//    result is bit-identical to the pure-amub version on ANY input -- including
++//    the unsorted and null-slice cases test.k's ajNull/ajNoGrp/ajNs pin down.
++//  * Zero transient allocations. The old version bump-allocated an nt-long
++//    arena scratch vector, filled it, then copied it element-by-element into the
++//    result -- two full passes over nt longs and an arena_reset() that stomped
++//    any scratch a caller still had live. Results are now written straight into
++//    the freshly allocated result vector (which cannot alias any input), so aj
++//    performs one pass, touches the arena not at all, and is arena-neutral to
++//    its caller. That is strictly stronger than the "allocate the workspace once
++//    from the arena" rule: the workspace is gone.
+ A ajc(A x){
+  P(_t(x)-tA||_n(x)-4,et(x))
+  A*e=(A*)_V(x);
+  A QT=N(cL(_R(e[0]))),TT=N(cL(_R(e[1]))),GB=N(cL(_R(e[2]))),GE=N(cL(_R(e[3])));
+- CO L*qt=_V(QT),*tt=_V(TT),*gb=_V(GB),*ge=_V(GE);
+- U nt=_n(TT);
+- A out=aL(nt);L*m=_V(out);
+- arena_reset();                              // start a fresh scratch region for this eval
+- // On a 32-bit target (wasm32) size_t is 32 bits, so nt*sizeof(L) can wrap and
+- // silently request a short buffer that the loop below then runs off the end of.
+- P((N)nt>((N)-1)/SZ(L),mr(QT);mr(TT);mr(GB);mr(GE);mr(out);ez(x))
+- L*w=(L*)arena_alloc((N)nt*SZ(L));           // transient match-index vector (zero-alloc bump)
+- P(!w,mr(QT);mr(TT);mr(GB);mr(GE);mr(out);eo(x))
++ CO L*RES qt=_V(QT),*RES tt=_V(TT),*RES gb=_V(GB),*RES ge=_V(GE);
++ U nt=_n(TT),nq=_n(QT);
++ // On a 32-bit target (wasm32) size_t is 32 bits, so nt*sizeof(L) can wrap.
++ P((N)nt>((N)-1)/SZ(L),mr(QT);mr(TT);mr(GB);mr(GE);ez(x))
++ A out=aL(nt);L*RES m=_V(out);
++ // Loop-carried merge cursor. `run` is 0 whenever the previous row cannot serve
++ // as a lower bound for this one (first row, a null/empty slice, a slice change,
++ // or a timestamp that went backwards); pb/pe/pt hold the previous row's slice
++ // and key, `cur` the previous row's upper-bound position inside that slice.
++ L pb=0,pe=0,pt=0;U cur=0;B run=0;
+  F(nt,
+-   L b=gb[i],en=ge[i];
+-   I(b==NL||en==NL||en<=b,w[i]=NL;continue)
+-   U j=amlb(qt,(U)b,(U)en,tt[i]+1);          // first quote strictly after the trade
+-   w[i]=(j>(U)b)?(L)(j-1):NL;)               // step back to on-or-before, else null
+- F(nt,m[i]=w[i])
+- arena_reset();                              // rewind scratch at end of the eval cycle
++   L b=gb[i],en=ge[i],key=tt[i];
++   // Hoisted validity gate: a null or empty group slice yields a null match and
++   // breaks the run without ever touching qt.
++   I(b==NL||en==NL||en<=b||(U)en>nq,m[i]=NL;run=0;continue)
++   U lo=(U)b,hi=(U)en,j;
++   I(run&&b==pb&&en==pe&&key>=pt,
++     // --- monotone two-pointer advance ------------------------------------
++     U lim=hi-cur>AMGALLOP?cur+AMGALLOP:hi;
++     j=cur;W(j<lim&&qt[j]<=key,j++)
++     I(j==lim&&lim<hi,j=amub(qt,lim,hi,key)))   // walked the cap out: finish by probe
++   E(j=amub(qt,lo,hi,key))                       // --- cold path: branch-free probe
++   m[i]=j>lo?(L)(j-1):NL;                        // step back to on-or-before, else null
++   cur=j;pb=b;pe=en;pt=key;run=1;)
+  mr(QT);mr(TT);mr(GB);mr(GE);
+  return x(out);}
+ // arena self-test builtin (`arn): exercise bump / reset / overflow -> 1 on success.
+diff --git a/src/a.h b/src/a.h
+index 2c1b9f5..980aa72 100644
+--- a/src/a.h
++++ b/src/a.h
+@@ -148,6 +148,14 @@ A peach_pool(A,A,U,I);//persistent thread-pool morsel-driven peach (src/peachpoo
+ C*sf(C*,L),*sl(C*,L),sup(A*,A*),tZ(L),*strchrnul(S,I);
+ U gi(A);
+ U amlb(CO L*RES,U,U,L);//branch-free lower_bound over a sorted long slice (a.c)
++U amub(CO L*RES,U,U,L);//branch-free upper_bound (first >key) -- no key+1 overflow (a.c)
++// AMGALLOP: how far a time-series join's merge cursor walks forward linearly
++// before it gives up and binary-searches the remainder of the group slice.
++// Inside a monotone run the TOTAL forward walk is bounded by the slice width
++// regardless of this cap, so the cap costs nothing in the common (already
++// time-ordered) case; it exists purely so one row that jumps across a huge
++// slice degrades to O(log w) instead of O(w). Shared by aj (a.c) and wj (i.c).
++#define AMGALLOP 64u
+ I qA(A,A),qf(F,F),rnk(A);
+ U _K(A),si(S,C),_N(A),js_eval(C*,U,C*,U),fG(CO G*,U,G),fI(CO I*,U,I),fL(CO L*,U,L),us(S);
+ L cfm(CO A*,I),gl_(A),gl(A),iw(A,U,L),now(),pl(S*),minfZ(L,A),addfB(CO V*,U),addfZ(L,A),pf(S*);
+diff --git a/src/ast.c b/src/ast.c
+index 803eec5..10d0034 100644
+--- a/src/ast.c
++++ b/src/ast.c
+@@ -38,6 +38,7 @@
+ #include "ast.h"
+ #include "ansi.h"
+ #include "arena.h"
++#include "trace.h"   /* try_rewrite(): qsql.k's `qrw` SQL-syntax rewriter (defined in m.c) */
+ #include <stdio.h>
+ #include <string.h>
+ #include <fcntl.h>
+@@ -333,6 +334,172 @@ static ASTNode *describe_leaf(A v, UC t) {
+  * ctors, ...) safely falls through to a generic AST_VECTOR node instead of
+  * misfiring, rather than trying to special-case every peephole cr() has. */
+ 
++/* ---- qSQL clause specialization + time-series join badging ---------------
++ *
++ * See the block comment on AST_QSQL_* in ast.h for why this lives here: the
++ * SQL-ish surface syntax reaches pk() already rewritten by qsql.k's `qrw`
++ * into `sel"<clauses>"` / `exq"..."` / `upd"..."` / `del"..."`, so the query
++ * structure survives only inside that string argument. These helpers pull the
++ * head identifier out of an application, decide whether it names a query verb
++ * or a time-series join, and (for the string forms) split the clause text back
++ * apart on the same keywords qsql.k's own qsplit()/qsplit0() split on.
++ *
++ * Everything here is best-effort and non-destructive: any shape that does not
++ * match falls straight back to the generic Apply rendering that was there
++ * before, so no existing expression can render worse than it used to. */
++
++/* Identifier behind an application head, if the head IS a plain identifier.
++ * Namespaced heads (`.q.sel`, tS with n>1) report their LAST segment, which is
++ * the function name; a computed head returns 0 and the caller stays generic. */
++static int head_ident(A h, char *buf, size_t cap) {
++    UC t = _t(h);
++    if (t == ts) { snprintf(buf, cap, "%s", su((U)_v(h))); return 1; }
++    if (t == tS) {
++        U n = _n(h);
++        if (!n) return 0;
++        snprintf(buf, cap, "%s", su((U)((const I *)_V(h))[n - 1]));
++        return 1;
++    }
++    return 0;
++}
++
++/* Query verb -> block kind. Covers both the string-rewriter entry points that
++ * `qrw` actually emits (sel/exq/upd/del) and the functional-form engine verbs
++ * a hand-written query calls directly (qselect/qexec/qby/qwhere). Returns -1
++ * when `nm` is not a query verb at all. */
++static int ast_qsql_kind(const char *nm) {
++    if (!strcmp(nm, "sel")     || !strcmp(nm, "qselect")) return AST_QSQL_SELECT;
++    if (!strcmp(nm, "exq")     || !strcmp(nm, "qexec"))   return AST_QSQL_EXEC;
++    if (!strcmp(nm, "upd"))                               return AST_QSQL_UPDATE;
++    if (!strcmp(nm, "del"))                               return AST_QSQL_DELETE;
++    if (!strcmp(nm, "qby"))                               return AST_QSQL_BY;
++    if (!strcmp(nm, "qwhere"))                            return AST_QSQL_WHERE;
++    return -1;
++}
++
++static const char *qsql_word(int k) {
++    switch (k) {
++        case AST_QSQL_SELECT: return "select";
++        case AST_QSQL_EXEC:   return "exec";
++        case AST_QSQL_UPDATE: return "update";
++        case AST_QSQL_DELETE: return "delete";
++        case AST_QSQL_BY:     return "by";
++        case AST_QSQL_WHERE:  return "where";
++        default:               return "query";
++    }
++}
++
++/* What the projection slot MEANS differs per query verb, and saying so is the
++ * whole point of specializing these nodes rather than printing "arg 0". */
++static const char *qsql_proj_role(int k) {
++    switch (k) {
++        case AST_QSQL_EXEC:   return "(result expression)";
++        case AST_QSQL_UPDATE: return "(column assignments)";
++        case AST_QSQL_DELETE: return "(columns to drop)";
++        default:               return "(projection list)";
++    }
++}
++
++/* Time-series join badge for an application head, or NULL. `aj0`/`ajm` are aj's
++ * internal entry points (amber.k) and `wjK` is wj's K-level fallback for
++ * non-standard reducers; they get the same badge because they are the same
++ * join, and seeing which variant a query actually reached is exactly the kind
++ * of thing \ast is being read for. */
++static const char *ast_join_badge(const char *nm) {
++    if (!strcmp(nm, "aj") || !strcmp(nm, "aj0") || !strcmp(nm, "ajm"))
++        return "As-Of Time-Series Join";
++    if (!strcmp(nm, "wj") || !strcmp(nm, "wjK"))
++        return "Window Join";
++    return NULL;
++}
++
++/* strstr for a clause keyword, honouring qsql.k's rule that a keyword only
++ * counts when it is surrounded by spaces (" from ", " where ", " by ") -- the
++ * literal strings qsplit() searches for -- so a column called `byte` or a
++ * symbol `` `wherever `` cannot be mistaken for a clause boundary. */
++static const char *qsql_find(const char *s, const char *kw) { return strstr(s, kw); }
++
++/* Trim ASCII spaces off both ends of [b,e) into `out`. */
++static void qsql_trim(const char *b, const char *e, char *out, size_t cap) {
++    while (b < e && (*b == ' ' || *b == '\t')) b++;
++    while (e > b && (e[-1] == ' ' || e[-1] == '\t')) e--;
++    size_t n = (size_t)(e - b);
++    if (n >= cap) n = cap - 1;
++    memcpy(out, b, n);
++    out[n] = 0;
++}
++
++/* Add one clause child, but only if the clause text is non-empty -- an absent
++ * `by` or `where` should simply not appear rather than render as an empty box. */
++static void qsql_clause(ASTNode *blk, ASTKind kind, const char *lead,
++                         const char *b, const char *e, const char *note) {
++    char txt[96];
++    qsql_trim(b, e, txt, sizeof txt);
++    if (!txt[0]) return;
++    char lb[96];
++    snprintf(lb, sizeof lb, "%s%s", lead, txt);
++    ast_add_child(blk, ast_new(kind, lb, note));
++}
++
++/* Explode a rewritten qSQL clause string into a query block.
++ *
++ * Splits on the SAME keywords, in the same precedence order, that qsql.k's own
++ * sel/exq/upd/del do: ` where ` first (it is always last in the text and its
++ * predicate may itself contain the word "from"), then ` from `, then ` by `
++ * within what is left of the head. That ordering is what makes
++ * `select px by sym from t where sym in`a`b` come apart correctly. */
++static ASTNode *ast_qsql_block(int kind, const char *q) {
++    char an[80];
++    snprintf(an, sizeof an, "(qSQL %s query)", qsql_word(kind));
++    ASTNode *blk = ast_new((ASTKind)kind, qsql_word(kind), an);
++
++    /* `qrw` hands the rewriter the WHOLE matched phrase including the leading
++     * keyword (`sel"select px from t"`), and sel/exq/upd/del each strip it
++     * again on entry. Strip it here too, or the projection node would read
++     * "Columns: select px" and repeat what the block head already says. */
++    const char *kw = qsql_word(kind);
++    size_t kwl = strlen(kw);
++    while (*q == ' ') q++;
++    if (!strncmp(q, kw, kwl) && (q[kwl] == ' ' || q[kwl] == 0)) {
++        q += kwl;
++        while (*q == ' ') q++;
++    }
++
++    const char *end = q + strlen(q);
++    const char *w = qsql_find(q, " where ");
++    const char *hd_end = w ? w : end;
++
++    const char *f = qsql_find(q, " from ");
++    if (f && f > hd_end) f = NULL;               /* a `from` inside the predicate */
++    const char *proj_end = f ? f : hd_end;
++    const char *src_b = f ? f + 6 : NULL, *src_e = f ? hd_end : NULL;
++
++    const char *by = qsql_find(q, " by ");
++    if (by && by > proj_end) by = NULL;          /* a `by` past the projection */
++    if (by) proj_end = by;
++
++    qsql_clause(blk, AST_VECTOR, "Columns: ", q, proj_end, qsql_proj_role(kind));
++    if (src_b) qsql_clause(blk, AST_VAR, "From: ", src_b, src_e, "(source table)");
++    /* the by-clause runs to the end of the SELECT part, i.e. up to ` from `
++     * (or to the start of the where-clause when the query has no from). */
++    if (by)    qsql_clause(blk, AST_QSQL_BY, "By: ", by + 4, f ? f : hd_end, "(group-by clause)");
++    if (w)     qsql_clause(blk, AST_QSQL_WHERE, "Where: ", w + 7, end, "(row filter predicate)");
++    return blk;
++}
++
++/* The string argument of a rewritten query, if `a` is one. pk() hands string
++ * literals over either bare or wrapped in a 1-element list (the same `[y]`
++ * quoting the n==1 branch of ast_from_k_d unwraps), so accept both. */
++static const char *qsql_text(A a, char *buf, size_t cap) {
++    if (_t(a) == tA && _n(a) == 1) a = _x(a);
++    if (_t(a) != tC) return NULL;
++    U n = _n(a);
++    if (n >= cap) n = (U)cap - 1;
++    memcpy(buf, (const char *)_V(a), n);
++    buf[n] = 0;
++    return buf;
++}
++
+ static ASTNode *ast_from_k_d(A v, int depth) {
+     if (depth > AST_MAX_DEPTH)
+         return ast_new(AST_SCALAR, "\xe2\x80\xa6", "(max depth exceeded, truncated)");
+@@ -463,9 +630,43 @@ static ASTNode *ast_from_k_d(A v, int depth) {
+          * application / projection (`f[x;;z]`) rather than a full call. */
+         int any_blank = 0;
+         for (U i = 1; i < n; i++) if (_A(v)[i] == GAP) { any_blank = 1; break; }
++
++        /* ---- qSQL / time-series-join specialization --------------------
++         * Only a fully applied call with a plain identifier head is eligible:
++         * a projection (`sel[;x]`) has not decided its arguments yet, and a
++         * computed head is not a name we can recognise. */
++        char hn[96];
++        if (!any_blank && head_ident(head, hn, sizeof hn)) {
++            int qk = ast_qsql_kind(hn);
++            if (qk >= 0) {
++                char qbuf[512];
++                const char *qt = (n == 2) ? qsql_text(_A(v)[1], qbuf, sizeof qbuf) : NULL;
++                if (qt) return ast_qsql_block(qk, qt);   /* string form: full clause block */
++                /* Functional form -- qexec[t;w;b;d], qby[t;bk;d], ... The
++                 * arguments are arbitrary expressions rather than clause text,
++                 * so keep them as real subtrees but hang them off a query block
++                 * head so the reader still sees WHICH query stage this is. */
++                char an[80];
++                snprintf(an, sizeof an, "(qSQL %s \xe2\x80\x94 functional form)", qsql_word(qk));
++                ASTNode *blk = ast_new((ASTKind)qk, qsql_word(qk), an);
++                for (U i = 1; i < n; i++) ast_add_child(blk, ast_from_k_d(_A(v)[i], depth + 1));
++                return blk;
++            }
++        }
++
+         ASTNode *ap = ast_new(any_blank ? AST_PROJECTION : AST_APPLY,
+                                any_blank ? "Projection" : "Apply",
+                                any_blank ? "(partial application \xe2\x80\x94 some arguments curried away)" : NULL);
++        /* Time-series join badge: applies to the call node itself, so the
++         * callout sits on the line a reader's eye lands on first rather than
++         * being buried on the head's Var child. */
++        if (head_ident(head, hn, sizeof hn)) {
++            const char *badge = ast_join_badge(hn);
++            if (badge) {
++                snprintf(ap->annotation, sizeof ap->annotation, "%s", badge);
++                ap->badge = 1;
++            }
++        }
+         ast_add_child(ap, ast_from_k_d(head, depth + 1));
+         for (U i = 1; i < n; i++) ast_add_child(ap, ast_from_k_d(_A(v)[i], depth + 1));
+         return ap;
+@@ -501,6 +702,18 @@ ASTNode *ast_from_k(A v) { return ast_from_k_d(v, 0); }
+ #define C_BLANK "\x1b[2;33m" /* dim yellow   : curried/omitted argument placeholder  */
+ #define C_DIM   "\x1b[2m"    /* dim          : connectors + annotations              */
+ #define C_RST   ANSI_RST
++/* ---- 1.9.5 additions ------------------------------------------------------
++ * Deliberately drawn from the SAME 16-colour space the rest of the palette
++ * uses (no 256-colour or truecolour escapes), so the tree renders identically
++ * in a bare TTY, tmux, and a notebook terminal, and stays legible on both dark
++ * and light backgrounds -- the constraint ansi.h already documents for the
++ * diagnostic palette. The query kinds get blue because blue is otherwise
++ * unused except by tacit trains, which never co-occur with a query block. */
++#define C_QSQL  "\x1b[1;94m" /* bold bright blue  : qSQL query block heads           */
++#define C_CLAUSE "\x1b[1;95m"/* bold bright magenta: by / where clause nodes         */
++#define C_BADGE "\x1b[1;93m" /* bold bright yellow: time-series join callouts        */
++#define C_FRAME "\x1b[2;37m" /* dim grey          : banner frame                     */
++#define C_TTL   "\x1b[1;97m" /* bold bright white : banner title + analysed expr     */
+ 
+ static const char *node_color(ASTKind k) {
+     switch (k) {
+@@ -519,6 +732,12 @@ static const char *node_color(ASTKind k) {
+         case AST_HOOK:       return C_TRAIN;
+         case AST_FORK:       return C_TRAIN;
+         case AST_BLANK:      return C_BLANK;
++        case AST_QSQL_SELECT:
++        case AST_QSQL_EXEC:
++        case AST_QSQL_UPDATE:
++        case AST_QSQL_DELETE: return C_QSQL;
++        case AST_QSQL_BY:
++        case AST_QSQL_WHERE:  return C_CLAUSE;
+         default:              return "";
+     }
+ }
+@@ -540,6 +759,12 @@ static const char *kind_prefix(ASTKind k) {
+         case AST_HOOK:       return "Hook";
+         case AST_FORK:       return "Fork";
+         case AST_BLANK:      return "Blank";
++        case AST_QSQL_SELECT: return "qSQL Select";
++        case AST_QSQL_EXEC:   return "qSQL Exec";
++        case AST_QSQL_UPDATE: return "qSQL Update";
++        case AST_QSQL_DELETE: return "qSQL Delete";
++        case AST_QSQL_BY:     return "Clause";
++        case AST_QSQL_WHERE:  return "Clause";
+         default:               return "Node";
+     }
+ }
+@@ -567,7 +792,12 @@ static void print_node(const ASTNode *n, char *prefix, int is_last, int depth) {
+     const char *color = node_color(n->kind);
+     printf("%s : ", kind_prefix(n->kind));
+     print_label(n->label, color, n->split);
+-    if (n->annotation[0]) printf(" %s%s%s", C_DIM, n->annotation, C_RST);
++    if (n->annotation[0]) {
++        /* A badge is a callout, not a type tag: render it bright and bracketed
++         * so it reads as a label ON the node rather than as dim trailing prose. */
++        if (n->badge) printf(" %s[ %s ]%s", C_BADGE, n->annotation, C_RST);
++        else          printf(" %s%s%s", C_DIM, n->annotation, C_RST);
++    }
+     printf("\n");
+ 
+     char child_prefix[256];
+@@ -581,8 +811,71 @@ static void print_node(const ASTNode *n, char *prefix, int is_last, int depth) {
+  * the parsed input was a `;`-separated block of statements, each statement
+  * becomes a direct child of Root; a single expression becomes Root's one
+  * child. Either way nothing is drawn as a redundant "Block : ;" node. */
++/* ---- framed banner --------------------------------------------------------
++ * Drawn only when print_ast() is handed an AST_ROOT wrapper carrying the
++ * analysed source text in its label (which is what ast_cmd() builds). Any
++ * other node prints exactly as it always did, so a caller that converts a
++ * subtree with ast_from_k() and prints it directly is unaffected.
++ *
++ * Widths are measured in DISPLAY COLUMNS, not bytes: the frame itself is
++ * U+2500-family box drawing (3 bytes per glyph) and an expression may contain
++ * multi-byte characters too, so counting bytes would tear the right-hand
++ * border. disp_len() counts UTF-8 lead bytes, which is exact for the box
++ * glyphs and for ordinary text, and degrades gracefully on the rest. */
++#define AST_FRAME_W 63   /* columns between the two vertical borders */
++
++static int disp_len(const char *s) {
++    int n = 0;
++    for (; *s; s++) if ((*s & 0xC0) != 0x80) n++;   /* skip continuation bytes */
++    return n;
++}
++
++/* Emit `n` copies of the U+2500 horizontal box-drawing rule. */
++static void rule(int n) { for (int i = 0; i < n; i++) printf("\xe2\x94\x80"); }
++
++static void print_banner(const char *expr) {
++    static const char *TITLE = " AST Visualization ";
++    const char *lead = "Expr: ";
++    int leadw = disp_len(lead) + 1;             /* +1 for the space after "|" */
++    int room  = AST_FRAME_W - leadw;            /* columns available to `expr` */
++
++    /* Truncate an over-long expression with a single-glyph ellipsis rather
++     * than letting it blow the frame open. */
++    char buf[512];
++    snprintf(buf, sizeof buf, "%s", expr ? expr : "");
++    int elen = disp_len(buf);
++    if (elen > room) {
++        int keep = room - 1, cols = 0;
++        char *p = buf;
++        while (*p && cols < keep) { p++; while ((*p & 0xC0) == 0x80) p++; cols++; }
++        snprintf(p, sizeof buf - (size_t)(p - buf), "\xe2\x80\xa6");
++        elen = cols + 1;
++    }
++
++    printf("%s\xe2\x94\x8c", C_FRAME); rule(2);                 /* "|--"        */
++    printf("%s%s%s", C_TTL, TITLE, C_FRAME);
++    rule(AST_FRAME_W - 2 - disp_len(TITLE));
++    printf("\xe2\x94\x90%s\n", C_RST);                          /* "-...-|"     */
++
++    printf("%s\xe2\x94\x82%s %s%s%s", C_FRAME, C_RST, C_DIM, lead, C_RST);
++    printf("%s%s%s", C_TTL, buf, C_RST);
++    for (int i = elen; i < room; i++) putchar(' ');
++    printf("%s\xe2\x94\x82%s\n", C_FRAME, C_RST);
++
++    printf("%s\xe2\x94\x94", C_FRAME); rule(AST_FRAME_W);
++    printf("\xe2\x94\x98%s\n", C_RST);
++}
++
+ void print_ast(const ASTNode *root) {
+     if (!root) { printf("(empty)\n"); return; }
++    if (root->kind == AST_ROOT) {           /* framed form (what \ast prints) */
++        print_banner(root->label);
++        printf("Root\n");
++        char prefix[256] = "";
++        for (int i = 0; i < root->nchildren; i++)
++            print_node(root->children[i], prefix, i == root->nchildren - 1, 1);
++        return;
++    }
+     printf("Root\n");
+     char prefix[256] = "";
+     if (root->kind == AST_BLOCK) {
+@@ -603,13 +896,33 @@ A ast_cmd(S s) {
+      * is arena-backed, not malloc'd. */
+     arena_reset();
+ 
+-    S p = s;
++    /* Run the input through qsql.k's `qrw` SQL-syntax rewriter first, exactly
++     * as \trace (trace.c) and the interactive REPL line handler already do.
++     * Without this, `\ast select px from t` would be a parse error, because
++     * `select ... from ...` is not K syntax at all -- it only becomes the
++     * `sel"px from t"` application that pk() can parse once qrw has rewritten
++     * it. try_rewrite() is safe to call unconditionally: if qsql.k has not
++     * been loaded (as in ast_selftest() and tests/test_ast.c, which call
++     * kinit() and nothing else) it hands the raw text straight back. */
++    C rbuf[512];
++    S src = try_rewrite(s, rbuf, sizeof rbuf);
++
++    S p = src;
+     A tree = pk(&p, 10); /* parse only -- never cpl()/run() this (except the
+                            * one unavoidable exception documented in ast.h:
+                            * pk() itself compiles embedded lambda literals) */
+     if (!tree) { printf("\\ast: parse error\n"); arena_reset(); return au; }
+ 
+-    ASTNode *root = ast_from_k(tree);
++    /* Wrap in the AST_ROOT carrier so print_ast() draws the framed banner and
++     * can show the expression it actually analysed (i.e. post-rewrite, which is
++     * the tree on screen -- showing the pre-rewrite text next to a rewritten
++     * tree would be actively misleading). */
++    ASTNode *root = ast_new(AST_ROOT, src, NULL);
++    ASTNode *body = ast_from_k(tree);
++    if (body && body->kind == AST_BLOCK)
++        for (int i = 0; i < body->nchildren; i++) ast_add_child(root, body->children[i]);
++    else
++        ast_add_child(root, body);
+     print_ast(root);
+     ast_free(root); /* no-op, see ast.h -- arena_reset() below does the real work */
+     mr(tree);        /* release the parse tree pk() handed us */
+@@ -635,6 +948,18 @@ I ast_selftest(void) {
+         {"`a`b`c",             "Symbol Vector[3]", "`a"},
+         {".ns.sub",            "ns.sub",        "Value/Eval"},
+         {"f:{x+y+z};f[1;;3]",  "Blank",         "curried"},
++        /* ---- 1.9.5 additions --------------------------------------------
++         * The qSQL cases are written in the ALREADY-REWRITTEN `sel"..."` form
++         * on purpose: `astt` may be invoked before qsql.k is loaded, in which
++         * case try_rewrite() is a pass-through and bare `select ... from ...`
++         * would not parse. Testing the rewritten form checks this module's own
++         * clause decomposition, which is what changed. */
++        {"1+2",                            "AST Visualization",      "Expr: "},
++        {"aj[`sym`time;t;q]",              "As-Of Time-Series Join", "Apply"},
++        {"wj[w;`sym`time;t;q;a]",          "Window Join",            "Apply"},
++        {"sel\"select px by sym from t where px>1\"",
++                                            "qSQL Select",            "By: sym"},
++        {"upd\"update px:px*2 from t\"",   "qSQL Update",            "column assignments"},
+     };
+     CO C *P_ = "/tmp/.amber_ast_selftest.out";
+     B ok = 1;
+diff --git a/src/ast.h b/src/ast.h
+index 59b98f0..9e4800b 100644
+--- a/src/ast.h
++++ b/src/ast.h
+@@ -63,6 +63,26 @@ typedef enum {
+     AST_BINOP,      /* dyadic (binary) verb application: `x + y`              */
+     AST_PROJECTION, /* a curried/partial application: `1+`, `f[x;;z]`         */
+     AST_APPLY,      /* general application `f[x;y]`                          */
++    /* ---- qSQL clause specialization ------------------------------------
++     * Amber's SQL-ish surface syntax is not a separate grammar: qsql.k's
++     * `qrw` rewrites `select px by sym from t where px>10` into an ordinary
++     * application of a K function to a string -- `sel"px by sym from t
++     * where px>10"` -- and THAT is what pk() hands this module (see the
++     * probe in ast_qsql_kind() below). Rendering it as a bare Apply with an
++     * opaque 25-character string leaf tells the reader nothing about the
++     * query, so \ast recognises the four query verbs (sel/exq/upd/del, and
++     * their functional-form counterparts qselect/qexec/qby/qwhere) and
++     * explodes the string back into the clause structure it encodes.
++     *
++     * The four *_SELECT/_EXEC/_UPDATE/_DELETE kinds are query BLOCK heads,
++     * one per query; _BY and _WHERE are the optional clause children that
++     * hang off a block. */
++    AST_QSQL_SELECT,/* `select ... from ...`  query block head               */
++    AST_QSQL_EXEC,  /* `exec ... from ...`    query block head               */
++    AST_QSQL_UPDATE,/* `update ... from ...`  query block head               */
++    AST_QSQL_DELETE,/* `delete ... from ...`  query block head               */
++    AST_QSQL_BY,    /* `by <cols>` grouping clause                           */
++    AST_QSQL_WHERE, /* `where <pred>` row-filter clause                      */
+     AST_VAR,        /* a variable or (possibly namespaced) symbol reference   */
+     AST_SCALAR,     /* an atomic literal: number, char, symbol, boolean, ...  */
+     AST_VECTOR,     /* a literal vector/list payload (previewed, not expanded)*/
+@@ -79,6 +99,13 @@ typedef struct ASTNode {
+                               * adverb glyph begins, so print_node() can color
+                               * the verb part bold cyan and the adverb part
+                               * bold magenta within one node. 0 = no split. */
++    int badge;              /* 1 = render `annotation` as a highlighted badge
++                              * (bold bright yellow) instead of the usual dim
++                              * grey. Used for the time-series join callouts
++                              * (`aj` -> As-Of Time-Series Join, `wj` -> Window
++                              * Join), which are the one annotation a reader is
++                              * actually scanning the tree FOR and so should not
++                              * be de-emphasised like a type tag. */
+     struct ASTNode **children;
+     int nchildren;
+     int cap;                /* children array capacity (internal bookkeeping) */
+diff --git a/src/i.c b/src/i.c
+index b0d55c3..8934e76 100644
+--- a/src/i.c
++++ b/src/i.c
+@@ -12,6 +12,7 @@
+ #include<sys/mman.h>
+ #include<dirent.h>
+ #include"a.h"
++#include"arena.h"
+ Z U addr(S*p)_(S s=*p;P(!*s,0x0100007f)UC v[4];F(4,I(i,P(*s-'.',ed0())s++)v[i]=pu(&s);P(v[i]>255,ed0()))*p=s;*(U*)v)
+ Z I skt(U h,UH p)_(I f=socket(AF_INET,SOCK_STREAM,0);P(f<0,eo0())I v=setsockopt(f,IPPROTO_TCP,TCP_NODELAY,(I[]){1},4);P(v<0,eo0())
+ ST sockaddr_in a;a.sin_family=AF_INET;a.sin_addr.s_addr=h;a.sin_port=(UH)(p<<8|p>>8);P(connect(f,(ST sockaddr*)&a,SZ a)<0,eo0())f)
+@@ -102,49 +103,116 @@ A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);U n=_N(dat);I n
+ //  w0,w1 long window bounds per trade row (length nt)
+ //  gb,ge long group-slice [base,end) in q per trade row (length nt)
+ // returns list of nt-length result columns (tF for avg/float-source, tL otherwise).
+-// O(log g) range probe per row + one contiguous slice sweep; no per-row K objects.
++//
++// amber 1.9.5 kernel overhaul. The old shape was one fused loop nest per
++// aggregate column, with EVERY type decision re-evaluated per row and, worse,
++// per element: `isf?pf[k]:(F)pl[k]` inside the min/max/sum sweeps meant a
++// data-independent branch on every single value, which is exactly what stops
++// GCC/Clang from ever emitting a vector body. And the window probe -- two
++// binary searches per row -- was repeated once per aggregate column even though
++// the bounds depend only on (qt,w0,w1,gb,ge) and are therefore identical for
++// all of them. Now:
++//
++//  1. ONE bounds pass (wjbounds) computes [lo,hi) for every row a single time
++//     and parks it in two arena-bump scratch vectors reused by every column, so
++//     an N-aggregate window join does 1/N of the probes it used to.
++//  2. That pass uses the same monotone two-pointer merge as aj: consecutive
++//     rows of a time-ordered table share a group slice and have non-decreasing
++//     window edges, so both cursors walk forward and the run costs O(run+slice)
++//     rather than O(run*log slice). Non-monotone rows fall back to the
++//     branch-free binary probe, so results are input-order independent.
++//  3. Reduction is done by fully specialized restrict-qualified kernels chosen
++//     ONCE per column (wjrFF/wjrLL/wjrLF/wjrCNT). Inside those there is no type
++//     test, no reducer test, no object header -- just a contiguous sweep over a
++//     `const F*restrict` or `const L*restrict`, annotated with `omp simd
++//     reduction(...)` so AVX2/NEON auto-vectorization actually fires.
++//
++// Three latent defects are fixed on the way through, all of which UBSan/ASan
++// can see: `W1[i]+1` was signed overflow at WL (now amub, which needs no +1);
++// an inverted window (w1<w0) made `hi-lo` underflow to a ~2^64 count and read
++// off the end of the column (now clamped); and the integer `sum` accumulated in
++// signed L, which is undefined on overflow (now accumulated in W, identical
++// bits, defined wraparound -- the same treatment src/2.c's add kernels get).
++#ifdef _OPENMP
++ #define WJPRAGMA(x) _Pragma(#x)
++ #define WJSIMD(...) WJPRAGMA(omp simd reduction(__VA_ARGS__))
++#else
++ #define WJSIMD(...)
++#endif
++// Forward cursor probes: walk at most AMGALLOP steps from the previous row's
++// answer, then finish with the branch-free binary probe over what is left.
++Z U wjfwd_lb(CO L*RES a,U cur,U hi,L key){U lim=hi-cur>AMGALLOP?cur+AMGALLOP:hi,j=cur;
++ W(j<lim&&a[j]<key,j++)I(j==lim&&lim<hi,j=amlb(a,lim,hi,key))return j;}
++Z U wjfwd_ub(CO L*RES a,U cur,U hi,L key){U lim=hi-cur>AMGALLOP?cur+AMGALLOP:hi,j=cur;
++ W(j<lim&&a[j]<=key,j++)I(j==lim&&lim<hi,j=amub(a,lim,hi,key))return j;}
++// Pass 1: per-row half-open window [LO[i],HI[i]) inside the row's group slice.
++// A null/empty/out-of-range slice, or an inverted window, yields the empty
++// range 0,0 -- every reducer below then produces that reducer's identity.
++Z V wjbounds(CO L*RES T,U nq,CO L*RES W0,CO L*RES W1,CO L*RES GB,CO L*RES GE,U nt,U*RES LO,U*RES HI){
++ L pb=0,pe=0,p0=0,p1=0;U clo=0,chi=0;B run=0;
++ F(nt,
++   L b=GB[i],en=GE[i];
++   I(b==NL||en==NL||en<=b||(U)en>nq,LO[i]=0;HI[i]=0;run=0;continue)
++   L k0=W0[i],k1=W1[i];U h=(U)en,lo,hi;
++   I(run&&b==pb&&en==pe&&k0>=p0&&k1>=p1,lo=wjfwd_lb(T,clo,h,k0);hi=wjfwd_ub(T,chi,h,k1))
++   E(lo=amlb(T,(U)b,h,k0);hi=amub(T,(U)b,h,k1))
++   I(hi<lo,hi=lo)                      // inverted window -> empty, never a wrapped count
++   LO[i]=lo;HI[i]=hi;clo=lo;chi=hi;pb=b;pe=en;p0=k0;p1=k1;run=1;)}
++// Pass 2, float column -> float result. c: 0=first 1=last 2=min 3=max 4=sum 5=avg.
++Z V wjrFF(CO F*RES p,CO U*RES LO,CO U*RES HI,U nt,I c,F*RES o){
++ S(c,
++  C(0,F(nt,U a=LO[i];o[i]=a<HI[i]?p[a]:NF))
++  C(1,F(nt,U b=HI[i];o[i]=LO[i]<b?p[b-1]:NF))
++  C(2,F(nt,U a=LO[i],b=HI[i];F r=WF;WJSIMD(min:r)for(U k=a;k<b;k++)r=p[k]<r?p[k]:r;o[i]=r))
++  C(3,F(nt,U a=LO[i],b=HI[i];F r=-WF;WJSIMD(max:r)for(U k=a;k<b;k++)r=p[k]>r?p[k]:r;o[i]=r))
++  C(4,F(nt,U a=LO[i],b=HI[i];F r=0;WJSIMD(+:r)for(U k=a;k<b;k++)r+=p[k];o[i]=r))
++  D(F(nt,U a=LO[i],b=HI[i];F r=0;WJSIMD(+:r)for(U k=a;k<b;k++)r+=p[k];o[i]=b>a?r/(F)(b-a):NF)))}
++// Pass 2, long column -> long result. c: 0=first 1=last 2=min 3=max 4=sum.
++Z V wjrLL(CO L*RES p,CO U*RES LO,CO U*RES HI,U nt,I c,L*RES o){
++ S(c,
++  C(0,F(nt,U a=LO[i];o[i]=a<HI[i]?p[a]:NL))
++  C(1,F(nt,U b=HI[i];o[i]=LO[i]<b?p[b-1]:NL))
++  C(2,F(nt,U a=LO[i],b=HI[i];L r=WL;WJSIMD(min:r)for(U k=a;k<b;k++)r=p[k]<r?p[k]:r;o[i]=r))
++  C(3,F(nt,U a=LO[i],b=HI[i];L r=-WL;WJSIMD(max:r)for(U k=a;k<b;k++)r=p[k]>r?p[k]:r;o[i]=r))
++  // W accumulator: defined two's-complement wraparound, bit-identical to the
++  // signed sum the old code computed but without the undefined behaviour.
++  D(F(nt,U a=LO[i],b=HI[i];W r=0;WJSIMD(+:r)for(U k=a;k<b;k++)r+=(W)p[k];o[i]=(L)r)))}
++// Pass 2, long column -> float result (avg only: the one reducer that widens).
++Z V wjrLF(CO L*RES p,CO U*RES LO,CO U*RES HI,U nt,F*RES o){
++ F(nt,U a=LO[i],b=HI[i];F r=0;WJSIMD(+:r)for(U k=a;k<b;k++)r+=(F)p[k];o[i]=b>a?r/(F)(b-a):NF)}
++// Pass 2, count: source-independent, it is just the window width.
++Z V wjrCNT(CO U*RES LO,CO U*RES HI,U nt,L*RES o){F(nt,o[i]=(L)(HI[i]-LO[i]))}
+ A wjc(A x){
+  P(_t(x)-tA||_n(x)-7,et(x))
+  A*e=(A*)_V(x);
+  P(!_n(e[1]),x(emp(tA)))
+  // normalise all integer inputs to 64-bit long (columns/times/bounds may be squeezed to G/H/I widths)
+  A QT=N(cL(_R(e[0]))),CD=N(cL(_R(e[2]))),W0A=N(cL(_R(e[3]))),W1A=N(cL(_R(e[4]))),GBA=N(cL(_R(e[5]))),GEA=N(cL(_R(e[6])));
+- CO L*T=_V(QT),*W0=_V(W0A),*W1=_V(W1A),*GB=_V(GBA),*GE=_V(GEA),*cod=_V(CD);
+- U nt=_n(W0A),na=_n(e[1]);
++ // Raw contiguous primitive column pointers, extracted ONCE before any loop.
++ CO L*RES T=_V(QT),*RES W0=_V(W0A),*RES W1=_V(W1A),*RES GB=_V(GBA),*RES GE=_V(GEA),*RES cod=_V(CD);
++ U nt=_n(W0A),na=_n(e[1]),nq=_n(QT);
+  A*QC=(A*)_V(e[1]);
++ // The two bounds vectors are the kernel's ONLY workspace and are bump-allocated
++ // from the thread-local arena exactly once, before the column loop -- no heap,
++ // no per-row or per-column allocation. evs() rewinds the arena at the end of
++ // the eval cycle, so wjc deliberately does NOT arena_reset() and cannot stomp
++ // scratch a caller still has live.
++ P((N)nt>((N)-1)/SZ(U),mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);ez(x))
++ U*RES LO=(U*)arena_alloc((N)nt*SZ(U)),*RES HI=(U*)arena_alloc((N)nt*SZ(U));
++ P(!LO||!HI,mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);eo(x))
++ wjbounds(T,nq,W0,W1,GB,GE,nt,LO,HI);
+  A res=aA(na);A*R=(A*)_V(res);
+  for(U a=0;a<na;a++){
+   A col=QC[a];I c=(I)cod[a];
++  // Every type/reducer decision is resolved HERE, once per column, outside any
++  // loop over rows or elements.
+   B isf=_t(col)==tF,flo=(c==5)||(isf&&c!=6);
+   A out=flo?aF(nt):aL(nt);
+-  A colL=isf?0:N(cL(_R(col)));
+-  F*of=(F*)_V(out);L*ol=(L*)_V(out);
+-  CO F*pf=isf?(CO F*)_V(col):0;CO L*pl=isf?0:(CO L*)_V(colL);
+-  for(U i=0;i<nt;i++){
+-   L b=GB[i],en=GE[i];U lo,hi;
+-   if(b==NL||en==NL||en<=b){lo=0;hi=0;}
+-   else{lo=amlb(T,(U)b,(U)en,W0[i]);hi=amlb(T,(U)b,(U)en,W1[i]+1);}
+-   U m=hi-lo;
+-   if(c==6){ol[i]=(L)m;continue;}
+-   if(flo){F r;
+-    if(!m)r=c==2?WF:c==3?-WF:c==4?0.0:NF;
+-    else if(c==0)r=isf?pf[lo]:(F)pl[lo];
+-    else if(c==1)r=isf?pf[hi-1]:(F)pl[hi-1];
+-    else if(c==2){r=WF;for(U k=lo;k<hi;k++){F v=isf?pf[k]:(F)pl[k];if(v<r)r=v;}}
+-    else if(c==3){r=-WF;for(U k=lo;k<hi;k++){F v=isf?pf[k]:(F)pl[k];if(v>r)r=v;}}
+-    else if(c==4){r=0;for(U k=lo;k<hi;k++)r+=isf?pf[k]:(F)pl[k];}
+-    else{r=0;for(U k=lo;k<hi;k++)r+=isf?pf[k]:(F)pl[k];r/=m;}
+-    of[i]=r;
+-   }else{L r;
+-    if(!m)r=c==2?WL:c==3?-WL:c==4?0:NL;
+-    else if(c==0)r=pl[lo];
+-    else if(c==1)r=pl[hi-1];
+-    else if(c==2){r=pl[lo];for(U k=lo+1;k<hi;k++)if(pl[k]<r)r=pl[k];}
+-    else if(c==3){r=pl[lo];for(U k=lo+1;k<hi;k++)if(pl[k]>r)r=pl[k];}
+-    else{r=0;for(U k=lo;k<hi;k++)r+=pl[k];}
+-    ol[i]=r;
+-   }
+-  }
++  A colL=(isf||c==6)?0:N(cL(_R(col)));   // count never reads the column at all
++  if(c==6)                       wjrCNT(LO,HI,nt,(L*)_V(out));
++  else if(isf)                   wjrFF((CO F*)_V(col),LO,HI,nt,c,(F*)_V(out));
++  else if(c==5)                  wjrLF((CO L*)_V(colL),LO,HI,nt,(F*)_V(out));
++  else                           wjrLL((CO L*)_V(colL),LO,HI,nt,c,(L*)_V(out));
+   if(colL)mr(colL);
+   R[a]=out;
+  }
+diff --git a/src/v.c b/src/v.c
+index 9363e1b..c769612 100644
+--- a/src/v.c
++++ b/src/v.c
+@@ -1,4 +1,19 @@
+ #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
++// ---- vectorisation hints ---------------------------------------------------
++// Same probe-don't-assume policy as src/3.c: build.sh only adds -fopenmp when
++// the compiler actually accepts it, so where it is absent these expand to
++// nothing and the plain loops still compile and produce identical results. They
++// are hints; they never change semantics, only whether GCC/Clang is allowed to
++// issue an AVX2 / NEON body for a loop it could not otherwise prove safe to
++// reassociate or to run without aliasing checks.
++#ifdef _OPENMP
++ #define VPRAGMA(x) _Pragma(#x)
++ #define VSIMD      VPRAGMA(omp simd)
++ #define VSIMDR(...) VPRAGMA(omp simd reduction(__VA_ARGS__))
++#else
++ #define VSIMD
++ #define VSIMDR(...)
++#endif
+ X1(flp,Rt(enl(enl(x)))R_(enl(x))RM(A y=kv(&x);am(x,y))RB(flp(cG(x)))
+  Rm(A y=kv(&x);Y(RA(I(yn>1,L n=cfm(yA,yn);P(n<0,x(el(y)))F(yn,A z=ya;I(ztt,y=mut(y);ya=rsz(n,z))))aM(x,y))RT_A(aM(x,e1f(enl,y)))R_(x(en(y))))0)
+  RA(U m=xn;L n=cfm(xA,m|!m);P(n==-1,enl(x))P(n<0,el(x))C t=_t(xx);I(t<tM&&t-tE,F(m,A y=xa;B(yt-t,t=0)))E(t=0)A y=aA(n);
+@@ -10,9 +25,21 @@ X1(flp,Rt(enl(enl(x)))R_(enl(x))RM(A y=kv(&x);am(x,y))RB(flp(cG(x)))
+ // 64 bits. Done in L that is signed overflow -- undefined behaviour, and UBSan
+ // flags it on examples/practice.k. W (unsigned) gives the same bits with
+ // defined semantics; the stored value is cast back to L unchanged.
+-V tilV(V*p,L v,L n,U w){L*a=p;W k=(W)G(0x101010101010101ll,0x1000100010001ll,1ll<<32|1,1)[w],d=k<<(3-w),q=(W)v;
++// amber 1.9.5: `a` is restrict-qualified and the induction on `q` is turned into
++// a closed form (base + i*d) so the store loop carries no dependency at all.
++// The old `q+=d` chain forced one lane per iteration; with the stride folded in
++// the compiler can issue a wide vector store per group. Identical bit pattern:
++// the k-th element was always base + k*d, the accumulator just computed it
++// serially. Arithmetic stays in W (unsigned), so the intentional wrap at 64 bits
++// this packed multi-lane counter relies on is still defined behaviour.
++V tilV(V*p,L v,L n,U w){L*RES a=p;W k=(W)G(0x101010101010101ll,0x1000100010001ll,1ll<<32|1,1)[w],d=k<<(3-w),q=(W)v;
+  q*=k;q+=(W)G(0x706050403020100ll,0x3000200010000ll,1ll<<32,0)[w];
+- F((n-1>>3-w)+4&-4,a[i]=(L)q;q+=d)}
++ // Explicit loop, not the F() macro: F() declares its bound and its counter in
++ // one init clause, which is not an OpenMP canonical loop form, so `omp simd`
++ // will not attach to it (src/3.c spells its reduction loops out for the same
++ // reason).
++ L m=(n-1>>3-w)+4&-4;
++ VSIMD for(L i=0;i<m;i++)a[i]=(L)(q+(W)i*d);}
+ X1(til,RA(K1("{x@'!#'x}",x))Ril(L n=gl(x);I(n==NL,n=0)aE(MIN(0,n),MAX(0,n)))REBGHIL(K1("{(*a)#'&'x#'1_a:|*\\|x,1}",x))RmM(x(_R(xx)))Ro(val(x))RS(gns(_v(jS(x))))Rs(gns(xv))R_(et(x)))
+ X1(whr,Ril(whr(enl(x)))RA(K1("{$[`A~@x;(,&#'*'x),,'/x@\\:!0|/#'x:o'x;,&x]}",x))Rm(A y=kv(&x);x(x1(Nx(whr(y)))))RE(whr(gZ(x)))R_(et(x))
+  RB(U m=xn,n=addfB(xV,m);A y=aI(n);I*r=yV;Mx(F(m+7>>3,C v=xg;W(v,U j=CTZ(v);v&=~(1<<j);*r++=i<<3|j)))Q(r-yI==n);y)
+@@ -32,5 +59,27 @@ X2(crt,Rt(fil(x,y))R_(en(y))
+   K2("{x@&~(!0),x~\\:y}/",x,y)))
+ B tru(A x/*1*/)_(B v=xtU?x!=au:xtt?!!gl_(x):!!xN;x(0);v)
+ X1(imx,RGHILC(imn(inv(x)))RF(imx(of1(x)))RE(Lij x(0);az(j-i?j-i-1:NL))R_(fir(N(dsc(x)))))
++ // amber 1.9.5: argmin as two vectorisable passes instead of one branchy scan.
++ // The old body was `if(p[i]<v){v=p[i];j=i;}` -- a loop-carried dependency on
++ // BOTH the running minimum and the running index, plus a data-dependent branch,
++ // which pins it to roughly one element per iteration and blocks the vectoriser
++ // outright (it cannot reassociate a reduction that also carries an index).
++ // Splitting it into (1) a pure `min` reduction, which `omp simd reduction(min:)`
++ // turns into one wide pminu/pmins per group, and (2) a scan for the FIRST
++ // element equal to that minimum, which exits at the answer, gives the identical
++ // result -- "first index of the smallest value" is exactly what both phrasings
++ // compute -- while the expensive phase now runs at vector width.
++ // The base pointer is pulled out of the loop and restrict-qualified, so no
++ // object header is re-read and no runtime aliasing check is emitted.
++ // Written with explicit `for`s rather than the F() macro: F() declares its
++ // bound and its counter in a single init clause, which is not an OpenMP
++ // canonical loop form, so `omp simd` would silently fail to attach (src/3.c
++ // spells its reduction loops out for exactly the same reason).
++// The macro is defined OUTSIDE the X1() invocation on purpose: a preprocessing
++// directive that sits inside a function-like macro's argument list is undefined
++// behaviour in C99 (6.10.3p11) -- GCC tolerates it, other front ends need not.
++#define VIMN(T) {CO T*RES p=xV;T v=*p;VSIMDR(min:v)for(N i=0;i<n;i++)v=p[i]<v?p[i]:v;\
++                 for(N i=0;i<n;i++)if(p[i]==v){j=(L)i;break;}}
+ X1(imn,RF(imn(of1(x)))RE(Lij x(0);az(NL*(i==j)))R_(fir(N(asc(x))))
+- RGHILC(N n=xn;L j=n?0:NL;S4(xw-3,{G v=*xG;F(n,I(xg<v,v=xg;j=i))},{H v=*xH;F(n,I(xh<v,v=xh;j=i))},{I v=*xI;F(n,I(xi<v,v=xi;j=i))},{L v=*xL;F(n,I(xl<v,v=xl;j=i))})x(az(j))))
++ RGHILC(N n=xn;L j=n?0:NL;S4(xw-3,VIMN(G),VIMN(H),VIMN(I),VIMN(L))x(az(j))))
++#undef VIMN
+diff --git a/tests/test_ast.c b/tests/test_ast.c
+index fb3b54e..13a95df 100644
+--- a/tests/test_ast.c
++++ b/tests/test_ast.c
+@@ -53,14 +53,19 @@
+ 
+ static int fails = 0;
+ 
+-/* Runs `\ast src`, captures its stdout, and asserts every string in
+- * `must[]` (NULL-terminated) appears somewhere in the printed tree. */
+-static void expect_contains(const char *src, const char *const must[], const char *what) {
++/* Runs `\ast src` with stdout redirected to a temp file and copies whatever it
++ * printed into `buf`. Factored out of expect_contains()/expect_no_placeholder()
++ * (which had two byte-identical copies of it) so the 1.9.5 checks that need to
++ * inspect the raw output themselves -- banner column alignment, "this must NOT
++ * appear" assertions -- can reuse it. Writes an empty string on capture
++ * failure, so every caller can just read `buf` unconditionally. */
++static void capture_ast(const char *src, char *buf, size_t cap) {
+     CO C *path = "/tmp/.amber_test_ast_capture.out";
++    buf[0] = 0;
+     fflush(stdout);
+     int saved = dup(1);
+     int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0600);
+-    if (saved < 0 || fd < 0) { fprintf(stderr, "FAIL %s: could not capture stdout\n", what); fails++; if (saved >= 0) close(saved); if (fd >= 0) close(fd); return; }
++    if (saved < 0 || fd < 0) { if (saved >= 0) close(saved); if (fd >= 0) close(fd); return; }
+ 
+     dup2(fd, 1);
+     ast_cmd((S)src);
+@@ -68,14 +73,19 @@ static void expect_contains(const char *src, const char *const must[], const cha
+     dup2(saved, 1);
+ 
+     lseek(fd, 0, SEEK_SET);
+-    char buf[8192];
+-    long n = read(fd, buf, sizeof buf - 1);
++    long n = read(fd, buf, cap - 1);
+     if (n < 0) n = 0;
+     buf[n] = 0;
+     close(fd);
+     close(saved);
+     remove(path);
++}
+ 
++/* Runs `\ast src`, captures its stdout, and asserts every string in
++ * `must[]` (NULL-terminated) appears somewhere in the printed tree. */
++static void expect_contains(const char *src, const char *const must[], const char *what) {
++    char buf[8192];
++    capture_ast(src, buf, sizeof buf);
+     for (int i = 0; must[i]; i++) {
+         if (!strstr(buf, must[i])) {
+             fprintf(stderr, "FAIL %s: \\ast %s\n  expected to contain: %s\n  got:\n%s\n", what, src, must[i], buf);
+@@ -89,26 +99,8 @@ static void expect_contains(const char *src, const char *const must[], const cha
+  * *correct* label, since it would also catch some *new*, differently-named
+  * placeholder this revision didn't anticipate. */
+ static void expect_no_placeholder(const char *src, const char *what) {
+-    CO C *path = "/tmp/.amber_test_ast_capture.out";
+-    fflush(stdout);
+-    int saved = dup(1);
+-    int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0600);
+-    if (saved < 0 || fd < 0) { fprintf(stderr, "FAIL %s: could not capture stdout\n", what); fails++; if (saved >= 0) close(saved); if (fd >= 0) close(fd); return; }
+-
+-    dup2(fd, 1);
+-    ast_cmd((S)src);
+-    fflush(stdout);
+-    dup2(saved, 1);
+-
+-    lseek(fd, 0, SEEK_SET);
+     char buf[8192];
+-    long n = read(fd, buf, sizeof buf - 1);
+-    if (n < 0) n = 0;
+-    buf[n] = 0;
+-    close(fd);
+-    close(saved);
+-    remove(path);
+-
++    capture_ast(src, buf, sizeof buf);
+     static const char *BAD[] = { "-atom>", "<v-atom", "<w-atom", "<o-atom", "<I-atom", "<S-atom", 0 };
+     for (int i = 0; BAD[i]; i++) {
+         if (strstr(buf, BAD[i])) {
+@@ -201,6 +193,108 @@ int main(void) {
+         expect_contains("1+2", m, "tree connectors render dim");
+     }
+ 
++    /* ---- 1.9.5: framed banner ------------------------------------------
++     * The banner is drawn by print_ast() only for the AST_ROOT carrier that
++     * ast_cmd() builds, and it must always render as a closed box: a top rule
++     * carrying the title, an "Expr:" row, and a bottom rule. */
++    {
++        const char *m[] = { "\xe2\x94\x8c", "AST Visualization", "Expr: ", "1+2",
++                             "\xe2\x94\x94", "\xe2\x94\x98", 0 };
++        expect_contains("1+2", m, "print_ast frames the tree in a titled ASCII banner");
++    }
++    /* Every banner row must occupy exactly the same number of display columns,
++     * or the right-hand border visibly tears. Counting is done in UTF-8 lead
++     * bytes with the ANSI SGR sequences stripped, which is what the terminal
++     * itself renders. This is the check that would have caught the box-drawing
++     * glyphs being counted as 3 columns each. */
++    {
++        char buf[8192];
++        capture_ast("1+2", buf, sizeof buf);
++        int width[3], row = 0, col = 0, esc = 0;
++        for (const char *p = buf; *p && row < 3; p++) {
++            if (esc)                 { if (*p == 'm') esc = 0; continue; }
++            if (*p == 27)            { esc = 1; continue; }
++            if (*p == '\n')          { width[row++] = col; col = 0; continue; }
++            if ((*p & 0xC0) != 0x80) col++;
++        }
++        if (row < 3 || width[0] != width[1] || width[1] != width[2]) {
++            fprintf(stderr, "FAIL banner alignment: rows are %d/%d/%d columns wide (must match)\n"
++                             "  got:\n%s\n", row > 0 ? width[0] : -1, row > 1 ? width[1] : -1,
++                             row > 2 ? width[2] : -1, buf);
++            fails++;
++        }
++    }
++    /* An over-long expression must be ellipsised INSIDE the frame, never
++     * allowed to push the right border out. */
++    {
++        char lng[512] = "f[";
++        for (int i = 0; i < 40; i++) strcat(lng, "abcdef;");
++        strcat(lng, "z]");
++        const char *m[] = { "\xe2\x80\xa6", 0 };   /* the ellipsis glyph */
++        expect_contains(lng, m, "an over-long expression is ellipsised inside the banner");
++    }
++
++    /* ---- 1.9.5: time-series join badging -------------------------------- */
++    {
++        const char *m[] = { "As-Of Time-Series Join", "\x1b[1;93m", 0 };
++        expect_contains("aj[`sym`time;tr;qu]", m, "`aj` gets an As-Of join badge");
++    }
++    {
++        const char *m[] = { "Window Join", 0 };
++        expect_contains("wj[w;`sym`time;tr;qu;ag]", m, "`wj` gets a Window Join badge");
++    }
++    {   /* a name that merely CONTAINS a join name must not be badged */
++        char buf[8192];
++        capture_ast("ajax[1;2]", buf, sizeof buf);
++        if (strstr(buf, "As-Of")) {
++            fprintf(stderr, "FAIL: `ajax` must not be mistaken for `aj`\n  got:\n%s\n", buf);
++            fails++;
++        }
++    }
++
++    /* ---- 1.9.5: qSQL clause specialization ------------------------------
++     * tests/test_ast.c calls kinit() and nothing else, so qsql.k's `qrw` is
++     * NOT loaded and try_rewrite() passes text through untouched. That is
++     * exactly why these cases are written in the already-rewritten form
++     * (`sel"..."`) that qrw would have produced: it tests the AST module's own
++     * clause decomposition rather than the K-level rewriter, and it keeps the
++     * test independent of the stdlib being present. */
++    {
++        const char *m[] = { "qSQL Select", "Columns: px,sz", "From: t", "Where: px>10", 0 };
++        expect_contains("sel\"select px,sz from t where px>10\"", m,
++                         "a select query decomposes into columns / from / where");
++    }
++    {
++        const char *m[] = { "By: sym", "Columns: sum px", "Where: px>5", 0 };
++        expect_contains("sel\"select sum px by sym from t where px>5\"", m,
++                         "a by-clause is split out from the projection and the from-target");
++    }
++    {
++        const char *m[] = { "qSQL Exec", "result expression", 0 };
++        expect_contains("exq\"exec px from t\"", m, "an exec query names its result expression");
++    }
++    {
++        const char *m[] = { "qSQL Update", "column assignments", "Where: sym=`a", 0 };
++        expect_contains("upd\"update px:px*2 from t where sym=`a\"", m,
++                         "an update query names its assignment list");
++    }
++    {
++        const char *m[] = { "qSQL Delete", "columns to drop", 0 };
++        expect_contains("del\"delete px from t\"", m, "a delete query names the columns it drops");
++    }
++    {   /* the functional form keeps its arguments as real subtrees */
++        const char *m[] = { "qSQL Exec", "functional form", 0 };
++        expect_contains("qexec[t;w;b;d]", m, "the functional form still renders as a query block");
++    }
++    {   /* a `where`/`by` appearing only inside the predicate must not split */
++        const char *m[] = { "Columns: px", "Where: sym=`byte", 0 };
++        expect_contains("sel\"select px from t where sym=`byte\"", m,
++                         "a keyword substring inside a predicate is not a clause boundary");
++    }
++    {   /* a query verb applied to a non-string falls back, it does not crash */
++        expect_no_placeholder("sel[1 2 3]", "query verb applied to a non-string");
++    }
++
+     /* ---- safety: moderately deep (but pk()-legal) nesting doesn't crash */
+     {
+         char deep[512] = "1";

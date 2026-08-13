@@ -148,6 +148,14 @@ A peach_pool(A,A,U,I);//persistent thread-pool morsel-driven peach (src/peachpoo
 C*sf(C*,L),*sl(C*,L),sup(A*,A*),tZ(L),*strchrnul(S,I);
 U gi(A);
 U amlb(CO L*RES,U,U,L);//branch-free lower_bound over a sorted long slice (a.c)
+U amub(CO L*RES,U,U,L);//branch-free upper_bound (first >key) -- no key+1 overflow (a.c)
+// AMGALLOP: how far a time-series join's merge cursor walks forward linearly
+// before it gives up and binary-searches the remainder of the group slice.
+// Inside a monotone run the TOTAL forward walk is bounded by the slice width
+// regardless of this cap, so the cap costs nothing in the common (already
+// time-ordered) case; it exists purely so one row that jumps across a huge
+// slice degrades to O(log w) instead of O(w). Shared by aj (a.c) and wj (i.c).
+#define AMGALLOP 64u
 I qA(A,A),qf(F,F),rnk(A);
 U _K(A),si(S,C),_N(A),js_eval(C*,U,C*,U),fG(CO G*,U,G),fI(CO I*,U,I),fL(CO L*,U,L),us(S);
 L cfm(CO A*,I),gl_(A),gl(A),iw(A,U,L),now(),pl(S*),minfZ(L,A),addfB(CO V*,U),addfZ(L,A),pf(S*);

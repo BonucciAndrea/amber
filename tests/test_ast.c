@@ -53,14 +53,19 @@
 
 static int fails = 0;
 
-/* Runs `\ast src`, captures its stdout, and asserts every string in
- * `must[]` (NULL-terminated) appears somewhere in the printed tree. */
-static void expect_contains(const char *src, const char *const must[], const char *what) {
+/* Runs `\ast src` with stdout redirected to a temp file and copies whatever it
+ * printed into `buf`. Factored out of expect_contains()/expect_no_placeholder()
+ * (which had two byte-identical copies of it) so the 1.9.5 checks that need to
+ * inspect the raw output themselves -- banner column alignment, "this must NOT
+ * appear" assertions -- can reuse it. Writes an empty string on capture
+ * failure, so every caller can just read `buf` unconditionally. */
+static void capture_ast(const char *src, char *buf, size_t cap) {
     CO C *path = "/tmp/.amber_test_ast_capture.out";
+    buf[0] = 0;
     fflush(stdout);
     int saved = dup(1);
     int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0600);
-    if (saved < 0 || fd < 0) { fprintf(stderr, "FAIL %s: could not capture stdout\n", what); fails++; if (saved >= 0) close(saved); if (fd >= 0) close(fd); return; }
+    if (saved < 0 || fd < 0) { if (saved >= 0) close(saved); if (fd >= 0) close(fd); return; }
 
     dup2(fd, 1);
     ast_cmd((S)src);
@@ -68,14 +73,19 @@ static void expect_contains(const char *src, const char *const must[], const cha
     dup2(saved, 1);
 
     lseek(fd, 0, SEEK_SET);
-    char buf[8192];
-    long n = read(fd, buf, sizeof buf - 1);
+    long n = read(fd, buf, cap - 1);
     if (n < 0) n = 0;
     buf[n] = 0;
     close(fd);
     close(saved);
     remove(path);
+}
 
+/* Runs `\ast src`, captures its stdout, and asserts every string in
+ * `must[]` (NULL-terminated) appears somewhere in the printed tree. */
+static void expect_contains(const char *src, const char *const must[], const char *what) {
+    char buf[8192];
+    capture_ast(src, buf, sizeof buf);
     for (int i = 0; must[i]; i++) {
         if (!strstr(buf, must[i])) {
             fprintf(stderr, "FAIL %s: \\ast %s\n  expected to contain: %s\n  got:\n%s\n", what, src, must[i], buf);
@@ -89,26 +99,8 @@ static void expect_contains(const char *src, const char *const must[], const cha
  * *correct* label, since it would also catch some *new*, differently-named
  * placeholder this revision didn't anticipate. */
 static void expect_no_placeholder(const char *src, const char *what) {
-    CO C *path = "/tmp/.amber_test_ast_capture.out";
-    fflush(stdout);
-    int saved = dup(1);
-    int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, 0600);
-    if (saved < 0 || fd < 0) { fprintf(stderr, "FAIL %s: could not capture stdout\n", what); fails++; if (saved >= 0) close(saved); if (fd >= 0) close(fd); return; }
-
-    dup2(fd, 1);
-    ast_cmd((S)src);
-    fflush(stdout);
-    dup2(saved, 1);
-
-    lseek(fd, 0, SEEK_SET);
     char buf[8192];
-    long n = read(fd, buf, sizeof buf - 1);
-    if (n < 0) n = 0;
-    buf[n] = 0;
-    close(fd);
-    close(saved);
-    remove(path);
-
+    capture_ast(src, buf, sizeof buf);
     static const char *BAD[] = { "-atom>", "<v-atom", "<w-atom", "<o-atom", "<I-atom", "<S-atom", 0 };
     for (int i = 0; BAD[i]; i++) {
         if (strstr(buf, BAD[i])) {
@@ -199,6 +191,108 @@ int main(void) {
     {
         const char *m[] = { "\x1b[2m", 0 }; /* dim gray: connectors */
         expect_contains("1+2", m, "tree connectors render dim");
+    }
+
+    /* ---- 1.9.5: framed banner ------------------------------------------
+     * The banner is drawn by print_ast() only for the AST_ROOT carrier that
+     * ast_cmd() builds, and it must always render as a closed box: a top rule
+     * carrying the title, an "Expr:" row, and a bottom rule. */
+    {
+        const char *m[] = { "\xe2\x94\x8c", "AST Visualization", "Expr: ", "1+2",
+                             "\xe2\x94\x94", "\xe2\x94\x98", 0 };
+        expect_contains("1+2", m, "print_ast frames the tree in a titled ASCII banner");
+    }
+    /* Every banner row must occupy exactly the same number of display columns,
+     * or the right-hand border visibly tears. Counting is done in UTF-8 lead
+     * bytes with the ANSI SGR sequences stripped, which is what the terminal
+     * itself renders. This is the check that would have caught the box-drawing
+     * glyphs being counted as 3 columns each. */
+    {
+        char buf[8192];
+        capture_ast("1+2", buf, sizeof buf);
+        int width[3], row = 0, col = 0, esc = 0;
+        for (const char *p = buf; *p && row < 3; p++) {
+            if (esc)                 { if (*p == 'm') esc = 0; continue; }
+            if (*p == 27)            { esc = 1; continue; }
+            if (*p == '\n')          { width[row++] = col; col = 0; continue; }
+            if ((*p & 0xC0) != 0x80) col++;
+        }
+        if (row < 3 || width[0] != width[1] || width[1] != width[2]) {
+            fprintf(stderr, "FAIL banner alignment: rows are %d/%d/%d columns wide (must match)\n"
+                             "  got:\n%s\n", row > 0 ? width[0] : -1, row > 1 ? width[1] : -1,
+                             row > 2 ? width[2] : -1, buf);
+            fails++;
+        }
+    }
+    /* An over-long expression must be ellipsised INSIDE the frame, never
+     * allowed to push the right border out. */
+    {
+        char lng[512] = "f[";
+        for (int i = 0; i < 40; i++) strcat(lng, "abcdef;");
+        strcat(lng, "z]");
+        const char *m[] = { "\xe2\x80\xa6", 0 };   /* the ellipsis glyph */
+        expect_contains(lng, m, "an over-long expression is ellipsised inside the banner");
+    }
+
+    /* ---- 1.9.5: time-series join badging -------------------------------- */
+    {
+        const char *m[] = { "As-Of Time-Series Join", "\x1b[1;93m", 0 };
+        expect_contains("aj[`sym`time;tr;qu]", m, "`aj` gets an As-Of join badge");
+    }
+    {
+        const char *m[] = { "Window Join", 0 };
+        expect_contains("wj[w;`sym`time;tr;qu;ag]", m, "`wj` gets a Window Join badge");
+    }
+    {   /* a name that merely CONTAINS a join name must not be badged */
+        char buf[8192];
+        capture_ast("ajax[1;2]", buf, sizeof buf);
+        if (strstr(buf, "As-Of")) {
+            fprintf(stderr, "FAIL: `ajax` must not be mistaken for `aj`\n  got:\n%s\n", buf);
+            fails++;
+        }
+    }
+
+    /* ---- 1.9.5: qSQL clause specialization ------------------------------
+     * tests/test_ast.c calls kinit() and nothing else, so qsql.k's `qrw` is
+     * NOT loaded and try_rewrite() passes text through untouched. That is
+     * exactly why these cases are written in the already-rewritten form
+     * (`sel"..."`) that qrw would have produced: it tests the AST module's own
+     * clause decomposition rather than the K-level rewriter, and it keeps the
+     * test independent of the stdlib being present. */
+    {
+        const char *m[] = { "qSQL Select", "Columns: px,sz", "From: t", "Where: px>10", 0 };
+        expect_contains("sel\"select px,sz from t where px>10\"", m,
+                         "a select query decomposes into columns / from / where");
+    }
+    {
+        const char *m[] = { "By: sym", "Columns: sum px", "Where: px>5", 0 };
+        expect_contains("sel\"select sum px by sym from t where px>5\"", m,
+                         "a by-clause is split out from the projection and the from-target");
+    }
+    {
+        const char *m[] = { "qSQL Exec", "result expression", 0 };
+        expect_contains("exq\"exec px from t\"", m, "an exec query names its result expression");
+    }
+    {
+        const char *m[] = { "qSQL Update", "column assignments", "Where: sym=`a", 0 };
+        expect_contains("upd\"update px:px*2 from t where sym=`a\"", m,
+                         "an update query names its assignment list");
+    }
+    {
+        const char *m[] = { "qSQL Delete", "columns to drop", 0 };
+        expect_contains("del\"delete px from t\"", m, "a delete query names the columns it drops");
+    }
+    {   /* the functional form keeps its arguments as real subtrees */
+        const char *m[] = { "qSQL Exec", "functional form", 0 };
+        expect_contains("qexec[t;w;b;d]", m, "the functional form still renders as a query block");
+    }
+    {   /* a `where`/`by` appearing only inside the predicate must not split */
+        const char *m[] = { "Columns: px", "Where: sym=`byte", 0 };
+        expect_contains("sel\"select px from t where sym=`byte\"", m,
+                         "a keyword substring inside a predicate is not a clause boundary");
+    }
+    {   /* a query verb applied to a non-string falls back, it does not crash */
+        expect_no_placeholder("sel[1 2 3]", "query verb applied to a non-string");
     }
 
     /* ---- safety: moderately deep (but pk()-legal) nesting doesn't crash */

@@ -38,6 +38,7 @@
 #include "ast.h"
 #include "ansi.h"
 #include "arena.h"
+#include "trace.h"   /* try_rewrite(): qsql.k's `qrw` SQL-syntax rewriter (defined in m.c) */
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
@@ -333,6 +334,172 @@ static ASTNode *describe_leaf(A v, UC t) {
  * ctors, ...) safely falls through to a generic AST_VECTOR node instead of
  * misfiring, rather than trying to special-case every peephole cr() has. */
 
+/* ---- qSQL clause specialization + time-series join badging ---------------
+ *
+ * See the block comment on AST_QSQL_* in ast.h for why this lives here: the
+ * SQL-ish surface syntax reaches pk() already rewritten by qsql.k's `qrw`
+ * into `sel"<clauses>"` / `exq"..."` / `upd"..."` / `del"..."`, so the query
+ * structure survives only inside that string argument. These helpers pull the
+ * head identifier out of an application, decide whether it names a query verb
+ * or a time-series join, and (for the string forms) split the clause text back
+ * apart on the same keywords qsql.k's own qsplit()/qsplit0() split on.
+ *
+ * Everything here is best-effort and non-destructive: any shape that does not
+ * match falls straight back to the generic Apply rendering that was there
+ * before, so no existing expression can render worse than it used to. */
+
+/* Identifier behind an application head, if the head IS a plain identifier.
+ * Namespaced heads (`.q.sel`, tS with n>1) report their LAST segment, which is
+ * the function name; a computed head returns 0 and the caller stays generic. */
+static int head_ident(A h, char *buf, size_t cap) {
+    UC t = _t(h);
+    if (t == ts) { snprintf(buf, cap, "%s", su((U)_v(h))); return 1; }
+    if (t == tS) {
+        U n = _n(h);
+        if (!n) return 0;
+        snprintf(buf, cap, "%s", su((U)((const I *)_V(h))[n - 1]));
+        return 1;
+    }
+    return 0;
+}
+
+/* Query verb -> block kind. Covers both the string-rewriter entry points that
+ * `qrw` actually emits (sel/exq/upd/del) and the functional-form engine verbs
+ * a hand-written query calls directly (qselect/qexec/qby/qwhere). Returns -1
+ * when `nm` is not a query verb at all. */
+static int ast_qsql_kind(const char *nm) {
+    if (!strcmp(nm, "sel")     || !strcmp(nm, "qselect")) return AST_QSQL_SELECT;
+    if (!strcmp(nm, "exq")     || !strcmp(nm, "qexec"))   return AST_QSQL_EXEC;
+    if (!strcmp(nm, "upd"))                               return AST_QSQL_UPDATE;
+    if (!strcmp(nm, "del"))                               return AST_QSQL_DELETE;
+    if (!strcmp(nm, "qby"))                               return AST_QSQL_BY;
+    if (!strcmp(nm, "qwhere"))                            return AST_QSQL_WHERE;
+    return -1;
+}
+
+static const char *qsql_word(int k) {
+    switch (k) {
+        case AST_QSQL_SELECT: return "select";
+        case AST_QSQL_EXEC:   return "exec";
+        case AST_QSQL_UPDATE: return "update";
+        case AST_QSQL_DELETE: return "delete";
+        case AST_QSQL_BY:     return "by";
+        case AST_QSQL_WHERE:  return "where";
+        default:               return "query";
+    }
+}
+
+/* What the projection slot MEANS differs per query verb, and saying so is the
+ * whole point of specializing these nodes rather than printing "arg 0". */
+static const char *qsql_proj_role(int k) {
+    switch (k) {
+        case AST_QSQL_EXEC:   return "(result expression)";
+        case AST_QSQL_UPDATE: return "(column assignments)";
+        case AST_QSQL_DELETE: return "(columns to drop)";
+        default:               return "(projection list)";
+    }
+}
+
+/* Time-series join badge for an application head, or NULL. `aj0`/`ajm` are aj's
+ * internal entry points (amber.k) and `wjK` is wj's K-level fallback for
+ * non-standard reducers; they get the same badge because they are the same
+ * join, and seeing which variant a query actually reached is exactly the kind
+ * of thing \ast is being read for. */
+static const char *ast_join_badge(const char *nm) {
+    if (!strcmp(nm, "aj") || !strcmp(nm, "aj0") || !strcmp(nm, "ajm"))
+        return "As-Of Time-Series Join";
+    if (!strcmp(nm, "wj") || !strcmp(nm, "wjK"))
+        return "Window Join";
+    return NULL;
+}
+
+/* strstr for a clause keyword, honouring qsql.k's rule that a keyword only
+ * counts when it is surrounded by spaces (" from ", " where ", " by ") -- the
+ * literal strings qsplit() searches for -- so a column called `byte` or a
+ * symbol `` `wherever `` cannot be mistaken for a clause boundary. */
+static const char *qsql_find(const char *s, const char *kw) { return strstr(s, kw); }
+
+/* Trim ASCII spaces off both ends of [b,e) into `out`. */
+static void qsql_trim(const char *b, const char *e, char *out, size_t cap) {
+    while (b < e && (*b == ' ' || *b == '\t')) b++;
+    while (e > b && (e[-1] == ' ' || e[-1] == '\t')) e--;
+    size_t n = (size_t)(e - b);
+    if (n >= cap) n = cap - 1;
+    memcpy(out, b, n);
+    out[n] = 0;
+}
+
+/* Add one clause child, but only if the clause text is non-empty -- an absent
+ * `by` or `where` should simply not appear rather than render as an empty box. */
+static void qsql_clause(ASTNode *blk, ASTKind kind, const char *lead,
+                         const char *b, const char *e, const char *note) {
+    char txt[96];
+    qsql_trim(b, e, txt, sizeof txt);
+    if (!txt[0]) return;
+    char lb[96];
+    snprintf(lb, sizeof lb, "%s%s", lead, txt);
+    ast_add_child(blk, ast_new(kind, lb, note));
+}
+
+/* Explode a rewritten qSQL clause string into a query block.
+ *
+ * Splits on the SAME keywords, in the same precedence order, that qsql.k's own
+ * sel/exq/upd/del do: ` where ` first (it is always last in the text and its
+ * predicate may itself contain the word "from"), then ` from `, then ` by `
+ * within what is left of the head. That ordering is what makes
+ * `select px by sym from t where sym in`a`b` come apart correctly. */
+static ASTNode *ast_qsql_block(int kind, const char *q) {
+    char an[80];
+    snprintf(an, sizeof an, "(qSQL %s query)", qsql_word(kind));
+    ASTNode *blk = ast_new((ASTKind)kind, qsql_word(kind), an);
+
+    /* `qrw` hands the rewriter the WHOLE matched phrase including the leading
+     * keyword (`sel"select px from t"`), and sel/exq/upd/del each strip it
+     * again on entry. Strip it here too, or the projection node would read
+     * "Columns: select px" and repeat what the block head already says. */
+    const char *kw = qsql_word(kind);
+    size_t kwl = strlen(kw);
+    while (*q == ' ') q++;
+    if (!strncmp(q, kw, kwl) && (q[kwl] == ' ' || q[kwl] == 0)) {
+        q += kwl;
+        while (*q == ' ') q++;
+    }
+
+    const char *end = q + strlen(q);
+    const char *w = qsql_find(q, " where ");
+    const char *hd_end = w ? w : end;
+
+    const char *f = qsql_find(q, " from ");
+    if (f && f > hd_end) f = NULL;               /* a `from` inside the predicate */
+    const char *proj_end = f ? f : hd_end;
+    const char *src_b = f ? f + 6 : NULL, *src_e = f ? hd_end : NULL;
+
+    const char *by = qsql_find(q, " by ");
+    if (by && by > proj_end) by = NULL;          /* a `by` past the projection */
+    if (by) proj_end = by;
+
+    qsql_clause(blk, AST_VECTOR, "Columns: ", q, proj_end, qsql_proj_role(kind));
+    if (src_b) qsql_clause(blk, AST_VAR, "From: ", src_b, src_e, "(source table)");
+    /* the by-clause runs to the end of the SELECT part, i.e. up to ` from `
+     * (or to the start of the where-clause when the query has no from). */
+    if (by)    qsql_clause(blk, AST_QSQL_BY, "By: ", by + 4, f ? f : hd_end, "(group-by clause)");
+    if (w)     qsql_clause(blk, AST_QSQL_WHERE, "Where: ", w + 7, end, "(row filter predicate)");
+    return blk;
+}
+
+/* The string argument of a rewritten query, if `a` is one. pk() hands string
+ * literals over either bare or wrapped in a 1-element list (the same `[y]`
+ * quoting the n==1 branch of ast_from_k_d unwraps), so accept both. */
+static const char *qsql_text(A a, char *buf, size_t cap) {
+    if (_t(a) == tA && _n(a) == 1) a = _x(a);
+    if (_t(a) != tC) return NULL;
+    U n = _n(a);
+    if (n >= cap) n = (U)cap - 1;
+    memcpy(buf, (const char *)_V(a), n);
+    buf[n] = 0;
+    return buf;
+}
+
 static ASTNode *ast_from_k_d(A v, int depth) {
     if (depth > AST_MAX_DEPTH)
         return ast_new(AST_SCALAR, "\xe2\x80\xa6", "(max depth exceeded, truncated)");
@@ -463,9 +630,43 @@ static ASTNode *ast_from_k_d(A v, int depth) {
          * application / projection (`f[x;;z]`) rather than a full call. */
         int any_blank = 0;
         for (U i = 1; i < n; i++) if (_A(v)[i] == GAP) { any_blank = 1; break; }
+
+        /* ---- qSQL / time-series-join specialization --------------------
+         * Only a fully applied call with a plain identifier head is eligible:
+         * a projection (`sel[;x]`) has not decided its arguments yet, and a
+         * computed head is not a name we can recognise. */
+        char hn[96];
+        if (!any_blank && head_ident(head, hn, sizeof hn)) {
+            int qk = ast_qsql_kind(hn);
+            if (qk >= 0) {
+                char qbuf[512];
+                const char *qt = (n == 2) ? qsql_text(_A(v)[1], qbuf, sizeof qbuf) : NULL;
+                if (qt) return ast_qsql_block(qk, qt);   /* string form: full clause block */
+                /* Functional form -- qexec[t;w;b;d], qby[t;bk;d], ... The
+                 * arguments are arbitrary expressions rather than clause text,
+                 * so keep them as real subtrees but hang them off a query block
+                 * head so the reader still sees WHICH query stage this is. */
+                char an[80];
+                snprintf(an, sizeof an, "(qSQL %s \xe2\x80\x94 functional form)", qsql_word(qk));
+                ASTNode *blk = ast_new((ASTKind)qk, qsql_word(qk), an);
+                for (U i = 1; i < n; i++) ast_add_child(blk, ast_from_k_d(_A(v)[i], depth + 1));
+                return blk;
+            }
+        }
+
         ASTNode *ap = ast_new(any_blank ? AST_PROJECTION : AST_APPLY,
                                any_blank ? "Projection" : "Apply",
                                any_blank ? "(partial application \xe2\x80\x94 some arguments curried away)" : NULL);
+        /* Time-series join badge: applies to the call node itself, so the
+         * callout sits on the line a reader's eye lands on first rather than
+         * being buried on the head's Var child. */
+        if (head_ident(head, hn, sizeof hn)) {
+            const char *badge = ast_join_badge(hn);
+            if (badge) {
+                snprintf(ap->annotation, sizeof ap->annotation, "%s", badge);
+                ap->badge = 1;
+            }
+        }
         ast_add_child(ap, ast_from_k_d(head, depth + 1));
         for (U i = 1; i < n; i++) ast_add_child(ap, ast_from_k_d(_A(v)[i], depth + 1));
         return ap;
@@ -501,6 +702,18 @@ ASTNode *ast_from_k(A v) { return ast_from_k_d(v, 0); }
 #define C_BLANK "\x1b[2;33m" /* dim yellow   : curried/omitted argument placeholder  */
 #define C_DIM   "\x1b[2m"    /* dim          : connectors + annotations              */
 #define C_RST   ANSI_RST
+/* ---- 1.9.5 additions ------------------------------------------------------
+ * Deliberately drawn from the SAME 16-colour space the rest of the palette
+ * uses (no 256-colour or truecolour escapes), so the tree renders identically
+ * in a bare TTY, tmux, and a notebook terminal, and stays legible on both dark
+ * and light backgrounds -- the constraint ansi.h already documents for the
+ * diagnostic palette. The query kinds get blue because blue is otherwise
+ * unused except by tacit trains, which never co-occur with a query block. */
+#define C_QSQL  "\x1b[1;94m" /* bold bright blue  : qSQL query block heads           */
+#define C_CLAUSE "\x1b[1;95m"/* bold bright magenta: by / where clause nodes         */
+#define C_BADGE "\x1b[1;93m" /* bold bright yellow: time-series join callouts        */
+#define C_FRAME "\x1b[2;37m" /* dim grey          : banner frame                     */
+#define C_TTL   "\x1b[1;97m" /* bold bright white : banner title + analysed expr     */
 
 static const char *node_color(ASTKind k) {
     switch (k) {
@@ -519,6 +732,12 @@ static const char *node_color(ASTKind k) {
         case AST_HOOK:       return C_TRAIN;
         case AST_FORK:       return C_TRAIN;
         case AST_BLANK:      return C_BLANK;
+        case AST_QSQL_SELECT:
+        case AST_QSQL_EXEC:
+        case AST_QSQL_UPDATE:
+        case AST_QSQL_DELETE: return C_QSQL;
+        case AST_QSQL_BY:
+        case AST_QSQL_WHERE:  return C_CLAUSE;
         default:              return "";
     }
 }
@@ -540,6 +759,12 @@ static const char *kind_prefix(ASTKind k) {
         case AST_HOOK:       return "Hook";
         case AST_FORK:       return "Fork";
         case AST_BLANK:      return "Blank";
+        case AST_QSQL_SELECT: return "qSQL Select";
+        case AST_QSQL_EXEC:   return "qSQL Exec";
+        case AST_QSQL_UPDATE: return "qSQL Update";
+        case AST_QSQL_DELETE: return "qSQL Delete";
+        case AST_QSQL_BY:     return "Clause";
+        case AST_QSQL_WHERE:  return "Clause";
         default:               return "Node";
     }
 }
@@ -567,7 +792,12 @@ static void print_node(const ASTNode *n, char *prefix, int is_last, int depth) {
     const char *color = node_color(n->kind);
     printf("%s : ", kind_prefix(n->kind));
     print_label(n->label, color, n->split);
-    if (n->annotation[0]) printf(" %s%s%s", C_DIM, n->annotation, C_RST);
+    if (n->annotation[0]) {
+        /* A badge is a callout, not a type tag: render it bright and bracketed
+         * so it reads as a label ON the node rather than as dim trailing prose. */
+        if (n->badge) printf(" %s[ %s ]%s", C_BADGE, n->annotation, C_RST);
+        else          printf(" %s%s%s", C_DIM, n->annotation, C_RST);
+    }
     printf("\n");
 
     char child_prefix[256];
@@ -581,8 +811,71 @@ static void print_node(const ASTNode *n, char *prefix, int is_last, int depth) {
  * the parsed input was a `;`-separated block of statements, each statement
  * becomes a direct child of Root; a single expression becomes Root's one
  * child. Either way nothing is drawn as a redundant "Block : ;" node. */
+/* ---- framed banner --------------------------------------------------------
+ * Drawn only when print_ast() is handed an AST_ROOT wrapper carrying the
+ * analysed source text in its label (which is what ast_cmd() builds). Any
+ * other node prints exactly as it always did, so a caller that converts a
+ * subtree with ast_from_k() and prints it directly is unaffected.
+ *
+ * Widths are measured in DISPLAY COLUMNS, not bytes: the frame itself is
+ * U+2500-family box drawing (3 bytes per glyph) and an expression may contain
+ * multi-byte characters too, so counting bytes would tear the right-hand
+ * border. disp_len() counts UTF-8 lead bytes, which is exact for the box
+ * glyphs and for ordinary text, and degrades gracefully on the rest. */
+#define AST_FRAME_W 63   /* columns between the two vertical borders */
+
+static int disp_len(const char *s) {
+    int n = 0;
+    for (; *s; s++) if ((*s & 0xC0) != 0x80) n++;   /* skip continuation bytes */
+    return n;
+}
+
+/* Emit `n` copies of the U+2500 horizontal box-drawing rule. */
+static void rule(int n) { for (int i = 0; i < n; i++) printf("\xe2\x94\x80"); }
+
+static void print_banner(const char *expr) {
+    static const char *TITLE = " AST Visualization ";
+    const char *lead = "Expr: ";
+    int leadw = disp_len(lead) + 1;             /* +1 for the space after "|" */
+    int room  = AST_FRAME_W - leadw;            /* columns available to `expr` */
+
+    /* Truncate an over-long expression with a single-glyph ellipsis rather
+     * than letting it blow the frame open. */
+    char buf[512];
+    snprintf(buf, sizeof buf, "%s", expr ? expr : "");
+    int elen = disp_len(buf);
+    if (elen > room) {
+        int keep = room - 1, cols = 0;
+        char *p = buf;
+        while (*p && cols < keep) { p++; while ((*p & 0xC0) == 0x80) p++; cols++; }
+        snprintf(p, sizeof buf - (size_t)(p - buf), "\xe2\x80\xa6");
+        elen = cols + 1;
+    }
+
+    printf("%s\xe2\x94\x8c", C_FRAME); rule(2);                 /* "|--"        */
+    printf("%s%s%s", C_TTL, TITLE, C_FRAME);
+    rule(AST_FRAME_W - 2 - disp_len(TITLE));
+    printf("\xe2\x94\x90%s\n", C_RST);                          /* "-...-|"     */
+
+    printf("%s\xe2\x94\x82%s %s%s%s", C_FRAME, C_RST, C_DIM, lead, C_RST);
+    printf("%s%s%s", C_TTL, buf, C_RST);
+    for (int i = elen; i < room; i++) putchar(' ');
+    printf("%s\xe2\x94\x82%s\n", C_FRAME, C_RST);
+
+    printf("%s\xe2\x94\x94", C_FRAME); rule(AST_FRAME_W);
+    printf("\xe2\x94\x98%s\n", C_RST);
+}
+
 void print_ast(const ASTNode *root) {
     if (!root) { printf("(empty)\n"); return; }
+    if (root->kind == AST_ROOT) {           /* framed form (what \ast prints) */
+        print_banner(root->label);
+        printf("Root\n");
+        char prefix[256] = "";
+        for (int i = 0; i < root->nchildren; i++)
+            print_node(root->children[i], prefix, i == root->nchildren - 1, 1);
+        return;
+    }
     printf("Root\n");
     char prefix[256] = "";
     if (root->kind == AST_BLOCK) {
@@ -603,13 +896,33 @@ A ast_cmd(S s) {
      * is arena-backed, not malloc'd. */
     arena_reset();
 
-    S p = s;
+    /* Run the input through qsql.k's `qrw` SQL-syntax rewriter first, exactly
+     * as \trace (trace.c) and the interactive REPL line handler already do.
+     * Without this, `\ast select px from t` would be a parse error, because
+     * `select ... from ...` is not K syntax at all -- it only becomes the
+     * `sel"px from t"` application that pk() can parse once qrw has rewritten
+     * it. try_rewrite() is safe to call unconditionally: if qsql.k has not
+     * been loaded (as in ast_selftest() and tests/test_ast.c, which call
+     * kinit() and nothing else) it hands the raw text straight back. */
+    C rbuf[512];
+    S src = try_rewrite(s, rbuf, sizeof rbuf);
+
+    S p = src;
     A tree = pk(&p, 10); /* parse only -- never cpl()/run() this (except the
                            * one unavoidable exception documented in ast.h:
                            * pk() itself compiles embedded lambda literals) */
     if (!tree) { printf("\\ast: parse error\n"); arena_reset(); return au; }
 
-    ASTNode *root = ast_from_k(tree);
+    /* Wrap in the AST_ROOT carrier so print_ast() draws the framed banner and
+     * can show the expression it actually analysed (i.e. post-rewrite, which is
+     * the tree on screen -- showing the pre-rewrite text next to a rewritten
+     * tree would be actively misleading). */
+    ASTNode *root = ast_new(AST_ROOT, src, NULL);
+    ASTNode *body = ast_from_k(tree);
+    if (body && body->kind == AST_BLOCK)
+        for (int i = 0; i < body->nchildren; i++) ast_add_child(root, body->children[i]);
+    else
+        ast_add_child(root, body);
     print_ast(root);
     ast_free(root); /* no-op, see ast.h -- arena_reset() below does the real work */
     mr(tree);        /* release the parse tree pk() handed us */
@@ -635,6 +948,18 @@ I ast_selftest(void) {
         {"`a`b`c",             "Symbol Vector[3]", "`a"},
         {".ns.sub",            "ns.sub",        "Value/Eval"},
         {"f:{x+y+z};f[1;;3]",  "Blank",         "curried"},
+        /* ---- 1.9.5 additions --------------------------------------------
+         * The qSQL cases are written in the ALREADY-REWRITTEN `sel"..."` form
+         * on purpose: `astt` may be invoked before qsql.k is loaded, in which
+         * case try_rewrite() is a pass-through and bare `select ... from ...`
+         * would not parse. Testing the rewritten form checks this module's own
+         * clause decomposition, which is what changed. */
+        {"1+2",                            "AST Visualization",      "Expr: "},
+        {"aj[`sym`time;t;q]",              "As-Of Time-Series Join", "Apply"},
+        {"wj[w;`sym`time;t;q;a]",          "Window Join",            "Apply"},
+        {"sel\"select px by sym from t where px>1\"",
+                                            "qSQL Select",            "By: sym"},
+        {"upd\"update px:px*2 from t\"",   "qSQL Update",            "column assignments"},
     };
     CO C *P_ = "/tmp/.amber_ast_selftest.out";
     B ok = 1;

@@ -132,7 +132,7 @@ ej:{[c;x;y]ij[x;xkey[c;y]]}
 / how xasc happens to collate symbols.  It errs towards 0b (sort it) for anything
 / it cannot prove, so a false 1b -- the only answer that could corrupt a join --
 / is not reachable.
-ajsorted:{[c;t]c:c,();tc:*|c;g:-1_c;d:+t;`ajs(value g#d;d tc)}
+ajsorted:{[c;t]c:c,();tc:*|c;g:-1_c;d:+t;gc:value g#d;g0:*gc;`ajs(gc;d tc;$[1=#gc;in[`at g0;`s`p];0b])}
 / ajord: xasc only when it will actually change something.  Marks the result `s
 / so the attribute survives for callers that inspect it (meta/`at).
 ajord:{[c;t]$[ajsorted[c;t];t;xasc[c;t]]}
@@ -153,7 +153,17 @@ asof:{[t;d]c:!d;g:-1_c;tc:*|c;td:+t;msk:$[#g;&/({[td;d;c]td[c]=d c}[td;d]'g);(#t
 / functions fall back to wjK (per-row K).  Result keeps the t-side `time column,
 / so it auto-renders HH:MM:SS.mmm.
 wjcode:{$[x~first;0;x~last;1;x~min;2;x~max;3;x~sum;4;x~avg;5;x~count;6;x~{#x};6;-1]}
-wjbnd:{[g;t;q]$[#g;[gdi:=rows[g#+q];bas:*:'value gdi;len:#:'value gdi;ix:(!gdi)?rows[g#+t];(bas ix;(bas+len)ix)];((#t)#0;(#t)#(#q))]}
+/ wjbndK: the original pure-K group-bounds path. Retained verbatim as the
+/ fallback for anything `wjb declines (a quote table that is not contiguously
+/ grouped, an unsupported key type, >16 key columns) so no input loses support.
+wjbndK:{[g;t;q]gdi:=rows[g#+q];bas:*:'value gdi;len:#:'value gdi;ix:(!gdi)?rows[g#+t];(bas ix;(bas+len)ix)}
+/ wjbnd: per-trade-row [base,end) slice into the grouped quote table.
+/ The K path above builds one boxed row-tuple per quote row AND per trade row
+/ (`rows` is `+.`) just to give `=` and `?` something to hash -- 3M throwaway
+/ objects on a 1M x 2M join, measured at ~968ms. `wjb (src/a.c) walks the quote
+/ side's run boundaries and probes once per trade row, allocating nothing
+/ per row; it returns () if it cannot handle the input, and we fall back.
+wjbnd:{[g;t;q]$[#g;[b:`wjb(value g#+q;value g#+t);$[#b;b;wjbndK[g;t;q]]];((#t)#0;(#t)#(#q))]}
 wjK:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;qt:qd tc;qg:$[#g;=rows[g#+q];(,0)!,!#q];tg:$[#g;rows[g#+t];(#t)#0];res:{[qt;qg;tg;w0;w1;qd;aggs;i]gk:tg i;p:$[in[gk;!qg];qg gk;0#0];sel:$[#p;{[gt;p;lo;hi]a:gt'lo-1;p@(a+1)+!0|(gt'hi)-a}[qt p;p;w0 i;w1 i];0#0];{[qd;sel;a](a 1)(qd a 2)@sel}[qd;sel]'aggs}[qt;qg;tg;w 0;w 1;qd;aggs]'!#t;+(+t),(aggs[;0])!+res}
 wj:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;cs:wjcode'aggs[;1];$[|/cs<0;wjK[w;c;t;q;aggs];[b:wjbnd[g;t;q];+(+t),(aggs[;0])!`wj(qd tc;qd aggs[;2];cs;w 0;w 1;b 0;b 1)]]}
 

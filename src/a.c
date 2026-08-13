@@ -183,9 +183,15 @@ Z W ajs_h(A c,U i){    // 64-bit hash contribution of column c at row i
  }
  return v*0x9E3779B97F4A7C15ull;}
 A ajsC(A x){
- P(_t(x)-tA||_n(x)-2,et(x))
+ P(_t(x)-tA||(_n(x)-2&&_n(x)-3),et(x))
  A*e=(A*)_V(x);
  A gcs=e[0],tcol=e[1];
+ // Optional third argument: the caller has established from the COLUMN
+ // ATTRIBUTES (`s sorted / `p parted, see _at() in a.h) that the group keys are
+ // already confined to contiguous runs. That is precisely what pass 3 below
+ // spends its time proving, so an attributed column lets us skip it outright --
+ // the whole point of carrying an attribute is not having to re-derive it.
+ B trust=_n(x)==3&&_t(e[2])!=tA&&_v(e[2])!=0;
  U ng=_t(gcs)==tA?_n(gcs):0;
  A*gc=ng?(A*)_V(gcs):0;
  U n=_n(tcol);
@@ -220,6 +226,7 @@ A ajsC(A x){
  }
  #undef AJS_ORD
  P(!ng,x(al(1)))                                   // no grouping: pass 2 was the whole test
+ P(trust,x(al(1)))                                 // attribute already guarantees contiguity
  // ---- pass 3: no group key may occupy two separate runs -----------------
  // Open-addressed hash set over the runs' FNV-folded keys. Deliberately NOT
  // qsort(): <stdlib.h> cannot be included after a.h, whose single-letter
@@ -255,6 +262,100 @@ A ajsC(A x){
    tbl[s]=h;
  }
  return x(al(1));}
+// ---- `wjb : per-trade-row group slice [base,end) into a grouped quote table --
+// x = (qg; tg)   qg = quote-side group columns, tg = trade-side group columns
+//                (same count, matching types).
+// returns (gb; ge), two long vectors of length nt, or () to tell the caller to
+// fall back to the K implementation (wjbndK).
+//
+// This replaces the K expression
+//     gdi:=rows[g#+q]; bas:*:'value gdi; len:#:'value gdi; ix:(!gdi)?rows[g#+t]
+// which measured ~968 ms on a 1M x 2M join -- the second biggest cost in aj
+// after the sort, and bigger than the as-of kernel itself by a factor of ~24.
+// Almost none of that was the grouping: `rows[...]` is `+. (g#+q)`, which
+// MATERIALISES ONE K LIST PER ROW -- 2M heap objects for the quote side and
+// another 1M for the trade side -- purely so that `=` and `?` have something
+// row-shaped to hash. The group dictionary then allocates an index vector per
+// group on top.
+//
+// Here nothing row-shaped is ever built. The quote side is walked once to find
+// its run boundaries (a table that reached this point via ajord/xasc is already
+// contiguously grouped, which is exactly what a `p`-parted or `s`-sorted column
+// asserts), each run is inserted into an open-addressed table keyed on the group
+// value, and each trade row does one probe. O(nq + nt), zero per-row objects.
+//
+// Correctness note: a hash collision here would silently attach a trade to the
+// WRONG symbol's quotes, so -- unlike ajsC's contiguity check, where a collision
+// only costs a sort -- the probe never trusts the hash. Every candidate slot is
+// confirmed by comparing the actual group-column VALUES between the trade row
+// and the run's representative quote row. The hash only chooses where to look.
+// If the quote side turns out not to be contiguously grouped (a group key
+// reappears after its run ended) the kernel returns () and the caller uses the
+// K path, which handles that case.
+Z UC wjbcode(UC t){switch(t){
+  case tG: case tC: return 0; case tH: return 1;
+  case tI: return 2; case tL: return 3; case tS: return 4;
+  default: return 255;}}                      // unsupported: caller falls back
+// One group-column value as a signed 64-bit scalar. Widths are normalised so a
+// tI column on one side and a tL column on the other still compare by VALUE;
+// tS is read unsigned because a packed symbol id legitimately uses bit 31.
+Z L wjbgv(CO V*p,UC c,U r){switch(c){
+  case 0: return (L)((CO G*)p)[r]; case 1: return (L)((CO H*)p)[r];
+  case 2: return (L)((CO I*)p)[r]; case 3: return ((CO L*)p)[r];
+  default: return (L)(U)((CO I*)p)[r];}}
+#define WJB_MAXCOL 16u
+A wjbC(A x){
+ P(_t(x)-tA||_n(x)-2,et(x))
+ A*e=(A*)_V(x);
+ A QG=e[0],TG=e[1];
+ P(_t(QG)-tA||_t(TG)-tA,x(emp(tA)))
+ U ng=_n(QG);
+ P(!ng||_n(TG)-ng||ng>WJB_MAXCOL,x(emp(tA)))
+ A*qc=(A*)_V(QG),*tc=(A*)_V(TG);
+ CO V*qp[WJB_MAXCOL],*tp[WJB_MAXCOL];UC cd[WJB_MAXCOL];
+ U nq=_n(qc[0]),nt=_n(tc[0]);
+ // Hoisted, once per column: type code and raw base pointer. The row loops
+ // below never touch an object header.
+ F(ng,UC a=wjbcode(_t(qc[i])),b=wjbcode(_t(tc[i]));
+   P(a==255||a-b||_n(qc[i])-nq||_n(tc[i])-nt,x(emp(tA)))
+   cd[i]=a;qp[i]=_V(qc[i]);tp[i]=_V(tc[i]);)
+ #define WJB_QQ(a,b) ({int q_=1;for(U k=0;k<ng;k++)if(wjbgv(qp[k],cd[k],a)!=wjbgv(qp[k],cd[k],b)){q_=0;break;}q_;})
+ #define WJB_TQ(a,b) ({int q_=1;for(U k=0;k<ng;k++)if(wjbgv(tp[k],cd[k],a)!=wjbgv(qp[k],cd[k],b)){q_=0;break;}q_;})
+ #define WJB_H(P_,r) ({W h_=1469598103934665603ull;for(U k=0;k<ng;k++){h_^=(W)wjbgv(P_[k],cd[k],r)*0x9E3779B97F4A7C15ull;h_*=1099511628211ull;}h_?h_:1ull;})
+ // pass 1: count runs on the quote side
+ U nr=0;
+ for(U r=0;r<nq;r++)if(!r||!WJB_QQ(r,r-1))nr++;
+ U cap=8;while((W)cap<(W)nr*2)cap<<=1;
+ W*RES HT=(W*)arena_alloc((N)cap*SZ(W));       // 0 = empty slot
+ U*RES QR=(U*)arena_alloc((N)cap*SZ(U));       // representative quote row
+ L*RES BS=(L*)arena_alloc((N)cap*SZ(L));
+ L*RES EN=(L*)arena_alloc((N)cap*SZ(L));
+ P(!HT||!QR||!BS||!EN,x(emp(tA)))
+ MS(HT,0,(N)cap*SZ(W));
+ // pass 2: one table entry per run
+ {U st=0;
+  for(U r=1;r<=nq;r++){
+    if(r<nq&&WJB_QQ(r,r-1))continue;           // still inside the current run
+    W h=WJB_H(qp,st);U s=(U)(h&(cap-1));
+    while(HT[s]){
+      if(HT[s]==h&&WJB_QQ(QR[s],st))return x(emp(tA)); // key reappeared: not parted
+      s=(s+1)&(cap-1);}
+    HT[s]=h;QR[s]=st;BS[s]=(L)st;EN[s]=(L)r;
+    st=r;}}
+ // pass 3: one probe per trade row. A trade whose group has no quotes at all
+ // yields a null slice, which ajc()/wjbounds() already read as "no match" --
+ // the same answer the K path's out-of-range index produced.
+ A gb=aL(nt),ge=aL(nt);L*RES B=_V(gb),*RES E=_V(ge);
+ for(U i=0;i<nt;i++){
+   W h=WJB_H(tp,i);U s=(U)(h&(cap-1));L b=NL,en=NL;
+   while(HT[s]){
+     if(HT[s]==h&&WJB_TQ(i,QR[s])){b=BS[s];en=EN[s];break;}
+     s=(s+1)&(cap-1);}
+   B[i]=b;E[i]=en;}
+ #undef WJB_QQ
+ #undef WJB_TQ
+ #undef WJB_H
+ return x(aA2(gb,ge));}
 // arena self-test builtin (`arn): exercise bump / reset / overflow -> 1 on success.
 A1(arnT,arena_init(1<<16);B ok=1;
  C*p=(C*)arena_alloc(100),*q=(C*)arena_alloc(200);ok&=!!p&&!!q&&(q>=p+100);
@@ -478,8 +579,8 @@ Z A1(qga,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=4;x)//amber: `g gro
 Z A1(qdiag,I(amdiag<0,amdiag=1)I v=amdiag;I(_tz(x),amdiag=!!gl_(x))x(0);ai(v))
 Z A1(qat,UC a=(_tP(x)||!LH(tG,_t(x),tS))?0:_at(x);x(0);a?({C b[2]={"\0supg"[a],0};sym(b);}):as(0))//amber: get attribute
 ZN AX(ext,P(n-xK,er8(a,n))V*f=(V*)(x&-1ull>>16);S(n,R(1,((A1*)f)(a[0]))R(2,((A2*)f)(a[0],a[1]))R(3,((A3*)f)(a[0],a[1],a[2]))R(4,((A4*)f)(a[0],a[1],a[2],a[3]))R_(en8(a,n)))0)
-ZN A sym1(I v,A x)_(Z CO C s[][4]={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","astt","diag","ajs"};
- G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,astT,qdiag,ajsC,ed)[fI((V*)s,L(s),v)](x))
+ZN A sym1(I v,A x)_(Z CO C s[][4]={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","astt","diag","ajs","wjb"};
+ G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,astT,qdiag,ajsC,wjbC,ed)[fI((V*)s,L(s),v)](x))
 A2(_1,/*01*/P(!xtt,i1(x,y))U k=xK;P(1<k,k==2&&!xtp?prj(x,A8(y,GAP),2):prj(x,&y,1))
  X(Ro(run(x,&y,1))Rp(P(k>7,er(y))I m=xn-1,j=0;Ab8;F(m,b[i]=xA[i+1]==GAP&&!j?j++,y:_R(xA[i+1]))I l=MAX(0,1-j);MC(b+m,&y,8*l);_8(xx,b,m+l))
   Rq(_1(xx,N(_1(xy,y))))Rr(w1(xE,xx,y))Rs(sym1(xv,y))Ru(v1[xv](y))Rw(AK(xv-1<3u&&yK==2?1:ytU?yK:1,AW(xv,aV(tr,1,&y))))Rx(ext(x,&y,1))R_(et(y)))0)

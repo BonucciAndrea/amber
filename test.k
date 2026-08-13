@@ -114,6 +114,25 @@ t[`ajNoGrp;(+aj[`time;+`time`x!(0 4 8;0 0 0);+`time`v!(1 3 5 7;10 20 30 40)])`v;
 / 64-bit nanosecond timestamps (values exceed 2^31 -> proves long/ns path)
 t[`ajNs;(+aj[`sym`time;+`sym`time`px!(,`a;,1500000000000;,1);+`sym`time`bid!(`a`a;1000000000000 2000000000000;10 20)])`bid;,10]
 
+/ ---- `ajs / ajsorted (src/a.c): is a table already in as-of order? ----
+/ A WRONG 1b here silently corrupts every join that trusts it, so the predicate
+/ is pinned in both directions: it must say yes for an ordered book, and no for
+/ each way a book can be out of order.
+ajQ0:+`sym`time`bid!(`a`a`b`b;1 3 2 4;10 20 30 40)          / ordered
+ajQ1:+`sym`time`bid!(`b`a`b`a;2 1 4 3;30 10 40 20)          / groups interleaved
+ajQ2:+`sym`time`bid!(`a`a`b`b;3 1 2 4;10 20 30 40)          / time descends in `a
+ajQ3:+`sym`time`bid!(`a`b`a;1 2 3;10 20 30)                 / group `a in two runs
+t[`ajsOrdered;   ajsorted[`sym`time;ajQ0];1]
+t[`ajsInterleave;ajsorted[`sym`time;ajQ1];0]
+t[`ajsTimeDesc;  ajsorted[`sym`time;ajQ2];0]
+t[`ajsSplitRun;  ajsorted[`sym`time;ajQ3];0]
+t[`ajsNoGroup;   ajsorted[,`time;+`time`v!(1 2 3;10 20 30)];1]
+t[`ajsAfterXasc; ajsorted[`sym`time;xasc[`sym`time;ajQ1]];1]
+/ and the gate must not change ANY answer: same book, shuffled rows, same join
+ajT:+`sym`time`px!(`a`b`a`b;2 3 4 5;1.0 2 3 4)
+t[`ajGateAj;(aj[`sym`time;ajT;ajQ0])~aj[`sym`time;ajT;ajQ1];1]
+t[`ajGateWj;(wj[(ajT[`time]-2;ajT`time);`sym`time;ajT;ajQ0;,(`mx;max;`bid)])~wj[(ajT[`time]-2;ajT`time);`sym`time;ajT;ajQ1;,(`mx;max;`bid)];1]
+
 / ---- HFT arena scratchpad (src/arena.c) : bump / reset / overflow self-test ----
 t[`arena;`arn 0;1]
 

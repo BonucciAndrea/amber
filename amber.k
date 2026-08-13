@@ -120,10 +120,26 @@ ej:{[c;x;y]ij[x;xkey[c;y]]}
 / lower_bound over each group's sorted ns-timestamp slice (src/a.c), eliminating
 / the per-row K bin.  wjbnd supplies the [base,end) group slice per trade row.
 / y must be xasc'd on c (aj does this) so each group's time column is ascending.
+/ ---- as-of ordering predicate ------------------------------------------------
+/ ajsorted[c;t] -> 1b if table `t` is ALREADY in the order aj/wj need, so the
+/ xasc below can be skipped.  aj used to re-sort its right-hand table on every
+/ call; on a 2M-row book that is ~1.1s EVEN WHEN THE BOOK IS ALREADY SORTED,
+/ which is the normal case for anything coming out of a tick store or an on-disk
+/ partition.  `ajs (src/a.c) answers the question in one O(n) pass.
+/ It checks the two properties the join machinery actually relies on -- the time
+/ column non-decreasing within each run of equal group keys, and each group key
+/ confined to ONE contiguous run -- using equality only, so it is independent of
+/ how xasc happens to collate symbols.  It errs towards 0b (sort it) for anything
+/ it cannot prove, so a false 1b -- the only answer that could corrupt a join --
+/ is not reachable.
+ajsorted:{[c;t]c:c,();tc:*|c;g:-1_c;d:+t;`ajs(value g#d;d tc)}
+/ ajord: xasc only when it will actually change something.  Marks the result `s
+/ so the attribute survives for callers that inspect it (meta/`at).
+ajord:{[c;t]$[ajsorted[c;t];t;xasc[c;t]]}
 ajmK:{[c;x;y]c:c,();g:-1_c;tc:*|c;yt:(+y)tc;xt:(+x)tc;yg:$[#g;=rows[g#+y];(,0)!,!#y];xg:$[#g;=rows[g#+x];(,0)!,!#x];{[yt;xt;yg;xg;acc;gk]yi:yg gk;xi:xg gk;b:(yt yi)'(xt xi);@[acc;xi;:;(yi,0N)@b]}[yt;xt;yg;xg]/[(#x)#0N;!xg]}  / pure-K reference
 ajm:{[c;x;y]c:c,();g:-1_c;tc:*|c;b:wjbnd[g;x;y];`aj((+y)tc;(+x)tc;b 0;b 1)}
-aj:{[c;x;y]c:c,();y:xasc[c;y];m:ajm[c;x;y];vc:except[cols y;c];+(+x),vc!{[m;yd;c](yd c)@m}[m;+y]'vc}
-aj0:{[c;x;y]c:c,();y:xasc[c;y];m:ajm[c;x;y];vc:except[cols y;-1_c];+(+x),vc!{[m;yd;c](yd c)@m}[m;+y]'vc}
+aj:{[c;x;y]c:c,();y:ajord[c;y];m:ajm[c;x;y];vc:except[cols y;c];+(+x),vc!{[m;yd;c](yd c)@m}[m;+y]'vc}
+aj0:{[c;x;y]c:c,();y:ajord[c;y];m:ajm[c;x;y];vc:except[cols y;-1_c];+(+x),vc!{[m;yd;c](yd c)@m}[m;+y]'vc}
 asof:{[t;d]c:!d;g:-1_c;tc:*|c;td:+t;msk:$[#g;&/({[td;d;c]td[c]=d c}[td;d]'g);(#t)#1b];i:&msk&~td[tc]>d tc;$[#i;(except[cols t;c])#t[*|i];()]}
 
 / ---- window join wj : w=(begins;ends) aligned to t rows -----------------------
@@ -138,8 +154,8 @@ asof:{[t;d]c:!d;g:-1_c;tc:*|c;td:+t;msk:$[#g;&/({[td;d;c]td[c]=d c}[td;d]'g);(#t
 / so it auto-renders HH:MM:SS.mmm.
 wjcode:{$[x~first;0;x~last;1;x~min;2;x~max;3;x~sum;4;x~avg;5;x~count;6;x~{#x};6;-1]}
 wjbnd:{[g;t;q]$[#g;[gdi:=rows[g#+q];bas:*:'value gdi;len:#:'value gdi;ix:(!gdi)?rows[g#+t];(bas ix;(bas+len)ix)];((#t)#0;(#t)#(#q))]}
-wjK:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:xasc[c;q];qd:+q;qt:qd tc;qg:$[#g;=rows[g#+q];(,0)!,!#q];tg:$[#g;rows[g#+t];(#t)#0];res:{[qt;qg;tg;w0;w1;qd;aggs;i]gk:tg i;p:$[in[gk;!qg];qg gk;0#0];sel:$[#p;{[gt;p;lo;hi]a:gt'lo-1;p@(a+1)+!0|(gt'hi)-a}[qt p;p;w0 i;w1 i];0#0];{[qd;sel;a](a 1)(qd a 2)@sel}[qd;sel]'aggs}[qt;qg;tg;w 0;w 1;qd;aggs]'!#t;+(+t),(aggs[;0])!+res}
-wj:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:xasc[c;q];qd:+q;cs:wjcode'aggs[;1];$[|/cs<0;wjK[w;c;t;q;aggs];[b:wjbnd[g;t;q];+(+t),(aggs[;0])!`wj(qd tc;qd aggs[;2];cs;w 0;w 1;b 0;b 1)]]}
+wjK:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;qt:qd tc;qg:$[#g;=rows[g#+q];(,0)!,!#q];tg:$[#g;rows[g#+t];(#t)#0];res:{[qt;qg;tg;w0;w1;qd;aggs;i]gk:tg i;p:$[in[gk;!qg];qg gk;0#0];sel:$[#p;{[gt;p;lo;hi]a:gt'lo-1;p@(a+1)+!0|(gt'hi)-a}[qt p;p;w0 i;w1 i];0#0];{[qd;sel;a](a 1)(qd a 2)@sel}[qd;sel]'aggs}[qt;qg;tg;w 0;w 1;qd;aggs]'!#t;+(+t),(aggs[;0])!+res}
+wj:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;cs:wjcode'aggs[;1];$[|/cs<0;wjK[w;c;t;q;aggs];[b:wjbnd[g;t;q];+(+t),(aggs[;0])!`wj(qd tc;qd aggs[;2];cs;w 0;w 1;b 0;b 1)]]}
 
 / ---- qSQL-style select / group-by --------------------------------------------
 qwhere:{[t;m]t@&m}

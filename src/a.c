@@ -81,27 +81,180 @@ A ajc(A x){
  // On a 32-bit target (wasm32) size_t is 32 bits, so nt*sizeof(L) can wrap.
  P((N)nt>((N)-1)/SZ(L),mr(QT);mr(TT);mr(GB);mr(GE);ez(x))
  A out=aL(nt);L*RES m=_V(out);
- // Loop-carried merge cursor. `run` is 0 whenever the previous row cannot serve
- // as a lower bound for this one (first row, a null/empty slice, a slice change,
- // or a timestamp that went backwards); pb/pe/pt hold the previous row's slice
- // and key, `cur` the previous row's upper-bound position inside that slice.
- L pb=0,pe=0,pt=0;U cur=0;B run=0;
+ // ---- per-group merge cursors ----------------------------------------------
+ // A single loop-carried cursor only merges when CONSECUTIVE trade rows fall in
+ // the same group slice. That is the wrong assumption for the data this join
+ // actually runs on: a trade tape is ordered by TIME across symbols, so row i
+ // and row i+1 are almost always different symbols, the run breaks every single
+ // row, and every lookup degrades to the cold binary probe -- O(N log M), which
+ // is precisely the "still doing per-row lookups" behaviour a profile shows.
+ //
+ // The merge is per GROUP, so the cursor has to be per group too. Each group's
+ // cursor only ever advances forward across the whole pass, so the total
+ // forward walk is bounded by the sum of the slice widths -- i.e. M -- giving
+ // O(N + M) overall no matter how the symbols interleave.
+ //
+ // Cursors live in a direct-mapped cache keyed on the slice base (which
+ // uniquely identifies a group, since the slices are disjoint), rather than a
+ // slot per group: there is no group-id column in the marshalled arguments, and
+ // an exact table would need either a hash of arbitrary int64 bases or one slot
+ // per quote row (16 MB on a 2M-row book). AJC_N slots cost 96 KB and stay
+ // resident in L2. A miss or a collision is not a correctness problem -- it
+ // just takes the binary probe for that row -- so the cache can be lossy and
+ // the result is bit-identical to a pure-probe implementation on every input.
+ #define AJC_BITS 12u
+ #define AJC_N    (1u<<AJC_BITS)
+ // Fibonacci hash: multiply by 2^64/phi and take the high bits. Slice bases are
+ // strongly clustered (they are running offsets, often near-multiples of a
+ // common group size), which is exactly the pattern a low-bit mask aliases
+ // badly and a multiplicative hash spreads.
+ #define AJC_H(b) ((U)(((W)(b)*0x9E3779B97F4A7C15ull)>>(64u-AJC_BITS)))
+ L*RES cbase=(L*)arena_alloc((N)AJC_N*SZ(L));   // slice base occupying the slot
+ L*RES ckey =(L*)arena_alloc((N)AJC_N*SZ(L));   // that group's last probed key
+ U*RES ccur =(U*)arena_alloc((N)AJC_N*SZ(U));   // that group's cursor position
+ P(!cbase||!ckey||!ccur,mr(QT);mr(TT);mr(GB);mr(GE);mr(out);eo(x))
+ MS(cbase,0xff,(N)AJC_N*SZ(L));                 // -1: no real slice base is negative
  F(nt,
    L b=gb[i],en=ge[i],key=tt[i];
-   // Hoisted validity gate: a null or empty group slice yields a null match and
-   // breaks the run without ever touching qt.
-   I(b==NL||en==NL||en<=b||(U)en>nq,m[i]=NL;run=0;continue)
-   U lo=(U)b,hi=(U)en,j;
-   I(run&&b==pb&&en==pe&&key>=pt,
-     // --- monotone two-pointer advance ------------------------------------
-     U lim=hi-cur>AMGALLOP?cur+AMGALLOP:hi;
+   // Hoisted validity gate: a null or empty group slice yields a null match
+   // without ever touching qt.
+   I(b==NL||en==NL||en<=b||(U)en>nq,m[i]=NL;continue)
+   U lo=(U)b,hi=(U)en,h=AJC_H(b),j;
+   // Warm slot for THIS group, and this group's keys have not gone backwards:
+   // resume the merge where this group left off, however many other symbols'
+   // rows have been processed in between.
+   I(cbase[h]==b&&ckey[h]<=key,
+     U cur=ccur[h],lim=hi-cur>AMGALLOP?cur+AMGALLOP:hi;
      j=cur;W(j<lim&&qt[j]<=key,j++)
      I(j==lim&&lim<hi,j=amub(qt,lim,hi,key)))   // walked the cap out: finish by probe
-   E(j=amub(qt,lo,hi,key))                       // --- cold path: branch-free probe
+   E(j=amub(qt,lo,hi,key))                       // cold: miss, collision, or key went back
    m[i]=j>lo?(L)(j-1):NL;                        // step back to on-or-before, else null
-   cur=j;pb=b;pe=en;pt=key;run=1;)
+   cbase[h]=b;ckey[h]=key;ccur[h]=j;)
+ #undef AJC_BITS
+ #undef AJC_N
+ #undef AJC_H
  mr(QT);mr(TT);mr(GB);mr(GE);
  return x(out);}
+
+// ---- `ajs : is this table ALREADY in as-of-join order? ---------------------
+// x = (gcols; tcol)   gcols = list of group columns (possibly empty), tcol = the
+//                     ordering (time) column.  Returns 1b if aj/wj can consume
+//                     the table as-is, 0b if it must be xasc'd first.
+//
+// Why this exists: aj[] unconditionally re-sorts its right-hand table
+// (`y:xasc[c;y]`), which on a 2M-row book costs ~1.1 s EVEN WHEN THE BOOK IS
+// ALREADY SORTED -- and a tick store hands you quotes already in (sym,time)
+// order, so that is the normal case, not the exception. This predicate answers
+// "is the sort necessary?" in one O(n) pass so the O(n log n) sort can be
+// skipped entirely.
+//
+// It deliberately does NOT test "is this lexicographically ascending". That
+// would have to agree with xasc's collation, and xasc grades SYMBOLS BY NAME
+// while a symbol column stores interned ids -- id order and name order are
+// unrelated, so an id comparison would report every xasc'd table as unsorted
+// and the fast path would never fire. Instead it tests the two properties the
+// join machinery actually depends on, both of which need only EQUALITY on the
+// group columns and are therefore collation-independent:
+//
+//   (1) the ordering column is non-decreasing within each run of equal group
+//       keys -- what the merge cursors in ajc()/wjbounds() assume; and
+//   (2) each distinct group key occupies ONE contiguous run -- what wjbnd()
+//       assumes when it takes (first index, count) as a group's whole slice.
+//
+// (2) is decided by hashing each run's key and looking for a repeat. A hash
+// collision makes two distinct keys look like a repeat, which reports "not
+// sorted" and falls back to the sort: wrong-but-safe in the only direction that
+// matters. Two genuinely equal keys always hash equal, so a real violation can
+// never be missed -- the predicate cannot return 1b for a table that would give
+// a wrong join.
+//
+// Anything it does not understand (an exotic column type, an over-wide run
+// table) also returns 0b, so a new type can never silently skip the sort.
+#define AJS_MAXRUN (1u<<22)   /* cap on distinct groups before we just sort */
+Z W ajs_h(A c,U i){    // 64-bit hash contribution of column c at row i
+ W v;
+ switch(_t(c)){
+  case tG: case tC: v=(W)(UC)((CO G*)_V(c))[i];break;
+  case tH: v=(W)(UH)((CO H*)_V(c))[i];break;
+  case tI: case tS: v=(W)(U)((CO I*)_V(c))[i];break;
+  case tL: v=(W)((CO L*)_V(c))[i];break;
+  case tF: {F f=((CO F*)_V(c))[i];MC(&v,&f,8);break;}
+  default: v=0;
+ }
+ return v*0x9E3779B97F4A7C15ull;}
+A ajsC(A x){
+ P(_t(x)-tA||_n(x)-2,et(x))
+ A*e=(A*)_V(x);
+ A gcs=e[0],tcol=e[1];
+ U ng=_t(gcs)==tA?_n(gcs):0;
+ A*gc=ng?(A*)_V(gcs):0;
+ U n=_n(tcol);
+ P(n<2,x(al(1)))                                  // 0 or 1 row is trivially ordered
+ // ---- pass 1: run boundaries -------------------------------------------
+ // chg[r] = "row r starts a new group". The type switch is hoisted OUT of the
+ // row loop -- one dispatch per column, not one per element.
+ UC*RES chg=(UC*)arena_alloc((N)n);
+ P(!chg,x(al(0)))
+ MS(chg,0,(N)n);
+ #define AJS_NE(T) {CO T*RES p=_V(c);for(U r=1;r<n;r++)chg[r]|=(UC)(p[r]!=p[r-1]);}
+ F(ng,A c=gc[i];
+   P(_n(c)-n,x(al(0)))                            // ragged column: don't guess
+   switch(_t(c)){
+    case tG: case tC: AJS_NE(G) break;
+    case tH: AJS_NE(H) break;
+    case tI: case tS: AJS_NE(I) break;             // tS stores packed 32-bit ids
+    case tL: AJS_NE(L) break;
+    case tF: AJS_NE(F) break;
+    default: return x(al(0));                      // unknown type: sort, don't guess
+   })
+ #undef AJS_NE
+ // ---- pass 2: ordering column non-decreasing inside each run ------------
+ #define AJS_ORD(T) {CO T*RES p=_V(tcol);for(U r=1;r<n;r++)if(!chg[r]&&p[r]<p[r-1])return x(al(0));}
+ switch(_t(tcol)){
+  case tG: case tC: AJS_ORD(G) break;
+  case tH: AJS_ORD(H) break;
+  case tI: AJS_ORD(I) break;
+  case tL: AJS_ORD(L) break;
+  case tF: AJS_ORD(F) break;
+  default: return x(al(0));                        // unknown ordering column: sort
+ }
+ #undef AJS_ORD
+ P(!ng,x(al(1)))                                   // no grouping: pass 2 was the whole test
+ // ---- pass 3: no group key may occupy two separate runs -----------------
+ // Open-addressed hash set over the runs' FNV-folded keys. Deliberately NOT
+ // qsort(): <stdlib.h> cannot be included after a.h, whose single-letter
+ // function-like macros (F, I, W, S, C, D, P, ...) rewrite the declarations in
+ // any libc header pulled in behind it -- the same collision a.h already
+ // documents for <math.h>. A hash set is also O(r) rather than O(r log r).
+ U nr=1;F(n,nr+=(i&&chg[i]))
+ // Bail BEFORE building the set, not after. A table whose group count is a
+ // large fraction of its row count is not join-shaped -- it is a tape with the
+ // symbols interleaved, i.e. exactly the input that must be sorted anyway. On a
+ // 2M-row interleaved book the set would be ~4M slots (32 MB) and 2M scattered
+ // probes, which measured ~330 ms: a real regression on the path that gains
+ // nothing. Counting runs is one cheap pass over a byte array, so deciding here
+ // costs almost nothing and caps the predicate's downside.
+ // The n>=1024 guard matters: on a 4-row, 2-group table nr>(n>>2) is 2>1, which
+ // would reject a perfectly ordered little table. The ratio only means anything
+ // once there are enough rows for "groups per row" to be a real signal.
+ P(nr>AJS_MAXRUN||(n>=1024u&&nr>(n>>2)),x(al(0)))
+ U cap=8;while(cap<(nr<<1))cap<<=1;
+ W*RES tbl=(W*)arena_alloc((N)cap*SZ(W));
+ P(!tbl,x(al(0)))
+ MS(tbl,0,(N)cap*SZ(W));                           // 0 marks an empty slot
+ for(U r=0;r<n;r++){
+   if(r&&!chg[r])continue;                         // not a run start
+   W h=1469598103934665603ull;                     // FNV-1a offset basis
+   for(U k=0;k<ng;k++){h^=ajs_h(gc[k],r);h*=1099511628211ull;}
+   if(!h)h=1;                                      // keep 0 reserved as "empty"
+   U s=(U)(h&(cap-1));
+   while(tbl[s]){
+     if(tbl[s]==h) return x(al(0));                // this key already had a run
+     s=(s+1)&(cap-1);
+   }
+   tbl[s]=h;
+ }
+ return x(al(1));}
 // arena self-test builtin (`arn): exercise bump / reset / overflow -> 1 on success.
 A1(arnT,arena_init(1<<16);B ok=1;
  C*p=(C*)arena_alloc(100),*q=(C*)arena_alloc(200);ok&=!!p&&!!q&&(q>=p+100);
@@ -325,8 +478,8 @@ Z A1(qga,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=4;x)//amber: `g gro
 Z A1(qdiag,I(amdiag<0,amdiag=1)I v=amdiag;I(_tz(x),amdiag=!!gl_(x))x(0);ai(v))
 Z A1(qat,UC a=(_tP(x)||!LH(tG,_t(x),tS))?0:_at(x);x(0);a?({C b[2]={"\0supg"[a],0};sym(b);}):as(0))//amber: get attribute
 ZN AX(ext,P(n-xK,er8(a,n))V*f=(V*)(x&-1ull>>16);S(n,R(1,((A1*)f)(a[0]))R(2,((A2*)f)(a[0],a[1]))R(3,((A3*)f)(a[0],a[1],a[2]))R(4,((A4*)f)(a[0],a[1],a[2],a[3]))R_(en8(a,n)))0)
-ZN A sym1(I v,A x)_(Z CO C s[][4]={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","astt","diag"};
- G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,astT,qdiag,ed)[fI((V*)s,L(s),v)](x))
+ZN A sym1(I v,A x)_(Z CO C s[][4]={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","astt","diag","ajs"};
+ G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,astT,qdiag,ajsC,ed)[fI((V*)s,L(s),v)](x))
 A2(_1,/*01*/P(!xtt,i1(x,y))U k=xK;P(1<k,k==2&&!xtp?prj(x,A8(y,GAP),2):prj(x,&y,1))
  X(Ro(run(x,&y,1))Rp(P(k>7,er(y))I m=xn-1,j=0;Ab8;F(m,b[i]=xA[i+1]==GAP&&!j?j++,y:_R(xA[i+1]))I l=MAX(0,1-j);MC(b+m,&y,8*l);_8(xx,b,m+l))
   Rq(_1(xx,N(_1(xy,y))))Rr(w1(xE,xx,y))Rs(sym1(xv,y))Ru(v1[xv](y))Rw(AK(xv-1<3u&&yK==2?1:ytU?yK:1,AW(xv,aV(tr,1,&y))))Rx(ext(x,&y,1))R_(et(y)))0)

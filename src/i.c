@@ -133,6 +133,16 @@ A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);U n=_N(dat);I n
 // off the end of the column (now clamped); and the integer `sum` accumulated in
 // signed L, which is undefined on overflow (now accumulated in W, identical
 // bits, defined wraparound -- the same treatment src/2.c's add kernels get).
+// A pragma is emitted with _Pragma, and _Pragma is only well-defined at a plain
+// STATEMENT position. Every reduction loop below is therefore written out with
+// an explicit `for`, never through a.h's F()/S()/C()/D() macros: a _Pragma that
+// materialises inside another macro's argument list has implementation-defined
+// placement, and GCC resolves it by hoisting the directive out to where the
+// reduction variable is not yet in scope -- which is a hard compile error
+// ("'r' undeclared", "expected iteration declaration or initialization before
+// 'i'"), not a warning, and it fires on some GCC builds while others accept the
+// same source. src/3.c spells its reduction loops out for exactly this reason.
+// Do not fold these back into F(...).
 #ifdef _OPENMP
  #define WJPRAGMA(x) _Pragma(#x)
  #define WJSIMD(...) WJPRAGMA(omp simd reduction(__VA_ARGS__))
@@ -148,38 +158,76 @@ Z U wjfwd_ub(CO L*RES a,U cur,U hi,L key){U lim=hi-cur>AMGALLOP?cur+AMGALLOP:hi,
 // Pass 1: per-row half-open window [LO[i],HI[i]) inside the row's group slice.
 // A null/empty/out-of-range slice, or an inverted window, yields the empty
 // range 0,0 -- every reducer below then produces that reducer's identity.
-Z V wjbounds(CO L*RES T,U nq,CO L*RES W0,CO L*RES W1,CO L*RES GB,CO L*RES GE,U nt,U*RES LO,U*RES HI){
- L pb=0,pe=0,p0=0,p1=0;U clo=0,chi=0;B run=0;
+// Per-group cursor cache, identical in construction and rationale to ajc()'s in
+// src/a.c -- see the long comment there. wj needs TWO cursors per group (the
+// window has a lower and an upper edge), and both advance monotonically for as
+// long as that group's window edges do. Without this the cursors reset on every
+// row of a time-ordered multi-symbol tape and both edges fall back to a binary
+// probe, which is the O(N log M) behaviour the merge exists to avoid.
+#define WJC_BITS 12u
+#define WJC_N    (1u<<WJC_BITS)
+#define WJC_H(b) ((U)(((W)(b)*0x9E3779B97F4A7C15ull)>>(64u-WJC_BITS)))
+Z V wjbounds(CO L*RES T,U nq,CO L*RES W0,CO L*RES W1,CO L*RES GB,CO L*RES GE,U nt,U*RES LO,U*RES HI,
+              L*RES cbase,L*RES ck0,L*RES ck1,U*RES clo_,U*RES chi_){
+ MS(cbase,0xff,(N)WJC_N*SZ(L));       // -1: no real slice base is negative
  F(nt,
    L b=GB[i],en=GE[i];
-   I(b==NL||en==NL||en<=b||(U)en>nq,LO[i]=0;HI[i]=0;run=0;continue)
-   L k0=W0[i],k1=W1[i];U h=(U)en,lo,hi;
-   I(run&&b==pb&&en==pe&&k0>=p0&&k1>=p1,lo=wjfwd_lb(T,clo,h,k0);hi=wjfwd_ub(T,chi,h,k1))
+   I(b==NL||en==NL||en<=b||(U)en>nq,LO[i]=0;HI[i]=0;continue)
+   L k0=W0[i],k1=W1[i];U h=(U)en,g=WJC_H(b),lo,hi;
+   I(cbase[g]==b&&ck0[g]<=k0&&ck1[g]<=k1,
+     lo=wjfwd_lb(T,clo_[g],h,k0);hi=wjfwd_ub(T,chi_[g],h,k1))
    E(lo=amlb(T,(U)b,h,k0);hi=amub(T,(U)b,h,k1))
    I(hi<lo,hi=lo)                      // inverted window -> empty, never a wrapped count
-   LO[i]=lo;HI[i]=hi;clo=lo;chi=hi;pb=b;pe=en;p0=k0;p1=k1;run=1;)}
+   LO[i]=lo;HI[i]=hi;
+   cbase[g]=b;ck0[g]=k0;ck1[g]=k1;clo_[g]=lo;chi_[g]=hi;)}
 // Pass 2, float column -> float result. c: 0=first 1=last 2=min 3=max 4=sum 5=avg.
 Z V wjrFF(CO F*RES p,CO U*RES LO,CO U*RES HI,U nt,I c,F*RES o){
- S(c,
-  C(0,F(nt,U a=LO[i];o[i]=a<HI[i]?p[a]:NF))
-  C(1,F(nt,U b=HI[i];o[i]=LO[i]<b?p[b-1]:NF))
-  C(2,F(nt,U a=LO[i],b=HI[i];F r=WF;WJSIMD(min:r)for(U k=a;k<b;k++)r=p[k]<r?p[k]:r;o[i]=r))
-  C(3,F(nt,U a=LO[i],b=HI[i];F r=-WF;WJSIMD(max:r)for(U k=a;k<b;k++)r=p[k]>r?p[k]:r;o[i]=r))
-  C(4,F(nt,U a=LO[i],b=HI[i];F r=0;WJSIMD(+:r)for(U k=a;k<b;k++)r+=p[k];o[i]=r))
-  D(F(nt,U a=LO[i],b=HI[i];F r=0;WJSIMD(+:r)for(U k=a;k<b;k++)r+=p[k];o[i]=b>a?r/(F)(b-a):NF)))}
+ switch(c){
+ case 0: for(U i=0;i<nt;i++){U a=LO[i];o[i]=a<HI[i]?p[a]:NF;} break;
+ case 1: for(U i=0;i<nt;i++){U b=HI[i];o[i]=LO[i]<b?p[b-1]:NF;} break;
+ case 2: for(U i=0;i<nt;i++){U a=LO[i],b=HI[i];F r=WF;
+           WJSIMD(min:r)
+           for(U k=a;k<b;k++)r=p[k]<r?p[k]:r;
+           o[i]=r;} break;
+ case 3: for(U i=0;i<nt;i++){U a=LO[i],b=HI[i];F r=-WF;
+           WJSIMD(max:r)
+           for(U k=a;k<b;k++)r=p[k]>r?p[k]:r;
+           o[i]=r;} break;
+ case 4: for(U i=0;i<nt;i++){U a=LO[i],b=HI[i];F r=0;
+           WJSIMD(+:r)
+           for(U k=a;k<b;k++)r+=p[k];
+           o[i]=r;} break;
+ default: for(U i=0;i<nt;i++){U a=LO[i],b=HI[i];F r=0;   /* 5 = avg */
+           WJSIMD(+:r)
+           for(U k=a;k<b;k++)r+=p[k];
+           o[i]=b>a?r/(F)(b-a):NF;} break;
+ }}
 // Pass 2, long column -> long result. c: 0=first 1=last 2=min 3=max 4=sum.
 Z V wjrLL(CO L*RES p,CO U*RES LO,CO U*RES HI,U nt,I c,L*RES o){
- S(c,
-  C(0,F(nt,U a=LO[i];o[i]=a<HI[i]?p[a]:NL))
-  C(1,F(nt,U b=HI[i];o[i]=LO[i]<b?p[b-1]:NL))
-  C(2,F(nt,U a=LO[i],b=HI[i];L r=WL;WJSIMD(min:r)for(U k=a;k<b;k++)r=p[k]<r?p[k]:r;o[i]=r))
-  C(3,F(nt,U a=LO[i],b=HI[i];L r=-WL;WJSIMD(max:r)for(U k=a;k<b;k++)r=p[k]>r?p[k]:r;o[i]=r))
-  // W accumulator: defined two's-complement wraparound, bit-identical to the
-  // signed sum the old code computed but without the undefined behaviour.
-  D(F(nt,U a=LO[i],b=HI[i];W r=0;WJSIMD(+:r)for(U k=a;k<b;k++)r+=(W)p[k];o[i]=(L)r)))}
+ switch(c){
+ case 0: for(U i=0;i<nt;i++){U a=LO[i];o[i]=a<HI[i]?p[a]:NL;} break;
+ case 1: for(U i=0;i<nt;i++){U b=HI[i];o[i]=LO[i]<b?p[b-1]:NL;} break;
+ case 2: for(U i=0;i<nt;i++){U a=LO[i],b=HI[i];L r=WL;
+           WJSIMD(min:r)
+           for(U k=a;k<b;k++)r=p[k]<r?p[k]:r;
+           o[i]=r;} break;
+ case 3: for(U i=0;i<nt;i++){U a=LO[i],b=HI[i];L r=-WL;
+           WJSIMD(max:r)
+           for(U k=a;k<b;k++)r=p[k]>r?p[k]:r;
+           o[i]=r;} break;
+ // W accumulator: defined two's-complement wraparound, bit-identical to the
+ // signed sum the old code computed but without the undefined behaviour.
+ default: for(U i=0;i<nt;i++){U a=LO[i],b=HI[i];W r=0;   /* 4 = sum */
+           WJSIMD(+:r)
+           for(U k=a;k<b;k++)r+=(W)p[k];
+           o[i]=(L)r;} break;
+ }}
 // Pass 2, long column -> float result (avg only: the one reducer that widens).
 Z V wjrLF(CO L*RES p,CO U*RES LO,CO U*RES HI,U nt,F*RES o){
- F(nt,U a=LO[i],b=HI[i];F r=0;WJSIMD(+:r)for(U k=a;k<b;k++)r+=(F)p[k];o[i]=b>a?r/(F)(b-a):NF)}
+ for(U i=0;i<nt;i++){U a=LO[i],b=HI[i];F r=0;
+   WJSIMD(+:r)
+   for(U k=a;k<b;k++)r+=(F)p[k];
+   o[i]=b>a?r/(F)(b-a):NF;}}
 // Pass 2, count: source-independent, it is just the window width.
 Z V wjrCNT(CO U*RES LO,CO U*RES HI,U nt,L*RES o){F(nt,o[i]=(L)(HI[i]-LO[i]))}
 A wjc(A x){
@@ -199,8 +247,13 @@ A wjc(A x){
  // scratch a caller still has live.
  P((N)nt>((N)-1)/SZ(U),mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);ez(x))
  U*RES LO=(U*)arena_alloc((N)nt*SZ(U)),*RES HI=(U*)arena_alloc((N)nt*SZ(U));
- P(!LO||!HI,mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);eo(x))
- wjbounds(T,nq,W0,W1,GB,GE,nt,LO,HI);
+ L*RES cb=(L*)arena_alloc((N)WJC_N*SZ(L));      // per-group cursor cache (~112 KB,
+ L*RES c0=(L*)arena_alloc((N)WJC_N*SZ(L));      // L2-resident); see wjbounds above
+ L*RES c1=(L*)arena_alloc((N)WJC_N*SZ(L));
+ U*RES cl=(U*)arena_alloc((N)WJC_N*SZ(U));
+ U*RES ch=(U*)arena_alloc((N)WJC_N*SZ(U));
+ P(!LO||!HI||!cb||!c0||!c1||!cl||!ch,mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);eo(x))
+ wjbounds(T,nq,W0,W1,GB,GE,nt,LO,HI,cb,c0,c1,cl,ch);
  A res=aA(na);A*R=(A*)_V(res);
  for(U a=0;a<na;a++){
   A col=QC[a];I c=(I)cod[a];

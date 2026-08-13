@@ -11,6 +11,55 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ------------------------------------------------------------------ Compiler matrix
+  # WHY THIS JOB EXISTS.  The `windows-wsl` job below runs Ubuntu-22.04, whose
+  # default compiler is GCC 11; every other job runs ubuntu-latest / macos-latest,
+  # i.e. GCC 13+ or AppleClang.  A construct that GCC 13 accepts and GCC 11
+  # rejects therefore showed up ONLY as a WSL failure -- after a ~25 minute job,
+  # with an error that reads like a Windows problem but has nothing to do with
+  # Windows.  That is exactly what happened with a misplaced `_Pragma` inside a
+  # macro argument list: clean on 13, hard error on 11.
+  #
+  # This job compiles the interpreter under every GCC the project claims to
+  # support plus Clang, and does nothing else.  It is the fastest signal in the
+  # workflow (~2 min, no test suite), so a toolchain-portability break is
+  # reported in minutes against a named compiler version instead of being
+  # discovered at the end of the slowest job on the matrix.
+  toolchains:
+    name: gcc-${{ matrix.cc }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        cc: [gcc-11, gcc-12, gcc-13, clang]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ${{ matrix.cc }}
+        run: sudo apt-get update && sudo apt-get install -y build-essential ${{ matrix.cc }}
+
+      - name: Toolchain info
+        run: ${{ matrix.cc }} --version
+
+      # -Werror is deliberately NOT used: build.sh passes -w because the core
+      # interpreter files carry known, documented warnings (the a.h TU()/LH()
+      # sign-compare note, for one). The signal being bought here is "does this
+      # compiler ACCEPT the source", which is what actually broke.
+      - name: Build
+        env:
+          CC: ${{ matrix.cc }}
+        run: |
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Smoke test
+        run: |
+          set -e
+          out=$(./amber test.k)
+          echo "$out" | tail -5
+          echo "$out" | grep -Eq '0 failures'
+
   # ------------------------------------------------------------------ Linux + macOS
   # Both have a POSIX shell, so a single matrix covers them. build.sh already
   # resolves its own dir portably and links without -ldl on macOS.

@@ -75,11 +75,24 @@ X1(imx,RGHILC(imn(inv(x)))RF(imx(of1(x)))RE(Lij x(0);az(j-i?j-i-1:NL))R_(fir(N(d
  // bound and its counter in a single init clause, which is not an OpenMP
  // canonical loop form, so `omp simd` would silently fail to attach (src/3.c
  // spells its reduction loops out for exactly the same reason).
-// The macro is defined OUTSIDE the X1() invocation on purpose: a preprocessing
-// directive that sits inside a function-like macro's argument list is undefined
-// behaviour in C99 (6.10.3p11) -- GCC tolerates it, other front ends need not.
-#define VIMN(T) {CO T*RES p=xV;T v=*p;VSIMDR(min:v)for(N i=0;i<n;i++)v=p[i]<v?p[i]:v;\
-                 for(N i=0;i<n;i++)if(p[i]==v){j=(L)i;break;}}
+ //
+ // Each width is a real FUNCTION rather than a block pasted into S4()'s argument
+ // list. That is not a style choice: VSIMDR expands to _Pragma, and a _Pragma
+ // that materialises inside another macro's argument list gets repositioned by
+ // the preprocessor to a point where the reduction variable is not yet in scope.
+ // GCC then rejects it outright ("'v' undeclared"), and it does so on some GCC
+ // builds but not others -- the same defect that broke src/i.c's reducers on a
+ // WSL toolchain while compiling clean here. Inside a plain function body the
+ // pragma sits at a statement position, which is the only well-defined place
+ // for it. Do not inline these back into S4().
+#define VIMN_FN(T,NM) Z L NM(CO T*RES p,N n){ \
+  I(!n,return NL)                        /* empty vector -> null index, and    */ \
+  T v=*p;                                /* never dereference p[0]             */ \
+  VSIMDR(min:v)                                                                   \
+  for(N i=0;i<n;i++)v=p[i]<v?p[i]:v;     /* pass 1: pure min, runs at vector width */ \
+  for(N i=0;i<n;i++)if(p[i]==v)return(L)i;/* pass 2: FIRST index holding it     */ \
+  return 0;}
+VIMN_FN(G,vimnG) VIMN_FN(H,vimnH) VIMN_FN(I,vimnI) VIMN_FN(L,vimnL)
+#undef VIMN_FN
 X1(imn,RF(imn(of1(x)))RE(Lij x(0);az(NL*(i==j)))R_(fir(N(asc(x))))
- RGHILC(N n=xn;L j=n?0:NL;S4(xw-3,VIMN(G),VIMN(H),VIMN(I),VIMN(L))x(az(j))))
-#undef VIMN
+ RGHILC(N n=xn;L j;S4(xw-3,j=vimnG(xV,n),j=vimnH(xV,n),j=vimnI(xV,n),j=vimnL(xV,n))x(az(j))))

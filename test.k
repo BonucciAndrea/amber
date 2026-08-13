@@ -133,6 +133,55 @@ ajT:+`sym`time`px!(`a`b`a`b;2 3 4 5;1.0 2 3 4)
 t[`ajGateAj;(aj[`sym`time;ajT;ajQ0])~aj[`sym`time;ajT;ajQ1];1]
 t[`ajGateWj;(wj[(ajT[`time]-2;ajT`time);`sym`time;ajT;ajQ0;,(`mx;max;`bid)])~wj[(ajT[`time]-2;ajT`time);`sym`time;ajT;ajQ1;,(`mx;max;`bid)];1]
 
+/ ---- `wjb / wjbnd (src/a.c): C group-bounds kernel vs the pure-K path ----
+/ wjbnd feeds BOTH aj and wj their per-row group slices, so a wrong slice here
+/ silently attaches trades to the wrong symbol's quotes. The C kernel is pinned
+/ against wjbndK (the original K implementation, kept as the fallback) by
+/ differential testing over randomly generated books -- sorted and shuffled,
+/ many groups and one group, more groups than rows -- rather than by a handful
+/ of fixed cases. `wjb is allowed to DECLINE (return ()), which the harness
+/ accepts; what it may never do is return a different answer from K.
+wjbChk:{[nq;nt;ns;srt]sy:`$'("s",'$!ns);
+  q:+`sym`time`bid!(sy nq?ns;nq?50;nq?100.0); q:$[srt;xasc[`sym`time;q];q];
+  t:+`sym`time`px!(sy nt?ns;nt?50;nt?100.0);
+  c:`wjb(value (,`sym)#+q;value (,`sym)#+t); k:wjbndK[,`sym;t;q];
+  $[0=#c;1b;((c 0)~k 0)&(c 1)~k 1]}
+wjbR:()
+{[i]wjbR,:wjbChk[100;60;5;1b]}'!12
+{[i]wjbR,:wjbChk[100;60;5;0b]}'!12
+{[i]wjbR,:wjbChk[300;150;25;1b]}'!8
+{[i]wjbR,:wjbChk[20;120;30;1b]}'!8
+t[`wjbVsK;&/wjbR;1b]
+/ end-to-end: the same book shuffled vs pre-sorted must give the same join
+ajEqChk:{[nq;nt;ns]sy:`$'("s",'$!ns);
+  q:+`sym`time`bid!(sy nq?ns;nq?50;nq?100.0);
+  t:+`sym`time`px!(sy nt?ns;nt?50;nt?100.0); qs:xasc[`sym`time;q];
+  w:(t[`time]-3;t`time); ag:((`mx;max;`bid);(`n;count;`bid));
+  ((aj[`sym`time;t;q])~aj[`sym`time;t;qs])&(wj[w;`sym`time;t;q;ag])~wj[w;`sym`time;t;qs;ag]}
+ajEqR:()
+{[i]ajEqR,:ajEqChk[200;120;7]}'!10
+{[i]ajEqR,:ajEqChk[60;60;20]}'!8
+{[i]ajEqR,:ajEqChk[20;150;30]}'!8
+t[`ajShuffleEq;&/ajEqR;1b]
+/ a symbol present in trades but absent from quotes -> null slice, null match
+t[`wjbMissing;(+aj[`sym`time;+`sym`time`px!(,`zz;,5;,1.0);+`sym`time`bid!(`a`a;1 2;10 20)])`bid;,0N]
+/ the `p (parted) attribute lets ajsorted skip the contiguity pass; it must not
+/ change the answer for a table that genuinely is parted-but-not-sorted
+/ ---- `p (parted) attribute fast path ----
+/ A parted-but-NOT-sorted book (groups contiguous, symbols in no particular
+/ order) is exactly what `p asserts. ajsorted must accept it either way; with the
+/ attribute present it skips the O(n) contiguity pass instead of re-deriving it,
+/ which must not change the answer.
+ajPq:+`sym`time`bid!(`b`b`a`a;1 3 2 4;30 40 10 20)      / parted, not sorted
+ajPt:+`sym`time`px!(`a`b;3 2;1.0 2.0)
+t[`ajPartedSeen;ajsorted[`sym`time;ajPq];1]
+t[`ajPartedAttr;ajsorted[`sym`time;+(+ajPq),(,`sym)!,`pa (+ajPq)`sym];1]
+t[`ajPartedSame;(aj[`sym`time;ajPt;ajPq])~aj[`sym`time;ajPt;xasc[`sym`time;ajPq]];1]
+/ `p must NOT rescue a book whose times descend inside a group -- that is pass 2,
+/ which the attribute says nothing about and which is therefore still checked.
+ajPbad:+`sym`time`bid!(`b`b`a`a;3 1 2 4;30 40 10 20)
+t[`ajPartedTimeStill;ajsorted[`sym`time;+(+ajPbad),(,`sym)!,`pa (+ajPbad)`sym];0]
+
 / ---- HFT arena scratchpad (src/arena.c) : bump / reset / overflow self-test ----
 t[`arena;`arn 0;1]
 

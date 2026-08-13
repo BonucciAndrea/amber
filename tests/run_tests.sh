@@ -37,7 +37,7 @@ run_k(){ # run_k <binary> <script> <label>
 say "build"
 ./build.sh || exit 1
 
-SUITES="test.k test-fin.k tests/test_matrix.k tests/test_qsql.k examples/peach_verify.k"
+SUITES="test.k test-fin.k test-ext.k tests/test_matrix.k tests/test_qsql.k tests/test_sort_window.k examples/peach_verify.k"
 for s in $SUITES; do say "$s"; run_k ./amber "$s" native; done
 
 # peach is the thread-pool primitive: run its verifier again with the pool

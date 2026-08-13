@@ -561,6 +561,112 @@ A2(i1,/*01*/P(y==GAP||y==au,xR)
 Z A3(i2,/*001*/C b=ytT||y==GAP||y==au;x=Nz(i1(x,yR));P(!b,x(x1(z)))x(l2f(dot,x,aA1(z))))
 Z AX(i8,A y=*a;P(n==1,i1(x,y))P(n==2,y(_2(x,y,a[1])))a++;n--;C b=ytT||y==GAP||y==au;x=i1(x,y);P(!x,mrn(n,a);x)P(!b,x(i8(x,a,n)))x(l2f(dot,x,aV(tA,n,a))))
 L iw(A x/*0*/,U w,L i)_(S4(w,_(xg),_(xh),_(xi),_(xl))0)
+// ---- `xs : native multi-column grade for xasc / xdesc -----------------------
+// x = (columns; descending?)  ->  the permutation, or () to tell the caller
+// (amber.k) to use the portable K path.
+//
+// xasc was BY FAR the most expensive primitive left in the engine: on a 2M-row
+// two-column table it measured ~4.6 s, more than the as-of join it exists to
+// feed. The K definition is
+//     xasc:{[c;t]c:c,();o:<+(+t)c; ...}
+// and `+(+t)c` MATERIALISES ONE K LIST PER ROW -- 2M heap objects -- purely so
+// that `<` has something row-shaped to compare. `<` on a list of lists is
+// ascA() in src/o.c: a copying mergesort whose comparator (qA) walks two boxed
+// rows element by element, allocating a boxed scalar per comparison. So the
+// cost was O(n log n) *boxed* comparisons on top of 2M short-lived objects.
+//
+// Here nothing row-shaped is ever built. The columns are sorted LEAST
+// SIGNIFICANT FIRST (last key column first), each with one stable LSD radix
+// pass over an unsigned key extracted straight from the column's raw C array.
+// That is O(n * total key bytes) with no comparisons and no allocation, and
+// because LSD radix is stable, running the columns right-to-left reproduces
+// lexicographic multi-column order exactly.
+//
+// SYMBOL COLUMNS collate BY NAME, which is what `<` on a symbol vector does and
+// what the rest of the engine (ajsorted's collation note above) assumes. A
+// packed symbol id has no relation to its spelling, so a symbol column is first
+// reduced to a DENSE RANK: the distinct ids are collected with one open-
+// addressed pass, ranked by handing them to asc() as a symbol vector (the same
+// name collation, on the distinct set rather than on n rows), and each row then
+// carries its rank as the radix key. A book with 5,000 symbols and 2M rows pays
+// 5,000 string comparisons, not 2M boxed row comparisons.
+//
+// DESCENDING is the same machinery with complemented keys. K's `>` is
+// "descending by value, ties by ASCENDING original index" (that is what
+// dsc's rev/asc/rev identity in src/o.c computes), and complementing the key of
+// a STABLE sort gives precisely that -- so xdesc goes down the same path.
+#define XS_MAXCOL 32u
+// One column -> n unsigned radix keys in `k`, gathered through the running
+// permutation `ix`, plus the number of significant key BYTES. Returns 0 for a
+// column type this kernel does not handle, which aborts the whole grade and
+// sends the caller back to the K path.
+Z B xssym(A c,CO I*RES ix,W*RES k,N n,U*nbo){
+ CO U*RES p=(CO U*)_V(c);                       // tS: packed 32-bit ids
+ U cap=8;while((W)cap<(W)n*2)cap<<=1;
+ I*RES ht=(I*)arena_alloc((N)cap*SZ(I));
+ U*RES dv=(U*)arena_alloc(n*SZ(U));
+ U*RES rk=(U*)arena_alloc(n*SZ(U));
+ P(!ht||!dv||!rk,0)
+ for(U s=0;s<cap;s++)ht[s]=-1;
+ N nd=0;
+ for(N i=0;i<n;i++){U v=p[ix[i]];
+   U s=(U)(((W)v*0x9E3779B97F4A7C15ull)>>40)&(cap-1);
+   while(ht[s]>=0&&dv[ht[s]]!=v)s=(s+1)&(cap-1);
+   if(ht[s]<0){ht[s]=(I)nd;dv[nd++]=v;}}
+ A g=asc(aV(tS,(U)nd,dv));                      // by NAME: asc(tS) -> asc(str x)
+ P(!g,0)
+ U gw=(U)(_w(g)-3);
+ for(N r=0;r<nd;r++)rk[iw(g,gw,(L)r)]=(U)r;     // distinct slot -> dense rank
+ mr(g);
+ for(N i=0;i<n;i++){U v=p[ix[i]];
+   U s=(U)(((W)v*0x9E3779B97F4A7C15ull)>>40)&(cap-1);
+   while(dv[ht[s]]!=v)s=(s+1)&(cap-1);
+   k[i]=(W)rk[ht[s]];}
+ *nbo=nd<=256u?1u:nd<=65536u?2u:4u;
+ return 1;}
+Z B xskey(A c,CO I*RES ix,W*RES k,N n,U*nbo,int desc){
+ CO V*q=_V(c);UC t=_t(c);
+ switch(t){
+  case tG: case tC:{CO G*RES p=q;for(N i=0;i<n;i++)k[i]=(W)AMKG(p[ix[i]]);*nbo=1;}break;
+  case tH:{CO H*RES p=q;for(N i=0;i<n;i++)k[i]=(W)AMKH(p[ix[i]]);*nbo=2;}break;
+  case tI:{CO I*RES p=q;for(N i=0;i<n;i++)k[i]=(W)AMKI(p[ix[i]]);*nbo=4;}break;
+  case tL:{CO L*RES p=q;for(N i=0;i<n;i++)k[i]=AMKL(p[ix[i]]);*nbo=8;}break;
+  case tF:{CO F*RES p=q;for(N i=0;i<n;i++)k[i]=amkF(p[ix[i]]);*nbo=8;}break;
+  case tS: P(!xssym(c,ix,k,n,nbo),0) break;
+  default: return 0;}
+ // Complementing every key inverts the value order while the sort stays
+ // stable. The key WIDTH is unaffected: the bytes above *nbo were identical
+ // across the vector before the complement, so they still are.
+ if(desc)for(N i=0;i<n;i++)k[i]=~k[i];
+ return 1;}
+A xsC(A x){
+ P(_t(x)-tA||_n(x)-2,x(emp(tA)))
+ A*e=(A*)_V(x);A CS=e[0];
+ P(_t(CS)-tA,x(emp(tA)))
+ U nc=_n(CS);
+ P(!nc||nc>XS_MAXCOL,x(emp(tA)))
+ A*cv=(A*)_V(CS);
+ N n=_n(cv[0]);
+ P(!n||n!=(N)(U)(I)n,x(emp(tA)))                // grade indices are 32-bit
+ F(nc,P(_tP(cv[i])||_n(cv[i])-(U)n,x(emp(tA))))
+ int desc=tru(_R(e[1]));
+ ArenaMark mk=arena_mark();
+ I*cur=(I*)arena_alloc(n*SZ(I)),*alt=(I*)arena_alloc(n*SZ(I));
+ W*kA=(W*)arena_alloc(n*SZ(W)),*kB=(W*)arena_alloc(n*SZ(W));
+ P(!cur||!alt||!kA||!kB,arena_release(mk);x(emp(tA)))
+ for(N i=0;i<n;i++)cur[i]=(I)i;
+ for(L ci=(L)nc-1;ci>=0;ci--){
+   U nb=0;ArenaMark cm=arena_mark();
+   P(!xskey(cv[ci],cur,kA,n,&nb,desc),arena_release(mk);x(emp(tA)))
+   nb=amnorm(kA,n,nb);                        // clustered column: fewer passes
+   if(nb){I*r=amrdx8(kA,cur,kB,alt,n,nb);
+          if(r!=cur){alt=cur;cur=r;}}         // nb==0: column is constant
+   arena_release(cm);}                          // per-column symbol scratch
+ A y=aI((U)n);MC(_V(y),cur,n*SZ(I));
+ arena_release(mk);
+ x(0);
+ return ct(tZ((L)n-1),y);}
+
 Z A1(qa,A y=emp(tA);S*p=argv;W(*p,PSH(y,aCz(*p++)))y(y1(x)))
 Z A1(qe,A y=emp(tS),z=emp(tA);S*e=env;W(*e,S p=*e++,q=strchrnul(p,'=');PSH(y,cS(aCm(p,q)));PSH(z,aCz(q+!!*q)))y=am(y,z);x-au?x(x1(y)):y)
 Z A1(qx,exit(xtz?gl(x):1);0)
@@ -579,8 +685,8 @@ Z A1(qga,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=4;x)//amber: `g gro
 Z A1(qdiag,I(amdiag<0,amdiag=1)I v=amdiag;I(_tz(x),amdiag=!!gl_(x))x(0);ai(v))
 Z A1(qat,UC a=(_tP(x)||!LH(tG,_t(x),tS))?0:_at(x);x(0);a?({C b[2]={"\0supg"[a],0};sym(b);}):as(0))//amber: get attribute
 ZN AX(ext,P(n-xK,er8(a,n))V*f=(V*)(x&-1ull>>16);S(n,R(1,((A1*)f)(a[0]))R(2,((A2*)f)(a[0],a[1]))R(3,((A3*)f)(a[0],a[1],a[2]))R(4,((A4*)f)(a[0],a[1],a[2],a[3]))R_(en8(a,n)))0)
-ZN A sym1(I v,A x)_(Z CO C s[][4]={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","astt","diag","ajs","wjb"};
- G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,astT,qdiag,ajsC,wjbC,ed)[fI((V*)s,L(s),v)](x))
+ZN A sym1(I v,A x)_(Z CO C s[][4]={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","astt","diag","ajs","wjb","mw","xs"};
+ G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,astT,qdiag,ajsC,wjbC,mwC,xsC,ed)[fI((V*)s,L(s),v)](x))
 A2(_1,/*01*/P(!xtt,i1(x,y))U k=xK;P(1<k,k==2&&!xtp?prj(x,A8(y,GAP),2):prj(x,&y,1))
  X(Ro(run(x,&y,1))Rp(P(k>7,er(y))I m=xn-1,j=0;Ab8;F(m,b[i]=xA[i+1]==GAP&&!j?j++,y:_R(xA[i+1]))I l=MAX(0,1-j);MC(b+m,&y,8*l);_8(xx,b,m+l))
   Rq(_1(xx,N(_1(xy,y))))Rr(w1(xE,xx,y))Rs(sym1(xv,y))Ru(v1[xv](y))Rw(AK(xv-1<3u&&yK==2?1:ytU?yK:1,AW(xv,aV(tr,1,&y))))Rx(ext(x,&y,1))R_(et(y)))0)

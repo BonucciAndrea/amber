@@ -128,7 +128,7 @@ TD unsigned long long W,A,A0(),A1(A),A2(A,A),A3(A,A,A),A4(A,A,A,A),AA(CO A*,U),A
 #define AX(f,b...) A f(A x,CO A*a,U n  )_(DBG(Q(n<=8));b)/*0,1..1,n*/
 #define AA(f,b...) A f(    CO A*a,U n  )_(DBG(Q(n<=8));b)
 A1 _R,aA1,asc,AZ,blw,cB,cG,cC,cF,cH,cI,cL,cS,dsc,emaC,enl,epr,err,fir,flp,flr,frk,gZ,gg,grp,hex,imx,imn,inv,jS,js0,js1,kcos,kexp,klog,ksin,kst,las,len,m0,m1,mkn,mRa,mr,mut,
- neg,not,nul,of0,of1,opn,out,peachC,prng,qkmp,qpri,qte,raz,rev,rs0,spl,sqr,sqz,sqzZ,str,str0,til,typ,u0c,u1c,u2c,unh,unq,val,whr,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT;
+ neg,not,nul,of0,of1,opn,out,peachC,prng,qkmp,qpri,qte,raz,rev,rs0,spl,sqr,sqz,sqzZ,str,str0,til,typ,u0c,u1c,u2c,unh,unq,val,whr,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,mwC,xsC;
 A2 _1,aA2,aM,add,am,psh,ari,bin,ct,cat,cat10,cat11,dlr,dex,dot,dvd,eql,exc,crt,fil,fnd,gtn,hsh,ie,i1,ltn,mod,mnm,mtc,mul,mxm,que,sub,und,v0c,v1c,v2c;
 A3 _2,aA3,arf,arp,ars,cpl,e2,r2,try;
 A4 ara,a4,d4;
@@ -155,6 +155,22 @@ U amub(CO L*RES,U,U,L);//branch-free upper_bound (first >key) -- no key+1 overfl
 // regardless of this cap, so the cap costs nothing in the common (already
 // time-ordered) case; it exists purely so one row that jumps across a huge
 // slice degrades to O(log w) instead of O(w). Shared by aj (a.c) and wj (i.c).
+// ---- radix-sort collation (src/v.c; src/a.c's `xs uses the same keys) -------
+// Order-preserving unsigned keys: radix compares bytes as unsigned magnitudes,
+// so every signed domain is folded onto the unsigned line by flipping its sign
+// bit first. amkF() does the IEEE-754 double fold (see src/v.c).
+#define AMKG(v) ((U)(UC)(v)^0x80u)
+#define AMKH(v) ((U)(UH)(v)^0x8000u)
+#define AMKI(v) ((U)(v)^0x80000000u)
+#define AMKL(v) ((W)(v)^0x8000000000000000ull)
+W amkF(F);
+// Stable LSD radix over `nb` key bytes. Keys and row indices travel together;
+// returns whichever index buffer holds the result.
+I*amrdx8(W*RES,I*RES,W*RES,I*RES,N,U);
+// Translate keys to a zero minimum; returns the number of key bytes that stay
+// significant (0 = every key identical, i.e. nothing to sort).
+U amnorm(W*RES,N,U);
+A rdxg(A);   //ascending grade of a flat numeric vector, or 0 -> caller falls back
 #define AMGALLOP 64u
 I qA(A,A),qf(F,F),rnk(A);
 U _K(A),si(S,C),_N(A),js_eval(C*,U,C*,U),fG(CO G*,U,G),fI(CO I*,U,I),fL(CO L*,U,L),us(S);

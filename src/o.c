@@ -48,9 +48,22 @@ Z V mrg(A x/*0*/,I*p,I*q,I*b,I*d,I k){I*r=p-q+b;W(1,I(qA(xA[*p],xA[*b])<k,*r++=*
 Z V cis(A x/*0*/,I*p,N n,I*r){F(n,I j=0,k=i,v=p[i];A y=xA[v];W(j<k,I m=j+k>>1;I(qA(y,xA[r[m]])<0,k=m)E(j=m+1))memmove(r+j+1,r+j,i-j<<2);r[j]=v)}//copying_insertionsort
 Z V cms(A x/*0*/,I*p,N n,I*r){P(n<17,cis(x,p,n,r);)N m=n/2;cms(x,p+m,n-m,r+m);cms(x,p,m,p+m);mrg(x,p+m,p+2*m,r+m,r+n,1);}//copying_mergesort
 A1(ascA,N n=xn;A z=aI(n);I*p=zI;tilV(p,0,n,2);P(n<17,cis(x,p,n,p);x(z))N m=n/2;A y=aI(n-m);I*t=yI;cms(x,p+m,n-m,t);cms(x,p,m,p+n-m);mrg(x,t,t+n-m,p+n-m,p+n,0);x(y(z)))
-X1(asc,Rt(opn(x))Rm(grdm(x,asc))RM(K1("{(!#x){x@<y x}/|.+x}",x))RS(asc(str(x)))RF(asc(of1(x)))RA(P(xn-(I)xn,ez(x))ascA(x))RE(Lij x(0);aE(0,j-i))
+// The pre-batch-2 grade, kept verbatim as the fallback for every case rdxg()
+// declines (an exotic width, or an arena that could not supply scratch): the
+// subtract-the-minimum normalisation plus ascZ()'s byte-wise radix, which
+// re-gathers the value array through the permutation on every one of its
+// passes. Floats reach it only via of1(), i.e. through a fully materialised
+// order-preserving copy of the vector -- exactly the two costs rdxg() removes.
+Z A1(ascB,P(xtF,asc(of1(x)))
+ x=N(K1("{x-&/x}",x));N n=xn;A y=aC(n),z=aI(n),u=aI(n);Mx(My(u=ascZ(xV,yV,zV,uV,n,(1ll<<xw)+7>>3)==zV?u(z):z(u)))u)
+X1(asc,Rt(opn(x))Rm(grdm(x,asc))RM(K1("{(!#x){x@<y x}/|.+x}",x))RS(asc(str(x)))RA(P(xn-(I)xn,ez(x))ascA(x))RE(Lij x(0);aE(0,j-i))
  RGC(P(xn-(I)xn,ez(x))N n=xn;I c[257]={},*c129=c+129;F(n,c129[xg]++)F(256,c[i+1]+=c[i])A y=aI(n);I*c128=c+128;Mx(F(n,yI[c128[xg]++]=i))ct(tZ(n-1),y))
- R_(P(xn-(I)xn,ez(x))x=N(K1("{x-&/x}",x));N n=xn;A y=aC(n),z=aI(n),u=aI(n);Mx(My(u=ascZ(xV,yV,zV,uV,n,(1ll<<xw)+7>>3)==zV?u(z):z(u)))u))
+ // amber batch 2: 16/32/64-bit integers and IEEE-754 doubles go through the
+ // key-carrying LSD radix in src/v.c -- one sequential pass per SIGNIFICANT key
+ // byte, constant byte columns skipped, already-ordered input recognised in the
+ // single extraction pass and answered with the identity permutation.
+ R4(tH,tI,tL,tF,P(xn-(I)xn,ez(x))N n=xn;A y=rdxg(x);P(!y,ascB(x))x(ct(tZ(n-1),y)))
+ R_(P(xn-(I)xn,ez(x))ascB(x)))
 X1(dsc,RMT(x=rev(asc(rev(x)));sub(ai(xN-1),x))Rm(grdm(x,dsc))Ril(cls(gl(x)))R_(et(x)))
 X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x))
  RGC(A r[  256]={};UC b[  256];U nb=0;U c[  256]={};F(xn,UC v=xg;I(!c[v]++,b[nb++]=v))A z=aA(nb);F(nb,za=r[b[i]]=aI(c[b[i]]))I(!nb,*zA=emp(tG))MS(c,0,SZ c);F(xn,UC v=xg;_I(r[v])[c[v]++]=i)x(am(aV(xt,nb,b),z)))

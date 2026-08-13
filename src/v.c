@@ -1,4 +1,19 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+// ---- vectorisation hints ---------------------------------------------------
+// Same probe-don't-assume policy as src/3.c: build.sh only adds -fopenmp when
+// the compiler actually accepts it, so where it is absent these expand to
+// nothing and the plain loops still compile and produce identical results. They
+// are hints; they never change semantics, only whether GCC/Clang is allowed to
+// issue an AVX2 / NEON body for a loop it could not otherwise prove safe to
+// reassociate or to run without aliasing checks.
+#ifdef _OPENMP
+ #define VPRAGMA(x) _Pragma(#x)
+ #define VSIMD      VPRAGMA(omp simd)
+ #define VSIMDR(...) VPRAGMA(omp simd reduction(__VA_ARGS__))
+#else
+ #define VSIMD
+ #define VSIMDR(...)
+#endif
 X1(flp,Rt(enl(enl(x)))R_(enl(x))RM(A y=kv(&x);am(x,y))RB(flp(cG(x)))
  Rm(A y=kv(&x);Y(RA(I(yn>1,L n=cfm(yA,yn);P(n<0,x(el(y)))F(yn,A z=ya;I(ztt,y=mut(y);ya=rsz(n,z))))aM(x,y))RT_A(aM(x,e1f(enl,y)))R_(x(en(y))))0)
  RA(U m=xn;L n=cfm(xA,m|!m);P(n==-1,enl(x))P(n<0,el(x))C t=_t(xx);I(t<tM&&t-tE,F(m,A y=xa;B(yt-t,t=0)))E(t=0)A y=aA(n);
@@ -10,9 +25,21 @@ X1(flp,Rt(enl(enl(x)))R_(enl(x))RM(A y=kv(&x);am(x,y))RB(flp(cG(x)))
 // 64 bits. Done in L that is signed overflow -- undefined behaviour, and UBSan
 // flags it on examples/practice.k. W (unsigned) gives the same bits with
 // defined semantics; the stored value is cast back to L unchanged.
-V tilV(V*p,L v,L n,U w){L*a=p;W k=(W)G(0x101010101010101ll,0x1000100010001ll,1ll<<32|1,1)[w],d=k<<(3-w),q=(W)v;
+// amber 1.9.5: `a` is restrict-qualified and the induction on `q` is turned into
+// a closed form (base + i*d) so the store loop carries no dependency at all.
+// The old `q+=d` chain forced one lane per iteration; with the stride folded in
+// the compiler can issue a wide vector store per group. Identical bit pattern:
+// the k-th element was always base + k*d, the accumulator just computed it
+// serially. Arithmetic stays in W (unsigned), so the intentional wrap at 64 bits
+// this packed multi-lane counter relies on is still defined behaviour.
+V tilV(V*p,L v,L n,U w){L*RES a=p;W k=(W)G(0x101010101010101ll,0x1000100010001ll,1ll<<32|1,1)[w],d=k<<(3-w),q=(W)v;
  q*=k;q+=(W)G(0x706050403020100ll,0x3000200010000ll,1ll<<32,0)[w];
- F((n-1>>3-w)+4&-4,a[i]=(L)q;q+=d)}
+ // Explicit loop, not the F() macro: F() declares its bound and its counter in
+ // one init clause, which is not an OpenMP canonical loop form, so `omp simd`
+ // will not attach to it (src/3.c spells its reduction loops out for the same
+ // reason).
+ L m=(n-1>>3-w)+4&-4;
+ VSIMD for(L i=0;i<m;i++)a[i]=(L)(q+(W)i*d);}
 X1(til,RA(K1("{x@'!#'x}",x))Ril(L n=gl(x);I(n==NL,n=0)aE(MIN(0,n),MAX(0,n)))REBGHIL(K1("{(*a)#'&'x#'1_a:|*\\|x,1}",x))RmM(x(_R(xx)))Ro(val(x))RS(gns(_v(jS(x))))Rs(gns(xv))R_(et(x)))
 X1(whr,Ril(whr(enl(x)))RA(K1("{$[`A~@x;(,&#'*'x),,'/x@\\:!0|/#'x:o'x;,&x]}",x))Rm(A y=kv(&x);x(x1(Nx(whr(y)))))RE(whr(gZ(x)))R_(et(x))
  RB(U m=xn,n=addfB(xV,m);A y=aI(n);I*r=yV;Mx(F(m+7>>3,C v=xg;W(v,U j=CTZ(v);v&=~(1<<j);*r++=i<<3|j)))Q(r-yI==n);y)
@@ -32,5 +59,27 @@ X2(crt,Rt(fil(x,y))R_(en(y))
   K2("{x@&~(!0),x~\\:y}/",x,y)))
 B tru(A x/*1*/)_(B v=xtU?x!=au:xtt?!!gl_(x):!!xN;x(0);v)
 X1(imx,RGHILC(imn(inv(x)))RF(imx(of1(x)))RE(Lij x(0);az(j-i?j-i-1:NL))R_(fir(N(dsc(x)))))
+ // amber 1.9.5: argmin as two vectorisable passes instead of one branchy scan.
+ // The old body was `if(p[i]<v){v=p[i];j=i;}` -- a loop-carried dependency on
+ // BOTH the running minimum and the running index, plus a data-dependent branch,
+ // which pins it to roughly one element per iteration and blocks the vectoriser
+ // outright (it cannot reassociate a reduction that also carries an index).
+ // Splitting it into (1) a pure `min` reduction, which `omp simd reduction(min:)`
+ // turns into one wide pminu/pmins per group, and (2) a scan for the FIRST
+ // element equal to that minimum, which exits at the answer, gives the identical
+ // result -- "first index of the smallest value" is exactly what both phrasings
+ // compute -- while the expensive phase now runs at vector width.
+ // The base pointer is pulled out of the loop and restrict-qualified, so no
+ // object header is re-read and no runtime aliasing check is emitted.
+ // Written with explicit `for`s rather than the F() macro: F() declares its
+ // bound and its counter in a single init clause, which is not an OpenMP
+ // canonical loop form, so `omp simd` would silently fail to attach (src/3.c
+ // spells its reduction loops out for exactly the same reason).
+// The macro is defined OUTSIDE the X1() invocation on purpose: a preprocessing
+// directive that sits inside a function-like macro's argument list is undefined
+// behaviour in C99 (6.10.3p11) -- GCC tolerates it, other front ends need not.
+#define VIMN(T) {CO T*RES p=xV;T v=*p;VSIMDR(min:v)for(N i=0;i<n;i++)v=p[i]<v?p[i]:v;\
+                 for(N i=0;i<n;i++)if(p[i]==v){j=(L)i;break;}}
 X1(imn,RF(imn(of1(x)))RE(Lij x(0);az(NL*(i==j)))R_(fir(N(asc(x))))
- RGHILC(N n=xn;L j=n?0:NL;S4(xw-3,{G v=*xG;F(n,I(xg<v,v=xg;j=i))},{H v=*xH;F(n,I(xh<v,v=xh;j=i))},{I v=*xI;F(n,I(xi<v,v=xi;j=i))},{L v=*xL;F(n,I(xl<v,v=xl;j=i))})x(az(j))))
+ RGHILC(N n=xn;L j=n?0:NL;S4(xw-3,VIMN(G),VIMN(H),VIMN(I),VIMN(L))x(az(j))))
+#undef VIMN

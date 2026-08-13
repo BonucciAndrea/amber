@@ -12,6 +12,7 @@
 #include<sys/mman.h>
 #include<dirent.h>
 #include"a.h"
+#include"arena.h"
 Z U addr(S*p)_(S s=*p;P(!*s,0x0100007f)UC v[4];F(4,I(i,P(*s-'.',ed0())s++)v[i]=pu(&s);P(v[i]>255,ed0()))*p=s;*(U*)v)
 Z I skt(U h,UH p)_(I f=socket(AF_INET,SOCK_STREAM,0);P(f<0,eo0())I v=setsockopt(f,IPPROTO_TCP,TCP_NODELAY,(I[]){1},4);P(v<0,eo0())
 ST sockaddr_in a;a.sin_family=AF_INET;a.sin_addr.s_addr=h;a.sin_port=(UH)(p<<8|p>>8);P(connect(f,(ST sockaddr*)&a,SZ a)<0,eo0())f)
@@ -102,49 +103,116 @@ A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);U n=_N(dat);I n
 //  w0,w1 long window bounds per trade row (length nt)
 //  gb,ge long group-slice [base,end) in q per trade row (length nt)
 // returns list of nt-length result columns (tF for avg/float-source, tL otherwise).
-// O(log g) range probe per row + one contiguous slice sweep; no per-row K objects.
+//
+// amber 1.9.5 kernel overhaul. The old shape was one fused loop nest per
+// aggregate column, with EVERY type decision re-evaluated per row and, worse,
+// per element: `isf?pf[k]:(F)pl[k]` inside the min/max/sum sweeps meant a
+// data-independent branch on every single value, which is exactly what stops
+// GCC/Clang from ever emitting a vector body. And the window probe -- two
+// binary searches per row -- was repeated once per aggregate column even though
+// the bounds depend only on (qt,w0,w1,gb,ge) and are therefore identical for
+// all of them. Now:
+//
+//  1. ONE bounds pass (wjbounds) computes [lo,hi) for every row a single time
+//     and parks it in two arena-bump scratch vectors reused by every column, so
+//     an N-aggregate window join does 1/N of the probes it used to.
+//  2. That pass uses the same monotone two-pointer merge as aj: consecutive
+//     rows of a time-ordered table share a group slice and have non-decreasing
+//     window edges, so both cursors walk forward and the run costs O(run+slice)
+//     rather than O(run*log slice). Non-monotone rows fall back to the
+//     branch-free binary probe, so results are input-order independent.
+//  3. Reduction is done by fully specialized restrict-qualified kernels chosen
+//     ONCE per column (wjrFF/wjrLL/wjrLF/wjrCNT). Inside those there is no type
+//     test, no reducer test, no object header -- just a contiguous sweep over a
+//     `const F*restrict` or `const L*restrict`, annotated with `omp simd
+//     reduction(...)` so AVX2/NEON auto-vectorization actually fires.
+//
+// Three latent defects are fixed on the way through, all of which UBSan/ASan
+// can see: `W1[i]+1` was signed overflow at WL (now amub, which needs no +1);
+// an inverted window (w1<w0) made `hi-lo` underflow to a ~2^64 count and read
+// off the end of the column (now clamped); and the integer `sum` accumulated in
+// signed L, which is undefined on overflow (now accumulated in W, identical
+// bits, defined wraparound -- the same treatment src/2.c's add kernels get).
+#ifdef _OPENMP
+ #define WJPRAGMA(x) _Pragma(#x)
+ #define WJSIMD(...) WJPRAGMA(omp simd reduction(__VA_ARGS__))
+#else
+ #define WJSIMD(...)
+#endif
+// Forward cursor probes: walk at most AMGALLOP steps from the previous row's
+// answer, then finish with the branch-free binary probe over what is left.
+Z U wjfwd_lb(CO L*RES a,U cur,U hi,L key){U lim=hi-cur>AMGALLOP?cur+AMGALLOP:hi,j=cur;
+ W(j<lim&&a[j]<key,j++)I(j==lim&&lim<hi,j=amlb(a,lim,hi,key))return j;}
+Z U wjfwd_ub(CO L*RES a,U cur,U hi,L key){U lim=hi-cur>AMGALLOP?cur+AMGALLOP:hi,j=cur;
+ W(j<lim&&a[j]<=key,j++)I(j==lim&&lim<hi,j=amub(a,lim,hi,key))return j;}
+// Pass 1: per-row half-open window [LO[i],HI[i]) inside the row's group slice.
+// A null/empty/out-of-range slice, or an inverted window, yields the empty
+// range 0,0 -- every reducer below then produces that reducer's identity.
+Z V wjbounds(CO L*RES T,U nq,CO L*RES W0,CO L*RES W1,CO L*RES GB,CO L*RES GE,U nt,U*RES LO,U*RES HI){
+ L pb=0,pe=0,p0=0,p1=0;U clo=0,chi=0;B run=0;
+ F(nt,
+   L b=GB[i],en=GE[i];
+   I(b==NL||en==NL||en<=b||(U)en>nq,LO[i]=0;HI[i]=0;run=0;continue)
+   L k0=W0[i],k1=W1[i];U h=(U)en,lo,hi;
+   I(run&&b==pb&&en==pe&&k0>=p0&&k1>=p1,lo=wjfwd_lb(T,clo,h,k0);hi=wjfwd_ub(T,chi,h,k1))
+   E(lo=amlb(T,(U)b,h,k0);hi=amub(T,(U)b,h,k1))
+   I(hi<lo,hi=lo)                      // inverted window -> empty, never a wrapped count
+   LO[i]=lo;HI[i]=hi;clo=lo;chi=hi;pb=b;pe=en;p0=k0;p1=k1;run=1;)}
+// Pass 2, float column -> float result. c: 0=first 1=last 2=min 3=max 4=sum 5=avg.
+Z V wjrFF(CO F*RES p,CO U*RES LO,CO U*RES HI,U nt,I c,F*RES o){
+ S(c,
+  C(0,F(nt,U a=LO[i];o[i]=a<HI[i]?p[a]:NF))
+  C(1,F(nt,U b=HI[i];o[i]=LO[i]<b?p[b-1]:NF))
+  C(2,F(nt,U a=LO[i],b=HI[i];F r=WF;WJSIMD(min:r)for(U k=a;k<b;k++)r=p[k]<r?p[k]:r;o[i]=r))
+  C(3,F(nt,U a=LO[i],b=HI[i];F r=-WF;WJSIMD(max:r)for(U k=a;k<b;k++)r=p[k]>r?p[k]:r;o[i]=r))
+  C(4,F(nt,U a=LO[i],b=HI[i];F r=0;WJSIMD(+:r)for(U k=a;k<b;k++)r+=p[k];o[i]=r))
+  D(F(nt,U a=LO[i],b=HI[i];F r=0;WJSIMD(+:r)for(U k=a;k<b;k++)r+=p[k];o[i]=b>a?r/(F)(b-a):NF)))}
+// Pass 2, long column -> long result. c: 0=first 1=last 2=min 3=max 4=sum.
+Z V wjrLL(CO L*RES p,CO U*RES LO,CO U*RES HI,U nt,I c,L*RES o){
+ S(c,
+  C(0,F(nt,U a=LO[i];o[i]=a<HI[i]?p[a]:NL))
+  C(1,F(nt,U b=HI[i];o[i]=LO[i]<b?p[b-1]:NL))
+  C(2,F(nt,U a=LO[i],b=HI[i];L r=WL;WJSIMD(min:r)for(U k=a;k<b;k++)r=p[k]<r?p[k]:r;o[i]=r))
+  C(3,F(nt,U a=LO[i],b=HI[i];L r=-WL;WJSIMD(max:r)for(U k=a;k<b;k++)r=p[k]>r?p[k]:r;o[i]=r))
+  // W accumulator: defined two's-complement wraparound, bit-identical to the
+  // signed sum the old code computed but without the undefined behaviour.
+  D(F(nt,U a=LO[i],b=HI[i];W r=0;WJSIMD(+:r)for(U k=a;k<b;k++)r+=(W)p[k];o[i]=(L)r)))}
+// Pass 2, long column -> float result (avg only: the one reducer that widens).
+Z V wjrLF(CO L*RES p,CO U*RES LO,CO U*RES HI,U nt,F*RES o){
+ F(nt,U a=LO[i],b=HI[i];F r=0;WJSIMD(+:r)for(U k=a;k<b;k++)r+=(F)p[k];o[i]=b>a?r/(F)(b-a):NF)}
+// Pass 2, count: source-independent, it is just the window width.
+Z V wjrCNT(CO U*RES LO,CO U*RES HI,U nt,L*RES o){F(nt,o[i]=(L)(HI[i]-LO[i]))}
 A wjc(A x){
  P(_t(x)-tA||_n(x)-7,et(x))
  A*e=(A*)_V(x);
  P(!_n(e[1]),x(emp(tA)))
  // normalise all integer inputs to 64-bit long (columns/times/bounds may be squeezed to G/H/I widths)
  A QT=N(cL(_R(e[0]))),CD=N(cL(_R(e[2]))),W0A=N(cL(_R(e[3]))),W1A=N(cL(_R(e[4]))),GBA=N(cL(_R(e[5]))),GEA=N(cL(_R(e[6])));
- CO L*T=_V(QT),*W0=_V(W0A),*W1=_V(W1A),*GB=_V(GBA),*GE=_V(GEA),*cod=_V(CD);
- U nt=_n(W0A),na=_n(e[1]);
+ // Raw contiguous primitive column pointers, extracted ONCE before any loop.
+ CO L*RES T=_V(QT),*RES W0=_V(W0A),*RES W1=_V(W1A),*RES GB=_V(GBA),*RES GE=_V(GEA),*RES cod=_V(CD);
+ U nt=_n(W0A),na=_n(e[1]),nq=_n(QT);
  A*QC=(A*)_V(e[1]);
+ // The two bounds vectors are the kernel's ONLY workspace and are bump-allocated
+ // from the thread-local arena exactly once, before the column loop -- no heap,
+ // no per-row or per-column allocation. evs() rewinds the arena at the end of
+ // the eval cycle, so wjc deliberately does NOT arena_reset() and cannot stomp
+ // scratch a caller still has live.
+ P((N)nt>((N)-1)/SZ(U),mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);ez(x))
+ U*RES LO=(U*)arena_alloc((N)nt*SZ(U)),*RES HI=(U*)arena_alloc((N)nt*SZ(U));
+ P(!LO||!HI,mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);eo(x))
+ wjbounds(T,nq,W0,W1,GB,GE,nt,LO,HI);
  A res=aA(na);A*R=(A*)_V(res);
  for(U a=0;a<na;a++){
   A col=QC[a];I c=(I)cod[a];
+  // Every type/reducer decision is resolved HERE, once per column, outside any
+  // loop over rows or elements.
   B isf=_t(col)==tF,flo=(c==5)||(isf&&c!=6);
   A out=flo?aF(nt):aL(nt);
-  A colL=isf?0:N(cL(_R(col)));
-  F*of=(F*)_V(out);L*ol=(L*)_V(out);
-  CO F*pf=isf?(CO F*)_V(col):0;CO L*pl=isf?0:(CO L*)_V(colL);
-  for(U i=0;i<nt;i++){
-   L b=GB[i],en=GE[i];U lo,hi;
-   if(b==NL||en==NL||en<=b){lo=0;hi=0;}
-   else{lo=amlb(T,(U)b,(U)en,W0[i]);hi=amlb(T,(U)b,(U)en,W1[i]+1);}
-   U m=hi-lo;
-   if(c==6){ol[i]=(L)m;continue;}
-   if(flo){F r;
-    if(!m)r=c==2?WF:c==3?-WF:c==4?0.0:NF;
-    else if(c==0)r=isf?pf[lo]:(F)pl[lo];
-    else if(c==1)r=isf?pf[hi-1]:(F)pl[hi-1];
-    else if(c==2){r=WF;for(U k=lo;k<hi;k++){F v=isf?pf[k]:(F)pl[k];if(v<r)r=v;}}
-    else if(c==3){r=-WF;for(U k=lo;k<hi;k++){F v=isf?pf[k]:(F)pl[k];if(v>r)r=v;}}
-    else if(c==4){r=0;for(U k=lo;k<hi;k++)r+=isf?pf[k]:(F)pl[k];}
-    else{r=0;for(U k=lo;k<hi;k++)r+=isf?pf[k]:(F)pl[k];r/=m;}
-    of[i]=r;
-   }else{L r;
-    if(!m)r=c==2?WL:c==3?-WL:c==4?0:NL;
-    else if(c==0)r=pl[lo];
-    else if(c==1)r=pl[hi-1];
-    else if(c==2){r=pl[lo];for(U k=lo+1;k<hi;k++)if(pl[k]<r)r=pl[k];}
-    else if(c==3){r=pl[lo];for(U k=lo+1;k<hi;k++)if(pl[k]>r)r=pl[k];}
-    else{r=0;for(U k=lo;k<hi;k++)r+=pl[k];}
-    ol[i]=r;
-   }
-  }
+  A colL=(isf||c==6)?0:N(cL(_R(col)));   // count never reads the column at all
+  if(c==6)                       wjrCNT(LO,HI,nt,(L*)_V(out));
+  else if(isf)                   wjrFF((CO F*)_V(col),LO,HI,nt,c,(F*)_V(out));
+  else if(c==5)                  wjrLF((CO L*)_V(colL),LO,HI,nt,(F*)_V(out));
+  else                           wjrLL((CO L*)_V(colL),LO,HI,nt,c,(L*)_V(out));
   if(colL)mr(colL);
   R[a]=out;
  }

@@ -31,33 +31,75 @@ U amlb(CO L*RES a,U lo,U hi,L key){
  U n=hi-lo,pos=lo;
  while(n>0){U half=n>>1,mid=pos+half;int lt=a[mid]<key;pos=lt?mid+1:pos;n=lt?n-half-1:half;}
  return pos;}
+// branch-free upper_bound: first i in [lo,hi) with a[i]>key.
+// amber: aj used to spell this amlb(...,key+1), which is signed overflow --
+// undefined behaviour -- when a trade timestamp is WL (and UBSan flags it).
+// Comparing <= directly is the same cmov sequence with no key arithmetic at all,
+// so the overflow simply cannot arise. Exported alongside amlb because wj's
+// upper window edge (w1) needs exactly the same "+1" and had the same hazard.
+U amub(CO L*RES a,U lo,U hi,L key){
+ U n=hi-lo,pos=lo;
+ while(n>0){U half=n>>1,mid=pos+half;int le=a[mid]<=key;pos=le?mid+1:pos;n=le?n-half-1:half;}
+ return pos;}
 // aj[syms;trade;quote] as-of match kernel.  x=(qt;tt;gb;ge)  (marshalled by aj in amber.k)
 //  qt     sorted long quote-timestamp vector (ascending within each group slice)
 //  tt     long trade-timestamp vector (length nt)
 //  gb,ge  per-trade group slice [base,end) into qt (length nt)
 // returns long vector m (length nt): global index of the most-recent quote whose
 //  timestamp is on-or-before the trade, or 0N (NL) when the slice is empty or no quote
-//  precedes the trade.  O(nt*log w); one arena scratch buffer, no per-row malloc.
+//  precedes the trade.
+//
+// amber 1.9.5 kernel overhaul:
+//  * Raw contiguous primitive column pointers (CO L*RES) are extracted ONCE up
+//    front; the row loop never re-derives a base pointer or re-reads an object
+//    header, so every access is a plain indexed load off a register.
+//  * Two-pointer merge fast path. Rows of a real trade table arrive already
+//    sorted by (group,time) -- amber.k xasc's the quote side and the trade side
+//    is normally ascending within each symbol -- so consecutive rows usually
+//    share a group slice AND have non-decreasing timestamps. In that case the
+//    previous row's answer is a valid lower bound for this row's, and the cursor
+//    just walks forward: the whole run costs O(run + slice) instead of
+//    O(run * log slice), i.e. the O(N+M) merge the join wants. The moment
+//    monotonicity actually breaks (a new slice, or a timestamp that goes
+//    backwards) the row falls back to the branch-free binary probe, so the
+//    result is bit-identical to the pure-amub version on ANY input -- including
+//    the unsorted and null-slice cases test.k's ajNull/ajNoGrp/ajNs pin down.
+//  * Zero transient allocations. The old version bump-allocated an nt-long
+//    arena scratch vector, filled it, then copied it element-by-element into the
+//    result -- two full passes over nt longs and an arena_reset() that stomped
+//    any scratch a caller still had live. Results are now written straight into
+//    the freshly allocated result vector (which cannot alias any input), so aj
+//    performs one pass, touches the arena not at all, and is arena-neutral to
+//    its caller. That is strictly stronger than the "allocate the workspace once
+//    from the arena" rule: the workspace is gone.
 A ajc(A x){
  P(_t(x)-tA||_n(x)-4,et(x))
  A*e=(A*)_V(x);
  A QT=N(cL(_R(e[0]))),TT=N(cL(_R(e[1]))),GB=N(cL(_R(e[2]))),GE=N(cL(_R(e[3])));
- CO L*qt=_V(QT),*tt=_V(TT),*gb=_V(GB),*ge=_V(GE);
- U nt=_n(TT);
- A out=aL(nt);L*m=_V(out);
- arena_reset();                              // start a fresh scratch region for this eval
- // On a 32-bit target (wasm32) size_t is 32 bits, so nt*sizeof(L) can wrap and
- // silently request a short buffer that the loop below then runs off the end of.
- P((N)nt>((N)-1)/SZ(L),mr(QT);mr(TT);mr(GB);mr(GE);mr(out);ez(x))
- L*w=(L*)arena_alloc((N)nt*SZ(L));           // transient match-index vector (zero-alloc bump)
- P(!w,mr(QT);mr(TT);mr(GB);mr(GE);mr(out);eo(x))
+ CO L*RES qt=_V(QT),*RES tt=_V(TT),*RES gb=_V(GB),*RES ge=_V(GE);
+ U nt=_n(TT),nq=_n(QT);
+ // On a 32-bit target (wasm32) size_t is 32 bits, so nt*sizeof(L) can wrap.
+ P((N)nt>((N)-1)/SZ(L),mr(QT);mr(TT);mr(GB);mr(GE);ez(x))
+ A out=aL(nt);L*RES m=_V(out);
+ // Loop-carried merge cursor. `run` is 0 whenever the previous row cannot serve
+ // as a lower bound for this one (first row, a null/empty slice, a slice change,
+ // or a timestamp that went backwards); pb/pe/pt hold the previous row's slice
+ // and key, `cur` the previous row's upper-bound position inside that slice.
+ L pb=0,pe=0,pt=0;U cur=0;B run=0;
  F(nt,
-   L b=gb[i],en=ge[i];
-   I(b==NL||en==NL||en<=b,w[i]=NL;continue)
-   U j=amlb(qt,(U)b,(U)en,tt[i]+1);          // first quote strictly after the trade
-   w[i]=(j>(U)b)?(L)(j-1):NL;)               // step back to on-or-before, else null
- F(nt,m[i]=w[i])
- arena_reset();                              // rewind scratch at end of the eval cycle
+   L b=gb[i],en=ge[i],key=tt[i];
+   // Hoisted validity gate: a null or empty group slice yields a null match and
+   // breaks the run without ever touching qt.
+   I(b==NL||en==NL||en<=b||(U)en>nq,m[i]=NL;run=0;continue)
+   U lo=(U)b,hi=(U)en,j;
+   I(run&&b==pb&&en==pe&&key>=pt,
+     // --- monotone two-pointer advance ------------------------------------
+     U lim=hi-cur>AMGALLOP?cur+AMGALLOP:hi;
+     j=cur;W(j<lim&&qt[j]<=key,j++)
+     I(j==lim&&lim<hi,j=amub(qt,lim,hi,key)))   // walked the cap out: finish by probe
+   E(j=amub(qt,lo,hi,key))                       // --- cold path: branch-free probe
+   m[i]=j>lo?(L)(j-1):NL;                        // step back to on-or-before, else null
+   cur=j;pb=b;pe=en;pt=key;run=1;)
  mr(QT);mr(TT);mr(GB);mr(GE);
  return x(out);}
 // arena self-test builtin (`arn): exercise bump / reset / overflow -> 1 on success.

@@ -63,6 +63,26 @@ typedef enum {
     AST_BINOP,      /* dyadic (binary) verb application: `x + y`              */
     AST_PROJECTION, /* a curried/partial application: `1+`, `f[x;;z]`         */
     AST_APPLY,      /* general application `f[x;y]`                          */
+    /* ---- qSQL clause specialization ------------------------------------
+     * Amber's SQL-ish surface syntax is not a separate grammar: qsql.k's
+     * `qrw` rewrites `select px by sym from t where px>10` into an ordinary
+     * application of a K function to a string -- `sel"px by sym from t
+     * where px>10"` -- and THAT is what pk() hands this module (see the
+     * probe in ast_qsql_kind() below). Rendering it as a bare Apply with an
+     * opaque 25-character string leaf tells the reader nothing about the
+     * query, so \ast recognises the four query verbs (sel/exq/upd/del, and
+     * their functional-form counterparts qselect/qexec/qby/qwhere) and
+     * explodes the string back into the clause structure it encodes.
+     *
+     * The four *_SELECT/_EXEC/_UPDATE/_DELETE kinds are query BLOCK heads,
+     * one per query; _BY and _WHERE are the optional clause children that
+     * hang off a block. */
+    AST_QSQL_SELECT,/* `select ... from ...`  query block head               */
+    AST_QSQL_EXEC,  /* `exec ... from ...`    query block head               */
+    AST_QSQL_UPDATE,/* `update ... from ...`  query block head               */
+    AST_QSQL_DELETE,/* `delete ... from ...`  query block head               */
+    AST_QSQL_BY,    /* `by <cols>` grouping clause                           */
+    AST_QSQL_WHERE, /* `where <pred>` row-filter clause                      */
     AST_VAR,        /* a variable or (possibly namespaced) symbol reference   */
     AST_SCALAR,     /* an atomic literal: number, char, symbol, boolean, ...  */
     AST_VECTOR,     /* a literal vector/list payload (previewed, not expanded)*/
@@ -79,6 +99,13 @@ typedef struct ASTNode {
                               * adverb glyph begins, so print_node() can color
                               * the verb part bold cyan and the adverb part
                               * bold magenta within one node. 0 = no split. */
+    int badge;              /* 1 = render `annotation` as a highlighted badge
+                              * (bold bright yellow) instead of the usual dim
+                              * grey. Used for the time-series join callouts
+                              * (`aj` -> As-Of Time-Series Join, `wj` -> Window
+                              * Join), which are the one annotation a reader is
+                              * actually scanning the tree FOR and so should not
+                              * be de-emphasised like a type tag. */
     struct ASTNode **children;
     int nchildren;
     int cap;                /* children array capacity (internal bookkeeping) */

@@ -375,3 +375,88 @@ A rdxg(A x){
  MC(o,r,n*SZ(I));
  arena_release(mk);
  return y;}
+
+// ---- amber: counting sort / bucket grade for small-range integers ----------
+// rdxg above is a good LSD radix, but for data whose VALUE RANGE is small
+// relative to n it is the wrong algorithm: radix still runs one pass per
+// significant byte column, and `asc` then permutes the values through the
+// resulting index vector (a full random gather). A counting sort needs one
+// histogram pass and one SEQUENTIAL emit, and for the sort (not grade) case it
+// never materialises an index vector at all.
+//
+// CBQN takes exactly this decision in src/builtins/grade.h: compute
+// range = max-min+1 and counting-sort when range/2 < n. The same guard is used
+// here, plus a cap so the counter array stays L2-resident.
+//
+// Both functions return 0 -- "not handled, fall through to rdxg" -- for an
+// unsupported type, a range that fails the guard, or scratch exhaustion.
+#define CNTMAX ((W)1<<18)   /* 256K counters * 8B = 2MB: sized to L2 */
+#define RD4(w,p,i) ((w)==0?(L)((CO G*)(p))[i]:(w)==1?(L)((CO H*)(p))[i]:(w)==2?(L)((CO I*)(p))[i]:((CO L*)(p))[i])
+
+// min/max in one sequential pass. Returns 0 when the type is not a plain
+// integer vector, else 1 with *lo/*hi set.
+Z B cntrange(A x,L*lo,L*hi){
+ UC t=_t(x);N n=_n(x);U w;
+ switch(t){case tG:w=0;break;case tH:w=1;break;case tI:w=2;break;case tL:w=3;break;default:return 0;}
+ if(n<2)return 0;
+ CO V*p=_V(x);
+ L a=RD4(w,p,0),b=a;
+ for(N i=1;i<n;i++){L v=RD4(w,p,i);if(v<a)a=v;if(v>b)b=v;}
+ *lo=a;*hi=b;return 1;}
+
+// Guard shared by both kernels: the histogram must be cheaper than ordering the
+// elements (rg/2 < n), and must fit the cache budget. rg==0 means the span
+// wrapped the whole 64-bit line, which is never small.
+Z B cntok(L lo,L hi,N n,W*rg){
+ W r=(W)hi-(W)lo+1;
+ *rg=r;
+ return r&&r/2<(W)n&&r<=CNTMAX;}
+
+// STABLE bucket grade: identical output to the LSD radix, since both are
+// stable and order by the same key. Returns aI(n) like rdxg.
+A cntgrd(A x){
+ L lo,hi;W rg;N n=_n(x);
+ if(!cntrange(x,&lo,&hi))return 0;
+ if(!cntok(lo,hi,n,&rg))return 0;
+ if(n!=(N)(U)(I)n)return 0;                    // grade indices are 32-bit
+ UC t=_t(x);U w=t==tG?0:t==tH?1:t==tI?2:3;
+ ArenaMark mk=arena_mark();
+ N*RES c=(N*)arena_alloc((N)rg*SZ(N));
+ if(!c){arena_release(mk);return 0;}
+ MS(c,0,(N)rg*SZ(N));
+ CO V*p=_V(x);
+ for(N i=0;i<n;i++)c[(W)RD4(w,p,i)-(W)lo]++;
+ {N s=0;for(W b=0;b<rg;b++){N k=c[b];c[b]=s;s+=k;}}
+ A y=aI((U)n);I*RES o=(I*)_V(y);
+ for(N i=0;i<n;i++)o[c[(W)RD4(w,p,i)-(W)lo]++]=(I)i;   // forward pass => stable
+ arena_release(mk);
+ return y;}
+
+// Counting SORT: emits values directly, no index vector, no gather.
+A cntsrt(A x){
+ L lo,hi;W rg;N n=_n(x);
+ if(!cntrange(x,&lo,&hi))return 0;
+ if(!cntok(lo,hi,n,&rg))return 0;
+ UC t=_t(x);U w=t==tG?0:t==tH?1:t==tI?2:3;
+ ArenaMark mk=arena_mark();
+ N*RES c=(N*)arena_alloc((N)rg*SZ(N));
+ if(!c){arena_release(mk);return 0;}
+ MS(c,0,(N)rg*SZ(N));
+ CO V*p=_V(x);
+ for(N i=0;i<n;i++)c[(W)RD4(w,p,i)-(W)lo]++;
+ A z=an((U)n,t);V*q=_V(z);
+ N o=0;
+ // Counted inner loop, not `while(k--)`: the decrementing form carries a loop
+ // dependence that stops the compiler turning a constant store into wide stores.
+ for(W b=0;b<rg;b++){
+  N k=c[b];
+  if(k){L v=lo+(L)b;
+   switch(w){
+    case 0:{G*d=(G*)q+o;G u=(G)v;for(N j=0;j<k;j++)d[j]=u;break;}
+    case 1:{H*d=(H*)q+o;H u=(H)v;for(N j=0;j<k;j++)d[j]=u;break;}
+    case 2:{I*d=(I*)q+o;I u=(I)v;for(N j=0;j<k;j++)d[j]=u;break;}
+    default:{L*d=(L*)q+o;for(N j=0;j<k;j++)d[j]=v;break;}}
+   o+=k;}}
+ arena_release(mk);
+ _at(z)=1;                                      // result IS sorted: keep `s#
+ return z;}

@@ -70,7 +70,7 @@ next:{1_x,0N}
 rank:{<<x}
 iasc:{<x}
 idesc:{>x}
-asc:{`sa x@<x}
+asc:{`srt x}
 desc:{x@>x}
 xrank:{_y*x%#y:<<y}
 xprev:{y[(!#y)-x]}

@@ -1,8 +1,16 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+#include"simd.h"
+// amber item 3: the element-wise kernels below now call src/simd.c instead of
+// re-implementing the loop. They keep their (a,b,c,GROUPS) signature -- every
+// call site passes a group count, and each group is 32/sizeof(T) elements --
+// so the number of elements written, including the padding past n that oZZ()
+// then reads for its overflow check, is bit-identical to the old code.
+#define AMEL(g,T) ((U)(g)*(U)(32/SZ(T)))
+#define AMCMPN 2000000u/*element count above which the direct float compare wins*/
 Z CO W msk[]={0x8080808080808080ll,0x8000800080008000ll,0x8000000080000000ll};
-#define M(o,f,T) ZN V f(CO V*RES a,CO V*RES b,V*RES c,U n){CO T*x=AL(a),*y=AL(b);T*r=AL(c);F(n,Fj(32/SZ(T),*r++=*x++o*y++))}
- M(+,aFF,F)M(*,mFF,F)M(/,dFF,F)
-#undef M
+ZN V aFF(CO V*RES a,CO V*RES b,V*RES c,U n){simd_add_f64(AL(a),AL(b),AL(c),AMEL(n,F));}
+ZN V mFF(CO V*RES a,CO V*RES b,V*RES c,U n){simd_mul_f64(AL(a),AL(b),AL(c),AMEL(n,F));}
+ZN V dFF(CO V*RES a,CO V*RES b,V*RES c,U n){simd_div_f64(AL(a),AL(b),AL(c),AMEL(n,F));}
 // amber: the INTEGER add kernels wrap on purpose -- oZZ()/ozZ() below detect
 // the overflow after the fact from the result's sign bits and the caller
 // re-runs one width wider. Signed overflow is undefined behaviour in C
@@ -10,9 +18,10 @@ Z CO W msk[]={0x8080808080808080ll,0x8000800080008000ll,0x8000000080000000ll};
 // the very check that depends on it (UBSan flags this on examples/graphs.k).
 // Doing the addition in the unsigned counterpart type is defined two's
 // complement wraparound and compiles to the identical instruction.
-#define M(f,T,UT) ZN V f(CO V*RES a,CO V*RES b,V*RES c,U n){CO T*x=AL(a),*y=AL(b);T*r=AL(c);F(n,Fj(32/SZ(T),*r++=(T)((UT)*x++ + (UT)*y++)))}
- M(aLL,L,W)M(aII,I,U)M(aHH,H,UH)M(aGG,G,UC)
-#undef M
+ZN V aLL(CO V*RES a,CO V*RES b,V*RES c,U n){simd_add_i64(AL(a),AL(b),AL(c),AMEL(n,L));}
+ZN V aII(CO V*RES a,CO V*RES b,V*RES c,U n){simd_add_i32(AL(a),AL(b),AL(c),AMEL(n,I));}
+ZN V aHH(CO V*RES a,CO V*RES b,V*RES c,U n){simd_add_i16(AL(a),AL(b),AL(c),AMEL(n,H));}
+ZN V aGG(CO V*RES a,CO V*RES b,V*RES c,U n){simd_add_i8 (AL(a),AL(b),AL(c),AMEL(n,G));}
 ZN A amdFF(A x,A y,U f)_(U n=xn;P(n-yn,el(y))A z=MINE(y)?y:aF(n);G(&aFF,0,mFF,dFF)[f-1](xV,yV,zV,n+3>>2);y-z?y(z):z)
 ZN B oZZ(CO W*x,CO W*y,CO W*r,U n,U w)_(x=AL(x);y=AL(y);r=AL(r);W t[4]={};F(((W)n<<w)+31>>5,Fj(4,t[j]|=(*r^*x)&(*r^*y);r++;x++;y++))!!((t[0]|t[1]|t[2]|t[3])&msk[w]))
 Z A addZZ(A x,A y,U f)_(U w=MAX(xw-3,yw-3);P(xw-3-w,x=ct(tG+w,xR);x(addZZ(x,y,f)))y=ct(tG+w,y);U n=yn;A z=an(n,yt);
@@ -26,9 +35,10 @@ Z A mulZZ(A x,A y,U f)_(U n=yn,i=0,w=MAX(xw-3,yw-3);P(xw-3-w,x=ct(tG+w,xR);x(mul
  P(i<n,z(0);x=ct(tG+w+1,xR);x(mulZZ(x,ct(tG+w+1,y),f)))y(z))
 
 // scalar-plus-vector add: same intentional wrap, same defined-behaviour form.
-#define M(f,T,UT) ZN V f(L v,V*RES b,V*RES c,U n){CO T*y=AL(b);T*r=AL(c);F(n,Fj(32/SZ(T),*r++=(T)((UT)v + (UT)*y++)))}
- M(alL,L,W)M(aiI,I,U)M(ahH,H,UH)M(agG,G,UC)
-#undef M
+ZN V alL(L v,V*RES b,V*RES c,U n){simd_adds_i64((int64_t)v,AL(b),AL(c),AMEL(n,L));}
+ZN V aiI(L v,V*RES b,V*RES c,U n){simd_adds_i32((int32_t)v,AL(b),AL(c),AMEL(n,I));}
+ZN V ahH(L v,V*RES b,V*RES c,U n){simd_adds_i16((int16_t)v,AL(b),AL(c),AMEL(n,H));}
+ZN V agG(L v,V*RES b,V*RES c,U n){simd_adds_i8 ((int8_t) v,AL(b),AL(c),AMEL(n,G));}
 ZN B ozZ(L v,CO W*y,CO W*r,U n,U w)_(r=AL(r);y=AL(y);F(3-w,v|=(L)((W)v<<(8<<(w+i))))W t[4]={};F(((W)n<<w)+31>>5,Fj(4,t[j]|=(*r^v)&(*r^*y);r++;y++))!!((t[0]|t[1]|t[2]|t[3])&msk[w]))
 Z A addzZ(L v,A y,U f)_(U n=yn,w=MAX(tZ(v)-tG,yw-3);y=ct(tG+w,y);A z=an(n,yt);G(&agG,ahH,aiI,alL)[w](v,yV,zV,n+(31>>w)>>5-w);
  P(w<3&&ozZ(v,yV,zV,n,w),z(0);y=ct(tG+w+1,y);addzZ(v,y,f))y(z))
@@ -109,6 +119,27 @@ ZN A arif(A x,A y,U f)_(C t=xt,u=yt;
   R(2,f<4?admfF(gf(y),xR,f):dvdFf(x,gf(y),f))
   R_(amdFF(x,y,f)))0)
  P(f==10,ariz(x,y,f))
+ // amber item 4: direct IEEE comparison instead of the of1() integer-domain
+ // round trip. Bails (and falls through to the unchanged path below) the
+ // moment any operand is a NaN or a negative zero -- the only two classes
+ // where the two orderings disagree. See simd.h for the argument.
+ // SIZE GATE. The of1() path materialises an 8n-byte integer copy of the
+ // vector, so it is only worth avoiding once that copy stops fitting in cache.
+ // Measured, interleaved, at 1M elements (8 MB, L3-resident) the direct kernel
+ // is 0.84x -- SLOWER -- because the of1() copy is nearly free there and the
+ // byte-per-element output loop vectorises worse than the integer compare the
+ // old path uses. At 10M (80 MB) it is 1.39x. AMCMPN sits between the two.
+ I(f>7&&f<10&&(xn>=AMCMPN||yn>=AMCMPN),{
+   B vv=xtF&&ytF&&xn==yn,sv=xtF&&ytf,vs=xtf&&ytF;
+   I(vv||sv||vs,{
+     U nc_=vv||sv?xn:yn;
+     A z_=aG(nc_);int bad_=0;
+     // `>` is op 1 and `<` is op 0; a scalar on the LEFT flips the sense.
+     I(vv,simd_cmpv_f64(xV,yV,_V(z_),nc_,f==9,&bad_))
+     J(sv,simd_cmps_f64(xV,*(CO F*)yV,_V(z_),nc_,f==9,&bad_))
+     E(   simd_cmps_f64(yV,*(CO F*)xV,_V(z_),nc_,f==8,&bad_))
+     I(!bad_,{y(0);return z_;})/*arif owns y, NOT x: the general path below does of1(xR) but of1(y)*/
+     mr(z_);})})
  x=of1(xR);y=ari(x,of1(y));x(f<8&&y?of0(y):y))
 
 // Thread-local: `f` is ari()'s implicit op-selector, set-then-read (and

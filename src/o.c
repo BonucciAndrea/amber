@@ -1,4 +1,5 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+#include"arena.h"
 
 // amber: NaN-aware float compare for `~` (match).
 // IEEE gives no single bit pattern for "not a number": the `0n` LITERAL is the
@@ -62,10 +63,17 @@ X1(asc,Rt(opn(x))Rm(grdm(x,asc))RM(K1("{(!#x){x@<y x}/|.+x}",x))RS(asc(str(x)))R
  // key-carrying LSD radix in src/v.c -- one sequential pass per SIGNIFICANT key
  // byte, constant byte columns skipped, already-ordered input recognised in the
  // single extraction pass and answered with the identity permutation.
- R4(tH,tI,tL,tF,P(xn-(I)xn,ez(x))N n=xn;A y=rdxg(x);P(!y,ascB(x))x(ct(tZ(n-1),y)))
+ R4(tH,tI,tL,tF,P(xn-(I)xn,ez(x))N n=xn;A y=cntgrd(x);I(!y,y=rdxg(x))P(!y,ascB(x))x(ct(tZ(n-1),y)))
  R_(P(xn-(I)xn,ez(x))ascB(x)))
 X1(dsc,RMT(x=rev(asc(rev(x)));sub(ai(xN-1),x))Rm(grdm(x,dsc))Ril(cls(gl(x)))R_(et(x)))
 X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x))
+ // amber item 7, REVERTED after measurement. The "optimisation" here was to
+ // hoist the group payload pointers into an rp[256] array before the scatter,
+ // on the theory that `_I(r[v])` was a dependent load. It is not: A is an
+ // integer HANDLE and _I() is pointer arithmetic on it, so the original form
+ // has no load to hoist, while rp[] adds a real one. Measured at 10M rows,
+ // interleaved base/new x3: 87-90 ms before, 106-109 ms after -- a 21%
+ // REGRESSION. Restored verbatim; the lesson is recorded rather than the code.
  RGC(A r[  256]={};UC b[  256];U nb=0;U c[  256]={};F(xn,UC v=xg;I(!c[v]++,b[nb++]=v))A z=aA(nb);F(nb,za=r[b[i]]=aI(c[b[i]]))I(!nb,*zA=emp(tG))MS(c,0,SZ c);F(xn,UC v=xg;_I(r[v])[c[v]++]=i)x(am(aV(xt,nb,b),z)))
  RH( A r[65536]={};UH b[65536];U nb=0;U c[65536]={};F(xn,UH v=xh;I(!c[v]++,b[nb++]=v))A z=aA(nb);F(nb,za=r[b[i]]=aI(c[b[i]]))I(!nb,*zA=emp(tG))MS(c,0,SZ c);F(xn,UH v=xh;_I(r[v])[c[v]++]=i)x(am(aV(xt,nb,b),z)))
  RI(K1("{$[x;x[*'g]!g@:<g:(&~(~*s)=':s:x i)_i:<x;x!0#,!0]}",x))
@@ -73,4 +81,6 @@ X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x
 Z A1(cSI,Q(xtS||xtI)C t=tS^tI^xt;MINE(x)?AT(t,x):x(aV(t,xn,xV)))
 X1(unq,RM(en(x))Rm(unq(val(x)))RE(x)RS(cSI(unq(cSI(x))))Ril(rndF(gl(x)))R_(et(x))RB(unq(cG(x)))
  RGC(C a[256]={},r[256],t=xt;U n=0;Mx(F(xn,UC v=xg;I(!a[v],a[v]=1;r[n++]=v)))aV(t,n,r))
- R5(tA,tH,tI,tL,tF,P(xn<2,x)P(xn<<xw-3<pg&&!xtA,K1("{x@&(x?x)=!#x}",x))K1("{x@i@<i@:&@[;0;:;1]@~~':x@i:<x}",x)))
+ R5(tA,tH,tI,tL,tF,P(xn<2,x)
+  {A u_=unqL(x);P(u_,x(u_))}                 /*amber: C hash/LUT distinct, 0 = not handled*/
+  P(xn<<xw-3<pg&&!xtA,K1("{x@&(x?x)=!#x}",x))K1("{x@i@<i@:&@[;0;:;1]@~~':x@i:<x}",x)))

@@ -1,4 +1,5 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+#include"simd.h"
 // ---- amber 1.9.2: vectorised reduction kernels ------------------------------
 // The reduction loops below were plain scalar accumulator chains. A float `+/`
 // over 10M elements ran at 8.9 ms (~3.5 cycles/element), which is exactly the
@@ -86,7 +87,7 @@ Z A3(dexf,/*010*/A u=las(zR);I(y,y(0))u)
 Z L addfG(CO V*a,U n)_(CO G*RES p=a;L r=0;AMRED(n,for(U i=0;i<n;i++)r+=p[i];,+:r)r)
 Z L addfH(CO V*a,U n)_(CO H*RES p=a;L r=0;AMRED(n,for(U i=0;i<n;i++)r+=p[i];,+:r)r)
 Z L addfI(CO V*a,U n)_(CO I*RES p=a;L r=0;AMRED(n,for(U i=0;i<n;i++)r+=p[i];,+:r)r)
-Z L addfL(CO V*a,U n)_(CO L*RES p=a;L r=0;AMRED(n,for(U i=0;i<n;i++)r+=p[i];,+:r)r)
+Z L addfL(CO V*a,U n)_(simd_sum_i64(a,n))
 Z L mulfG(CO V*a,U n)_(MUL4(G))
 Z L mulfH(CO V*a,U n)_(MUL4(H))
 Z L mulfI(CO V*a,U n)_(MUL4(I))
@@ -94,22 +95,36 @@ Z L mulfL(CO V*a,U n)_(MUL4(L))
 Z L minfG(CO V*a,U n)_(MNM1(G,(G)((1u  << 7)-1),MIN,min))
 Z L minfH(CO V*a,U n)_(MNM1(H,(H)((1u  <<15)-1),MIN,min))
 Z L minfI(CO V*a,U n)_(MNM1(I,(I)((1u  <<31)-1),MIN,min))
-Z L minfL(CO V*a,U n)_(MNM4(L,(L)((1ull<<63)-1),MIN,min))
+Z L minfL(CO V*a,U n)_(n?MIN((L)((1ull<<63)-1),simd_min_i64(a,n)):(L)((1ull<<63)-1))
 Z L maxfG(CO V*a,U n)_(MNM1(G,(G)(1u  << 7),MAX,max))
 Z L maxfH(CO V*a,U n)_(MNM1(H,(H)(1u  <<15),MAX,max))
 Z L maxfI(CO V*a,U n)_(MNM1(I,(I)(1u  <<31),MAX,max))
-Z L maxfL(CO V*a,U n)_(MNM4(L,(L)(1ull<<63),MAX,max))
+Z L maxfL(CO V*a,U n)_(n?MAX((L)(1ull<<63),simd_max_i64(a,n)):(L)(1ull<<63))
   L addfZ(L v,A x/*0*/)_(v+    G(&addfG,addfH,addfI,addfL)[xw-3](xV,xn) )
 Z L mulfZ(L v,A x/*0*/)_(v*    G(&mulfG,mulfH,mulfI,mulfL)[xw-3](xV,xn) )
   L minfZ(L v,A x/*0*/)_(MIN(v,G(&minfG,minfH,minfI,minfL)[xw-3](xV,xn)))
 Z L maxfZ(L v,A x/*0*/)_(MAX(v,G(&maxfG,maxfH,maxfI,maxfL)[xw-3](xV,xn)))
 // sumF: four-way partial float sum (see the header note above).
-Z F sumF(CO F*RES p,U n)_(F a=0,b=0,c=0,d=0;U m=n&~(U)3;
- for(U i=0;i<m;i+=4){a+=p[i];b+=p[i+1];c+=p[i+2];d+=p[i+3];}
- F r=(a+b)+(c+d);for(U i=m;i<n;i++)r+=p[i];r)
+// amber item 3: the four-way scalar partials are now src/simd.c's kernel, which
+// is the same summation order (four independent accumulators) widened to the
+// native vector register. Results are bit-identical to the previous four-way
+// split, so no benchmark answer moves.
+Z F sumF(CO F*RES p,U n)_(simd_sum_f64(p,n))
 Z A3(admf,/*010*/B i=xv==3;U n=zn;P((y&&ytf)||ztF,F v=y?gf(cF(y)):i;z=cF(zR);CO F*RES q=zV;Mz(I(i,F(n,v*=q[i]))E(v+=sumF(q,n)))af(v))L v=y?gl(y):i;az((i?mulfZ:addfZ)(v,z)))
 Z A3(subf,/*010*/y=y?neg(y):zn?mul(ai(-2),ii(z,0)):ai(0);neg(admf(ADD,y,z)))
-Z A3(mmmf,/*010*/B i=xv==7;P((y&&ytf)||ztF,y=of1(y?cF(y):aV(tf,1,A((L)((W)i<<63)|WFL)));z=of1(cF(zR));of0(N(z(mmmf(x,y,z)))))L v=y?gl(y):i?-WL:WL;az(zn?(i?maxfZ:minfZ)(v,z):v))
+// amber item 3: direct float min/max. The general path below folds the whole
+// float vector into an order-preserving integer domain with of1(), reduces
+// there, and folds back with of0() -- two materialised copies of the vector.
+// With no explicit seed and no NaN present, IEEE min/max on the doubles
+// themselves gives the identical answer (the implicit seed is -0w/0w, which
+// min/max against any real number is a no-op), so take that instead. Any NaN
+// at all, or an explicit seed, falls through to the unchanged path: NaN
+// ordering is precisely what the of1() domain defines and maxsd does not.
+Z A3(mmmf,/*010*/B i=xv==7;
+ I(ztF&&!y&&zn,{int nan_=0;CO F*RES q=zV;U nm_=zn;
+   F v_=i?simd_max_f64(q,nm_,&nan_):simd_min_f64(q,nm_,&nan_);
+   if(!nan_)return af(v_);})
+ P((y&&ytf)||ztF,y=of1(y?cF(y):aV(tf,1,A((L)((W)i<<63)|WFL)));z=of1(cF(zR));of0(N(z(mmmf(x,y,z)))))L v=y?gl(y):i?-WL:WL;az(zn?(i?maxfZ:minfZ)(v,z):v))
 A3(arf,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzfc)Q(ztZFC)
  ZE(P(ztE&&x==ADD&&!y,L i=*zL,j=zL[1];az((j-i)*(j+i-1)/2))z=gZ(zR);z(arf(x,y,z)))
  ZB(z=cG(zR);z(arf(x,y,z)))

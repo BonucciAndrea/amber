@@ -16,6 +16,14 @@ Everything here runs the real interpreter on a real pty; nothing is mocked.
                               (the launcher does not invoke rlwrap at all)
   2. rlwrap_fallback_is_quiet AMBER_NO_EDIT=1 ./a, which DOES use rlwrap, is
                               silent too -- because it passes -n and -a
+  2b. rlwrap_direct_*         the cases the launcher CANNOT speak for: someone
+                              runs `rlwrap ./amber repl.k` (what the pre-1.9.5
+                              docs taught), or keeps an `alias amber='rlwrap
+                              amber'`. The engine itself must stand down, so
+                              these assert no warning, a REPL that still works,
+                              the one-time explanatory note, and -- via
+                              AMBER_RLWRAP=0 -- that the detection is what is
+                              doing the work rather than luck
   3. termios_restored         the terminal's termios is byte-for-byte what it
                               was before Amber ran, after a normal exit AND
                               after ^C
@@ -153,6 +161,34 @@ def main():
         check("rlwrap_fallback_is_quiet", "rlwrap: warning" not in out, out[-800:])
     else:
         print("  %-26s SKIP (rlwrap not installed)" % "rlwrap_fallback_is_quiet")
+
+    # 2b. the launch routes the launcher cannot control ----------------------
+    #     This is the regression that mattered: fixing only ./a left every user
+    #     with an old alias or an old habit still seeing the warning.
+    if have_rlwrap:
+        for label, argv in (("rlwrap_direct", [AMBER, REPLK]),      # old docs
+                            ("rlwrap_launcher", [A])):              # old alias
+            out = pty_run(["rlwrap"] + argv, [b"nosuchname\r", b"2+2\r", b"\\\\\r"])
+            check(label + "_is_quiet", "rlwrap: warning" not in out, out[-900:])
+            check(label + "_repl_works", "E0101" in out and "4" in out, out[-900:])
+
+        out = pty_run(["rlwrap", AMBER, REPLK], [b"2+2\r", b"\\\\\r"])
+        check("rlwrap_note_shown", "started under rlwrap" in out, out[-700:])
+
+        # The control: with detection disabled the warning must come BACK. If it
+        # does not, this whole suite would be passing for some unrelated reason.
+        out = pty_run(["rlwrap", AMBER, REPLK], [b"nosuchname\r", b"\\\\\r"],
+                      {"AMBER_RLWRAP": "0"})
+        check("rlwrap_override_restores", "rlwrap: warning" in out, out[-900:])
+
+        # And forcing detection on must silence it even where we did not detect.
+        out = pty_run([A], [b"2+2\r", b"\\\\\r"], {"AMBER_RLWRAP": "1"})
+        check("rlwrap_force_stand_down", "rlwrap: warning" not in out and "4" in out,
+              out[-700:])
+    else:
+        for n in ("rlwrap_direct_is_quiet", "rlwrap_note_shown",
+                  "rlwrap_override_restores"):
+            print("  %-26s SKIP (rlwrap not installed)" % n)
 
     # 3. termios must be exactly as we left it, on both exit paths ------------
     out, before, after = pty_run_with_termios([A], [b"2+2\r", b"\\\\\r"])

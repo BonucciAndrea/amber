@@ -202,19 +202,72 @@ vector engine) and the scalar SIMD fallback. For a machine-specific build that t
 (x86_64) or **NEON** (Apple Silicon / any `aarch64`) vector kernels, set `AMBER_NATIVE=1`:
 
 ```sh
-AMBER_NATIVE=1 ./build.sh      # adds -march=native; check with: `simd 0
+AMBER_NATIVE=1 ./build.sh      # machine-tuned; check with: `simd 0
 ```
 
 `` `simd 0 `` prints which backend actually got selected (`scalar` / `avx2` / `neon`) to stderr.
 NEON activates unconditionally on Apple Silicon regardless of `AMBER_NATIVE`, since `aarch64`
-implies it; `AMBER_NATIVE=1` on Apple Silicon additionally unlocks `-march=native` tuning.
+implies it. The tuning flag itself is **probed, not assumed**: `-march=native` is x86 syntax that
+Apple clang rejects outright on Apple Silicon, so `build.sh` falls back to `-mcpu=native`
+(aarch64) and, failing both, to a portable build — `AMBER_NATIVE=1 ./build.sh` therefore succeeds
+on every platform rather than breaking CI on arm64 runners.
 
-One-shot alternative: `bash install.sh` builds, runs the self-test, and adds an `a` alias to your
-shell rc (`~/.zshrc` on macOS, `~/.bashrc` on Linux). To add the alias by hand:
+**One command instead of all of the above:**
 
 ```sh
-echo "alias a='$PWD/a'" >> ~/.zshrc     # macOS (zsh);  use ~/.bashrc on Linux, then: source it
+./install.sh                 # or: bash install.sh   (if the +x bit was lost)
+AMBER_NATIVE=1 ./install.sh  # ... with a machine-tuned build
 ```
+
+`install.sh` checks you have a C compiler (and prints the exact package command for your distro
+if you do not), repairs the executable bit on every script, builds, runs the self-test, and writes
+the shell block below into the rc file **your login shell actually reads** — `~/.zshrc` for zsh,
+`~/.bash_profile` on macOS bash, `~/.bashrc` on Linux bash, `~/.profile` otherwise. Re-running it
+replaces that block rather than appending a second copy. To add it by hand:
+
+<a name="shell-configuration"></a>
+```sh
+# === Amber - native engine configuration ===================================
+# AMBER_HOME is the Amber checkout ITSELF. Amber is one self-contained folder:
+# there is no bin/ directory, nothing is copied anywhere, and deleting the
+# folder uninstalls it completely.
+export AMBER_HOME="$HOME/amber"
+
+# amber  -> the full REPL: repl.k, the q/kdb+ vocabulary and the stdlib.
+# AMBER_NATIVE is read by build.sh, which ./a re-runs whenever the sources are
+# newer than the binary -- so the first run after a git pull rebuilds with
+# -march=native (or -mcpu=native on Apple Silicon / aarch64).
+alias amber='AMBER_NATIVE=1 "$AMBER_HOME/a"'
+
+# amberx -> the bare interpreter for scripts and pipes: no REPL, no stdlib.
+alias amberx='"$AMBER_HOME/amber"'
+
+# Pin the vector engine to your physical cores; omit to use every core.
+# alias amber='AMBER_NATIVE=1 AMBER_THREADS=8 "$AMBER_HOME/a"'
+
+# amber-ai -> the same REPL with the local AI co-pilot pointed at your model
+# server and given a longer answer budget. Needs the amber-ai extension;
+# without it these variables are simply ignored.
+alias amber-ai='AMBER_NATIVE=1 AMBER_AI=1 AMBER_AI_URL="http://127.0.0.1:11434/api/generate" AMBER_AI_TIMEOUT_MS=10000 "$AMBER_HOME/a"'
+
+# Aliases do not exist in non-interactive shells. For scripts, cron and CI,
+# symlink the launcher instead of putting the repo root on PATH (which would
+# also expose install.sh and demo.sh as commands):
+#     mkdir -p ~/.local/bin && ln -sf "$AMBER_HOME/a" ~/.local/bin/amber
+```
+
+Three notes on that block, because the obvious-looking variants do not work:
+
+| | |
+|---|---|
+| **`$AMBER_HOME` is the checkout, not a prefix** | Amber has no `bin/`, `lib/` or `share/` split and installs nothing outside its folder. `export PATH="$AMBER_HOME/bin:$PATH"` points at a directory that does not exist. |
+| **Alias the launcher `a`, not the binary `amber`** | The bare `amber` binary is the interpreter with **no** stdlib: `amber` alone gives you a REPL where `select`, `aj` and `sum` are undefined. `./a` loads `repl.k`, which loads everything else. |
+| **`AMBER_NATIVE` is a *build*-time variable** | It is read by `build.sh`, not by the interpreter. It belongs on the `a` alias — which may rebuild — and does nothing on `amberx`. There is no `AMBER_MEM_MB`: the heap is `mmap`'d with `MAP_NORESERVE` and sized lazily by the OS, so there is nothing to tune. |
+
+The variables the engine itself reads at run time are exactly: `AMBER_THREADS` (vector-engine
+lanes), `AMBER_DIAG` (rich diagnostics on/off), `AMBER_NO_EDIT` and `AMBER_RLWRAP` (line editor),
+plus `AMBER_AI_*` once the [amber-ai](https://github.com/bonucciandrea/amber-ai) extension is
+installed.
 
 Nothing is installed system-wide — see [Isolation](#isolation).
 

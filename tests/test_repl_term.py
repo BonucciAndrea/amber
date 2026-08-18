@@ -228,6 +228,33 @@ def main():
     o = p.stdout.decode("utf-8", "replace")
     check("bare_repl_pipe", "4" in o, o[-800:])
 
+    # 7. no $TERM: the REPL must still PRINT ---------------------------------
+    #    repl.k's fmt calls upd[], which shells out to `tput -S` for the window
+    #    size. With $TERM unset -- a CI step, a cron job, a docker RUN, a
+    #    systemd unit -- tput writes nothing, and the unguarded
+    #    "(lines;cols)::" that used to be there assigned a 0-element vector to a
+    #    2-element target and raised E0103 "Vector length mismatch" INSTEAD OF
+    #    THE RESULT. The value was computed correctly every time; only the
+    #    display broke, so this reads as a wrong answer rather than a bad probe.
+    #    That is how it was found: `100+`pr7 0` in tests/test_ext_seam.sh and
+    #    `#`aio[-1]` in amber-ai's installer both reported a length error and
+    #    were diagnosed as "the extension did not link".
+    #    Removing TERM from the child's environment is the whole test.
+    noterm = dict(os.environ)
+    noterm.pop("TERM", None)
+    p = subprocess.run([A], input=b"100+7\n2 3 4\n\\\\\n", stdout=subprocess.PIPE,
+                       stderr=subprocess.STDOUT, timeout=60, env=noterm)
+    o = p.stdout.decode("utf-8", "replace")
+    check("no_term_still_prints", "107" in o and "E0103" not in o, o[-900:])
+
+    #    ...and a $TERM that names a terminal terminfo has never heard of must
+    #    behave the same way: tput exits non-zero and prints nothing useful.
+    p = subprocess.run([A], input=b"100+7\n\\\\\n", stdout=subprocess.PIPE,
+                       stderr=subprocess.STDOUT, timeout=60,
+                       env=dict(os.environ, TERM="nosuchterm-does-not-exist"))
+    o = p.stdout.decode("utf-8", "replace")
+    check("bogus_term_still_prints", "107" in o and "E0103" not in o, o[-900:])
+
     print()
     if FAILURES:
         print("FAILED: %d" % len(FAILURES))

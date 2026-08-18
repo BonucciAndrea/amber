@@ -51,11 +51,26 @@ Run the test suite:
 # (also: ./amber test-fin.k  -> 35,  ./amber test-ext.k -> 79; 277 total)
 ```
 
-Start an interactive session (a line‑editor wrapper is recommended for history/editing):
+Start an interactive session:
 
 ```sh
-rlwrap ./amber repl.k          # rlwrap or rlfe; both optional
+./a                            # the launcher: builds if stale, then opens the REPL
+./amber repl.k                 # the same thing, without the build-if-stale check
 ```
+
+Since **1.9.5** the REPL has its own line editor (`src/ln.c`) — history, arrow keys,
+`Ctrl-A/E/W/U/K`, and Tab completion over your globals and table columns — so **do not wrap it in
+`rlwrap` or `rlfe`**. Amber puts the terminal in raw mode and reads single keypresses, which is
+exactly the case those wrappers cannot handle: rlwrap prints
+
+```text
+rlwrap: warning: rlwrap appears to do nothing for amber, which asks for
+single keypresses all the time ...
+```
+
+into the middle of your session and then fights the REPL for the cursor. `AMBER_NO_EDIT=1`
+disables the native editor if you need canonical-mode reads; `./a` then wraps in `rlwrap -n -a`,
+which is silent. See the [changelog](../CHANGELOG.md) for the full account.
 
 The banner appears and `amber.k` is loaded automatically, so `sum`, `avg`, `aj`, `lj`, … are
 immediately in scope. Type `\` for the built‑in help pages, `\\` to quit.

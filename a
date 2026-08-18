@@ -7,14 +7,38 @@ cd "$here"
 chmod +x "$here/a" "$here/build.sh" 2>/dev/null || true
 stale=0
 [ ! -x "$here/amber" ] && stale=1
-if [ -x "$here/amber" ] && [ -n "$(find "$here" -maxdepth 2 \( -name '*.c' -o -name '*.h' -o -name build.sh \) -newer "$here/amber" 2>/dev/null | head -1)" ]; then
+if [ -x "$here/amber" ] && [ -n "$(find "$here/src" "$here/ext" "$here/build.sh" -maxdepth 1 \( -name '*.c' -o -name '*.h' -o -name build.sh \) -newer "$here/amber" 2>/dev/null | head -1)" ]; then
   echo "amber: sources changed — rebuilding..." >&2; stale=1
 fi
 if [ "$stale" = 1 ]; then
   bash "$here/build.sh" || { echo "amber: build failed (see README.md)" >&2; exit 1; }
 fi
-if command -v rlwrap >/dev/null 2>&1; then
-  exec rlwrap "$here/amber" "$here/repl.k" "$@"
-else
-  exec "$here/amber" "$here/repl.k" "$@"
+
+# ---------------------------------------------------------------------------
+# rlwrap is NOT used, and must not be.
+#
+# Up to 1.9.4 the REPL had no line editing, so wrapping it in rlwrap was the
+# only way to get history and arrow keys.  Since 1.9.5 the REPL has its own
+# editor (src/ln.c): it puts the terminal into raw / non-canonical mode and
+# reads single keypresses.  That is precisely the case rlwrap cannot handle --
+# it prints, across stdout and stderr and usually right after an error,
+#
+#   rlwrap: warning: rlwrap appears to do nothing for amber, which asks for
+#   single keypresses all the time ...
+#
+# and then the two editors fight over the same cursor and garble the redraw.
+# So the default path below execs the interpreter directly: no wrapper, no
+# warning, no double editor.
+#
+# The single case where rlwrap still buys something is when the native editor
+# is deliberately switched off with AMBER_NO_EDIT=1 (a dumb terminal, an editor
+# subshell, a screen reader).  Amber then reads whole lines in canonical mode,
+# which is exactly what rlwrap is for -- and even there it is invoked with
+#   -n  (--no-warnings)     never print the warning above, whatever it thinks
+#   -a  (--always-readline) keep readline on even when it cannot detect a prompt
+# so no diagnostic of rlwrap's can ever land in the middle of a session.
+# ---------------------------------------------------------------------------
+if [ -n "${AMBER_NO_EDIT:-}" ] && [ -z "${AMBER_NO_RLWRAP:-}" ] && command -v rlwrap >/dev/null 2>&1; then
+  exec rlwrap -n -a "$here/amber" "$here/repl.k" "$@"
 fi
+exec "$here/amber" "$here/repl.k" "$@"

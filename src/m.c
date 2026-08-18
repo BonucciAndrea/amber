@@ -1,13 +1,23 @@
-#include <stdio.h>
-/* Feature-test macro must precede every system header (a.h pulls in
- * <unistd.h> on its very first line) or a strict `-std=c99` build hides
- * BSD-ism declarations like MAP_ANON that mm() below already relies on.
- * This does not change any evaluation/memory logic -- it only unlocks
- * declarations the code already uses. */
+/* Feature-test macros MUST come before the first system header of the
+ * translation unit -- <stdio.h> used to sit above them, which silently
+ * defeated both of them under `cc -std=c99`. */
 #ifndef _DEFAULT_SOURCE
 #define _DEFAULT_SOURCE
 #endif
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
+#include <stdio.h>
+/* _DEFAULT_SOURCE unlocks the BSD-isms (MAP_ANON) that mm() below relies on;
+ * _POSIX_C_SOURCE 200809L unlocks PTHREAD_MUTEX_RECURSIVE, which glibc guards
+ * behind __USE_UNIX98/__USE_XOPEN2K8.  Both are set at the very top of the
+ * file -- amber 1.9.5; before that they sat below <stdio.h> and had no effect
+ * on a strict `-std=c99` build, which therefore did not compile at all.
+ * Neither macro changes a line of evaluation or memory logic. */
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+#include"ln.h" // native line editor (replaces the old raw read + rlwrap)
+#include"ext.h"
+#include<stdlib.h>
 #include"arena.h"
 #include<unistd.h>
 #include"inspect.h" // \v rich variable inspector
@@ -165,6 +175,84 @@ A gg(A x/*1*/)_(//get value of global
 A*gp(A x/*1*/)_(U i=gi(x);x(0);gv+i)//get pointer to global
 A gns(U k)_(I a[L(gk)];U n=0;F(gn,I(gk[i]>>32==k,a[n++]=gk[i]))aV(tS,n,a))//list namespace
 
+// ---- 1.9.5: workspace introspection -----------------------------------------
+// gk/gn are file-local to m.c, so the two readers that describe the workspace
+// live here.  Both are pure reads: no refcount is touched, nothing is copied
+// out of the heap except names and shapes, and neither can fail (they truncate
+// instead).  src/ln.c uses am_globals() for instant Tab completion, and
+// am_schema_brief() renders the one-line digest of the session that `\v and
+// any installed extension (src/ext.h) both want.
+unsigned am_globals(char *dst, size_t cap) {
+    size_t o = 0; unsigned cnt = 0;
+    if (!dst || cap < 2) { if (dst && cap) dst[0] = 0; return 0; }
+    for (U i = 0; i < gn; i++) {
+        char nb[96]; int m; W k; U ns, sy;
+        if (!gv[i]) continue;
+        k = gk[i]; ns = (U)(k >> 32); sy = (U)k;
+        m = ns ? snprintf(nb, sizeof nb, "%s.%s", su(ns), su(sy))
+               : snprintf(nb, sizeof nb, "%s", su(sy));
+        if (m <= 0 || (size_t)m >= sizeof nb) continue;
+        if (o + (size_t)m + 2 >= cap) break;
+        memcpy(dst + o, nb, (size_t)m + 1); o += (size_t)m + 1; cnt++;
+    }
+    dst[o] = 0;
+    return cnt;
+}
+
+// Is x a {names;values} pair whose names are symbols?  (Amber tables and dicts
+// share the tM/tm tag; "table" is a structural question -- see src/inspect.c.)
+Z I am_isdict(A x, A *kk, A *vv) {
+    UC t = _t(x); A k, v;
+    if (t != tM && t != tm) return 0;
+    k = _x(x); v = _y(x);
+    if (!k || !v || _t(k) != tS || _t(v) != tA) return 0;
+    if (_n(k) != _n(v)) return 0;
+    *kk = k; *vv = v; return 1;
+}
+
+void am_schema_brief(char *dst, size_t cap) {
+    size_t o = 0;
+    if (!dst || cap < 2) { if (dst && cap) dst[0] = 0; return; }
+    dst[0] = 0;
+    for (U i = 0; i < gn; i++) {
+        char nb[512]; int m = 0; W key; U ns, sy; A x, k, v;
+        if (!(x = gv[i])) continue;
+        if (TU(_t(x))) continue;                       // skip functions
+        key = gk[i]; ns = (U)(key >> 32); sy = (U)key;
+        if (ns) continue;                              // root namespace only
+        if (am_isdict(x, &k, &v)) {
+            U nc = _n(k), c; L rows = -1; I tbl = 1; char cb[400]; size_t co = 0;
+            for (c = 0; c < nc; c++) {
+                A col = _A(v)[c]; UC ct;
+                if (!col || _t(col) > tS) { tbl = 0; break; }
+                ct = _t(col);
+                if (rows < 0) rows = (L)_n(col); else if (rows != (L)_n(col)) tbl = 0;
+                if (co + 40 < sizeof cb) {
+                    UC at = _tP(col) ? 0 : _at(col);
+                    co += (size_t)snprintf(cb + co, sizeof cb - co, "%s%s:%c%s",
+                                           c ? " " : "", su((U)_I(k)[c]), TS[ct],
+                                           at ? (at==1?"`s":at==2?"`u":at==3?"`p":"`g") : "");
+                }
+            }
+            if (!nc) tbl = 0;
+            m = snprintf(nb, sizeof nb, "%s%s:%s(%s)%s", o ? " " : "", su(sy),
+                         tbl ? "table" : "dict", co ? cb : "",
+                         "");
+            if (tbl && rows > 0 && (size_t)m + 24 < sizeof nb)
+                m += snprintf(nb + m, sizeof nb - (size_t)m, "[%lld rows]", (long long)rows);
+        } else {
+            UC t = _t(x);
+            if (_tP(x)) m = snprintf(nb, sizeof nb, "%s%s:%c", o ? " " : "", su(sy), TS[t]);
+            else m = snprintf(nb, sizeof nb, "%s%s:%c[%lu]", o ? " " : "", su(sy),
+                              TS[t], (unsigned long)_n(x));
+        }
+        if (m <= 0 || (size_t)m >= sizeof nb) continue;
+        if (o + (size_t)m + 1 >= cap) break;
+        memcpy(dst + o, nb, (size_t)m + 1); o += (size_t)m;
+    }
+    dst[o] = 0;
+}
+
 // try_rewrite: apply the K-level `qrw` SQL-syntax rewriter (defined in
 // qsql.k, e.g. `select sym,px from t`) to raw input text, IF qrw is
 // currently defined (i.e. the stdlib has been loaded). Copies the
@@ -209,11 +297,21 @@ Z A bs_(S*p)_(C b[256];S s=*p,e=strchrnul(s,10);P(e-s+1>=L(b),ez0())MC(b,s,e-s);
  P(!strncmp(b,"trace",5)&&(!b[5]||b[5]==32),bstrc(b+5+(b[5]==32)))
  P(!strncmp(b,"disasm",6)&&(!b[6]||b[6]==32),bsvmd(b+6+(b[6]==32)))
  P(!strncmp(b,"ast",3)&&(!b[3]||b[3]==32),bsast(b+3+(b[3]==32)))
- P(!d||d==10||d==32||d==':',G(&bsl,bst,bsd,bsbs,bsf,bsv,bsm,bs0)[si("ltd\\fvm",c)](b+1+(d==32)))K1("0x0a\\`x(,,\"/bin/sh\"),,:",aCz(b)))
+ P(!d||d==10||d==32||d==':',G(&bsl,bst,bsd,bsbs,bsf,bsv,bsm,bs0)[si("ltd\\fvm",c)](b+1+(d==32)))
+ // amber 1.9.5: an installed extension (src/ext.h) claims its own \\-commands
+ // here, BEFORE the historical "anything else is a shell command" fallback --
+ // so `\\ai why` reaches the agent instead of being handed to /bin/sh, and an
+ // engine with no extension behaves exactly as it always did.
+ I(am_ext_bs,A amrv=am_ext_bs(b);P(amrv,amrv))
+ K1("0x0a\\`x(,,\"/bin/sh\"),,:",aCz(b)))
 
 Z A evs1(S*p)_(S s=*p;P(*s=='\\',++*p;bs_(p))A x=pk((V*)p,10);N(x);x=N(cpl(aCm(s,*p),x,0));x(run(x,0,0)))
 A evs(S s,B r)_(W(*s,A x=evs1(&s);P(!x,I(r,s=strchrnul(s,10);s+=!!*s;epr(0))0)I(r,x(out(x)))E(P(!*s,x)x(0))mc();arena_reset())au)//arena_reset: rewind HFT scratchpad at end of each eval cycle
-B rep()_(Z C b[256];C*s=b,*q;
+// amber 1.9.5: the bare REPL (./amber with no script) reads through the native
+// line editor (src/ln.c) -- editing, history and Tab completion -- and falls
+// back to the historical raw read(2) only when stdin is not a terminal.
+B rep()_(I(am_ln_interactive(),N x=0;C*p=am_repl_getline("",&x);P(!p,0)evs(p,1);free(p);1)
+ Z C b[256];C*s=b,*q;
  W(1,L n=read(0,s,b-s+SZ b);P(n<=0,0)s+=n;q=memchr(s-n,10,n);
      P(q,C*p=b;W(q,*q=0;evs(p,1);p=q+1;q=memchr(p,10,s-p))MC(b,p,s-p);s+=b-p;1)
      P(b+SZ b<=s,die("LONGLINE")))1)
@@ -237,7 +335,10 @@ ZN A1(ox,o8(x);osd(" b",xb);C t=xT;os(" t");I(LH(1,t,tn),ow(&TS[t],1))E(od(t))os
 // amber: engine metadata -> (heapBytes; nRegions; arch; compiler; version)
 // (used by the REPL banner and by `amber --version`; version comes from
 // AMBER_VERSION in a.h so there is exactly one place to bump on a release)
-A1(binfo,L tot=0,nr=0;F(nreg,I(reg[i].p,tot+=reg[i].n;nr++))A a[]={al(tot),al(nr),aCz(AMARCH),aCz(AMCC),aCz(AMBER_VERSION)};x(aV(tA,5,a)))
+// amber 1.9.5: a 6th element carries the banner string of whatever extension is
+// compiled in (src/ext.h, am_ext_banner), or "" when the build is stock. Purely
+// additive -- every existing caller indexes 0..4 and is unaffected.
+A1(binfo,L tot=0,nr=0;F(nreg,I(reg[i].p,tot+=reg[i].n;nr++))A a[]={al(tot),al(nr),aCz(AMARCH),aCz(AMCC),aCz(AMBER_VERSION),aCz(am_ext_banner?am_ext_banner:"")};x(aV(tA,6,a)))
 #define RGS(a...) F(nreg,B f=reg[i].f;V*p=reg[i].p,*q=f?p:p+reg[i].n;a)
 #define OBS(a...) RGS(A x=(A)(p+HD*!f+pg*f),y=(A)q;W(x<y,a;x+=HD<<xb))
 #define XYS(a...) OBS(I(xtR,F(xn|!xn,A y=xa;a)))

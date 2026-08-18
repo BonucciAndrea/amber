@@ -6,7 +6,7 @@
 // amber-notepad's amber.js exactly (see that file's AmberVM class):
 //
 //   amber_version()- returns a pointer to the NUL-terminated interpreter
-//                     version string ("1.9.4"), taken from AMBER_VERSION in
+//                     version string (e.g. "1.9.5"), taken from AMBER_VERSION in
 //                     a.h -- the same single source of truth the REPL banner
 //                     and `amber --version` read, so the browser build can
 //                     never advertise a version the native build doesn't.

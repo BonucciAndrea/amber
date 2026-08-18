@@ -8,6 +8,12 @@
 libk.*
 .ltocheck
 
+# out-of-tree extensions install themselves here (see ext/README.md);
+# they belong to their own repositories, never to this one.
+/ext/*.c
+/ext/*.h
+/lib/*.k
+
 # scratch / local backups
 _to_delete/
 wow.txt

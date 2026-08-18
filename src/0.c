@@ -1,4 +1,5 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+#include"ext.h"// optional out-of-tree extensions may append to --help
 #include<stdarg.h>
 #include<stdio.h>
 #include<fcntl.h>
@@ -39,10 +40,16 @@ I pg=4096;//pagesize
   "  \\v              inspect globals      \\d NS          set namespace\n"
   "  \\ast EXPR       parse tree           \\disasm EXPR   bytecode listing\n"
   "  \\trace EXPR     phase timings + arena high-water mark\n"
-  "  \\cd DIR         change directory     \\m             heap consistency check\n";
+  "  \\cd DIR         change directory     \\m             heap consistency check\n"
+  "\n"
+  "REPL line editing (native since 1.9.5 -- do NOT wrap amber in rlwrap):\n"
+  "  arrows/Ctrl-A/E/B/F/K/U/W  edit          Up/Down or Ctrl-P/N   history\n"
+  "  Tab   complete globals, table columns, \\ commands and past lines\n"
+  "  Ctrl-L clear   Ctrl-C abandon line   Ctrl-D exit on an empty line\n"
+  "  History persists in ~/.amber_history.  AMBER_NO_EDIT=1 turns editing off.\n";
  Z I opt(S s)_(!strcmp(s,"-h")||!strcmp(s,"--help")?1:!strcmp(s,"-v")||!strcmp(s,"--version")?2:0)
  I main(I n,S*a)_(I(n>1,I o=opt(a[1]);
-   P(o==1,write(1,USAGE,SL(USAGE));0)
+   P(o==1,write(1,USAGE,SL(USAGE));I(am_ext_usage,write(1,am_ext_usage,strlen(am_ext_usage)));0)
    P(o==2,write(1,"amber " AMBER_VERSION "\n",SL("amber " AMBER_VERSION "\n"));0))
   kinit();kargs(n,a);I r=0;I(n<2,repl())J(!bsl(a[1]),r=1;epr(0))Q(bsm(""));r)
 #endif

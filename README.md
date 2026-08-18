@@ -12,9 +12,9 @@
 **A low-latency array language — columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.9.4-orange)
+![version](https://img.shields.io/badge/version-1.9.5-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
-![tests](https://img.shields.io/badge/tests-277%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-287%20passing-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
 
 </div>
@@ -30,6 +30,28 @@ AGPLv3 implementation of the K array language. Amber keeps that engine's speed a
 footprint and layers a q/kdb+ vocabulary, C-level column attributes, native temporal types,
 `([]…)` table syntax, a tick/HFT toolkit, and a modern REPL on top. (The attribution is
 recorded in [NOTICE](NOTICE), as the AGPLv3 requires.)
+
+New in **1.9.5**: the REPL has a **native line editor** — history, arrow keys, `Ctrl-A/E/W/U/K`,
+and Tab completion over your globals, table columns and `\` commands — built straight into the
+interpreter (`src/ln.c`, ~700 lines of C99 + POSIX `termios`, no readline, no curses, no
+dependency). **`rlwrap` is no longer needed, and must no longer be used**: Amber now handles the
+terminal itself, which is exactly the case rlwrap cannot wrap, and wrapping it anyway produced
+
+```text
+rlwrap: warning: rlwrap appears to do nothing for amber, which asks for
+single keypresses all the time. Don't you need --always-readline ...
+```
+
+dumped across `stdout`/`stderr` mid-session, plus a garbled redraw from two editors fighting over
+one cursor. `./a` now execs the interpreter directly; the only path that still touches rlwrap is
+the deliberate `AMBER_NO_EDIT=1` fallback, and there it passes `-n -a`, so no rlwrap diagnostic
+can reach your session on any path. See [REPL line editing](#repl-line-editing).
+
+1.9.5 also adds a small, neutral [**extension seam**](#extensions) (`src/ext.h` + `ext/`) so an
+out-of-tree package can add verbs, `\`-commands and editor behaviour without patching `src/` —
+that is how the separate, entirely optional
+[**amber-ai**](https://github.com/bonucciandrea/amber-ai) co-pilot installs itself. The engine in
+this repository contains **no AI code and no network code**.
 
 New in **1.9.4**: errors are reported **once**, as a polished Rust-style diagnostic with a
 category-specific code, a token-spanning underline, an inline label and actionable help — the
@@ -49,18 +71,18 @@ New in **1.9.3**: a **compact binary serializer** — `-8!x` encodes any K value
 vector and `-9!y` decodes it back, byte-exact including attributes, nulls and infinities.
 `peach` now ships worker results over that binary wire instead of formatting and reparsing text,
 and three bugs in its parent collection loop are fixed (a per-chunk leak, an ignored worker exit
-status, and an unvalidated decode). See [docs/CHANGELOG.md](docs/CHANGELOG.md) and
+status, and an unvalidated decode). See [CHANGELOG.md](CHANGELOG.md) and
 `examples/peach_verify.k`.
 
 New in **1.9.2**: integer `?` (find) builds an index over its left argument instead of scanning
 it per probe, turning the inner-join benchmark from **180.95 ms into 5.66 ms (32x)**; float `+/`
 uses four independent accumulators so it vectorises; array payloads are cache-line aligned. See
-[docs/BENCHMARKS.md](docs/BENCHMARKS.md) for before/after and [docs/CHANGELOG.md](docs/CHANGELOG.md).
+[docs/BENCHMARKS.md](docs/BENCHMARKS.md) for before/after and [CHANGELOG.md](CHANGELOG.md).
 
 New in **1.9.1**: the `select … by … from` query layer now groups and probes on **raw column
 vectors** instead of boxing one K object per row, making group-by **24.7x** faster and inner
 join **19.3x** faster (both now within ~1.1-1.5x of hand-written Amber array code); the CBQN
-benchmark scripts compile and self-time correctly. See [docs/CHANGELOG.md](docs/CHANGELOG.md).
+benchmark scripts compile and self-time correctly. See [CHANGELOG.md](CHANGELOG.md).
 
 New in **1.9**: a **native C `aj` as-of-join kernel** (branch-free `lower_bound` over sorted
 nanosecond timestamps) · an **HFT zero-allocation arena** (thread-local 16 MB bump allocator
@@ -157,18 +179,17 @@ cd amber
 
 ```sh
 sudo apt-get update && sudo apt-get install -y build-essential   # one-time
-sudo apt-get install -y rlwrap                                    # optional: history / arrow keys
 chmod +x a build.sh install.sh                                    # restore exec bits if the copy dropped them
 ./a                                                               # builds, then opens the REPL
+# note: do NOT install or use rlwrap for Amber -- line editing is built in (1.9.5)
 ```
 
 **macOS** (Intel or Apple Silicon) — needs Apple's `clang`:
 
 ```sh
 xcode-select --install        # installs the Command Line Tools (clang); one-time
-brew install rlwrap           # optional: history / arrow keys (needs Homebrew)
 chmod +x a build.sh install.sh
-./a
+./a                           # line editing / history / Tab are built in -- no rlwrap
 ```
 
 That's it — `./a` compiles the interpreter (portable `-O3`, no `-march=native`) and drops you at
@@ -251,7 +272,7 @@ instant.
 Check the interpreter version, or list every option and REPL command:
 
 ```sh
-./amber --version           # amber 1.9.4
+./amber --version           # amber 1.9.5
 ./amber --help              # options + the full \-command reference
 ```
 
@@ -268,6 +289,121 @@ tests/run_tests.sh          # EVERYTHING: build + all K suites + C unit tests + 
 ./amber tests/test_matrix.k # the suites are self-locating - run them from any directory
 tests/run_tests.sh --asan   # ... and re-run it all under AddressSanitizer + UBSan
 bash bench/run.sh           # cross-engine sanity + speed (Amber vs numpy/pandas/…; see BENCHMARKS.md)
+```
+
+---
+
+<a name="repl-line-editing"></a>
+## REPL line editing (native — do not use `rlwrap`)
+
+Amber's REPL edits your line itself. `src/ln.c` is a single-file editor in the
+[linenoise](https://github.com/antirez/linenoise) tradition: raw `termios`, one visible line, ANSI
+refresh, plain C99 + POSIX. No readline, no curses, no terminfo, and nothing allocated on the
+keystroke path beyond the line buffer.
+
+| key | |
+|---|---|
+| `←` `→`, `Ctrl-B` / `Ctrl-F` | move by character |
+| `Ctrl-A` / `Ctrl-E`, `Home` / `End` | start / end of line |
+| `↑` `↓`, `Ctrl-P` / `Ctrl-N` | history (persisted in `~/.amber_history`) |
+| `Backspace`, `Del`, `Ctrl-W` / `Ctrl-U` / `Ctrl-K` | delete char / word / to start / to end |
+| `Tab` | complete globals, table columns, `\` commands, the Amber vocabulary, and whole lines you already ran |
+| `Ctrl-L` | clear screen · `Ctrl-C` abandon the line · `Ctrl-D` exit on an empty line |
+
+**Why `rlwrap` must not be used.** rlwrap runs the wrapped program on a pty and speaks readline on
+its behalf, which only works for a program that reads whole lines in *canonical* mode. Amber puts
+the terminal into raw / non-canonical mode and reads single keypresses, so rlwrap is doing nothing
+useful — and says so, in the middle of your session, usually right after an error:
+
+```text
+rlwrap: warning: rlwrap appears to do nothing for amber, which asks for
+single keypresses all the time. Don't you need --always-readline
+and possibly --no-children? (cf. the rlwrap manpage)
+```
+
+while the two editors fight over one cursor and garble the redraw. `./a` therefore **execs the
+interpreter directly**. The one case where rlwrap still buys something is when the native editor
+is deliberately off (a dumb terminal, an editor subshell, a screen reader):
+
+```sh
+AMBER_NO_EDIT=1 ./a          # Amber reads whole lines; ./a wraps it in: rlwrap -n -a
+AMBER_NO_RLWRAP=1 AMBER_NO_EDIT=1 ./a   # ... or not even that
+```
+
+`-n` (`--no-warnings`) and `-a` (`--always-readline`) are passed unconditionally on that path, so
+**no rlwrap diagnostic can reach your session on any path**. The editor also degrades to a plain
+line read whenever stdin/stdout are not a terminal, so `echo '2+2' | ./a`, here-docs and CI runs
+behave byte-for-byte as they always did.
+
+`tests/test_repl_term.py` asserts all of this on a real pty, including that the terminal's
+`termios` is restored exactly after a normal exit *and* after `Ctrl-C`.
+
+---
+
+<a name="architecture"></a>
+## Architecture
+
+```
+   ./a ──► build.sh ──► cc -std=c99 src/*.c ext/*.c ──► ./amber ──► repl.k
+                                        │                             │
+                                        │                             └─ amber.k · fin.k · std.k
+                                        │                                qsql.k · temporal.k
+                                        │                                sys.k · hdb.k · ipc.k
+                                        │                                lib/ext.k  (optional)
+       ┌────────────────────────────────┴─────────────────────────────────┐
+       │                          the interpreter                          │
+       │                                                                   │
+       │  a.c b.c f.c h.c i.c m.c v.c …   ngn/k evaluator core, heap, verbs │
+       │  p.c ast.c vm.c                  parser · `\ast` tree · `\disasm` │
+       │  3.c simd.c parallel.c peachpool.c   vector kernels · threads     │
+       │  arena.c ser.c csv.c ar.c        HFT arena · -8!/-9! · CSV · Arrow│
+       │  e.c diagnostic.c                the Rust-style error reporter    │
+       │  inspect.c trace.c               `\v` · `\trace`                  │
+       │  ln.c lnk.c                      the line editor and its `rdl` verb│
+       │  ext.c                           the extension seam (src/ext.h)   │
+       └───────────────────────────────────────────────────────────────────┘
+```
+
+Three properties are worth stating explicitly, because they are what the layout is *for*:
+
+* **No optional feature is switched off.** Everything in `src/` is compiled, always. There is no
+  AI code, no network code and no TLS anywhere in this repository — `grep -r socket src/` finds
+  only `src/0.c`'s IPC support, which predates 1.9 and is the same code kdb-style `hopen` uses.
+* **`src/ln.c` has no interpreter dependency.** It includes `<termios.h>` and `src/ext.h` and
+  nothing else of Amber's; the interpreter-facing verb lives in the separate `src/lnk.c`. The
+  editor can be lifted into another project as-is.
+* **Extensions never patch `src/`.** See below.
+
+<a name="extensions"></a>
+### Extensions (`src/ext.h` + `ext/`)
+
+`ext/` is empty in a stock checkout. An out-of-tree package installs itself by dropping `.c`
+files there and re-running `./build.sh`; they are compiled with the same flags, linked into the
+same binary, and plug themselves in from a constructor through the hooks in
+[`src/ext.h`](src/ext.h):
+
+| hook | what it lets an extension do |
+|---|---|
+| `am_ext_verb("xyz", fn)` | register a backtick verb — `` `xyz x`` — at runtime |
+| `am_ext_bs` | claim a `\`-command before the "unknown `\cmd` is a shell command" fallback |
+| `am_ext_hint` | offer inline ghost text in the editor (never inserted until accepted) |
+| `am_ext_complete` | add Tab candidates ahead of the built-in lexical sources |
+| `am_ext_startup` | run once, lazily, when the REPL first reads a line |
+| `am_ext_usage` / `am_ext_banner` | append to `--help` and to the banner |
+
+The Amber-level half goes in `lib/`; `repl.k` loads `lib/ext.k` whole-file at startup if it
+exists, fully trapped, and an extension may define the optional `ext.pre` / `ext.post` /
+`ext.err` / `ext.raw` / `ext.tag` hooks. `tests/ext_probe.c` is a complete worked example and
+`tests/test_ext_seam.sh` installs it, checks every hook and uninstalls it again.
+
+The reason this exists: pulling a new Amber release must never conflict with a package you
+installed, and a user who installs nothing must pay nothing — every hook is a null pointer and
+every call site is a predictable branch. The optional
+[**amber-ai**](https://github.com/bonucciandrea/amber-ai) co-pilot is installed exactly this way:
+
+```sh
+git clone https://github.com/bonucciandrea/amber-ai.git
+cd amber-ai && ./install.sh /path/to/amber
 ```
 
 ---
@@ -759,7 +895,9 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 | `a`, `build.sh` | launcher (build-if-stale) and portable compile (gcc / clang) |
 | `src/*.c`, `src/*.h` | the interpreter — ngn/k core + Amber extensions (`src/p.c` the `([]…)` parser; `src/ar.c` Arrow; `src/arena.{h,c}` the HFT arena, 32-byte aligned; `src/diagnostic.{h,c}` the Rust-style formatter; the native `aj` kernel in `src/a.c`; `src/inspect.{h,c}` the `\v` inspector; `src/ast.{h,c}` the `\ast` visualiser; `src/trace.{h,c}` the `\trace` profiler; `src/fmtutil.{h,c}` and `src/ansi.h` shared formatting/colour helpers; `src/simd.{h,c}` AVX2/NEON/scalar kernels; `src/parallel.{h,c}` the pthreads vector engine; `src/vm.{h,c}` the bytecode disassembler behind `\disasm`; `src/csv.{h,c}` the native CSV parser behind `` `csvr``) |
 | `amber.k` | the q/kdb+ vocabulary (auto-loaded) |
-| `repl.k` | the REPL — banner, grid rendering, `\grid`/`\clear`, help; CRLF-safe module loader |
+| `repl.k` | the REPL — banner, grid rendering, `\grid`/`\clear`, help; CRLF-safe module loader; reads its input through `` `rdl`` (the native editor) and exposes the optional `ext.*` hooks |
+| `src/ln.{h,c}`, `src/lnk.c` | the native line editor (raw `termios`, history, Tab completion) and the `` `rdl`` verb that the REPL reads through — this is what replaced `rlwrap` |
+| `src/ext.{h,c}`, `ext/` | the extension seam: a runtime verb registry plus `\`-command / editor / startup hooks, and the (empty by default) directory `build.sh` compiles out-of-tree extensions from |
 | `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |
 | `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` `tick.k` | modules (auto-loaded) |
 | `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `peach.k` · `wj.k` · `graphs.k` · … |
@@ -769,9 +907,12 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 | `tests/test_qsql.k` | **94-case qSQL matrix**, written in the **bare `select … from t` syntax you actually type** (run through the same `qrw` rewrite the REPL applies): the full `select`/`exec`/`update`/`delete` clause lattice, multi-key `by`, empty / single-row / heavily-duplicated tables, and malformed queries asserted to raise cleanly |
 | `tests/fuzz.py` | malformed-input & deep-nesting crash fuzzer — asserts a clean K error, never a signal or a hang |
 | `tests/run_tests.sh` | runs all of the above (`--asan` re-runs everything under ASan + UBSan) |
+| `tests/test_repl_term.py` | **pty-driven REPL terminal suite**: asserts no `rlwrap:` diagnostic ever reaches a session, that `termios` is byte-for-byte restored after a normal exit *and* after `^C`, that the editing keys really edit, and that piped/non-tty behaviour is unchanged |
+| `tests/test_ext_seam.sh`, `tests/ext_probe.c` | installs a miniature extension into `ext/`, checks the verb / `\`-command / `--help` hooks fire and that the engine's own suite is unaffected, then uninstalls it and checks the engine is back to stock |
 | `tests/*.c` | standalone C test harnesses: `test_simd.c`/`test_parallel.c` (no Amber dependency), `test_ast.c` (links the full interpreter — ast.c is inherently built on Amber's real parser) |
 | `bench.k` `bench-fin.k` `bench-std.k` `bench/` | attribute / index / window benchmarks; `bench/run_comparative.py` cross-engine harness (Amber vs DuckDB vs CBQN vs ngn/k — see [docs/BENCHMARKS.md §5](docs/BENCHMARKS.md)); `bench/queries/amber_*.k` and `bench/queries/k_*.k` are separate, independently-tuned scripts per engine (not the same file reused), each `amber_*.k` documenting in its header what optimization was tried, what was measured, and why — see [Comparative benchmark query files](#comparative-benchmark-query-files) |
-| `docs/` | `AMBER.md` (reference) · `MISSING.md` (roadmap + known leniencies) · `CHANGELOG.md` (history) · `BENCHMARKS.md` · `AUDIT-1.9.md` (the 1.9 security/correctness audit report) |
+| `docs/` | `AMBER.md` (reference) · `MISSING.md` (roadmap + known leniencies) · `BENCHMARKS.md` · `AUDIT-1.9.md` (the 1.9 security/correctness audit report) |
+| `CHANGELOG.md` | release history (1.9.5 first — the REPL/`rlwrap` work is documented in full there) |
 | `.gitattributes` | forces LF checkout of sources so the REPL's line-based loader works on Windows too |
 
 ## Roadmap

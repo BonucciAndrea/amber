@@ -9,6 +9,14 @@ lim:{(x<#y)(x#)/y}
 dd:{(x<#y)(,[;".."](x-2)#)/y}
 fmt:{upd[];$[(::)~x;"";|/(@x)=`m`M;("\n"/amfmt x),"\n";(1<#x)&|/`m`M`A=@x;mMA x;(dd[cols]`k@lim[cols]x),"\n"]}
 fmtx:{$[(::)~x;"";`k[x],"\n"]}
+/ 1.9.5: the one call an optional extension is reached through. `ext.NAME` is a
+/ root-namespace function an installed package (see src/ext.h and lib/) may
+/ define; nothing here requires it to exist. The rich stderr diagnostic is
+/ switched off around the call, so a stock install -- where every ext.* is
+/ undefined -- stays completely silent instead of painting an error report
+/ after every line. Returns 0 when the hook is absent or throws.
+exthook:{[f;a]p:`diag 0;r:.[f;,a;0];`diag p;r}
+extstr:{$[`C~@r:exthook[x;y];r;""]}
 / error ergonomics: expand the one-word error to descriptive text, keep the core's ^ caret.
 edesc:`compile`domain`index`length`nyi`io`parse`rank`stack`type`value`limit!("compile: expression could not be compiled";"domain: value outside the valid domain for this operation";"index: index out of range";"length: operands have mismatched counts";"nyi: not implemented for these types";"io: input/output error";"parse: malformed expression";"rank: wrong number of arguments";"stack: call depth exceeded";"type: wrong type for this operation";"value: undefined name or empty value";"limit: implementation limit reached")
 / 1.9.4: when the rich stderr diagnostic is enabled (the default) the core has
@@ -16,7 +24,7 @@ edesc:`compile`domain`index`length`nyi`io`parse`rank`stack`type`value`limit!("co
 / legacy text here would show the same failure twice in two formats. Print it
 / only when diagnostics are off (`diag 0), so nothing is ever swallowed.
 / `diag with a non-numeric argument reads the setting without changing it.
-onerr:{$[0<`diag(::);;[b:`err[];lns:"\n"\b;h:$[#lns;*lns;""];nm:`$$[(0<#h)&"'"~*h;1_h;h];`0:$[(0<#h)&|/nm=!edesc;("'",edesc nm),"\n","\n"/1_lns;b]]];}
+onerr:{exthook[{ext.err x};x];$[0<`diag(::);;[b:`err[];lns:"\n"\b;h:$[#lns;*lns;""];nm:`$$[(0<#h)&"'"~*h;1_h;h];`0:$[(0<#h)&|/nm=!edesc;("'",edesc nm),"\n","\n"/1_lns;b]]];}
 / \grid clean|rounded|sharp|heavy : set the table border mode (root global GRID, via eval).
 gridcmd:{p:" "\x;$[1<#p;[m:`$p 1;$[4>`clean`rounded`sharp`heavy?m;[.:("GRID:`",$m);`1:"grid: ",($m),"\n"];`1:"grid: modes are clean rounded sharp heavy\n"]];`1:"grid: ",($(.:"GRID")),"\n"]}
 / \clear : clear the terminal (scrollback + screen, cursor home).
@@ -36,14 +44,32 @@ cmds:(,"a")!{`1:1:joinpath[dirname`argv 0]"LICENSE";}
 basename:{*|"/"\x}
 dirname:{$[#x:"/"/-1_"/"\x;x;,"."]}
 joinpath:{$[x~,".";y;"/"~*|x;x,y;x,"/",y]}
-line0:{c:{0x07~*-2#*x}{(l;r):x;(1:1;r,,(-2_l))}/(x;());"\n"/(*|c),,*c}
-line1:{$[#x;;:0];x:-1_x;$[(4<#x)&"\\grid"~5#x;gridcmd x;(5<#x)&"\\clear"~6#x;clearcmd[];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;.[`1:(fmt;fmtx)[" "~*x]@.:;,(.:"qrw")x;onerr]];`1:prompt;1}
+/ 1.9.5: input comes from `rdl (src/ln.c, src/lnk.c) instead of a raw read on
+/ fd 1. `rdl prints the prompt itself and gives the line native editing,
+/ history and Tab completion when stdin is a terminal; when it is a pipe it
+/ degrades to a plain line read with the prompt still printed, which is also
+/ why piping a script into the REPL works. This is what removed the need to
+/ run Amber under rlwrap -- see the comment block in ./a.
+rd:{`rdl x}
+/ The qSQL rewriter runs on every typed line, which would silently rewrite the
+/ ARGUMENT of an extension command (e.g. an "optimize select px from t" request)
+/ before the extension ever saw it. An extension may define ext.raw to claim
+/ lines that must be passed through byte-for-byte; every other \-command still
+/ gets the rewrite, so \t select ... from t keeps working.
+qrwx:{$[0<exthook[{ext.raw x};x];x;(.:"qrw")x]}
+line0:{c:{0x07~*-2#*x}{(l;r):x;(rd prompt;r,,(-2_l))}/(x;());"\n"/(*|c),,*c}
+line1:{$[#x;;:0];x:-1_x;exthook[{ext.pre x};x];$[(4<#x)&"\\grid"~5#x;gridcmd x;(5<#x)&"\\clear"~6#x;clearcmd[];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;.[`1:(fmt;fmtx)[" "~*x]@.:;,qrwx x;onerr]];exthook[{ext.post x};x];1}
 line:line1@line0@
 $["repl.k"~basename`argv 1;{cmds::@[cmds;x[1]1;:;{y;`0:x}2_x]}'{(&x~\:80#"-")_x:(1+*&x~\:,"/")_-1_x}@0:`argv 1;];
 / `bi 0 (process/build info) can throw 'domain on non-Linux builds (e.g. macOS);
 / trap it so the banner still renders.  Returns (heap;used;arch;compiler).
-binfo:{.[{`bi 0};,0;(10485760;0;"arm64";"Darwin";"1.9.4")]}
-run:{m:binfo[];`1:(`c$27),"[4q";`1:"Amber v",(m 4)," (",(m 2),"; ",(m 3),") — Columnar Time-Series Engine\nMemory: ",($0.1*_0.5+(m 0)%104857.6)," MB heap reserved | \\ for help command, \\\\ to exit\n\n",prompt;{line@1:`}::/`;}
+binfo:{.[{`bi 0};,0;(10485760;0;"arm64";"Darwin";"1.9.5")]}
+/ 1.9.5: (m 5) is the compiled-in extension tag from src/ext.h (am_ext_banner),
+/ "" on a stock build; ext.tag[] is the optional Amber-level one. Both are
+/ absent from a stock install, so the banner is character-for-character 1.9.4's.
+extag:{$[5<#x;x 5;""]}
+banner:{m:binfo[];"Amber v",(m 4)," (",(m 2),"; ",(m 3),") — Columnar Time-Series Engine",extag[m],extstr[{ext.tag[]};0],"\n"}
+run:{m:binfo[];`1:(`c$27),"[4q";`1:banner[],"Memory: ",($0.1*_0.5+(m 0)%104857.6)," MB heap reserved | \\ for help command, \\\\ to exit\n\n";{line@rd prompt}::/`;}
 \d .
 / load the Amber library by ABSOLUTE path derived from this script's own location,
 / so it works no matter what the current working directory is.
@@ -57,6 +83,12 @@ dir::{$[#p:"/"/-1_"/"\x;p;"."]}`argv 1
 {.[{. x^(`c$13)};,x;{}]}'0:dir,"/sys.k";
 {.[{. x^(`c$13)};,x;{}]}'0:dir,"/hdb.k";
 {.[{. x^(`c$13)};,x;{}]}'0:dir,"/ipc.k";
+/ 1.9.5: optional extensions. lib/ext.k does not exist in a stock checkout; an
+/ installer (e.g. amber-ai's install.sh) creates it and has it load its own
+/ .k files. Read WHOLE-FILE, because extension libraries carry multi-line
+/ definitions, and fully trapped with diagnostics off: a missing or broken
+/ lib/ext.k leaves the REPL exactly as it was.
+{p:`diag 0;.[{. `c$1:x};,x;0];`diag p;}dir,"/lib/ext.k";
 $[.[{sum;1};,`;{0}];;`0:"amber: WARNING - amber.k did not load (is it next to repl.k?)\n"]
 
 $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
@@ -77,6 +109,11 @@ $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
   \d ns   namespace (\d .) \t:n expr  time n runs (ms)  \f  functions
   \cd path   change dir    \other     shell command     \\  exit
   \grid MODE  table border: clean|rounded|sharp|heavy    \clear  clear screen
+
+  line editing (native since 1.9.5 -- never run amber under rlwrap)
+  Up/Down history   Tab completes globals, columns, \ commands, past lines
+  Ctrl-A/E line start/end   Ctrl-W/U/K kill   Ctrl-L clear   Ctrl-C abandon
+  history is kept in ~/.amber_history ; AMBER_NO_EDIT=1 disables editing
 
   diagnostics
   \ast expr    coloured parse-tree (AST) of an expression, parse-only

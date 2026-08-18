@@ -1,3 +1,35 @@
+/* ---- portability preamble: MUST precede every system header in this TU ----
+ * strdup(3) is POSIX, not ISO C. Under `cc -std=c99` __STRICT_ANSI__ is defined,
+ * glibc drops _DEFAULT_SOURCE, and <string.h> stops declaring it -- which is
+ * precisely the "Compile every TU under strict -std=c99" CI failure:
+ *   error: call to undeclared function 'strdup'; ISO C99 and later do not
+ *   support implicit function declarations [-Wimplicit-function-declaration]
+ * Under C99 that is not merely a diagnostic: the implicit `int strdup()` is
+ * then assigned to a `const char *`, so the returned pointer is truncated to
+ * 32 bits on LP64 -- a real bug, not just a warning.
+ *
+ * _POSIX_C_SOURCE >= 200809L is what actually exposes strdup. Defining it alone
+ * would put Darwin's headers into STRICT POSIX mode and hide the BSD
+ * extensions, so _DARWIN_C_SOURCE goes back in beside it; _GNU_SOURCE and
+ * _DEFAULT_SOURCE do the equivalent job on glibc/musl. All four are purely
+ * ADDITIVE -- they only ever unhide declarations -- and this is the same
+ * preamble src/a.c, src/arena.c and src/trace.c already carry.
+ *
+ * These must sit above the FIRST #include of the translation unit, not merely
+ * above <string.h>: any system header may pull in <features.h> first and latch
+ * the mode for the whole compilation. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
+#ifndef _DARWIN_C_SOURCE
+#define _DARWIN_C_SOURCE
+#endif
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
 #include<stdlib.h> // Amber - Apache Arrow C Data Interface - GNU AGPLv3 - see LICENSE and NOTICE
 #include<string.h>
 #include"a.h"

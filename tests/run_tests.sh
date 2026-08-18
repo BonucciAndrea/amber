@@ -51,7 +51,21 @@ run_k(){ # run_k <binary> <script> <label>
 }
 
 say "build"
+# Restore the executable bit on everything this harness (or a suite it spawns)
+# EXECUTES rather than sources, before anything runs. tests/test_repl_term.py
+# spawns ./a through subprocess.run() and tests/test_ext_seam.sh pipes into it,
+# and neither can recover from mode 644: they fail with
+#   PermissionError: [Errno 13] Permission denied: '.../a'
+# or "rlwrap: error: Cannot execute .../a: Permission denied"
+# which point at the REPL rather than at the lost bit. The bits are committed
+# (git ls-files -s says 100755, and the "shell hygiene" job enforces it), but a
+# zip export, a `tar` restore, a Windows/WSL checkout or a copy across a
+# non-POSIX filesystem all drop them, so do not trust the checkout.
+chmod +x build.sh a tests/*.sh tests/*.py 2>/dev/null || true
 ./build.sh || exit 1
+# build.sh itself chmods ./amber and ./a; repeat it here because --asan and the
+# C-unit-test legs below invoke binaries this script produced, not build.sh's.
+chmod +x amber a 2>/dev/null || true
 
 SUITES="test.k test-fin.k test-ext.k tests/test_matrix.k tests/test_qsql.k tests/test_sort_window.k examples/peach_verify.k"
 for s in $SUITES; do say "$s"; run_k ./amber "$s" native; done

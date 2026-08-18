@@ -50,7 +50,7 @@ jobs:
         env:
           CC: ${{ matrix.cc }}
         run: |
-          chmod +x build.sh
+          chmod +x a build.sh
           ./build.sh
 
       - name: Compile every TU under strict -std=c99
@@ -141,18 +141,20 @@ jobs:
       # runner architecture.
       - name: Build Core Engine
         run: |
-          chmod +x build.sh
+          chmod +x a build.sh
           AMBER_NATIVE=1 ./build.sh
           ./amber --version
 
       - name: Run Test Suite
         run: |
-          chmod +x tests/run_tests.sh
+          chmod +x a build.sh tests/run_tests.sh tests/test_ext_seam.sh
           ./tests/run_tests.sh
 
       - name: Assert no rlwrap diagnostic can reach a session
         run: |
-          chmod +x tests/test_repl_term.py
+          # ./a is what this suite SPAWNS; without its bit the run dies with
+          # PermissionError [Errno 13] before a single case executes.
+          chmod +x a tests/test_repl_term.py
           python3 tests/test_repl_term.py .
 
       - name: Smoke examples
@@ -182,7 +184,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y build-essential rlwrap
       - name: Full suite under sanitizers
         run: |
-          chmod +x build.sh tests/run_tests.sh
+          chmod +x a build.sh tests/run_tests.sh tests/test_ext_seam.sh
           ./tests/run_tests.sh --asan
 
   # ------------------------------------------------------------------ Windows (WSL)
@@ -212,7 +214,7 @@ jobs:
 
       - name: Build
         run: |
-          chmod +x build.sh
+          chmod +x a build.sh
           ./build.sh
 
       - name: Test suite
@@ -224,7 +226,7 @@ jobs:
 
       - name: Combinatorial matrix + qSQL matrix + fuzz + C unit tests
         run: |
-          chmod +x tests/run_tests.sh
+          chmod +x a build.sh tests/run_tests.sh tests/test_ext_seam.sh
           ./tests/run_tests.sh
 
       - name: Smoke examples
@@ -269,7 +271,16 @@ jobs:
         # and from macOS before 12.3, where it silently resolves to nothing.
         run: |
           set -e
-          if grep -rn --include='*.sh' --include='a' -E '(^|[^#])readlink[[:space:]]+-f' . ; then
+          # Match only a real USE. The previous pattern was '(^|[^#])readlink -f',
+          # whose [^#] was meant to skip comments -- but every one of these
+          # scripts documents the hazard as:
+          #     # `readlink -f` is GNU coreutils. BSD/macOS ...
+          # where the character before "readlink" is a BACKTICK, not the '#'.
+          # So [^#] matched, the job flagged its own documentation, and this step
+          # failed on every run in a tree with no `readlink -f` in it at all.
+          # Anchoring at the line start instead means any '#' ahead of the match
+          # excludes the line, while `x=$(readlink -f "$0")` still trips it.
+          if grep -rn --include='*.sh' --include='a' -E '^[^#]*readlink[[:space:]]+-f' . ; then
             echo "::error::readlink -f is not portable; use the am_scriptdir helper"
             exit 1
           fi

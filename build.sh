@@ -91,4 +91,11 @@ done
 for f in src/*.c $EXT; do "$CC" $F -o "o/$(basename "${f%.c}").o" -c "$f"; done
 # link: -ldl exists on Linux; on macOS dlopen lives in libSystem, so fall back without it
 "$CC" $F -o amber o/*.o -lm -ldl 2>/dev/null || "$CC" $F -o amber o/*.o -lm
+# The linker already marks ./amber executable, but ./a is a TRACKED shell script
+# and a checkout (or a zip, or a tar of a checkout) can arrive at mode 644. The
+# test harness then dies with "PermissionError: [Errno 13] ... /a" long after the
+# build reported success, which reads as a broken engine rather than a lost bit.
+# Assert both here, where the cost is one syscall; `|| true` because a read-only
+# or foreign-owned tree must still be buildable.
+chmod +x amber a 2>/dev/null || true
 echo "amber: built ./amber"

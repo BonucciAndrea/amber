@@ -1,3 +1,32 @@
+/* ---- portability preamble: MUST precede every system header in this TU ----
+ * Same class of bug as src/ar.c's strdup, caught by the same "Compile every TU
+ * under strict -std=c99" job. Under `-std=c99` __STRICT_ANSI__ is defined and
+ * glibc hides everything that is not ISO C, so this file loses TWO functions:
+ *   fdopendir(3)  POSIX.1-2008, needs _POSIX_C_SOURCE >= 200809L
+ *   wait4(2)      BSD, needs _DEFAULT_SOURCE (__USE_MISC) or _GNU_SOURCE
+ * Both then fall back to an implicit `int f()`, and fdopendir's result is
+ * assigned to a `DIR *` -- a 32-bit truncation of a real pointer on LP64, not
+ * merely a diagnostic.
+ *
+ * _DARWIN_C_SOURCE accompanies _POSIX_C_SOURCE so that requesting strict POSIX
+ * does not hide the BSD extensions this file also uses on Apple clang. All four
+ * macros are purely ADDITIVE -- they only ever unhide declarations -- and match
+ * the preamble src/a.c, src/arena.c and src/trace.c already carry.
+ *
+ * These must sit above the FIRST #include of the translation unit: any system
+ * header may pull in <features.h> and latch the mode for the whole compilation. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
+#ifndef _DARWIN_C_SOURCE
+#define _DARWIN_C_SOURCE
+#endif
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
 #include<dlfcn.h> // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include<sys/socket.h>
 #include<sys/wait.h>

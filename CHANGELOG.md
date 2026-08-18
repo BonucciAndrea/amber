@@ -52,8 +52,43 @@ invoked as `rlwrap -n -a`:
 * `-n` / `--no-warnings` — no rlwrap diagnostic can ever be printed, whatever it concludes;
 * `-a` / `--always-readline` — readline stays on when rlwrap cannot detect a prompt.
 
-`AMBER_NO_RLWRAP=1` opts out of even that. **On no path can an rlwrap message now reach a
-session.**
+`AMBER_NO_RLWRAP=1` opts out of even that.
+
+**And the engine stands down on its own, however it was started.** Fixing the launcher only ever
+helps the one launch route the launcher controls, and that is not how people start Amber. A shell
+alias left over from 1.9.4 (`alias amber='rlwrap amber'`), a wrapper script, a tmux or `.desktop`
+entry, or simply the `rlwrap ./amber repl.k` line the old `docs/AMBER.md` recommended — every one
+of those still produced the warning on the first error, because the binary had no defence of its
+own. It does now:
+
+`am_ln_under_rlwrap()` (src/ln.c) detects a parent `rlwrap` or `rlfe` by **process lineage** —
+rlwrap exports no environment variable to the program it wraps, so lineage is the only reliable
+signal — walking up to four ancestors so an intervening wrapper script that does not `exec()`
+cannot hide it. Linux reads `/proc`, macOS uses `sysctl(KERN_PROC)`, anything else falls back to
+a single `ps`. The walk runs at most **once** per process and only after stdin is already known to
+be a terminal, so a pipe, a here-doc or a CI job never pays for it; a platform whose lineage
+cannot be read answers "no wrapper" and behaves exactly as before.
+
+When it fires, `am_ln_interactive()` returns 0 and Amber reads whole lines in canonical mode,
+exactly as 1.9.4 did. **Standing down is the correct answer, not a concession:** rlwrap's warning
+is legitimate — two line editors cannot share one cursor — and the user under rlwrap still gets
+full readline editing and history. Nothing is lost, the warning cannot be printed, and the redraw
+cannot garble. A single explanatory line goes to stderr once per session, so a user who wanted
+rlwrap learns that Amber has an editor of its own:
+
+```text
+amber: started under rlwrap -- leaving line editing to it.
+       amber has had its own editor since 1.9.5: start it with ./a (no rlwrap) to use that instead.
+```
+
+Two overrides, for the cases judgement should not be automatic: `AMBER_RLWRAP=1` forces the
+stand-down for a wrapper Amber did not recognise, and `AMBER_RLWRAP=0` keeps Amber's own editor
+under rlwrap regardless (the pre-fix behaviour, warning included).
+
+**On no path — launcher, alias, wrapper, or bare `rlwrap ./amber repl.k` — can an rlwrap message
+now reach a session.** The build flags make no difference to any of this: a portable build and an
+`AMBER_NATIVE=1 ./build.sh` build behave identically, and `tests/test_repl_term.py` asserts it on
+both.
 
 ### Terminal state is restored on every exit path
 
@@ -69,7 +104,7 @@ When stdin/stdout are not a terminal, or `TERM` is dumb, or `AMBER_NO_EDIT` is s
 printed, consuming nothing past the newline. `echo '2+2' | ./a`, here-docs, `./amber script.k` and
 CI runs are byte-for-byte what they were in 1.9.4.
 
-### `tests/test_repl_term.py` — ten pty-driven regression tests
+### `tests/test_repl_term.py` — seventeen pty-driven regression tests
 
 Nothing here is mocked; every case runs the real interpreter on a real pty:
 
@@ -78,6 +113,12 @@ Nothing here is mocked; every case runs the real interpreter on a real pty:
 | `no_rlwrap_warning` | no `rlwrap:` output ever reaches a `./a` session |
 | `error_still_reported` | the diagnostic that used to be interleaved still prints |
 | `rlwrap_fallback_is_quiet` | `AMBER_NO_EDIT=1 ./a`, which *does* use rlwrap, is silent |
+| `rlwrap_direct_is_quiet` | `rlwrap ./amber repl.k` — what the old docs taught — is silent |
+| `rlwrap_launcher_is_quiet` | `rlwrap ./a` — an old shell alias — is silent |
+| `rlwrap_*_repl_works` | and both still evaluate: the error prints, `2+2` is `4` |
+| `rlwrap_note_shown` | the one-time explanation appears |
+| `rlwrap_override_restores` | `AMBER_RLWRAP=0` brings the warning back, proving the detection is what silences it rather than luck |
+| `rlwrap_force_stand_down` | `AMBER_RLWRAP=1` silences a wrapper we did not detect |
 | `termios_restored_on_exit` | `termios` identical before/after a normal exit |
 | `termios_restored_after_^C` | `termios` identical before/after `Ctrl-C` |
 | `editing_ctrl_a_insert` | `Ctrl-A` + insert really edits (`99` → `1+99` → `100`) |
@@ -85,6 +126,105 @@ Nothing here is mocked; every case runs the real interpreter on a real pty:
 | `pipe_is_unchanged` | piped input still evaluates and prints |
 | `no_edit_pipe` | `AMBER_NO_EDIT=1` with a pipe behaves identically |
 | `bare_repl_pipe` | `./amber` with no script reads through the editor too |
+
+### Cross-platform build: the macOS/`-std=c99` failures
+
+Three separate things broke a macOS build (and, in CI, an arm64 runner) while a Linux build stayed
+perfectly green. All three are now fixed and guarded by the CI matrix.
+
+**1. `MAP_ANON` vanished on Darwin.** `src/m.c`, `src/a.c`, `src/arena.c` and `src/trace.c` each
+define `_POSIX_C_SOURCE` so that a strict `-std=c99` build still sees `PTHREAD_MUTEX_RECURSIVE`
+and friends. On glibc that is harmless — glibc keeps the BSD extensions visible anyway. On Darwin
+it is not: defining `_POSIX_C_SOURCE` switches the headers into **strict POSIX mode**, which
+*hides* every BSD extension, `MAP_ANON` among them. The result was source that compiles clean on
+Linux and fails on Apple clang with `MAP_ANON undeclared here`. Every one of those four
+translation units now opens with
+
+```c
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
+#ifndef _DARWIN_C_SOURCE
+#define _DARWIN_C_SOURCE
+#endif
+```
+
+placed above the **first** `#include` of the file — not merely above `<sys/mman.h>`, because any
+system header may pull in `<features.h>` first and latch the mode for the whole compilation. All
+three macros are purely additive: they only ever *unhide* declarations. (Checked rather than
+assumed: this tree calls no `strerror_r`, `basename` or `qsort_r`, the three functions whose
+semantics `_GNU_SOURCE` actually changes.)
+
+`src/m.c` additionally normalises the spelling, since which of the two a platform exposes depends
+on those same macros:
+
+```c
+#ifndef MAP_ANON
+#  ifdef MAP_ANONYMOUS
+#    define MAP_ANON MAP_ANONYMOUS
+#  else
+#    define MAP_ANON 0x20
+#  endif
+#endif
+```
+
+**2. `AMBER_NATIVE=1` could not build on Apple Silicon.** `-march=native` is x86 syntax; Apple
+clang on arm64 rejects it outright. `build.sh` now *probes* the tuning flag exactly as it already
+probed `-flto` and `-fopenmp`: it tries `-march=native`, then `-mcpu=native` (aarch64 GCC and
+clang), and if neither is accepted it builds portable and says so in the banner. The documented
+`AMBER_NATIVE=1 ./build.sh` line therefore succeeds everywhere instead of failing on every arm64
+runner.
+
+**3. `readlink -f` does not exist on macOS.** It is GNU coreutils; BSD readlink gained `-f` only
+in macOS 12.3 (2022). Every script in the tree used it to find its own directory, so on any older
+Mac `./a`, `./build.sh`, `./install.sh`, `demo.sh` and both test runners resolved to an empty path
+and `cd`'d somewhere arbitrary. All six now use an `am_scriptdir` helper built on POSIX `readlink`
+(no `-f`) plus `cd -P`, which behaves identically on macOS, Linux, WSL2 and BusyBox and still
+follows a chain of symlinks. A CI job greps for any reintroduction.
+
+### CI
+
+`.github/workflows/ci.yml` is rebuilt around the platforms that actually broke:
+
+| job | what it covers |
+|---|---|
+| `toolchains` | GCC 11/12/13 + Clang on Linux; builds, then compiles **every TU under strict `-std=c99`** and links it — the mode that exposes the feature-macro class of bug |
+| `unix` | the real matrix: `ubuntu-latest` **and** `macos-latest`, each with **both** a GCC and a Clang. On macOS `gcc` is a Clang shim, so that leg installs a genuine Homebrew GCC and resolves its versioned name at run time rather than pinning `gcc-13` and breaking when Homebrew moves on. Builds with `AMBER_NATIVE=1`, runs the full suite, and runs the pty terminal suite separately |
+| `sanitizers` | the whole suite under ASan + UBSan |
+| `windows-wsl` | unchanged: Ubuntu userland inside WSL |
+| `scripts` | shellcheck, a grep that fails the build if `readlink -f` reappears, and a check that the **executable bit is committed** — see below |
+
+`rlwrap` is now installed on the Linux and macOS legs. It is a *test* dependency: without it the
+rlwrap regression cases in `tests/test_repl_term.py` silently SKIP, so the regression they guard
+would have gone unnoticed. `actions/checkout` is `@v4` and `actions/setup-python` is `@v5` with a
+pinned 3.12, so a runner-image bump cannot quietly change what the suite runs on.
+
+### `./install.sh`
+
+Rewritten as a real installer rather than a build-and-alias script:
+
+* **Toolchain detection** — no compiler produces the exact package command for *this* system
+  (`apt-get` / `dnf` / `yum` / `pacman` / `apk` / `xcode-select --install`) instead of a compiler
+  backtrace. It also states that `make` is *not* needed, so nobody goes looking for it.
+* **Shell detection** — writes to the rc file the user's **login** shell reads, not the one the
+  script happens to run under. `bash install.sh` from a zsh session used to append to `~/.bashrc`,
+  which zsh never sources, so the alias silently never appeared. macOS bash gets
+  `~/.bash_profile` (Terminal starts login shells); zsh gets `$ZDOTDIR/.zshrc`; fish is detected
+  and told what to do by hand rather than handed bash syntax.
+* **Idempotent** — the block is delimited by `# >>> amber >>>` markers and *replaced* on re-run,
+  not appended.
+* **Permissions** — repairs the executable bit on every script in the tree first.
+
+### The executable bit
+
+Every script in the published repository was committed as mode `100644`, so a fresh
+`git clone` followed by the README's very first command answered `bash: ./install.sh: Permission
+denied`. The archive ships them `755`, `install.sh` repairs them, and the `scripts` CI job now
+fails the build if the index regresses. When committing, the fix is
+`git update-index --chmod=+x a build.sh install.sh demo.sh tests/*.sh tests/*.py`.
 
 ### Portability / correctness fixes carried in the same release
 
@@ -134,8 +274,9 @@ anything here.
 Nothing to do beyond rebuilding.
 
 * If you have `alias amber='rlwrap amber'`, a wrapper script, or `rlwrap` in a `.desktop` /
-  systemd / tmux launcher — **remove the `rlwrap`**. Amber no longer needs it and it is the cause
-  of the warning.
+  systemd / tmux launcher — **remove the `rlwrap`**. Amber no longer needs it. You no longer
+  *have* to remove it (the engine detects it and stands down quietly), but you will keep getting
+  rlwrap's editing rather than Amber's, and Amber says so once per session.
 * `~/.amber_history` is created on first interactive use; delete it any time.
 * `AMBER_NO_EDIT=1` restores pre-1.9.5 read behaviour if you need it.
 

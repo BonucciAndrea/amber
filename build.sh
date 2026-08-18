@@ -3,7 +3,23 @@
 # Portable flags (no -march=native, warnings silenced) so the binary runs on
 # any x86-64 / arm64 host with a C compiler. Never installs anything system-wide.
 set -e
-cd "$(dirname "$(readlink -f "$0")")"
+# ---- portable script-directory resolution ---------------------------------
+# `readlink -f` is GNU coreutils. BSD/macOS readlink gained -f only in macOS
+# 12.3 (2022), so on any older Mac every script that used it resolved to an
+# empty path and cd'd to the wrong place -- or silently to $HOME. This uses
+# only POSIX readlink (no -f) plus `cd -P`, which behaves identically on macOS,
+# Linux, WSL2 and BusyBox, and still follows a chain of symlinks.
+am_scriptdir() {
+  am__p=$1
+  while [ -h "$am__p" ]; do
+    am__d=$(CDPATH='' cd -- "$(dirname -- "$am__p")" && pwd -P) || return 1
+    am__l=$(readlink -- "$am__p")
+    case $am__l in /*) am__p=$am__l ;; *) am__p=$am__d/$am__l ;; esac
+  done
+  CDPATH='' cd -- "$(dirname -- "$am__p")" || return 1
+  pwd -P
+}
+cd "$(am_scriptdir "$0")"
 CC="${CC:-}"
 if [ -z "$CC" ]; then
   for c in cc gcc clang; do command -v "$c" >/dev/null 2>&1 && { CC="$c"; break; }; done
@@ -26,7 +42,29 @@ rm -f .ltocheck
 OMPTAG=""
 if printf '#include <omp.h>\nint main(){return omp_get_max_threads();}' | "$CC" -fopenmp -x c - -o .ompcheck 2>/dev/null; then F="$F -fopenmp"; OMPTAG=" +openmp"; fi
 rm -f .ompcheck
-if [ -n "${AMBER_NATIVE:-}" ]; then F="$F -march=native -funroll-loops"; MODE="native -O3$LTOTAG$OMPTAG"; else MODE="portable -O3$LTOTAG$OMPTAG"; fi
+# AMBER_NATIVE=1 asks for a machine-specific build. The tuning flag is NOT
+# portable: -march=native is x86 syntax that Apple clang REJECTS outright on
+# Apple Silicon ("the clang compiler does not support '-march=native'"), where
+# the equivalent is -mcpu=native. GCC on aarch64 accepts -mcpu=native too. So
+# probe rather than assume -- otherwise `AMBER_NATIVE=1 ./build.sh` in CI, which
+# is exactly what the documented macOS build line does, fails on every arm64
+# runner. If neither flag is accepted the build still succeeds, just portable.
+if [ -n "${AMBER_NATIVE:-}" ]; then
+  NATFLAG=""
+  for cand in -march=native -mcpu=native; do
+    if printf 'int main(){return 0;}' | "$CC" $cand -x c - -o .natcheck 2>/dev/null; then
+      NATFLAG="$cand"; break
+    fi
+  done
+  rm -f .natcheck
+  if [ -n "$NATFLAG" ]; then
+    F="$F $NATFLAG -funroll-loops"; MODE="native $NATFLAG -O3$LTOTAG$OMPTAG"
+  else
+    MODE="portable -O3$LTOTAG$OMPTAG (no native tuning flag accepted by $CC)"
+  fi
+else
+  MODE="portable -O3$LTOTAG$OMPTAG"
+fi
 
 # ---- extensions -------------------------------------------------------------
 # ext/ is empty in a stock checkout. An out-of-tree package (for example the

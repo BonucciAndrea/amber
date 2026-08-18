@@ -1,6 +1,28 @@
 /* Feature-test macros MUST come before the first system header of the
  * translation unit -- <stdio.h> used to sit above them, which silently
  * defeated both of them under `cc -std=c99`. */
+/* ---- portability preamble: MUST precede every system header in this TU ----
+ * Defining _POSIX_C_SOURCE puts Darwin's headers into STRICT POSIX mode, which
+ * hides the BSD extensions this file relies on -- MAP_ANON above all others.
+ * That is exactly the macOS CI failure: source that compiles clean against
+ * glibc fails on Apple clang with "MAP_ANON undeclared here". _DARWIN_C_SOURCE
+ * puts those declarations back; _GNU_SOURCE and _DEFAULT_SOURCE do the
+ * equivalent job on glibc/musl. All three are purely ADDITIVE -- they only ever
+ * unhide declarations, so none of them can change behaviour. (Verified: this
+ * tree calls no function whose semantics _GNU_SOURCE alters, i.e. no
+ * strerror_r, basename or qsort_r.)
+ * These must sit above the first #include of the translation unit, not merely
+ * above <sys/mman.h>: any system header may pull in <features.h> first and
+ * latch the mode for the whole compilation. */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
+#ifndef _DARWIN_C_SOURCE
+#define _DARWIN_C_SOURCE
+#endif
 #ifndef _DEFAULT_SOURCE
 #define _DEFAULT_SOURCE
 #endif
@@ -42,6 +64,20 @@
 #endif
 #include<fcntl.h>
 #include<sys/mman.h>
+/* MAP_ANON is the historical BSD spelling and MAP_ANONYMOUS the POSIX-ish one;
+ * which of the two a platform exposes depends on the feature macros above, so
+ * accept either and normalise to MAP_ANON, which mm() uses. The final fallback
+ * is Linux's numeric value -- no target this project supports lacks BOTH
+ * macros, so it exists only so the build cannot fail on an unknown one. */
+#ifndef MAP_ANON
+#  ifdef MAP_ANONYMOUS
+#    define MAP_ANON MAP_ANONYMOUS
+#  else
+#    define MAP_ANON 0x20
+#  endif
+#endif
+/* MAP_NORESERVE is Linux-only in practice (macOS defines it as a no-op); where
+ * it is absent, 0 is the correct neutral flag. */
 #ifndef MAP_NORESERVE
  #define MAP_NORESERVE 0
 #endif

@@ -8,7 +8,23 @@
 #
 # GNU AGPLv3 - see LICENSE and NOTICE.
 set -u
-cd "$(dirname "$(readlink -f "$0")")/.."
+# ---- portable script-directory resolution ---------------------------------
+# `readlink -f` is GNU coreutils. BSD/macOS readlink gained -f only in macOS
+# 12.3 (2022), so on any older Mac every script that used it resolved to an
+# empty path and cd'd to the wrong place -- or silently to $HOME. This uses
+# only POSIX readlink (no -f) plus `cd -P`, which behaves identically on macOS,
+# Linux, WSL2 and BusyBox, and still follows a chain of symlinks.
+am_scriptdir() {
+  am__p=$1
+  while [ -h "$am__p" ]; do
+    am__d=$(CDPATH='' cd -- "$(dirname -- "$am__p")" && pwd -P) || return 1
+    am__l=$(readlink -- "$am__p")
+    case $am__l in /*) am__p=$am__l ;; *) am__p=$am__d/$am__l ;; esac
+  done
+  CDPATH='' cd -- "$(dirname -- "$am__p")" || return 1
+  pwd -P
+}
+cd "$(am_scriptdir "$0")/.."
 fail=0
 ok(){ printf '    %-28s %s\n' "$1" "$2"; [ "$2" = PASS ] || fail=1; }
 

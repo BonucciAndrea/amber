@@ -4,7 +4,24 @@ prompt:"amber> " /use 0x0720 for emacs integration
 (opn;sem;cls):"(;)"
 /(opn;sem;cls):("( ";" ; ";" )") /uncomment this line for extra spacing
 lines:cols:999
-upd:{(lines;cols)::`I$"\n"\`x(("/usr/bin/env";"tput";"-S");"lines\ncols\n")}
+/ 1.9.5: the terminal-size probe must never be able to break the DISPLAY path.
+/ `tput -S` writes NOTHING when $TERM is unset -- the normal state of a CI step,
+/ a cron job, a docker RUN, or anything else that is not a terminal -- and the
+/ old unconditional (lines;cols):: then assigned a 0-element vector to a
+/ 2-element target and raised E0103 "Vector length mismatch". fmt calls upd[]
+/ before formatting ANY value, so the engine computed the right answer and then
+/ failed to PRINT it: `100+`pr7 0` reported a length error instead of 107, and
+/ `#`aio[-1]` reported one instead of 7, which read as "the extension did not
+/ link" when the extension had linked perfectly.
+/ tchk therefore returns a vector that is ALWAYS two usable numbers -- the probe
+/ when it answered, the values already in force when it did not -- so the
+/ assignment below cannot fail. The probe also latches off after a failure: a
+/ missing or mute tput then costs one fork rather than one per result, and
+/ cannot repeat its own stderr on every line of a session.
+tprobe:1
+tchk:{p:`diag 0;v:.[{`I$"\n"\`x(("/usr/bin/env";"tput";"-S");"lines\ncols\n")};,0;(!0)];`diag p;tprobe::(2=#v)&(&/v>0);$[tprobe;v;lines,cols]}
+tsz:{$[tprobe;tchk[];lines,cols]}
+upd:{(lines;cols)::tsz[]}
 lim:{(x<#y)(x#)/y}
 dd:{(x<#y)(,[;".."](x-2)#)/y}
 fmt:{upd[];$[(::)~x;"";|/(@x)=`m`M;("\n"/amfmt x),"\n";(1<#x)&|/`m`M`A=@x;mMA x;(dd[cols]`k@lim[cols]x),"\n"]}

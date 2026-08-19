@@ -37,7 +37,27 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install ${{ matrix.cc }}
-        run: sudo apt-get update && sudo apt-get install -y build-essential ${{ matrix.cc }}
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          # A GitHub runner's apt can stall for the whole job: a package that
+          # opens a debconf prompt waits for a tty that is not there, and an
+          # apt mirror reached over IPv6 that blackholes gives no error at all,
+          # just a hang -- which is how "asan + ubsan" burned 40 minutes and was
+          # cancelled rather than failing. Every knob below turns one of those
+          # silent waits into a bounded, reported error:
+          #   DEBIAN_FRONTEND  no interactive prompt can ever be raised
+          #   -o Acquire::Retries       retry a dropped mirror instead of stalling
+          #   -o Acquire::http::Timeout cap each request (seconds)
+          #   ForceIPv4        skip the IPv6 mirror path that blackholes on Azure
+          #   --no-install-recommends   fewer packages, fewer prompts, less time
+          #   timeout NNN      a hard ceiling, so a hang FAILS instead of hanging
+          sudo rm -rf /var/lib/apt/lists/*
+          sudo timeout 300 apt-get update -o Acquire::Retries=3 \
+            -o Acquire::http::Timeout=15 -o Acquire::ForceIPv4=true
+          sudo timeout 600 apt-get install -y --no-install-recommends \
+            -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
+            -o Acquire::ForceIPv4=true build-essential ${{ matrix.cc }}
 
       - name: Toolchain info
         run: ${{ matrix.cc }} --version
@@ -108,12 +128,31 @@ jobs:
 
       - name: Install build tools (Linux)
         if: runner.os == 'Linux'
+        env:
+          DEBIAN_FRONTEND: noninteractive
         run: |
-          sudo apt-get update
-          # rlwrap is a TEST dependency only: tests/test_repl_term.py asserts that
-          # Amber stands down when started under it. Without rlwrap installed
-          # those cases SKIP, and the regression they guard would go unnoticed.
-          sudo apt-get install -y build-essential clang rlwrap
+          # A GitHub runner's apt can stall for the whole job: a package that
+          # opens a debconf prompt waits for a tty that is not there, and an
+          # apt mirror reached over IPv6 that blackholes gives no error at all,
+          # just a hang -- which is how "asan + ubsan" burned 40 minutes and was
+          # cancelled rather than failing. Every knob below turns one of those
+          # silent waits into a bounded, reported error:
+          #   DEBIAN_FRONTEND  no interactive prompt can ever be raised
+          #   -o Acquire::Retries       retry a dropped mirror instead of stalling
+          #   -o Acquire::http::Timeout cap each request (seconds)
+          #   ForceIPv4        skip the IPv6 mirror path that blackholes on Azure
+          #   --no-install-recommends   fewer packages, fewer prompts, less time
+          #   timeout NNN      a hard ceiling, so a hang FAILS instead of hanging
+          #
+          # rlwrap is a TEST dependency only: tests/test_repl_term.py asserts
+          # that Amber stands down when started under it. Without rlwrap those
+          # cases SKIP, and the regression they guard goes unnoticed.
+          sudo rm -rf /var/lib/apt/lists/*
+          sudo timeout 300 apt-get update -o Acquire::Retries=3 \
+            -o Acquire::http::Timeout=15 -o Acquire::ForceIPv4=true
+          sudo timeout 600 apt-get install -y --no-install-recommends \
+            -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
+            -o Acquire::ForceIPv4=true build-essential clang rlwrap
 
       - name: Install build tools (macOS)
         if: runner.os == 'macOS'
@@ -181,7 +220,27 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install build tools
-        run: sudo apt-get update && sudo apt-get install -y build-essential rlwrap
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          # A GitHub runner's apt can stall for the whole job: a package that
+          # opens a debconf prompt waits for a tty that is not there, and an
+          # apt mirror reached over IPv6 that blackholes gives no error at all,
+          # just a hang -- which is how "asan + ubsan" burned 40 minutes and was
+          # cancelled rather than failing. Every knob below turns one of those
+          # silent waits into a bounded, reported error:
+          #   DEBIAN_FRONTEND  no interactive prompt can ever be raised
+          #   -o Acquire::Retries       retry a dropped mirror instead of stalling
+          #   -o Acquire::http::Timeout cap each request (seconds)
+          #   ForceIPv4        skip the IPv6 mirror path that blackholes on Azure
+          #   --no-install-recommends   fewer packages, fewer prompts, less time
+          #   timeout NNN      a hard ceiling, so a hang FAILS instead of hanging
+          sudo rm -rf /var/lib/apt/lists/*
+          sudo timeout 300 apt-get update -o Acquire::Retries=3 \
+            -o Acquire::http::Timeout=15 -o Acquire::ForceIPv4=true
+          sudo timeout 600 apt-get install -y --no-install-recommends \
+            -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
+            -o Acquire::ForceIPv4=true build-essential rlwrap
       - name: Full suite under sanitizers
         run: |
           chmod +x a build.sh tests/run_tests.sh tests/test_ext_seam.sh
@@ -250,7 +309,28 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - run: sudo apt-get update && sudo apt-get install -y shellcheck
+      - name: Install shellcheck
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          # A GitHub runner's apt can stall for the whole job: a package that
+          # opens a debconf prompt waits for a tty that is not there, and an
+          # apt mirror reached over IPv6 that blackholes gives no error at all,
+          # just a hang -- which is how "asan + ubsan" burned 40 minutes and was
+          # cancelled rather than failing. Every knob below turns one of those
+          # silent waits into a bounded, reported error:
+          #   DEBIAN_FRONTEND  no interactive prompt can ever be raised
+          #   -o Acquire::Retries       retry a dropped mirror instead of stalling
+          #   -o Acquire::http::Timeout cap each request (seconds)
+          #   ForceIPv4        skip the IPv6 mirror path that blackholes on Azure
+          #   --no-install-recommends   fewer packages, fewer prompts, less time
+          #   timeout NNN      a hard ceiling, so a hang FAILS instead of hanging
+          sudo rm -rf /var/lib/apt/lists/*
+          sudo timeout 300 apt-get update -o Acquire::Retries=3 \
+            -o Acquire::http::Timeout=15 -o Acquire::ForceIPv4=true
+          sudo timeout 600 apt-get install -y --no-install-recommends \
+            -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
+            -o Acquire::ForceIPv4=true shellcheck
 
       - name: Executable bits are committed
         run: |

@@ -50,13 +50,29 @@ jobs:
           #   -o Acquire::Retries       retry a dropped mirror instead of stalling
           #   -o Acquire::http::Timeout cap each request (seconds)
           #   ForceIPv4        skip the IPv6 mirror path that blackholes on Azure
+          #   mirror swap      azure.archive.ubuntu.com -> archive.ubuntu.com
           #   --no-install-recommends   fewer packages, fewer prompts, less time
           #   timeout NNN      a hard ceiling, so a hang FAILS instead of hanging
+          # Ubuntu 24.04 (noble) runners point at azure.archive.ubuntu.com. That
+          # mirror is what hangs: it accepts the connection and then stops answering,
+          # so apt waits instead of failing over -- the exit 124 seen here. Swap it
+          # for the canonical archive on every sources file BEFORE any apt call.
+          # noble moved to deb822, so the entry lives in
+          # /etc/apt/sources.list.d/ubuntu.sources, NOT /etc/apt/sources.list --
+          # rewriting only the latter is why this fix often looks applied and is not.
+          for f in /etc/apt/sources.list \
+                   /etc/apt/sources.list.d/*.list \
+                   /etc/apt/sources.list.d/*.sources; do
+            [ -f "$f" ] || continue
+            sudo sed -i 's|https\?://azure\.archive\.ubuntu\.com|http://archive.ubuntu.com|g' "$f"
+          done
           sudo rm -rf /var/lib/apt/lists/*
           sudo timeout 300 apt-get update -o Acquire::Retries=3 \
-            -o Acquire::http::Timeout=15 -o Acquire::ForceIPv4=true
+            -o Acquire::http::Timeout=10 -o Acquire::https::Timeout=10 \
+            -o Acquire::ForceIPv4=true
           sudo timeout 600 apt-get install -y --no-install-recommends \
-            -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
+            -o Acquire::Retries=3 -o Acquire::http::Timeout=10 \
+            -o Acquire::https::Timeout=10 \
             -o Acquire::ForceIPv4=true build-essential ${{ matrix.cc }}
 
       - name: Toolchain info
@@ -141,17 +157,33 @@ jobs:
           #   -o Acquire::Retries       retry a dropped mirror instead of stalling
           #   -o Acquire::http::Timeout cap each request (seconds)
           #   ForceIPv4        skip the IPv6 mirror path that blackholes on Azure
+          #   mirror swap      azure.archive.ubuntu.com -> archive.ubuntu.com
           #   --no-install-recommends   fewer packages, fewer prompts, less time
           #   timeout NNN      a hard ceiling, so a hang FAILS instead of hanging
           #
           # rlwrap is a TEST dependency only: tests/test_repl_term.py asserts
           # that Amber stands down when started under it. Without rlwrap those
           # cases SKIP, and the regression they guard goes unnoticed.
+          # Ubuntu 24.04 (noble) runners point at azure.archive.ubuntu.com. That
+          # mirror is what hangs: it accepts the connection and then stops answering,
+          # so apt waits instead of failing over -- the exit 124 seen here. Swap it
+          # for the canonical archive on every sources file BEFORE any apt call.
+          # noble moved to deb822, so the entry lives in
+          # /etc/apt/sources.list.d/ubuntu.sources, NOT /etc/apt/sources.list --
+          # rewriting only the latter is why this fix often looks applied and is not.
+          for f in /etc/apt/sources.list \
+                   /etc/apt/sources.list.d/*.list \
+                   /etc/apt/sources.list.d/*.sources; do
+            [ -f "$f" ] || continue
+            sudo sed -i 's|https\?://azure\.archive\.ubuntu\.com|http://archive.ubuntu.com|g' "$f"
+          done
           sudo rm -rf /var/lib/apt/lists/*
           sudo timeout 300 apt-get update -o Acquire::Retries=3 \
-            -o Acquire::http::Timeout=15 -o Acquire::ForceIPv4=true
+            -o Acquire::http::Timeout=10 -o Acquire::https::Timeout=10 \
+            -o Acquire::ForceIPv4=true
           sudo timeout 600 apt-get install -y --no-install-recommends \
-            -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
+            -o Acquire::Retries=3 -o Acquire::http::Timeout=10 \
+            -o Acquire::https::Timeout=10 \
             -o Acquire::ForceIPv4=true build-essential clang rlwrap
 
       - name: Install build tools (macOS)
@@ -233,13 +265,29 @@ jobs:
           #   -o Acquire::Retries       retry a dropped mirror instead of stalling
           #   -o Acquire::http::Timeout cap each request (seconds)
           #   ForceIPv4        skip the IPv6 mirror path that blackholes on Azure
+          #   mirror swap      azure.archive.ubuntu.com -> archive.ubuntu.com
           #   --no-install-recommends   fewer packages, fewer prompts, less time
           #   timeout NNN      a hard ceiling, so a hang FAILS instead of hanging
+          # Ubuntu 24.04 (noble) runners point at azure.archive.ubuntu.com. That
+          # mirror is what hangs: it accepts the connection and then stops answering,
+          # so apt waits instead of failing over -- the exit 124 seen here. Swap it
+          # for the canonical archive on every sources file BEFORE any apt call.
+          # noble moved to deb822, so the entry lives in
+          # /etc/apt/sources.list.d/ubuntu.sources, NOT /etc/apt/sources.list --
+          # rewriting only the latter is why this fix often looks applied and is not.
+          for f in /etc/apt/sources.list \
+                   /etc/apt/sources.list.d/*.list \
+                   /etc/apt/sources.list.d/*.sources; do
+            [ -f "$f" ] || continue
+            sudo sed -i 's|https\?://azure\.archive\.ubuntu\.com|http://archive.ubuntu.com|g' "$f"
+          done
           sudo rm -rf /var/lib/apt/lists/*
           sudo timeout 300 apt-get update -o Acquire::Retries=3 \
-            -o Acquire::http::Timeout=15 -o Acquire::ForceIPv4=true
+            -o Acquire::http::Timeout=10 -o Acquire::https::Timeout=10 \
+            -o Acquire::ForceIPv4=true
           sudo timeout 600 apt-get install -y --no-install-recommends \
-            -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
+            -o Acquire::Retries=3 -o Acquire::http::Timeout=10 \
+            -o Acquire::https::Timeout=10 \
             -o Acquire::ForceIPv4=true build-essential rlwrap
       - name: Full suite under sanitizers
         run: |
@@ -323,13 +371,29 @@ jobs:
           #   -o Acquire::Retries       retry a dropped mirror instead of stalling
           #   -o Acquire::http::Timeout cap each request (seconds)
           #   ForceIPv4        skip the IPv6 mirror path that blackholes on Azure
+          #   mirror swap      azure.archive.ubuntu.com -> archive.ubuntu.com
           #   --no-install-recommends   fewer packages, fewer prompts, less time
           #   timeout NNN      a hard ceiling, so a hang FAILS instead of hanging
+          # Ubuntu 24.04 (noble) runners point at azure.archive.ubuntu.com. That
+          # mirror is what hangs: it accepts the connection and then stops answering,
+          # so apt waits instead of failing over -- the exit 124 seen here. Swap it
+          # for the canonical archive on every sources file BEFORE any apt call.
+          # noble moved to deb822, so the entry lives in
+          # /etc/apt/sources.list.d/ubuntu.sources, NOT /etc/apt/sources.list --
+          # rewriting only the latter is why this fix often looks applied and is not.
+          for f in /etc/apt/sources.list \
+                   /etc/apt/sources.list.d/*.list \
+                   /etc/apt/sources.list.d/*.sources; do
+            [ -f "$f" ] || continue
+            sudo sed -i 's|https\?://azure\.archive\.ubuntu\.com|http://archive.ubuntu.com|g' "$f"
+          done
           sudo rm -rf /var/lib/apt/lists/*
           sudo timeout 300 apt-get update -o Acquire::Retries=3 \
-            -o Acquire::http::Timeout=15 -o Acquire::ForceIPv4=true
+            -o Acquire::http::Timeout=10 -o Acquire::https::Timeout=10 \
+            -o Acquire::ForceIPv4=true
           sudo timeout 600 apt-get install -y --no-install-recommends \
-            -o Acquire::Retries=3 -o Acquire::http::Timeout=15 \
+            -o Acquire::Retries=3 -o Acquire::http::Timeout=10 \
+            -o Acquire::https::Timeout=10 \
             -o Acquire::ForceIPv4=true shellcheck
 
       - name: Executable bits are committed

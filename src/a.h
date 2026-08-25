@@ -106,7 +106,7 @@ static inline const void*amb_alchk(const void*p_,const char*f_,int l_){
 // v1.7 while README.md already advertised 1.9).
 #define AMBER_VERSION_MAJOR 1
 #define AMBER_VERSION_MINOR 9
-#define AMBER_VERSION_PATCH 5
+#define AMBER_VERSION_PATCH 6
 #define AMBER_VERSION M2(AMBER_VERSION_MAJOR) "." M2(AMBER_VERSION_MINOR) "." M2(AMBER_VERSION_PATCH)
 #define REFB  1
 #define MINE(x) (_r(x)==REFB)
@@ -128,7 +128,24 @@ static inline const void*amb_alchk(const void*p_,const char*f_,int l_){
 // hot path (bkt[] is hit by every aF/aL/aC/an). Initial-exec is valid for TLS
 // defined in the main executable (which never gets dlopen'd), exactly our case.
 // Fall back to plain AM_TLS on compilers without the attribute or on wasm.
-#if !defined(wasm) && (defined(__GNUC__) || defined(__clang__))
+// `shared` (./build.sh --shared -> libamber.so) is excluded deliberately, and
+// this is a correctness requirement, not a tuning preference. Initial-exec TLS
+// is only valid for storage in a module that is present at program start: it is
+// resolved out of the static TLS block the loader sizes ONCE, before main().
+// libamber.so is dlopen'd -- transitively, every time -- by every satellite that
+// consumes it: CPython imports python-amber's extension module, which pulls
+// libamber.so in behind it; the Jupyter kernel and the LSP daemon do the same
+// one level further out. glibc keeps a small "surplus" static TLS reserve that
+// such a library may borrow from, and Amber's own TLS (bkt[24], ray_rc_sync,
+// the error buffer, the PRNG state) would usually fit inside it -- but "usually"
+// here means "until some other dlopen'd library in the host process got there
+// first", at which point the import fails outright with
+//   dlopen: cannot allocate memory in static TLS block
+// and does so nondeterministically, depending on what else the host imported.
+// Global-dynamic costs one __tls_get_addr() call per access on the allocator's
+// hot path, which is exactly why the native ./amber build keeps initial-exec;
+// the shared build pays that call and in exchange is always loadable.
+#if !defined(wasm) && !defined(shared) && (defined(__GNUC__) || defined(__clang__))
 #define AM_TLS_IE AM_TLS __attribute__((tls_model("initial-exec")))
 #else
 #define AM_TLS_IE AM_TLS

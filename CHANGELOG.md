@@ -1,5 +1,103 @@
 # Changelog
 
+## 1.9.6 — `libamber.so`: the out-of-process seam
+
+### What this release is
+
+1.9.5 gave the engine a seam for extending it **in process**: drop a `.c` file into
+`ext/`, rebuild, and it plugs itself in through `src/ext.h` without a line of `src/`
+being patched. That covers everything written in C. It covers nothing written in
+Python, Go, TypeScript or anything else — and a columnar engine that cannot be
+reached from a notebook, a dashboard or a gRPC service is an engine nobody outside
+this repository can use.
+
+So this release adds the matching **out-of-process** seam, and adds it in the
+smallest shape that could work: one build flag, one export map, one new section of
+an existing header, and one test file.
+
+```
+./build.sh                 ->  ./amber          (byte-for-byte unchanged)
+./build.sh --shared        ->  ./amber + libamber.so
+./build.sh --shared-only   ->  libamber.so
+```
+
+### The C API (`src/ext.h` §6, `src/ext.c`)
+
+About sixty entry points, all named `amber_*`, all taking and returning C99
+builtins or an opaque 64-bit handle. Nothing in the header — or in the core build —
+mentions Python.h, an Arrow header, gRPC or any other consumer's world.
+
+- **lifecycle** `amber_init` (optionally loading the `.k` standard library),
+  `amber_shutdown`
+- **evaluation** `amber_eval_str`, `amber_eval_qsql` (bare `select … from …`
+  accepted verbatim, via `qsql.k`'s own rewriter), `amber_call` (native arguments,
+  no string round trip), `amber_last_error`, `amber_set_diagnostics`
+- **ownership** `amber_retain` / `amber_release`, with the rule stated once: a
+  function that *returns* a value returns one you own, a function that *takes* one
+  borrows it
+- **the zero-copy seam** `amber_get_vector_ptr` hands back the engine's own column
+  payload, with its type, length and element width **in bits** (bool vectors are
+  genuinely bit-packed)
+- **tables and dictionaries**, **constructors** for pushing data back in, the
+  **Arrow C Data Interface** (including a caller-allocates form that leaves nothing
+  to free), **rendering** (with an ANSI-stripped variant), and `amber_plugin_load`
+
+### Three decisions worth recording
+
+**The executable did not change.** The shared library is a separate object set
+(`-fPIC -Dshared`), not a relink of `o/*.o`. Position-independent code and the TLS
+model below both change code generation, and sharing objects would have silently
+pessimised `./amber` — the one thing this repository will not trade away.
+
+**Only `amber_*` and `am_ext_*` are exported** (`src/libamber.map`). The engine's
+internals are called `mr`, `su`, `us`, `err`, `run`, `add`, `sub`, `pk`, `cpl`.
+Those are perfect inside one static binary and a collision waiting to happen inside
+a library loaded next to NumPy, libarrow and libpython. Everything else is now
+genuinely absent from the dynamic symbol table.
+
+**Thread-local storage drops to global-dynamic in the shared build only.** This is
+a correctness fix, not a tuning choice. Initial-exec TLS is resolved out of the
+static block the loader sizes before `main()`; a dlopen'd library borrows from a
+small surplus reserve and fails *nondeterministically* — `cannot allocate memory in
+static TLS block` — depending on what else the host process imported first.
+`./amber` keeps initial-exec and pays nothing.
+
+### Also
+
+- `amber_arrow_export_into` / a move-based `amber_arrow_import`, so a binding can
+  allocate the two Arrow structs however it likes instead of being forced to
+  `malloc` them because that is what this library happens to `free`.
+- Dotted global names (`arrow.export`, `u.pub`) are reachable through
+  `amber_call` / `amber_get_global`. The global table keys a namespaced global on
+  the pair (namespace, name), so interning `"arrow.export"` as one symbol matched
+  nothing — and failed with a bare `'value` and no hint as to why.
+- `libamber.so` records a `SONAME`, so a process that loads it twice gets **one**
+  engine rather than two silently independent ones.
+
+### Verification
+
+`tests/test_capi.c` — 78 assertions, linked against the shared library exactly as a
+satellite would link it: it includes `src/ext.h` and nothing else from `src/`, and
+never dereferences an `amber_value`. If it ever needs a second `-I`, the API is
+wrong.
+
+`tests/test_capi.sh` runs it twice: once at `-O2`, once under
+`-fsanitize=address,undefined` with `detect_leaks=1`. Both legs are wired into
+`tests/run_tests.sh` and into its `--asan` pass. The full suite — 163 + 35 + 79
+legacy assertions, the 309-case matrix, the 94-case qSQL matrix, the sort/window
+suite, the peach verifier at 1 and 4 lanes, the C unit tests, the pty REPL suite,
+the extension-seam round trip, and ~1,000 fuzz cases — passes unchanged, and passes
+again under ASan + UBSan.
+
+### The ecosystem this exists for
+
+Six satellite projects, none of them mentioned anywhere in `src/`:
+`python-amber` (zero-copy NumPy / pandas / Arrow), `amber-arrow` (a streaming
+`ArrowArrayStream`, the `amberd` query server, and an Arrow Flight daemon),
+`amber-jupyter` (a kernel where Amber and Python cells share one process and one
+heap), `vscode-amber` (highlighting and a standalone LSP), and
+`grafana-amber-datasource` and `amber-flame` (live dashboards, and a profiler).
+
 ## 1.9.5 — the REPL owns the terminal: native line editing, and the end of `rlwrap`
 
 ### The bug

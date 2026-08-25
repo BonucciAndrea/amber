@@ -814,6 +814,102 @@ p:arrow.export t                    / table  -> (schemaAddr; arrayAddr)  64-bit 
 arrow.import p                      / (schemaAddr; arrayAddr) -> Amber table
 ```
 
+## `libamber.so` — the dynamic C API seam
+
+Amber has always had one seam for extending it **in process**: drop a `.c` file into
+`ext/`, rebuild, and it plugs itself in through `src/ext.h` without a line of `src/`
+being patched. 1.9.5 adds the matching **out-of-process** seam — the same engine,
+built as a shared library, with a small documented C API on the front of it.
+
+```bash
+./build.sh                 # ./amber          (unchanged; identical binary, zero new cost)
+./build.sh --shared        # ./amber  +  libamber.so
+./build.sh --shared-only   # libamber.so only
+AMBER_SHARED=1 ./build.sh  # same as --shared, for callers that cannot pass a flag
+```
+
+```c
+#include "ext.h"                       /* section 6 -- nothing else from src/ */
+
+amber_init("/path/to/amber");          /* boots the engine, loads the .k stdlib */
+amber_value t = amber_eval_qsql("select vwap:wavg[sz;px] by sym from trades");
+
+int type; long long n; int bits;
+const void *px = amber_get_vector_ptr(amber_table_column(t, 2), &type, &n, &bits);
+/* `px` IS the engine's column payload. Not a copy of it. */
+```
+
+**~60 entry points, all named `amber_*`.** Boot and evaluate (`amber_init`,
+`amber_eval_str`, `amber_eval_qsql`, `amber_call`), reference counting
+(`amber_retain` / `amber_release`), the zero-copy vector seam
+(`amber_get_vector_ptr`), tables and dictionaries, constructors for pushing data
+back in, the Arrow C Data Interface, rendering, and `amber_plugin_load` for
+dlopening a native plugin into a running engine.
+
+### What the shared build changes, and what it deliberately does not
+
+**The executable is untouched.** `./build.sh` with no flags produces byte-for-byte
+what it produced before, from the same objects, with the same flags. The shared
+library is a *separate* object set (`-fPIC -Dshared`): position-independent code
+and the global-dynamic TLS model a dlopen'd library needs both change code
+generation, and sharing objects between the two would silently pessimise `./amber`.
+
+**Only `amber_*` and `am_ext_*` are exported.** Amber's internal C is written in a
+terse K-derived idiom — the engine's own globals are called `mr`, `su`, `us`, `err`,
+`run`, `add`, `sub`, `pk`, `cpl`. Those are perfect inside one static binary and
+actively dangerous inside a library loaded next to NumPy, libarrow and libpython.
+An export map (`src/libamber.map`) makes everything else genuinely **absent** from
+the dynamic symbol table, so it cannot be bound to by accident and cannot interpose
+on a host's symbol of the same name.
+
+**The library records a `SONAME`.** A satellite that dlopens a *second* copy of
+`libamber.so` gets a second **engine**: two heaps, two symbol tables, two global
+namespaces, and values from one that are meaningless to the other — with no error,
+because nothing is technically wrong. The SONAME is what lets the loader recognise
+an already-loaded copy and reuse it, so `python-amber`, `libamber_arrow.so` and any
+plugin in one process share one engine.
+
+**TLS drops to global-dynamic in the shared build only.** `./amber` keeps the
+initial-exec model on the allocator's hot path. A dlopen'd library cannot: it is
+resolved out of the static TLS block the loader sizes before `main()`, and borrowing
+from glibc's small surplus reserve fails *nondeterministically* — with
+`cannot allocate memory in static TLS block` — depending on what else the host
+imported first. See the note above `AM_TLS_IE` in `src/a.h`.
+
+### Verification
+
+```bash
+tests/test_capi.sh              # release build, then ASan + UBSan
+tests/run_tests.sh --asan       # the whole suite, the C API included
+```
+
+`tests/test_capi.c` is the only consumer of `libamber.so` inside this repository,
+and it is written the way a satellite would write it: it includes `src/ext.h` and
+nothing else from `src/`, never dereferences an `amber_value`, and links the shared
+library rather than the objects. **If it ever needs a second `-I`, the API is
+wrong.** 78 assertions, clean under `-fsanitize=address,undefined` with
+`detect_leaks=1` — because a C API whose ownership rules are only documented is a
+C API whose ownership rules are wrong, and LeakSanitizer is what checks the prose.
+
+## The satellite ecosystem
+
+Everything that consumes Amber lives **outside** this repository and reaches it
+through one of three seams: `libamber.so`, the in-process `ext/` registry, or a
+TCP socket. Nothing below is mentioned anywhere in `src/`, and none of it is
+compiled, linked or configured by this build.
+
+| repository | seam | what it is |
+|---|---|---|
+| [`python-amber`](https://github.com/BonucciAndrea/python-amber) | `libamber.so` | `pip install amber`. Zero-copy NumPy views of Amber columns, pandas and Arrow bridges, dynamic dispatch (`am.gentq(10_000_000)`). |
+| [`amber-arrow`](https://github.com/BonucciAndrea/amber-arrow) | `libamber.so` | `ArrowArrayStream` over an Amber table — batches that are *windows* onto one export, not slices of it. Plus `amberd`, the TCP query server, and an Arrow Flight daemon. |
+| [`amber-jupyter`](https://github.com/BonucciAndrea/amber-jupyter) | `python-amber` | A Jupyter kernel. Amber cells and `%%python` cells in **one process**, so a column crosses as a pointer. |
+| [`vscode-amber`](https://github.com/BonucciAndrea/vscode-amber) | `amberd` socket | Syntax highlighting, and a standalone LSP daemon with qSQL-aware completion, idiom hovers and diagnostics that never evaluate. |
+| [`grafana-amber-datasource`](https://github.com/BonucciAndrea/grafana-amber-datasource) | `amberd` socket | Live dashboards. Bare qSQL panels, column-oriented on the wire. |
+| [`amber-flame`](https://github.com/BonucciAndrea/amber-flame) | `python-amber` / `amberd` | A visual profiler — flamegraphs, Speedscope and Chrome tracing, built on the engine's own `\trace`. |
+
+The engine gained **one build flag, one export map and one section of `ext.h`** for
+all of it.
+
 ## Comparative benchmark query files
 
 `bench/run_comparative.py` (see [docs/BENCHMARKS.md §5](docs/BENCHMARKS.md) for the live table,
@@ -950,7 +1046,8 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 | `amber.k` | the q/kdb+ vocabulary (auto-loaded) |
 | `repl.k` | the REPL — banner, grid rendering, `\grid`/`\clear`, help; CRLF-safe module loader; reads its input through `` `rdl`` (the native editor) and exposes the optional `ext.*` hooks |
 | `src/ln.{h,c}`, `src/lnk.c` | the native line editor (raw `termios`, history, Tab completion) and the `` `rdl`` verb that the REPL reads through — this is what replaced `rlwrap` |
-| `src/ext.{h,c}`, `ext/` | the extension seam: a runtime verb registry plus `\`-command / editor / startup hooks, and the (empty by default) directory `build.sh` compiles out-of-tree extensions from |
+| `src/ext.{h,c}`, `ext/` | **both** extension seams. Sections 1-5: the in-process registry — runtime verbs plus `\`-command / editor / startup hooks, and the (empty by default) directory `build.sh` compiles out-of-tree extensions from. Section 6: the out-of-process **dynamic C API** behind `libamber.so` (`amber_init`, `amber_eval_str`, `amber_get_vector_ptr`, …) |
+| `src/libamber.map` | the linker export map for the shared build: only `amber_*` and `am_ext_*` reach a host process's dynamic namespace, so the engine's terse internals (`mr`, `run`, `add`, …) cannot collide with a host's symbols |
 | `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |
 | `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` `tick.k` | modules (auto-loaded) |
 | `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `peach.k` · `wj.k` · `graphs.k` · … |
@@ -959,6 +1056,7 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 | `tests/test_matrix.k` | **309-case combinatorial matrix**: every primitive × every element type × sizes 0 / 1 / 10 / 100 000+ (crossing the SIMD and `PAR_THRESHOLD` boundaries), asserted as invariants (shape, algebraic identity, vector-kernel-vs-scalar-reference) rather than frozen literals |
 | `tests/test_qsql.k` | **94-case qSQL matrix**, written in the **bare `select … from t` syntax you actually type** (run through the same `qrw` rewrite the REPL applies): the full `select`/`exec`/`update`/`delete` clause lattice, multi-key `by`, empty / single-row / heavily-duplicated tables, and malformed queries asserted to raise cleanly |
 | `tests/fuzz.py` | malformed-input & deep-nesting crash fuzzer — asserts a clean K error, never a signal or a hang |
+| `tests/test_capi.{c,sh}` | the dynamic C API: 78 assertions against `libamber.so`, linked as a satellite would link it (`src/ext.h` and nothing else from `src/`), run once at `-O2` and once under ASan + UBSan with leak detection — the ownership rules in the header are prose, and this is what checks them |
 | `tests/run_tests.sh` | runs all of the above (`--asan` re-runs everything under ASan + UBSan) |
 | `tests/test_repl_term.py` | **pty-driven REPL terminal suite**: asserts no `rlwrap:` diagnostic ever reaches a session, that `termios` is byte-for-byte restored after a normal exit *and* after `^C`, that the editing keys really edit, and that piped/non-tty behaviour is unchanged |
 | `tests/test_ext_seam.sh`, `tests/ext_probe.c` | installs a miniature extension into `ext/`, checks the verb / `\`-command / `--help` hooks fire and that the engine's own suite is unaffected, then uninstalls it and checks the engine is back to stock |

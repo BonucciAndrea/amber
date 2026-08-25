@@ -28,6 +28,33 @@ if [ -z "$CC" ]; then
   echo "No C compiler found. On Ubuntu:  sudo apt-get install build-essential" >&2
   exit 1
 fi
+# ---- options --------------------------------------------------------------
+# ./build.sh              build ./amber only (the default; unchanged)
+# ./build.sh --shared     ALSO build libamber.so -- the dynamic C API seam that
+#                         every out-of-tree satellite (python-amber, amber-arrow,
+#                         amber-jupyter, vscode-amber's LSP, the Grafana backend,
+#                         amber-flame) links against.  See src/ext.h section 6.
+# ./build.sh --shared-only  build ONLY libamber.so and skip the executable.
+# AMBER_SHARED=1 is equivalent to --shared, for callers that cannot pass a flag.
+#
+# The shared library is a SEPARATE object set (-fPIC -Dshared), never a relink of
+# o/*.o: position-independent code and the global-dynamic TLS model the shared
+# build needs (see the AM_TLS_IE note in src/a.h) both change code generation, so
+# sharing objects between the two would silently pessimise ./amber -- which is
+# the one thing this repository will not trade away.
+WANT_SHARED=${AMBER_SHARED:+1}
+WANT_EXE=1
+for arg in "$@"; do
+  case "$arg" in
+    --shared)      WANT_SHARED=1 ;;
+    --shared-only) WANT_SHARED=1; WANT_EXE=0 ;;
+    -h|--help)
+      sed -n '/^# ---- options/,/^WANT_SHARED/p' "$0" | sed 's/^# \{0,1\}//;$d'
+      exit 0 ;;
+    *) echo "amber: unknown build option '$arg' (try --help)" >&2; exit 2 ;;
+  esac
+done
+
 # Portable -O3 (+ LTO where supported) by default. Set AMBER_NATIVE=1 for a faster
 # machine-specific build (adds -march=native -funroll-loops; the binary then only runs
 # on this CPU family).
@@ -79,6 +106,7 @@ fi
 EXTTAG=""
 [ -n "$EXT" ] && EXTTAG=" + extensions:$(for f in $EXT; do printf ' %s' "$(basename "$f" .c)"; done)"
 
+if [ "$WANT_EXE" = 1 ]; then
 echo "amber: compiling with $CC ($MODE)$EXTTAG ..."
 mkdir -p o
 # Drop object files whose source no longer exists (an uninstalled extension),
@@ -99,3 +127,56 @@ for f in src/*.c $EXT; do "$CC" $F -o "o/$(basename "${f%.c}").o" -c "$f"; done
 # or foreign-owned tree must still be buildable.
 chmod +x amber a 2>/dev/null || true
 echo "amber: built ./amber"
+fi
+
+# ---- shared library -------------------------------------------------------
+# libamber.so is the out-of-process seam: the same sources, compiled -fPIC with
+# -Dshared (which drops main() -- src/0.c already guards it on exactly that
+# macro, and has since long before this build mode existed) and linked behind an
+# export map so the ONLY symbols that reach a host process's dynamic namespace
+# are amber_* and am_ext_*.  See src/libamber.map for why that matters.
+if [ -n "${WANT_SHARED:-}" ]; then
+  # -soname/-install_name matter more here than they look. A satellite that
+  # dlopen()s a SECOND copy of libamber.so gets a second engine: two heaps, two
+  # symbol tables, two global namespaces, and values from one that are garbage
+  # to the other -- with no error message, because nothing is technically wrong.
+  # Recording a SONAME means the loader recognises an already-loaded libamber.so
+  # and reuses it, so python-amber, libamber_arrow.so and any plugin in the same
+  # process all share ONE engine, which is the only arrangement that makes sense.
+  SOEXT=so; SOFLAGS="-shared -Wl,-soname,libamber.so"
+  case "$(uname -s 2>/dev/null)" in
+    Darwin) SOEXT=dylib; SOFLAGS="-dynamiclib -install_name @rpath/libamber.dylib" ;;
+  esac
+  SOFILE="libamber.$SOEXT"
+  # Probe the export-map flag rather than assuming it: GNU ld and lld take
+  # --version-script, Apple's ld64 takes -exported_symbols_list with a different
+  # file format, and a toolchain that takes neither must still produce a working
+  # (if wider-than-ideal) library rather than failing the build.
+  MAPFLAG=""
+  if printf 'int amber_probe(void){return 0;}' | \
+     "$CC" -fPIC -shared -x c - -o .mapcheck.$SOEXT -Wl,--version-script=src/libamber.map 2>/dev/null; then
+    MAPFLAG="-Wl,--version-script=src/libamber.map"
+  elif [ "$SOEXT" = dylib ]; then
+    printf '_amber_*\n_am_ext_*\n_am_repl_take_accepted\n' > o/libamber.syms 2>/dev/null || true
+    if printf 'int amber_probe(void){return 0;}' | \
+       "$CC" -fPIC -dynamiclib -x c - -o .mapcheck.$SOEXT -Wl,-exported_symbols_list,o/libamber.syms 2>/dev/null; then
+      MAPFLAG="-Wl,-exported_symbols_list,o/libamber.syms"
+    fi
+  fi
+  rm -f .mapcheck.$SOEXT
+  [ -n "$MAPFLAG" ] || echo "amber: note - this linker takes no export map; libamber.$SOEXT will export its internal symbols too" >&2
+
+  echo "amber: compiling $SOFILE with $CC (-fPIC -Dshared)$EXTTAG ..."
+  mkdir -p o/pic
+  for o in o/pic/*.o; do
+    [ -e "$o" ] || continue
+    b="$(basename "$o" .o)"
+    [ -e "src/$b.c" ] || [ -e "ext/$b.c" ] || rm -f "$o"
+  done
+  for f in src/*.c $EXT; do
+    "$CC" $F -fPIC -fvisibility=hidden -Dshared -o "o/pic/$(basename "${f%.c}").o" -c "$f"
+  done
+  "$CC" $F -fPIC $SOFLAGS $MAPFLAG -o "$SOFILE" o/pic/*.o -lm -ldl 2>/dev/null \
+    || "$CC" $F -fPIC $SOFLAGS $MAPFLAG -o "$SOFILE" o/pic/*.o -lm
+  echo "amber: built ./$SOFILE"
+fi

@@ -1,0 +1,31 @@
+/* libamber.map  -  the exported surface of libamber.so.
+ *
+ * Amber's internal C is written in a deliberately terse K-derived idiom: the
+ * engine's own globals are called mr, su, us, err, run, add, sub, mul, out, gv,
+ * pk, cpl, ...  Those names are perfect inside one static binary and actively
+ * dangerous inside a shared library that a host process dlopen()s next to
+ * NumPy, libarrow, libpython and whatever else the host already loaded -- a
+ * plain `add` or `run` in the global dynamic namespace is a symbol collision
+ * waiting for the worst possible moment.
+ *
+ * So the shared build exports exactly two families and nothing else:
+ *
+ *   amber_*      the documented C API declared in src/ext.h section 6
+ *   am_ext_*     the in-process extension seam (src/ext.h sections 1-5), so a
+ *                plugin loaded through amber_plugin_load() can still register
+ *                verbs, completions and \-commands
+ *
+ * Everything else is LOCAL: not merely undocumented but genuinely absent from
+ * the dynamic symbol table, so it cannot be bound to by accident and cannot
+ * interpose on a host's symbol of the same name.
+ *
+ * GNU AGPLv3 - see LICENSE and NOTICE.
+ */
+AMBER_1.9 {
+  global:
+    amber_*;
+    am_ext_*;
+    am_repl_take_accepted;
+  local:
+    *;
+};

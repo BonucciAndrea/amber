@@ -86,7 +86,7 @@ jobs:
         env:
           CC: ${{ matrix.cc }}
         run: |
-          chmod +x a build.sh
+          chmod +x a build.sh tests/test_capi.sh
           ./build.sh
 
       - name: Compile every TU under strict -std=c99
@@ -100,6 +100,41 @@ jobs:
           done
           "$CC" -std=c99 -pthread -o o/c99/amber o/c99/*.o -lm -ldl
           o/c99/amber --version
+
+      # The shared build is a SEPARATE object set (-fPIC -Dshared) with an export
+      # map, so it can break in ways ./amber cannot: a symbol that stops being
+      # exported, a TLS model that will not load, a linker that rejects the map.
+      # Build it on every compiler in the matrix and assert the surface.
+      - name: Build libamber.so and check its exported surface
+        env:
+          CC: ${{ matrix.cc }}
+        run: |
+          set -e
+          ./build.sh --shared
+          test -f libamber.so
+          if command -v nm >/dev/null 2>&1; then
+            exported=$(nm -D --defined-only libamber.so 2>/dev/null | awk '{print $NF}' | sed 's/@.*//' | sort -u)
+            echo "$exported" | grep -q '^amber_eval_str$'
+            echo "$exported" | grep -q '^amber_get_vector_ptr$'
+            echo "$exported" | grep -q '^am_ext_verb$'
+            # Nothing but the two documented families may reach a host process's
+            # dynamic namespace -- the engine's internals are called mr, run, add.
+            leaked=$(echo "$exported" | grep -Ev '^(amber_|am_ext_|am_repl_take_accepted$|AMBER_)' || true)
+            if [ -n "$leaked" ]; then
+              echo "libamber.so exports symbols outside the documented surface:" >&2
+              echo "$leaked" >&2
+              exit 1
+            fi
+            echo "$exported" | wc -l | xargs echo "exported symbols:"
+          fi
+
+      - name: C API against the shared library
+        env:
+          CC: ${{ matrix.cc }}
+        run: |
+          set -e
+          chmod +x tests/test_capi.sh
+          ./tests/test_capi.sh --plain
 
       - name: Smoke test
         run: |
@@ -212,13 +247,13 @@ jobs:
       # runner architecture.
       - name: Build Core Engine
         run: |
-          chmod +x a build.sh
+          chmod +x a build.sh tests/test_capi.sh
           AMBER_NATIVE=1 ./build.sh
           ./amber --version
 
       - name: Run Test Suite
         run: |
-          chmod +x a build.sh tests/run_tests.sh tests/test_ext_seam.sh
+          chmod +x a build.sh tests/run_tests.sh tests/test_ext_seam.sh tests/test_capi.sh
           ./tests/run_tests.sh
 
       - name: Assert no rlwrap diagnostic can reach a session
@@ -291,7 +326,7 @@ jobs:
             -o Acquire::ForceIPv4=true build-essential rlwrap
       - name: Full suite under sanitizers
         run: |
-          chmod +x a build.sh tests/run_tests.sh tests/test_ext_seam.sh
+          chmod +x a build.sh tests/run_tests.sh tests/test_ext_seam.sh tests/test_capi.sh
           ./tests/run_tests.sh --asan
 
   # ------------------------------------------------------------------ Windows (WSL)
@@ -321,7 +356,7 @@ jobs:
 
       - name: Build
         run: |
-          chmod +x a build.sh
+          chmod +x a build.sh tests/test_capi.sh
           ./build.sh
 
       - name: Test suite
@@ -333,7 +368,7 @@ jobs:
 
       - name: Combinatorial matrix + qSQL matrix + fuzz + C unit tests
         run: |
-          chmod +x a build.sh tests/run_tests.sh tests/test_ext_seam.sh
+          chmod +x a build.sh tests/run_tests.sh tests/test_ext_seam.sh tests/test_capi.sh
           ./tests/run_tests.sh
 
       - name: Smoke examples
@@ -400,7 +435,7 @@ jobs:
         run: |
           set -e
           fail=0
-          for f in a build.sh install.sh demo.sh tests/run_tests.sh tests/test_ext_seam.sh; do
+          for f in a build.sh install.sh demo.sh tests/run_tests.sh tests/test_ext_seam.sh tests/test_capi.sh; do
             [ -f "$f" ] || continue
             mode=$(git ls-files -s -- "$f" | awk '{print $1}')
             if [ "$mode" != "100755" ]; then
@@ -431,4 +466,4 @@ jobs:
           echo "clean"
 
       - name: shellcheck
-        run: shellcheck -S warning a build.sh install.sh tests/run_tests.sh || true
+        run: shellcheck -S warning a build.sh install.sh tests/run_tests.sh tests/test_capi.sh || true

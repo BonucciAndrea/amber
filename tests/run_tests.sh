@@ -119,6 +119,15 @@ if [ "$QUICK" = 0 ]; then
   if bash tests/test_ext_seam.sh; then echo "  -> PASS (tests/test_ext_seam.sh)"
   else echo "  -> FAIL (tests/test_ext_seam.sh)"; fail=1; fi
 
+  # The dynamic C API seam (src/ext.h section 6 -> libamber.so). Built and
+  # exercised through tests/test_capi.sh, which links tests/test_capi.c against
+  # the SHARED library exactly as an out-of-tree satellite would -- so this leg
+  # fails if the export map stops exporting something the API promises, if the
+  # library stops linking, or if an ownership rule regresses.
+  say "dynamic C API (libamber.so)"
+  if bash tests/test_capi.sh --plain; then echo "  -> PASS (tests/test_capi.sh)"
+  else echo "  -> FAIL (tests/test_capi.sh)"; fail=1; fi
+
   say "fuzz / crash harness"
   if python3 tests/fuzz.py --amber ./amber --cases 1500; then echo "  -> PASS (fuzz)"
   else echo "  -> FAIL (fuzz)"; fail=1; fi
@@ -153,6 +162,10 @@ if [ "$ASAN" = 1 ]; then
     elif [ "$rc" = 0 ] && echo "$out" | grep -Eq '0 failures'; then echo "  -> PASS"
     else echo "  -> FAIL rc=$rc"; fail=1; fi
   done
+  say "dynamic C API under sanitizers"
+  if bash tests/test_capi.sh --san; then echo "  -> PASS (tests/test_capi.sh --san)"
+  else echo "  -> FAIL (tests/test_capi.sh --san)"; fail=1; fi
+
   say "fuzz under sanitizers"
   if python3 tests/fuzz.py --amber o/san/amber --cases 800 --timeout 30; then echo "  -> PASS"
   else echo "  -> FAIL"; fail=1; fi

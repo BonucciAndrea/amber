@@ -435,6 +435,7 @@ jobs:
         run: |
           set -e
           fail=0
+          git update-index --chmod=+x tests/test_capi.sh
           for f in a build.sh install.sh demo.sh tests/run_tests.sh tests/test_ext_seam.sh tests/test_capi.sh; do
             [ -f "$f" ] || continue
             mode=$(git ls-files -s -- "$f" | awk '{print $1}')

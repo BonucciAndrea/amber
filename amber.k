@@ -78,6 +78,12 @@ rotate:{$[0=#y;y;n:(#y)!x;(n_y),n#y]}
 
 / ---- membership / set ops --------------------------------------------------
 in:{~^y?x}
+/ within[x;(lo;hi)] -- inclusive range test, the q verb of the same name.  Used
+/ by every time-range query (Grafana panels, amberd clients) and previously
+/ missing, so those queries died on an undefined name.  Bracket form only: user
+/ verbs are never infix here (see the REPL's \h note), so it is within[t;(a;b)],
+/ not  t within (a;b).
+within:{[x;r](~x<r[0])&~x>r[1]}
 except:{x@&~in[x;y]}
 inter:{x@&in[x;y]}
 union:{?x,y}

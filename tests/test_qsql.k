@@ -160,13 +160,49 @@ tqe[`emptyQuery;    "sel\"\""];
 tqk[`byOnly;        "select by sym from trades"];
 tqk[`starWhere;     "select * from trades where sz>2"];
 tqk[`nestedAgg;     "select t:sum px*sz by sym from trades"];
-/ KNOWN LENIENCY (see docs/MISSING.md): an unknown by-key does not raise --
-/ Amber groups by nulls instead of rejecting the query the way kdb+ does.
-tqk[`unknownByKey;  "select t:sum px by nosuchkey from trades"];
+/ An unknown by-key now RAISES, the way kdb+ does.  Until 1.9.7 the by-clause was
+/ turned into a symbol of its own source text and grouping on a column no table
+/ has collapsed every row into one null-keyed group, so the query returned a
+/ single wrong row and returned it silently.  By-items are compiled like any
+/ other column expression now, so an unknown name is an undefined variable.
+tqe[`unknownByKey;  "select t:sum px by nosuchkey from trades"];
+
+/ ============ 11. trailing comments, multi-line text, by-expressions ========
+/ Every case below used to fail, and the first three failed the worst way: the
+/ website's own examples were written like this and did not run.
+/ A trailing "/ comment" is stripped before the clause split, so it can no
+/ longer be compiled into the generated where-lambda.
+t[`cmtWhere;   . qrw"select from trades where px>35   / filter rows";  . qrw"select from trades where px>35"];
+t[`cmtBy;      . qrw"select sum sz by sym from trades / grouped";      . qrw"select sum sz by sym from trades"];
+t[`cmtUpd;     . qrw"update px:px*2 from trades  / double";            . qrw"update px:px*2 from trades"];
+t[`cmtDel;     . qrw"delete from trades where px>35  / drop";          . qrw"delete from trades where px>35"];
+tqk[`cmtOnlySlash; "select from trades where px>35 / 2"];    / an adverb, not a comment
+/ A query split across lines parses as one query: the clause splitters look for
+/ " from " / " where " / " by " with their spaces, which a line break destroyed.
+t[`multiline;  sel"select vwap:wavg[sz;px]\nby sym\nfrom trades\nwhere px>15"; sel"select vwap:wavg[sz;px] by sym from trades where px>15"];
+t[`multiCmt;   sel"select sum sz  / total\nby sym       / per symbol\nfrom trades"; sel"select sum sz by sym from trades"];
+/ the same holds for the BARE rewriter, which is what an amberd client or a
+/ Grafana panel hands a whole multi-line query to.
+t[`multiBare;  . qrw"select vwap:wavg[sz;px]\nby sym\nfrom trades"; sel"select vwap:wavg[sz;px] by sym from trades"];
+t[`multiKeeps; qrw"1+1\nnosuchword 2"; "1+1\nnosuchword 2"];   / non-qSQL multi-line text: passed through untouched
+/ by-items are compiled like any other column expression, so a by-clause may be
+/ an expression and not just a bare column name.
+tqa[`byExpr;    "select sum sz by g:2*sz from trades"; cols; `g`sz];
+tqa[`byExprNm;  "select sum sz by px:xbar[20;px] from trades"; cols; `px`sz];
+tqa[`byExprMix; "select sum sz by sym, g:2*sz from trades"; cols; `sym`g`sz];
+t[`byBare;     . qrw"select sum sz by sym from trades"; . qrw"select sum sz by sym from trades"];
+/ an unnamed aggregate over exactly one column takes that column's name (q does
+/ the same); it used to come back as x0 whatever it was computed from.
+tqa[`aggName;    "select last px by sym from trades"; cols; `sym`px];
+tqa[`aggNameSum; "select sum sz by sym from trades";  cols; `sym`sz];
+tqa[`aggNameWide;"select wavg[sz;px] by sym from trades"; cols; `sym`x0];
+/ within[x;(lo;hi)] -- inclusive, and the reason time-range queries now run.
+t[`within;      within[10 20 30 40.0;(20;30)]; 0 1 1 0];
+t[`withinQuery; . qrw"select from trades where within[px;(20;40)]"; . qrw"select from trades where (~px<20)&~px>40"];
 
 / Guard against a silently skipped block (see tests/harness.k): this is the
 / exact number of assertions this file is expected to record. Bump it when
 / you add or remove cases -- if it ever disagrees, some of them stopped running.
-hexpect[93]
+hexpect[111]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

@@ -194,9 +194,12 @@ tickerplant** `hopen`/`u.*` (§5).
 Surfaced by the qSQL matrix (`tests/test_qsql.k`) and pinned there with `tk[...]` so a change in
 behaviour shows up as a test failure rather than a silent regression.
 
-- **Unknown `by` key does not raise.** `select t:sum px by nosuchkey from t` groups by nulls
-  instead of rejecting the query the way kdb+ does. Root cause is core dict semantics — `` b#+t``
-  on a missing key yields nulls — so a fix belongs in `qbc`/`sel`'s validation, not in `#`.
+- ~~**Unknown `by` key does not raise.**~~ **Fixed in 1.9.7.** `select t:sum px by nosuchkey from t`
+  used to group by nulls instead of rejecting the query the way kdb+ does. The old `qbc` turned
+  each by-item into a symbol of its own source text, so grouping ran on a column no table has and
+  `` b#+t`` yielded nulls. `qbyx` now compiles by-items with the same `qfn` machinery the
+  select-list uses, so an unknown name raises as an undefined variable and — the reason the fix
+  matters — `by time:1m xbar time` groups on the computed bucket instead of on one null key.
 - **A trapped error still renders a diagnostic to stderr *by default*.** `.[f;args;handler]`
   (and `protect`, documented as `.Q.trp`-like) catches the error correctly, but the Rust-style
   report is written at error-creation time, before the handler runs. Rather than defer rendering

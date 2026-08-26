@@ -73,7 +73,13 @@ rd:{`rdl x}
 / before the extension ever saw it. An extension may define ext.raw to claim
 / lines that must be passed through byte-for-byte; every other \-command still
 / gets the rewrite, so \t select ... from t keeps working.
-qrwx:{$[0<exthook[{ext.raw x};x];x;(.:"qrw")x]}
+/ \ts is q's "time and space" command.  Amber's timer is \t, and an unrecognised
+/ \-word is a SHELL escape -- so a q reflex typed at this prompt ran `ts` through
+/ /bin/sh ("ts: not found") and silently never timed anything.  Map the whole
+/ \ts family onto \t before anything else looks at the line: \ts EXPR -> \t EXPR
+/ and \ts:n EXPR -> \t:n EXPR.
+tsfix:{$[(3<#x)&("\\ts"~3#x)&(" "~x 3)|":"~x 3;"\\t",3_x;x]}
+qrwx:{$[0<exthook[{ext.raw x};x];x;(.:"qrw")tsfix x]}
 line0:{c:{0x07~*-2#*x}{(l;r):x;(rd prompt;r,,(-2_l))}/(x;());"\n"/(*|c),,*c}
 line1:{$[#x;;:0];x:-1_x;exthook[{ext.pre x};x];$[(4<#x)&"\\grid"~5#x;gridcmd x;(5<#x)&"\\clear"~6#x;clearcmd[];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;.[`1:(fmt;fmtx)[" "~*x]@.:;,qrwx x;onerr]];exthook[{ext.post x};x];1}
 line:line1@line0@

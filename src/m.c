@@ -342,7 +342,17 @@ Z A bs_(S*p)_(C b[256];S s=*p,e=strchrnul(s,10);P(e-s+1>=L(b),ez0())MC(b,s,e-s);
  K1("0x0a\\`x(,,\"/bin/sh\"),,:",aCz(b)))
 
 Z A evs1(S*p)_(S s=*p;P(*s=='\\',++*p;bs_(p))A x=pk((V*)p,10);N(x);x=N(cpl(aCm(s,*p),x,0));x(run(x,0,0)))
-A evs(S s,B r)_(W(*s,A x=evs1(&s);P(!x,I(r,s=strchrnul(s,10);s+=!!*s;epr(0))0)I(r,x(out(x)))E(P(!*s,x)x(0))mc();arena_reset())au)//arena_reset: rewind HFT scratchpad at end of each eval cycle
+// arena: rewind the HFT scratchpad at the end of EVERY statement, on every
+// exit -- including the library-mode early return that hands back the final
+// statement's value. That early return (`P(!*s,x)`) used to skip the rewind
+// entirely, so the REPL (r=1, which falls through to the reset) was clean
+// while every libamber.so consumer -- python-amber, amber-arrow, amberd, the
+// LSP -- leaked one statement's scratch per call, forever.
+// arena_release(mark) rather than arena_reset() because evs() is re-entrant:
+// `. "expr"` reaches it through val() in src/a.c, and a full reset there would
+// stomp scratch the OUTER expression still has live. A mark frees exactly what
+// this statement took and nothing older, and marks nest LIFO by construction.
+A evs(S s,B r)_(W(*s,ArenaMark am_=arena_mark();A x=evs1(&s);P(!x,I(r,s=strchrnul(s,10);s+=!!*s;epr(0))arena_release(am_);0)I(r,x(out(x)))E(P(!*s,arena_release(am_);x)x(0))mc();arena_release(am_))au)
 // amber 1.9.5: the bare REPL (./amber with no script) reads through the native
 // line editor (src/ln.c) -- editing, history and Tab completion -- and falls
 // back to the historical raw read(2) only when stdin is not a terminal.

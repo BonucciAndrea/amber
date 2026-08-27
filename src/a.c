@@ -87,14 +87,18 @@ U amub(CO L*RES a,U lo,U hi,L key){
 //    backwards) the row falls back to the branch-free binary probe, so the
 //    result is bit-identical to the pure-amub version on ANY input -- including
 //    the unsorted and null-slice cases test.k's ajNull/ajNoGrp/ajNs pin down.
-//  * Zero transient allocations. The old version bump-allocated an nt-long
+//  * Scoped transient allocations. The old version bump-allocated an nt-long
 //    arena scratch vector, filled it, then copied it element-by-element into the
 //    result -- two full passes over nt longs and an arena_reset() that stomped
 //    any scratch a caller still had live. Results are now written straight into
 //    the freshly allocated result vector (which cannot alias any input), so aj
-//    performs one pass, touches the arena not at all, and is arena-neutral to
-//    its caller. That is strictly stronger than the "allocate the workspace once
-//    from the arena" rule: the workspace is gone.
+//    performs one pass over nt and never writes the result twice.
+//    NOTE: the per-group cursor cache added below DOES take arena scratch --
+//    the "touches the arena not at all" claim this comment used to make was
+//    true only of the revision that predates it. The cache is bracketed with
+//    arena_mark()/arena_release(), so the kernel is arena-neutral to its
+//    caller in the sense that matters: its peak is one generation, and it
+//    gives back everything it took before it returns.
 A ajc(A x){
  P(_t(x)-tA||_n(x)-4,et(x))
  A*e=(A*)_V(x);
@@ -132,10 +136,22 @@ A ajc(A x){
  // common group size), which is exactly the pattern a low-bit mask aliases
  // badly and a multiplicative hash spreads.
  #define AJC_H(b) ((U)(((W)(b)*0x9E3779B97F4A7C15ull)>>(64u-AJC_BITS)))
+ // Scoped scratch. The cursor cache is dead the moment this kernel returns, so
+ // it is bracketed with arena_mark()/arena_release() exactly as arena.h
+ // prescribes for "a kernel that runs MANY times inside a single expression".
+ // Relying on evs()'s end-of-cycle arena_reset() instead is not enough on two
+ // counts: `{aj[c;t;q]}'xs` runs the kernel n times inside ONE statement and
+ // would hold n generations of cache live at once, and the library-mode
+ // evs() path (amber_eval_str, and therefore every libamber.so consumer)
+ // returns the final statement's value through an early return that never
+ // reaches the reset at all. Measured before this change: 41.5 KB of RSS
+ // permanently per aj call, constant in row count; 200k joins reached 5 GB.
+ // Two stores on the slab fast path, so it costs nothing.
+ ArenaMark ajmk=arena_mark();
  L*RES cbase=(L*)arena_alloc((N)AJC_N*SZ(L));   // slice base occupying the slot
  L*RES ckey =(L*)arena_alloc((N)AJC_N*SZ(L));   // that group's last probed key
  U*RES ccur =(U*)arena_alloc((N)AJC_N*SZ(U));   // that group's cursor position
- P(!cbase||!ckey||!ccur,mr(QT);mr(TT);mr(GB);mr(GE);mr(out);eo(x))
+ P(!cbase||!ckey||!ccur,arena_release(ajmk);mr(QT);mr(TT);mr(GB);mr(GE);mr(out);eo(x))
  MS(cbase,0xff,(N)AJC_N*SZ(L));                 // -1: no real slice base is negative
  F(nt,
    L b=gb[i],en=ge[i],key=tt[i];
@@ -157,6 +173,7 @@ A ajc(A x){
  #undef AJC_N
  #undef AJC_H
  mr(QT);mr(TT);mr(GB);mr(GE);
+ arena_release(ajmk);
  return x(out);}
 
 // ---- `ajs : is this table ALREADY in as-of-join order? ---------------------

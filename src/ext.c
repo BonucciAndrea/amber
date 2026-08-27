@@ -307,6 +307,7 @@ amber_value amber_eval_str(const char *src) {
 amber_value amber_call(const char *fname, const amber_value *args, int argc) {
     A fn, res;
     A slot[8];
+    ArenaMark mark;
     int i;
     if (!capi_ready()) return 0;
     capi_err_clear();
@@ -314,6 +315,12 @@ amber_value amber_call(const char *fname, const amber_value *args, int argc) {
     if (argc < 0 || argc > 8){ capi_err_set("'rank: amber_call takes 0..8 arguments"); return 0; }
     fn = gg(capi_name_sym(fname));       /* consumes the name; owned or 0 */
     if (!fn) { capi_err_grab(); return 0; }
+    /* amber_call() does not go through evs(), so nothing else rewinds the
+     * scratchpad on this path: a host calling it in a loop -- which is the
+     * whole point of the entry point -- would otherwise accumulate one
+     * statement's arena per call. Mark/release rather than reset, for the same
+     * re-entrancy reason as evs(). */
+    mark = arena_mark();
     if (argc == 0) {
         /* f[] -- apply to the generic null, exactly as the compiler emits for
          * an empty argument list. */
@@ -322,7 +329,8 @@ amber_value amber_call(const char *fname, const amber_value *args, int argc) {
         for (i = 0; i < argc; i++) slot[i] = _R((A)args[i]);
         res = _8(fn, slot, (U)argc);     /* consumes fn and every slot[i] */
     }
-    if (!res) capi_err_grab();
+    if (!res) capi_err_grab();           /* copies the text out; safe to rewind */
+    arena_release(mark);
     return (amber_value)res;
 }
 

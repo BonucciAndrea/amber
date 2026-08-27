@@ -271,17 +271,22 @@ A wjc(A x){
  A*QC=(A*)_V(e[1]);
  // The two bounds vectors are the kernel's ONLY workspace and are bump-allocated
  // from the thread-local arena exactly once, before the column loop -- no heap,
- // no per-row or per-column allocation. evs() rewinds the arena at the end of
- // the eval cycle, so wjc deliberately does NOT arena_reset() and cannot stomp
- // scratch a caller still has live.
+ // no per-row or per-column allocation. They are bracketed with
+ // arena_mark()/arena_release() rather than left for evs() to rewind: the
+ // end-of-cycle reset does not run at all on the library-mode evs() path
+ // (amber_eval_str's early return for the final statement), and would not
+ // bound `{wj[...]}'xs` even where it does. arena_release() frees exactly what
+ // this call took and nothing older, so it still cannot stomp a caller's live
+ // scratch.
  P((N)nt>((N)-1)/SZ(U),mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);ez(x))
+ ArenaMark wjmk=arena_mark();
  U*RES LO=(U*)arena_alloc((N)nt*SZ(U)),*RES HI=(U*)arena_alloc((N)nt*SZ(U));
  L*RES cb=(L*)arena_alloc((N)WJC_N*SZ(L));      // per-group cursor cache (~112 KB,
  L*RES c0=(L*)arena_alloc((N)WJC_N*SZ(L));      // L2-resident); see wjbounds above
  L*RES c1=(L*)arena_alloc((N)WJC_N*SZ(L));
  U*RES cl=(U*)arena_alloc((N)WJC_N*SZ(U));
  U*RES ch=(U*)arena_alloc((N)WJC_N*SZ(U));
- P(!LO||!HI||!cb||!c0||!c1||!cl||!ch,mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);eo(x))
+ P(!LO||!HI||!cb||!c0||!c1||!cl||!ch,arena_release(wjmk);mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);eo(x))
  wjbounds(T,nq,W0,W1,GB,GE,nt,LO,HI,cb,c0,c1,cl,ch);
  A res=aA(na);A*R=(A*)_V(res);
  for(U a=0;a<na;a++){
@@ -299,6 +304,7 @@ A wjc(A x){
   R[a]=out;
  }
  mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);
+ arena_release(wjmk);
  return x(res);
 }
 // ============ Braille & Unicode terminal charting ============

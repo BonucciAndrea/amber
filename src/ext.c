@@ -120,6 +120,10 @@ const char *am_repl_take_accepted(void) {
  * stay clear of it.
  */
 
+/* amber 2.0.0: the libamber.so C API (section 6) is excluded from the freestanding
+ * wasm build -- its amber_init(const char*) would collide with the browser's
+ * amber_init(void) in src/amber_wasm.c, and the wasm never links libamber.so. */
+#ifndef wasm
 #include "a.h"      /* the interpreter's own value type A, and its verbs */
 #include "arena.h"  /* arena_free() for amber_shutdown()                 */
 #include <dlfcn.h>
@@ -826,3 +830,5 @@ int amber_plugin_load(const char *path) {
     if (entry) return entry();
     return 0;
 }
+
+#endif /* !wasm : end of the libamber.so C API */

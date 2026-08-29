@@ -133,6 +133,14 @@ if [ "$QUICK" = 0 ]; then
     else echo "  -> FAIL (tests/test_paste.py)"; fail=1; fi
   else echo "  -> SKIP (no python3)"; fi
 
+  # Status bar (amber 2.0.0): \sb sets a 2-line bottom panel + scroll region that
+  # survives Ctrl-L/\clear and is released on exit; default REPL unchanged. pty.
+  say "status bar (tests/test_statusbar.py)"
+  if command -v python3 >/dev/null 2>&1; then
+    if python3 tests/test_statusbar.py; then echo "  -> PASS (tests/test_statusbar.py)"
+    else echo "  -> FAIL (tests/test_statusbar.py)"; fail=1; fi
+  else echo "  -> SKIP (no python3)"; fi
+
   # Extension seam: the engine must still build, and still pass, with a
   # third-party .c file dropped into ext/.  tests/ext_probe.c registers a verb,
   # a \-command and an editor hint through src/ext.h and asserts nothing else

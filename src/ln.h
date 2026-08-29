@@ -122,6 +122,11 @@ char *am_repl_getline(const char *prompt, size_t *len);
 /* Install the REPL's completion callback + load history.  Idempotent. */
 void  am_repl_init(void);
 
+/* amber 2.0.0: optional Claude-Code-style bottom status bar.  repl.k feeds the
+ * two content strings (via the `sbb verb); ln.c owns the scroll region + render
+ * so it survives Ctrl-L, a resize and every keystroke.  on=0 tears it down. */
+void  am_ln_statusbar(int on, const char *main, const char *info);
+
 /* ---- provided by src/m.c (needs the interpreter's global table) ---------- */
 /* NUL-separated list of global names, terminated by an extra NUL.  Returns the
  * number of names written. */

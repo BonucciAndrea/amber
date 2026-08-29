@@ -58,3 +58,22 @@ A rdlC(A x) {
     free(line);
     return r;
 }
+
+/* `sbb (on; "main"; "info")  -- drive the optional bottom status bar (amber 2.0.0).
+ * on is 0/1 (0 tears it down); the two char vectors are the panel content, with
+ * byte 0x01 toggling the accent colour inside them.  repl.k calls this each prompt. */
+A sbbC(A x) {
+    int on = 0; char *m = NULL, *i = NULL;
+    if (_t(x) == tA && _n(x) == 3) {
+        A *a = _A(x);
+        on = (int)gl(a[0]);
+        m  = lnk_cstr(a[1]);
+        i  = lnk_cstr(a[2]);
+    } else {
+        on = (int)gl(x);            /* a bare 0/1 toggles without new content */
+    }
+    am_ln_statusbar(on, m ? m : "", i ? i : "");
+    free(m); free(i);
+    mr(x);
+    return au;
+}

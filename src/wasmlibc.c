@@ -351,6 +351,22 @@ size_t fwrite(const void *ptr, size_t sz, size_t n, FILE *f) {
     long got = write(f->fd, ptr, want);
     return got > 0 ? (size_t)got / (sz ? sz : 1) : 0;
 }
+/* fgets: read up to size-1 bytes or through a newline, whichever first, one byte
+   at a time over the VFS read() shim (files here are short). Used by ln.c's
+   history load -- inert in the browser, where there is no history file. */
+char *fgets(char *s, int size, FILE *f) {
+    int i = 0; char c;
+    if (size <= 0) return 0;
+    while (i < size - 1) {
+        long k = read(f->fd, &c, 1);
+        if (k <= 0) break;
+        s[i++] = c;
+        if (c == '\n') break;
+    }
+    if (i == 0) return 0;
+    s[i] = 0;
+    return s;
+}
 int fputs(const char *s, FILE *f) { write(f->fd, s, strlen(s)); return 0; }
 int fputc(int c, FILE *f) { char ch = (char)c; write(f->fd, &ch, 1); return c; }
 int puts(const char *s) { fputs(s, &_wsys_stdout); fputc('\n', &_wsys_stdout); return 0; }

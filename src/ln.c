@@ -135,6 +135,10 @@ void  am_repl_init(void) {}
 char *am_repl_getline(const char *prompt, size_t *len) {
     (void)prompt; if (len) *len = 0; return NULL;
 }
+/* the optional status bar has no terminal to draw on in the wasm sandbox */
+void  am_ln_statusbar(int on, const char *main, const char *info) {
+    (void)on; (void)main; (void)info;
+}
 #else
 
 /* ---- raw mode ------------------------------------------------------------ */
@@ -358,6 +362,11 @@ static int term_cols(void) {
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 4) return ws.ws_col;
     return 80;
 }
+static int term_rows(void) {
+    struct winsize ws;
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_row > 4) return ws.ws_row;
+    return 24;
+}
 
 static void wr(const char *s, size_t n) {
     while (n) {
@@ -380,6 +389,69 @@ typedef struct {
     int         hidx;         /* history browse index (g_hist_n = "current") */
     char        stash[LN_MAX_LINE];
 } LnState;
+
+/* ---- Claude-Code-style status bar (amber 2.0.0) --------------------------
+ * ln.c OWNS the rendering -- a 2-line panel on the bottom rows plus a DECSTBM
+ * scroll region above it -- so the bar survives Ctrl-L, a resize and every
+ * keystroke without the interpreter having to redraw it. repl.k only supplies
+ * the two content strings (via the `sbb verb). OFF by default, so the default
+ * REPL and all terminal tests are byte-for-byte unchanged. In a content string,
+ * byte 0x01 toggles the accent colour, so repl.k can accent single segments. */
+static int  g_sb_on = 0, g_sb_rows = 0;
+static char g_sb_main[512], g_sb_info[512];
+
+/* Truecolour: a warm muted panel + Claude's coral accent. Terminals that only
+ * do 256 colours fall back to the nearest cell; the layout is unaffected. */
+#define SB_MAIN_BG "\x1b[48;2;38;34;30m"
+#define SB_INFO_BG "\x1b[48;2;28;25;22m"
+#define SB_DIM     "\x1b[38;2;170;160;148m"
+#define SB_ACCENT  "\x1b[1;38;2;217;119;87m"
+
+static void sb_row(int row, const char *bg, const char *text) {
+    char seq[32]; int col = 0, cols = term_cols(), acc = 0;
+    sprintf(seq, "\x1b[%d;1H", row); ws_(seq);         /* absolute position, col 1 */
+    ws_(bg); ws_(SB_DIM);
+    for (const char *p = text; *p && col < cols; p++) {
+        if ((unsigned char)*p == 1) { acc = !acc; ws_(acc ? SB_ACCENT : "\x1b[22m" SB_DIM); continue; }
+        if ((unsigned char)*p == 2) {                         /* live workspace-data digest */
+            char sb[512]; am_schema_brief(sb, sizeof sb);
+            const char *q = sb[0] ? sb : "workspace empty";
+            for (; *q && col < cols; q++) { wr(q, 1); col++; }
+            continue;
+        }
+        wr(p, 1); col++;
+    }
+    ws_(bg); ws_("\x1b[K"); ws_("\x1b[0m");            /* pad to EOL with the panel bg */
+}
+static void sb_paint(void) {
+    int rows = term_rows();
+    ws_("\x1b[s");                                     /* save cursor */
+    sb_row(rows - 1, SB_MAIN_BG, g_sb_main);
+    sb_row(rows,     SB_INFO_BG, g_sb_info);
+    ws_("\x1b[u");                                     /* restore cursor */
+}
+static void sb_region(void) {
+    char seq[32]; int rows = term_rows(); g_sb_rows = rows;
+    sprintf(seq, "\x1b[1;%dr", rows - 2); ws_(seq);    /* scroll region = rows 1..rows-2 */
+    sprintf(seq, "\x1b[%d;1H", rows - 2); ws_(seq);    /* land the cursor just above the panel */
+}
+/* repl.k calls this each prompt (and on \sb toggle). on=0 tears the panel down. */
+void am_ln_statusbar(int on, const char *main, const char *info) {
+    if (!on) {
+        if (g_sb_on) {
+            char seq[40]; int rows = g_sb_rows ? g_sb_rows : term_rows();
+            g_sb_on = 0;
+            ws_("\x1b[r");                              /* release the scroll region */
+            sprintf(seq, "\x1b[%d;1H\x1b[K\x1b[%d;1H\x1b[K", rows - 1, rows); ws_(seq);
+        }
+        return;
+    }
+    snprintf(g_sb_main, sizeof g_sb_main, "%s", main ? main : "");
+    snprintf(g_sb_info, sizeof g_sb_info, "%s", info ? info : "");
+    if (!g_sb_on || term_rows() != g_sb_rows) sb_region();  /* first enable, or a resize */
+    g_sb_on = 1;
+    sb_paint();
+}
 
 static void refresh(LnState *l) {
     char seq[64];
@@ -404,6 +476,7 @@ static void refresh(LnState *l) {
     ws_("\x1b[0K");
     sprintf(seq, "\r\x1b[%dC", (int)(plen + (l->pos - start)));
     ws_(seq);
+    if (g_sb_on) sb_paint();   /* keep the bottom panel intact after every redraw (incl. Ctrl-L) */
 }
 
 static void ins(LnState *l, const char *s, size_t n) {

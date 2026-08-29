@@ -75,12 +75,17 @@ untouched). A non-qSQL script is passed through byte-for-byte. (`test_qsql.k` +
   the prompt. (Whole-block `. text` eval was rejected — it raises `'limit` on a
   multi-statement string.) Paste mode is torn down on every exit path.
   (`tests/test_paste.py`, pty-driven.)
-- **Optional fixed status bar — `\sb`.** Off by default (the default REPL is
-  byte-for-byte unchanged and every terminal test still passes). `\sb` sets a
-  DECSTBM scroll region and paints a Claude-Code-style bar on the bottom row
-  (version · live memory · key hints); `\sb` again clears it. `src/ln.c`'s atexit
-  hook resets the region on **every** exit path (`\\`, Ctrl-D, a crash), so the
-  terminal is never left scrolled-in.
+- **Optional Claude-Code-style status bar — `\sb`.** Off by default (the default
+  REPL is byte-for-byte unchanged and every terminal test still passes). `\sb`
+  sets a DECSTBM scroll region and paints a **two-line bottom panel**: a muted bar
+  with a coral-accented `✻ amber 2.0.0` brand and key hints, and a live info line
+  under it (the last command's wall-time, then a digest of your workspace tables).
+  `src/ln.c` OWNS the rendering — a new `am_ln_statusbar()` fed by repl.k through
+  the `` `sbb`` verb — so the panel survives **Ctrl-L, `\clear`, a resize and every
+  keystroke**, and the atexit hook releases the scroll region on **every** exit
+  path (`\\`, Ctrl-D, a crash). Standard Unicode only (`✻ ↑ ↓ ·`) — no Nerd Font
+  needed; truecolour palette degrades to the nearest 256-colour cell.
+  (`tests/test_statusbar.py`, pty-driven.)
 
 ### Also
 

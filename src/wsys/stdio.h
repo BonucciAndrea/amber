@@ -27,6 +27,7 @@ FILE *fopen(const char *path, const char *mode);
 int fclose(FILE *f);
 size_t fread(void *ptr, size_t sz, size_t n, FILE *f);
 size_t fwrite(const void *ptr, size_t sz, size_t n, FILE *f);
+char *fgets(char *s, int size, FILE *f);
 int fputs(const char *s, FILE *f);
 int fputc(int c, FILE *f);
 int puts(const char *s);

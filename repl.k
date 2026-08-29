@@ -45,7 +45,7 @@ onerr:{exthook[{ext.err x};x];$[0<`diag(::);;[b:`err[];lns:"\n"\b;h:$[#lns;*lns;
 / \grid clean|rounded|sharp|heavy : set the table border mode (root global GRID, via eval).
 gridcmd:{p:" "\x;$[1<#p;[m:`$p 1;$[4>`clean`rounded`sharp`heavy?m;[.:("GRID:`",$m);`1:"grid: ",($m),"\n"];`1:"grid: modes are clean rounded sharp heavy\n"]];`1:"grid: ",($(.:"GRID")),"\n"]}
 / \clear : clear the terminal (scrollback + screen, cursor home).
-clearcmd:{`1:,/(((`c$27),"[3J");((`c$27),"[H");((`c$27),"[2J");"\n");}
+clearcmd:{`1:,/(((`c$27),"[3J");((`c$27),"[H");((`c$27),"[2J");"\n");$[sbon;sbupd[];]}
 mMA:{(P;f;q):((,"!/+(";dct;,")");(("+![";" +(");tbl;")]");(,,"(";lst;,")"))`m`M`A?t:@x
  w:cols-#*P;u:w-#q;h:lines-2
  x:$[h<(`M=t)+#x;,[;,".."](h-1)#f[w;u;h#x];f[w;u;x]]
@@ -80,23 +80,28 @@ rd:{`rdl x}
 / and \ts:n EXPR -> \t:n EXPR.
 tsfix:{$[(3<#x)&("\\ts"~3#x)&(" "~x 3)|":"~x 3;"\\t",3_x;x]}
 qrwx:{$[0<exthook[{ext.raw x};x];x;(.:"qrw")tsfix x]}
-/ ---- optional fixed bottom status bar (\sb toggles), Claude-Code style -------
-/ OFF by default: sbdraw is a no-op when sbon=0, so the default REPL is byte-for-
-/ byte unchanged and every terminal test still passes. \sb sets a DECSTBM scroll
-/ region (rows 1..h-1 scroll; row h is a fixed status bar) and paints it; \sb
-/ again clears it. src/ln.c's atexit hook resets the region on every exit path
-/ (\\, Ctrl-D, a crash), so the terminal is never left scrolled-in. Re-run \sb
-/ after resizing the window.
+/ ---- Claude-Code-style bottom status bar (\sb toggles) -----------------------
+/ OFF by default, so the default REPL is byte-for-byte unchanged and every
+/ terminal test still passes.  src/ln.c OWNS the panel -- two fixed bottom rows
+/ (a muted bar + a live info line) plus a DECSTBM scroll region above them -- and
+/ repaints it on Ctrl-L, \clear, a resize and every keystroke.  Here we only BUILD
+/ the two content strings and hand them to the `sbb verb each prompt.  Byte 0x01
+/ (sA) toggles the coral accent inside a string.  ln.c's atexit hook resets the
+/ scroll region on EVERY exit path (\\, Ctrl-D, a crash), so the terminal is
+/ never left corrupted.
 sbon:0
-sbE:{(`c$27),x}
-sbtxt:{m:binfo[];"  amber ",(m 4),"  |  ",($0.01*_0.5+(m 1)%10485.76)," MB  |  \\ help   Tab complete   up/down history   \\\\ exit"}
-sbpad:{[s;w]$[w>#s;s,(w-#s)#" ";w#s]}
-sbdraw:{$[sbon;[w:tsz[]1;h:*tsz[];`1:(sbE"7"),(sbE"[",($h),";1H"),(sbE"[48;5;238;38;5;220;1m"),sbpad[sbtxt[];w-1],(sbE"[0m"),(sbE"8")];]}
-sbset:{sbon::1;h:*tsz[];`1:(sbE"[1;",($h-1),"r"),(sbE"[",($h-1),";1H");sbdraw[]}
-sbclr:{$[sbon;[sbon::0;h:*tsz[];`1:(sbE"[r"),(sbE"[",($h),";1H"),(sbE"[2K")];]}
-sbtoggle:{$[sbon;sbclr[];sbset[]]}
+sblast:0.0                                          / ms the last evaluated line took
+sA:`c$1                                             / accent-toggle marker byte (0x01)
+sbmain:{m:binfo[];sA,"✻ amber ",(m 4),sA,"     \\ help     Tab complete     ↑↓ history     \\\\ exit"}
+/ info line: the wall-time the last command took (live, captured in line1), then a
+/ digest of the workspace data -- ln.c fills the 0x02 marker from am_schema_brief
+/ (root-namespace tables/dicts/vectors, functions and namespaced internals skipped),
+/ truncated to whatever width is left.  Timing comes first so it is always visible.
+sbinfo:{"   last command  ",($.1*_0.5+10*sblast)," ms         ·         ",(,`c$2)}
+sbupd:{$[sbon;`sbb(1;sbmain[];sbinfo[]);]}
+sbtoggle:{sbon::~sbon;$[sbon;sbupd[];`sbb(0;"";"")]}
 line0:{c:{0x07~*-2#*x}{(l;r):x;(rd prompt;r,,(-2_l))}/(x;());"\n"/(*|c),,*c}
-line1:{$[#x;;:0];x:-1_x;exthook[{ext.pre x};x];$[(4<#x)&"\\grid"~5#x;gridcmd x;(5<#x)&"\\clear"~6#x;clearcmd[];(2<#x)&"\\sb"~3#x;sbtoggle[];(1<#x)&"\\\\"~2#x;[sbclr[];.:x];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;.[`1:(fmt;fmtx)[" "~*x]@.:;,qrwx x;onerr]];exthook[{ext.post x};x];1}
+line1:{$[#x;;:0];x:-1_x;exthook[{ext.pre x};x];sbT0:`t[];$[(4<#x)&"\\grid"~5#x;gridcmd x;(5<#x)&"\\clear"~6#x;clearcmd[];(2<#x)&"\\sb"~3#x;sbtoggle[];(1<#x)&"\\\\"~2#x;[`sbb(0;"";"");.:x];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;.[`1:(fmt;fmtx)[" "~*x]@.:;,qrwx x;onerr]];sblast::0.001*`t[]-sbT0;exthook[{ext.post x};x];1}
 line:line1@line0@
 $["repl.k"~basename`argv 1;{cmds::@[cmds;x[1]1;:;{y;`0:x}2_x]}'{(&x~\:80#"-")_x:(1+*&x~\:,"/")_-1_x}@0:`argv 1;];
 / `bi 0 (process/build info) can throw 'domain on non-Linux builds (e.g. macOS);
@@ -107,7 +112,7 @@ binfo:{.[{`bi 0};,0;(10485760;0;"arm64";"Darwin";"1.9.5")]}
 / absent from a stock install, so the banner is character-for-character 1.9.4's.
 extag:{$[5<#x;x 5;""]}
 banner:{m:binfo[];"Amber v",(m 4)," (",(m 2),"; ",(m 3),") — Columnar Time-Series Engine",extag[m],extstr[{ext.tag[]};0],"\n"}
-run:{m:binfo[];`1:(`c$27),"[4q";`1:banner[],"Memory: ",($0.1*_0.5+(m 0)%104857.6)," MB heap reserved | \\ for help command, \\\\ to exit  (\\sb for a status bar)\n\n";{sbdraw[];line@rd prompt}::/`;}
+run:{m:binfo[];`1:(`c$27),"[4q";`1:banner[],"Memory: ",($0.1*_0.5+(m 0)%104857.6)," MB heap reserved | \\ for help command, \\\\ to exit  (\\sb for a status bar)\n\n";{sbupd[];line@rd prompt}::/`;}
 \d .
 / load the Amber library by ABSOLUTE path derived from this script's own location,
 / so it works no matter what the current working directory is.

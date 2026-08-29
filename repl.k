@@ -106,14 +106,14 @@ sbpanel:{m:binfo[];rmb:$_0.5+(m@0)%1048576.0;(,sA),"⬡ amber ",(m@4),(,sA),"   
 sbupd:{$[sbon;`sbb(1;sbpanel[];"");]}
 sbtoggle:{sbon::~sbon;$[sbon;sbupd[];`sbb(0;"";"")]}
 line0:{c:{0x07~*-2#*x}{(l;r):x;(rd prompt;r,,(-2_l))}/(x;());"\n"/(*|c),,*c}
-line1:{$[#x;;:0];x:-1_x;exthook[{ext.pre x};x];$[(4<#x)&"\\grid"~5#x;gridcmd x;(5<#x)&"\\clear"~6#x;clearcmd[];(2<#x)&"\\sb"~3#x;sbtoggle[];(1<#x)&"\\\\"~2#x;[`sbb(0;"";"");.:x];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;(4<#x)&"\\ast"~4#x;.[`1:(fmt;fmtx)[" "~*x]@.:;,x;onerr];.[`1:(fmt;fmtx)[" "~*x]@.:;,qrwx x;onerr]];exthook[{ext.post x};x];1}
+line1:{$[#x;;:0];x:-1_x;exthook[{ext.pre x};x];t0:`t[];$[(4<#x)&"\\grid"~5#x;gridcmd x;(5<#x)&"\\clear"~6#x;clearcmd[];(2<#x)&"\\sb"~3#x;sbtoggle[];(1<#x)&"\\\\"~2#x;[`sbb(0;"";"");.:x];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;(4<#x)&"\\ast"~4#x;.[`1:(fmt;fmtx)[" "~*x]@.:;,x;onerr];.[`1:(fmt;fmtx)[" "~*x]@.:;,qrwx x;onerr]];sblast::sblast+0.001*`t[]-t0;exthook[{ext.post x};x];1}
 / A folded paste arrives as one line with its statements joined by 0x1e (ln.c's
 / read_paste).  Split on it and run each statement through the normal pipeline so
 / a pasted block of many statements evaluates as a unit in a single read.
 runbatch:{[s]{line1 line0 (x,"\n")}'(`c$30)\-1_s;1}
 / time the WHOLE input line here (not per statement in line1), so a folded paste
 / of several statements reports the SUM of their run times, not just the last.
-line:{s0:`t[];r:$[(|/x=`c$30);runbatch x;line1 line0 x];sblast::0.001*`t[]-s0;r}
+line:{sblast::0;r:$[(|/x=`c$30);runbatch x;line1 line0 x];r}   / sblast is summed inside line1, around the eval only (excludes exthook/cleanup that inflated a big-workspace op's exec time)
 $["repl.k"~basename`argv 1;{cmds::@[cmds;x[1]1;:;{y;`0:x}2_x]}'{(&x~\:80#"-")_x:(1+*&x~\:,"/")_-1_x}@0:`argv 1;];
 / `bi 0 (process/build info) can throw 'domain on non-Linux builds (e.g. macOS);
 / trap it so the banner still renders.  Returns (heap;used;arch;compiler).

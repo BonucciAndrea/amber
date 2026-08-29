@@ -538,6 +538,13 @@ static void sb_infoline(void) {
         lw = sb_expand(lt, left, sizeof left);
         rw = sb_expand(split + 1, right, sizeof right);
     } else { lw = sb_expand(g_sb_panel, left, sizeof left); right[0] = 0; rw = 0; }
+    if (g_scroll > 0) {                                /* scroll-back active: take over the whole line */
+        int n = snprintf(left, sizeof left,
+            "\x1b[1m\xe2\x96\xb2 SCROLL-BACK  \xc2\xb7  up %d line%s  \xc2\xb7  wheel down / any key returns to live\x1b[0m",
+            g_scroll, g_scroll == 1 ? "" : "s");
+        lw = (n > 0 && n < (int)sizeof left) ? sb_disp(left) : 0;
+        right[0] = 0; rw = 0;
+    }
     sprintf(seq, "\x1b[%d;1H", rows); ws_(seq);
     ws_(SB_DIM); ws_("\x1b[K");                        /* dim text on the normal background */
     ws_(left);
@@ -898,11 +905,9 @@ static void sb_repaint_region(void) {
         sprintf(seq, "\x1b[%d;1H\x1b[2K", i + 1); ws_(seq);
         if (line >= 0 && line < g_ring_n) { const char *L = ring_get(line); wr(L, strlen(L)); ws_("\x1b[0m"); }
     }
-    if (g_scroll && cols > 22) {              /* a dim "scrolled" hint, top-right of the region */
-        sprintf(seq, "\x1b[1;%dH", cols - 18); ws_(seq);
-        ws_(SB_DIM); ws_("\xe2\x96\xb2 scroll \xc2\xb7 end\xe2\x86\x93"); ws_(SB_RESET);
-    }
+    (void)cols;
     ws_("\x1b[?7h");                          /* restore auto-wrap for live output */
+    sb_infoline();                            /* info line shows the scroll-back indicator */
     ws_("\x1b\x38");                          /* restore cursor */
 }
 static void sb_scroll_by(int delta) {
@@ -1154,11 +1159,21 @@ char *am_ln_readline(const char *prompt) {
                     while (read(STDIN_FILENO, &t, 1) == 1 && t >= '0' && t <= '9') pb = pb*10 + (t-'0');
                     while (t && t != 'M' && t != 'm') { if (read(STDIN_FILENO, &t, 1) != 1) break; }
                     if (g_sb_on) {                          /* scroll the transcript, box stays locked */
-                        if (pb == 64)      sb_scroll_by(+3);   /* wheel up   -> older output */
-                        else if (pb == 65) sb_scroll_by(-3);   /* wheel down -> newer output */
+                        if (pb == 64)      { sb_scroll_by(+3); refresh(&l); }  /* wheel up   -> older */
+                        else if (pb == 65) { sb_scroll_by(-3); refresh(&l); }  /* wheel down -> newer */
                     }
                     l.ghost[0] = 0;
                     continue;                               /* the wheel never edits the line */
+                } else if (s[1] == 'M') {                   /* legacy X10 mouse: \x1b[M b x y (3 bytes) */
+                    unsigned char mb[3]; int got = 0;
+                    while (got < 3 && read(STDIN_FILENO, (char *)&mb[got], 1) == 1) got++;
+                    if (got == 3 && g_sb_on) {
+                        int b = (mb[0] - 32) & 0x43;        /* button bits incl. the wheel flag (64) */
+                        if (b == 64)      { sb_scroll_by(+3); refresh(&l); }   /* wheel up */
+                        else if (b == 65) { sb_scroll_by(-3); refresh(&l); }   /* wheel down */
+                    }
+                    l.ghost[0] = 0;
+                    continue;
                 } else if (s[1] >= '0' && s[1] <= '9') {
                     /* accumulate the numeric parameter so multi-digit codes work:
                        200~/201~ are bracketed paste, 3~ Delete, 1~/7~ Home, 4~/8~ End */

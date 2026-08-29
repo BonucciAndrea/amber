@@ -134,6 +134,19 @@ try:
     check("⬡ amber 2.0.0" in disp[23], "[pyte] info line on the last row")
     check(any("42" in l for l in disp[:20]), "[pyte] eval output (42) visible in the scroll region")
     check(screen.cursor.y == 21, "[pyte] cursor sits on the box input row")
+    # fill past the region, then wheel up: older output must reappear, the box must
+    # stay locked, the cursor must stay in the box, and the info line shows SCROLL-BACK.
+    for n in range(100, 125): os.write(m, (str(n) + "\r").encode()); pump(0.1)
+    pump(0.3)
+    for _ in range(14): os.write(m, b"\x1b[<64;5;5M"); pump(0.08)
+    pump(0.2); d2 = screen.display
+    check(any("100" in l for l in d2[:20]), "[pyte] wheel-up reveals scrolled-off output (100)")
+    check(any(l.strip().startswith("╭") for l in d2[18:22]), "[pyte] box stays locked while scrolled")
+    check(screen.cursor.y == 21, "[pyte] cursor stays in the box while scrolled")
+    check("SCROLL-BACK" in d2[23], "[pyte] info line shows the scroll-back indicator")
+    for _ in range(12): os.write(m, b"\x1b[<65;5;5M"); pump(0.08)
+    pump(0.2)
+    check("⬡ amber 2.0.0" in screen.display[23], "[pyte] wheel-down restores the normal info line")
     os.write(m, b"\\\\\r"); pump(0.3)
     try: os.close(m)
     except OSError: pass

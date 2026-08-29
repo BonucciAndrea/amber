@@ -4,7 +4,7 @@ U si(S s,C v)_(strchrnul(s,v)-(C*)s)                                            
 B id0(UC c)_(CAz(c)|(c|1)==0xd1)                                                                    //is identifier start char?
 Z B id1(C c)_(id0(c)|C09(c))                                                                        //is identifier char?
 Z B num(S s)_(C09(s[*s=='-']))                                                                      //is number start?
-Z S pw(S s)_(W(*s==32,s++)s)                                                                        //skip whitespace
+Z S pw(S s)_(W((*s==32)|(*s==9)|(*s==13),s++)s)                                                     //skip whitespace: space, tab, CR (so CRLF/tabbed .k files parse; \n stays the statement separator)
 Z A1(p1,x&&xn==1?fir(x):x)                                                                          //singleton list to atom
 S pID(S s)_(W(id1(*s),s+=0xe555>>((UC)*s>>4&-2)&3)s)                                                //parse identifier
 W pu(S*p)_(S s=*p;W v=0;C c=*s;W(C09(c),v=10*v+c-'0';c=*++s)*p-s?*p=s,v:NL)                         //parse unsigned long

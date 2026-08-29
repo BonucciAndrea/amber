@@ -284,7 +284,7 @@ RST:CSI,"0m"                                       / reset
 / null/separators as faint warm grey.  Truecolour terminals get the exact hues;
 / others fall back to the nearest cell.
 CT:`num`sym`str`time`null`hdr`bool`flt`sep!("38;2;235;205;140";"38;2;255;176;0";"38;2;170;185;135";"38;2;200;165;185";"38;2;120;114;104";"1;38;2;245;238;226";"38;2;225;150;120";"38;2;220;185;110";"38;2;90;85;78")  / by value type
-PAL:("38;2;255;176;0";"38;2;140;180;170";"38;2;220;170;110";"38;2;190;150;180";"38;2;170;185;130";"38;2;225;150;120";"38;2;150;175;190";"38;2;230;200;140";"38;2;180;165;145";"38;2;200;180;120";"38;2;210;160;170";"38;2;160;185;160";"38;2;235;190;150";"38;2;175;170;190")  / muted warm per-column cycle
+PAL:("38;2;255;176;0";"38;2;210;158;120";"38;2;220;170;110";"38;2;200;150;170";"38;2;185;180;130";"38;2;225;150;120";"38;2;205;180;120";"38;2;230;200;140";"38;2;185;165;140";"38;2;200;180;120";"38;2;210;160;150";"38;2;190;180;140";"38;2;235;190;150";"38;2;205;172;150")  / muted warm per-column cycle (all warm; no cool/bluish tones)
 NULLS:("0N";"0n";"0w";"-0w";"0Nn";,"`")            / null sentinels rendered faint grey (empty cell too)
 PREC:7                                             / float precision (decimals) in grids; PREC:0N = full precision
 comma:{$[4>#x;x;(comma -3_x),",",-3#x]}            / thousands separators on a digit string

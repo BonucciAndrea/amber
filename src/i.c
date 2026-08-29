@@ -35,6 +35,7 @@
 #include<fcntl.h>
 #include<arpa/inet.h>
 #include<unistd.h>
+#include<sys/ioctl.h>   // TIOCGWINSZ / struct winsize: cap plots to the terminal size
 #include<sys/time.h>
 #undef __USE_EXTERN_INLINES
 #include<sys/stat.h>
@@ -318,11 +319,16 @@ Z C*ebr(C*p,UC b){U cp=0x2800+b;*p++=0xE2;*p++=0x80|(cp>>6&0x3F);*p++=0x80|(cp&0
 Z C*elab(C*p,F v,I w){C b[40];L db;MC(&db,&v,8);C*e=sf(b,db);I ll=e-b;I(ll>w,ll=w)F(w-ll,*p++=' ')F(ll,*p++=b[i])return p;}//right-justified label
 // plot: x = numeric vector, or (series;W;H).  Returns a multi-line UTF-8 braille line chart.
 A plotC(A x){
- A dat;I W=70,H=15;
+ A dat;I W=70,H=15,mW=120,mH=32;
+ /* cap the plot to the live terminal so it never overflows the screen; the
+  * label gutter is ~10 cols and the footer/prompt want a couple of rows. */
+ {ST winsize ws;if(ioctl(1,TIOCGWINSZ,&ws)==0&&ws.ws_col>20){mW=(I)ws.ws_col-11;if(ws.ws_row>8)mH=(I)ws.ws_row-4;}}
+ if(mW>200)mW=200;if(mW<10)mW=10;if(mH>60)mH=60;if(mH<3)mH=3;
+ if(W>mW)W=mW;if(H>mH)H=mH;                                  /* default fits the terminal */
  if(_t(x)==tA){dat=N(ii(x,0));if(_n(x)>1)W=(I)gl(N(ii(x,1)));if(_n(x)>2)H=(I)gl(N(ii(x,2)));}else dat=_R(x);
  mr(x);A ser=N(cF(dat));U n=_n(ser);
  if(!n){mr(ser);return aCz("(empty)\n");}
- if(W<10)W=10;if(W>200)W=200;if(H<3)H=3;if(H>60)H=60;I PW=2*W,PH=4*H;
+ if(W<10)W=10;if(W>mW)W=mW;if(H<3)H=3;if(H>mH)H=mH;I PW=2*W,PH=4*H;  /* clamp to terminal */
  CO F*d=(CO F*)_V(ser);F mn=d[0],mx=d[0];F(n,I(d[i]<mn,mn=d[i])I(d[i]>mx,mx=d[i]))F rng=mx-mn;I(rng<=0,rng=1)
  UC cells[12000];MS(cells,0,W*H);I ppx=0,ppy=0;
  F(n,I px=n>1?(I)((F)i*(PW-1)/(n-1)+.5):PW/2,py=(I)((PH-1)*(1.-(d[i]-mn)/rng)+.5);I(px>PW-1,px=PW-1)I(py>PH-1,py=PH-1)I(py<0,py=0)I(i,bres(cells,W,H,ppx,ppy,px,py))E(pxset(cells,W,H,px,py))ppx=px;ppy=py)
@@ -336,6 +342,10 @@ A candleC(A x){
  A o=N(cF(N(ii(x,0)))),h=N(cF(N(ii(x,1)))),l=N(cF(N(ii(x,2)))),c=N(cF(N(ii(x,3))));mr(x);
  U n=_n(o);I H=15;if(!n){mr(o);mr(h);mr(l);mr(c);return aCz("(empty)\n");}
  CO F*O=_V(o),*Hi=_V(h),*Lo=_V(l),*Cl=_V(c);
+ /* cap to the terminal: show only the most recent candles that fit its width,
+  * and shrink the height on a short screen, so a big series never overflows. */
+ {I mW=120;ST winsize ws;if(ioctl(1,TIOCGWINSZ,&ws)==0&&ws.ws_col>20){mW=((I)ws.ws_col-10)/2;if(mW<1)mW=1;if(ws.ws_row>10&&H>(I)ws.ws_row-4)H=(I)ws.ws_row-4;}
+  if(n>(U)mW){U off=n-(U)mW;O+=off;Hi+=off;Lo+=off;Cl+=off;n-=off;}}
  F mn=Lo[0],mx=Hi[0];F(n,I(Lo[i]<mn,mn=Lo[i])I(Hi[i]>mx,mx=Hi[i]))F rng=mx-mn;I(rng<=0,rng=1)
  A out=aC(H*(9+n*24)+64);C*p=(C*)_V(out);
  F(H,I r=i;p=elab(p,i==0?mx:i==H-1?mn:mx-rng*i/(H-1),8);*p++=0xE2;*p++=0x94;*p++=0x82;

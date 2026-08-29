@@ -119,13 +119,6 @@ void am_ln_add_completion(amCompletions *lc, const char *str) {
     lc->len++;
 }
 
-static void free_completions(amCompletions *lc) {
-    size_t i;
-    for (i = 0; i < lc->len; i++) free(lc->cvec[i]);
-    free(lc->cvec);
-    lc->cvec = NULL;
-    lc->len = 0;
-}
 
 #if defined(wasm)
 /* ------------------------------------------------------------------------- */
@@ -670,8 +663,12 @@ static void spin_tick(int sig) {
 }
 static void spin_start(void) {
     /* draw the braille frame inside the box, just past the prompt (row h-2, the
-     * input row; col 3 clears the "│ " border + a space, then g_input_plen). */
+     * input row; col 3 clears the "│ " border + a space, then g_input_plen).
+     * NOTE: driven by SIGALRM on the main thread (a dedicated spinner thread was
+     * tried but races with the eval's own fd-1 output). */
     int i, row = (g_sb_rows ? g_sb_rows : term_rows()) - 2, col = g_input_plen + 3;
+    if (getenv("AMBER_NO_SPINNER")) return;   /* diagnostic: run without the SIGALRM spinner
+                                               * (to check whether it slows a parallel eval) */
     for (i = 0; i < 10; i++)
         snprintf(g_spin_seq[i], sizeof g_spin_seq[i], "\x1b[s\x1b[%d;%dH%s%s%s\x1b[u",
                  row, col, SB_ACCENT, SPIN[i], SB_RESET);
@@ -760,94 +757,11 @@ static void set_line(LnState *l, const char *s) {
     l->len = l->pos = n;
 }
 
-/* ---- Tab ----------------------------------------------------------------- */
-
-/* Longest common prefix of the candidate set, written into `dst`. */
-static void common_prefix(amCompletions *lc, char *dst, size_t cap) {
-    size_t i, k = 0;
-    if (!lc->len) { dst[0] = 0; return; }
-    for (;;) {
-        char c;
-        if (k + 1 >= cap) break;
-        c = lc->cvec[0][k];
-        if (!c) break;
-        for (i = 1; i < lc->len; i++) if (lc->cvec[i][k] != c) break;
-        if (i < lc->len) break;
-        dst[k++] = c;
-    }
-    dst[k] = 0;
-}
-
-static void list_candidates(LnState *l, amCompletions *lc) {
-    size_t i;
-    if (g_sb_on) {
-        /* Box mode: print the candidates INTO the scroll region above the box
-         * (rows 1..h-4) so they read like transcript history and the fixed footer
-         * is never disturbed, then redraw the input inside the box. */
-        char seq[32];
-        sprintf(seq, "\x1b[%d;1H", term_rows() - SB_FOOT); ws_(seq);   /* region bottom */
-        for (i = 0; i < lc->len; i++) { ws_("  "); ws_(lc->cvec[i]); ws_("\r\n"); }
-        refresh(l);
-        return;
-    }
-    ws_("\r\n");
-    for (i = 0; i < lc->len; i++) {
-        ws_("  ");
-        ws_(lc->cvec[i]);
-        ws_("\r\n");
-    }
-    refresh(l);
-}
-
-/* Ask the installed extension (src/ext.h) for an inline continuation of the
- * current line.  Returns 1 when l->ghost was filled.  With no extension in the
- * build am_ext_hint is NULL and this costs one predicted branch.
- *
- * The guards belong to the editor, not to the extension: a hint is only ever
- * asked for at end of line, only for a line long enough to be worth
- * continuing, and never for a `\` REPL command -- those are lexical and
- * complete exactly. */
-static int ext_ghost(LnState *l) {
-    if (!am_ext_hint) return 0;
-    if (l->len < 3 || l->pos != l->len) return 0;
-    if (l->buf[0] == '\\') return 0;
-    l->ghost[0] = 0;
-    if (!am_ext_hint(l->buf, l->len, l->ghost, sizeof l->ghost)) { l->ghost[0] = 0; return 0; }
-    l->ghost[sizeof l->ghost - 1] = 0;
-    return l->ghost[0] != 0;
-}
-
 static void accept_ghost(LnState *l) {
     if (!l->ghost[0]) return;
     ins(l, l->ghost, strlen(l->ghost));
     am_ext_set_accepted(l->buf);   /* an extension may treat this as feedback */
     l->ghost[0] = 0;
-}
-
-static void do_tab(LnState *l) {
-    amCompletions lc;
-    char pfx[LN_MAX_LINE];
-
-    if (l->ghost[0]) { accept_ghost(l); refresh(l); return; }
-
-    lc.len = 0; lc.cvec = NULL;
-    if (g_completion) g_completion(l->buf, &lc);
-
-    if (lc.len == 1) {
-        set_line(l, lc.cvec[0]);
-        free_completions(&lc);
-        refresh(l);
-        return;
-    }
-    if (lc.len > 1) {
-        common_prefix(&lc, pfx, sizeof pfx);
-        if (strlen(pfx) > l->len) { set_line(l, pfx); refresh(l); }
-        else list_candidates(l, &lc);
-        free_completions(&lc);
-        return;
-    }
-    free_completions(&lc);
-    if (ext_ghost(l)) refresh(l);
 }
 
 /* ---- the editor loop ----------------------------------------------------- */
@@ -1128,8 +1042,11 @@ char *am_ln_readline(const char *prompt) {
         if (c != 22 && c != 27) cv_armed = 0;    /* the preview pair (Ctrl-V or Alt-V) must be consecutive */
 
         switch (c) {
-        case 9:                                  /* Tab */
-            do_tab(&l);
+        case 9:                                  /* Tab -- intentionally ignored.
+                                                  * Tab completion was REMOVED at the
+                                                  * user's explicit request: with amber/k's
+                                                  * terse syntax it was near-useless and
+                                                  * uncomfortable to use.  Tab is a no-op. */
             continue;
         case 22:                                 /* Ctrl-V: press twice to preview the last paste */
             if (cv_armed) { cv_armed = 0; paste_preview(&l); }
@@ -1300,15 +1217,17 @@ done:
          * by 0x1e (record separator).  repl.k splits on it and evaluates each in
          * turn, so the batch runs as a unit without depending on the read loop
          * being re-entered per statement.  The placeholder is already on screen. */
-        size_t tot = 0; int i;
+        size_t tot = 0; int i; char *w;
         for (i = g_pq_i; i < g_pq_n; i++) tot += strlen(g_pq[i]) + 1;
         out = (char *)malloc(tot + 1);
         if (!out) return NULL;
-        out[0] = 0;
+        w = out;                                         /* O(n) join (strcat would be O(n^2) on a huge paste) */
         for (i = g_pq_i; i < g_pq_n; i++) {
-            if (i > g_pq_i) strcat(out, "\x1e");
-            strcat(out, g_pq[i]);
+            size_t li = strlen(g_pq[i]);
+            if (i > g_pq_i) *w++ = '\x1e';
+            memcpy(w, g_pq[i], li); w += li;
         }
+        *w = 0;
         pq_clear(); g_paste_folded = 0;
         return out;                                      /* don't add the batch to history */
     }
@@ -1324,109 +1243,13 @@ done:
 /* Completion sources                                                          */
 /* ========================================================================== */
 
-/* ---- lexical vocabulary ---------------------------------------------- */
+/* (The REPL-command / K-vocabulary tables and token_start() that fed Tab
+ * completion were removed with it, at the user's request.) */
 
-static const char *const REPL_CMDS[] = {
-    "\\l ", "\\v", "\\d ", "\\f", "\\m", "\\t ", "\\t:", "\\cd ",
-    "\\ast ", "\\trace ", "\\disasm ", "\\grid ", "\\clear", "\\h", "\\q",
-    "\\j", "\\z", "\\a", "\\\\", NULL
-};
-
-/* Amber / K vocabulary worth completing.  Kept short on purpose: the point is
- * to cover the names a user types constantly, not to mirror the manual. */
-static const char *const WORDS[] = {
-    "select", "from", "where", "by", "update", "delete", "exec", "insert",
-    "sum", "avg", "min", "max", "count", "first", "last", "dev", "var", "med",
-    "sums", "prds", "maxs", "mins", "deltas", "ratios", "til", "distinct",
-    "asc", "desc", "xasc", "xdesc", "xkey", "xcol", "xgroup", "ungroup",
-    "cols", "keys", "value", "flip", "unkey", "show", "meta", "type",
-    "aj", "wj", "lj", "ij", "uj", "pj", "ej", "taq", "tsign", "signedvol",
-    "vwap", "twap", "bars", "symstats", "mid", "spread", "spreadbps",
-    "micro", "imbal", "ret", "logret", "rvol", "effspread", "notional",
-    "movavg", "movsum", "movmax", "movmin", "ema", "rollstd",
-    "msum", "mavg", "mdev", "mvar", "mmin", "mmax", "mcount", "mprd",
-    "gentq", "genopt", "gidx", "bysym", "symrows", "sortcol", "partcol",
-    "groupcol", "peach", "parse", "eval", "ser", "deser", "protect", "ts",
-    "splay", "dload", "partsave", "partload", "dset", "dget", "parts",
-    "plot", "candle", "amfmt", "tsym", "pt", "jenc", "cast", "long", "float",
-    NULL
-};
-
-/* Where does the token under the cursor start? */
-static size_t token_start(const char *buf, size_t len) {
-    size_t i = len;
-    while (i) {
-        char c = buf[i - 1];
-        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-            (c >= '0' && c <= '9') || c == '.' || c == '_') { i--; continue; }
-        break;
-    }
-    return i;
-}
-
-static void add_word(amCompletions *lc, const char *buf, size_t start,
-                     const char *tok, const char *word) {
-    char cand[LN_MAX_LINE];
-    size_t tl = strlen(tok);
-    if (tl && strncmp(word, tok, tl)) return;
-    if (!strcmp(word, tok)) return;
-    if (start + strlen(word) + 1 >= sizeof cand) return;
-    memcpy(cand, buf, start);
-    strcpy(cand + start, word);
-    am_ln_add_completion(lc, cand);
-}
-
-static void repl_complete(const char *buf, amCompletions *lc) {
-    size_t len = strlen(buf), start;
-    char tok[256];
-    int i;
-
-    /* (a) an installed extension gets first refusal on the whole line */
-    if (am_ext_complete) { am_ext_complete(buf, lc); if (lc->len) return; }
-
-    /* (b) REPL commands, when the line IS a backslash command being typed */
-    if (buf[0] == '\\' && !strchr(buf, ' ')) {
-        for (i = 0; REPL_CMDS[i]; i++)
-            if (!strncmp(REPL_CMDS[i], buf, len) && strcmp(REPL_CMDS[i], buf))
-                am_ln_add_completion(lc, REPL_CMDS[i]);
-        if (lc->len) return;
-    }
-
-    start = token_start(buf, len);
-    if (len - start >= sizeof tok) return;
-    memcpy(tok, buf + start, len - start);
-    tok[len - start] = 0;
-
-    /* (c) globals actually present in the workspace */
-    {
-        char names[16384];
-        unsigned n = am_globals(names, sizeof names);
-        const char *p = names;
-        unsigned k;
-        for (k = 0; k < n && *p; k++) {
-            add_word(lc, buf, start, tok, p);
-            p += strlen(p) + 1;
-        }
-    }
-
-    /* (d) the standing vocabulary */
-    if (*tok) for (i = 0; WORDS[i]; i++) add_word(lc, buf, start, tok, WORDS[i]);
-
-    /* (e) whole lines already entered in this session.  Entirely local, and
-     * the reason recalling a long query feels instant. */
-    if (len >= 2) {
-        int m, hn = 0;
-        const char *const *h = am_ln_history(&hn);
-        for (m = hn - 1; m >= 0; m--)
-            if (!strncmp(h[m], buf, len) && strcmp(h[m], buf))
-                am_ln_add_completion(lc, h[m]);
-    }
-
-    /* (f) last, and only if everything above found nothing: an extension's
-     * wide/fuzzy source.  Deliberately after (c) so a recall file can never
-     * shadow the name of a variable that is actually in scope. */
-    if (!lc->len && am_ext_complete_late) am_ext_complete_late(buf, lc);
-}
+/* NOTE: the Tab-completion engine (repl_complete / add_word and the do_tab /
+ * list_candidates / common_prefix / ext_ghost helpers above) was REMOVED at the
+ * user's explicit request -- with amber/k's terse syntax it was near-useless and
+ * uncomfortable.  Tab is now a no-op; no completion source is consulted. */
 
 /* ---- REPL entry points --------------------------------------------------- */
 
@@ -1438,7 +1261,8 @@ void am_repl_init(void) {
     if (done) return;
     done = 1;
     am_ext_startup_once();
-    am_ln_set_completion_callback(repl_complete);
+    /* Tab completion removed at the user's explicit request (clunky with k syntax);
+     * no completion callback is registered, so Tab does nothing. */
     h = getenv("HOME");
     if (h && *h && strlen(h) + 20 < sizeof g_histpath) {
         sprintf(g_histpath, "%s/.amber_history", h);

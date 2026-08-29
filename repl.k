@@ -63,7 +63,7 @@ dirname:{$[#x:"/"/-1_"/"\x;x;,"."]}
 joinpath:{$[x~,".";y;"/"~*|x;x,y;x,"/",y]}
 / 1.9.5: input comes from `rdl (src/ln.c, src/lnk.c) instead of a raw read on
 / fd 1. `rdl prints the prompt itself and gives the line native editing,
-/ history and Tab completion when stdin is a terminal; when it is a pipe it
+/ history and inline editing when stdin is a terminal; when it is a pipe it
 / degrades to a plain line read with the prompt still printed, which is also
 / why piping a script into the REPL works. This is what removed the need to
 / run Amber under rlwrap -- see the comment block in ./a.
@@ -102,7 +102,7 @@ sB:`c$4                                             / -> build kind (ln.c fills)
 / exec time, always in ms to 0.1 ms (a sub-millisecond line reads e.g. "0.5 ms").
 / sblast is milliseconds; `t[] is microseconds so line's 0.001* factor -> ms.
 sbexec:{($.1*_0.5+10*sblast)," ms"}
-sbpanel:{m:binfo[];rmb:$_0.5+(m@0)%1048576.0;(,sA),"⬡ amber ",(m@4),(,sA),"   ·   exec: ",sbexec[],"   ·   mem: ",(,sM),"/",rmb," MB   ·   [",(,sB),"]",(,sSP),"\\ help   ·   Tab complete   ·   \\\\ exit"}
+sbpanel:{m:binfo[];rmb:$_0.5+(m@0)%1048576.0;(,sA),"⬡ amber ",(m@4),(,sA),"   ·   exec: ",sbexec[],"   ·   mem: ",(,sM),"/",rmb," MB   ·   [",(,sB),"]",(,sSP),"\\ help   ·   \\\\ exit"}
 sbupd:{$[sbon;`sbb(1;sbpanel[];"");]}
 sbtoggle:{sbon::~sbon;$[sbon;sbupd[];`sbb(0;"";"")]}
 line0:{c:{0x07~*-2#*x}{(l;r):x;(rd prompt;r,,(-2_l))}/(x;());"\n"/(*|c),,*c}
@@ -173,7 +173,7 @@ $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
     \cd path    change directory              COLOR:0/1   PREC:n   CROWS:n
     \grid MODE  clean rounded sharp heavy
     \clear      clear screen                LINE EDITING   ( never use rlwrap )
-    \sb         toggle the status bar          Up/Down history · Tab completes
+    \sb         toggle the status bar          Up/Down history · PgUp/PgDn scroll
     \other      shell command                 Ctrl-A/E ends · Ctrl-W/U/K kill
     \a          license (AGPLv3)              Ctrl-L clear · Ctrl-C abandon
     \\          exit                          ~/.amber_history · AMBER_NO_EDIT=1

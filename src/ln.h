@@ -47,17 +47,14 @@
  *   * Nothing is allocated on the keystroke path beyond the line buffer.
  *   * No curses, no readline, no terminfo: plain C99 + POSIX termios/ioctl.
  *
- * COMPLETION
- * ----------
- * Tab is served, in order, from:
- *   0. an extension (src/ext.h, am_ext_complete) when one is installed;
- *   1. globals in the workspace, table column names, `\` commands and the
- *      Amber/K verb vocabulary;
- *   2. lines already entered in this session (history).
- * If every source comes up empty the editor offers an extension hint
- * (am_ext_hint) as dim ghost text, which is NEVER inserted until the user
- * presses Tab, Right or Ctrl-F again.  With no extension installed there is no
- * hint, no network and no third phase -- the core is entirely local.
+ * COMPLETION -- REMOVED
+ * ----------------------
+ * Tab completion (workspace globals, the K verb vocabulary, `\` commands and
+ * session history, plus the extension ghost-hint) was REMOVED at the user's
+ * explicit request: with amber/k's terse syntax it was near-useless and
+ * uncomfortable to use.  Tab is now a no-op.  The am_ln_set_completion_callback
+ * / am_ln_add_completion entry points below are retained only for linenoise
+ * source-compatibility; the core registers no callback.
  *
  * The public entry point is am_repl_readline(); src/lnk.c exposes it to the
  * interpreter as the `rdl verb, which repl.k uses instead of a raw read, and

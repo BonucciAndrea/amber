@@ -103,9 +103,10 @@ AMBER_NATIVE=1 ./demo.sh     # -march=native build (fastest on this machine)
 ```q
 \l amber.k
 \l fin.k
-gentq N                                                    / N trades, 2N quotes, realistic microstructure
+N:1000000                                                  / trade count (gentq builds N trades + 2N quotes)
+gentq N                                                     / sets globals `trades` and `quotes`, realistic microstructure
 qby[trades; `sym; (,`vwap)!,{round[4]wavg[x`sz;x`px]}]      / VWAP per symbol
-ema[2%51; pxSeries]                                         / 50-period EMA, tacit call into the C kernel
+ema[2%51; trades`px]                                        / 50-period EMA, tacit call into the C kernel
 taq[trades; quotes]                                         / as-of join: every trade -> its nearest quote
 ```
 
@@ -284,7 +285,7 @@ installed. Nothing is installed system-wide — see [Isolation](#isolation).
 meta ([]sym:`a`b; px:1.5 2.5)      / column types + attributes (c | t a)
 
 / the join every tick shop needs — as-of (native C kernel)
-trade:([]sym:`a`b`a; time:3 4 9; px:100 200 300)
+trade:([]sym:`a`b`a; time:3 4 9; px:100 200 300; sz:10 20 30)
 quote:([]sym:`a`a`b`a; time:1 5 2 8; bid:10 11 20 12)
 aj[`sym`time; trade; quote]        / last quote at/ before each trade
 

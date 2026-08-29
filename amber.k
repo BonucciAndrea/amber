@@ -302,7 +302,7 @@ nrows:{#*.+x}                                      / row count of a table
 captab:{c:cols x;+c!(CROWS#)'(+x)c}                / first CROWS rows (caps BEFORE formatting, so huge tables render instantly)
 aftr:{[nr;nc]cwrap[CT`null;"[",(comma($nr))," rows x ",($nc)," cols]"]}  / dimmed size footer
 / ---- Unicode table border modes (\grid clean|rounded|sharp|heavy) -----------
-GRID:`clean                                        / border mode; \grid sets it
+GRID:`rounded                                      / border mode (default rounded box); \grid sets it (clean|rounded|sharp|heavy)
 / each entry: (horiz;vert;tl;tmid;tr;lmid;mid;rmid;bl;bmid;br)
 GB:`rounded`sharp`heavy!(("─";"│";"╭";"┬";"╮";"├";"┼";"┤";"╰";"┴";"╯");("─";"│";"┌";"┬";"┐";"├";"┼";"┤";"└";"┴";"┘");("━";"┃";"┏";"┳";"┓";"┣";"╋";"┫";"┗";"┻";"┛"))
 brep:{,/x#,y}                                       / repeat a (multi-byte) char x times

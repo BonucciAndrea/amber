@@ -93,6 +93,21 @@ check(b"100" in txt,                                "folded paste batch evaluate
 out = drive([(b"\\sb\r", 0.6), (b"9*9\r", 0.5), (b"\\\\\r", 0.6)])
 check(TORN(out) and b"81" in strip(out),            "\\sb releases the region; REPL keeps working")
 
+# 3b. Ctrl-V Ctrl-V previews the last folded paste, ENLARGED via DECDWL (\x1b#6).
+out = drive([(b"\x1b[200~p:1\nq:2\np+q\x1b[201~", 0.5), (b"\x16", 0.2), (b"\x16", 0.4),
+             (b"\r", 0.5), (b"\\\\\r", 0.6)])
+txt = strip(out)
+check(ESC + b"#6" in out,                           "Ctrl-V Ctrl-V emits DECDWL enlarge for the paste preview")
+check(b"Pasted text #" in txt and b"p:1" in txt,    "paste preview shows the stored text")
+check(b"3" in txt,                                  "previewed paste still evaluates (p+q -> 3)")
+
+# 3c. Mouse-wheel-up pages the internal scroll-back: the region is repainted with
+#     auto-wrap disabled (\x1b[?7l) so a long line can't spill onto the locked box.
+cmds = [(str(n).encode() + b"\r", 0.15) for n in range(1, 13)]
+cmds += [(b"\x1b[<64;5;5M", 0.15), (b"\x1b[<64;5;5M", 0.15), (b"\x1b[<65;5;5M", 0.15), (b"\\\\\r", 0.5)]
+out = drive(cmds)
+check(ESC + b"[?7l" in out and ESC + b"[?7h" in out, "wheel-up repaints the scroll-back region (auto-wrap toggled)")
+
 # 4. OPTIONAL rendered-screen check (only if pyte is installed) -- proves the box
 #    is where it should be and output actually lands in the scroll region.
 try:

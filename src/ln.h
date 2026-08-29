@@ -127,6 +127,14 @@ void  am_repl_init(void);
  * so it survives Ctrl-L, a resize and every keystroke.  on=0 tears it down. */
 void  am_ln_statusbar(int on, const char *main, const char *info);
 
+/* amber 2.0.1: scroll-back capture.  While the status bar is up, src/m.c's ow()
+ * (the sole kernel stdout writer) tees every byte it prints here, so the REPL
+ * keeps an internal transcript of eval output.  The wheel then scrolls UP
+ * through it with the box staying locked -- the alternate screen has no native
+ * scrollback, so this buffer is what makes "scroll up" possible without leaving
+ * the vim-style clean-exit alt screen.  A no-op unless the bar armed capture. */
+void  am_ln_sb_capture(const char *s, size_t n);
+
 /* ---- provided by src/m.c (needs the interpreter's global table) ---------- */
 /* NUL-separated list of global names, terminated by an extra NUL.  Returns the
  * number of names written. */

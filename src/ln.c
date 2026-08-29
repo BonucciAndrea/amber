@@ -331,6 +331,22 @@ int am_ln_interactive(void) {
 }
 
 static void ws_(const char *s);  /* fwd: defined below; used by raw enable/disable for bracketed paste */
+static void ring_clear(void);    /* fwd: scroll-back ring, defined below; used by the bar teardown */
+
+/* ---- scroll-back ring state (definitions of the helpers are further down) --
+ * The alternate screen keeps no native scrollback, so to let the user scroll UP
+ * through past output while the box stays locked we tee every byte the kernel
+ * prints (ow -> am_ln_sb_capture) into a ring of completed lines and repaint the
+ * region from it at an offset.  Declared here because the bar enable/teardown
+ * (below) arm and clear it. */
+#define SB_RING 5000
+static char *g_ring[SB_RING];   /* completed output lines, oldest..newest (ANSI kept) */
+static int   g_ring_n;          /* filled slots (caps at SB_RING) */
+static int   g_ring_head;       /* next slot to write (ring index) */
+static char  g_ring_part[16384];/* the line currently being accumulated */
+static int   g_ring_plen;
+static int   g_sb_capture;      /* tee ow() only while the bar owns the screen */
+static int   g_scroll;          /* lines scrolled up from live (0 = live/bottom) */
 static void disable_raw(void) {
     if (g_raw) { ws_("\x1b[?2004l"); tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_orig); g_raw = 0; }
 }
@@ -346,7 +362,7 @@ static void on_exit_restore(void) {
      * \x1b[?1049l: that runs in the restored PRIMARY screen, where a DECSTBM
      * reset homes the cursor to row 1 and the shell then overlaps the old
      * scrollback.  When the bar already tore down (the \\ path) do nothing here. */
-    if (g_sb_alt) { ws_("\x1b[r"); ws_("\x1b[?1007h"); ws_("\x1b[?1049l"); g_sb_alt = 0; }
+    if (g_sb_alt) { ws_("\x1b[r"); ws_("\x1b[?1006l\x1b[?1000l"); ws_("\x1b[?1007h"); ws_("\x1b[?1049l"); g_sb_alt = 0; }
     disable_raw();
 }
 
@@ -579,9 +595,11 @@ static void sb_region(void) {
  * quitting vim.  No in-place erasing to get wrong after a resize. */
 static void sb_teardown(void) {
     ws_("\x1b[r");                                      /* release the scroll region */
+    ws_("\x1b[?1006l\x1b[?1000l");                      /* stop reporting the wheel */
     ws_("\x1b[?1007h");                                 /* restore alternate-scroll to the terminal default */
     if (g_sb_alt) { ws_("\x1b[?1049l"); g_sb_alt = 0; } /* leave the alt screen -> original restored */
     ws_("\x1b[?25h");                                   /* cursor visible */
+    g_sb_capture = 0; g_scroll = 0; ring_clear();       /* drop the transcript with the bar */
 }
 /* repl.k calls this each prompt (and on \sb toggle). on=0 tears the footer down. */
 void am_ln_statusbar(int on, const char *panel, const char *info) {
@@ -598,12 +616,14 @@ void am_ln_statusbar(int on, const char *panel, const char *info) {
     snprintf(g_sb_panel, sizeof g_sb_panel, "%s", panel ? panel : "");
     if (!g_sb_on) {
         ws_("\x1b[?1049h");                              /* first enable: enter the alternate screen */
-        ws_("\x1b[?1007l");                              /* disable alternate-scroll: the trackpad/wheel
-                                                          * must NOT be translated into Up/Down arrows,
-                                                          * or scrolling up walks command history and
-                                                          * corrupts the fixed box.  The alt screen has
-                                                          * no scrollback, so the wheel is simply inert. */
+        ws_("\x1b[?1007l");                              /* disable alternate-scroll (wheel->arrows): we
+                                                          * handle the wheel ourselves for scroll-back */
+        ws_("\x1b[?1000h\x1b[?1006h");                   /* report the wheel (SGR mouse) so scroll-up can
+                                                          * page the internal transcript with the box
+                                                          * locked.  Shift bypasses it for text selection. */
         g_sb_alt = 1;
+        g_sb_capture = 1;                                /* start teeing ow() into the scroll-back ring */
+        ring_clear();
     }
     { static int wired = 0;                              /* watch for resizes while the bar is up */
       if (!wired) { struct sigaction sa; memset(&sa, 0, sizeof sa);
@@ -824,6 +844,81 @@ static void do_tab(LnState *l) {
 static char **g_pq; static int g_pq_n, g_pq_i;
 static int g_paste_folded;   /* the queued lines are a folded paste -> suppress per-line echo */
 static int g_paste_no;       /* running [Pasted text #N] counter */
+static char *g_paste_raw;    /* verbatim text of the last folded paste (for the Ctrl-V-Ctrl-V preview) */
+static int g_paste_raw_n;    /* its physical-line count */
+
+/* ---- scroll-back ring helpers (state declared up top) --------------------- */
+static void ring_push(const char *s, int n) {
+    char *d;
+    if (n < 0) n = 0;
+    d = (char *)malloc((size_t)n + 1);
+    if (!d) return;
+    memcpy(d, s, (size_t)n); d[n] = 0;
+    if (g_ring[g_ring_head]) free(g_ring[g_ring_head]);
+    g_ring[g_ring_head] = d;
+    g_ring_head = (g_ring_head + 1) % SB_RING;
+    if (g_ring_n < SB_RING) g_ring_n++;
+}
+/* logical index 0 = oldest retained line */
+static const char *ring_get(int idx) {
+    int start;
+    if (idx < 0 || idx >= g_ring_n) return "";
+    start = ((g_ring_head - g_ring_n) % SB_RING + SB_RING) % SB_RING;
+    return g_ring[(start + idx) % SB_RING];
+}
+static void ring_clear(void) {
+    int i; for (i = 0; i < SB_RING; i++) { free(g_ring[i]); g_ring[i] = NULL; }
+    g_ring_n = g_ring_head = g_ring_plen = 0; g_scroll = 0;
+}
+/* Called from m.c's ow() for every kernel stdout write. Splits on '\n' into
+ * ring lines; a bare '\r' (in-place redraw) restarts the current line. */
+void am_ln_sb_capture(const char *s, size_t n) {
+    size_t i;
+    if (!g_sb_capture) return;
+    for (i = 0; i < n; i++) {
+        char c = s[i];
+        if (c == '\n')      { ring_push(g_ring_part, g_ring_plen); g_ring_plen = 0; }
+        else if (c == '\r') { g_ring_plen = 0; }
+        else if (g_ring_plen < (int)sizeof g_ring_part - 1) g_ring_part[g_ring_plen++] = c;
+    }
+}
+/* Paint the scroll region (rows 1..h-SB_FOOT) from the ring at the current
+ * offset.  The footer rows are never touched, so the box stays locked; auto-wrap
+ * is off for the duration so an over-wide line truncates instead of spilling
+ * onto the box or scrolling the region. */
+static void sb_repaint_region(void) {
+    int rows = term_rows(), cols = term_cols(), rh = rows - SB_FOOT, i, bottom;
+    char seq[48];
+    if (rh < 1) return;
+    bottom = g_ring_n - 1 - g_scroll;         /* ring line shown on the region's last row */
+    ws_("\x1b\x37");                          /* save cursor */
+    ws_("\x1b[?7l");                          /* no auto-wrap while we paint */
+    for (i = 0; i < rh; i++) {
+        int line = bottom - (rh - 1 - i);
+        sprintf(seq, "\x1b[%d;1H\x1b[2K", i + 1); ws_(seq);
+        if (line >= 0 && line < g_ring_n) { const char *L = ring_get(line); wr(L, strlen(L)); ws_("\x1b[0m"); }
+    }
+    if (g_scroll && cols > 22) {              /* a dim "scrolled" hint, top-right of the region */
+        sprintf(seq, "\x1b[1;%dH", cols - 18); ws_(seq);
+        ws_(SB_DIM); ws_("\xe2\x96\xb2 scroll \xc2\xb7 end\xe2\x86\x93"); ws_(SB_RESET);
+    }
+    ws_("\x1b[?7h");                          /* restore auto-wrap for live output */
+    ws_("\x1b\x38");                          /* restore cursor */
+}
+static void sb_scroll_by(int delta) {
+    int rows = term_rows(), rh = rows - SB_FOOT, maxs;
+    if (!g_sb_on) return;
+    maxs = g_ring_n - rh; if (maxs < 0) maxs = 0;   /* can't scroll past the oldest retained line */
+    g_scroll += delta;
+    if (g_scroll < 0) g_scroll = 0;
+    if (g_scroll > maxs) g_scroll = maxs;
+    sb_repaint_region();
+}
+static void sb_scroll_reset(void) {           /* snap back to live and repaint the tail */
+    if (!g_scroll) return;
+    g_scroll = 0;
+    sb_repaint_region();
+}
 static void pq_clear(void){ while(g_pq_i<g_pq_n) free(g_pq[g_pq_i++]); free(g_pq); g_pq=NULL; g_pq_n=g_pq_i=0; }
 
 /* Net bracket depth a physical line adds, ignoring brackets inside "..." strings
@@ -878,6 +973,7 @@ static int read_paste(LnState *l) {
     char *comb = (char*)malloc(cl + n + 1);
     if (!comb) { free(p); return 0; }
     memcpy(comb, l->buf, cl); memcpy(comb + cl, p, n + 1); free(p);
+    free(g_paste_raw); g_paste_raw = strdup(comb);       /* keep a verbatim copy for the preview */
     pq_clear();
     int cap2 = 8, ns = 0; char **segs = (char**)malloc(cap2 * sizeof *segs);
     for (char *q = comb;;) {
@@ -911,15 +1007,52 @@ static int read_paste(LnState *l) {
             g_pq[g_pq_n++] = stmt;                        /* one logical statement (joined with spaces) */
         }
         g_paste_folded = 1;
+        g_paste_raw_n = ns;                              /* remember line count for the preview header */
         char ph[64];
         snprintf(ph, sizeof ph, "[Pasted text #%d +%d lines]", ++g_paste_no, ns);
         set_line(l, ph);
         free(segs); free(comb);
         return 0;    /* keep editing: the user sees the placeholder, submits on Enter */
     }
+    free(g_paste_raw); g_paste_raw = NULL; g_paste_raw_n = 0;  /* single-line: nothing to preview */
     set_line(l, segs[0]);
     free(segs); free(comb);
     return 0;        /* single-line paste -> just drop it into the edit buffer */
+}
+
+/* Ctrl-V pressed twice: reveal the last folded paste in full, ENLARGED via
+ * DECDWL (double-width line, \x1b#6) so even a big block is easy to read.  In
+ * status-bar mode the preview scrolls inside the region above the fixed box;
+ * otherwise it prints above the prompt.  Editing continues afterwards -- the
+ * placeholder line is redrawn untouched. */
+static void paste_preview(LnState *l) {
+    int rows = term_rows(), i, shown = 0, cap;
+    char *s, *nl; char seq[32];
+    if (!g_paste_raw || !g_paste_raw_n) { ws_("\x07"); return; }   /* nothing to show -> bell */
+    cap = g_sb_on ? rows - SB_FOOT - 2 : rows - 2;                 /* leave room on screen */
+    if (cap < 3) cap = 3;
+    if (g_sb_on) { sprintf(seq, "\x1b[%d;1H", rows - SB_FOOT); ws_(seq); }
+    else ws_("\r\n");
+    ws_(SB_DIM);
+    { char hdr[64]; snprintf(hdr, sizeof hdr, "Pasted text #%d  (%d lines)", g_paste_no, g_paste_raw_n);
+      ws_(hdr); }
+    ws_(SB_RESET); ws_("\r\n");
+    for (s = g_paste_raw; s && *s; ) {
+        nl = strchr(s, '\n');
+        int len = nl ? (int)(nl - s) : (int)strlen(s);
+        if (shown >= cap) {                                       /* ran out of room */
+            char more[48]; snprintf(more, sizeof more, "... (%d more lines)", g_paste_raw_n - shown);
+            ws_(SB_DIM); ws_(more); ws_(SB_RESET); ws_("\r\n");
+            break;
+        }
+        ws_("\x1b#6");                                            /* DECDWL: enlarge this row (2x wide) */
+        if (len) wr(s, (size_t)len);
+        ws_("\r\n");                                              /* scroll the region / feed a line */
+        shown++;
+        if (!nl) break; s = nl + 1;
+    }
+    if (g_sb_on) sb_chrome();                                     /* restore box borders + info line */
+    refresh(l);                                                   /* redraw the input (placeholder) */
 }
 
 char *am_ln_readline(const char *prompt) {
@@ -936,6 +1069,7 @@ char *am_ln_readline(const char *prompt) {
     if (g_sb_on) sb_chrome();                /* draw the box + info line before the first keystroke */
     refresh(&l);
 
+    int cv_armed = 0;                        /* one Ctrl-V seen; a second one triggers the paste preview */
     for (;;) {
         char c;
         ssize_t k;
@@ -960,10 +1094,15 @@ char *am_ln_readline(const char *prompt) {
 
         /* Any keystroke other than an explicit accept discards the ghost. */
         if (l.ghost[0] && c != 9 && c != 6 && c != 27) l.ghost[0] = 0;
+        if (c != 22) cv_armed = 0;               /* the Ctrl-V pair must be consecutive */
 
         switch (c) {
         case 9:                                  /* Tab */
             do_tab(&l);
+            continue;
+        case 22:                                 /* Ctrl-V: press twice to preview the last paste */
+            if (cv_armed) { cv_armed = 0; paste_preview(&l); }
+            else cv_armed = 1;
             continue;
         case 13: case 10:                        /* Enter */
             l.ghost[0] = 0;
@@ -1010,7 +1149,17 @@ char *am_ln_readline(const char *prompt) {
             if (read(STDIN_FILENO, s, 1) != 1) break;
             if (read(STDIN_FILENO, s + 1, 1) != 1) break;
             if (s[0] == '[') {
-                if (s[1] >= '0' && s[1] <= '9') {
+                if (s[1] == '<') {                          /* SGR mouse report: \x1b[<b;x;y(M|m) */
+                    int pb = 0; char t = 0;
+                    while (read(STDIN_FILENO, &t, 1) == 1 && t >= '0' && t <= '9') pb = pb*10 + (t-'0');
+                    while (t && t != 'M' && t != 'm') { if (read(STDIN_FILENO, &t, 1) != 1) break; }
+                    if (g_sb_on) {                          /* scroll the transcript, box stays locked */
+                        if (pb == 64)      sb_scroll_by(+3);   /* wheel up   -> older output */
+                        else if (pb == 65) sb_scroll_by(-3);   /* wheel down -> newer output */
+                    }
+                    l.ghost[0] = 0;
+                    continue;                               /* the wheel never edits the line */
+                } else if (s[1] >= '0' && s[1] <= '9') {
                     /* accumulate the numeric parameter so multi-digit codes work:
                        200~/201~ are bracketed paste, 3~ Delete, 1~/7~ Home, 4~/8~ End */
                     int num = s[1] - '0'; char t = 0;
@@ -1054,6 +1203,7 @@ char *am_ln_readline(const char *prompt) {
             ins(&l, &c, 1);
             break;
         }
+        if (g_sb_on) sb_scroll_reset();          /* any edit key snaps the view back to live */
         refresh(&l);
     }
 
@@ -1066,10 +1216,17 @@ done:
          * INSIDE the region, above the fixed box+info footer. */
         char dseq[48]; int rows = term_rows();
         LnState e;
+        g_scroll = 0;                                                 /* commit at the live tail */
         sprintf(dseq, "\x1b[%d;1H", rows - SB_FOOT); ws_(dseq);       /* row h-4 */
         ws_(SB_ACCENT); if (l.plen) wr(l.prompt, l.plen); ws_(SB_RESET);
         wr(l.buf, l.len);
         ws_("\r\n");                                                  /* scroll the region up */
+        {   /* mirror the echoed prompt+command into the scroll-back transcript */
+            char *ce = (char *)malloc(strlen(SB_ACCENT) + l.plen + strlen(SB_RESET) + l.len + 1);
+            if (ce) { ce[0] = 0; strcat(ce, SB_ACCENT); if (l.plen) strncat(ce, l.prompt, l.plen);
+                      strcat(ce, SB_RESET); strncat(ce, l.buf, l.len);
+                      ring_push(ce, (int)strlen(ce)); free(ce); }
+        }
         memset(&e, 0, sizeof e); e.prompt = l.prompt; e.plen = l.plen;
         sb_input(&e);                                                 /* redraw the box empty */
         g_input_plen = (int)l.plen;

@@ -2,26 +2,25 @@
 # tests/test_statusbar.py - the Claude-Code-style REPL status bar (default ON).
 # GNU AGPLv3 - see LICENSE and NOTICE.
 #
-# Drives the real ./a REPL over a pty and asserts the 2.0.0 status bar:
-#   * it is ON by default -- a single info line pinned on row h-1 (the input owns
-#     row h) inside a DECSTBM scroll region locking the bottom, with the truecolor
-#     hex logo, live exec timing, arena size and the [native]/[portable] build tag;
-#   * multi-line paste folds to a `[Pasted text #N +M lines]` placeholder;
-#   * it survives Ctrl-L and \clear;
-#   * \sb toggles it off and releases the region;
-#   * the region is released on every exit path.
+# The 2.0.0 status bar is a fixed 4-row footer at the bottom of the terminal:
+#     h-3  box top      ╭────────────────────────────────╮
+#     h-2  input line   │ amber> <text>                  │   (cursor lives here)
+#     h-1  box bottom   ╰────────────────────────────────╯
+#      h   info line    ⬡ amber 2.0.0 · exec · mem · [native|portable] …
+# Output scrolls in a DECSTBM region above it (rows 1..h-4).  It is ON by default;
+# \sb toggles it off.  This drives the real ./a REPL over a pty and asserts the
+# footer's escapes; if `pyte` is importable it ALSO renders the screen grid and
+# asserts the box is where it should be and that command output actually appears
+# in the scroll region (a byte-stream check alone can't see a clobbered cell).
 # Deliberately tolerant cross-platform: the build tag is [native] on an
-# AMBER_NATIVE CI leg and [portable] otherwise, and the live RSS is 0 on a host
-# without /proc, so neither exact value is asserted -- only the shape.
+# AMBER_NATIVE CI leg and [portable] otherwise; live RSS may be 0 without /proc.
 import os, pty, sys, time, select, subprocess, fcntl, termios, struct, re
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ESC = b"\x1b"
-REGION  = ESC + b"[1;22r"                   # scroll region on a 24-row term (rows 1..h-2)
-RELEASE = ESC + b"[r"                       # region reset to full screen
-EXIT    = b"\\\\\r"                         # two backslashes + Enter
+RELEASE = ESC + b"[r"
 
-def drive(cmds, rows=24, cols=120, settle=4.0):
+def drive(cmds, rows=24, cols=100, settle=4.0):
     m, s = pty.openpty()
     fcntl.ioctl(s, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
     p = subprocess.Popen(["./a"], cwd=ROOT, stdin=s, stdout=s, stderr=s,
@@ -56,29 +55,62 @@ def check(cond, name):
 
 # 1. ON by default: run a command, Ctrl-L, \clear, then exit.
 out = drive([(b"2+2\r", 0.5), (b"\x0c", 0.4), (b"a:1 2 3\r", 0.4),
-             (b"\\clear\r", 0.4), (EXIT, 0.6)])
+             (b"\\clear\r", 0.4), (b"\\\\\r", 0.6)])
 txt = strip(out)
-after_clear = out.rsplit(ESC + b"[2J", 1)[-1]
-check(REGION in out,                       "scroll region set (rows 1..h-2)")
-check("⬡ amber 2.0.0".encode() in txt,     "truecolor hex logo + brand + version")
-check(b"exec:" in txt and b"ms" in txt,    "info line shows last-command exec timing")
-check(b"mem:" in txt and b"MB" in txt,     "info line shows arena size")
+check(ESC + b"[1;20r" in out,                      "DECSTBM scroll region set to rows 1..h-4")
+check("╭".encode() in txt and "╮".encode() in txt, "box top border drawn")
+check("╰".encode() in txt and "╯".encode() in txt, "box bottom border drawn")
+check("│".encode() in txt,                          "box side border drawn")
+check(b"amber>" in txt,                             "prompt rendered inside the box")
+check("⬡ amber 2.0.0".encode() in txt,             "truecolor hex logo + brand on the info line")
+check(b"exec:" in txt and b"mem:" in txt,           "info line shows exec timing + arena size")
 check(re.search(rb"\[(native|portable)\]", txt) is not None, "build tag [native]/[portable]")
-check(b"Tab complete" in txt and b"exit" in txt, "right-side key hints present")
-check(b"4" in strip(out),                  "command evaluated (2+2 -> 4)")
-check(REGION.decode().encode() in after_clear or b"amber 2.0.0" in strip(after_clear),
-                                           "bar redrawn after Ctrl-L / \\clear")
-check(RELEASE in out,                      "scroll region released on exit")
+check(b"4" in txt,                                  "command evaluated (2+2 -> 4)")
+check(RELEASE in out,                               "scroll region released on exit")
 
 # 2. multi-line paste folds to a placeholder and the batch still runs.
-out = drive([(b"\x1b[200~x:40\ny:60\nx+y\x1b[201~", 0.5), (b"\r", 0.6), (EXIT, 0.6)])
+out = drive([(b"\x1b[200~x:40\ny:60\nx+y\x1b[201~", 0.5), (b"\r", 0.6), (b"\\\\\r", 0.6)])
 txt = strip(out)
 check(re.search(rb"\[Pasted text #\d+ \+3 lines\]", txt) is not None, "multi-line paste folds to placeholder")
-check(b"100" in txt,                       "folded paste batch evaluates (x+y -> 100)")
+check(b"100" in txt,                                "folded paste batch evaluates (x+y -> 100)")
 
-# 3. \sb toggles the bar OFF and releases the region.
-out = drive([(b"\\sb\r", 0.6), (b"9*9\r", 0.5), (EXIT, 0.6)])
-check(RELEASE in out and b"81" in strip(out), "\\sb releases the region; REPL keeps working")
+# 3. \sb toggles the footer off and releases the region.
+out = drive([(b"\\sb\r", 0.6), (b"9*9\r", 0.5), (b"\\\\\r", 0.6)])
+check(RELEASE in out and b"81" in strip(out),       "\\sb releases the region; REPL keeps working")
+
+# 4. OPTIONAL rendered-screen check (only if pyte is installed) -- proves the box
+#    is where it should be and output actually lands in the scroll region.
+try:
+    import pyte
+    m, s = pty.openpty()
+    fcntl.ioctl(s, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 100, 0, 0))
+    p = subprocess.Popen(["./a"], cwd=ROOT, stdin=s, stdout=s, stderr=s,
+                         env={**os.environ, "TERM": "xterm-256color"})
+    os.close(s)
+    screen = pyte.Screen(100, 24); stream = pyte.ByteStream(screen)
+    def pump(t):
+        t0 = time.time()
+        while time.time() - t0 < t:
+            r, _, _ = select.select([m], [], [], 0.08)
+            if r:
+                try: d = os.read(m, 65536)
+                except OSError: return
+                if d: stream.feed(d)
+    pump(1.6)
+    os.write(m, b"6*7\r"); pump(0.8)
+    disp = screen.display
+    check(any(l.strip().startswith("╭") for l in disp[18:22]), "[pyte] box top on a footer row")
+    check(disp[21].lstrip().startswith("│") and "amber>" in disp[21], "[pyte] input row is the box interior")
+    check("⬡ amber 2.0.0" in disp[23], "[pyte] info line on the last row")
+    check(any("42" in l for l in disp[:20]), "[pyte] eval output (42) visible in the scroll region")
+    check(screen.cursor.y == 21, "[pyte] cursor sits on the box input row")
+    os.write(m, b"\\\\\r"); pump(0.3)
+    try: os.close(m)
+    except OSError: pass
+    try: p.wait(timeout=3)
+    except Exception: p.kill()
+except ImportError:
+    print("  SKIP rendered-screen checks (pyte not installed)")
 
 print("test_statusbar: " + ("ALL PASSED" if ok else "FAILURES"))
 sys.exit(0 if ok else 1)

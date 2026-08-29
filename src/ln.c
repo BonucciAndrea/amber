@@ -416,6 +416,23 @@ static void on_winch(int s) { (void)s; g_winch = 1; }
 #define SB_ACCENT  "\x1b[1;38;2;255;176;0m"      /* the hex logo + `amber x.y.z` */
 #define SB_RESET   "\x1b[0m"
 
+/* Claude-Code-style footer: a bordered input box + a dim info line beneath it,
+ * fixed at the bottom while output scrolls above.  Four rows, top to bottom:
+ *     h-3  box top      ╭──────────────────────────────────╮
+ *     h-2  input line   │ amber> <text>                    │   (cursor lives here)
+ *     h-1  box bottom   ╰──────────────────────────────────╯
+ *      h   info line    ⬡ amber 2.0.0 · exec · mem · [build]        \ help · …
+ * The DECSTBM scroll region is rows 1..h-4.  Box glyphs are standard Unicode
+ * box-drawing characters (U+2500 family), so any monospace terminal font aligns
+ * them; no Nerd Font is required. */
+#define SB_FOOT 4                                 /* footer height in rows */
+#define BOX_TL "\xe2\x95\xad"                     /* ╭ */
+#define BOX_TR "\xe2\x95\xae"                     /* ╮ */
+#define BOX_BL "\xe2\x95\xb0"                     /* ╰ */
+#define BOX_BR "\xe2\x95\xaf"                     /* ╯ */
+#define BOX_H  "\xe2\x94\x80"                     /* ─ */
+#define BOX_V  "\xe2\x94\x82"                     /* │ */
+
 /* Markers repl.k embeds in the panel string; ln.c fills / handles them:
  *   0x01 toggle the amber accent   0x02 -> process RSS in MB   0x04 -> build kind
  *   0x03 split point: everything after is right-aligned to the terminal's edge  */
@@ -471,8 +488,16 @@ static int sb_expand(const char *tmpl, char *out, size_t cap) {
     #undef SBPUT
     return sb_disp(out);
 }
-/* paint the info panel on row h-1: left segments, right-aligned shortcuts */
-static void sb_panel(void) {
+/* one horizontal box-border row (top or bottom), spanning the full width */
+static void sb_border(int row, const char *lc, const char *rc) {
+    char seq[32]; int cols = term_cols(), i;
+    sprintf(seq, "\x1b[%d;1H", row); ws_(seq);
+    ws_(SB_DIM); ws_(lc);
+    for (i = 0; i < cols - 2; i++) ws_(BOX_H);
+    ws_(rc); ws_(SB_RESET);
+}
+/* the dim info line on row h: left segments + right-aligned shortcuts */
+static void sb_infoline(void) {
     int rows = term_rows(), cols = term_cols();
     char left[640], right[320], seq[32];
     const char *split = strchr(g_sb_panel, 3);
@@ -484,8 +509,8 @@ static void sb_panel(void) {
         lw = sb_expand(lt, left, sizeof left);
         rw = sb_expand(split + 1, right, sizeof right);
     } else { lw = sb_expand(g_sb_panel, left, sizeof left); right[0] = 0; rw = 0; }
-    sprintf(seq, "\x1b[%d;1H", rows - 1); ws_(seq);
-    ws_(SB_BG); ws_(SB_DIM); ws_("\x1b[K");            /* clear the row to the panel bg */
+    sprintf(seq, "\x1b[%d;1H", rows); ws_(seq);
+    ws_(SB_DIM); ws_("\x1b[K");                        /* dim text on the normal background */
     ws_(left);
     pad = cols - lw - rw;
     if (pad > 0) { char sp[256]; int k = pad < (int)sizeof sp ? pad : (int)sizeof sp - 1;
@@ -493,22 +518,69 @@ static void sb_panel(void) {
     if (rw && lw + rw <= cols) ws_(right);
     ws_(SB_RESET);
 }
+/* the box interior on row h-2:  │ <prompt><input> ...pad... │  -- leaves the
+ * cursor inside the box at the caret; scrolls a long line horizontally. */
+static void sb_input(LnState *l) {
+    char seq[64]; int cols = term_cols(), rows = term_rows();
+    int inner = cols - 4;                             /* text cols between "│ " and " │" */
+    size_t start = 0, show, used, plen = l->plen;
+    if (inner < 8) inner = 8;
+    g_input_plen = (int)plen;
+    if ((int)plen > inner - 2) plen = 0;              /* pathologically narrow width */
+    show = l->len;
+    while ((int)(plen + (l->pos - start)) >= inner) start++;      /* keep caret visible */
+    if ((int)(plen + (show - start)) > inner) show = start + ((size_t)inner - plen);
+    sprintf(seq, "\x1b[%d;1H", rows - 2); ws_(seq);
+    ws_(SB_DIM); ws_(BOX_V); ws_(SB_RESET); ws_(" ");            /* │ + space (cols 1-2) */
+    if (plen) wr(l->prompt, plen);
+    wr(l->buf + start, show - start);
+    used = plen + (show - start);
+    if (l->ghost[0] && l->pos == l->len) {                        /* dim autosuggestion */
+        size_t room = (size_t)inner - used, gl = strlen(l->ghost);
+        if (gl > room) gl = room;
+        if (gl) { ws_("\x1b[2m"); wr(l->ghost, gl); ws_(SB_RESET); used += gl; }
+    }
+    { int p = inner - (int)used; char sp[300];                   /* pad the text area */
+      if (p < 0) p = 0;
+      if (p > (int)sizeof sp - 1) p = (int)sizeof sp - 1;
+      memset(sp, ' ', (size_t)p); sp[p] = 0; ws_(sp); }
+    ws_(" "); ws_(SB_DIM); ws_(BOX_V); ws_(SB_RESET);            /* space + │ (cols-1, cols) */
+    sprintf(seq, "\x1b[%d;%dH", rows - 2, 3 + (int)(plen + (l->pos - start)));
+    ws_(seq);                                                    /* caret inside the box */
+}
+/* draw the static chrome (both borders + the info line), cursor-neutral */
+static void sb_chrome(void) {
+    int rows = term_rows();
+    ws_("\x1b\x37");                                  /* DECSC: save cursor */
+    sb_border(rows - 3, BOX_TL, BOX_TR);
+    sb_border(rows - 1, BOX_BL, BOX_BR);
+    sb_infoline();
+    ws_("\x1b\x38");                                  /* DECRC: restore cursor */
+}
 static void sb_region(void) {
     char seq[32]; int rows = term_rows(); g_sb_rows = rows;
-    sprintf(seq, "\x1b[1;%dr", rows - 2); ws_(seq);    /* output scrolls in rows 1..h-2 */
+    sprintf(seq, "\x1b[1;%dr", rows - SB_FOOT); ws_(seq);   /* output scrolls in rows 1..h-4 */
 }
-/* repl.k calls this each prompt (and on \sb toggle). on=0 tears the panel down. */
+/* Erase the 4-row footer (box + info line) and release the scroll region. */
+static void sb_teardown(void) {
+    char seq[64]; int rows = g_sb_rows ? g_sb_rows : term_rows(), r;
+    ws_("\x1b[r");                                      /* release the scroll region */
+    for (r = rows - SB_FOOT + 1; r <= rows; r++) {     /* wipe every footer row */
+        sprintf(seq, "\x1b[%d;1H\x1b[2K", r); ws_(seq);
+    }
+    sprintf(seq, "\x1b[%d;1H", rows - SB_FOOT); ws_(seq);
+    ws_("\x1b[?25h");                                   /* cursor visible */
+}
+/* repl.k calls this each prompt (and on \sb toggle). on=0 tears the footer down. */
 void am_ln_statusbar(int on, const char *panel, const char *info) {
-    (void)info;                                         /* single-panel layout: input owns row h */
+    (void)info;
+    /* Only a real terminal gets the footer.  A pipe, a redirect, a dumb TERM or
+     * AMBER_NO_EDIT=1 uses the plain prompt, so scripted/piped callers never see
+     * box-drawing escapes in their output. */
+    if (!am_ln_interactive()) return;
     spin_stop();                                         /* an update means evaluation finished */
     if (!on) {
-        if (g_sb_on) {
-            char seq[48]; int rows = g_sb_rows ? g_sb_rows : term_rows();
-            g_sb_on = 0;
-            ws_("\x1b[r");                               /* release the scroll region */
-            sprintf(seq, "\x1b[%d;1H\x1b[K\x1b[%d;1H\x1b[K", rows - 1, rows); ws_(seq);
-            ws_("\x1b[?25h");                            /* cursor visible */
-        }
+        if (g_sb_on) { g_sb_on = 0; sb_teardown(); }
         return;
     }
     snprintf(g_sb_panel, sizeof g_sb_panel, "%s", panel ? panel : "");
@@ -517,7 +589,7 @@ void am_ln_statusbar(int on, const char *panel, const char *info) {
           sa.sa_handler = on_winch; sigaction(SIGWINCH, &sa, NULL); wired = 1; } }
     if (!g_sb_on || term_rows() != g_sb_rows) sb_region();  /* first enable, or a resize */
     g_sb_on = 1;
-    sb_panel();
+    sb_chrome();
 }
 
 /* ---- execution spinner (status-bar mode only) ----------------------------
@@ -538,7 +610,9 @@ static void spin_tick(int sig) {
     g_spin_frame = (g_spin_frame + 1) % 10;
 }
 static void spin_start(void) {
-    int i, row = g_sb_rows ? g_sb_rows : term_rows(), col = g_input_plen + 1;
+    /* draw the braille frame inside the box, just past the prompt (row h-2, the
+     * input row; col 3 clears the "│ " border + a space, then g_input_plen). */
+    int i, row = (g_sb_rows ? g_sb_rows : term_rows()) - 2, col = g_input_plen + 3;
     for (i = 0; i < 10; i++)
         snprintf(g_spin_seq[i], sizeof g_spin_seq[i], "\x1b[s\x1b[%d;%dH%s%s%s\x1b[u",
                  row, col, SB_ACCENT, SPIN[i], SB_RESET);
@@ -549,20 +623,21 @@ static void spin_start(void) {
       it.it_interval = it.it_value; setitimer(ITIMER_REAL, &it, NULL); }
 }
 static void spin_stop(void) {
-    struct itimerval it; char seq[24];
+    struct itimerval it; char seq[40];
     if (!g_spin_on) return;
     g_spin_on = 0;
     memset(&it, 0, sizeof it); setitimer(ITIMER_REAL, &it, NULL);
     signal(SIGALRM, SIG_IGN);
-    snprintf(seq, sizeof seq, "\x1b[%d;%dH ", g_sb_rows ? g_sb_rows : term_rows(), g_input_plen + 1);
-    (void)!write(STDOUT_FILENO, seq, strlen(seq));       /* erase the spinner cell */
+    snprintf(seq, sizeof seq, "\x1b[%d;%dH ", (g_sb_rows ? g_sb_rows : term_rows()) - 2, g_input_plen + 3);
+    (void)!write(STDOUT_FILENO, seq, strlen(seq));       /* erase the spinner cell in the box */
 }
 
 static void refresh(LnState *l) {
     char seq[64];
     size_t start = 0, show, plen = l->plen;
     size_t cols = (size_t)(l->cols = term_cols());
-    int rows = term_rows();
+
+    if (g_sb_on) { sb_input(l); return; }       /* box interior + caret; chrome is already up */
 
     g_input_plen = (int)plen;                   /* remember for the spinner column */
     /* Horizontal scroll: keep the cursor visible on one physical line. */
@@ -571,8 +646,7 @@ static void refresh(LnState *l) {
     while (plen + (l->pos - start) >= cols - 1) start++;
     if (plen + (show - start) >= cols - 1) show = start + (cols - 1 - plen);
 
-    if (g_sb_on) { sprintf(seq, "\x1b[%d;1H", rows); ws_(seq); }  /* input is pinned to row h */
-    else ws_("\r");
+    ws_("\r");
     if (plen) wr(l->prompt, plen);
     wr(l->buf + start, show - start);
     if (l->ghost[0] && l->pos == l->len) {
@@ -582,10 +656,8 @@ static void refresh(LnState *l) {
         if (gl) { ws_("\x1b[2m"); wr(l->ghost, gl); ws_("\x1b[0m"); }
     }
     ws_("\x1b[0K");
-    if (g_sb_on) sprintf(seq, "\x1b[%d;%dH", rows, (int)(plen + (l->pos - start)) + 1);
-    else         sprintf(seq, "\r\x1b[%dC", (int)(plen + (l->pos - start)));
+    sprintf(seq, "\r\x1b[%dC", (int)(plen + (l->pos - start)));
     ws_(seq);
-    if (g_sb_on) sb_panel();   /* keep the info panel (row h-1) intact after every redraw */
 }
 
 static void ins(LnState *l, const char *s, size_t n) {
@@ -830,6 +902,7 @@ char *am_ln_readline(const char *prompt) {
     l.hidx   = g_hist_n;
 
     if (enable_raw() < 0) return NULL;
+    if (g_sb_on) sb_chrome();                /* draw the box + info line before the first keystroke */
     refresh(&l);
 
     for (;;) {
@@ -837,7 +910,7 @@ char *am_ln_readline(const char *prompt) {
         ssize_t k;
         if (g_winch) {                       /* terminal resized: recompute the region + repaint */
             g_winch = 0;
-            if (g_sb_on) { g_sb_rows = 0; sb_region(); }
+            if (g_sb_on) { g_sb_rows = 0; sb_region(); sb_chrome(); }
             refresh(&l);
         }
         k = read(STDIN_FILENO, &c, 1);
@@ -877,7 +950,10 @@ char *am_ln_readline(const char *prompt) {
         case 21: memmove(l.buf, l.buf + l.pos, l.len - l.pos); /* Ctrl-U */
                  l.len -= l.pos; l.pos = 0; l.buf[l.len] = 0; break;
         case 23: kill_word(&l); break;                          /* Ctrl-W */
-        case 12: ws_("\x1b[H\x1b[2J"); break;                   /* Ctrl-L */
+        case 12:                                                /* Ctrl-L: clear upper area, keep footer */
+            ws_("\x1b[H\x1b[2J");
+            if (g_sb_on) { sb_region(); sb_chrome(); }
+            break;
         case 16: case 14: {                                     /* Ctrl-P/N */
             int up = (c == 16);
             if (!g_hist_n) break;
@@ -943,17 +1019,21 @@ char *am_ln_readline(const char *prompt) {
 done:
     disable_raw();
     if (g_sb_on) {
-        /* Commit the line to the scrolling transcript (rows 1..h-2), then leave a
-         * bare `amber> ` on the pinned input row and spin while repl.k evaluates. */
+        /* Commit the typed line to the scrolling transcript (region bottom = h-4),
+         * empty the box, then spin while repl.k evaluates.  The cursor is parked on
+         * the region's last row so the output repl.k is about to print scrolls
+         * INSIDE the region, above the fixed box+info footer. */
         char dseq[48]; int rows = term_rows();
-        sprintf(dseq, "\x1b[%d;1H", rows - 2); ws_(dseq);
+        LnState e;
+        sprintf(dseq, "\x1b[%d;1H", rows - SB_FOOT); ws_(dseq);       /* row h-4 */
         ws_(SB_ACCENT); if (l.plen) wr(l.prompt, l.plen); ws_(SB_RESET);
         wr(l.buf, l.len);
-        ws_("\r\n");
-        sprintf(dseq, "\x1b[%d;1H\x1b[K", rows); ws_(dseq);
-        if (l.plen) wr(l.prompt, l.plen);
+        ws_("\r\n");                                                  /* scroll the region up */
+        memset(&e, 0, sizeof e); e.prompt = l.prompt; e.plen = l.plen;
+        sb_input(&e);                                                 /* redraw the box empty */
         g_input_plen = (int)l.plen;
-        spin_start();
+        sprintf(dseq, "\x1b[%d;1H", rows - SB_FOOT); ws_(dseq);       /* park cursor in the region */
+        spin_start();                                                 /* braille spinner inside the box */
     } else {
         ws_("\r\n");
     }

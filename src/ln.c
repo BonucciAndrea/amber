@@ -34,8 +34,11 @@
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <signal.h>
+#include <sys/time.h>
 #if defined(__APPLE__)
 #include <sys/sysctl.h>
+#include <mach/mach.h>
 #endif
 #endif
 
@@ -398,73 +401,178 @@ typedef struct {
  * REPL and all terminal tests are byte-for-byte unchanged. In a content string,
  * byte 0x01 toggles the accent colour, so repl.k can accent single segments. */
 static int  g_sb_on = 0, g_sb_rows = 0;
-static char g_sb_main[512], g_sb_info[512];
+static char g_sb_panel[640];                    /* the info-panel template (markers below) */
+static volatile sig_atomic_t g_spin_on = 0;     /* spinner active during an evaluation */
+static int  g_spin_frame = 0;
+static int  g_input_plen = 0;                    /* prompt width, for the spinner's column */
+static volatile sig_atomic_t g_winch = 0;        /* SIGWINCH: terminal was resized */
+static void spin_stop(void);                     /* defined below; stops + erases the spinner */
+static void on_winch(int s) { (void)s; g_winch = 1; }
 
-/* Truecolour: a warm muted panel + Claude's coral accent. Terminals that only
- * do 256 colours fall back to the nearest cell; the layout is unaffected. */
-#define SB_MAIN_BG "\x1b[48;2;38;34;30m"
-#define SB_INFO_BG "\x1b[48;2;28;25;22m"
-#define SB_DIM     "\x1b[38;2;170;160;148m"
-#define SB_ACCENT  "\x1b[1;38;2;217;119;87m"
+/* Truecolour: a warm-muted panel + Amber's own hex-logo amber (#FFB020). Terminals
+ * that only do 256 colours fall back to the nearest cell; the layout is unaffected. */
+#define SB_BG      "\x1b[48;2;30;27;23m"
+#define SB_DIM     "\x1b[38;2;150;142;130m"
+#define SB_ACCENT  "\x1b[1;38;2;255;176;0m"      /* the hex logo + `amber x.y.z` */
+#define SB_RESET   "\x1b[0m"
 
-static void sb_row(int row, const char *bg, const char *text) {
-    char seq[32]; int col = 0, cols = term_cols(), acc = 0;
-    sprintf(seq, "\x1b[%d;1H", row); ws_(seq);         /* absolute position, col 1 */
-    ws_(bg); ws_(SB_DIM);
-    for (const char *p = text; *p && col < cols; p++) {
-        if ((unsigned char)*p == 1) { acc = !acc; ws_(acc ? SB_ACCENT : "\x1b[22m" SB_DIM); continue; }
-        if ((unsigned char)*p == 2) {                         /* live workspace-data digest */
-            char sb[512]; am_schema_brief(sb, sizeof sb);
-            const char *q = sb[0] ? sb : "workspace empty";
-            for (; *q && col < cols; q++) { wr(q, 1); col++; }
-            continue;
-        }
-        wr(p, 1); col++;
-    }
-    ws_(bg); ws_("\x1b[K"); ws_("\x1b[0m");            /* pad to EOL with the panel bg */
+/* Markers repl.k embeds in the panel string; ln.c fills / handles them:
+ *   0x01 toggle the amber accent   0x02 -> process RSS in MB   0x04 -> build kind
+ *   0x03 split point: everything after is right-aligned to the terminal's edge  */
+
+static long sb_rss_mb(void) {                    /* real resident footprint of the process */
+#if defined(__linux__)
+    FILE *f = fopen("/proc/self/statm", "r");
+    long total = 0, res = 0;
+    if (!f) return 0;
+    if (fscanf(f, "%ld %ld", &total, &res) != 2) res = 0;
+    fclose(f);
+    return (res * (sysconf(_SC_PAGESIZE) / 1024)) / 1024;   /* pages -> KB -> MB */
+#elif defined(__APPLE__)
+    struct mach_task_basic_info info;
+    mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
+    if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO,
+                  (task_info_t)&info, &count) == KERN_SUCCESS)
+        return (long)(info.resident_size / (1024 * 1024));   /* bytes -> MB */
+    return 0;
+#else
+    return 0;
+#endif
 }
-static void sb_paint(void) {
-    int rows = term_rows();
-    ws_("\x1b[s");                                     /* save cursor */
-    sb_row(rows - 1, SB_MAIN_BG, g_sb_main);
-    sb_row(rows,     SB_INFO_BG, g_sb_info);
-    ws_("\x1b[u");                                     /* restore cursor */
+const char *simd_backend(void);                  /* src/simd.c */
+static const char *sb_build_kind(void) {
+    /* the active SIMD backend reflects the build: -march=native compiles the AVX2
+     * (x86) / NEON (arm) kernels; the portable build stays on scalar or SSE vec128. */
+    const char *b = simd_backend();
+    return (b && (strcmp(b, "avx2") == 0 || strcmp(b, "neon") == 0)) ? "native" : "portable";
+}
+/* display columns of a UTF-8 string, ignoring ANSI escapes and counting one column
+ * per UTF-8 lead byte (correct for the BMP glyphs used here: hex, arrows, mid-dot). */
+static int sb_disp(const char *s) {
+    int w = 0;
+    for (const unsigned char *p = (const unsigned char *)s; *p; p++) {
+        if (*p == 0x1b) { while (*p && *p != 'm') p++; if (!*p) break; continue; }
+        if ((*p & 0xc0) != 0x80) w++;
+    }
+    return w;
+}
+/* expand markers in a template into rendered bytes (with accent ANSI); returns width */
+static int sb_expand(const char *tmpl, char *out, size_t cap) {
+    size_t o = 0; int acc = 0; char nb[32];
+    #define SBPUT(str) do{ const char *q=(str); while(*q && o+1<cap) out[o++]=*q++; }while(0)
+    for (const char *p = tmpl; *p; p++) {
+        if ((unsigned char)*p == 1) { acc = !acc; SBPUT(acc ? SB_ACCENT : "\x1b[22m" SB_DIM); continue; }
+        if ((unsigned char)*p == 2) { snprintf(nb, sizeof nb, "%ld", sb_rss_mb()); SBPUT(nb); continue; }
+        if ((unsigned char)*p == 4) { SBPUT(sb_build_kind()); continue; }
+        if (o + 1 < cap) out[o++] = *p;
+    }
+    if (acc) SBPUT("\x1b[22m" SB_DIM);
+    out[o] = 0;
+    #undef SBPUT
+    return sb_disp(out);
+}
+/* paint the info panel on row h-1: left segments, right-aligned shortcuts */
+static void sb_panel(void) {
+    int rows = term_rows(), cols = term_cols();
+    char left[640], right[320], seq[32];
+    const char *split = strchr(g_sb_panel, 3);
+    int lw, rw, pad;
+    if (split) {
+        char lt[640]; size_t n = (size_t)(split - g_sb_panel);
+        if (n >= sizeof lt) n = sizeof lt - 1;
+        memcpy(lt, g_sb_panel, n); lt[n] = 0;
+        lw = sb_expand(lt, left, sizeof left);
+        rw = sb_expand(split + 1, right, sizeof right);
+    } else { lw = sb_expand(g_sb_panel, left, sizeof left); right[0] = 0; rw = 0; }
+    sprintf(seq, "\x1b[%d;1H", rows - 1); ws_(seq);
+    ws_(SB_BG); ws_(SB_DIM); ws_("\x1b[K");            /* clear the row to the panel bg */
+    ws_(left);
+    pad = cols - lw - rw;
+    if (pad > 0) { char sp[256]; int k = pad < (int)sizeof sp ? pad : (int)sizeof sp - 1;
+        memset(sp, ' ', (size_t)k); sp[k] = 0; ws_(sp); }
+    if (rw && lw + rw <= cols) ws_(right);
+    ws_(SB_RESET);
 }
 static void sb_region(void) {
     char seq[32]; int rows = term_rows(); g_sb_rows = rows;
-    sprintf(seq, "\x1b[1;%dr", rows - 2); ws_(seq);    /* scroll region = rows 1..rows-2 */
-    sprintf(seq, "\x1b[%d;1H", rows - 2); ws_(seq);    /* land the cursor just above the panel */
+    sprintf(seq, "\x1b[1;%dr", rows - 2); ws_(seq);    /* output scrolls in rows 1..h-2 */
 }
 /* repl.k calls this each prompt (and on \sb toggle). on=0 tears the panel down. */
-void am_ln_statusbar(int on, const char *main, const char *info) {
+void am_ln_statusbar(int on, const char *panel, const char *info) {
+    (void)info;                                         /* single-panel layout: input owns row h */
+    spin_stop();                                         /* an update means evaluation finished */
     if (!on) {
         if (g_sb_on) {
-            char seq[40]; int rows = g_sb_rows ? g_sb_rows : term_rows();
+            char seq[48]; int rows = g_sb_rows ? g_sb_rows : term_rows();
             g_sb_on = 0;
-            ws_("\x1b[r");                              /* release the scroll region */
+            ws_("\x1b[r");                               /* release the scroll region */
             sprintf(seq, "\x1b[%d;1H\x1b[K\x1b[%d;1H\x1b[K", rows - 1, rows); ws_(seq);
+            ws_("\x1b[?25h");                            /* cursor visible */
         }
         return;
     }
-    snprintf(g_sb_main, sizeof g_sb_main, "%s", main ? main : "");
-    snprintf(g_sb_info, sizeof g_sb_info, "%s", info ? info : "");
+    snprintf(g_sb_panel, sizeof g_sb_panel, "%s", panel ? panel : "");
+    { static int wired = 0;                              /* watch for resizes while the bar is up */
+      if (!wired) { struct sigaction sa; memset(&sa, 0, sizeof sa);
+          sa.sa_handler = on_winch; sigaction(SIGWINCH, &sa, NULL); wired = 1; } }
     if (!g_sb_on || term_rows() != g_sb_rows) sb_region();  /* first enable, or a resize */
     g_sb_on = 1;
-    sb_paint();
+    sb_panel();
+}
+
+/* ---- execution spinner (status-bar mode only) ----------------------------
+ * A query blocks the main thread, so the animation is driven by a repeating
+ * SIGALRM.  The handler must be async-signal-safe, so it does no formatting --
+ * spin_start() precomputes the ten full escape sequences and the handler just
+ * write()s the current one.  It draws the braille frame just past the prompt on
+ * the fixed input row (h) while `amber> ` stays put.  Stopped by am_ln_statusbar
+ * (repl.k updates the panel the instant evaluation returns). */
+static const char *const SPIN[] = {"\xe2\xa0\x8b","\xe2\xa0\x99","\xe2\xa0\xb9","\xe2\xa0\xb8",
+    "\xe2\xa0\xbc","\xe2\xa0\xb4","\xe2\xa0\xa6","\xe2\xa0\xa7","\xe2\xa0\x87","\xe2\xa0\x8f"};
+static char g_spin_seq[10][64];
+static void spin_tick(int sig) {
+    (void)sig;
+    if (!g_spin_on) return;
+    const char *s = g_spin_seq[g_spin_frame];
+    (void)!write(STDOUT_FILENO, s, strlen(s));
+    g_spin_frame = (g_spin_frame + 1) % 10;
+}
+static void spin_start(void) {
+    int i, row = g_sb_rows ? g_sb_rows : term_rows(), col = g_input_plen + 1;
+    for (i = 0; i < 10; i++)
+        snprintf(g_spin_seq[i], sizeof g_spin_seq[i], "\x1b[s\x1b[%d;%dH%s%s%s\x1b[u",
+                 row, col, SB_ACCENT, SPIN[i], SB_RESET);
+    g_spin_frame = 0; g_spin_on = 1;
+    { struct sigaction sa; memset(&sa, 0, sizeof sa);
+      sa.sa_handler = spin_tick; sa.sa_flags = SA_RESTART; sigaction(SIGALRM, &sa, NULL); }
+    { struct itimerval it; it.it_value.tv_sec = 0; it.it_value.tv_usec = 90000;
+      it.it_interval = it.it_value; setitimer(ITIMER_REAL, &it, NULL); }
+}
+static void spin_stop(void) {
+    struct itimerval it; char seq[24];
+    if (!g_spin_on) return;
+    g_spin_on = 0;
+    memset(&it, 0, sizeof it); setitimer(ITIMER_REAL, &it, NULL);
+    signal(SIGALRM, SIG_IGN);
+    snprintf(seq, sizeof seq, "\x1b[%d;%dH ", g_sb_rows ? g_sb_rows : term_rows(), g_input_plen + 1);
+    (void)!write(STDOUT_FILENO, seq, strlen(seq));       /* erase the spinner cell */
 }
 
 static void refresh(LnState *l) {
     char seq[64];
     size_t start = 0, show, plen = l->plen;
     size_t cols = (size_t)(l->cols = term_cols());
+    int rows = term_rows();
 
+    g_input_plen = (int)plen;                   /* remember for the spinner column */
     /* Horizontal scroll: keep the cursor visible on one physical line. */
     if (plen > cols - 2) plen = 0;              /* absurdly long prompt: drop it */
     show = l->len;
     while (plen + (l->pos - start) >= cols - 1) start++;
     if (plen + (show - start) >= cols - 1) show = start + (cols - 1 - plen);
 
-    ws_("\r");
+    if (g_sb_on) { sprintf(seq, "\x1b[%d;1H", rows); ws_(seq); }  /* input is pinned to row h */
+    else ws_("\r");
     if (plen) wr(l->prompt, plen);
     wr(l->buf + start, show - start);
     if (l->ghost[0] && l->pos == l->len) {
@@ -474,9 +582,10 @@ static void refresh(LnState *l) {
         if (gl) { ws_("\x1b[2m"); wr(l->ghost, gl); ws_("\x1b[0m"); }
     }
     ws_("\x1b[0K");
-    sprintf(seq, "\r\x1b[%dC", (int)(plen + (l->pos - start)));
+    if (g_sb_on) sprintf(seq, "\x1b[%d;%dH", rows, (int)(plen + (l->pos - start)) + 1);
+    else         sprintf(seq, "\r\x1b[%dC", (int)(plen + (l->pos - start)));
     ws_(seq);
-    if (g_sb_on) sb_paint();   /* keep the bottom panel intact after every redraw (incl. Ctrl-L) */
+    if (g_sb_on) sb_panel();   /* keep the info panel (row h-1) intact after every redraw */
 }
 
 static void ins(LnState *l, const char *s, size_t n) {
@@ -610,7 +719,39 @@ static void do_tab(LnState *l) {
  * am_ln_readline() calls (each echoed under the prompt). The whole-block eval
  * path (`. text`) was rejected: it raises 'limit on a multi-statement string. */
 static char **g_pq; static int g_pq_n, g_pq_i;
+static int g_paste_folded;   /* the queued lines are a folded paste -> suppress per-line echo */
+static int g_paste_no;       /* running [Pasted text #N] counter */
 static void pq_clear(void){ while(g_pq_i<g_pq_n) free(g_pq[g_pq_i++]); free(g_pq); g_pq=NULL; g_pq_n=g_pq_i=0; }
+
+/* Net bracket depth a physical line adds, ignoring brackets inside "..." strings
+ * and after a `/ ` comment.  A line that leaves depth > 0 (an open {, ( or [ )
+ * is continued by the next line, so a pasted multi-line function/list/qSQL is
+ * rejoined into one logical statement before it is evaluated. */
+static int sb_depth_delta(const char *s) {
+    int d = 0, instr = 0;
+    for (const char *p = s; *p; p++) {
+        char c = *p;
+        if (instr) { if (c == '\\' && p[1]) p++; else if (c == '"') instr = 0; continue; }
+        if (c == '"') { instr = 1; continue; }
+        if (c == '/' && (p == s || p[-1] == ' ' || p[-1] == '\t')) break;  /* comment to EOL */
+        if (c == '(' || c == '[' || c == '{') d++;
+        else if (c == ')' || c == ']' || c == '}') d--;
+    }
+    return d;
+}
+
+/* Truncate a physical line at the start of a trailing `/ ` line comment (ignoring
+ * a `/` inside a "..." string).  A continued line is comment-stripped before the
+ * next line is space-joined onto it, so the comment can't swallow that line. */
+static void sb_strip_comment(char *s) {
+    int instr = 0;
+    for (char *p = s; *p; p++) {
+        char c = *p;
+        if (instr) { if (c == '\\' && p[1]) p++; else if (c == '"') instr = 0; continue; }
+        if (c == '"') { instr = 1; continue; }
+        if (c == '/' && (p == s || p[-1] == ' ' || p[-1] == '\t')) { *p = 0; return; }
+    }
+}
 
 static int read_paste(LnState *l) {
     size_t cap = 1024, n = 0; char *p = (char*)malloc(cap);
@@ -643,24 +784,44 @@ static int read_paste(LnState *l) {
         if (!nl) break; q = nl + 1;
     }
     if (ns > 1 && segs[ns-1][0] == 0) ns--;              /* drop trailing empty from a final newline */
+    if (ns > 1) {
+        /* Fold the whole block behind a placeholder; rejoin physical lines into
+         * complete logical statements (a line that leaves a bracket open pulls in
+         * the following lines) so multi-line functions, lists and qSQL evaluate as
+         * one unit.  The batch runs on Enter, echoed only as the placeholder. */
+        pq_clear();
+        g_pq = (char**)malloc((size_t)ns * sizeof *g_pq);
+        for (int i = 0; i < ns; ) {
+            int depth = sb_depth_delta(segs[i]);
+            if (depth <= 0) { g_pq[g_pq_n++] = strdup(segs[i]); i++; continue; } /* single line, verbatim */
+            sb_strip_comment(segs[i]);                   /* multi-line: strip comment, then space-join */
+            char *stmt = strdup(segs[i]);
+            i++;
+            while (depth > 0 && i < ns) {                /* bracket still open -> keep pulling lines */
+                sb_strip_comment(segs[i]);
+                char *cont = segs[i]; while (*cont == ' ' || *cont == '\t') cont++;
+                stmt = (char*)realloc(stmt, strlen(stmt) + strlen(cont) + 2);
+                strcat(stmt, " "); strcat(stmt, cont);
+                depth += sb_depth_delta(segs[i]);
+                i++;
+            }
+            g_pq[g_pq_n++] = stmt;                        /* one logical statement (joined with spaces) */
+        }
+        g_paste_folded = 1;
+        char ph[64];
+        snprintf(ph, sizeof ph, "[Pasted text #%d +%d lines]", ++g_paste_no, ns);
+        set_line(l, ph);
+        free(segs); free(comb);
+        return 0;    /* keep editing: the user sees the placeholder, submits on Enter */
+    }
     set_line(l, segs[0]);
-    if (ns > 1) { g_pq = (char**)malloc((size_t)(ns-1) * sizeof *g_pq);
-        for (int i = 1; i < ns; i++) g_pq[g_pq_n++] = strdup(segs[i]); }
     free(segs); free(comb);
-    return ns > 1;   /* multi-line -> submit line 0 now; single-line -> keep editing */
+    return 0;        /* single-line paste -> just drop it into the edit buffer */
 }
 
 char *am_ln_readline(const char *prompt) {
     LnState l;
     char *out;
-
-    if (g_pq_i < g_pq_n) {                               /* drain a pending paste, one line per call */
-        char *line = g_pq[g_pq_i++];
-        ws_(prompt ? prompt : ""); ws_(line); ws_("\n"); /* echo so the transcript shows what ran */
-        out = strdup(line);
-        if (g_pq_i >= g_pq_n) pq_clear();
-        return out;
-    }
 
     memset(&l, 0, sizeof l);
     l.prompt = prompt ? prompt : "";
@@ -673,8 +834,14 @@ char *am_ln_readline(const char *prompt) {
 
     for (;;) {
         char c;
-        ssize_t k = read(STDIN_FILENO, &c, 1);
-        if (k < 0 && errno == EINTR) continue;
+        ssize_t k;
+        if (g_winch) {                       /* terminal resized: recompute the region + repaint */
+            g_winch = 0;
+            if (g_sb_on) { g_sb_rows = 0; sb_region(); }
+            refresh(&l);
+        }
+        k = read(STDIN_FILENO, &c, 1);
+        if (k < 0 && errno == EINTR) continue;   /* SIGWINCH/SIGALRM woke us: loop -> handle winch */
         if (k <= 0) { disable_raw(); if (l.len) break; return NULL; }
 
         /* Any keystroke other than an explicit accept discards the ghost. */
@@ -775,7 +942,38 @@ char *am_ln_readline(const char *prompt) {
 
 done:
     disable_raw();
-    ws_("\r\n");
+    if (g_sb_on) {
+        /* Commit the line to the scrolling transcript (rows 1..h-2), then leave a
+         * bare `amber> ` on the pinned input row and spin while repl.k evaluates. */
+        char dseq[48]; int rows = term_rows();
+        sprintf(dseq, "\x1b[%d;1H", rows - 2); ws_(dseq);
+        ws_(SB_ACCENT); if (l.plen) wr(l.prompt, l.plen); ws_(SB_RESET);
+        wr(l.buf, l.len);
+        ws_("\r\n");
+        sprintf(dseq, "\x1b[%d;1H\x1b[K", rows); ws_(dseq);
+        if (l.plen) wr(l.prompt, l.plen);
+        g_input_plen = (int)l.plen;
+        spin_start();
+    } else {
+        ws_("\r\n");
+    }
+    if (g_paste_folded && g_pq_i < g_pq_n) {
+        /* Folded paste: hand repl.k the whole batch in one line, statements joined
+         * by 0x1e (record separator).  repl.k splits on it and evaluates each in
+         * turn, so the batch runs as a unit without depending on the read loop
+         * being re-entered per statement.  The placeholder is already on screen. */
+        size_t tot = 0; int i;
+        for (i = g_pq_i; i < g_pq_n; i++) tot += strlen(g_pq[i]) + 1;
+        out = (char *)malloc(tot + 1);
+        if (!out) return NULL;
+        out[0] = 0;
+        for (i = g_pq_i; i < g_pq_n; i++) {
+            if (i > g_pq_i) strcat(out, "\x1e");
+            strcat(out, g_pq[i]);
+        }
+        pq_clear(); g_paste_folded = 0;
+        return out;                                      /* don't add the batch to history */
+    }
     out = (char *)malloc(l.len + 1);
     if (!out) return NULL;
     memcpy(out, l.buf, l.len);

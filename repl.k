@@ -89,20 +89,26 @@ qrwx:{$[0<exthook[{ext.raw x};x];x;(.:"qrw")tsfix x]}
 / (sA) toggles the coral accent inside a string.  ln.c's atexit hook resets the
 / scroll region on EVERY exit path (\\, Ctrl-D, a crash), so the terminal is
 / never left corrupted.
-sbon:0
+sbon:1                                              / status bar is ON by default; \sb toggles it off
 sblast:0.0                                          / ms the last evaluated line took
-sA:`c$1                                             / accent-toggle marker byte (0x01)
-sbmain:{m:binfo[];sA,"✻ amber ",(m 4),sA,"     \\ help     Tab complete     ↑↓ history     \\\\ exit"}
-/ info line: the wall-time the last command took (live, captured in line1), then a
-/ digest of the workspace data -- ln.c fills the 0x02 marker from am_schema_brief
-/ (root-namespace tables/dicts/vectors, functions and namespaced internals skipped),
-/ truncated to whatever width is left.  Timing comes first so it is always visible.
-sbinfo:{"   last command  ",($.1*_0.5+10*sblast)," ms         ·         ",(,`c$2)}
-sbupd:{$[sbon;`sbb(1;sbmain[];sbinfo[]);]}
+/ single info panel on row h-1 (the input owns row h).  Marker bytes ln.c handles:
+/   0x01 toggle amber accent · 0x02 -> live RSS MB · 0x03 split (right-align the
+/   rest) · 0x04 -> build kind (native|portable).  repl.k supplies version, the
+/   last exec time (sblast, captured in line1) and the reserved-heap size.
+sA:`c$1                                             / accent toggle
+sM:`c$2                                             / -> RSS in MB (ln.c fills)
+sSP:`c$3                                            / left / right split
+sB:`c$4                                             / -> build kind (ln.c fills)
+sbpanel:{m:binfo[];rmb:$_0.5+(m@0)%1048576.0;(,sA),"⬡ amber ",(m@4),(,sA),"   ·   exec: ",($.1*_0.5+10*sblast)," ms   ·   mem: ",(,sM),"/",rmb," MB   ·   [",(,sB),"]",(,sSP),"\\ help   ·   Tab complete   ·   \\\\ exit"}
+sbupd:{$[sbon;`sbb(1;sbpanel[];"");]}
 sbtoggle:{sbon::~sbon;$[sbon;sbupd[];`sbb(0;"";"")]}
 line0:{c:{0x07~*-2#*x}{(l;r):x;(rd prompt;r,,(-2_l))}/(x;());"\n"/(*|c),,*c}
 line1:{$[#x;;:0];x:-1_x;exthook[{ext.pre x};x];sbT0:`t[];$[(4<#x)&"\\grid"~5#x;gridcmd x;(5<#x)&"\\clear"~6#x;clearcmd[];(2<#x)&"\\sb"~3#x;sbtoggle[];(1<#x)&"\\\\"~2#x;[`sbb(0;"";"");.:x];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;.[`1:(fmt;fmtx)[" "~*x]@.:;,qrwx x;onerr]];sblast::0.001*`t[]-sbT0;exthook[{ext.post x};x];1}
-line:line1@line0@
+/ A folded paste arrives as one line with its statements joined by 0x1e (ln.c's
+/ read_paste).  Split on it and run each statement through the normal pipeline so
+/ a pasted block of many statements evaluates as a unit in a single read.
+runbatch:{[s]{line1 line0 (x,"\n")}'(`c$30)\-1_s;1}
+line:{$[(|/x=`c$30);runbatch x;line1 line0 x]}
 $["repl.k"~basename`argv 1;{cmds::@[cmds;x[1]1;:;{y;`0:x}2_x]}'{(&x~\:80#"-")_x:(1+*&x~\:,"/")_-1_x}@0:`argv 1;];
 / `bi 0 (process/build info) can throw 'domain on non-Linux builds (e.g. macOS);
 / trap it so the banner still renders.  Returns (heap;used;arch;compiler).
@@ -112,7 +118,7 @@ binfo:{.[{`bi 0};,0;(10485760;0;"arm64";"Darwin";"1.9.5")]}
 / absent from a stock install, so the banner is character-for-character 1.9.4's.
 extag:{$[5<#x;x 5;""]}
 banner:{m:binfo[];"Amber v",(m 4)," (",(m 2),"; ",(m 3),") — Columnar Time-Series Engine",extag[m],extstr[{ext.tag[]};0],"\n"}
-run:{m:binfo[];`1:(`c$27),"[4q";`1:banner[],"Memory: ",($0.1*_0.5+(m 0)%104857.6)," MB heap reserved | \\ for help command, \\\\ to exit  (\\sb for a status bar)\n\n";{sbupd[];line@rd prompt}::/`;}
+run:{m:binfo[];`1:(`c$27),"[4q";`1:banner[],"Memory: ",($0.1*_0.5+(m 0)%104857.6)," MB heap reserved | \\ for help command, \\\\ to exit  (\\sb toggles the status bar)\n\n";{sbupd[];line@rd prompt}::/`;}
 \d .
 / load the Amber library by ABSOLUTE path derived from this script's own location,
 / so it works no matter what the current working directory is.
@@ -139,35 +145,36 @@ $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
 /
 --------------------------------------------------------------------------------
 
-                 A M B E R   help      ( type  \X  for a topic )
+  ⬡  AMBER help                                        type  \X  for a topic
 
-  AMBER q-layer                             core language
-  \q  scalars, aggregation, uniform, sets   \0  types
-  \j  tables, keyed tables, joins, qSQL     \+  verbs
-  \z  temporal, attributes (s/u/p/g), show  \'  adverbs   \`  symbols
-  \m  finance / HFT module (fin.k)          \h  core cheat-sheet
-  
-  session
-  \a  license (AGPLv3)     \l file.k  load a script     \v  variables (rich inspector)
-  \d ns   namespace (\d .) \t:n expr  time n runs (ms)  \f  functions
-  \cd path   change dir    \other     shell command     \\  exit
-  \grid MODE  table border: clean|rounded|sharp|heavy    \clear  clear screen
 
-  line editing (native since 1.9.5 -- never run amber under rlwrap)
-  Up/Down history   Tab completes globals, columns, \ commands, past lines
-  Ctrl-A/E line start/end   Ctrl-W/U/K kill   Ctrl-L clear   Ctrl-C abandon
-  history is kept in ~/.amber_history ; AMBER_NO_EDIT=1 disables editing
+  LANGUAGE                                  Q-LAYER
+    \0  types & literals                      \q  scalars · aggregation · sets
+    \+  verbs   : + - * % ! & | ...           \j  tables · joins · qSQL
+    \'  adverbs   ' / \ ': /: \:              \z  temporal · attributes · show
+    \`  symbol builtins   `j `k `t ...        \m  finance / HFT   (fin.k)
+    \h  one-screen cheat-sheet
 
-  diagnostics
-  \ast expr    coloured parse-tree (AST) of an expression, parse-only
-  \trace expr  4-phase timing (parse/arena/exec/format) + arena peak memory
-  \disasm expr bytecode disassembly of the real compiled VM output
 
-  display knobs:  COLOR:0/1  PREC:n (float decimals; 0N=full)  CROWS:n (preview rows)
+  SESSION                                   DIAGNOSTICS
+    \l file.k   load a script                 \ast    expr   parse tree
+    \v          variables (inspector)         \trace  expr   4-phase timing + mem
+    \f          functions                     \disasm expr   VM bytecode
+    \d ns       namespace   ( \d . = root )
+    \t:n expr   time n runs (ms)            DISPLAY
+    \cd path    change directory              COLOR:0/1   PREC:n   CROWS:n
+    \grid MODE  clean rounded sharp heavy
+    \clear      clear screen                LINE EDITING   ( never use rlwrap )
+    \sb         toggle the status bar          Up/Down history · Tab completes
+    \other      shell command                 Ctrl-A/E ends · Ctrl-W/U/K kill
+    \a          license (AGPLv3)              Ctrl-L clear · Ctrl-C abandon
+    \\          exit                          ~/.amber_history · AMBER_NO_EDIT=1
 
-  quick start:    gentq 1000    meta trades    taq[trades;quotes]
-                  genopt 2000   select from options where abs[strike-spot]<5
-                  plot(select from taq[trades;quotes] where sym=`AAPL)`px
+
+  QUICK START
+    gentq 1000        meta trades        taq[trades;quotes]
+    genopt 2000       select from options where abs[strike-spot]<5
+    plot(select from taq[trades;quotes] where sym=`AAPL)`px
 
 --------------------------------------------------------------------------------
 \0

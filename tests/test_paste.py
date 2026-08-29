@@ -3,9 +3,10 @@
 # GNU AGPLv3 - see LICENSE and NOTICE.
 #
 # amber 2.0.0: pasting a multi-line script into the REPL (bracketed paste,
-# ESC[200~ ... ESC[201~) runs it line by line, exactly as if each line were
-# typed -- including inline (`x:1 / c`) and full-line (`/ c`) comments. This
-# drives the real ./a REPL over a pty and asserts every pasted line executed.
+# ESC[200~ ... ESC[201~) folds to a `[Pasted text #N +M lines]` placeholder and
+# runs the whole block as one batch on Enter -- statements rejoined across lines
+# by bracket balance, inline (`x:1 / c`) and full-line (`/ c`) comments handled.
+# This drives the real ./a REPL over a pty and asserts the batch executed.
 import os, pty, sys, time, select, subprocess
 
 HERE = os.path.dirname(os.path.abspath(__file__))

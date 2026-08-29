@@ -38,6 +38,35 @@
 > the HFT arena allocator for its transient buffer so a per-tick `aj` makes no `malloc`/`free`
 > calls. The attribute/index figures below are unchanged.
 
+## Version history — speed evolution at a glance
+
+Every release's headline kernel change, consolidated from the before/after numbers already
+measured in the sections below (§6, §7, §2.9). Each figure is a real, recorded measurement —
+this table only gathers them in one place; it introduces no new run. Median kernel ms unless
+noted; lower is better. **Numbers within a row share one machine and one dataset; rows are not
+comparable across machines**, and the live §2 tables always reflect the current build.
+
+| Release | What got faster | Workload (measured) | Before | After | Speedup |
+|---|---|---|---:|---:|:--:|
+| **1.9** | as-of join match step → native branch-free C kernel | foundation for the 1.9.5 `aj` sort win | — | — | native |
+| **1.9.1** | query layer groups/probes on raw column vectors, not one boxed K object per row | group-by, 10M-row suite | 8,171.7 | 330.8 | **24.7×** |
+| | | inner join, 10M-row suite | 3,858.9 | 199.7 | **19.3×** |
+| **1.9.2** | integer `?` (find) builds an index instead of rescanning per probe | inner join (1M × 1,000 sparse keys) | 180.95 | 5.66 | **32.0×** |
+| | | `kr?kl` find micro-kernel (1M probes) | 211.4 | 2.6 | **81×** |
+| | | `+/px` — 10M float sum (vectorised) | 8.9 | 6.3 | 1.41× |
+| **1.9.3** | `peach` ships worker results over the `-8!`/`-9!` binary serializer | 500k items @ `AMBER_THREADS=4` | — | ~23 ms | native |
+| **1.9.5** | single-pass O(N) moving windows + key-carrying LSD radix sort | `mmin[1000;x]` — window 1000 | 1,021 | 3.73 | **273.9×** |
+| | | multi-column table sort (`xasc`, 1 float key) | 1,617 | 54.6 | **29.6×** |
+| | | as-of join (50k × 100k; sorts its right side) | 67.3 | 4.20 | **16.0×** |
+| **2.0.0** | table group-by keys on the interned 4-byte symbol id, not a per-character string sort | `select … by sym` — 1M rows | 587 | 34 | **17×** |
+
+Reproduce each row with the harness named in its section: the 1.9.1/1.9.2 rows via
+`bench/run_comparative.py --runs 5 --warmup 2` against `bench/baseline_before.md`; the 1.9.5
+rows via `bench/suite.k` against `bench/baseline_194_suite.txt` ([§7](#7-195-batch-2--sliding-windows--radix-sort));
+the 2.0.0 row via the like-for-like kdb+ run in [§2.9](#29-vs-kdbq--a-direct-run-against-the-reference-200).
+The releases in between (1.9.3, 1.9.4, 1.9.6) were correctness/serializer/tooling work whose four
+comparative workloads did not move — see each release note above.
+
 This document records (1) **correctness cross-checks** of Amber against the mainstream
 array/columnar tools (numpy + pandas), and (2) **speed benchmarks** on the same workloads.
 It also ships two **portable harnesses** in `bench/`: `run_suite.sh` (the 40-workload

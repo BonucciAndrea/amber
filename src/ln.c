@@ -149,6 +149,7 @@ void  am_ln_statusbar(int on, const char *main, const char *info) {
 static struct termios g_orig;
 static int g_raw;
 static int g_atexit;
+static int g_sb_alt;   /* the status bar runs in the alternate screen (like vim) */
 
 static int is_dumb(void) {
     const char *t = getenv("TERM");
@@ -339,7 +340,11 @@ static void disable_raw(void) {
    never leave the terminal scrolled-in on ANY exit path (\\, Ctrl-D, a crash).
    Harmless when no region was set. Kept out of disable_raw() because that runs
    per-readline and the bar's region must persist across prompts. */
-static void on_exit_restore(void) { ws_("\x1b[r"); disable_raw(); }
+static void on_exit_restore(void) {
+    ws_("\x1b[r");                                       /* release any scroll region */
+    if (g_sb_alt) { ws_("\x1b[?1049l"); g_sb_alt = 0; }  /* leave the alternate screen -> original restored */
+    disable_raw();
+}
 
 static int enable_raw(void) {
     struct termios r;
@@ -456,12 +461,16 @@ static long sb_rss_mb(void) {                    /* real resident footprint of t
     return 0;
 #endif
 }
-const char *simd_backend(void);                  /* src/simd.c */
 static const char *sb_build_kind(void) {
-    /* the active SIMD backend reflects the build: -march=native compiles the AVX2
-     * (x86) / NEON (arm) kernels; the portable build stays on scalar or SSE vec128. */
-    const char *b = simd_backend();
-    return (b && (strcmp(b, "avx2") == 0 || strcmp(b, "neon") == 0)) ? "native" : "portable";
+    /* Authoritative: build.sh defines AMBER_BUILD_NATIVE only when a -march/-mcpu
+     * =native tuning flag was actually accepted.  (Inferring it from the SIMD
+     * backend name was wrong on arm64, where NEON is the baseline and a portable
+     * build therefore reported "native".) */
+#ifdef AMBER_BUILD_NATIVE
+    return "native";
+#else
+    return "portable";
+#endif
 }
 /* display columns of a UTF-8 string, ignoring ANSI escapes and counting one column
  * per UTF-8 lead byte (correct for the BMP glyphs used here: hex, arrows, mid-dot). */
@@ -561,14 +570,12 @@ static void sb_region(void) {
     char seq[32]; int rows = term_rows(); g_sb_rows = rows;
     sprintf(seq, "\x1b[1;%dr", rows - SB_FOOT); ws_(seq);   /* output scrolls in rows 1..h-4 */
 }
-/* Erase the 4-row footer (box + info line) and release the scroll region. */
+/* Tear the bar down: release the scroll region and LEAVE the alternate screen,
+ * which restores the terminal exactly as it was before the REPL started -- like
+ * quitting vim.  No in-place erasing to get wrong after a resize. */
 static void sb_teardown(void) {
-    char seq[64]; int rows = g_sb_rows ? g_sb_rows : term_rows(), r;
     ws_("\x1b[r");                                      /* release the scroll region */
-    for (r = rows - SB_FOOT + 1; r <= rows; r++) {     /* wipe every footer row */
-        sprintf(seq, "\x1b[%d;1H\x1b[2K", r); ws_(seq);
-    }
-    sprintf(seq, "\x1b[%d;1H", rows - SB_FOOT); ws_(seq);
+    if (g_sb_alt) { ws_("\x1b[?1049l"); g_sb_alt = 0; } /* leave the alt screen -> original restored */
     ws_("\x1b[?25h");                                   /* cursor visible */
 }
 /* repl.k calls this each prompt (and on \sb toggle). on=0 tears the footer down. */
@@ -584,6 +591,7 @@ void am_ln_statusbar(int on, const char *panel, const char *info) {
         return;
     }
     snprintf(g_sb_panel, sizeof g_sb_panel, "%s", panel ? panel : "");
+    if (!g_sb_on) { ws_("\x1b[?1049h"); g_sb_alt = 1; }  /* first enable: enter the alternate screen */
     { static int wired = 0;                              /* watch for resizes while the bar is up */
       if (!wired) { struct sigaction sa; memset(&sa, 0, sizeof sa);
           sa.sa_handler = on_winch; sigaction(SIGWINCH, &sa, NULL); wired = 1; } }
@@ -721,6 +729,16 @@ static void common_prefix(amCompletions *lc, char *dst, size_t cap) {
 
 static void list_candidates(LnState *l, amCompletions *lc) {
     size_t i;
+    if (g_sb_on) {
+        /* Box mode: print the candidates INTO the scroll region above the box
+         * (rows 1..h-4) so they read like transcript history and the fixed footer
+         * is never disturbed, then redraw the input inside the box. */
+        char seq[32];
+        sprintf(seq, "\x1b[%d;1H", term_rows() - SB_FOOT); ws_(seq);   /* region bottom */
+        for (i = 0; i < lc->len; i++) { ws_("  "); ws_(lc->cvec[i]); ws_("\r\n"); }
+        refresh(l);
+        return;
+    }
     ws_("\r\n");
     for (i = 0; i < lc->len; i++) {
         ws_("  ");
@@ -910,12 +928,22 @@ char *am_ln_readline(const char *prompt) {
         ssize_t k;
         if (g_winch) {                       /* terminal resized: recompute the region + repaint */
             g_winch = 0;
-            if (g_sb_on) { g_sb_rows = 0; sb_region(); sb_chrome(); }
+            if (g_sb_on) {
+                /* Erase the footer at its OLD row range first -- otherwise growing
+                 * the terminal leaves the previous box stranded inside the new,
+                 * larger scroll region. */
+                if (g_sb_rows) { char s[32]; int t = g_sb_rows - SB_FOOT + 1; if (t < 1) t = 1;
+                    sprintf(s, "\x1b[r\x1b[%d;1H\x1b[J", t); ws_(s); }
+                g_sb_rows = 0; sb_region(); sb_chrome();
+            }
             refresh(&l);
         }
         k = read(STDIN_FILENO, &c, 1);
         if (k < 0 && errno == EINTR) continue;   /* SIGWINCH/SIGALRM woke us: loop -> handle winch */
-        if (k <= 0) { disable_raw(); if (l.len) break; return NULL; }
+        if (k <= 0) { disable_raw();                 /* EOF (Ctrl-D) or read error */
+            if (l.len) break;                        /* content pending -> treat as Enter */
+            if (g_sb_on) { g_sb_on = 0; sb_teardown(); }  /* abrupt exit never called sbb(0) */
+            return NULL; }
 
         /* Any keystroke other than an explicit accept discards the ghost. */
         if (l.ghost[0] && c != 9 && c != 6 && c != 27) l.ghost[0] = 0;

@@ -37,7 +37,7 @@ fi
 # ./build.sh --shared-only  build ONLY libamber.so and skip the executable.
 # AMBER_SHARED=1 is equivalent to --shared, for callers that cannot pass a flag.
 #
-# The shared library is a SEPARATE object set (-fPIC -Dshared), never a relink of
+# The shared library is a SEPARATE object set (-fPIC -DAMBER_SHARED), never a relink of
 # o/*.o: position-independent code and the global-dynamic TLS model the shared
 # build needs (see the AM_TLS_IE note in src/a.h) both change code generation, so
 # sharing objects between the two would silently pessimise ./amber -- which is
@@ -85,7 +85,10 @@ if [ -n "${AMBER_NATIVE:-}" ]; then
   done
   rm -f .natcheck
   if [ -n "$NATFLAG" ]; then
-    F="$F $NATFLAG -funroll-loops"; MODE="native $NATFLAG -O3$LTOTAG$OMPTAG"
+    # -DAMBER_BUILD_NATIVE makes the REPL's [native]/[portable] tag AUTHORITATIVE.
+    # Inferring it from the SIMD backend name was wrong on arm64 (NEON is the
+    # baseline, so a portable build reported "native") -- see sb_build_kind().
+    F="$F $NATFLAG -funroll-loops -DAMBER_BUILD_NATIVE=1"; MODE="native $NATFLAG -O3$LTOTAG$OMPTAG"
   else
     MODE="portable -O3$LTOTAG$OMPTAG (no native tuning flag accepted by $CC)"
   fi
@@ -131,7 +134,7 @@ fi
 
 # ---- shared library -------------------------------------------------------
 # libamber.so is the out-of-process seam: the same sources, compiled -fPIC with
-# -Dshared (which drops main() -- src/0.c already guards it on exactly that
+# -DAMBER_SHARED (which drops main() -- src/0.c already guards it on exactly that
 # macro, and has since long before this build mode existed) and linked behind an
 # export map so the ONLY symbols that reach a host process's dynamic namespace
 # are amber_* and am_ext_*.  See src/libamber.map for why that matters.
@@ -166,7 +169,7 @@ if [ -n "${WANT_SHARED:-}" ]; then
   rm -f .mapcheck.$SOEXT
   [ -n "$MAPFLAG" ] || echo "amber: note - this linker takes no export map; libamber.$SOEXT will export its internal symbols too" >&2
 
-  echo "amber: compiling $SOFILE with $CC (-fPIC -Dshared)$EXTTAG ..."
+  echo "amber: compiling $SOFILE with $CC (-fPIC -DAMBER_SHARED)$EXTTAG ..."
   mkdir -p o/pic
   for o in o/pic/*.o; do
     [ -e "$o" ] || continue
@@ -174,7 +177,7 @@ if [ -n "${WANT_SHARED:-}" ]; then
     [ -e "src/$b.c" ] || [ -e "ext/$b.c" ] || rm -f "$o"
   done
   for f in src/*.c $EXT; do
-    "$CC" $F -fPIC -fvisibility=hidden -Dshared -o "o/pic/$(basename "${f%.c}").o" -c "$f"
+    "$CC" $F -fPIC -fvisibility=hidden -DAMBER_SHARED -o "o/pic/$(basename "${f%.c}").o" -c "$f"
   done
   "$CC" $F -fPIC $SOFLAGS $MAPFLAG -o "$SOFILE" o/pic/*.o -lm -ldl 2>/dev/null \
     || "$CC" $F -fPIC $SOFLAGS $MAPFLAG -o "$SOFILE" o/pic/*.o -lm

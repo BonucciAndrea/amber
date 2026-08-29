@@ -145,7 +145,7 @@ static inline const void*amb_alchk(const void*p_,const char*f_,int l_){
 // Global-dynamic costs one __tls_get_addr() call per access on the allocator's
 // hot path, which is exactly why the native ./amber build keeps initial-exec;
 // the shared build pays that call and in exchange is always loadable.
-#if !defined(wasm) && !defined(shared) && (defined(__GNUC__) || defined(__clang__))
+#if !defined(wasm) && !defined(AMBER_SHARED) && (defined(__GNUC__) || defined(__clang__))
 #define AM_TLS_IE AM_TLS __attribute__((tls_model("initial-exec")))
 #else
 #define AM_TLS_IE AM_TLS
@@ -187,6 +187,7 @@ V par_prng_perturb(W);//decorrelate a peach worker's thread-local prng stream (r
 A peach_pool(A,A,U,I);//persistent thread-pool morsel-driven peach (src/peachpool.c)
 C*sf(C*,L),*sl(C*,L),sup(A*,A*),tZ(L),*strchrnul(S,I);
 U gi(A);
+B am_infix_dyad(S,U);//p.c: is a name a defined rank-2 global fn? -> infix
 A unqL(A);//amber: O(n) integer distinct (f.c), 0 = not handled
 A cntgrd(A),cntsrt(A);//amber: counting/bucket grade + counting sort (v.c), 0 = not handled
 U amlb(CO L*RES,U,U,L);//branch-free lower_bound over a sorted long slice (a.c)

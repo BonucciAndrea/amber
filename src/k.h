@@ -1,5 +1,5 @@
 // https://github.com/ktye/i/blob/master/%2B/k.h
-#ifdef shared
+#ifdef AMBER_SHARED
 #define WV __attribute((weak, visibility("default")))
 #else
 #define WV

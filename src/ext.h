@@ -57,7 +57,7 @@ extern "C" {
  * mandatory rather than optional, and marking them HERE means the declaration
  * and the definition can never disagree.  In the static build the macro expands
  * to nothing and ./amber is byte-for-byte what it was. */
-#if defined(shared) && (defined(__GNUC__) || defined(__clang__))
+#if defined(AMBER_SHARED) && (defined(__GNUC__) || defined(__clang__))
 #define AMBER_API __attribute__((visibility("default")))
 #else
 #define AMBER_API

@@ -690,30 +690,29 @@ ASTNode *ast_from_k(A v) { return ast_from_k_d(v, 0); }
  * hook/fork train labels) get their own restrained accent so the tree
  * still reads at a glance without overloading the five required colors. */
 
-#define C_VERB  "\x1b[1;36m" /* bold cyan    : verbs (bare, applied, curried, calls) */
-#define C_ADV   "\x1b[1;35m" /* bold magenta : adverbs                               */
-#define C_VAR   "\x1b[33m"   /* yellow       : variables / symbols                   */
-#define C_LIT   "\x1b[92m"   /* bright green : numeric / literal scalars             */
-#define C_VEC   "\x1b[36m"   /* cyan         : vector / generic payloads             */
-#define C_LAM   "\x1b[96m"   /* bright cyan  : lambda literals (callable, distinct)  */
-#define C_LIST  "\x1b[1;32m" /* bold green   : list literals                         */
-#define C_BLOCK "\x1b[90m"   /* bright black : statement-sequence separators         */
-#define C_TRAIN "\x1b[1;34m" /* bold blue    : tacit hook/fork train labels          */
-#define C_BLANK "\x1b[2;33m" /* dim yellow   : curried/omitted argument placeholder  */
-#define C_DIM   "\x1b[2m"    /* dim          : connectors + annotations              */
+/* amber 2.0.0: the tree keeps a distinct hue per node kind (that IS the feature),
+ * but drawn from the REPL's warm truecolour theme -- amber #FFB020 for the verbs
+ * at its centre, then golds/tans/sages/mauves that read as one family instead of
+ * a 16-colour rainbow.  Truecolour terminals get the exact hues; others fall back
+ * to the nearest cell. */
+#define C_VERB  "\x1b[1;38;2;255;176;0m"   /* amber       : verbs (bare, applied, curried, calls) */
+#define C_ADV   "\x1b[1;38;2;240;185;95m"  /* marigold    : adverbs                               */
+#define C_VAR   "\x1b[38;2;205;175;135m"   /* warm tan    : variables / symbols                   */
+#define C_LIT   "\x1b[38;2;170;185;135m"   /* warm sage   : numeric / literal scalars             */
+#define C_VEC   "\x1b[38;2;140;180;170m"   /* muted teal  : vector / generic payloads             */
+#define C_LAM   "\x1b[1;38;2;190;150;180m" /* muted mauve : lambda literals (callable, distinct)  */
+#define C_LIST  "\x1b[1;38;2;175;185;120m" /* warm olive  : list literals                         */
+#define C_BLOCK "\x1b[38;2;120;114;104m"   /* faint grey  : statement-sequence separators         */
+#define C_TRAIN "\x1b[1;38;2;150;175;190m" /* muted steel : tacit hook/fork train labels          */
+#define C_BLANK "\x1b[2;38;2;205;175;135m" /* dim tan     : curried/omitted argument placeholder  */
+#define C_DIM   "\x1b[2m"                   /* dim         : connectors + annotations              */
 #define C_RST   ANSI_RST
-/* ---- 1.9.5 additions ------------------------------------------------------
- * Deliberately drawn from the SAME 16-colour space the rest of the palette
- * uses (no 256-colour or truecolour escapes), so the tree renders identically
- * in a bare TTY, tmux, and a notebook terminal, and stays legible on both dark
- * and light backgrounds -- the constraint ansi.h already documents for the
- * diagnostic palette. The query kinds get blue because blue is otherwise
- * unused except by tacit trains, which never co-occur with a query block. */
-#define C_QSQL  "\x1b[1;94m" /* bold bright blue  : qSQL query block heads           */
-#define C_CLAUSE "\x1b[1;95m"/* bold bright magenta: by / where clause nodes         */
-#define C_BADGE "\x1b[1;93m" /* bold bright yellow: time-series join callouts        */
-#define C_FRAME "\x1b[2;37m" /* dim grey          : banner frame                     */
-#define C_TTL   "\x1b[1;97m" /* bold bright white : banner title + analysed expr     */
+/* Query kinds + the join-analysis banner, same warm family. */
+#define C_QSQL  "\x1b[1;38;2;225;150;120m" /* warm coral  : qSQL query block heads           */
+#define C_CLAUSE "\x1b[1;38;2;210;160;170m"/* dusty rose  : by / where clause nodes         */
+#define C_BADGE "\x1b[1;38;2;255;176;0m"   /* amber       : time-series join callouts        */
+#define C_FRAME "\x1b[38;2;150;142;130m"   /* muted grey  : banner frame                     */
+#define C_TTL   "\x1b[1;38;2;245;238;226m" /* warm white  : banner title + analysed expr     */
 
 static const char *node_color(ASTKind k) {
     switch (k) {

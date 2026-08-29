@@ -1,0 +1,3572 @@
+{
+ "machine": {
+  "cpu": "Intel(R) Core(TM) Ultra 7 255U",
+  "simd": "avx avx2 bmi2 sse4_2",
+  "cores": 14,
+  "os": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+  "gcc": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
+  "python": "3.12.3",
+  "q": "4.1 (w64)",
+  "peachq": "0.81 (Rayforce)",
+  "cbqn": "CBQN on commit af583e19566a032b89e0077b866b0ba0dcc2a365",
+  "j": "j9.6.3/j64/linux/commercial/www.jsoftware.com/2025-04-05T16:24:35/clang-11-0-0/SLEEF=1",
+  "numpy": "2.5.2",
+  "pandas": "3.0.5",
+  "polars": "1.44.1",
+  "duckdb": "1.5.5",
+  "amber": "0bf42f4"
+ },
+ "n": 10000000,
+ "runs": 3,
+ "warmup": 2,
+ "engines": {
+  "c": {
+   "label": "C -O3 -march=native",
+   "note": "hand-written reference; generic LSD radix sorts, open-address hash",
+   "mt": false
+  },
+  "amber": {
+   "label": "Amber (portable build)",
+   "note": "array primitives; ./build.sh, no -march=native",
+   "mt": false
+  },
+  "amber-native": {
+   "label": "Amber (AMBER_NATIVE=1)",
+   "note": "array primitives; -march=native",
+   "mt": false
+  },
+  "amber-qsql": {
+   "label": "Amber qSQL layer",
+   "note": "select ... by ... from; fair peer of DuckDB SQL",
+   "mt": false
+  },
+  "q": {
+   "label": "kdb+/q",
+   "note": "the reference to beat",
+   "mt": false
+  },
+  "peachq": {
+   "label": "PeachQ (Rayforce)",
+   "note": "open-source q on the Rayforce engine",
+   "mt": false
+  },
+  "ngnk": {
+   "label": "ngn/k",
+   "note": "the interpreter Amber's core is derived from",
+   "mt": false
+  },
+  "cbqn": {
+   "label": "CBQN",
+   "note": "SIMD object model; narrow int storage",
+   "mt": false
+  },
+  "j": {
+   "label": "J 9.6",
+   "note": "special-code idiom recognition",
+   "mt": false
+  },
+  "numpy": {
+   "label": "NumPy",
+   "note": "ufunc per step",
+   "mt": false
+  },
+  "pandas": {
+   "label": "pandas",
+   "note": "hash group-by, block manager",
+   "mt": false
+  },
+  "polars": {
+   "label": "Polars",
+   "note": "Arrow + vectorised kernels",
+   "mt": false
+  },
+  "duckdb": {
+   "label": "DuckDB",
+   "note": "vectorised push execution",
+   "mt": false
+  },
+  "amber-mt": {
+   "label": "Amber (native, 14 threads)",
+   "note": "multi-core row; NOT part of the single-thread ranking",
+   "mt": true
+  }
+ },
+ "matrix": {
+  "sum_f": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.2582063674926758,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 5.023458,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 0.34915685653686523,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 4.011,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.29024672508239746,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 3.387,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "SKIP"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 0.6311542987823486,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 6.2291,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 1.6016550064086914,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 4.673306,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 0.3908538818359375,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 5.644,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 0.23337912559509277,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 1.0190699831582606,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 0.45686888694763184,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 4.055976867675781,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 0.474104642868042,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 4.976588,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 0.8419845104217529,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 10.284242,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 0.6134598255157471,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 3.815628,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 2.183988094329834,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 17.12796,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 0.41664719581604004,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 4.259,
+    "timing": "in-engine"
+   }
+  },
+  "max_f": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.23033475875854492,
+    "answer": 999.0,
+    "check": 19930924430.0,
+    "ms": 10.815104,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 0.3483896255493164,
+    "answer": 999.0,
+    "check": 19930924430.0,
+    "ms": 5.739,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.33545565605163574,
+    "answer": 999.0,
+    "check": 19930924430.0,
+    "ms": 5.809,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "SKIP"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 0.7041721343994141,
+    "answer": 999.0,
+    "check": 19930924430.0,
+    "ms": 6.294,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 2.0610709190368652,
+    "answer": 999.0,
+    "check": 19930924430.0,
+    "ms": 4.780494,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 0.3770437240600586,
+    "answer": 999.0,
+    "check": 19930924430.0,
+    "ms": 13.379,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 1.4046251773834229,
+    "answer": 999.0,
+    "check": 19930924430.0,
+    "ms": 1.2345600116532296,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 0.3752279281616211,
+    "answer": 999.0,
+    "check": 19930924430.0,
+    "ms": 4.034996032714844,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 0.4435746669769287,
+    "answer": 999.0,
+    "check": 19930924430.0,
+    "ms": 4.043092,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 0.9727468490600586,
+    "answer": 999.0,
+    "check": 19930924430.0,
+    "ms": 11.485982,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 0.6809120178222656,
+    "answer": 999.0,
+    "check": 19930924430.0,
+    "ms": 4.59547,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 1.989274024963379,
+    "answer": 999.0,
+    "check": 19930924430.0,
+    "ms": 30.75912,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 0.36138248443603516,
+    "answer": 999.0,
+    "check": 19930924430.0,
+    "ms": 7.03,
+    "timing": "in-engine"
+   }
+  },
+  "dot": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.18735742568969727,
+    "answer": 2510224600637.0,
+    "check": 19930924430.0,
+    "ms": 8.791391,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 0.3953404426574707,
+    "answer": 2510224600637.0,
+    "check": 19930924430.0,
+    "ms": 15.359,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.37103772163391113,
+    "answer": 2510224600637.0,
+    "check": 19930924430.0,
+    "ms": 14.119,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "SKIP"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 0.7927987575531006,
+    "answer": 2510224600637.0,
+    "check": 19930924430.0,
+    "ms": 18.8157,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 1.5895917415618896,
+    "answer": 2510224600637.0,
+    "check": 19930924430.0,
+    "ms": 8.990283,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 0.4167666435241699,
+    "answer": 2510224600637.0,
+    "check": 19930924430.0,
+    "ms": 15.58,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 0.292205810546875,
+    "answer": 2510224600637.0,
+    "check": 19930924430.0,
+    "ms": 6.601511995540932,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 0.4685232639312744,
+    "answer": 2510224600637.0,
+    "check": 19930924430.0,
+    "ms": 27.517080307006836,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 0.39040040969848633,
+    "answer": 2510224600637.0,
+    "check": 19930924430.0,
+    "ms": 6.074812,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 0.8435966968536377,
+    "answer": 2510224600637.0,
+    "check": 19930924430.0,
+    "ms": 6.608361,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 0.6147079467773438,
+    "answer": 2510224600637.0,
+    "check": 19930924430.0,
+    "ms": 13.220526,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 1.6526637077331543,
+    "answer": 2510224600637.0,
+    "check": 19930924430.0,
+    "ms": 22.43393,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 0.4301645755767822,
+    "answer": 2510224600637.0,
+    "check": 19930924430.0,
+    "ms": 15.764000000000001,
+    "timing": "in-engine"
+   }
+  },
+  "sum_i": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.16133904457092285,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 4.869396,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 0.30701303482055664,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 2.56,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.290271520614624,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 1.708,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "SKIP"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 0.6599342823028564,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 6.9815,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 1.6460561752319336,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 2.3261309999999997,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 0.31340575218200684,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 1.909,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 0.2537994384765625,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 1.2967110087629408,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 0.3990511894226074,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 5.035877227783203,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 0.43219614028930664,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 4.014563,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 0.8220317363739014,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 3.546499,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 0.6708333492279053,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 4.117155,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 1.9238348007202148,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 11.35609,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 0.35196757316589355,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 8.625,
+    "timing": "in-engine"
+   }
+  },
+  "arith_mask": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.18769216537475586,
+    "answer": 17187568834.0,
+    "check": 19930924430.0,
+    "ms": 10.293167,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 0.699211597442627,
+    "answer": 17187568834.0,
+    "check": 19930924430.0,
+    "ms": 64.178,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.5617771148681641,
+    "answer": 17187568834.0,
+    "check": 19930924430.0,
+    "ms": 46.872,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "SKIP"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 1.1355061531066895,
+    "answer": 17187568834.0,
+    "check": 19930924430.0,
+    "ms": 64.2512,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 3.8007664680480957,
+    "answer": 17187568834.0,
+    "check": 19930924430.0,
+    "ms": 440.350102,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 0.6386644840240479,
+    "answer": 17187568834.0,
+    "check": 19930924430.0,
+    "ms": 53.814,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 0.5226132869720459,
+    "answer": 17187568834.0,
+    "check": 19930924430.0,
+    "ms": 49.52520001097582,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 0.6831672191619873,
+    "answer": 17187568834.0,
+    "check": 19930924430.0,
+    "ms": 48.65407943725586,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 0.5952458381652832,
+    "answer": 17187568834.0,
+    "check": 19930924430.0,
+    "ms": 45.78894,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 1.2948994636535645,
+    "answer": 17187568834.0,
+    "check": 19930924430.0,
+    "ms": 98.847627,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 2.2474355697631836,
+    "answer": 17187568834.0,
+    "check": 19930924430.0,
+    "ms": 59.135118,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 2.181372880935669,
+    "answer": 17187568834.0,
+    "check": 19930924430.0,
+    "ms": 65.489277,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 0.6757490634918213,
+    "answer": 17187568834.0,
+    "check": 19930924430.0,
+    "ms": 71.403,
+    "timing": "in-engine"
+   }
+  },
+  "sort_f": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.7149357795715332,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 79.166768,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 1.8932926654815674,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 304.88100000000003,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 1.7494986057281494,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 282.122,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "SKIP"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 6.738619089126587,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 1194.0352,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 6.5230302810668945,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 977.7757049999999,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 4.438146591186523,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 539.618,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 0.2488727569580078,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 6.094581010984257,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 30.470314979553223,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 6061.246871948242,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 1.9546992778778076,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 58.934637,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 5.306055307388306,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 895.126584,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 1.220655918121338,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 104.819078,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 6.1093034744262695,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 842.916449,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 1.99849534034729,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 313.332,
+    "timing": "in-engine"
+   }
+  },
+  "sort_presorted": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.861870288848877,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 106.238376,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 1.0912597179412842,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 80.083,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.9879066944122314,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 71.478,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "SKIP"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 2.18287992477417,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 26.1484,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 5.894590854644775,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 721.808333,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 2.5060606002807617,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 289.291,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 0.2499854564666748,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 1.3358719879761338,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 8.324305295944214,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 101.9890308380127,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 0.8639633655548096,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 66.832604,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 1.603884220123291,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 121.818005,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 0.7455704212188721,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 18.993102,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 5.7408833503723145,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 642.000172,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 1.0783283710479736,
+    "answer": 2496.0,
+    "check": 19930924430.0,
+    "ms": 85.127,
+    "timing": "in-engine"
+   }
+  },
+  "grade_i": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.7164938449859619,
+    "answer": 465901450.0,
+    "check": 19930924430.0,
+    "ms": 99.45277,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 0.45017218589782715,
+    "answer": 465901450.0,
+    "check": 19930924430.0,
+    "ms": 25.206,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.42005324363708496,
+    "answer": 465901450.0,
+    "check": 19930924430.0,
+    "ms": 22.677,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "SKIP"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 0.8456647396087646,
+    "answer": 465901450.0,
+    "check": 19930924430.0,
+    "ms": 43.1087,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 1.7445268630981445,
+    "answer": 465901450.0,
+    "check": 19930924430.0,
+    "ms": 32.607524,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 0.7901678085327148,
+    "answer": 465901450.0,
+    "check": 19930924430.0,
+    "ms": 99.258,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 0.41776227951049805,
+    "answer": 465901450.0,
+    "check": 19930924430.0,
+    "ms": 33.432408003136516,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 0.7058131694793701,
+    "answer": 465901450.0,
+    "check": 19930924430.0,
+    "ms": 65.6440258026123,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 3.6124107837677,
+    "answer": 465901450.0,
+    "check": 19930924430.0,
+    "ms": 621.439111,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 5.004651308059692,
+    "answer": 465901450.0,
+    "check": 19930924430.0,
+    "ms": 841.292156,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 2.11366605758667,
+    "answer": 465901450.0,
+    "check": 19930924430.0,
+    "ms": 294.188346,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 3.033050298690796,
+    "answer": 465901450.0,
+    "check": 19930924430.0,
+    "ms": 27.455182,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 0.4570040702819824,
+    "answer": 465901450.0,
+    "check": 19930924430.0,
+    "ms": 24.039,
+    "timing": "in-engine"
+   }
+  },
+  "find": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.3551304340362549,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 15.298778,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 0.5024988651275635,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 20.150000000000002,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.504227876663208,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 20.808,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "SKIP"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 0.945500373840332,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 23.0793,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 2.7993950843811035,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 89.438074,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 6.955048561096191,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 1325.503,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 0.374988317489624,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 18.719829007750377,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 0.8396203517913818,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 68.3450698852539,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 1.1092095375061035,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 117.753022,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "SKIP",
+    "wall_s": 0.8480398654937744
+   },
+   "polars": {
+    "status": "SKIP",
+    "wall_s": 0.513209342956543
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 1.182044506072998,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 34.680166,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 0.6242783069610596,
+    "answer": 4993794647.0,
+    "check": 19930924430.0,
+    "ms": 31.863,
+    "timing": "in-engine"
+   }
+  },
+  "member": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.647944450378418,
+    "answer": 9535.0,
+    "check": 19930924430.0,
+    "ms": 99.624261,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 0.5773603916168213,
+    "answer": 9535.0,
+    "check": 19930924430.0,
+    "ms": 51.506,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.599461555480957,
+    "answer": 9535.0,
+    "check": 19930924430.0,
+    "ms": 52.383,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "SKIP"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 0.9363715648651123,
+    "answer": 9535.0,
+    "check": 19930924430.0,
+    "ms": 44.907399999999996,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 3.5433449745178223,
+    "answer": 9535.0,
+    "check": 19930924430.0,
+    "ms": 168.699435,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 12.508792638778687,
+    "answer": 9535.0,
+    "check": 19930924430.0,
+    "ms": 2347.125,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 0.3301525115966797,
+    "answer": 9535.0,
+    "check": 19930924430.0,
+    "ms": 18.69164200616069,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 0.6232888698577881,
+    "answer": 9535.0,
+    "check": 19930924430.0,
+    "ms": 38.75398635864258,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 0.7710671424865723,
+    "answer": 9535.0,
+    "check": 19930924430.0,
+    "ms": 53.587401,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 1.199645757675171,
+    "answer": 9535.0,
+    "check": 19930924430.0,
+    "ms": 78.584898,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 0.7305362224578857,
+    "answer": 9535.0,
+    "check": 19930924430.0,
+    "ms": 23.356175,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 1.9160573482513428,
+    "answer": 9535.0,
+    "check": 19930924430.0,
+    "ms": 44.62801,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 0.6489987373352051,
+    "answer": 9535.0,
+    "check": 19930924430.0,
+    "ms": 62.022,
+    "timing": "in-engine"
+   }
+  },
+  "distinct": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.2953648567199707,
+    "answer": 1000499500.0,
+    "check": 19930924430.0,
+    "ms": 30.828874,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 0.44704103469848633,
+    "answer": 1000499500.0,
+    "check": 19930924430.0,
+    "ms": 10.181000000000001,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.34434008598327637,
+    "answer": 1000499500.0,
+    "check": 19930924430.0,
+    "ms": 7.901,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "SKIP"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 0.739804744720459,
+    "answer": 1000499500.0,
+    "check": 19930924430.0,
+    "ms": 15.725499999999998,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 4.434422016143799,
+    "answer": 1000499500.0,
+    "check": 19930924430.0,
+    "ms": 568.2771379999999,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 1.6468021869659424,
+    "answer": 1000499500.0,
+    "check": 19930924430.0,
+    "ms": 247.57,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 0.27261900901794434,
+    "answer": 1000499500.0,
+    "check": 19930924430.0,
+    "ms": 5.63367799622938,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 0.5425143241882324,
+    "answer": 1000499500.0,
+    "check": 19930924430.0,
+    "ms": 33.48898887634277,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 2.18113112449646,
+    "answer": 1000499500.0,
+    "check": 19930924430.0,
+    "ms": 340.34465,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 1.2867536544799805,
+    "answer": 1000499500.0,
+    "check": 19930924430.0,
+    "ms": 53.020123,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 1.041560173034668,
+    "answer": 1000499500.0,
+    "check": 19930924430.0,
+    "ms": 88.848545,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 3.7475531101226807,
+    "answer": 1000499500.0,
+    "check": 19930924430.0,
+    "ms": 45.715077,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 0.3755338191986084,
+    "answer": 1000499500.0,
+    "check": 19930924430.0,
+    "ms": 7.988,
+    "timing": "in-engine"
+   }
+  },
+  "distinct_100k": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.5109884738922119,
+    "answer": 104999950000.0,
+    "check": 19930924430.0,
+    "ms": 75.420461,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 1.6838204860687256,
+    "answer": 104999950000.0,
+    "check": 19930924430.0,
+    "ms": 214.044,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 1.4056386947631836,
+    "answer": 104999950000.0,
+    "check": 19930924430.0,
+    "ms": 196.562,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "SKIP"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 0.9131655693054199,
+    "answer": 104999950000.0,
+    "check": 19930924430.0,
+    "ms": 17.147299999999998,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 11.32193922996521,
+    "answer": 104999950000.0,
+    "check": 19930924430.0,
+    "ms": 1815.9247639999999,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 2.6954383850097656,
+    "answer": 104999950000.0,
+    "check": 19930924430.0,
+    "ms": 443.803,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 0.5076413154602051,
+    "answer": 104999950000.0,
+    "check": 19930924430.0,
+    "ms": 47.46284201974049,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 0.6165893077850342,
+    "answer": 104999950000.0,
+    "check": 19930924430.0,
+    "ms": 48.818111419677734,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 4.651318073272705,
+    "answer": 104999950000.0,
+    "check": 19930924430.0,
+    "ms": 784.460728,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 1.5004017353057861,
+    "answer": 104999950000.0,
+    "check": 19930924430.0,
+    "ms": 82.767555,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 1.4257972240447998,
+    "answer": 104999950000.0,
+    "check": 19930924430.0,
+    "ms": 141.935071,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 4.429593324661255,
+    "answer": 104999950000.0,
+    "check": 19930924430.0,
+    "ms": 143.230053,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 1.7808175086975098,
+    "answer": 104999950000.0,
+    "check": 19930924430.0,
+    "ms": 271.036,
+    "timing": "in-engine"
+   }
+  },
+  "group_10": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.4360666275024414,
+    "answer": 27530841770.0,
+    "check": 19930924430.0,
+    "ms": 32.150601,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 0.8729279041290283,
+    "answer": 27530841770.0,
+    "check": 19930924430.0,
+    "ms": 51.651,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.5992040634155273,
+    "answer": 27530841770.0,
+    "check": 19930924430.0,
+    "ms": 44.741,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "OK",
+    "wall_s": 0.8775599002838135,
+    "answer": 27530841770.0,
+    "check": 19930924430.0,
+    "ms": 83.897,
+    "timing": "in-engine"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 2.5940005779266357,
+    "answer": 27530841770.0,
+    "check": 19930924430.0,
+    "ms": 121.5346,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 4.289202690124512,
+    "answer": 27530841770.0,
+    "check": 19930924430.0,
+    "ms": 355.913845,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 0.6858751773834229,
+    "answer": 27530841770.0,
+    "check": 19930924430.0,
+    "ms": 45.954,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 0.4250936508178711,
+    "answer": 27530841770.0,
+    "check": 19930924430.0,
+    "ms": 25.431208981899545,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 0.6900930404663086,
+    "answer": 27530841770.0,
+    "check": 19930924430.0,
+    "ms": 46.05507850646973,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 1.9461348056793213,
+    "answer": 27530841770.0,
+    "check": 19930924430.0,
+    "ms": 269.144902,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 1.3837964534759521,
+    "answer": 27530841770.0,
+    "check": 19930924430.0,
+    "ms": 68.57375,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 0.9603402614593506,
+    "answer": 27530841770.0,
+    "check": 19930924430.0,
+    "ms": 40.119412,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 1.7773289680480957,
+    "answer": 27530841770.0,
+    "check": 19930924430.0,
+    "ms": 38.855372,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 0.7619993686676025,
+    "answer": 27530841770.0,
+    "check": 19930924430.0,
+    "ms": 50.006,
+    "timing": "in-engine"
+   }
+  },
+  "group_100": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.2819051742553711,
+    "answer": 260496190510.0,
+    "check": 19930924430.0,
+    "ms": 27.048144,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 2.0756328105926514,
+    "answer": 260496190510.0,
+    "check": 19930924430.0,
+    "ms": 116.983,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.9458954334259033,
+    "answer": 260496190510.0,
+    "check": 19930924430.0,
+    "ms": 122.286,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "OK",
+    "wall_s": 1.4025120735168457,
+    "answer": 260496190510.0,
+    "check": 19930924430.0,
+    "ms": 197.919,
+    "timing": "in-engine"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 2.1471400260925293,
+    "answer": 260496190510.0,
+    "check": 19930924430.0,
+    "ms": 252.6779,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 4.7884297370910645,
+    "answer": 260496190510.0,
+    "check": 19930924430.0,
+    "ms": 455.468574,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 1.0016894340515137,
+    "answer": 260496190510.0,
+    "check": 19930924430.0,
+    "ms": 112.507,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 0.6684234142303467,
+    "answer": 260496190510.0,
+    "check": 19930924430.0,
+    "ms": 65.75777599937283,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 0.6565902233123779,
+    "answer": 260496190510.0,
+    "check": 19930924430.0,
+    "ms": 45.88794708251953,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 4.705287456512451,
+    "answer": 260496190510.0,
+    "check": 19930924430.0,
+    "ms": 801.717984,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 1.4078474044799805,
+    "answer": 260496190510.0,
+    "check": 19930924430.0,
+    "ms": 64.490301,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 0.8430109024047852,
+    "answer": 260496190510.0,
+    "check": 19930924430.0,
+    "ms": 37.840585,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 1.6130094528198242,
+    "answer": 260496190510.0,
+    "check": 19930924430.0,
+    "ms": 31.5139,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 1.066441297531128,
+    "answer": 260496190510.0,
+    "check": 19930924430.0,
+    "ms": 128.651,
+    "timing": "in-engine"
+   }
+  },
+  "group_10k": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.5296127796173096,
+    "answer": 657325991831.0,
+    "check": 19930924430.0,
+    "ms": 58.042078,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 1.3157260417938232,
+    "answer": 657325991831.0,
+    "check": 19930924430.0,
+    "ms": 183.907,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 1.2529518604278564,
+    "answer": 657325991831.0,
+    "check": 19930924430.0,
+    "ms": 172.613,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "OK",
+    "wall_s": 2.990212917327881,
+    "answer": 657325991831.0,
+    "check": 19930924430.0,
+    "ms": 283.524,
+    "timing": "in-engine"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 2.1635220050811768,
+    "answer": 657325991831.0,
+    "check": 19930924430.0,
+    "ms": 249.82999999999998,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 11.35945987701416,
+    "answer": 657325991831.0,
+    "check": 19930924430.0,
+    "ms": 1806.790982,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 1.3376271724700928,
+    "answer": 657325991831.0,
+    "check": 19930924430.0,
+    "ms": 176.897,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 0.855466365814209,
+    "answer": 657325991831.0,
+    "check": 19930924430.0,
+    "ms": 118.31322399666533,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 0.5986382961273193,
+    "answer": 657325991831.0,
+    "check": 19930924430.0,
+    "ms": 42.5868034362793,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 5.3851213455200195,
+    "answer": 657325991831.0,
+    "check": 19930924430.0,
+    "ms": 997.022884,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 1.6723363399505615,
+    "answer": 657325991831.0,
+    "check": 19930924430.0,
+    "ms": 108.993794,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 2.0554113388061523,
+    "answer": 657325991831.0,
+    "check": 19930924430.0,
+    "ms": 272.079822,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 1.6964137554168701,
+    "answer": 657325991831.0,
+    "check": 19930924430.0,
+    "ms": 64.532061,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 1.4969053268432617,
+    "answer": 657325991831.0,
+    "check": 19930924430.0,
+    "ms": 183.645,
+    "timing": "in-engine"
+   }
+  },
+  "group_100k": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.5675106048583984,
+    "answer": 627094482633.0,
+    "check": 19930924430.0,
+    "ms": 84.204511,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 1.5451195240020752,
+    "answer": 627094482633.0,
+    "check": 19930924430.0,
+    "ms": 228.731,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 2.4176712036132812,
+    "answer": 627094482633.0,
+    "check": 19930924430.0,
+    "ms": 216.967,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "OK",
+    "wall_s": 2.5192840099334717,
+    "answer": 627094482633.0,
+    "check": 19930924430.0,
+    "ms": 411.789,
+    "timing": "in-engine"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 2.3381800651550293,
+    "answer": 627094482633.0,
+    "check": 19930924430.0,
+    "ms": 276.05449999999996,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 22.49989366531372,
+    "answer": 627094482633.0,
+    "check": 19930924430.0,
+    "ms": 4067.7779189999997,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 2.7287938594818115,
+    "answer": 627094482633.0,
+    "check": 19930924430.0,
+    "ms": 461.341,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 2.565617799758911,
+    "answer": 627094482633.0,
+    "check": 19930924430.0,
+    "ms": 249.38146499334835,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 0.815953254699707,
+    "answer": 627094482633.0,
+    "check": 19930924430.0,
+    "ms": 61.02895736694336,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 4.436758041381836,
+    "answer": 627094482633.0,
+    "check": 19930924430.0,
+    "ms": 830.172224,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 1.5995113849639893,
+    "answer": 627094482633.0,
+    "check": 19930924430.0,
+    "ms": 112.105641,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 2.485260248184204,
+    "answer": 627094482633.0,
+    "check": 19930924430.0,
+    "ms": 345.126971,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 1.8773531913757324,
+    "answer": 627094482633.0,
+    "check": 19930924430.0,
+    "ms": 114.785129,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 1.603971004486084,
+    "answer": 627094482633.0,
+    "check": 19930924430.0,
+    "ms": 232.842,
+    "timing": "in-engine"
+   }
+  },
+  "join_inner": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.2528514862060547,
+    "answer": 665380820688.0,
+    "check": 19930924430.0,
+    "ms": 1.827213,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 0.34592390060424805,
+    "answer": 665380820688.0,
+    "check": 19930924430.0,
+    "ms": 4.808,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.34310483932495117,
+    "answer": 665380820688.0,
+    "check": 19930924430.0,
+    "ms": 3.459,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "OK",
+    "wall_s": 0.3683502674102783,
+    "answer": 665380820688.0,
+    "check": 19930924430.0,
+    "ms": 8.378,
+    "timing": "in-engine"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 0.6809558868408203,
+    "answer": 665380820688.0,
+    "check": 19930924430.0,
+    "ms": 4.592,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 1.8222410678863525,
+    "answer": 665380820688.0,
+    "check": 19930924430.0,
+    "ms": 10.802061,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 0.9902763366699219,
+    "answer": 665380820688.0,
+    "check": 19930924430.0,
+    "ms": 122.76,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 0.26676058769226074,
+    "answer": 665380820688.0,
+    "check": 19930924430.0,
+    "ms": 2.365629014093429,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 0.4931471347808838,
+    "answer": 665380820688.0,
+    "check": 19930924430.0,
+    "ms": 4.69207763671875,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 0.5722184181213379,
+    "answer": 665380820688.0,
+    "check": 19930924430.0,
+    "ms": 14.951426,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 1.2638885974884033,
+    "answer": 665380820688.0,
+    "check": 19930924430.0,
+    "ms": 47.432346,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 0.7336132526397705,
+    "answer": 665380820688.0,
+    "check": 19930924430.0,
+    "ms": 11.058371,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 0.9153265953063965,
+    "answer": 665380820688.0,
+    "check": 19930924430.0,
+    "ms": 5.238147,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 0.389523983001709,
+    "answer": 665380820688.0,
+    "check": 19930924430.0,
+    "ms": 3.853,
+    "timing": "in-engine"
+   }
+  },
+  "msum_16": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.2623870372772217,
+    "answer": 79900629860.0,
+    "check": 19930924430.0,
+    "ms": 11.973158,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 1.6442627906799316,
+    "answer": 79900629860.0,
+    "check": 19930924430.0,
+    "ms": 46.184,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.5259261131286621,
+    "answer": 79900629860.0,
+    "check": 19930924430.0,
+    "ms": 44.951,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "SKIP"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 1.0336658954620361,
+    "answer": 79900629860.0,
+    "check": 19930924430.0,
+    "ms": 55.922,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 3.723137855529785,
+    "answer": 79900629860.0,
+    "check": 19930924430.0,
+    "ms": 426.258381,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 1.9281353950500488,
+    "answer": 79900629860.0,
+    "check": 19930924430.0,
+    "ms": 290.55,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 0.5038516521453857,
+    "answer": 79900629860.0,
+    "check": 19930924430.0,
+    "ms": 29.534873989177868,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 0.6698286533355713,
+    "answer": 79900629860.0,
+    "check": 19930924430.0,
+    "ms": 58.25400352478027,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 0.9340164661407471,
+    "answer": 79900629860.0,
+    "check": 19930924430.0,
+    "ms": 104.835146,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 1.5767130851745605,
+    "answer": 79900629860.0,
+    "check": 19930924430.0,
+    "ms": 132.341519,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 0.9142591953277588,
+    "answer": 79900629860.0,
+    "check": 19930924430.0,
+    "ms": 54.112973,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 7.521839141845703,
+    "answer": 79900629860.0,
+    "check": 19930924430.0,
+    "ms": 1028.622247,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 0.5668137073516846,
+    "answer": 79900629860.0,
+    "check": 19930924430.0,
+    "ms": 44.464,
+    "timing": "in-engine"
+   }
+  },
+  "mavg_256": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.23351073265075684,
+    "answer": 4993777268.946897,
+    "check": 19930924430.0,
+    "ms": 11.523615,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 0.5713987350463867,
+    "answer": 4993777268.946897,
+    "check": 19930924430.0,
+    "ms": 51.031,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.551628589630127,
+    "answer": 4993777268.946897,
+    "check": 19930924430.0,
+    "ms": 47.389,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "SKIP"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 1.6481585502624512,
+    "answer": 4993777268.9468975,
+    "check": 19930924430.0,
+    "ms": 150.6894,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 63.192559003829956,
+    "answer": 4993777268.946897,
+    "check": 19930924430.0,
+    "ms": 11680.983823999999,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "OK",
+    "wall_s": 2.0327765941619873,
+    "answer": 4993777268.946897,
+    "check": 19930924430.0,
+    "ms": 314.449,
+    "timing": "in-engine"
+   },
+   "cbqn": {
+    "status": "OK",
+    "wall_s": 0.5428614616394043,
+    "answer": 4993777268.946902,
+    "check": 19930924430.0,
+    "ms": 51.67379498016089,
+    "timing": "in-engine"
+   },
+   "j": {
+    "status": "OK",
+    "wall_s": 0.8739337921142578,
+    "answer": 4993777268.946896,
+    "check": 19930924430.0,
+    "ms": 101.1509895324707,
+    "timing": "in-engine"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 1.153989315032959,
+    "answer": 4993777268.946897,
+    "check": 19930924430.0,
+    "ms": 143.292894,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 1.5015614032745361,
+    "answer": 4993777268.946897,
+    "check": 19930924430.0,
+    "ms": 138.41372,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 1.0530815124511719,
+    "answer": 4993777268.946897,
+    "check": 19930924430.0,
+    "ms": 60.314244,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 10.884401082992554,
+    "answer": 4993777268.946897,
+    "check": 19930924430.0,
+    "ms": 1599.377605,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 0.5549173355102539,
+    "answer": 4993777268.946897,
+    "check": 19930924430.0,
+    "ms": 45.175000000000004,
+    "timing": "in-engine"
+   }
+  },
+  "mmax_64": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.25955915451049805,
+    "answer": 9355015204.0,
+    "check": 19930924430.0,
+    "ms": 17.496854,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 0.42438244819641113,
+    "answer": 9355015204.0,
+    "check": 19930924430.0,
+    "ms": 23.526,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.45562219619750977,
+    "answer": 9355015204.0,
+    "check": 19930924430.0,
+    "ms": 29.149,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "SKIP"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 7.640085935592651,
+    "answer": 9355015204.0,
+    "check": 19930924430.0,
+    "ms": 1357.3397,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 13.721176385879517,
+    "answer": 9355015204.0,
+    "check": 19930924430.0,
+    "ms": 2372.871826,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "SKIP",
+    "wall_s": 0.39444732666015625
+   },
+   "cbqn": {
+    "status": "SKIP",
+    "wall_s": 0.2175884246826172
+   },
+   "j": {
+    "status": "SKIP",
+    "wall_s": 0.33455824851989746
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 2.8047428131103516,
+    "answer": 9355015204.0,
+    "check": 19930924430.0,
+    "ms": 483.790178,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 2.7863988876342773,
+    "answer": 9355015204.0,
+    "check": 19930924430.0,
+    "ms": 148.35046,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 0.9536850452423096,
+    "answer": 9355015204.0,
+    "check": 19930924430.0,
+    "ms": 79.58707,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 11.044873714447021,
+    "answer": 9355015204.0,
+    "check": 19930924430.0,
+    "ms": 1811.87301,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 0.4821171760559082,
+    "answer": 9355015204.0,
+    "check": 19930924430.0,
+    "ms": 28.552,
+    "timing": "in-engine"
+   }
+  },
+  "asof": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.30826497077941895,
+    "answer": 500497502.0,
+    "check": 19930924430.0,
+    "ms": 10.261518,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 0.5580713748931885,
+    "answer": 500497502.0,
+    "check": 19930924430.0,
+    "ms": 40.513,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.5297102928161621,
+    "answer": 500497502.0,
+    "check": 19930924430.0,
+    "ms": 38.76,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "SKIP"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 1.0463354587554932,
+    "answer": 500497502.0,
+    "check": 19930924430.0,
+    "ms": 88.0659,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 3.1008834838867188,
+    "answer": 500497502.0,
+    "check": 19930924430.0,
+    "ms": 259.420039,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "SKIP"
+   },
+   "cbqn": {
+    "status": "SKIP"
+   },
+   "j": {
+    "status": "SKIP"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 0.49727654457092285,
+    "answer": 500497502.0,
+    "check": 19930924430.0,
+    "ms": 26.872726,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 1.4379644393920898,
+    "answer": 500497502.0,
+    "check": 19930924430.0,
+    "ms": 94.504501,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 0.7492849826812744,
+    "answer": 500497502.0,
+    "check": 19930924430.0,
+    "ms": 16.748231,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 3.1089603900909424,
+    "answer": 500497502.0,
+    "check": 19930924430.0,
+    "ms": 189.273723,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 0.6812636852264404,
+    "answer": 500497502.0,
+    "check": 19930924430.0,
+    "ms": 41.758,
+    "timing": "in-engine"
+   }
+  },
+  "tablesort": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.5245962142944336,
+    "answer": 3846.0,
+    "check": 19930924430.0,
+    "ms": 71.658179,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 1.171398401260376,
+    "answer": 3846.0,
+    "check": 19930924430.0,
+    "ms": 159.588,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.9339923858642578,
+    "answer": 3846.0,
+    "check": 19930924430.0,
+    "ms": 113.663,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "SKIP"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 2.233384847640991,
+    "answer": 3846.0,
+    "check": 19930924430.0,
+    "ms": 303.5634,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 7.543638706207275,
+    "answer": 3846.0,
+    "check": 19930924430.0,
+    "ms": 1134.736399,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "SKIP"
+   },
+   "cbqn": {
+    "status": "SKIP"
+   },
+   "j": {
+    "status": "SKIP"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 1.7179009914398193,
+    "answer": 3846.0,
+    "check": 19930924430.0,
+    "ms": 220.853559,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 1.5718071460723877,
+    "answer": 3846.0,
+    "check": 19930924430.0,
+    "ms": 132.041014,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 3.1201066970825195,
+    "answer": 3846.0,
+    "check": 19930924430.0,
+    "ms": 495.828738,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 3.064516305923462,
+    "answer": 3846.0,
+    "check": 19930924430.0,
+    "ms": 342.763189,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 1.062711238861084,
+    "answer": 3846.0,
+    "check": 19930924430.0,
+    "ms": 128.481,
+    "timing": "in-engine"
+   }
+  },
+  "qsql_select": {
+   "c": {
+    "status": "OK",
+    "wall_s": 0.16640210151672363,
+    "answer": 34742012734.0,
+    "check": 19930924430.0,
+    "ms": 2.272457,
+    "timing": "in-engine"
+   },
+   "amber": {
+    "status": "OK",
+    "wall_s": 0.4366135597229004,
+    "answer": 34742012734.0,
+    "check": 19930924430.0,
+    "ms": 12.767,
+    "timing": "in-engine"
+   },
+   "amber-native": {
+    "status": "OK",
+    "wall_s": 0.4127528667449951,
+    "answer": 34742012734.0,
+    "check": 19930924430.0,
+    "ms": 10.677,
+    "timing": "in-engine"
+   },
+   "amber-qsql": {
+    "status": "OK",
+    "wall_s": 0.43026280403137207,
+    "answer": 34742012734.0,
+    "check": 19930924430.0,
+    "ms": 14.013,
+    "timing": "in-engine"
+   },
+   "q": {
+    "status": "OK",
+    "wall_s": 0.7864429950714111,
+    "answer": 34742012734.0,
+    "check": 19930924430.0,
+    "ms": 9.405999999999999,
+    "timing": "in-engine"
+   },
+   "peachq": {
+    "status": "OK",
+    "wall_s": 2.6946911811828613,
+    "answer": 34742012734.0,
+    "check": 19930924430.0,
+    "ms": 147.348443,
+    "timing": "in-engine"
+   },
+   "ngnk": {
+    "status": "SKIP"
+   },
+   "cbqn": {
+    "status": "SKIP"
+   },
+   "j": {
+    "status": "SKIP"
+   },
+   "numpy": {
+    "status": "OK",
+    "wall_s": 0.6491484642028809,
+    "answer": 34742012734.0,
+    "check": 19930924430.0,
+    "ms": 50.006155,
+    "timing": "in-engine"
+   },
+   "pandas": {
+    "status": "OK",
+    "wall_s": 1.0176992416381836,
+    "answer": 34742012734.0,
+    "check": 19930924430.0,
+    "ms": 16.059131,
+    "timing": "in-engine"
+   },
+   "polars": {
+    "status": "OK",
+    "wall_s": 0.7126402854919434,
+    "answer": 34742012734.0,
+    "check": 19930924430.0,
+    "ms": 11.695567,
+    "timing": "in-engine"
+   },
+   "duckdb": {
+    "status": "OK",
+    "wall_s": 1.1173572540283203,
+    "answer": 34742012734.0,
+    "check": 19930924430.0,
+    "ms": 10.702412,
+    "timing": "in-engine"
+   },
+   "amber-mt": {
+    "status": "OK",
+    "wall_s": 1.6109580993652344,
+    "answer": 34742012734.0,
+    "check": 19930924430.0,
+    "ms": 23.096,
+    "timing": "in-engine"
+   }
+  }
+ },
+ "scaling": {
+  "100000": {
+   "sum_f": {
+    "c": {
+     "status": "OK",
+     "wall_s": 0.002504587173461914,
+     "answer": 49936748.0,
+     "check": 199320011.0,
+     "ms": 0.041552,
+     "timing": "in-engine"
+    },
+    "amber": {
+     "status": "OK",
+     "wall_s": 0.02403545379638672,
+     "answer": 49936748.0,
+     "check": 199320011.0,
+     "ms": 0.008,
+     "timing": "in-engine"
+    },
+    "amber-native": {
+     "status": "OK",
+     "wall_s": 0.02363276481628418,
+     "answer": 49936748.0,
+     "check": 199320011.0,
+     "ms": 0.004,
+     "timing": "in-engine"
+    },
+    "amber-qsql": {
+     "status": "SKIP"
+    },
+    "q": {
+     "status": "OK",
+     "wall_s": 0.11094808578491211,
+     "answer": 49936748.0,
+     "check": 199320011.0,
+     "ms": 0.0076,
+     "timing": "in-engine"
+    },
+    "peachq": {
+     "status": "OK",
+     "wall_s": 0.033234596252441406,
+     "answer": 49936748.0,
+     "check": 199320011.0,
+     "ms": 0.163747,
+     "timing": "in-engine"
+    },
+    "ngnk": {
+     "status": "OK",
+     "wall_s": 0.007248401641845703,
+     "answer": 49936748.0,
+     "check": 199320011.0,
+     "ms": 0.039,
+     "timing": "in-engine"
+    },
+    "cbqn": {
+     "status": "OK",
+     "wall_s": 0.009418487548828125,
+     "answer": 49936748.0,
+     "check": 199320011.0,
+     "ms": 0.0020720181055366993,
+     "timing": "in-engine"
+    },
+    "j": {
+     "status": "OK",
+     "wall_s": 0.12766194343566895,
+     "answer": 49936748.0,
+     "check": 199320011.0,
+     "ms": 0.013113021850585938,
+     "timing": "in-engine"
+    },
+    "numpy": {
+     "status": "OK",
+     "wall_s": 0.25616884231567383,
+     "answer": 49936748.0,
+     "check": 199320011.0,
+     "ms": 0.014429,
+     "timing": "in-engine"
+    },
+    "pandas": {
+     "status": "OK",
+     "wall_s": 0.5905539989471436,
+     "answer": 49936748.0,
+     "check": 199320011.0,
+     "ms": 0.036624,
+     "timing": "in-engine"
+    },
+    "polars": {
+     "status": "OK",
+     "wall_s": 0.4289064407348633,
+     "answer": 49936748.0,
+     "check": 199320011.0,
+     "ms": 0.057388,
+     "timing": "in-engine"
+    },
+    "duckdb": {
+     "status": "OK",
+     "wall_s": 0.6457409858703613,
+     "answer": 49936748.0,
+     "check": 199320011.0,
+     "ms": 0.350763,
+     "timing": "in-engine"
+    },
+    "amber-mt": {
+     "status": "OK",
+     "wall_s": 0.022974491119384766,
+     "answer": 49936748.0,
+     "check": 199320011.0,
+     "ms": 0.004,
+     "timing": "in-engine"
+    }
+   },
+   "group_10k": {
+    "c": {
+     "status": "OK",
+     "wall_s": 0.006337881088256836,
+     "answer": 6572000322.0,
+     "check": 199320011.0,
+     "ms": 0.615708,
+     "timing": "in-engine"
+    },
+    "amber": {
+     "status": "OK",
+     "wall_s": 0.029021739959716797,
+     "answer": 6572000322.0,
+     "check": 199320011.0,
+     "ms": 0.875,
+     "timing": "in-engine"
+    },
+    "amber-native": {
+     "status": "OK",
+     "wall_s": 0.027253150939941406,
+     "answer": 6572000322.0,
+     "check": 199320011.0,
+     "ms": 0.93,
+     "timing": "in-engine"
+    },
+    "amber-qsql": {
+     "status": "OK",
+     "wall_s": 0.0628805160522461,
+     "answer": 6572000322.0,
+     "check": 199320011.0,
+     "ms": 8.216,
+     "timing": "in-engine"
+    },
+    "q": {
+     "status": "OK",
+     "wall_s": 0.1036376953125,
+     "answer": 6572000322.0,
+     "check": 199320011.0,
+     "ms": 0.9356,
+     "timing": "in-engine"
+    },
+    "peachq": {
+     "status": "OK",
+     "wall_s": 1.1515388488769531,
+     "answer": 6572000322.0,
+     "check": 199320011.0,
+     "ms": 223.461751,
+     "timing": "in-engine"
+    },
+    "ngnk": {
+     "status": "OK",
+     "wall_s": 0.023590087890625,
+     "answer": 6572000322.0,
+     "check": 199320011.0,
+     "ms": 0.9450000000000001,
+     "timing": "in-engine"
+    },
+    "cbqn": {
+     "status": "OK",
+     "wall_s": 0.01382899284362793,
+     "answer": 6572000322.0,
+     "check": 199320011.0,
+     "ms": 0.4138610092923045,
+     "timing": "in-engine"
+    },
+    "j": {
+     "status": "OK",
+     "wall_s": 0.1309821605682373,
+     "answer": 6572000322.0,
+     "check": 199320011.0,
+     "ms": 0.3669261932373047,
+     "timing": "in-engine"
+    },
+    "numpy": {
+     "status": "OK",
+     "wall_s": 0.196990966796875,
+     "answer": 6572000322.0,
+     "check": 199320011.0,
+     "ms": 2.684421,
+     "timing": "in-engine"
+    },
+    "pandas": {
+     "status": "OK",
+     "wall_s": 0.5990140438079834,
+     "answer": 6572000322.0,
+     "check": 199320011.0,
+     "ms": 0.797638,
+     "timing": "in-engine"
+    },
+    "polars": {
+     "status": "OK",
+     "wall_s": 0.44998788833618164,
+     "answer": 6572000322.0,
+     "check": 199320011.0,
+     "ms": 1.199859,
+     "timing": "in-engine"
+    },
+    "duckdb": {
+     "status": "OK",
+     "wall_s": 0.6677370071411133,
+     "answer": 6572000322.0,
+     "check": 199320011.0,
+     "ms": 1.110267,
+     "timing": "in-engine"
+    },
+    "amber-mt": {
+     "status": "OK",
+     "wall_s": 0.03089594841003418,
+     "answer": 6572000322.0,
+     "check": 199320011.0,
+     "ms": 0.811,
+     "timing": "in-engine"
+    }
+   },
+   "sort_f": {
+    "c": {
+     "status": "OK",
+     "wall_s": 0.006713151931762695,
+     "answer": 2497.0,
+     "check": 199320011.0,
+     "ms": 0.636161,
+     "timing": "in-engine"
+    },
+    "amber": {
+     "status": "OK",
+     "wall_s": 0.03265023231506348,
+     "answer": 2497.0,
+     "check": 199320011.0,
+     "ms": 1.006,
+     "timing": "in-engine"
+    },
+    "amber-native": {
+     "status": "OK",
+     "wall_s": 0.02623748779296875,
+     "answer": 2497.0,
+     "check": 199320011.0,
+     "ms": 0.891,
+     "timing": "in-engine"
+    },
+    "amber-qsql": {
+     "status": "SKIP"
+    },
+    "q": {
+     "status": "OK",
+     "wall_s": 0.10603213310241699,
+     "answer": 2497.0,
+     "check": 199320011.0,
+     "ms": 1.027,
+     "timing": "in-engine"
+    },
+    "peachq": {
+     "status": "OK",
+     "wall_s": 0.0730905532836914,
+     "answer": 2497.0,
+     "check": 199320011.0,
+     "ms": 7.968858,
+     "timing": "in-engine"
+    },
+    "ngnk": {
+     "status": "OK",
+     "wall_s": 0.020175695419311523,
+     "answer": 2497.0,
+     "check": 199320011.0,
+     "ms": 1.813,
+     "timing": "in-engine"
+    },
+    "cbqn": {
+     "status": "OK",
+     "wall_s": 0.012794971466064453,
+     "answer": 2497.0,
+     "check": 199320011.0,
+     "ms": 0.05139200948178768,
+     "timing": "in-engine"
+    },
+    "j": {
+     "status": "OK",
+     "wall_s": 0.1380000114440918,
+     "answer": 2497.0,
+     "check": 199320011.0,
+     "ms": 1.8057823181152344,
+     "timing": "in-engine"
+    },
+    "numpy": {
+     "status": "OK",
+     "wall_s": 0.26012277603149414,
+     "answer": 2497.0,
+     "check": 199320011.0,
+     "ms": 0.369158,
+     "timing": "in-engine"
+    },
+    "pandas": {
+     "status": "OK",
+     "wall_s": 0.5767073631286621,
+     "answer": 2497.0,
+     "check": 199320011.0,
+     "ms": 2.513063,
+     "timing": "in-engine"
+    },
+    "polars": {
+     "status": "OK",
+     "wall_s": 0.4691605567932129,
+     "answer": 2497.0,
+     "check": 199320011.0,
+     "ms": 0.745512,
+     "timing": "in-engine"
+    },
+    "duckdb": {
+     "status": "OK",
+     "wall_s": 0.7703020572662354,
+     "answer": 2497.0,
+     "check": 199320011.0,
+     "ms": 7.253687,
+     "timing": "in-engine"
+    },
+    "amber-mt": {
+     "status": "OK",
+     "wall_s": 0.03234148025512695,
+     "answer": 2497.0,
+     "check": 199320011.0,
+     "ms": 0.866,
+     "timing": "in-engine"
+    }
+   }
+  },
+  "1000000": {
+   "sum_f": {
+    "c": {
+     "status": "OK",
+     "wall_s": 0.0220794677734375,
+     "answer": 499362292.0,
+     "check": 1993076587.0,
+     "ms": 0.914975,
+     "timing": "in-engine"
+    },
+    "amber": {
+     "status": "OK",
+     "wall_s": 0.054753780364990234,
+     "answer": 499362292.0,
+     "check": 1993076587.0,
+     "ms": 0.431,
+     "timing": "in-engine"
+    },
+    "amber-native": {
+     "status": "OK",
+     "wall_s": 0.05050516128540039,
+     "answer": 499362292.0,
+     "check": 1993076587.0,
+     "ms": 0.28600000000000003,
+     "timing": "in-engine"
+    },
+    "amber-qsql": {
+     "status": "SKIP"
+    },
+    "q": {
+     "status": "OK",
+     "wall_s": 0.15372943878173828,
+     "answer": 499362292.0,
+     "check": 1993076587.0,
+     "ms": 0.47759999999999997,
+     "timing": "in-engine"
+    },
+    "peachq": {
+     "status": "OK",
+     "wall_s": 0.18131446838378906,
+     "answer": 499362292.0,
+     "check": 1993076587.0,
+     "ms": 0.508308,
+     "timing": "in-engine"
+    },
+    "ngnk": {
+     "status": "OK",
+     "wall_s": 0.04180765151977539,
+     "answer": 499362292.0,
+     "check": 1993076587.0,
+     "ms": 0.649,
+     "timing": "in-engine"
+    },
+    "cbqn": {
+     "status": "OK",
+     "wall_s": 0.033559560775756836,
+     "answer": 499362292.0,
+     "check": 1993076587.0,
+     "ms": 0.04337599966675043,
+     "timing": "in-engine"
+    },
+    "j": {
+     "status": "OK",
+     "wall_s": 0.17649555206298828,
+     "answer": 499362292.0,
+     "check": 1993076587.0,
+     "ms": 0.40602684020996094,
+     "timing": "in-engine"
+    },
+    "numpy": {
+     "status": "OK",
+     "wall_s": 0.24153470993041992,
+     "answer": 499362292.0,
+     "check": 1993076587.0,
+     "ms": 0.477601,
+     "timing": "in-engine"
+    },
+    "pandas": {
+     "status": "OK",
+     "wall_s": 0.6267478466033936,
+     "answer": 499362292.0,
+     "check": 1993076587.0,
+     "ms": 0.850695,
+     "timing": "in-engine"
+    },
+    "polars": {
+     "status": "OK",
+     "wall_s": 0.47901225090026855,
+     "answer": 499362292.0,
+     "check": 1993076587.0,
+     "ms": 0.505369,
+     "timing": "in-engine"
+    },
+    "duckdb": {
+     "status": "OK",
+     "wall_s": 0.8093583583831787,
+     "answer": 499362292.0,
+     "check": 1993076587.0,
+     "ms": 1.313986,
+     "timing": "in-engine"
+    },
+    "amber-mt": {
+     "status": "OK",
+     "wall_s": 0.07576966285705566,
+     "answer": 499362292.0,
+     "check": 1993076587.0,
+     "ms": 0.22,
+     "timing": "in-engine"
+    }
+   },
+   "group_10k": {
+    "c": {
+     "status": "OK",
+     "wall_s": 0.04479575157165527,
+     "answer": 65728255302.0,
+     "check": 1993076587.0,
+     "ms": 6.02394,
+     "timing": "in-engine"
+    },
+    "amber": {
+     "status": "OK",
+     "wall_s": 0.11211347579956055,
+     "answer": 65728255302.0,
+     "check": 1993076587.0,
+     "ms": 8.4,
+     "timing": "in-engine"
+    },
+    "amber-native": {
+     "status": "OK",
+     "wall_s": 0.10395264625549316,
+     "answer": 65728255302.0,
+     "check": 1993076587.0,
+     "ms": 7.8420000000000005,
+     "timing": "in-engine"
+    },
+    "amber-qsql": {
+     "status": "OK",
+     "wall_s": 0.1862010955810547,
+     "answer": 65728255302.0,
+     "check": 1993076587.0,
+     "ms": 21.096,
+     "timing": "in-engine"
+    },
+    "q": {
+     "status": "OK",
+     "wall_s": 0.26799559593200684,
+     "answer": 65728255302.0,
+     "check": 1993076587.0,
+     "ms": 18.9205,
+     "timing": "in-engine"
+    },
+    "peachq": {
+     "status": "OK",
+     "wall_s": 1.7228591442108154,
+     "answer": 65728255302.0,
+     "check": 1993076587.0,
+     "ms": 291.368853,
+     "timing": "in-engine"
+    },
+    "ngnk": {
+     "status": "OK",
+     "wall_s": 0.09181547164916992,
+     "answer": 65728255302.0,
+     "check": 1993076587.0,
+     "ms": 9.370000000000001,
+     "timing": "in-engine"
+    },
+    "cbqn": {
+     "status": "OK",
+     "wall_s": 0.062476396560668945,
+     "answer": 65728255302.0,
+     "check": 1993076587.0,
+     "ms": 5.436628998722881,
+     "timing": "in-engine"
+    },
+    "j": {
+     "status": "OK",
+     "wall_s": 0.1844644546508789,
+     "answer": 65728255302.0,
+     "check": 1993076587.0,
+     "ms": 4.42814826965332,
+     "timing": "in-engine"
+    },
+    "numpy": {
+     "status": "OK",
+     "wall_s": 0.463059663772583,
+     "answer": 65728255302.0,
+     "check": 1993076587.0,
+     "ms": 44.336511,
+     "timing": "in-engine"
+    },
+    "pandas": {
+     "status": "OK",
+     "wall_s": 0.6809394359588623,
+     "answer": 65728255302.0,
+     "check": 1993076587.0,
+     "ms": 9.406397,
+     "timing": "in-engine"
+    },
+    "polars": {
+     "status": "OK",
+     "wall_s": 0.5165410041809082,
+     "answer": 65728255302.0,
+     "check": 1993076587.0,
+     "ms": 17.082189,
+     "timing": "in-engine"
+    },
+    "duckdb": {
+     "status": "OK",
+     "wall_s": 0.7525312900543213,
+     "answer": 65728255302.0,
+     "check": 1993076587.0,
+     "ms": 7.927899,
+     "timing": "in-engine"
+    },
+    "amber-mt": {
+     "status": "OK",
+     "wall_s": 0.11477351188659668,
+     "answer": 65728255302.0,
+     "check": 1993076587.0,
+     "ms": 7.268,
+     "timing": "in-engine"
+    }
+   },
+   "sort_f": {
+    "c": {
+     "status": "OK",
+     "wall_s": 0.07229375839233398,
+     "answer": 2496.0,
+     "check": 1993076587.0,
+     "ms": 9.320612,
+     "timing": "in-engine"
+    },
+    "amber": {
+     "status": "OK",
+     "wall_s": 0.17856764793395996,
+     "answer": 2496.0,
+     "check": 1993076587.0,
+     "ms": 21.137,
+     "timing": "in-engine"
+    },
+    "amber-native": {
+     "status": "OK",
+     "wall_s": 0.16000747680664062,
+     "answer": 2496.0,
+     "check": 1993076587.0,
+     "ms": 18.563,
+     "timing": "in-engine"
+    },
+    "amber-qsql": {
+     "status": "SKIP"
+    },
+    "q": {
+     "status": "OK",
+     "wall_s": 0.45481181144714355,
+     "answer": 2496.0,
+     "check": 1993076587.0,
+     "ms": 62.900499999999994,
+     "timing": "in-engine"
+    },
+    "peachq": {
+     "status": "OK",
+     "wall_s": 0.6233501434326172,
+     "answer": 2496.0,
+     "check": 1993076587.0,
+     "ms": 83.991086,
+     "timing": "in-engine"
+    },
+    "ngnk": {
+     "status": "OK",
+     "wall_s": 0.21751832962036133,
+     "answer": 2496.0,
+     "check": 1993076587.0,
+     "ms": 33.851,
+     "timing": "in-engine"
+    },
+    "cbqn": {
+     "status": "OK",
+     "wall_s": 0.035431623458862305,
+     "answer": 2496.0,
+     "check": 1993076587.0,
+     "ms": 0.4203309945296496,
+     "timing": "in-engine"
+    },
+    "j": {
+     "status": "OK",
+     "wall_s": 0.5602540969848633,
+     "answer": 2496.0,
+     "check": 1993076587.0,
+     "ms": 81.65192604064941,
+     "timing": "in-engine"
+    },
+    "numpy": {
+     "status": "OK",
+     "wall_s": 0.23130393028259277,
+     "answer": 2496.0,
+     "check": 1993076587.0,
+     "ms": 4.496786,
+     "timing": "in-engine"
+    },
+    "pandas": {
+     "status": "OK",
+     "wall_s": 0.7664341926574707,
+     "answer": 2496.0,
+     "check": 1993076587.0,
+     "ms": 35.798564,
+     "timing": "in-engine"
+    },
+    "polars": {
+     "status": "OK",
+     "wall_s": 0.4569587707519531,
+     "answer": 2496.0,
+     "check": 1993076587.0,
+     "ms": 8.240772,
+     "timing": "in-engine"
+    },
+    "duckdb": {
+     "status": "OK",
+     "wall_s": 2.258307933807373,
+     "answer": 2496.0,
+     "check": 1993076587.0,
+     "ms": 73.731105,
+     "timing": "in-engine"
+    },
+    "amber-mt": {
+     "status": "OK",
+     "wall_s": 0.18472623825073242,
+     "answer": 2496.0,
+     "check": 1993076587.0,
+     "ms": 20.088,
+     "timing": "in-engine"
+    }
+   }
+  },
+  "10000000": {
+   "sum_f": {
+    "c": {
+     "status": "OK",
+     "wall_s": 0.24535346031188965,
+     "answer": 4993794647.0,
+     "check": 19930924430.0,
+     "ms": 5.941167,
+     "timing": "in-engine"
+    },
+    "amber": {
+     "status": "OK",
+     "wall_s": 0.32018041610717773,
+     "answer": 4993794647.0,
+     "check": 19930924430.0,
+     "ms": 4.394,
+     "timing": "in-engine"
+    },
+    "amber-native": {
+     "status": "OK",
+     "wall_s": 0.305966854095459,
+     "answer": 4993794647.0,
+     "check": 19930924430.0,
+     "ms": 3.73,
+     "timing": "in-engine"
+    },
+    "amber-qsql": {
+     "status": "SKIP"
+    },
+    "q": {
+     "status": "OK",
+     "wall_s": 0.6236510276794434,
+     "answer": 4993794647.0,
+     "check": 19930924430.0,
+     "ms": 6.0542,
+     "timing": "in-engine"
+    },
+    "peachq": {
+     "status": "OK",
+     "wall_s": 1.4875421524047852,
+     "answer": 4993794647.0,
+     "check": 19930924430.0,
+     "ms": 4.515118999999999,
+     "timing": "in-engine"
+    },
+    "ngnk": {
+     "status": "OK",
+     "wall_s": 0.3998136520385742,
+     "answer": 4993794647.0,
+     "check": 19930924430.0,
+     "ms": 6.509,
+     "timing": "in-engine"
+    },
+    "cbqn": {
+     "status": "OK",
+     "wall_s": 0.2320413589477539,
+     "answer": 4993794647.0,
+     "check": 19930924430.0,
+     "ms": 1.188638008898124,
+     "timing": "in-engine"
+    },
+    "j": {
+     "status": "OK",
+     "wall_s": 0.36159801483154297,
+     "answer": 4993794647.0,
+     "check": 19930924430.0,
+     "ms": 4.184961318969727,
+     "timing": "in-engine"
+    },
+    "numpy": {
+     "status": "OK",
+     "wall_s": 0.451096773147583,
+     "answer": 4993794647.0,
+     "check": 19930924430.0,
+     "ms": 5.111917,
+     "timing": "in-engine"
+    },
+    "pandas": {
+     "status": "OK",
+     "wall_s": 0.8843605518341064,
+     "answer": 4993794647.0,
+     "check": 19930924430.0,
+     "ms": 10.009656,
+     "timing": "in-engine"
+    },
+    "polars": {
+     "status": "OK",
+     "wall_s": 0.661872148513794,
+     "answer": 4993794647.0,
+     "check": 19930924430.0,
+     "ms": 3.578422,
+     "timing": "in-engine"
+    },
+    "duckdb": {
+     "status": "OK",
+     "wall_s": 1.6739041805267334,
+     "answer": 4993794647.0,
+     "check": 19930924430.0,
+     "ms": 9.929025,
+     "timing": "in-engine"
+    },
+    "amber-mt": {
+     "status": "OK",
+     "wall_s": 0.32593798637390137,
+     "answer": 4993794647.0,
+     "check": 19930924430.0,
+     "ms": 3.4450000000000003,
+     "timing": "in-engine"
+    }
+   },
+   "group_10k": {
+    "c": {
+     "status": "OK",
+     "wall_s": 0.39991331100463867,
+     "answer": 657325991831.0,
+     "check": 19930924430.0,
+     "ms": 55.260622,
+     "timing": "in-engine"
+    },
+    "amber": {
+     "status": "OK",
+     "wall_s": 1.229186773300171,
+     "answer": 657325991831.0,
+     "check": 19930924430.0,
+     "ms": 175.992,
+     "timing": "in-engine"
+    },
+    "amber-native": {
+     "status": "OK",
+     "wall_s": 1.198242425918579,
+     "answer": 657325991831.0,
+     "check": 19930924430.0,
+     "ms": 169.458,
+     "timing": "in-engine"
+    },
+    "amber-qsql": {
+     "status": "OK",
+     "wall_s": 1.88787841796875,
+     "answer": 657325991831.0,
+     "check": 19930924430.0,
+     "ms": 279.618,
+     "timing": "in-engine"
+    },
+    "q": {
+     "status": "OK",
+     "wall_s": 2.1207549571990967,
+     "answer": 657325991831.0,
+     "check": 19930924430.0,
+     "ms": 243.7962,
+     "timing": "in-engine"
+    },
+    "peachq": {
+     "status": "OK",
+     "wall_s": 11.98601508140564,
+     "answer": 657325991831.0,
+     "check": 19930924430.0,
+     "ms": 1711.307907,
+     "timing": "in-engine"
+    },
+    "ngnk": {
+     "status": "OK",
+     "wall_s": 1.328491449356079,
+     "answer": 657325991831.0,
+     "check": 19930924430.0,
+     "ms": 179.651,
+     "timing": "in-engine"
+    },
+    "cbqn": {
+     "status": "OK",
+     "wall_s": 0.8654541969299316,
+     "answer": 657325991831.0,
+     "check": 19930924430.0,
+     "ms": 119.85073197865859,
+     "timing": "in-engine"
+    },
+    "j": {
+     "status": "OK",
+     "wall_s": 0.612473726272583,
+     "answer": 657325991831.0,
+     "check": 19930924430.0,
+     "ms": 43.295860290527344,
+     "timing": "in-engine"
+    },
+    "numpy": {
+     "status": "OK",
+     "wall_s": 5.1584861278533936,
+     "answer": 657325991831.0,
+     "check": 19930924430.0,
+     "ms": 899.497145,
+     "timing": "in-engine"
+    },
+    "pandas": {
+     "status": "OK",
+     "wall_s": 1.49403977394104,
+     "answer": 657325991831.0,
+     "check": 19930924430.0,
+     "ms": 111.974946,
+     "timing": "in-engine"
+    },
+    "polars": {
+     "status": "OK",
+     "wall_s": 2.029232978820801,
+     "answer": 657325991831.0,
+     "check": 19930924430.0,
+     "ms": 263.886855,
+     "timing": "in-engine"
+    },
+    "duckdb": {
+     "status": "OK",
+     "wall_s": 1.7808244228363037,
+     "answer": 657325991831.0,
+     "check": 19930924430.0,
+     "ms": 84.147735,
+     "timing": "in-engine"
+    },
+    "amber-mt": {
+     "status": "OK",
+     "wall_s": 1.2779698371887207,
+     "answer": 657325991831.0,
+     "check": 19930924430.0,
+     "ms": 168.747,
+     "timing": "in-engine"
+    }
+   },
+   "sort_f": {
+    "c": {
+     "status": "OK",
+     "wall_s": 0.7249743938446045,
+     "answer": 2496.0,
+     "check": 19930924430.0,
+     "ms": 93.56063,
+     "timing": "in-engine"
+    },
+    "amber": {
+     "status": "OK",
+     "wall_s": 2.0158402919769287,
+     "answer": 2496.0,
+     "check": 19930924430.0,
+     "ms": 322.121,
+     "timing": "in-engine"
+    },
+    "amber-native": {
+     "status": "OK",
+     "wall_s": 1.8933887481689453,
+     "answer": 2496.0,
+     "check": 19930924430.0,
+     "ms": 288.471,
+     "timing": "in-engine"
+    },
+    "amber-qsql": {
+     "status": "SKIP"
+    },
+    "q": {
+     "status": "OK",
+     "wall_s": 6.867469310760498,
+     "answer": 2496.0,
+     "check": 19930924430.0,
+     "ms": 1213.5232999999998,
+     "timing": "in-engine"
+    },
+    "peachq": {
+     "status": "OK",
+     "wall_s": 7.767309665679932,
+     "answer": 2496.0,
+     "check": 19930924430.0,
+     "ms": 1008.838082,
+     "timing": "in-engine"
+    },
+    "ngnk": {
+     "status": "OK",
+     "wall_s": 3.1178061962127686,
+     "answer": 2496.0,
+     "check": 19930924430.0,
+     "ms": 525.278,
+     "timing": "in-engine"
+    },
+    "cbqn": {
+     "status": "OK",
+     "wall_s": 0.25411343574523926,
+     "answer": 2496.0,
+     "check": 19930924430.0,
+     "ms": 6.159028998808935,
+     "timing": "in-engine"
+    },
+    "j": {
+     "status": "OK",
+     "wall_s": 31.6655695438385,
+     "answer": 2496.0,
+     "check": 19930924430.0,
+     "ms": 6202.924013137817,
+     "timing": "in-engine"
+    },
+    "numpy": {
+     "status": "OK",
+     "wall_s": 0.7338619232177734,
+     "answer": 2496.0,
+     "check": 19930924430.0,
+     "ms": 56.848537,
+     "timing": "in-engine"
+    },
+    "pandas": {
+     "status": "OK",
+     "wall_s": 5.306811094284058,
+     "answer": 2496.0,
+     "check": 19930924430.0,
+     "ms": 903.945578,
+     "timing": "in-engine"
+    },
+    "polars": {
+     "status": "OK",
+     "wall_s": 1.2335023880004883,
+     "answer": 2496.0,
+     "check": 19930924430.0,
+     "ms": 99.522737,
+     "timing": "in-engine"
+    },
+    "duckdb": {
+     "status": "OK",
+     "wall_s": 6.168205261230469,
+     "answer": 2496.0,
+     "check": 19930924430.0,
+     "ms": 855.888682,
+     "timing": "in-engine"
+    },
+    "amber-mt": {
+     "status": "OK",
+     "wall_s": 1.8295612335205078,
+     "answer": 2496.0,
+     "check": 19930924430.0,
+     "ms": 295.592,
+     "timing": "in-engine"
+    }
+   }
+  }
+ }
+}

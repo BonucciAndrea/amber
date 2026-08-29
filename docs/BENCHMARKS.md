@@ -327,7 +327,7 @@ RNG; answers checked equal before timing), minimum of 5 warm reps, kernel time o
 string-sort the symbols (O(n·log n) with a per-character compare). 2.0.0 groups by the interned
 4-byte id instead — equal symbols have equal ids, so the partition and the first-appearance key
 order are byte-for-byte identical, just found without the string sort. `select … by sym` on 1M rows
-went **587 ms → 34 ms (17×)**, and the group-by row below moved **~19×**.
+went **587 ms → 34 ms (17×)**, and the whole group-by query moved with it.
 
 | workload (by `sym`) | q 1M | Amber 1M | q 10M | Amber 10M |
 |---|--:|--:|--:|--:|

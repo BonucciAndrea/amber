@@ -84,7 +84,7 @@ static void capture_ast(const char *src, char *buf, size_t cap) {
 /* Runs `\ast src`, captures its stdout, and asserts every string in
  * `must[]` (NULL-terminated) appears somewhere in the printed tree. */
 static void expect_contains(const char *src, const char *const must[], const char *what) {
-    char buf[8192];
+    char buf[131072];
     capture_ast(src, buf, sizeof buf);
     for (int i = 0; must[i]; i++) {
         if (!strstr(buf, must[i])) {
@@ -99,7 +99,7 @@ static void expect_contains(const char *src, const char *const must[], const cha
  * *correct* label, since it would also catch some *new*, differently-named
  * placeholder this revision didn't anticipate. */
 static void expect_no_placeholder(const char *src, const char *what) {
-    char buf[8192];
+    char buf[131072];
     capture_ast(src, buf, sizeof buf);
     static const char *BAD[] = { "-atom>", "<v-atom", "<w-atom", "<o-atom", "<I-atom", "<S-atom", 0 };
     for (int i = 0; BAD[i]; i++) {
@@ -173,20 +173,20 @@ int main(void) {
 
     /* ---- ANSI color coverage: all five required categories present ----- */
     {
-        const char *m[] = { "\x1b[1;36m", 0 }; /* bold cyan: verbs */
-        expect_contains("1+2", m, "verbs render bold cyan");
+        const char *m[] = { "\x1b[1;38;2;255;176;0m", 0 }; /* amber: verbs */
+        expect_contains("1+2", m, "verbs render amber");
     }
     {
-        const char *m[] = { "\x1b[1;35m", 0 }; /* bold magenta: adverbs */
-        expect_contains("+/x", m, "adverbs render bold magenta");
+        const char *m[] = { "\x1b[1;38;2;240;185;95m", 0 }; /* marigold: adverbs */
+        expect_contains("+/x", m, "adverbs render marigold");
     }
     {
-        const char *m[] = { "\x1b[92m", 0 }; /* bright green: literals */
-        expect_contains("42", m, "numeric literals render bright green");
+        const char *m[] = { "\x1b[38;2;170;185;135m", 0 }; /* warm sage: literals */
+        expect_contains("42", m, "numeric literals render warm sage");
     }
     {
-        const char *m[] = { "\x1b[33m", 0 }; /* yellow: vars/symbols */
-        expect_contains("myvar", m, "variables render yellow");
+        const char *m[] = { "\x1b[38;2;205;175;135m", 0 }; /* warm tan: vars/symbols */
+        expect_contains("myvar", m, "variables render warm tan");
     }
     {
         const char *m[] = { "\x1b[2m", 0 }; /* dim gray: connectors */
@@ -208,7 +208,7 @@ int main(void) {
      * itself renders. This is the check that would have caught the box-drawing
      * glyphs being counted as 3 columns each. */
     {
-        char buf[8192];
+        char buf[131072];
         capture_ast("1+2", buf, sizeof buf);
         int width[3], row = 0, col = 0, esc = 0;
         for (const char *p = buf; *p && row < 3; p++) {
@@ -236,7 +236,7 @@ int main(void) {
 
     /* ---- 1.9.5: time-series join badging -------------------------------- */
     {
-        const char *m[] = { "As-Of Time-Series Join", "\x1b[1;93m", 0 };
+        const char *m[] = { "As-Of Time-Series Join", "\x1b[1;38;2;255;176;0m", 0 };
         expect_contains("aj[`sym`time;tr;qu]", m, "`aj` gets an As-Of join badge");
     }
     {
@@ -244,7 +244,7 @@ int main(void) {
         expect_contains("wj[w;`sym`time;tr;qu;ag]", m, "`wj` gets a Window Join badge");
     }
     {   /* a name that merely CONTAINS a join name must not be badged */
-        char buf[8192];
+        char buf[131072];
         capture_ast("ajax[1;2]", buf, sizeof buf);
         if (strstr(buf, "As-Of")) {
             fprintf(stderr, "FAIL: `ajax` must not be mistaken for `aj`\n  got:\n%s\n", buf);

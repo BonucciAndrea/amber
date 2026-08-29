@@ -86,7 +86,7 @@
 #else
  #define AP(p) ((A)(U)(p)) //A from pointer
 #endif
-#ifdef shared
+#ifdef AMBER_SHARED
 __attribute((weak, visibility("default"))) V kinit();
 #endif
 
@@ -210,6 +210,27 @@ A gg(A x/*1*/)_(//get value of global
  W k=gkk(x);x(0);U i=fL(gk,gn,k);i<gn&&gv[i]?_R(gv[i]):ev0())
 A*gp(A x/*1*/)_(U i=gi(x);x(0);gv+i)//get pointer to global
 A gns(U k)_(I a[L(gk)];U n=0;F(gn,I(gk[i]>>32==k,a[n++]=gk[i]))aV(tS,n,a))//list namespace
+// amber 2.0.0: is `p[0..n)` the name of an already-defined rank-2 (dyadic) global
+// function?  The parser (p.c) uses this to make ANY binary library verb infix --
+// `` `a xkey t `` -> xkey[`a;t] -- uniformly, instead of a hard-coded name list.
+// Only NAMED identifiers reach here (the caller is in pt()'s id0 branch) and only
+// genuine rank-2 functions qualify, so monadic verbs and inline {lambda}s (which
+// are not names) are never coerced infix -- the constraint that broke `avg {x*x} x`.
+B am_infix_dyad(S p,U n){
+    C b[64]; W k; U i; A v;
+    if (!n || n >= sizeof b) return 0;
+    MC(b, p, n); b[n] = 0;
+    k = us(b);
+    if (!(k >> 32)) k |= (W)gd << 32;
+    i = fL(gk, gn, k);
+    if (i >= gn || !gv[i]) return 0;
+    v = gv[i];
+    /* Only a HEAP function object carries a valid arity byte at v-10.  A tagged/
+     * immediate value -- a scalar, or a built-in verb like `+` which is already
+     * infix -- must NOT be dereferenced there; a non-zero _t0 flags those, so we
+     * bail before _k(v) reads a wild address. */
+    return !_t0(v) && TU(_T(v)) && _k(v) == 2;
+}
 
 // ---- 1.9.5: workspace introspection -----------------------------------------
 // gk/gn are file-local to m.c, so the two readers that describe the workspace

@@ -67,7 +67,7 @@ chmod +x build.sh a tests/*.sh tests/*.py 2>/dev/null || true
 # C-unit-test legs below invoke binaries this script produced, not build.sh's.
 chmod +x amber a 2>/dev/null || true
 
-SUITES="test.k test-fin.k test-ext.k tests/test_matrix.k tests/test_qsql.k tests/test_sort_window.k examples/peach_verify.k"
+SUITES="test.k test-fin.k test-ext.k tests/test_matrix.k tests/test_qsql.k tests/test_infix.k tests/test_sort_window.k examples/peach_verify.k"
 for s in $SUITES; do say "$s"; run_k ./amber "$s" native; done
 
 # peach is the thread-pool primitive: run its verifier again with the pool

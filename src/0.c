@@ -17,7 +17,7 @@
 I pg=4096;//pagesize
 
 //__builtin_ia32_ldmxcsr(__builtin_ia32_stmxcsr()|1<<6|1<<15); //daz,ftz
-#ifndef shared
+#ifndef AMBER_SHARED
 #ifndef ldstatic
  // amber: option handling. `main` used to treat argv[1] unconditionally as a
  // script path, so `amber --version` tried to open a file called "--version"

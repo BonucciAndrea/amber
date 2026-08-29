@@ -99,7 +99,7 @@ cols:{$[iskeyed x;(!!x),!.x;!x]}
 keys:{$[iskeyed x;!!x;0#`]}
 rows:{+. x}
 atr:{[t;i]+(cols t)!{y@x}[i]'. t}
-xkey:{[k;t]k:k,();d:+t;(+k#d)!+(except[cols t;k])#d}
+xkey:{[k;t]k:k,();$[0=#k;unkey t;[d:+t;(+k#d)!+(except[cols t;k])#d]]}   / () xkey t -> unkey (q idiom)
 unkey:{$[iskeyed x;+(+!x),+.x;x]}
 xcolall:{[nm;t]+nm!. t}
 xcols:{[c;t]c:c,();+(c,except[cols t;c])#+t}
@@ -278,8 +278,13 @@ tcell:{[nm;col]$[in[nm;TCOLS]&tnum col;stime col;in[nm;DCOLS]&tnum col;dstr'col;
 COLOR:1                                            / master toggle
 CSI:(`c$27),"["                                    / ANSI control sequence introducer
 RST:CSI,"0m"                                       / reset
-CT:`num`sym`str`time`null`hdr`bool`flt`sep!("38;5;45";"38;5;214";"38;5;114";"38;5;141";"90";"1;38;5;231";"38;5;205";"38;5;79";"90")  / 256-colour SGR codes (null/sep = faint grey)
-PAL:("38;5;39";"38;5;208";"38;5;84";"38;5;213";"38;5;220";"38;5;51";"38;5;141";"38;5;203";"38;5;190";"38;5;87";"38;5;222";"38;5;159";"38;5;171";"38;5;120")  / vivid per-column cycle
+/ amber 2.0.0: warm truecolour palette matching the REPL's amber theme (accent
+/ #FFB020, muted #968E82) instead of a cool 256-colour rainbow -- symbols read as
+/ the amber accent, the header as a warm white, numbers/floats as golds, and
+/ null/separators as faint warm grey.  Truecolour terminals get the exact hues;
+/ others fall back to the nearest cell.
+CT:`num`sym`str`time`null`hdr`bool`flt`sep!("38;2;235;205;140";"38;2;255;176;0";"38;2;170;185;135";"38;2;200;165;185";"38;2;120;114;104";"1;38;2;245;238;226";"38;2;225;150;120";"38;2;220;185;110";"38;2;90;85;78")  / by value type
+PAL:("38;2;255;176;0";"38;2;140;180;170";"38;2;220;170;110";"38;2;190;150;180";"38;2;170;185;130";"38;2;225;150;120";"38;2;150;175;190";"38;2;230;200;140";"38;2;180;165;145";"38;2;200;180;120";"38;2;210;160;170";"38;2;160;185;160";"38;2;235;190;150";"38;2;175;170;190")  / muted warm per-column cycle
 NULLS:("0N";"0n";"0w";"-0w";"0Nn";,"`")            / null sentinels rendered faint grey (empty cell too)
 PREC:7                                             / float precision (decimals) in grids; PREC:0N = full precision
 comma:{$[4>#x;x;(comma -3_x),",",-3#x]}            / thousands separators on a digit string

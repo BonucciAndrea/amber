@@ -35,7 +35,9 @@ set of typed nulls/infinities (`0Nh 0Ne 0Wp 0Nd …`). Amber has long/float/char
 
 ## 3. qSQL (the template syntax) — mostly done
 The `select … by … from … where …` template now works **bare** (no `sel"…"` wrapper), along
-with `exec`, `update`, and `delete` — see AMBER.md §7. Still missing: the general functional
+with `exec`, `update`, and `delete` — see AMBER.md §7. Since **2.0.0** this bare form also works
+inside a **`.k` script** loaded once the stdlib is up (the loader runs each file through the same
+`qrw` rewriter the REPL uses), so `sel"…"` is no longer needed in files either. Still missing: the general functional
 forms `?[t;where;by;select]` / `![t;where;by;cols]`, sorted/limited selects (`select[>px]`,
 `select[5]`), `fby` *inside* a where-clause, and correlated subqueries.
 - **Amber has:** bare + string `select/exec/update/delete`, plus the functional helpers
@@ -129,32 +131,21 @@ Amber text via `` `k``, inverted by `eval`) and `protect` (like `.Q.trp`). Amber
 - **Still missing:** `\c` console dims, a real `\w` (workspace) report (`Q.w` is a placeholder),
   `system"…"`, `getenv`/`setenv`, `\cd`, and editor tooling / a language server.
 
-## 14. Known engine bugs (not q gaps — real defects, tracked here until fixed)
-- **Bare `/` comment line silently truncates the rest of the file.** A `.k` comment line
-  containing *only* `/` — no trailing space, no trailing text — causes the lexer to stop
-  parsing everything after it with no error raised (exit code 0, empty output). A comment line
-  with a trailing space (`` / `` won't repro but `` /  `` with content will) or any actual text
-  after the slash is unaffected. Found while writing `bench/queries/amber_*.k`'s multi-paragraph
-  header comments (worked around there with blank lines instead of bare `/` separators). Root
-  cause not yet isolated to a specific lexer function; needs a repro-minimized case and a fix in
-  the comment-scanning path before this entry can move to "done."
-- **`` `&`` (where) on a literal empty generic list returns a spurious non-empty result.**
-  `&()` returns `,!0` (a 1-element list containing an empty vector) instead of the correct `!0`
-  (a plain empty vector) — compare `&!0`, which correctly returns `!0`. Traced to `src/v.c`'s
-  `X1(whr,...)`, the `RA` (generic-list) branch: its embedded K expression
-  `` {$[`A~@x;(,&#'*'x),,'/x@\:!0|/#'x:o'x;,&x]} `` is written for *nested* input (grouping /
-  per-key counts) and mishandles a simply-empty `()`, which also has type `` `A``, falling into
-  that same branch instead of being recognized as "zero elements, nothing to do." Found via
-  `qsql.k`'s `ss` (string search), which calls `&` on the result of `` '``-ing a K-defined
-  predicate over an explicitly empty range whenever the search pattern is longer than the
-  remaining string — exactly the case hit by bare `select from t` / `exec col from t` with no
-  `where`/`by` clause, so this was silently breaking a wide swath of everyday qSQL. Worked
-  around at the K level (`amber.k`'s `ss` now special-cases `(#s)<#p` before ever calling `&`)
-  rather than risk destabilizing `` `&``, which is a widely-used core verb — but the underlying
-  C bug is still there for any *other* caller that happens to construct a literal empty `()` and
-  feed it through `` `&``. Needs a proper fix in `whr`'s `RA` branch (an early `P(!xn,...)`-style
-  guard before the nested-list logic runs) plus a regression test, then this `ss` workaround can
-  be reverted.
+## 14. Known engine bugs — both fixed in 2.0.0
+- ~~**Bare `/` comment line silently truncates the rest of the file.**~~ **Fixed in 2.0.0.**
+  A `.k` line containing *only* `/` opens a **block comment** that runs to the next line starting
+  with `\` (standard K); with no closing `\` before EOF it used to run to end of file and exit 0
+  with no diagnostic — silently dropping the rest of the file. `src/p.c`'s `pe` now raises a clean
+  parse error (`P(!e,ep0())`) when that block comment is unterminated, converting silent data loss
+  into a loud error. Properly-closed `/ … \` blocks and trailing `/ …` line comments are unchanged.
+  Regression: `tests/test_comments.sh` (4 cases, wired into `run_tests.sh`).
+- ~~**`` `&`` (where) on a literal empty generic list returns a spurious non-empty result.**~~
+  **Fixed in 2.0.0.** `&()` returned `,!0` (a 1-element list) instead of `!0` (an empty vector).
+  `src/v.c`'s `X1(whr,…)` `RA` (generic-list) branch now guards the empty case
+  (`P(!xn,x(an(0,tI)))`) and returns an empty int vector byte-identical to `&!0`, before the
+  nested-grouping K expression runs. Regression: `test.k` (`whrEmptyGen*`, 5 cases). The `ss`
+  workaround in `amber.k` (`(#s)<#p` special-case) is now redundant but harmless; it can be
+  reverted independently.
 
 ---
 
@@ -219,5 +210,6 @@ behaviour shows up as a test failure rather than a silent regression.
   Bit this repo's own qSQL suite (42 of 93 cases stopped running while the suite still reported
   "ALL TESTS PASSED"); `tests/harness.k`'s `hexpect[n]` now guards against it.
 - **A bare `/` on a line of its own opens a block comment** that runs to the next line starting
-  with `\`, silently truncating the rest of the file with no error. Standard K, but a sharp edge;
-  `tests/harness.k` carries a warning comment about it.
+  with `\` (standard K). Since **2.0.0** an *unterminated* one (no closing `\` before EOF) raises a
+  clean parse error instead of silently truncating the file; a properly-closed `/ … \` block is
+  unchanged. `tests/harness.k` still carries a warning comment about the sharp edge.

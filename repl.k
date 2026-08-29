@@ -80,8 +80,23 @@ rd:{`rdl x}
 / and \ts:n EXPR -> \t:n EXPR.
 tsfix:{$[(3<#x)&("\\ts"~3#x)&(" "~x 3)|":"~x 3;"\\t",3_x;x]}
 qrwx:{$[0<exthook[{ext.raw x};x];x;(.:"qrw")tsfix x]}
+/ ---- optional fixed bottom status bar (\sb toggles), Claude-Code style -------
+/ OFF by default: sbdraw is a no-op when sbon=0, so the default REPL is byte-for-
+/ byte unchanged and every terminal test still passes. \sb sets a DECSTBM scroll
+/ region (rows 1..h-1 scroll; row h is a fixed status bar) and paints it; \sb
+/ again clears it. src/ln.c's atexit hook resets the region on every exit path
+/ (\\, Ctrl-D, a crash), so the terminal is never left scrolled-in. Re-run \sb
+/ after resizing the window.
+sbon:0
+sbE:{(`c$27),x}
+sbtxt:{m:binfo[];"  amber ",(m 4),"  |  ",($0.01*_0.5+(m 1)%10485.76)," MB  |  \\ help   Tab complete   up/down history   \\\\ exit"}
+sbpad:{[s;w]$[w>#s;s,(w-#s)#" ";w#s]}
+sbdraw:{$[sbon;[w:tsz[]1;h:*tsz[];`1:(sbE"7"),(sbE"[",($h),";1H"),(sbE"[48;5;238;38;5;220;1m"),sbpad[sbtxt[];w-1],(sbE"[0m"),(sbE"8")];]}
+sbset:{sbon::1;h:*tsz[];`1:(sbE"[1;",($h-1),"r"),(sbE"[",($h-1),";1H");sbdraw[]}
+sbclr:{$[sbon;[sbon::0;h:*tsz[];`1:(sbE"[r"),(sbE"[",($h),";1H"),(sbE"[2K")];]}
+sbtoggle:{$[sbon;sbclr[];sbset[]]}
 line0:{c:{0x07~*-2#*x}{(l;r):x;(rd prompt;r,,(-2_l))}/(x;());"\n"/(*|c),,*c}
-line1:{$[#x;;:0];x:-1_x;exthook[{ext.pre x};x];$[(4<#x)&"\\grid"~5#x;gridcmd x;(5<#x)&"\\clear"~6#x;clearcmd[];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;.[`1:(fmt;fmtx)[" "~*x]@.:;,qrwx x;onerr]];exthook[{ext.post x};x];1}
+line1:{$[#x;;:0];x:-1_x;exthook[{ext.pre x};x];$[(4<#x)&"\\grid"~5#x;gridcmd x;(5<#x)&"\\clear"~6#x;clearcmd[];(2<#x)&"\\sb"~3#x;sbtoggle[];(1<#x)&"\\\\"~2#x;[sbclr[];.:x];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;.[`1:(fmt;fmtx)[" "~*x]@.:;,qrwx x;onerr]];exthook[{ext.post x};x];1}
 line:line1@line0@
 $["repl.k"~basename`argv 1;{cmds::@[cmds;x[1]1;:;{y;`0:x}2_x]}'{(&x~\:80#"-")_x:(1+*&x~\:,"/")_-1_x}@0:`argv 1;];
 / `bi 0 (process/build info) can throw 'domain on non-Linux builds (e.g. macOS);
@@ -92,7 +107,7 @@ binfo:{.[{`bi 0};,0;(10485760;0;"arm64";"Darwin";"1.9.5")]}
 / absent from a stock install, so the banner is character-for-character 1.9.4's.
 extag:{$[5<#x;x 5;""]}
 banner:{m:binfo[];"Amber v",(m 4)," (",(m 2),"; ",(m 3),") — Columnar Time-Series Engine",extag[m],extstr[{ext.tag[]};0],"\n"}
-run:{m:binfo[];`1:(`c$27),"[4q";`1:banner[],"Memory: ",($0.1*_0.5+(m 0)%104857.6)," MB heap reserved | \\ for help command, \\\\ to exit\n\n";{line@rd prompt}::/`;}
+run:{m:binfo[];`1:(`c$27),"[4q";`1:banner[],"Memory: ",($0.1*_0.5+(m 0)%104857.6)," MB heap reserved | \\ for help command, \\\\ to exit  (\\sb for a status bar)\n\n";{sbdraw[];line@rd prompt}::/`;}
 \d .
 / load the Amber library by ABSOLUTE path derived from this script's own location,
 / so it works no matter what the current working directory is.

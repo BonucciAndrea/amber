@@ -101,6 +101,20 @@ if [ "$QUICK" = 0 ]; then
        else echo "  -> FAIL (tests/test_ast.c)"; fail=1; fi
   else echo "  -> SKIP (tests/test_ast.c did not link)"; fi
 
+  # Comment lexer: a bare "/" block comment with no closing "\" must raise a
+  # clean parse error instead of silently truncating the file (docs/MISSING.md
+  # 14 bug 1); closed blocks and trailing "/ ..." comments must still work.
+  say "comment lexer (tests/test_comments.sh)"
+  if bash tests/test_comments.sh; then echo "  -> PASS (tests/test_comments.sh)"
+  else echo "  -> FAIL (tests/test_comments.sh)"; fail=1; fi
+
+  # Bare qSQL in a loaded .k file (amber 2.0.0): the loader runs each file through
+  # the qSQL rewriter, so `select .. from ..` works in a script with no sel"..."
+  # wrapper; a non-qSQL script must be left untouched.
+  say "bare qSQL in scripts (tests/test_qsql_script.sh)"
+  if bash tests/test_qsql_script.sh; then echo "  -> PASS (tests/test_qsql_script.sh)"
+  else echo "  -> FAIL (tests/test_qsql_script.sh)"; fail=1; fi
+
   # REPL terminal handling: the pty-driven regression suite for the 1.9.5
   # line-editor / rlwrap work (no rlwrap warning, termios restored on every
   # exit path, editing keys, pipes unchanged).  Needs a pty, which every CI
@@ -109,6 +123,14 @@ if [ "$QUICK" = 0 ]; then
   if command -v python3 >/dev/null 2>&1; then
     if python3 tests/test_repl_term.py .; then echo "  -> PASS (tests/test_repl_term.py)"
     else echo "  -> FAIL (tests/test_repl_term.py)"; fail=1; fi
+  else echo "  -> SKIP (no python3)"; fi
+
+  # Bracketed paste (amber 2.0.0): a pasted multi-line script runs line by line,
+  # comments and bare qSQL included. pty-driven, so it needs python3.
+  say "bracketed paste (tests/test_paste.py)"
+  if command -v python3 >/dev/null 2>&1; then
+    if python3 tests/test_paste.py; then echo "  -> PASS (tests/test_paste.py)"
+    else echo "  -> FAIL (tests/test_paste.py)"; fail=1; fi
   else echo "  -> SKIP (no python3)"; fi
 
   # Extension seam: the engine must still build, and still pass, with a

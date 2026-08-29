@@ -322,11 +322,17 @@ int am_ln_interactive(void) {
     return 1;
 }
 
+static void ws_(const char *s);  /* fwd: defined below; used by raw enable/disable for bracketed paste */
 static void disable_raw(void) {
-    if (g_raw) { tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_orig); g_raw = 0; }
+    if (g_raw) { ws_("\x1b[?2004l"); tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_orig); g_raw = 0; }
 }
 
-static void on_exit_restore(void) { disable_raw(); }
+/* Fires once at process exit (atexit). Also resets the DECSTBM scroll region to
+   full, so an optional bottom status bar (repl.k's \sb, which sets a region) can
+   never leave the terminal scrolled-in on ANY exit path (\\, Ctrl-D, a crash).
+   Harmless when no region was set. Kept out of disable_raw() because that runs
+   per-readline and the bar's region must persist across prompts. */
+static void on_exit_restore(void) { ws_("\x1b[r"); disable_raw(); }
 
 static int enable_raw(void) {
     struct termios r;
@@ -343,6 +349,7 @@ static int enable_raw(void) {
     r.c_cc[VTIME] = 0;
     if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &r) < 0) return -1;
     g_raw = 1;
+    ws_("\x1b[?2004h");   /* amber 2.0.0: enable bracketed paste so a pasted script arrives as one unit */
     return 0;
 }
 
@@ -522,9 +529,65 @@ static void do_tab(LnState *l) {
 
 /* ---- the editor loop ----------------------------------------------------- */
 
+/* ---- bracketed paste (amber 2.0.0) --------------------------------------
+ * A pasted multi-line script is run line by line, exactly as if each line had
+ * been typed and Enter pressed -- so trailing (`x:1 / c`) and full-line (`/ c`)
+ * comments work, and the whole block is interpreted. The first pasted line is
+ * submitted immediately; the rest are queued and drained by the next
+ * am_ln_readline() calls (each echoed under the prompt). The whole-block eval
+ * path (`. text`) was rejected: it raises 'limit on a multi-statement string. */
+static char **g_pq; static int g_pq_n, g_pq_i;
+static void pq_clear(void){ while(g_pq_i<g_pq_n) free(g_pq[g_pq_i++]); free(g_pq); g_pq=NULL; g_pq_n=g_pq_i=0; }
+
+static int read_paste(LnState *l) {
+    size_t cap = 1024, n = 0; char *p = (char*)malloc(cap);
+    if (!p) return 0;
+    for (;;) {
+        char c; if (read(STDIN_FILENO, &c, 1) != 1) break;
+        if (c == 27) {                                   /* possible ESC[201~ end */
+            char e; if (read(STDIN_FILENO, &e, 1) != 1) break;
+            if (e == '[') { int num = 0; char t = 0;
+                while (read(STDIN_FILENO, &t, 1) == 1 && t >= '0' && t <= '9') num = num*10 + (t-'0');
+                if (t == '~' && num == 201) break;       /* end of paste */
+            }
+            continue;                                    /* ignore any other seq inside a paste */
+        }
+        if (c == '\r') c = '\n';
+        if (n + 2 >= cap) { cap *= 2; char *q = (char*)realloc(p, cap); if (!q) { free(p); return 0; } p = q; }
+        p[n++] = c;
+    }
+    p[n] = 0;
+    size_t cl = l->len;                                  /* prepend the current line */
+    char *comb = (char*)malloc(cl + n + 1);
+    if (!comb) { free(p); return 0; }
+    memcpy(comb, l->buf, cl); memcpy(comb + cl, p, n + 1); free(p);
+    pq_clear();
+    int cap2 = 8, ns = 0; char **segs = (char**)malloc(cap2 * sizeof *segs);
+    for (char *q = comb;;) {
+        char *nl = strchr(q, '\n'); if (nl) *nl = 0;
+        if (ns >= cap2) { cap2 *= 2; segs = (char**)realloc(segs, cap2 * sizeof *segs); }
+        segs[ns++] = q;
+        if (!nl) break; q = nl + 1;
+    }
+    if (ns > 1 && segs[ns-1][0] == 0) ns--;              /* drop trailing empty from a final newline */
+    set_line(l, segs[0]);
+    if (ns > 1) { g_pq = (char**)malloc((size_t)(ns-1) * sizeof *g_pq);
+        for (int i = 1; i < ns; i++) g_pq[g_pq_n++] = strdup(segs[i]); }
+    free(segs); free(comb);
+    return ns > 1;   /* multi-line -> submit line 0 now; single-line -> keep editing */
+}
+
 char *am_ln_readline(const char *prompt) {
     LnState l;
     char *out;
+
+    if (g_pq_i < g_pq_n) {                               /* drain a pending paste, one line per call */
+        char *line = g_pq[g_pq_i++];
+        ws_(prompt ? prompt : ""); ws_(line); ws_("\n"); /* echo so the transcript shows what ran */
+        out = strdup(line);
+        if (g_pq_i >= g_pq_n) pq_clear();
+        return out;
+    }
 
     memset(&l, 0, sizeof l);
     l.prompt = prompt ? prompt : "";
@@ -591,11 +654,16 @@ char *am_ln_readline(const char *prompt) {
             if (read(STDIN_FILENO, s + 1, 1) != 1) break;
             if (s[0] == '[') {
                 if (s[1] >= '0' && s[1] <= '9') {
-                    if (read(STDIN_FILENO, s + 2, 1) != 1) break;
-                    if (s[2] == '~') {
-                        if (s[1] == '3') del_right(&l);          /* Delete */
-                        else if (s[1] == '1' || s[1] == '7') l.pos = 0;
-                        else if (s[1] == '4' || s[1] == '8') l.pos = l.len;
+                    /* accumulate the numeric parameter so multi-digit codes work:
+                       200~/201~ are bracketed paste, 3~ Delete, 1~/7~ Home, 4~/8~ End */
+                    int num = s[1] - '0'; char t = 0;
+                    while (read(STDIN_FILENO, &t, 1) == 1 && t >= '0' && t <= '9') num = num*10 + (t-'0');
+                    if (t == '~') {
+                        if (num == 200) { if (read_paste(&l)) goto done; }  /* pasted block */
+                        else if (num == 3) del_right(&l);                   /* Delete */
+                        else if (num == 1 || num == 7) l.pos = 0;
+                        else if (num == 4 || num == 8) l.pos = l.len;
+                        /* num == 201: stray paste-end, ignore */
                     }
                 } else switch (s[1]) {
                     case 'A': case 'B': {

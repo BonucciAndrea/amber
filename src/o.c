@@ -66,7 +66,17 @@ X1(asc,Rt(opn(x))Rm(grdm(x,asc))RM(K1("{(!#x){x@<y x}/|.+x}",x))RS(asc(str(x)))R
  R4(tH,tI,tL,tF,P(xn-(I)xn,ez(x))N n=xn;A y=cntgrd(x);I(!y,y=rdxg(x))P(!y,ascB(x))x(ct(tZ(n-1),y)))
  R_(P(xn-(I)xn,ez(x))ascB(x)))
 X1(dsc,RMT(x=rev(asc(rev(x)));sub(ai(xN-1),x))Rm(grdm(x,dsc))Ril(cls(gl(x)))R_(et(x)))
+Z A cSI(A);// amber 2.0.0: symbol<->int-id reinterpret (defined just below), used by grp's tS fast path
 X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x))
+ // amber 2.0.0: group a SYMBOL vector by its interned 4-byte id (tS is stored as
+ // tI-width ids; equal symbols -> equal ids) instead of the general path, whose
+ // `<x` grade lexically string-sorts symbols (o.c asc's RS(asc(str(x)))) at
+ // O(n log n) with per-char compares. Grouping only needs equal elements
+ // adjacent, so the id order is fine, and the partition + first-appearance key
+ // order are byte-identical to the old result.  Measured on 1M rows / 100 groups:
+ // ~670 ms -> ~15 ms.  cSI flips tS<->tI on the same payload; we group the ids,
+ // then flip the dict's int keys back to symbols.
+ RS(P(!xn,K1("{x!0#,!0}",x))A r=grp(cSI(x));A v=kv(&r);am(cSI(r),v))
  // amber item 7, REVERTED after measurement. The "optimisation" here was to
  // hoist the group payload pointers into an rp[256] array before the scatter,
  // on the theory that `_I(r[v])` was a dependent load. It is not: A is an
@@ -77,7 +87,7 @@ X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x
  RGC(A r[  256]={};UC b[  256];U nb=0;U c[  256]={};F(xn,UC v=xg;I(!c[v]++,b[nb++]=v))A z=aA(nb);F(nb,za=r[b[i]]=aI(c[b[i]]))I(!nb,*zA=emp(tG))MS(c,0,SZ c);F(xn,UC v=xg;_I(r[v])[c[v]++]=i)x(am(aV(xt,nb,b),z)))
  RH( A r[65536]={};UH b[65536];U nb=0;U c[65536]={};F(xn,UH v=xh;I(!c[v]++,b[nb++]=v))A z=aA(nb);F(nb,za=r[b[i]]=aI(c[b[i]]))I(!nb,*zA=emp(tG))MS(c,0,SZ c);F(xn,UH v=xh;_I(r[v])[c[v]++]=i)x(am(aV(xt,nb,b),z)))
  RI(K1("{$[x;x[*'g]!g@:<g:(&~(~*s)=':s:x i)_i:<x;x!0#,!0]}",x))
- R6(tA,tE,tL,tF,tS,tM,K1("{$[#x;x[*'g]!g@:<g:(&~x~':x i)_i:<x;x!0#,!0]}",x)))
+ R5(tA,tE,tL,tF,tM,K1("{$[#x;x[*'g]!g@:<g:(&~x~':x i)_i:<x;x!0#,!0]}",x)))
 Z A1(cSI,Q(xtS||xtI)C t=tS^tI^xt;MINE(x)?AT(t,x):x(aV(t,xn,xV)))
 X1(unq,RM(en(x))Rm(unq(val(x)))RE(x)RS(cSI(unq(cSI(x))))Ril(rndF(gl(x)))R_(et(x))RB(unq(cG(x)))
  RGC(C a[256]={},r[256],t=xt;U n=0;Mx(F(xn,UC v=xg;I(!a[v],a[v]=1;r[n++]=v)))aV(t,n,r))

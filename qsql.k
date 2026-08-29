@@ -112,3 +112,10 @@ qfind:{[t]sm:qsmask t;mins:qmin1[t;sm]'qkws;best:min mins;$[~best<qbig;();(best;
 / mentions a qSQL keyword is folded, so ordinary input is untouched.
 qml:{[s]$[(|/s="\n")&|/{0<#ss[x;y]}[s]'qkws;qnorm s;s]}
 qrw:{[s]s:qml s;$[2>#s;s;[r:qfind s;$[0=#r;s;[p:r 0;ki:r 1;e:qendx[s;p];body:(e-p)#p_s;$[0<#ss[body;" from "];(p#s),qkfn[ki],"\"",(qesc body),"\"",qrw e_s;[L:p+#qkws ki;(L#s),qrw L_s]]]]]]}
+/ qtry / qrwf: the SAME rewrite applied to a WHOLE .k file so bare qSQL works in
+/ scripts, not just at the prompt -- the C loader bsl() calls qrwf before eval.
+/ Line-by-line (exactly as the REPL rewrites each typed line); a line qrw can't
+/ handle is left verbatim via the `ERR sentinel (never a real qrw result, which
+/ is always a char vector) so a rewrite failure can never corrupt a script.
+qtry:{[s]r:.[qrw;,s;{`ERR}];$[`ERR~r;s;r]}
+qrwf:{$[|/{0<#ss[x;y]}[x]'qkws;sv["\n";qtry'vs["\n";x]];x]}

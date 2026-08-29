@@ -68,13 +68,20 @@ Z A pTmp(){S p=s;if(!C09(*p))return 0;W a=0;S q=p;while(C09(*q)){a=10*a+(W)(*q-'
    s=q2;return antp((L)((W)days*86400000000000ULL+3600000000000ULL*hh+60000000000ULL*mi+1000000000ULL*sc+ns));}
   s=q2;return adt((I)days);}
  return 0;}
+// amber 2.0.0: identifiers usable INFIX like a verb -- `x in y`, `t lj kt`,
+// `1 within 2 3`, `"/" sv parts` -- as well as the bracket form in[x;y].  ngn/k
+// already treats every unicode-named identifier (pt's `c>>7` branch) as an infix
+// verb; this extends that to a curated set of Amber's two-argument library dyads.
+// The `*s!=':'` guard at the call site keeps the name an ordinary lvalue while it
+// is being DEFINED (`in:{...}` in amber.k) or amended.
+Z B infixkw(S p,U n)_(static CO C*const kw[]={"in","within","like","lj","ij","uj","aj","aj0","wj","wj1","pj","ej","cross","inter","union","except","ss","sv","vs","xasc","xdesc"};F(L(kw),P(SL(kw[i])==n&&!memcmp(kw[i],p,n),1))0)
 Z A pt(C*v)_(C c=*s;                                                                                //parse term
  P(c=='`',qte(p1(N(pS('`')))))
  P(c=='"',p1(pC()))
  P(c=='[',s++;pb(GAP,']'))
  P(c=='(',s++;P(*s=='[',amtbl())P(*s==')',s++;emp(tA))A x=N(pb(MKL,')'));xn-2?x:las(x))
  P(c=='{',C k0=k;k=1;S s1=s0,t=s0=s++;A y=N(pp()),z=pb(GAP,'}');P(!z,s0=s1;y(0))I(y==au,y=aS(k);F(3,yi='x'+i))A x=N(cpl(aCn(t,s-t),z,y));s0=s1;k=k0;x)
- P(id0(c),S p=s;A x=pP();I(s-p==1&&c-'y'<2u,k=MAX(k,c-'w'))AO(p-s0,x))
+ P(id0(c),S p=s;A x=pP();I(s-p==1&&c-'y'<2u,k=MAX(k,c-'w'))I(infixkw(p,s-p)&&*s!=':',*v=1)AO(p-s0,x))
  P(C09(c)&&s[1]==':',B u=s[2]==':';s+=2+u;U i=20+c-'0';P(i>25,ep0())*v=1;Lt(tv-u)|i)
  P(c=='0'&&s[1]=='x',s+=2;p1(p0x()))
  P(num(s)&&(c-'-'||s==s0||(!id1(s[-1])&&!strchr(")]}\"",s[-1]))),
@@ -95,7 +102,7 @@ Z A pT(C*v)_(A x=N(pt(v));                                                      
   E(I c=*s==':';s+=c;x=aA2(aw+i+3*c,x);*v=1))x)
 Z A pe(A x,C*v)_(s=pw(s);C c=*s;                                                                    //parse expression
  I(c=='/'&&(s==s0||s[-1]==32||s[-1]==10),
-  I(s[1]==10,C*e=strstr(s+1,"\n\\\n");s=e?e+2:s+SL(s))
+  I(s[1]==10,C*e=strstr(s+1,"\n\\\n");P(!e,ep0())s=e+2)
   E(W((c=*++s)&&c-10)))
  P(s>s0&&*s=='\\'&&s[-1]==32,s++;A y=pe(0,v);P(!y,x?x(0):0);*v=0;y=aA2(OUT,y);I(x,y=aA2(pm(x),y))y)
  UH o=s-s0;C b=0;A y=pT(&b);P(!y,x?x(0):0)P(y==GAP,x?x:y)

@@ -102,10 +102,14 @@ Amber is q semantics in a terse array notation, at array-language speed.
 
 Amber follows a terse **array grammar**, which differs from kdb+/q in a few ways you must know:
 
-* **Dyadic library functions are called with brackets, not infix.** Amber does **not** allow a
-  user‑defined function to be applied infix (`x f y` is a parse of two nouns). So write
-  `lj[t;kt]`, `in[x;y]`, `except[a;b]`, `xasc[`sym;t]` — not `t lj kt`. Built‑in verbs
-  (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) *are* infix as usual.
+* **The two-argument library dyads work infix *or* in bracket form (since 2.0.0).** The join
+  family and the set/search dyads — `in within like lj ij uj aj aj0 wj wj1 pj ej cross inter
+  union except ss sv vs xasc xdesc` — may be written `x f y` just like kdb+/q, as well as
+  `f[x;y]`: `t lj kt`, `2 3 in 1 2`, `5 within 3 9`, `` `sym xasc t``, `` "/" sv `a`b`c`` all work,
+  and are identical to the bracket call. Built‑in verbs
+  (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) are infix as usual. An *arbitrary* user lambda is
+  still bracket/prefix only (`{x+y}[a;b]`, not `a {x+y} b`) — see the CHANGELOG for why lambda
+  infix is deliberately excluded.
 * **No `>=` / `<=` operators.** Use `~a<b` for `a>=b` and `~a>b` for `a<=b`.
 * **Symbols cannot contain `_`.** `` `a_b `` is a parse error; use a quoted symbol `` `"a_b" ``.
 * **Nested lambdas are not closures.** An inner `{…}` sees only its own parameters and globals,
@@ -282,7 +286,8 @@ fby[(sum;t`sz);t`sym]    / 90 60 90 60 90
 
 ## 8. Joins
 
-Every join is a function; call it with brackets. Left operand is the “driver” table.
+Every join is a function; call it in bracket form `lj[t;kt]` or, since 2.0.0, **infix** `t lj kt`
+(both are identical). Left operand is the “driver” table.
 
 | function             | kind                | notes                                   |
 |----------------------|---------------------|-----------------------------------------|

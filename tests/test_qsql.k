@@ -200,9 +200,21 @@ tqa[`aggNameWide;"select wavg[sz;px] by sym from trades"; cols; `sym`x0];
 t[`within;      within[10 20 30 40.0;(20;30)]; 0 1 1 0];
 t[`withinQuery; . qrw"select from trades where within[px;(20;40)]"; . qrw"select from trades where (~px<20)&~px>40"];
 
+/ ---- qrwf / qtry: the whole-file qSQL rewriter the loader (bsl) applies so
+/ bare qSQL works in a .k script with no sel"..." wrapper (amber 2.0.0) ----
+t[`qrwfSelect;  qrwf"select px from t";        "sel\"select px from t\""]
+t[`qrwfPlain;   qrwf"a:1+2";                   "a:1+2"]
+t[`qtryIdentity;qtry"x:from+select";           "x:from+select"]
+t[`qrwfMulti;   qrwf"a:1\nselect px from t\nb:2"; "a:1\nsel\"select px from t\"\nb:2"]
+t[`qrwfInString;qrwf"y:\"select px from t\"";  "y:\"select px from t\""]
+
+/ select ... by <symbol column> uses the 2.0.0 symbol-grouping fast path;
+/ keys are first-appearance order (c,a,b) and aggregates are correct
+t[`selectBySymGroup; sel"select s:sum v by k from ([]k:`c`a`b`a`c; v:1 2 3 4 5)"; ([k:`c`a`b] s:6 6 3)]
+
 / Guard against a silently skipped block (see tests/harness.k): this is the
 / exact number of assertions this file is expected to record. Bump it when
 / you add or remove cases -- if it ever disagrees, some of them stopped running.
-hexpect[111]
+hexpect[117]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

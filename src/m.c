@@ -315,7 +315,17 @@ Z A bs0(S s)_(en0())
 Z A bsbs(S s)_(exit(0);0)
 Z A bscd(S s)_(P(!*s,C b[256];getcwd(b,SZ b)?eo0():aCz(b))chdir(s)?eo0():au)
 Z A bsd(S s)_(P(!*s,as(gd))s+=*s=='.';gd=us(s);au)
-  A bsl(S s)_(I f=open(s,0,0);A x=u1c(ai(f));close(f);N(x);P(!xn,x(au))C*p=xC,*e=p+xn-1;P(*e-10,x(err0("eoleof")))*e=0;I(*p=='#'&&p[1]=='!',p=strchrnul(p,10);p+=!!*p)x(evs(p,1)))
+  A bsl(S s)_(I f=open(s,0,0);A x=u1c(ai(f));close(f);N(x);P(!xn,x(au))C*p=xC,*e=p+xn-1;P(*e-10,x(err0("eoleof")))*e=0;I(*p=='#'&&p[1]=='!',p=strchrnul(p,10);p+=!!*p)
+  // amber 2.0.0: run the source through the K qSQL rewriter (qrwf, qsql.k) so
+  // bare `select .. from ..` works in a .k file exactly as it does at the REPL
+  // prompt -- no sel"..." wrapper. Guarded so nothing changes until qsql.k is
+  // loaded: qrwf undefined (bootstrap) or any rewrite error makes the trap
+  // return the `ERR symbol, and we fall back to the verbatim source. On success
+  // qrwf returns a char vector (type tC); the ternary distinguishes the two.
+  // The qrwf lookup is deferred inside {qrwf x} so `.`'s handler also catches
+  // the undefined-variable error during bootstrap (before qsql.k defines qrwf);
+  // `diag is toggled off around the probe so that recovered error never prints.
+  A rw=K1("{d:`diag 0;r:.[{qrwf x};,x;{`ERR}];`diag d;r}",aCz(p));A r=_t(rw)==tC?(rw=str0(rw),evs(_C(rw),1)):evs(p,1);mr(rw);x(r))
 Z A bsf(S s)_(K1("{`0:($!h),'\":\",'`k'. h:(&x=^`o`p`q`r`u`v`w`x?@'h)#h:``repl_.:0#`}",ai(!s)))
 Z A bst(S s)_(L n=s[-1]=='t'&&*s==':'?++s,pl(&s):1;S p=s;A x=N(pk(&p,10));x=N(cpl(aCm(s,p),x,0));L t=now();F(n,mr(Nx(run(x,0,0))))x(az((now()-t+500)/1000)))
 // \v: walk the global symbol table (gk/gn/gd -- file-local to m.c) and hand

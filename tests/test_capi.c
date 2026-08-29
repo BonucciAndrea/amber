@@ -34,7 +34,9 @@ static void ck(int cond, const char *what) {
 /* ---- 1. identity and boot ------------------------------------------------ */
 static void t_boot(const char *home) {
     CK(amber_abi_version() == AMBER_CAPI_ABI);
-    CK(amber_version_string() != 0 && amber_version_string()[0] == '1');
+    /* version is "MAJOR.MINOR.PATCH"; assert it is a non-empty dotted numeric
+       string rather than pinning a specific major (2.0.0 today, was 1.9.x). */
+    CK(amber_version_string() != 0 && amber_version_string()[0] >= '1' && amber_version_string()[0] <= '9');
     CK(amber_init(home) == 0);
     CK(amber_init(home) == 0);          /* idempotent */
     amber_set_diagnostics(0);           /* library mode: errors via the API */

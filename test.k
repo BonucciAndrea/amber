@@ -300,6 +300,55 @@ t[`tsym;(tsym[([]tc:hms[9;30;0]);`tc])`tc;,"09:30:00.000"]
 t[`sv;sv["/";("a";"bc";"d")];"a/bc/d"]
 t[`vs;#vs["/";"a/bc/d"];3]
 
+/ ---- regression: & (where) on a literal empty generic list -> !0 (was ,!0) ----
+/ was: &() returned a 1-element list (,!0) instead of the empty int vector !0.
+/ fixed in src/v.c whr() RA branch with an empty-guard.  see docs/MISSING.md 14.
+t[`whrEmptyGen;&();!0]
+t[`whrEmptyGenType;@&();`I]
+t[`whrEmptyGenCount;#&();0]
+t[`whrEmptyMatchesRange;(&())~&!0;1b]
+t[`whrGroupedStillWorks;&(0 1 0;1 0 1);(0 1 1;1 0 2)]
+
+/ ---- infix notation for two-arg library dyads (amber 2.0.0) ----
+/ `x f y` now applies the named dyad f infix, identical to the bracket form
+/ f[x;y].  The bracket form still works, and definitions (in:{...}) still assign.
+t[`infixIn;      2 3 9 in 2 3 4;        in[2 3 9;2 3 4]]
+t[`infixInVal;   2 3 9 in 2 3 4;        1 1 0]
+t[`infixWithin;  5 within 3 9;          within[5;3 9]]
+t[`infixLike;    "hello" like "h*";     like["hello";"h*"]]
+t[`infixExcept;  1 2 3 4 5 except 2 4;  except[1 2 3 4 5;2 4]]
+t[`infixInter;   1 2 3 inter 2 3 4;     inter[1 2 3;2 3 4]]
+t[`infixUnion;   1 2 3 union 3 4;       union[1 2 3;3 4]]
+t[`infixSv;      "/" sv ("a";"bc");     sv["/";("a";"bc")]]
+t[`infixVs;      "/" vs "a/bc/d";       vs["/";"a/bc/d"]]
+t[`infixCross;   1 2 cross 3 4;         cross[1 2;3 4]]
+t[`infixBracketStillWorks; in[1 2 3;2 3]; 0 1 1]
+t[`infixLj; (([]k:1 2 3;v:`a`b`c) lj ([k:1 2]w:10 20)); lj[([]k:1 2 3;v:`a`b`c);([k:1 2]w:10 20)]]
+
+/ ---- nested/chained brackets: right-to-left evaluation (matches kdb+/q) ----
+/ Amber evaluates a function's bracketed arguments RIGHT-to-LEFT, exactly as
+/ kdb+/q does (verified: `f[mark 1;mark 2;mark 3]` logs 3 2 1 in both).  These
+/ pin that order (via side effects) and the nested/chained-bracket results so a
+/ parser change can never silently flip them.
+RTLOG:()
+rtmark:{RTLOG,:x;x}
+t[`rtlArgOrder; [RTLOG:(); {[a;b;c]0}[rtmark 1;rtmark 2;rtmark 3]; RTLOG]; 3 2 1]
+t[`nestedFnApply;  {x*10}{x+1}2;          30]
+t[`nestedFnBrack;  {x*10}[{x+1}[2]];      30]
+t[`deepNestFn;     {x*10}{x+1}{x*10}{x+1}1; 210]
+t[`chainedIndex;   (10 20 30;40 50 60)[1][2]; 60]
+t[`multiIndexEq;   (10 20 30;40 50 60)[1;2]; (10 20 30;40 50 60)[1][2]]
+t[`projectThenApply; ({[a;b;c]a+b+c}[10;;30]) 5; 45]
+
+/ ---- symbol grouping fast path (amber 2.0.0): group `=` on a symbol vector
+/ groups by interned id, ~47x faster than the old lexical string-sort, and the
+/ partition + first-appearance key order are byte-identical to the old result. ----
+t[`groupSymKeys;   key(=`c`a`b`a`c);      `c`a`b]
+t[`groupSymDict;   =`c`a`b`a`c;           `c`a`b!(0 4;1 3;,2)]
+t[`groupSymSingle; =`x`x`x;               (,`x)!,0 1 2]
+t[`groupSymEmptyCount; #(=0#`a);          0]
+t[`groupSymMatchesInt; value(=`b`a`b`c`a); value(=2 1 2 3 1)]
+
 / ---- report ----
 fails:r@&{"FAIL"~4#x}'r[;1]
 `0:""

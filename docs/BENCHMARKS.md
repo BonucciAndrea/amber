@@ -287,6 +287,35 @@ Done since the last revision of this list: **`mmin`/`mmax` monotonic deque** (wa
 O(N), measured **82–274x** across windows 10–1000 in §7) and **C radix sort for integer/float keys** (was item 3 — shipped as the grade
 kernel; the remaining gap is the gather, item 1 above).
 
+## 2.9 vs kdb+/q — a direct run against the reference (2.0.0)
+
+Unlike the CI numbers above (which run in a sandbox with no q), this section is a like-for-like
+run against a real **kdb+ 4.0** on a developer machine, on a q/HFT-shaped workload — a trade table
+grouped and filtered **by symbol**. Identical data (same closed-form generator in both engines, no
+RNG; answers checked equal before timing), minimum of 5 warm reps, kernel time only.
+
+**The 2.0.0 symbol-grouping fix.** Grouping a table by a *symbol* column used to lexically
+string-sort the symbols (O(n·log n) with a per-character compare). 2.0.0 groups by the interned
+4-byte id instead — equal symbols have equal ids, so the partition and the first-appearance key
+order are byte-for-byte identical, just found without the string sort. `select … by sym` on 1M rows
+went **587 ms → 34 ms (17×)**, and the group-by row below moved **~19×**.
+
+| workload (by `sym`) | q 1M | Amber 1M | q 10M | Amber 10M |
+|---|--:|--:|--:|--:|
+| `select sum px by sym` | 3.2 | 32.0 | 33.2 | 370 |
+| `select vwap:wavg[sz;px] by sym` | 26.6 | 41.0 | 221 | 488 |
+| `select from t where px>105` | 4.4 | 13.2 | 45.8 | 62.6 |
+| `select sum sz by sym where px>105` | 5.0 | 19.5 | 54.5 | 215 |
+| `sum px` (reduction) | 0.22 | **0.28** | 6.3 | **4.0** |
+| `` `px xasc t`` (sort) | 28.2 | **30.4** | 1,136 | **521** |
+
+ms, lower is better; **bold** = Amber ≤ q. Amber's ngn/k core **matches or beats** kdb on the pure
+array primitives — at 10M it sorts a table in **521 ms vs kdb's 1,136 ms** and reduces faster too.
+The remaining distance is the group-by *aggregation* layer: Amber's `group` is now id-based but
+still sort-based, where kdb runs an O(n) hash group with a fused per-group sum. A hash-group kernel
+is the next optimisation (see [MISSING.md](MISSING.md)). The site's benchmarks page renders this as
+charts.
+
 ## 3. Running the cross-language harness (growler/k, q, DuckDB, Polars)
 
 The cloud sandbox that produced the numbers above has no k interpreter and no package

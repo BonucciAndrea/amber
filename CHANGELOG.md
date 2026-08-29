@@ -1,5 +1,100 @@
 # Changelog
 
+## 2.0.0 — infix dyads, bare qSQL in scripts, two lexer/verb fixes
+
+This release is about **ergonomics** — closing three long-standing gaps between the
+syntax you can type and the syntax the docs told you to type — plus fixing two real
+engine defects that had been tracked in `docs/MISSING.md`.
+
+### Infix notation for the two-argument library dyads
+
+The join family and the set/search dyads can now be written **infix**, exactly as
+in kdb+/q, instead of only in bracket form:
+
+```q
+2 3 9 in 2 3 4          / 1 1 0        (was: in[2 3 9;2 3 4])
+5 within 3 9            / 1b           (was: within[5;3 9])
+t lj kt                 / left join    (was: lj[t;kt])
+`sym xasc t             / sort         (was: xasc[`sym;t])
+"/" sv `a`b`c           / join         (was: sv["/";`a`b`c])
+1 2 3 except 2          / 1 3          (was: except[1 2 3;2])
+```
+
+The infix set is a curated list of Amber's two-argument dyads — `in within like lj
+ij uj aj aj0 wj wj1 pj ej cross inter union except ss sv vs xasc xdesc`. The parser
+change extends the same mechanism ngn/k already applies to every *unicode*-named
+identifier (which were always infix) to these ASCII names. **The bracket form still
+works unchanged**, `f[x;y]` and `f x` too, and a name is left an ordinary lvalue
+when it is being defined or amended (`in:{…}` still assigns), so nothing that
+worked before breaks. Lambda literals are deliberately **not** made infix: `f
+{lambda} x` must keep meaning `f({lambda}[x])`, and a purely syntactic parser cannot
+tell that apart from `noun {lambda} noun` the way q's type-aware one can. Verified
+against the reference: `x in y`, `x within y`, `t lj kt` and the rest produce output
+identical to kdb+/q and to the bracket form (`test.k`, 12 cases).
+
+### Bare qSQL now works in a loaded `.k` file — no `sel"…"` wrapper
+
+`select … by … from … where …` (and `exec` / `update` / `delete`) previously worked
+**bare** only on the interactive input line; inside a script you had to wrap it in
+`sel"…"`. The C loader (`bsl`, `src/m.c`) now runs every file it loads through the
+same qSQL rewriter the REPL uses (`qrwf` / `qtry`, `qsql.k`), so a `.k` file loaded
+once the standard library is up gets the identical bare-qSQL treatment:
+
+```q
+/ in a .k file, after the stdlib is loaded:
+select sum px by sym from trades where px>100      / just works -- no sel"..."
+```
+
+The rewrite is line-by-line (matching the REPL), guarded by an `` `ERR`` sentinel so
+a rewrite failure can never corrupt a script, and gated so nothing changes until
+`qsql.k` defines the rewriter (the bare interpreter and the bootstrap are
+untouched). A non-qSQL script is passed through byte-for-byte. (`test_qsql.k` +
+`tests/test_qsql_script.sh`.)
+
+### Fixes (both were tracked in `docs/MISSING.md §14`)
+
+- **`&()` (where on a literal empty generic list) returned `,!0` instead of `!0`.**
+  `whr`'s generic-list branch (`src/v.c`) ran its nested-grouping K expression on a
+  simply-empty `()` — which also has type `` `A`` — instead of recognising "zero
+  elements, nothing to do". It now short-circuits an empty generic list to an empty
+  int vector, byte-identical to `&!0`. This was silently affecting `ss` and any qSQL
+  path that built a literal empty `()`. (`test.k`, 5 cases.)
+- **A bare `/` line opening an unterminated block comment silently truncated the
+  file.** A `/`-on-its-own-line block comment with no closing `\` line ran to EOF and
+  exited 0 with no diagnostic — quietly dropping the rest of the file. It now raises
+  a clean parse error. Properly-closed `/ … \` blocks and trailing `/ …` line
+  comments are unchanged. (`tests/test_comments.sh`.)
+
+### REPL — bracketed paste and an optional status bar
+
+- **Bracketed paste.** The native line editor (`src/ln.c`) now enables bracketed
+  paste (`ESC[?2004h`). Pasting a multi-line script runs it **line by line, exactly
+  as if each line were typed** — so inline (`x:1 / c`) and full-line (`/ c`)
+  comments work, and bare qSQL in a pasted line is rewritten just as at the prompt.
+  The first pasted line submits immediately; the rest are queued and drained under
+  the prompt. (Whole-block `. text` eval was rejected — it raises `'limit` on a
+  multi-statement string.) Paste mode is torn down on every exit path.
+  (`tests/test_paste.py`, pty-driven.)
+- **Optional fixed status bar — `\sb`.** Off by default (the default REPL is
+  byte-for-byte unchanged and every terminal test still passes). `\sb` sets a
+  DECSTBM scroll region and paints a Claude-Code-style bar on the bottom row
+  (version · live memory · key hints); `\sb` again clears it. `src/ln.c`'s atexit
+  hook resets the region on **every** exit path (`\\`, Ctrl-D, a crash), so the
+  terminal is never left scrolled-in.
+
+### Also
+
+- Grouping a table **by a symbol column** is now ~19&times; faster: `group`
+  (`src/o.c`) groups symbols by their interned 4-byte id instead of lexically
+  string-sorting them. Same partition, byte-identical first-appearance key order;
+  `select … by sym` on 1M rows went 587&nbsp;ms → 34&nbsp;ms. Verified against a real
+  kdb+/q on the same machine (`docs/BENCHMARKS.md`, and the benchmarks page on the
+  site). (`test.k`, 6 cases.)
+- Right-to-left evaluation of a function's bracketed arguments (already the case,
+  and matching kdb+/q) is now pinned by side-effect-based regression tests, together
+  with nested/chained-bracket results, so a parser change can't silently flip them
+  (`test.k`, 7 cases).
+
 ## 1.9.6 — `libamber.so`: the out-of-process seam
 
 ### What this release is

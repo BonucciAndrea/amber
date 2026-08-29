@@ -12,12 +12,14 @@
 **A low-latency array language — columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-1.9.5-orange)
+![version](https://img.shields.io/badge/version-2.0.0-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
-![tests](https://img.shields.io/badge/tests-287%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-742%20K--suite%20cases-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
 
 </div>
+
+## What is Amber
 
 Amber is a small, fast, self-contained array language with the working vocabulary of
 **q/kdb+** — dictionaries, **tables & keyed tables** with `([]…)` literal syntax, the full
@@ -31,80 +33,59 @@ footprint and layers a q/kdb+ vocabulary, C-level column attributes, native temp
 `([]…)` table syntax, a tick/HFT toolkit, and a modern REPL on top. (The attribution is
 recorded in [NOTICE](NOTICE), as the AGPLv3 requires.)
 
-New in **1.9.5**: the REPL has a **native line editor** — history, arrow keys, `Ctrl-A/E/W/U/K`,
-and Tab completion over your globals, table columns and `\` commands — built straight into the
-interpreter (`src/ln.c`, ~700 lines of C99 + POSIX `termios`, no readline, no curses, no
-dependency). **`rlwrap` is no longer needed, and must no longer be used**: Amber now handles the
-terminal itself, which is exactly the case rlwrap cannot wrap, and wrapping it anyway produced
-
-```text
-rlwrap: warning: rlwrap appears to do nothing for amber, which asks for
-single keypresses all the time. Don't you need --always-readline ...
-```
-
-dumped across `stdout`/`stderr` mid-session, plus a garbled redraw from two editors fighting over
-one cursor. `./a` now execs the interpreter directly; the only path that still touches rlwrap is
-the deliberate `AMBER_NO_EDIT=1` fallback, and there it passes `-n -a`, so no rlwrap diagnostic
-can reach your session on any path. See [REPL line editing](#repl-line-editing).
-
-1.9.5 also adds a small, neutral [**extension seam**](#extensions) (`src/ext.h` + `ext/`) so an
-out-of-tree package can add verbs, `\`-commands and editor behaviour without patching `src/` —
-that is how the separate, entirely optional
-[**amber-ai**](https://github.com/bonucciandrea/amber-ai) co-pilot installs itself. The engine in
-this repository contains **no AI code and no network code**.
-
-New in **1.9.4**: errors are reported **once**, as a polished Rust-style diagnostic with a
-category-specific code, a token-spanning underline, an inline label and actionable help — the
-duplicate legacy ngn/k block is gone. See [docs/AMBER.md §9b′](docs/AMBER.md).
-
-```text
-error[E0101]: Undefined variable `prices`
- --> <amber>:1:3
-  |
-1 | y:prices+1
-  |   ^^^^^^ not found in this scope
-  |
-  = help: Verify that the variable is defined in the current scope or check for typos.
-```
-
-New in **1.9.3**: a **compact binary serializer** — `-8!x` encodes any K value to a byte
-vector and `-9!y` decodes it back, byte-exact including attributes, nulls and infinities.
-`peach` now ships worker results over that binary wire instead of formatting and reparsing text,
-and three bugs in its parent collection loop are fixed (a per-chunk leak, an ignored worker exit
-status, and an unvalidated decode). See [CHANGELOG.md](CHANGELOG.md) and
-`examples/peach_verify.k`.
-
-New in **1.9.2**: integer `?` (find) builds an index over its left argument instead of scanning
-it per probe, turning the inner-join benchmark from **180.95 ms into 5.66 ms (32x)**; float `+/`
-uses four independent accumulators so it vectorises; array payloads are cache-line aligned. See
-[docs/BENCHMARKS.md](docs/BENCHMARKS.md) for before/after and [CHANGELOG.md](CHANGELOG.md).
-
-New in **1.9.1**: the `select … by … from` query layer now groups and probes on **raw column
-vectors** instead of boxing one K object per row, making group-by **24.7x** faster and inner
-join **19.3x** faster (both now within ~1.1-1.5x of hand-written Amber array code); the CBQN
-benchmark scripts compile and self-time correctly. See [CHANGELOG.md](CHANGELOG.md).
-
-New in **1.9**: a **native C `aj` as-of-join kernel** (branch-free `lower_bound` over sorted
-nanosecond timestamps) · an **HFT zero-allocation arena** (thread-local 16 MB bump allocator
-that removes `malloc`/`free` jitter from the eval hot path) · **Rust-style visual diagnostics**
-(`AMBER_DIAG=1` prints gutter-aligned, ANSI-coloured `error[…]` reports with `^^^` underlines) ·
-an options/market-data generator (`genopt`, `gentq`) · Unicode grid modes (`\grid clean|rounded|sharp|heavy`) ·
-and a **CRLF-safe REPL loader** so a Windows checkout runs the library unchanged.
-
-Also new: a **SIMD kernel library** (AVX2 / ARM NEON / scalar) behind `+`-style vector ops ·
-a **multithreaded vector engine** that splits large arrays across cores · a **bytecode
-disassembler** (`\disasm`) for Amber's real compiler/VM · and a **native CSV parser**
-(`` `csvr``) that reads a file straight into a typed table. See
-[Engine extensions](#engine-extensions) below.
-
 ```q
 t:([]sym:`AAPL`MSFT`AAPL; px:187.3 411.2 187.4; sz:100 250 50)   / a table, rendered instantly
-qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                         / vwap by symbol
+qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                        / vwap by symbol
 ```
+
+<a name="whats-new"></a>
+## What's new in 2.0.0
+
+- **Infix notation for the two-argument library dyads.** `2 3 in 2 3 4`, `5 within 3 9`,
+  `` t lj kt``, `` `sym xasc t``, `` "/" sv `a`b`c`` now work infix, exactly as in kdb+/q. The
+  bracket form (`f[x;y]`) and prefix form (`f x`) still work unchanged. The infix set is a curated
+  list — `in within like lj ij uj aj aj0 wj wj1 pj ej cross inter union except ss sv vs xasc xdesc`
+  — plus the built-in symbol verbs; arbitrary user lambdas are **not** infix.
+- **Bare qSQL now works inside a loaded `.k` script**, not just at the prompt. `select … by … from
+  … where …` (and `exec`/`update`/`delete`) no longer needs a `sel"…"` wrapper in a file: the C
+  loader runs every script through the same qSQL rewriter the REPL uses, once the stdlib is up.
+- **Fix — `&()` (where on a literal empty generic list)** now returns `!0` correctly, instead of a
+  spurious 1-element `,!0`. This had been silently affecting `ss` and any qSQL path that built a
+  literal empty `()`.
+- **Fix — an unterminated bare-`/` block comment** now raises a clean parse error instead of
+  silently truncating the rest of the file at EOF.
+- Right-to-left evaluation of a function's bracketed arguments is now pinned by regression tests, so
+  a parser change can't silently flip it.
+
+Full history in **[CHANGELOG.md](CHANGELOG.md)**.
+
+## Table of contents
+
+- [Quick showcase](#quick-showcase)
+- [Download & install](#download--install)
+- [A quick taste](#a-quick-taste)
+- [REPL line editing](#repl-line-editing)
+- [Architecture](#architecture) · [Extensions (`src/ext.h` + `ext/`)](#extensions)
+- [Rust-style diagnostics](#rust-style-diagnostics)
+- [REPL diagnostics (`\v` · `\ast` · `\trace`)](#repl-diagnostics-v--ast--trace)
+- [Engine extensions: SIMD · parallel · disassembler · CSV](#engine-extensions)
+- [HFT toolkit — native `aj`, arena, generators](#hft-toolkit)
+- [Terminal charts (`plot` · `candle`)](#terminal-charts)
+- [Grid modes (`\grid`)](#grid-modes)
+- [Native temporal types](#native-temporal-types)
+- [Apache Arrow C Data Interface](#apache-arrow)
+- [`libamber.so` — the dynamic C API seam](#libamber)
+- [The satellite ecosystem](#satellite-ecosystem)
+- [Comparative benchmark query files](#comparative-benchmark-query-files)
+- [Why attributes matter](#why-attributes-matter)
+- [Language notes](#language-notes)
+- [Finance / HFT module (`fin.k`)](#finance-module)
+- [What's inside](#whats-inside) · [Roadmap](#roadmap) · [Isolation](#isolation) · [Licence](#licence)
 
 ---
 
-## 🚀 Quick Showcase
+<a name="quick-showcase"></a>
+## Quick showcase
 
 One command builds Amber with maximum optimization and runs the full **Mega Demo**: a
 5,000,000-row HFT tick session (VWAP, a tacit 50-period EMA, a native as-of join), a
@@ -124,12 +105,14 @@ AMBER_NATIVE=1 ./demo.sh     # -march=native build (fastest on this machine)
 \l fin.k
 gentq N                                                    / N trades, 2N quotes, realistic microstructure
 qby[trades; `sym; (,`vwap)!,{round[4]wavg[x`sz;x`px]}]      / VWAP per symbol
-ema[2%51; pxSeries]                                          / 50-period EMA, tacit call into the C kernel
-taq[trades; quotes]                                          / as-of join: every trade -> its nearest quote
+ema[2%51; pxSeries]                                         / 50-period EMA, tacit call into the C kernel
+taq[trades; quotes]                                         / as-of join: every trade -> its nearest quote
 ```
 
-Sample benchmark table from a real run (row counts and timings will vary by machine —
-the script prints its own table every time):
+<details>
+<summary>Sample benchmark output from a real run (timings vary by machine)</summary>
+
+`demo/hft_demo.k` prints its own summary table every run:
 
 ```
 == benchmark summary =======================================
@@ -138,7 +121,7 @@ stage      ms
 gentq   2381.9
 vwap     151.2
 ema        0.1
-asof      704.0
+asof     704.0
 ------------------------------------------------------------
 total: ~3.2 s end-to-end for 500,000 trades
 ```
@@ -158,6 +141,8 @@ sum  peach    ███░   (fork/IPC overhead dominates a cheap reduction --
                        peach earns its keep on per-task-heavy work, see examples/peach.k)
 ```
 
+</details>
+
 Prefer to explore interactively? Open `notebooks/Amber-Notebook-Studio.html` directly in a
 browser (no build step) and hit **🚀 Load HFT Demo** in the header — it generates a tick
 session, charts price & volume on a canvas, and benchmarks a naive per-symbol filter against
@@ -165,6 +150,7 @@ the vectorised `qby` call, right there in the page.
 
 ---
 
+<a name="download--install"></a>
 ## Download & install
 
 Amber compiles from source (portable **C99**, builds clean on `gcc` and `clang`) on first run —
@@ -181,7 +167,7 @@ cd amber
 sudo apt-get update && sudo apt-get install -y build-essential   # one-time
 chmod +x a build.sh install.sh                                    # restore exec bits if the copy dropped them
 ./a                                                               # builds, then opens the REPL
-# note: do NOT install or use rlwrap for Amber -- line editing is built in (1.9.5)
+# note: do NOT install or use rlwrap for Amber -- line editing is built in
 ```
 
 **macOS** (Intel or Apple Silicon) — needs Apple's `clang`:
@@ -197,9 +183,9 @@ the prompt; it recompiles automatically whenever the C sources change, so you ne
 build. If `./a` prints **`Permission denied`**, the executable bit was lost in transfer — the
 `chmod +x` line above fixes it (or just run `bash a`).
 
-The default build is portable C99 and always includes `-pthread` (needed by the multithreaded
-vector engine) and the scalar SIMD fallback. For a machine-specific build that turns on **AVX2**
-(x86_64) or **NEON** (Apple Silicon / any `aarch64`) vector kernels, set `AMBER_NATIVE=1`:
+**Machine-tuned build.** The default build is portable C99 and always includes `-pthread` (needed
+by the multithreaded vector engine) and the scalar SIMD fallback. For a build that turns on
+**AVX2** (x86_64) or **NEON** (Apple Silicon / any `aarch64`) vector kernels, set `AMBER_NATIVE=1`:
 
 ```sh
 AMBER_NATIVE=1 ./build.sh      # machine-tuned; check with: `simd 0
@@ -207,10 +193,10 @@ AMBER_NATIVE=1 ./build.sh      # machine-tuned; check with: `simd 0
 
 `` `simd 0 `` prints which backend actually got selected (`scalar` / `avx2` / `neon`) to stderr.
 NEON activates unconditionally on Apple Silicon regardless of `AMBER_NATIVE`, since `aarch64`
-implies it. The tuning flag itself is **probed, not assumed**: `-march=native` is x86 syntax that
-Apple clang rejects outright on Apple Silicon, so `build.sh` falls back to `-mcpu=native`
-(aarch64) and, failing both, to a portable build — `AMBER_NATIVE=1 ./build.sh` therefore succeeds
-on every platform rather than breaking CI on arm64 runners.
+implies it. The tuning flag is **probed, not assumed**: `-march=native` is x86 syntax that Apple
+clang rejects on Apple Silicon, so `build.sh` falls back to `-mcpu=native` (aarch64) and, failing
+both, to a portable build — so `AMBER_NATIVE=1 ./build.sh` succeeds on every platform rather than
+breaking CI on arm64 runners.
 
 **One command instead of all of the above:**
 
@@ -223,7 +209,10 @@ AMBER_NATIVE=1 ./install.sh  # ... with a machine-tuned build
 if you do not), repairs the executable bit on every script, builds, runs the self-test, and writes
 the shell block below into the rc file **your login shell actually reads** — `~/.zshrc` for zsh,
 `~/.bash_profile` on macOS bash, `~/.bashrc` on Linux bash, `~/.profile` otherwise. Re-running it
-replaces that block rather than appending a second copy. To add it by hand:
+replaces that block rather than appending a second copy.
+
+<details>
+<summary>The shell block, to add by hand</summary>
 
 <a name="shell-configuration"></a>
 ```sh
@@ -256,9 +245,11 @@ alias amber-ai='AMBER_NATIVE=1 AMBER_AI=1 AMBER_AI_URL="http://127.0.0.1:11434/a
 #     mkdir -p ~/.local/bin && ln -sf "$AMBER_HOME/a" ~/.local/bin/amber
 ```
 
+</details>
+
 Three notes on that block, because the obvious-looking variants do not work:
 
-| | |
+| pitfall | why |
 |---|---|
 | **`$AMBER_HOME` is the checkout, not a prefix** | Amber has no `bin/`, `lib/` or `share/` split and installs nothing outside its folder. `export PATH="$AMBER_HOME/bin:$PATH"` points at a directory that does not exist. |
 | **Alias the launcher `a`, not the binary `amber`** | The bare `amber` binary is the interpreter with **no** stdlib: `amber` alone gives you a REPL where `select`, `aj` and `sum` are undefined. `./a` loads `repl.k`, which loads everything else. |
@@ -267,19 +258,19 @@ Three notes on that block, because the obvious-looking variants do not work:
 The variables the engine itself reads at run time are exactly: `AMBER_THREADS` (vector-engine
 lanes), `AMBER_DIAG` (rich diagnostics on/off), `AMBER_NO_EDIT` and `AMBER_RLWRAP` (line editor),
 plus `AMBER_AI_*` once the [amber-ai](https://github.com/bonucciandrea/amber-ai) extension is
-installed.
-
-Nothing is installed system-wide — see [Isolation](#isolation).
+installed. Nothing is installed system-wide — see [Isolation](#isolation).
 
 ---
 
+<a name="a-quick-taste"></a>
 ## A quick taste
 
 > These snippets are written as you'd type them at the interactive prompt (`./a`), where a bare
 > table auto-renders as a grid and qSQL sugar (`select … by … from … where …`) works directly on
-> the input line. Inside a `.k` script run via `./amber file.k`, wrap a bare table in `show`
-> (`show t`) for the grid view, and use the `sel"…"` string form (or `qselect`/`qby`/`qwhere`
-> directly) for qSQL — exactly the pattern used throughout `examples/*.k` and `test.k`.
+> the input line. **Since 2.0.0 bare qSQL also works inside a `.k` script** run via `./amber
+> file.k` — the loader runs each file through the same rewriter the REPL uses — so the `sel"…"`
+> wrapper is no longer required in files (it still works). For the grid view of a bare table inside
+> a script, wrap it in `show` (`show t`).
 
 ```q
 / tables are first-class and render without `show` -- at the interactive prompt
@@ -292,7 +283,7 @@ Nothing is installed system-wide — see [Isolation](#isolation).
 
 meta ([]sym:`a`b; px:1.5 2.5)      / column types + attributes (c | t a)
 
-/ the join every tick shop needs — as-of (native C kernel in 1.9)
+/ the join every tick shop needs — as-of (native C kernel)
 trade:([]sym:`a`b`a; time:3 4 9; px:100 200 300)
 quote:([]sym:`a`a`b`a; time:1 5 2 8; bid:10 11 20 12)
 aj[`sym`time; trade; quote]        / last quote at/ before each trade
@@ -300,6 +291,10 @@ aj[`sym`time; trade; quote]        / last quote at/ before each trade
 / qSQL — type select/exec/update/delete straight, no sel"…" wrapper
 select last px by sym from trade   / grouped aggregate
 select from trade where px>150     / filter rows
+
+/ two-argument library dyads work infix now, identical to the bracket form
+2 3 9 in 2 3 4                     / 1 1 0        (same as in[2 3 9;2 3 4])
+`sym xasc trade                    / sort by sym  (same as xasc[`sym;trade])
 
 / 1-minute OHLCV bars (classic tickerplant query)
 tb:+@[+trade; ,`time; minbar[1]@]
@@ -325,7 +320,7 @@ instant.
 Check the interpreter version, or list every option and REPL command:
 
 ```sh
-./amber --version           # amber 1.9.5
+./amber --version           # amber 2.0.0
 ./amber --help              # options + the full \-command reference
 ```
 
@@ -337,7 +332,7 @@ Run the guided tours:
 ./amber examples/tick.k     # realistic trades & quotes: as-of/window joins, VWAP, OHLC
 AMBER_THREADS=8 ./amber examples/peach.k   # multi-core speedup demo (serial vs peach)
 ./amber bench.k             # attribute speed benchmark
-./amber test.k              # core suite (163); also test-fin.k (35) + test-ext.k (79)
+./amber test.k              # core suite (202); also test-fin.k (35) + test-ext.k (79)
 tests/run_tests.sh          # EVERYTHING: build + all K suites + C unit tests + fuzz pass
 ./amber tests/test_matrix.k # the suites are self-locating - run them from any directory
 tests/run_tests.sh --asan   # ... and re-run it all under AddressSanitizer + UBSan
@@ -349,10 +344,10 @@ bash bench/run.sh           # cross-engine sanity + speed (Amber vs numpy/pandas
 <a name="repl-line-editing"></a>
 ## REPL line editing (native — do not use `rlwrap`)
 
-Amber's REPL edits your line itself. `src/ln.c` is a single-file editor in the
-[linenoise](https://github.com/antirez/linenoise) tradition: raw `termios`, one visible line, ANSI
-refresh, plain C99 + POSIX. No readline, no curses, no terminfo, and nothing allocated on the
-keystroke path beyond the line buffer.
+Amber's REPL edits your line itself. `src/ln.c` is a single-file editor (~700 lines of C99 + POSIX
+`termios`) in the [linenoise](https://github.com/antirez/linenoise) tradition: raw `termios`, one
+visible line, ANSI refresh. No readline, no curses, no terminfo, and nothing allocated on the
+keystroke path beyond the line buffer. **`rlwrap` is no longer needed, and must no longer be used.**
 
 | key | |
 |---|---|
@@ -386,10 +381,9 @@ AMBER_NO_RLWRAP=1 AMBER_NO_EDIT=1 ./a   # ... or not even that
 `-n` (`--no-warnings`) and `-a` (`--always-readline`) are passed unconditionally on that path, so
 **no rlwrap diagnostic can reach your session on any path**. The editor also degrades to a plain
 line read whenever stdin/stdout are not a terminal, so `echo '2+2' | ./a`, here-docs and CI runs
-behave byte-for-byte as they always did.
-
-`tests/test_repl_term.py` asserts all of this on a real pty, including that the terminal's
-`termios` is restored exactly after a normal exit *and* after `Ctrl-C`.
+behave byte-for-byte as they always did. `tests/test_repl_term.py` asserts all of this on a real
+pty, including that the terminal's `termios` is restored exactly after a normal exit *and* after
+`Ctrl-C`.
 
 ---
 
@@ -421,7 +415,7 @@ Three properties are worth stating explicitly, because they are what the layout 
 
 * **No optional feature is switched off.** Everything in `src/` is compiled, always. There is no
   AI code, no network code and no TLS anywhere in this repository — `grep -r socket src/` finds
-  only `src/0.c`'s IPC support, which predates 1.9 and is the same code kdb-style `hopen` uses.
+  only `src/0.c`'s IPC support, the same code kdb-style `hopen` uses.
 * **`src/ln.c` has no interpreter dependency.** It includes `<termios.h>` and `src/ext.h` and
   nothing else of Amber's; the interpreter-facing verb lives in the separate `src/lnk.c`. The
   editor can be lifted into another project as-is.
@@ -452,7 +446,8 @@ exists, fully trapped, and an extension may define the optional `ext.pre` / `ext
 The reason this exists: pulling a new Amber release must never conflict with a package you
 installed, and a user who installs nothing must pay nothing — every hook is a null pointer and
 every call site is a predictable branch. The optional
-[**amber-ai**](https://github.com/bonucciandrea/amber-ai) co-pilot is installed exactly this way:
+[**amber-ai**](https://github.com/bonucciandrea/amber-ai) co-pilot (an entirely separate repo; this
+engine contains **no AI code and no network code**) is installed exactly this way:
 
 ```sh
 git clone https://github.com/bonucciandrea/amber-ai.git
@@ -493,23 +488,21 @@ error[E0104]: Vector length mismatch
 The formatter lives in `src/diagnostic.{h,c}` (a `Span` source-tracking struct + a
 `report_diagnostic()` renderer); the runtime error path (`src/e.c`) routes every parse / type /
 domain error through it when `AMBER_DIAG` is set, so the flag is entirely opt-in and changes
-nothing about the default output. You can exercise the formatter directly from Amber with the
-`` `dgn `` self-test builtin (returns `1` when the rendered report matches its expected shape):
+nothing about the default output. You can exercise the formatter directly with the `` `dgn ``
+self-test builtin (returns `1` when the rendered report matches its expected shape):
 
 ```q
 `dgn 0        / 1  — diagnostic formatter self-test
 ```
 
-Turn it on for a session and leave it: it costs one `getenv` per error and never fires on
-success.
+Turn it on for a session and leave it: it costs one `getenv` per error and never fires on success.
 
----
-
-### Turning the report off
+<details>
+<summary>Turning the report off at runtime</summary>
 
 The diagnostic is rendered when the error is *created*, so code that catches an error with
-`.[f;args;handler]` still sees it on stderr. Since **1.9** that is switchable at runtime —
-useful for anything that provokes errors on purpose (a test suite, `protect`, a retry loop):
+`.[f;args;handler]` still sees it on stderr. That is switchable at runtime — useful for anything
+that provokes errors on purpose (a test suite, `protect`, a retry loop):
 
 ```
 prev:`diag 0        / suppress the report, returns the previous setting (1)
@@ -521,12 +514,17 @@ The compact `'type` caret line is not suppressed — it is buffered and still ha
 handler and to `` `err``, so a caught error can always be inspected. `AMBER_DIAG=0` in the
 environment still works and seeds the initial value.
 
+</details>
+
+---
+
+<a name="repl-diagnostics-v--ast--trace"></a>
 ## REPL diagnostics (`\v` · `\ast` · `\trace`)
 
 Three zero-dependency session commands for inspecting the workspace and the evaluator itself —
 none of them touch `eval`/`arena`/core REPL behaviour; they only read state and print a report.
 
-**`\v`** — a rich workspace inspector: every currently-defined global as an ASCII table
+**`\v` — a rich workspace inspector.** Every currently-defined global as an ASCII table
 (Name / Type / Shape·Length / Memory), with a recursive deep-memory-footprint walker so table
 and nested-list sizes are real, not a shallow guess:
 
@@ -544,12 +542,12 @@ amber> \v
 +-------------+---------------+----------------+---------+
 ```
 
-`\v` lists *every* global in scope, which after `repl.k`'s modules are loaded includes the
-REPL/library's own internal state (`repl.*`, `PAL`, `GB`, `OUNI`, …) alongside your own — scan
-for the names and types you defined, or `\d yourns` first to narrow the namespace.
+`\v` lists *every* global in scope, which after `repl.k`'s modules load includes the library's own
+internal state (`repl.*`, `PAL`, `GB`, `OUNI`, …) alongside your own — scan for the names you
+defined, or `\d yourns` first to narrow the namespace.
 
-**`\ast`** — a colour-coded parse tree (parse-only; nothing is executed, with one unavoidable
-exception — see below):
+<details>
+<summary><code>\ast</code> — colour-coded parse tree (parse-only)</summary>
 
 ```
 amber> \ast (1+2)*3-4
@@ -565,9 +563,9 @@ Root
 
 Every leaf carries its literal type (`Int64`, `Float64`, `Symbol`, `Char`, or a
 `(TypeName Vector[len])` preview for a literal vector) instead of a generic placeholder, and
-Amber's tacit forms get their own explicit labels — a lambda literal shows its real source text,
-a 2- or 3-verb train is an explicit **Hook**/**Fork**, and a curried/partial application (`1+`,
-`f[x;;z]`) is an explicit **Projection** with a `Blank` node standing in for the omitted argument:
+Amber's tacit forms get explicit labels — a lambda literal shows its real source text, a 2- or
+3-verb train is an explicit **Hook**/**Fork**, and a curried/partial application (`1+`, `f[x;;z]`)
+is an explicit **Projection** with a `Blank` node standing in for the omitted argument:
 
 ```
 amber> \ast {x+1}[3]
@@ -582,18 +580,20 @@ Root
     └── Vector : 0x01 0x02 0x03 (Byte Vector[3])
 ```
 
-(A lambda shows its *source text*, never its bytecode — pk() itself compiles `{...}` literals
+(A lambda shows its *source text*, never its bytecode — `pk()` itself compiles `{...}` literals
 eagerly at parse time, the one exception to "nothing is executed"; disassembling what it compiled
-to is `\disasm`'s job, not `\ast`'s.)
+to is `\disasm`'s job, not `\ast`'s.) Verbs render bold cyan, adverbs bold magenta, numeric
+scalars bright green, variables and symbols yellow, tree connectors dim gray; list literals,
+statement blocks, and hook/fork labels get their own restrained accent colour.
 
-Verbs (bare, applied, curried, or the head of a call) render bold cyan, adverbs bold magenta,
-numeric/literal scalars bright green, variables and symbols yellow, and the tree connectors
-themselves dim gray; list literals, statement blocks, and tacit hook/fork train labels get their
-own restrained accent colour so the shape of an expression still reads at a glance.
+</details>
 
-**`\trace`** — a 4-phase execution profiler (parse → arena setup → execute → format), with a
-Unicode bar chart and the arena's peak scratch usage for that one evaluation. It prints the
-expression's normal result first, then the report (timings vary run to run):
+<details>
+<summary><code>\trace</code> — 4-phase execution profiler</summary>
+
+**`\trace`** profiles parse → arena setup → execute → format, with a Unicode bar chart and the
+arena's peak scratch usage for that one evaluation. It prints the expression's normal result
+first, then the report (timings vary run to run):
 
 ```
 amber> \trace (1+2)*3-4
@@ -608,12 +608,9 @@ amber> \trace (1+2)*3-4
 +-------------------------------------------------------+
 ```
 
-Since **1.9** the timer prints `ns` / `us` / `ms` as appropriate (sub-microsecond phases used to
-render as a flat `0us`), and **Arena peak** is a true high-water mark taken from
-`arena_peak()` — it used to be `max(used-before, used-after)`, and since every arena consumer
-rewinds the slab before returning, that was `0 B` for literally every expression. Only
-expressions that actually reach an arena-backed kernel (`aj`, `wj`, `` `csvr``, `\ast`) report a
-non-zero peak:
+The timer prints `ns` / `us` / `ms` as appropriate, and **Arena peak** is a true high-water mark
+from `arena_peak()`. Only expressions that actually reach an arena-backed kernel (`aj`, `wj`,
+`` `csvr``, `\ast`) report a non-zero peak:
 
 ```
 amber> \trace aj[`s`t;tr;qt]
@@ -638,6 +635,8 @@ amber> \trace select from t where a>1
 +-------------------------------------------------------+
 ```
 
+</details>
+
 ---
 
 <a name="engine-extensions"></a>
@@ -645,22 +644,21 @@ amber> \trace select from t where a>1
 
 Four additive engine modules, each a standalone `.c`/`.h` pair that never touches core
 evaluation (`a.c`'s dispatch, `b.c`'s compiler/VM, or the `+`/`*`/`+/` verb implementations).
-One of them is an honest reinterpretation of the original ask, explained inline below.
 
-(A fifth module, a `\hl <expr>` command that echoed one line back with ANSI syntax colour, was
-removed — it only ever colorized a line you explicitly ran, not your keystrokes as you typed
-them, which isn't what "live syntax highlighting" means. Genuine live/incremental highlighting
-would require rewriting `repl.k`'s raw-keystroke input loop, which is out of scope for now; see
-[Roadmap](#roadmap).)
+> A fifth module, a `\hl <expr>` command that echoed one line back with ANSI syntax colour, was
+> removed — it only ever colorized a line you explicitly ran, not your keystrokes as you typed
+> them, which isn't what "live syntax highlighting" means. Genuine live highlighting would require
+> rewriting `repl.k`'s raw-keystroke input loop, which is out of scope for now; see
+> [Roadmap](#roadmap).
 
 **SIMD vector kernels** (`src/simd.{h,c}`) — `simd_add_i64/f64`, `simd_mul_i64/f64`,
 `simd_sum_i64/f64` operate on plain `int64_t*`/`double*` arrays with an AVX2 path
-(`<immintrin.h>`, x86_64), a NEON path (`<arm_neon.h>`, any `aarch64` — Apple Silicon
-included), and a scalar C99 fallback, selected at compile time. `simd_backend()` reports which
-one is active. The arena allocator (`src/arena.c`) was bumped to genuine **32-byte alignment**
-via `posix_memalign` (previously 16-byte, from plain `malloc`) so SIMD loads over arena-backed
-buffers are always aligned. Self-test + benchmark: `` `simd 0 `` (prints backend, size, and a
-SIMD-vs-scalar timing comparison to stderr, returns `1` on success):
+(`<immintrin.h>`, x86_64), a NEON path (`<arm_neon.h>`, any `aarch64` — Apple Silicon included),
+and a scalar C99 fallback, selected at compile time. `simd_backend()` reports which one is active.
+The arena allocator (`src/arena.c`) was bumped to genuine **32-byte alignment** via
+`posix_memalign` so SIMD loads over arena-backed buffers are always aligned. Self-test + benchmark:
+`` `simd 0 `` (prints backend, size, and a SIMD-vs-scalar timing comparison to stderr, returns `1`
+on success):
 
 ```
 $ ./amber
@@ -716,7 +714,7 @@ amber> select from t where px>150
 ```
 
 Self-test: `` `csv0 0 `` (round-trips a fixture CSV through the parser and checks shape/values/
-nulls via `#`/`~`/`@` — the same primitives `meta`/`qwhere` already rely on).
+nulls via `#`/`~`/`@`).
 
 **Honest deviations, stated plainly:** (1) no `src/compiler.c` was added — `b.c` already *is*
 the real compiler and VM, so a second one would be redundant/misleading; `vm.c` disassembles
@@ -726,9 +724,10 @@ and run it — it has not been executed on real Apple Silicon hardware.
 
 ---
 
+<a name="hft-toolkit"></a>
 ## HFT toolkit — native `aj`, arena, generators
 
-Amber 1.9 tightens the tick/quant path:
+Amber tightens the tick/quant path:
 
 ```q
 gentq 100000                       / generate a full session: sets globals `trades` and `quotes`
@@ -737,7 +736,7 @@ m:aj[`sym`time; trades; quotes]    / TAQ: prevailing quote for every trade (nati
 select from options where abs[strike-spot]<5     / near-the-money contracts
 ```
 
-* **Native `aj` kernel.** `aj`/`aj0` now match each trade to its most-recent quote with a
+* **Native `aj` kernel.** `aj`/`aj0` match each trade to its most-recent quote with a
   **branch-free `lower_bound`** binary search over each symbol group's sorted nanosecond
   timestamp slice (`src/a.c`, marshalled from `amber.k`). The pure-K reference (`ajmK`) is kept
   alongside it. Correct on 64-bit ns timestamps, empty groups, and no-match rows (→ null).
@@ -749,6 +748,7 @@ select from options where abs[strike-spot]<5     / near-the-money contracts
 
 ---
 
+<a name="terminal-charts"></a>
 ## Terminal charts (`plot` · `candle`)
 
 Pipe a query straight into a chart. `plot` renders a numeric vector as a **Braille** line
@@ -769,6 +769,7 @@ candle bars[10; select from trades where sym=`AAPL]      / OHLC candlesticks in 
 
 See [`examples/graphs.k`](examples/graphs.k) for a chart tour.
 
+<a name="grid-modes"></a>
 ## Grid modes (`\grid`)
 
 `\grid clean|rounded|sharp|heavy` sets the table frame — `clean` (default) is a minimal dashed
@@ -790,6 +791,7 @@ Borders are dimmed so colourised cells stay the focus; `\clear` clears the scree
 carry **ANSI syntax highlighting** (a 14-hue per-column palette; `COLOR:0` to disable), right-aligned
 numeric/temporal columns, and a `PREC`-capped float precision (default 7 decimals).
 
+<a name="native-temporal-types"></a>
 ## Native temporal types
 
 Dates, times and timestamps are **first-class types** with literal syntax, auto-display and
@@ -804,6 +806,7 @@ year 2026.07.30                     / accessors: year month day dow / thh tmm ts
 "D"$"2026.12.25"                    / string casts: "D"$ "T"$ "P"$
 ```
 
+<a name="apache-arrow"></a>
 ## Apache Arrow C Data Interface (zero dependency)
 
 Interop with **PyArrow / Polars / DuckDB** over the stable Arrow C ABI — no `libarrow`
@@ -814,11 +817,12 @@ p:arrow.export t                    / table  -> (schemaAddr; arrayAddr)  64-bit 
 arrow.import p                      / (schemaAddr; arrayAddr) -> Amber table
 ```
 
+<a name="libamber"></a>
 ## `libamber.so` — the dynamic C API seam
 
 Amber has always had one seam for extending it **in process**: drop a `.c` file into
 `ext/`, rebuild, and it plugs itself in through `src/ext.h` without a line of `src/`
-being patched. 1.9.5 adds the matching **out-of-process** seam — the same engine,
+being patched. There is also a matching **out-of-process** seam — the same engine,
 built as a shared library, with a small documented C API on the front of it.
 
 ```bash
@@ -839,64 +843,63 @@ const void *px = amber_get_vector_ptr(amber_table_column(t, 2), &type, &n, &bits
 /* `px` IS the engine's column payload. Not a copy of it. */
 ```
 
-**~60 entry points, all named `amber_*`.** Boot and evaluate (`amber_init`,
-`amber_eval_str`, `amber_eval_qsql`, `amber_call`), reference counting
-(`amber_retain` / `amber_release`), the zero-copy vector seam
-(`amber_get_vector_ptr`), tables and dictionaries, constructors for pushing data
-back in, the Arrow C Data Interface, rendering, and `amber_plugin_load` for
-dlopening a native plugin into a running engine.
+**~60 entry points, all named `amber_*`.** Boot and evaluate (`amber_init`, `amber_eval_str`,
+`amber_eval_qsql`, `amber_call`), reference counting (`amber_retain` / `amber_release`), the
+zero-copy vector seam (`amber_get_vector_ptr`), tables and dictionaries, constructors for pushing
+data back in, the Arrow C Data Interface, rendering, and `amber_plugin_load` for dlopening a native
+plugin into a running engine.
 
-### What the shared build changes, and what it deliberately does not
+<details>
+<summary>What the shared build changes, and what it deliberately does not</summary>
 
-**The executable is untouched.** `./build.sh` with no flags produces byte-for-byte
-what it produced before, from the same objects, with the same flags. The shared
-library is a *separate* object set (`-fPIC -Dshared`): position-independent code
-and the global-dynamic TLS model a dlopen'd library needs both change code
-generation, and sharing objects between the two would silently pessimise `./amber`.
+**The executable is untouched.** `./build.sh` with no flags produces byte-for-byte what it produced
+before, from the same objects, with the same flags. The shared library is a *separate* object set
+(`-fPIC -Dshared`): position-independent code and the global-dynamic TLS model a dlopen'd library
+needs both change code generation, and sharing objects between the two would silently pessimise
+`./amber`.
 
-**Only `amber_*` and `am_ext_*` are exported.** Amber's internal C is written in a
-terse K-derived idiom — the engine's own globals are called `mr`, `su`, `us`, `err`,
-`run`, `add`, `sub`, `pk`, `cpl`. Those are perfect inside one static binary and
-actively dangerous inside a library loaded next to NumPy, libarrow and libpython.
-An export map (`src/libamber.map`) makes everything else genuinely **absent** from
-the dynamic symbol table, so it cannot be bound to by accident and cannot interpose
-on a host's symbol of the same name.
+**Only `amber_*` and `am_ext_*` are exported.** Amber's internal C is written in a terse K-derived
+idiom — the engine's own globals are called `mr`, `su`, `us`, `err`, `run`, `add`, `sub`, `pk`,
+`cpl`. Those are perfect inside one static binary and actively dangerous inside a library loaded
+next to NumPy, libarrow and libpython. An export map (`src/libamber.map`) makes everything else
+genuinely **absent** from the dynamic symbol table, so it cannot be bound to by accident and cannot
+interpose on a host's symbol of the same name.
 
-**The library records a `SONAME`.** A satellite that dlopens a *second* copy of
-`libamber.so` gets a second **engine**: two heaps, two symbol tables, two global
-namespaces, and values from one that are meaningless to the other — with no error,
-because nothing is technically wrong. The SONAME is what lets the loader recognise
-an already-loaded copy and reuse it, so `python-amber`, `libamber_arrow.so` and any
-plugin in one process share one engine.
+**The library records a `SONAME`.** A satellite that dlopens a *second* copy of `libamber.so` gets
+a second **engine**: two heaps, two symbol tables, two global namespaces, and values from one that
+are meaningless to the other — with no error, because nothing is technically wrong. The SONAME is
+what lets the loader recognise an already-loaded copy and reuse it, so `python-amber`,
+`libamber_arrow.so` and any plugin in one process share one engine.
 
-**TLS drops to global-dynamic in the shared build only.** `./amber` keeps the
-initial-exec model on the allocator's hot path. A dlopen'd library cannot: it is
-resolved out of the static TLS block the loader sizes before `main()`, and borrowing
-from glibc's small surplus reserve fails *nondeterministically* — with
-`cannot allocate memory in static TLS block` — depending on what else the host
-imported first. See the note above `AM_TLS_IE` in `src/a.h`.
+**TLS drops to global-dynamic in the shared build only.** `./amber` keeps the initial-exec model on
+the allocator's hot path. A dlopen'd library cannot: it is resolved out of the static TLS block the
+loader sizes before `main()`, and borrowing from glibc's small surplus reserve fails
+*nondeterministically* — with `cannot allocate memory in static TLS block` — depending on what else
+the host imported first. See the note above `AM_TLS_IE` in `src/a.h`.
 
-### Verification
+</details>
+
+**Verification.**
 
 ```bash
 tests/test_capi.sh              # release build, then ASan + UBSan
 tests/run_tests.sh --asan       # the whole suite, the C API included
 ```
 
-`tests/test_capi.c` is the only consumer of `libamber.so` inside this repository,
-and it is written the way a satellite would write it: it includes `src/ext.h` and
-nothing else from `src/`, never dereferences an `amber_value`, and links the shared
-library rather than the objects. **If it ever needs a second `-I`, the API is
-wrong.** 78 assertions, clean under `-fsanitize=address,undefined` with
-`detect_leaks=1` — because a C API whose ownership rules are only documented is a
-C API whose ownership rules are wrong, and LeakSanitizer is what checks the prose.
+`tests/test_capi.c` is the only consumer of `libamber.so` inside this repository, and it is written
+the way a satellite would write it: it includes `src/ext.h` and nothing else from `src/`, never
+dereferences an `amber_value`, and links the shared library rather than the objects. **If it ever
+needs a second `-I`, the API is wrong.** 81 assertions, clean under
+`-fsanitize=address,undefined` with `detect_leaks=1` — because a C API whose ownership rules are
+only documented is a C API whose ownership rules are wrong, and LeakSanitizer is what checks the
+prose.
 
+<a name="satellite-ecosystem"></a>
 ## The satellite ecosystem
 
-Everything that consumes Amber lives **outside** this repository and reaches it
-through one of three seams: `libamber.so`, the in-process `ext/` registry, or a
-TCP socket. Nothing below is mentioned anywhere in `src/`, and none of it is
-compiled, linked or configured by this build.
+Everything that consumes Amber lives **outside** this repository and reaches it through one of
+three seams: `libamber.so`, the in-process `ext/` registry, or a TCP socket. Nothing below is
+mentioned anywhere in `src/`, and none of it is compiled, linked or configured by this build.
 
 | repository | seam | what it is |
 |---|---|---|
@@ -907,9 +910,9 @@ compiled, linked or configured by this build.
 | [`grafana-amber-datasource`](https://github.com/BonucciAndrea/grafana-amber-datasource) | `amberd` socket | Live dashboards. Bare qSQL panels, column-oriented on the wire. |
 | [`amber-flame`](https://github.com/BonucciAndrea/amber-flame) | `python-amber` / `amberd` | A visual profiler — flamegraphs, Speedscope and Chrome tracing, built on the engine's own `\trace`. |
 
-The engine gained **one build flag, one export map and one section of `ext.h`** for
-all of it.
+The engine gained **one build flag, one export map and one section of `ext.h`** for all of it.
 
+<a name="comparative-benchmark-query-files"></a>
 ## Comparative benchmark query files
 
 `bench/run_comparative.py` (see [docs/BENCHMARKS.md §5](docs/BENCHMARKS.md) for the live table,
@@ -934,13 +937,16 @@ Workloads: **vector arithmetic + boolean masking**, **reductions** (sum · max �
 elements), **group-by aggregation** (100 groups over 10M rows), and an **inner join** (1M left
 rows against 1,000 sparse keys).
 
-**How fairness is enforced, not just claimed.** Every answer in this suite is an integer that
-fits in float64 exactly, and every sum is over such integers, so the result is independent of
-summation order — SIMD pairwise, Kahan-compensated and naive left-fold summation all produce the
-identical bit pattern. The harness therefore compares answers **exactly** against the C
-reference and prints **WRONG** in place of a time for any engine that disagrees. Each engine also
-emits a checksum of its *input* data, so a divergence in the generator is caught separately
-(**BADDATA**). You cannot win a cell in this table by computing something cheaper.
+<details>
+<summary>How fairness is enforced, not just claimed</summary>
+
+Every answer in this suite is an integer that fits in float64 exactly, and every sum is over such
+integers, so the result is independent of summation order — SIMD pairwise, Kahan-compensated and
+naive left-fold summation all produce the identical bit pattern. The harness therefore compares
+answers **exactly** against the C reference and prints **WRONG** in place of a time for any engine
+that disagrees. Each engine also emits a checksum of its *input* data, so a divergence in the
+generator is caught separately (**BADDATA**). You cannot win a cell in this table by computing
+something cheaper.
 
 Two shortcuts the previous suite contained, both now removed and documented in `SPEC.md`:
 
@@ -959,16 +965,18 @@ picking whichever comparison flatters Amber; the gap between the rows *is* the q
 overhead and is meant to be visible.
 
 **Timing excludes startup.** Engines that can time their own kernel (Amber, C, NumPy, Julia,
-DuckDB and — since 1.9.1 — CBQN, via `•MonoTime`) do so with a monotonic clock after warm-up
-passes, and the harness uses that number directly. Engines with no usable in-language clock
-(ngn/k, Uiua, J) are measured as *total process time − a measured startup baseline*. The results
-table labels which mode produced each cell, so the two are never silently mixed.
+DuckDB and CBQN, via `•MonoTime`) do so with a monotonic clock after warm-up passes, and the
+harness uses that number directly. Engines with no usable in-language clock (ngn/k, Uiua, J) are
+measured as *total process time − a measured startup baseline*. The results table labels which mode
+produced each cell, so the two are never silently mixed.
 
-**Known lexer quirk hit while writing these files:** a `.k` comment line containing *only* a
-bare `/` (no trailing space or text) silently truncates parsing of everything after it, with no
-error. `bench/queries/*.k` works around this with blank lines instead of bare `/` separators;
-see [docs/MISSING.md](docs/MISSING.md) for this tracked as a known engine bug.
+</details>
 
+The former lexer quirk that bit these files — a `.k` comment line containing *only* a bare `/`
+silently truncating everything after it — **is fixed in 2.0.0**: an unterminated bare-`/` block
+comment now raises a clean parse error. See [docs/MISSING.md](docs/MISSING.md) §14.
+
+<a name="why-attributes-matter"></a>
 ## Why attributes matter
 
 `bench.k` measures `?` (find) on identical data, sorted-attributed vs not:
@@ -985,17 +993,23 @@ Results are identical; only the time differs. `asc` / `xasc` set the attribute f
 
 ---
 
+<a name="language-notes"></a>
 ## Language notes (30-second version)
 
-Amber uses a terse array notation. A few things that differ from kdb+/q:
+Amber uses a terse array notation. A few things worth knowing:
 
-* **Two-argument library functions take brackets:** `aj[c;x;y]`, `lj[t;kt]`, `in[x;y]`,
-  ``xasc[`sym;t]``. Built-in symbols (``+ - * % ! & | < > = ~ , ^ # _ $ ? @ .``) are still infix.
+* **Two-argument library dyads work infix *or* in brackets.** Since 2.0.0, `x in y`, `t lj kt`,
+  `` `sym xasc t``, `5 within 3 9`, `` "/" sv `a`b`c`` all work infix, exactly like kdb+/q — and the
+  bracket form `f[x;y]` and prefix form `f x` still work. The infix set is a curated list —
+  `in within like lj ij uj aj aj0 wj wj1 pj ej cross inter union except ss sv vs xasc xdesc` — plus
+  the built-in symbol verbs (``+ - * % ! & | < > = ~ , ^ # _ $ ? @ .``). Arbitrary user lambdas are
+  **not** infix.
 * **No `>=` / `<=`** — write `~a<b` and `~a>b`.
-* **qSQL is bare — at the prompt:** type `select … by … from … where …` (also `exec` / `update` /
-  `delete`) with no `sel"…"` wrapper — bare column names like `wavg[sz;px]` just work. This
-  line-level rewriting is a REPL convenience; inside a `.k` script use `sel"select …"` (also
-  `exq"…"` `upd"…"` `del"…"`) or the functional forms `qselect`/`qby`/`qwhere` directly.
+* **qSQL is bare — at the prompt *and* in scripts.** Type `select … by … from … where …` (also
+  `exec` / `update` / `delete`) with no `sel"…"` wrapper — bare column names like `wavg[sz;px]` just
+  work. Since 2.0.0 this bare form also works inside a `.k` file loaded once the stdlib is up (the
+  loader runs each file through the same rewriter the REPL uses); the `sel"…"` / `exq"…"` / `upd"…"`
+  / `del"…"` string forms and the functional forms `qselect`/`qby`/`qwhere` still work too.
 * **`peach[f;y]` is real multi-core** — it forks `AMBER_THREADS` worker processes (default: the
   online CPU count, detected via `sysconf`; `=1` forces serial), so heavy per-item work scales
   across cores with no GIL and it won't oversubscribe a small box or leave a big one idle.
@@ -1009,11 +1023,12 @@ Amber uses a terse array notation. A few things that differ from kdb+/q:
 
 Full reference: **[docs/AMBER.md](docs/AMBER.md)**. Built-in help: `\` then `\q \j \z` for the Amber
 vocabulary, ``\0 \+ \` \'`` for the core, `\v \ast \trace` for the session/diagnostic tools (see
-[REPL diagnostics](#repl-diagnostics-v--ast--trace) below), and `\disasm` for the bytecode
-disassembler (see [Engine extensions](#engine-extensions)).
+[REPL diagnostics](#repl-diagnostics-v--ast--trace)), and `\disasm` for the bytecode disassembler
+(see [Engine extensions](#engine-extensions)).
 
 ---
 
+<a name="finance-module"></a>
 ## Finance / HFT module (`fin.k`)
 
 Auto-loaded after `amber.k`. Generate a market session and analyse it the way an HFT desk does:
@@ -1037,6 +1052,7 @@ Walkthrough: `./amber examples/hft.k`.
 `` `pa`` parted, `` `ga`` grouped (`` `at`` reads them, `meta` shows them). Sorted/parted give
 O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 
+<a name="whats-inside"></a>
 ## What's inside
 
 | file | |
@@ -1051,27 +1067,31 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 | `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |
 | `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` `tick.k` | modules (auto-loaded) |
 | `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `peach.k` · `wj.k` · `graphs.k` · … |
-| `test.k` `test-fin.k` `test-ext.k` | legacy assertion suites (163 + 35 + 79) |
+| `test.k` `test-fin.k` `test-ext.k` | assertion suites (202 + 35 + 79) |
 | `tests/harness.k` | shared assertion harness — `t` (value), `tv` (trapped expression), `te` (must-raise), `tk` (must-not-raise), `hexpect` (assertion-count guard), `hreport` |
 | `tests/test_matrix.k` | **309-case combinatorial matrix**: every primitive × every element type × sizes 0 / 1 / 10 / 100 000+ (crossing the SIMD and `PAR_THRESHOLD` boundaries), asserted as invariants (shape, algebraic identity, vector-kernel-vs-scalar-reference) rather than frozen literals |
-| `tests/test_qsql.k` | **94-case qSQL matrix**, written in the **bare `select … from t` syntax you actually type** (run through the same `qrw` rewrite the REPL applies): the full `select`/`exec`/`update`/`delete` clause lattice, multi-key `by`, empty / single-row / heavily-duplicated tables, and malformed queries asserted to raise cleanly |
+| `tests/test_qsql.k` | **117-case qSQL matrix**, written in the **bare `select … from t` syntax you actually type** (run through the same `qrw` rewrite the REPL and loader apply): the full `select`/`exec`/`update`/`delete` clause lattice, multi-key `by`, empty / single-row / heavily-duplicated tables, and malformed queries asserted to raise cleanly |
 | `tests/fuzz.py` | malformed-input & deep-nesting crash fuzzer — asserts a clean K error, never a signal or a hang |
-| `tests/test_capi.{c,sh}` | the dynamic C API: 78 assertions against `libamber.so`, linked as a satellite would link it (`src/ext.h` and nothing else from `src/`), run once at `-O2` and once under ASan + UBSan with leak detection — the ownership rules in the header are prose, and this is what checks them |
+| `tests/test_capi.{c,sh}` | the dynamic C API: 81 assertions against `libamber.so`, linked as a satellite would link it (`src/ext.h` and nothing else from `src/`), run once at `-O2` and once under ASan + UBSan with leak detection — the ownership rules in the header are prose, and this is what checks them |
+| `tests/test_qsql_script.sh`, `tests/test_comments.sh` | shell suites for the 2.0.0 loader work: bare qSQL inside a loaded `.k` file, and the unterminated bare-`/` comment now raising cleanly |
 | `tests/run_tests.sh` | runs all of the above (`--asan` re-runs everything under ASan + UBSan) |
 | `tests/test_repl_term.py` | **pty-driven REPL terminal suite**: asserts no `rlwrap:` diagnostic ever reaches a session, that `termios` is byte-for-byte restored after a normal exit *and* after `^C`, that the editing keys really edit, and that piped/non-tty behaviour is unchanged |
 | `tests/test_ext_seam.sh`, `tests/ext_probe.c` | installs a miniature extension into `ext/`, checks the verb / `\`-command / `--help` hooks fire and that the engine's own suite is unaffected, then uninstalls it and checks the engine is back to stock |
 | `tests/*.c` | standalone C test harnesses: `test_simd.c`/`test_parallel.c` (no Amber dependency), `test_ast.c` (links the full interpreter — ast.c is inherently built on Amber's real parser) |
-| `bench.k` `bench-fin.k` `bench-std.k` `bench/` | attribute / index / window benchmarks; `bench/run_comparative.py` cross-engine harness (Amber vs DuckDB vs CBQN vs ngn/k — see [docs/BENCHMARKS.md §5](docs/BENCHMARKS.md)); `bench/queries/amber_*.k` and `bench/queries/k_*.k` are separate, independently-tuned scripts per engine (not the same file reused), each `amber_*.k` documenting in its header what optimization was tried, what was measured, and why — see [Comparative benchmark query files](#comparative-benchmark-query-files) |
+| `bench.k` `bench-fin.k` `bench-std.k` `bench/` | attribute / index / window benchmarks; `bench/run_comparative.py` cross-engine harness (see [docs/BENCHMARKS.md §5](docs/BENCHMARKS.md)); `bench/queries/amber_*.k` and `bench/queries/k_*.k` are separate, independently-tuned scripts per engine — see [Comparative benchmark query files](#comparative-benchmark-query-files) |
 | `docs/` | `AMBER.md` (reference) · `MISSING.md` (roadmap + known leniencies) · `BENCHMARKS.md` · `AUDIT-1.9.md` (the 1.9 security/correctness audit report) |
-| `CHANGELOG.md` | release history (1.9.5 first — the REPL/`rlwrap` work is documented in full there) |
+| `CHANGELOG.md` | release history (2.0.0 first) |
 | `.gitattributes` | forces LF checkout of sources so the REPL's line-based loader works on Windows too |
 
+<a name="roadmap"></a>
 ## Roadmap
 
 Amber covers a large slice of q. [docs/MISSING.md](docs/MISSING.md) is an honest map of what's next —
-top picks: a **binary serialiser** (`` -8!``/`` -9!``) to replace the text transfer that `peach`,
-IPC and the on-disk layer use; wiring the `` `g`` grouped attribute into the C find path; the
-missing atom types (`short`/`real`/`byte`/`guid`); and a true partitioned / memory-mapped HDB.
+top picks: wiring the `` `g`` grouped attribute into the C find path; **attribute preservation
+through ops** (keep/drop by q's per-op rules); the missing atom types
+(`short`/`real`/`byte`/`guid`); a true partitioned / memory-mapped HDB; and **live REPL syntax
+highlighting** (colouring tokens *as you type*, which needs `repl.k`'s raw-keystroke input loop
+rewritten).
 
 <a name="isolation"></a>
 ## Isolation
@@ -1081,6 +1101,7 @@ built only inside the folder, never placed on your `PATH`. It reads/writes no co
 `QHOME`, no dotfiles. Your kdb+, kona and other k/q installs are untouched; deleting the folder
 uninstalls Amber completely.
 
+<a name="licence"></a>
 ## Licence
 
 GNU AGPLv3 (see [LICENSE](LICENSE)). Amber's interpreter core derives from **ngn/k**, an AGPLv3

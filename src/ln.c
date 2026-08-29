@@ -347,6 +347,8 @@ static char  g_ring_part[16384];/* the line currently being accumulated */
 static int   g_ring_plen;
 static int   g_sb_capture;      /* tee ow() only while the bar owns the screen */
 static int   g_scroll;          /* lines scrolled up from live (0 = live/bottom) */
+static int   g_paste_folded;    /* the queued lines are a folded paste -> suppress per-line echo (used by sb_input's hint) */
+static char  g_paste_ph[80];    /* the "[Pasted text #N +M lines]" placeholder text currently in the buffer */
 static void disable_raw(void) {
     if (g_raw) { ws_("\x1b[?2004l"); tcsetattr(STDIN_FILENO, TCSAFLUSH, &g_orig); g_raw = 0; }
 }
@@ -577,9 +579,18 @@ static void sb_input(LnState *l) {
         if (gl) { ws_("\x1b[2m"); wr(l->ghost, gl); ws_(SB_RESET); used += gl; }
     }
     { int p = inner - (int)used; char sp[300];                   /* pad the text area */
+      static const char HINT[] = "paste again to view";
+      int hw = (int)sizeof HINT - 1;
       if (p < 0) p = 0;
       if (p > (int)sizeof sp - 1) p = (int)sizeof sp - 1;
-      memset(sp, ' ', (size_t)p); sp[p] = 0; ws_(sp); }
+      /* when the box holds an unedited paste placeholder and there is room, show a
+       * dim right-aligned "paste again to view" hint (Claude-Code style). */
+      if (g_paste_folded && g_paste_ph[0] && !strcmp(l->buf, g_paste_ph) && p >= hw + 2) {
+          int lead = p - hw - 1;
+          memset(sp, ' ', (size_t)lead); sp[lead] = 0; ws_(sp);
+          ws_("\x1b[2m"); ws_(HINT); ws_(SB_RESET); ws_(" ");
+      } else { memset(sp, ' ', (size_t)p); sp[p] = 0; ws_(sp); }
+    }
     ws_(" "); ws_(SB_DIM); ws_(BOX_V); ws_(SB_RESET);            /* space + │ (cols-1, cols) */
     sprintf(seq, "\x1b[%d;%dH", rows - 2, 3 + (int)(plen + (l->pos - start)));
     ws_(seq);                                                    /* caret inside the box */
@@ -849,10 +860,10 @@ static void do_tab(LnState *l) {
  * am_ln_readline() calls (each echoed under the prompt). The whole-block eval
  * path (`. text`) was rejected: it raises 'limit on a multi-statement string. */
 static char **g_pq; static int g_pq_n, g_pq_i;
-static int g_paste_folded;   /* the queued lines are a folded paste -> suppress per-line echo */
 static int g_paste_no;       /* running [Pasted text #N] counter */
 static char *g_paste_raw;    /* verbatim text of the last folded paste (for the Ctrl-V-Ctrl-V preview) */
 static int g_paste_raw_n;    /* its physical-line count */
+static char *g_last_paste;   /* the raw bytes of the last folded paste, for "paste again to view" detection */
 
 /* ---- scroll-back ring helpers (state declared up top) --------------------- */
 static void ring_push(const char *s, int n) {
@@ -911,12 +922,13 @@ static void sb_repaint_region(void) {
     ws_("\x1b\x38");                          /* restore cursor */
 }
 static void sb_scroll_by(int delta) {
-    int rows = term_rows(), rh = rows - SB_FOOT, maxs;
+    int rows = term_rows(), rh = rows - SB_FOOT, maxs, old = g_scroll;
     if (!g_sb_on) return;
     maxs = g_ring_n - rh; if (maxs < 0) maxs = 0;   /* can't scroll past the oldest retained line */
     g_scroll += delta;
     if (g_scroll < 0) g_scroll = 0;
     if (g_scroll > maxs) g_scroll = maxs;
+    if (g_scroll == old) return;                    /* already at a boundary (e.g. scroll down at live) -> leave the screen alone */
     sb_repaint_region();
 }
 static void sb_scroll_reset(void) {           /* snap back to live and repaint the tail */
@@ -956,6 +968,7 @@ static void sb_strip_comment(char *s) {
     }
 }
 
+static void paste_preview(LnState *l);   /* defined below; read_paste calls it for "paste again to view" */
 static int read_paste(LnState *l) {
     size_t cap = 1024, n = 0; char *p = (char*)malloc(cap);
     if (!p) return 0;
@@ -974,6 +987,16 @@ static int read_paste(LnState *l) {
         p[n++] = c;
     }
     p[n] = 0;
+    /* Claude-Code-style "paste again to view": if the SAME content is pasted again
+     * while its placeholder is still in the box, don't fold a second time -- show
+     * the full text so the user can read it (amber's box is one line, so it shows
+     * as an overlay above the box rather than expanding in place). */
+    if (g_last_paste && g_paste_folded && !strcmp(l->buf, g_paste_ph) && !strcmp(p, g_last_paste)) {
+        free(p);
+        paste_preview(l);
+        return 0;                                        /* placeholder stays; Enter still runs the batch */
+    }
+    free(g_last_paste); g_last_paste = strdup(p);        /* remember this paste for re-paste detection */
     size_t cl = l->len;                                  /* prepend the current line */
     char *comb = (char*)malloc(cl + n + 1);
     if (!comb) { free(p); return 0; }
@@ -1013,9 +1036,8 @@ static int read_paste(LnState *l) {
         }
         g_paste_folded = 1;
         g_paste_raw_n = ns;                              /* remember line count for the preview header */
-        char ph[64];
-        snprintf(ph, sizeof ph, "[Pasted text #%d +%d lines]", ++g_paste_no, ns);
-        set_line(l, ph);
+        snprintf(g_paste_ph, sizeof g_paste_ph, "[Pasted text #%d +%d lines]", ++g_paste_no, ns);
+        set_line(l, g_paste_ph);                         /* the buffer now holds exactly the placeholder */
         free(segs); free(comb);
         return 0;    /* keep editing: the user sees the placeholder, submits on Enter */
     }
@@ -1099,7 +1121,7 @@ char *am_ln_readline(const char *prompt) {
 
         /* Any keystroke other than an explicit accept discards the ghost. */
         if (l.ghost[0] && c != 9 && c != 6 && c != 27) l.ghost[0] = 0;
-        if (c != 22) cv_armed = 0;               /* the Ctrl-V pair must be consecutive */
+        if (c != 22 && c != 27) cv_armed = 0;    /* the preview pair (Ctrl-V or Alt-V) must be consecutive */
 
         switch (c) {
         case 9:                                  /* Tab */
@@ -1152,6 +1174,15 @@ char *am_ln_readline(const char *prompt) {
         case 27: {                                              /* escape seq */
             char s[3] = {0, 0, 0};
             if (read(STDIN_FILENO, s, 1) != 1) break;
+            if (s[0] == 'v' || s[0] == 'V') {                   /* Alt-V: same as Ctrl-V, for terminals
+                                                                 * (WSL / Windows Terminal) that eat Ctrl-V.
+                                                                 * Press twice to preview the last paste. */
+                if (cv_armed) { cv_armed = 0; paste_preview(&l); }
+                else cv_armed = 1;
+                l.ghost[0] = 0;
+                continue;
+            }
+            cv_armed = 0;                                       /* any other escape seq breaks the pair */
             if (read(STDIN_FILENO, s + 1, 1) != 1) break;
             if (s[0] == '[') {
                 if (s[1] == '<') {                          /* SGR mouse report: \x1b[<b;x;y(M|m) */
@@ -1257,6 +1288,9 @@ done:
     } else {
         ws_("\r\n");
     }
+    /* If the user edited or deleted the placeholder, they did NOT mean to run the
+     * folded batch -- abandon it and fall through to evaluating whatever they left. */
+    if (g_paste_folded && strcmp(l.buf, g_paste_ph) != 0) { g_paste_folded = 0; pq_clear(); }
     if (g_paste_folded && g_pq_i < g_pq_n) {
         /* Folded paste: hand repl.k the whole batch in one line, statements joined
          * by 0x1e (record separator).  repl.k splits on it and evaluates each in

@@ -108,6 +108,24 @@ cmds += [(b"\x1b[<64;5;5M", 0.15), (b"\x1b[<64;5;5M", 0.15), (b"\x1b[<65;5;5M", 
 out = drive(cmds)
 check(ESC + b"[?7l" in out and ESC + b"[?7h" in out, "wheel-up repaints the scroll-back region (auto-wrap toggled)")
 
+# 3d. Deleting the folded placeholder (Ctrl-U) must ABANDON the batch, not run it.
+out = drive([(b"\x1b[200~qa:12340\nqb:5\nqa+qb\x1b[201~", 0.5), (b"\x15", 0.2), (b"\r", 0.5), (b"\\\\\r", 0.5)])
+check(b"12345" not in strip(out),                   "deleting the paste placeholder abandons the batch")
+
+# 3e. Alt-V Alt-V previews the paste too (fallback for terminals that eat Ctrl-V, e.g. WSL).
+out = drive([(b"\x1b[200~za:3\nzb:4\nza+zb\x1b[201~", 0.5), (b"\x1bv", 0.2), (b"\x1bv", 0.4), (b"\\\\\r", 0.5)])
+txt = strip(out)
+check(b"Pasted text #" in txt and b"za:3" in txt,   "Alt-V Alt-V shows the paste preview (WSL fallback)")
+
+# 3f. Claude-Code style: pasting the SAME block again views the full text; the
+#     placeholder carries a "paste again to view" hint and still runs on Enter.
+blk = b"\x1b[200~ra:1\nrb:2\nra+rb\x1b[201~"
+out = drive([(blk, 0.5), (blk, 0.6), (b"\r", 0.4), (b"\\\\\r", 0.5)])
+txt = strip(out)
+check(b"paste again to view" in txt,                "placeholder shows the 'paste again to view' hint")
+check(b"ra:1" in txt and b"ra+rb" in txt,           "paste-again reveals the full pasted text")
+check(b"3" in txt,                                  "paste-again keeps the batch runnable (ra+rb -> 3)")
+
 # 4. OPTIONAL rendered-screen check (only if pyte is installed) -- proves the box
 #    is where it should be and output actually lands in the scroll region.
 try:
@@ -134,6 +152,12 @@ try:
     check("⬡ amber 2.0.0" in disp[23], "[pyte] info line on the last row")
     check(any("42" in l for l in disp[:20]), "[pyte] eval output (42) visible in the scroll region")
     check(screen.cursor.y == 21, "[pyte] cursor sits on the box input row")
+    # scrolling DOWN while already at live must not touch/break the box
+    box_before = list(screen.display[20:23])
+    for _ in range(4): os.write(m, b"\x1b[<65;5;5M"); pump(0.06)   # wheel down at live
+    os.write(m, b"\x1b[6~"); pump(0.2)                             # PageDown at live
+    check(list(screen.display[20:23]) == box_before and screen.display[20].lstrip().startswith("╭"),
+          "[pyte] scroll-down at live leaves the box intact")
     # fill past the region, then wheel up: older output must reappear, the box must
     # stay locked, the cursor must stay in the box, and the info line shows SCROLL-BACK.
     for n in range(100, 125): os.write(m, (str(n) + "\r").encode()); pump(0.1)

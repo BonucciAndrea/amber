@@ -20,8 +20,10 @@ def run(paste_lines):
     os.close(s)
     time.sleep(1.2)                       # let the banner + stdlib load settle
     os.write(m, payload.encode())
+    time.sleep(0.6)                       # let the paste fold to the placeholder
+    os.write(m, b"\r")                    # Enter on the UNEDITED placeholder runs the batch
     time.sleep(0.8)
-    os.write(m, b"\\\\\n")                # \\ to exit
+    os.write(m, b"\\\\\n")                # then \\ to exit
     out = b""
     t0 = time.time()
     while time.time() - t0 < 6:

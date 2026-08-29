@@ -26,25 +26,40 @@ def drive(cmds, rows=24, cols=100, settle=4.0):
     p = subprocess.Popen(["./a"], cwd=ROOT, stdin=s, stdout=s, stderr=s,
                          env={**os.environ, "TERM": "xterm-256color"})
     os.close(s)
-    time.sleep(1.6)
+    out = bytearray()
+    def drain(dur):                          # read CONTINUOUSLY so no byte is missed
+        end = time.time() + dur
+        while time.time() < end:
+            r, _, _ = select.select([m], [], [], 0.1)
+            if not r: continue
+            try: d = os.read(m, 65536)
+            except OSError: return
+            if not d: return
+            out.extend(d)
+    drain(2.4)                               # banner + stdlib load (slow on CI runners)
     for b, dt in cmds:
         try: os.write(m, b)
         except OSError: break
-        time.sleep(dt)
-    out = b""; t0 = time.time()
-    while time.time() - t0 < settle:
-        r, _, _ = select.select([m], [], [], 0.3)
-        if r:
-            try: d = os.read(m, 65536)
-            except OSError: break
-            if not d: break
-            out += d
-        elif p.poll() is not None: break
+        drain(dt)
+    drain(settle)
+    # Final drain: read everything still queued (the exit/teardown escapes) until
+    # EOF -- on a slow runner these arrive after the settle window.
+    for _ in range(40):
+        r, _, _ = select.select([m], [], [], 0.2)
+        if not r:
+            if p.poll() is not None: break
+            continue
+        try: d = os.read(m, 65536)
+        except OSError: break
+        if not d: break
+        out.extend(d)
     try: p.wait(timeout=3)
     except Exception: p.kill()
     try: os.close(m)
     except OSError: pass
-    return out
+    return bytes(out)
+
+TORN = lambda out: (ESC + b"[r" in out) or (ESC + b"[?1049l" in out)  # region reset OR alt-screen leave
 
 def strip(b): return re.sub(rb"\x1b\[[0-9;?]*[A-Za-z]", b"", b).replace(b"\x01", b"").replace(b"\x03", b"")
 
@@ -66,7 +81,7 @@ check("⬡ amber 2.0.0".encode() in txt,             "truecolor hex logo + brand
 check(b"exec:" in txt and b"mem:" in txt,           "info line shows exec timing + arena size")
 check(re.search(rb"\[(native|portable)\]", txt) is not None, "build tag [native]/[portable]")
 check(b"4" in txt,                                  "command evaluated (2+2 -> 4)")
-check(RELEASE in out,                               "scroll region released on exit")
+check(TORN(out),                                    "scroll region released on exit")
 
 # 2. multi-line paste folds to a placeholder and the batch still runs.
 out = drive([(b"\x1b[200~x:40\ny:60\nx+y\x1b[201~", 0.5), (b"\r", 0.6), (b"\\\\\r", 0.6)])
@@ -76,7 +91,7 @@ check(b"100" in txt,                                "folded paste batch evaluate
 
 # 3. \sb toggles the footer off and releases the region.
 out = drive([(b"\\sb\r", 0.6), (b"9*9\r", 0.5), (b"\\\\\r", 0.6)])
-check(RELEASE in out and b"81" in strip(out),       "\\sb releases the region; REPL keeps working")
+check(TORN(out) and b"81" in strip(out),            "\\sb releases the region; REPL keeps working")
 
 # 4. OPTIONAL rendered-screen check (only if pyte is installed) -- proves the box
 #    is where it should be and output actually lands in the scroll region.

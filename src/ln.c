@@ -341,8 +341,12 @@ static void disable_raw(void) {
    Harmless when no region was set. Kept out of disable_raw() because that runs
    per-readline and the bar's region must persist across prompts. */
 static void on_exit_restore(void) {
-    ws_("\x1b[r");                                       /* release any scroll region */
-    if (g_sb_alt) { ws_("\x1b[?1049l"); g_sb_alt = 0; }  /* leave the alternate screen -> original restored */
+    /* If the alt screen is still up (a crash / Ctrl-D that bypassed sbb(0)),
+     * reset the region WHILE STILL IN IT, then leave.  Never emit \x1b[r after
+     * \x1b[?1049l: that runs in the restored PRIMARY screen, where a DECSTBM
+     * reset homes the cursor to row 1 and the shell then overlaps the old
+     * scrollback.  When the bar already tore down (the \\ path) do nothing here. */
+    if (g_sb_alt) { ws_("\x1b[r"); ws_("\x1b[?1007h"); ws_("\x1b[?1049l"); g_sb_alt = 0; }
     disable_raw();
 }
 
@@ -575,6 +579,7 @@ static void sb_region(void) {
  * quitting vim.  No in-place erasing to get wrong after a resize. */
 static void sb_teardown(void) {
     ws_("\x1b[r");                                      /* release the scroll region */
+    ws_("\x1b[?1007h");                                 /* restore alternate-scroll to the terminal default */
     if (g_sb_alt) { ws_("\x1b[?1049l"); g_sb_alt = 0; } /* leave the alt screen -> original restored */
     ws_("\x1b[?25h");                                   /* cursor visible */
 }
@@ -591,7 +596,15 @@ void am_ln_statusbar(int on, const char *panel, const char *info) {
         return;
     }
     snprintf(g_sb_panel, sizeof g_sb_panel, "%s", panel ? panel : "");
-    if (!g_sb_on) { ws_("\x1b[?1049h"); g_sb_alt = 1; }  /* first enable: enter the alternate screen */
+    if (!g_sb_on) {
+        ws_("\x1b[?1049h");                              /* first enable: enter the alternate screen */
+        ws_("\x1b[?1007l");                              /* disable alternate-scroll: the trackpad/wheel
+                                                          * must NOT be translated into Up/Down arrows,
+                                                          * or scrolling up walks command history and
+                                                          * corrupts the fixed box.  The alt screen has
+                                                          * no scrollback, so the wheel is simply inert. */
+        g_sb_alt = 1;
+    }
     { static int wired = 0;                              /* watch for resizes while the bar is up */
       if (!wired) { struct sigaction sa; memset(&sa, 0, sizeof sa);
           sa.sa_handler = on_winch; sigaction(SIGWINCH, &sa, NULL); wired = 1; } }

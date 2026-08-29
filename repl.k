@@ -106,7 +106,7 @@ sbpanel:{m:binfo[];rmb:$_0.5+(m@0)%1048576.0;(,sA),"⬡ amber ",(m@4),(,sA),"   
 sbupd:{$[sbon;`sbb(1;sbpanel[];"");]}
 sbtoggle:{sbon::~sbon;$[sbon;sbupd[];`sbb(0;"";"")]}
 line0:{c:{0x07~*-2#*x}{(l;r):x;(rd prompt;r,,(-2_l))}/(x;());"\n"/(*|c),,*c}
-line1:{$[#x;;:0];x:-1_x;exthook[{ext.pre x};x];$[(4<#x)&"\\grid"~5#x;gridcmd x;(5<#x)&"\\clear"~6#x;clearcmd[];(2<#x)&"\\sb"~3#x;sbtoggle[];(1<#x)&"\\\\"~2#x;[`sbb(0;"";"");.:x];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;.[`1:(fmt;fmtx)[" "~*x]@.:;,qrwx x;onerr]];exthook[{ext.post x};x];1}
+line1:{$[#x;;:0];x:-1_x;exthook[{ext.pre x};x];$[(4<#x)&"\\grid"~5#x;gridcmd x;(5<#x)&"\\clear"~6#x;clearcmd[];(2<#x)&"\\sb"~3#x;sbtoggle[];(1<#x)&"\\\\"~2#x;[`sbb(0;"";"");.:x];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;(4<#x)&"\\ast"~4#x;.[`1:(fmt;fmtx)[" "~*x]@.:;,x;onerr];.[`1:(fmt;fmtx)[" "~*x]@.:;,qrwx x;onerr]];exthook[{ext.post x};x];1}
 / A folded paste arrives as one line with its statements joined by 0x1e (ln.c's
 / read_paste).  Split on it and run each statement through the normal pipeline so
 / a pasted block of many statements evaluates as a unit in a single read.

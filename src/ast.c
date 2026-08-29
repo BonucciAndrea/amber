@@ -912,11 +912,13 @@ A ast_cmd(S s) {
                            * pk() itself compiles embedded lambda literals) */
     if (!tree) { printf("\\ast: parse error\n"); arena_reset(); return au; }
 
-    /* Wrap in the AST_ROOT carrier so print_ast() draws the framed banner and
-     * can show the expression it actually analysed (i.e. post-rewrite, which is
-     * the tree on screen -- showing the pre-rewrite text next to a rewritten
-     * tree would be actively misleading). */
-    ASTNode *root = ast_new(AST_ROOT, src, NULL);
+    /* Wrap in the AST_ROOT carrier so print_ast() draws the framed banner.
+     * Show the ORIGINAL text the user typed (`s`), not the post-rewrite `src`:
+     * for qSQL the tree root already reads "qSQL Select", so echoing the source
+     * `select ... from ...` the user wrote is clearer than the internal
+     * `sel"..."` rewrite wrapper.  For every non-qSQL expression try_rewrite()
+     * is a pass-through, so `s` == `src` and this is identical to before. */
+    ASTNode *root = ast_new(AST_ROOT, s, NULL);
     ASTNode *body = ast_from_k(tree);
     if (body && body->kind == AST_BLOCK)
         for (int i = 0; i < body->nchildren; i++) ast_add_child(root, body->children[i]);

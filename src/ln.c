@@ -1047,37 +1047,41 @@ static int read_paste(LnState *l) {
     return 0;        /* single-line paste -> just drop it into the edit buffer */
 }
 
-/* Ctrl-V pressed twice: reveal the last folded paste in full, ENLARGED via
- * DECDWL (double-width line, \x1b#6) so even a big block is easy to read.  In
- * status-bar mode the preview scrolls inside the region above the fixed box;
- * otherwise it prints above the prompt.  Editing continues afterwards -- the
- * placeholder line is redrawn untouched. */
+/* Reveal the last folded paste in full: a header rule, then every physical line
+ * at NORMAL width behind a dim line-number gutter -- so the whole line is visible
+ * and it renders identically on every terminal (no DECDWL double-width, which cut
+ * lines in half and rendered badly on Windows Terminal / VS Code).  In status-bar
+ * mode it scrolls inside the region above the fixed box; otherwise above the
+ * prompt.  The placeholder line is redrawn untouched afterwards. */
 static void paste_preview(LnState *l) {
-    int rows = term_rows(), i, shown = 0, cap;
+    int rows = term_rows(), cols = term_cols(), shown = 0, cap, ln = 0, k;
     char *s, *nl; char seq[32];
     if (!g_paste_raw || !g_paste_raw_n) { ws_("\x07"); return; }   /* nothing to show -> bell */
     cap = g_sb_on ? rows - SB_FOOT - 2 : rows - 2;                 /* leave room on screen */
     if (cap < 3) cap = 3;
     if (g_sb_on) { sprintf(seq, "\x1b[%d;1H", rows - SB_FOOT); ws_(seq); }
     else ws_("\r\n");
-    ws_(SB_DIM);
-    { char hdr[64]; snprintf(hdr, sizeof hdr, "Pasted text #%d  (%d lines)", g_paste_no, g_paste_raw_n);
-      ws_(hdr); }
-    ws_(SB_RESET); ws_("\r\n");
+    ws_("\x1b[?7l");                                               /* no auto-wrap: long lines truncate cleanly */
+    { char hdr[80]; int hw = snprintf(hdr, sizeof hdr, "\xe2\x94\x80\xe2\x94\x80 Pasted text #%d  (%d lines) ", g_paste_no, g_paste_raw_n);
+      ws_(SB_ACCENT); ws_(hdr);
+      for (k = (hw > 0 ? sb_disp(hdr) : 0); k < cols; k++) ws_("\xe2\x94\x80");   /* rule to the edge */
+      ws_(SB_RESET); ws_("\r\n"); }
     for (s = g_paste_raw; s && *s; ) {
         nl = strchr(s, '\n');
         int len = nl ? (int)(nl - s) : (int)strlen(s);
         if (shown >= cap) {                                       /* ran out of room */
-            char more[48]; snprintf(more, sizeof more, "... (%d more lines)", g_paste_raw_n - shown);
+            char more[48]; snprintf(more, sizeof more, "  \xe2\x80\xa6 %d more line%s", g_paste_raw_n - shown, g_paste_raw_n - shown == 1 ? "" : "s");
             ws_(SB_DIM); ws_(more); ws_(SB_RESET); ws_("\r\n");
             break;
         }
-        ws_("\x1b#6");                                            /* DECDWL: enlarge this row (2x wide) */
-        if (len) wr(s, (size_t)len);
-        ws_("\r\n");                                              /* scroll the region / feed a line */
+        { char g[16]; snprintf(g, sizeof g, "%4d ", ++ln); ws_(SB_DIM); ws_(g); ws_(SB_RESET); }  /* line-number gutter */
+        if (len > cols - 6) len = cols - 6;                       /* keep one screen row per line */
+        if (len > 0) wr(s, (size_t)len);
+        ws_("\r\n");
         shown++;
         if (!nl) break; s = nl + 1;
     }
+    ws_("\x1b[?7h");                                              /* restore auto-wrap */
     if (g_sb_on) sb_chrome();                                     /* restore box borders + info line */
     refresh(l);                                                   /* redraw the input (placeholder) */
 }

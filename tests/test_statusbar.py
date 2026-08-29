@@ -97,8 +97,8 @@ check(TORN(out) and b"81" in strip(out),            "\\sb releases the region; R
 out = drive([(b"\x1b[200~p:1\nq:2\np+q\x1b[201~", 0.5), (b"\x16", 0.2), (b"\x16", 0.4),
              (b"\r", 0.5), (b"\\\\\r", 0.6)])
 txt = strip(out)
-check(ESC + b"#6" in out,                           "Ctrl-V Ctrl-V emits DECDWL enlarge for the paste preview")
-check(b"Pasted text #" in txt and b"p:1" in txt,    "paste preview shows the stored text")
+check(ESC + b"#6" not in out,                       "paste preview does NOT use DECDWL (renders cleanly on every terminal)")
+check(b"Pasted text #" in txt and b"p:1" in txt,    "paste preview shows the stored text with a line-numbered gutter")
 check(b"3" in txt,                                  "previewed paste still evaluates (p+q -> 3)")
 
 # 3c. Mouse-wheel-up pages the internal scroll-back: the region is repainted with

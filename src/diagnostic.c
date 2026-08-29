@@ -204,6 +204,8 @@ size_t report_diagnostic(char *buf, size_t buflen,
                                 secondary, nsecondary, help, 0, color);
 }
 
+void am_ln_sb_capture(const char*, unsigned long);  /* ln.c: tee into the status-bar scroll-back ring */
+
 void report_diagnostic_ex_stderr(const char *code, const char *title,
                                  const char *file, Span primary, const char *label,
                                  const Span *secondary, size_t nsecondary,
@@ -212,6 +214,7 @@ void report_diagnostic_ex_stderr(const char *code, const char *title,
     report_diagnostic_ex(buf, sizeof buf, code, title, file, primary, label,
                          secondary, nsecondary, help, note, 1);
     fputs(buf, stderr);
+    am_ln_sb_capture(buf, (unsigned long)strlen(buf));  /* so errors survive scroll-back */
 }
 
 void report_diagnostic_stderr(const char *code, const char *title,

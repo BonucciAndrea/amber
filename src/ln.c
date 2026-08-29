@@ -540,7 +540,7 @@ static void sb_infoline(void) {
     } else { lw = sb_expand(g_sb_panel, left, sizeof left); right[0] = 0; rw = 0; }
     if (g_scroll > 0) {                                /* scroll-back active: take over the whole line */
         int n = snprintf(left, sizeof left,
-            "\x1b[1m\xe2\x96\xb2 SCROLL-BACK  \xc2\xb7  up %d line%s  \xc2\xb7  wheel down / any key returns to live\x1b[0m",
+            "\x1b[1m\xe2\x96\xb2 SCROLL-BACK \xc2\xb7 %d line%s up \xc2\xb7 PgUp/PgDn or wheel \xc2\xb7 any key = live\x1b[0m",
             g_scroll, g_scroll == 1 ? "" : "s");
         lw = (n > 0 && n < (int)sizeof left) ? sb_disp(left) : 0;
         right[0] = 0; rw = 0;
@@ -1181,6 +1181,13 @@ char *am_ln_readline(const char *prompt) {
                     while (read(STDIN_FILENO, &t, 1) == 1 && t >= '0' && t <= '9') num = num*10 + (t-'0');
                     if (t == '~') {
                         if (num == 200) { if (read_paste(&l)) goto done; }  /* pasted block */
+                        else if ((num == 5 || num == 6) && g_sb_on) {        /* PageUp / PageDown: scroll-back */
+                            int page = term_rows() - SB_FOOT - 1; if (page < 1) page = 1;
+                            sb_scroll_by(num == 5 ? +page : -page);         /* 5 = up (older), 6 = down */
+                            refresh(&l);
+                            l.ghost[0] = 0;
+                            continue;                                       /* don't snap back to live */
+                        }
                         else if (num == 3) del_right(&l);                   /* Delete */
                         else if (num == 1 || num == 7) l.pos = 0;
                         else if (num == 4 || num == 8) l.pos = l.len;

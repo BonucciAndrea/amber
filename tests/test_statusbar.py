@@ -147,6 +147,19 @@ try:
     for _ in range(12): os.write(m, b"\x1b[<65;5;5M"); pump(0.08)
     pump(0.2)
     check("⬡ amber 2.0.0" in screen.display[23], "[pyte] wheel-down restores the normal info line")
+    # an ERROR must survive scroll-back too (errors go to stderr, a separate path).
+    # Scroll up a line at a time and confirm the error text reappears somewhere.
+    os.write(m, b"undefined_zzz\r"); pump(0.4)
+    for n in range(200, 212): os.write(m, (str(n) + "\r").encode()); pump(0.08)
+    pump(0.3)
+    saw_scroll = err_back = False
+    def haserr(disp): return any(("undefined_zzz" in l) or ("E0101" in l) or ("not found" in l) for l in disp)
+    for _ in range(12):
+        os.write(m, b"\x1b[5~"); pump(0.12)                        # PageUp (keyboard scroll)
+        if "SCROLL-BACK" in screen.display[23]: saw_scroll = True
+        if haserr(screen.display): err_back = True; break
+    check(saw_scroll, "[pyte] PageUp scrolls the transcript")
+    check(err_back, "[pyte] error diagnostics survive scroll-back")
     os.write(m, b"\\\\\r"); pump(0.3)
     try: os.close(m)
     except OSError: pass

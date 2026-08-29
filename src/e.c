@@ -133,7 +133,8 @@ NI V eS(A x/*0*/,U i)_(eD(xV,xn,i);eQ(xV,xn,i))
 A3(try,/*100*/x=x(dot(x,yR));P(x,x)I(ztU,z=z1(aCn(b,r-b)))E(zR)r=b;d=0;amdiagshown=0;z)
 // Print the compact caret block ONLY if no rich diagnostic was already shown
 // for this error -- otherwise the same failure appears twice, once per format.
-A1(epr,I(!amdiagshown,write(2,b,r-b))amdiagshown=0;r=b;x)
+void am_ln_sb_capture(const char*,unsigned long);// ln.c: tee errors into the scroll-back ring
+A1(epr,I(!amdiagshown,write(2,b,r-b);am_ln_sb_capture(b,r-b))amdiagshown=0;r=b;x)
 A1(err,XC(x=str0(x);err1(x,xV))P(x==au,aCn(b,r-b))err1(x,"err"))
 NI A die(S s)_(U n=SL(s);C v[n+1];MC(v,s,n);v[n]=10;write(1,"'",1);write(2,v,n+1);exit(1);0)
 

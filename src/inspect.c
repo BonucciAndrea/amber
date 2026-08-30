@@ -163,7 +163,7 @@ void iv_add(const char *name, A v) {
 }
 
 void iv_print(void) {
-    if (!g_nrows) { fputs("(empty workspace)\n", stdout); return; }
+    if (!g_nrows) { fputs("(empty workspace)\n", stdout); fflush(stdout); return; }
 
     static const char *H_NAME = "Name", *H_TYPE = "Type",
                        *H_SHAPE = "Shape / Length", *H_MEM = "Memory";
@@ -192,6 +192,9 @@ void iv_print(void) {
             (int)wn, g_rows[i].name, (int)wt, g_rows[i].type,
             (int)ws, g_rows[i].shape, (int)wm, g_rows[i].mem);
     fputs(rule, stdout);
+    /* \v prints via C stdio; flush so the table shows immediately in the box
+     * rather than waiting for a later command to flush it.  See ast_cmd(). */
+    fflush(stdout);
 
     g_nrows = 0;
 }

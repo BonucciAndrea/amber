@@ -910,7 +910,7 @@ A ast_cmd(S s) {
     A tree = pk(&p, 10); /* parse only -- never cpl()/run() this (except the
                            * one unavoidable exception documented in ast.h:
                            * pk() itself compiles embedded lambda literals) */
-    if (!tree) { printf("\\ast: parse error\n"); arena_reset(); return au; }
+    if (!tree) { printf("\\ast: parse error\n"); fflush(stdout); arena_reset(); return au; }
 
     /* Wrap in the AST_ROOT carrier so print_ast() draws the framed banner.
      * Show the ORIGINAL text the user typed (`s`), not the post-rewrite `src`:
@@ -925,6 +925,13 @@ A ast_cmd(S s) {
     else
         ast_add_child(root, body);
     print_ast(root);
+    /* Flush stdout: \ast prints via C stdio (printf), but the REPL's box chrome
+     * and normal results go out through a raw write() path.  When stdout is not
+     * line-buffered (macOS in the status-bar box), the printf output otherwise
+     * sits in the stdio buffer and only appears when something else flushes it
+     * (e.g. a later \disasm), dumping every prior \ast/\trace at once.  Mirrors
+     * vm_disasm_cmd(). */
+    fflush(stdout);
     ast_free(root); /* no-op, see ast.h -- arena_reset() below does the real work */
     mr(tree);        /* release the parse tree pk() handed us */
 

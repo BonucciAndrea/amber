@@ -129,7 +129,7 @@ A trace_cmd(S s) {
     clock_gettime(CLOCK_MONOTONIC, &t0);
     A parsed = pk(&p, 10);                         /* a) parse / AST gen   */
     clock_gettime(CLOCK_MONOTONIC, &t1);
-    if (!parsed) { printf("\\trace: parse error\n"); return au; }
+    if (!parsed) { printf("\\trace: parse error\n"); fflush(stdout); return au; }
 
     arena_reset();
     arena_reset_peak();          /* start the high-water gauge from here */
@@ -137,7 +137,7 @@ A trace_cmd(S s) {
     clock_gettime(CLOCK_MONOTONIC, &t2);            /* b) arena setup       */
 
     A compiled = cpl(aCm(input, p), parsed, 0);
-    if (!compiled) { printf("\\trace: compile error\n"); arena_reset(); return au; }
+    if (!compiled) { printf("\\trace: compile error\n"); fflush(stdout); arena_reset(); return au; }
     A result = run(compiled, 0, 0);                 /* c) engine execution  */
     clock_gettime(CLOCK_MONOTONIC, &t3);
     mr(compiled);                                    /* release the closure  */
@@ -163,5 +163,12 @@ A trace_cmd(S s) {
     if (m.arena_peak < m.arena_after) m.arena_peak = m.arena_after;
 
     print_report(&m);
+    /* Flush: print_report() emits the timing box via C stdio (printf), which on
+     * a non-line-buffered stdout (macOS in the status-bar box) would otherwise
+     * sit in the buffer until a later command flushes it -- so the report only
+     * appeared after a subsequent \disasm.  The result above went out via out()
+     * (raw write), so flushing here keeps result-then-report ordering.  Mirrors
+     * vm_disasm_cmd() / ast_cmd(). */
+    fflush(stdout);
     return au;
 }

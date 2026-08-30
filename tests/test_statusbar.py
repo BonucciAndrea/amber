@@ -14,7 +14,7 @@
 # in the scroll region (a byte-stream check alone can't see a clobbered cell).
 # Deliberately tolerant cross-platform: the build tag is [native] on an
 # AMBER_NATIVE CI leg and [portable] otherwise; live RSS may be 0 without /proc.
-import os, pty, sys, time, select, subprocess, fcntl, termios, struct, re
+import os, pty, sys, time, select, subprocess, fcntl, termios, struct, re, signal
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ESC = b"\x1b"
@@ -191,6 +191,89 @@ try:
     except Exception: p.kill()
 except ImportError:
     print("  SKIP rendered-screen checks (pyte not installed)")
+
+# 5. Resize / zoom.  On macOS a Cmd-+ / Cmd-- zoom (or a pinch) changes rows AND
+#    columns and fires a BURST of SIGWINCHes; dragging a window edge does the same
+#    more slowly.  Three things must hold afterwards, on every terminal:
+#      * exactly ONE footer -- terminals disagree about what a resize does to the
+#        old screen contents (xterm clips the alt screen at the bottom, Terminal.app
+#        and iTerm2 keep the bottom and shift up), so a repaint that erases "where
+#        the old footer was" strands a second box: the duplicated box bug.
+#      * the transcript survives, repainted from the scroll-back ring.
+#      * the box spans the FULL width at any width -- the pad used to run through a
+#        fixed 256/300-byte buffer and silently clamped past ~313 columns, leaving
+#        the input row's right border short of the edge while the borders above and
+#        below still reached it (a Retina Mac zoomed out is easily 300-400 columns).
+try:
+    import pyte
+
+    def zoom_session(steps, R0=24, C0=100, cmds=(b"1*1\r", b"2*2\r", b"3*3\r")):
+        m, s = pty.openpty()
+        fcntl.ioctl(s, termios.TIOCSWINSZ, struct.pack("HHHH", R0, C0, 0, 0))
+        def ctty():                      # a real controlling tty, so the KERNEL sends SIGWINCH
+            os.setsid()
+            try: fcntl.ioctl(0, termios.TIOCSCTTY, 0)
+            except Exception: pass
+        p = subprocess.Popen(["./a"], cwd=ROOT, stdin=s, stdout=s, stderr=s,
+                             preexec_fn=ctty, env={**os.environ, "TERM": "xterm-256color"})
+        os.close(s)
+        sc = pyte.Screen(C0, R0); st = pyte.ByteStream(sc)
+        def pump(t):
+            t0 = time.time()
+            while time.time() - t0 < t:
+                r, _, _ = select.select([m], [], [], 0.08)
+                if r:
+                    try: d = os.read(m, 65536)
+                    except OSError: return
+                    if d: st.feed(d)
+        pump(1.8)
+        for c in cmds: os.write(m, c); pump(0.4)
+        for (rr, cc) in steps:
+            fcntl.ioctl(m, termios.TIOCSWINSZ, struct.pack("HHHH", rr, cc, 0, 0))
+            try: os.kill(p.pid, signal.SIGWINCH)     # belt and braces on odd CI ptys
+            except Exception: pass
+            time.sleep(0.05)
+            sc.resize(rr, cc)
+            pump(0.7)
+        os.write(m, b"4*4\r"); pump(0.7)
+        try: os.write(m, b"\\\\\r")
+        except OSError: pass
+        pump(0.4)
+        try: os.close(m)
+        except OSError: pass
+        try: p.wait(timeout=3)
+        except Exception: p.kill()
+        return [l.rstrip() for l in sc.display]
+
+    def one_footer(d):
+        return (sum(1 for l in d if l.lstrip().startswith("\u256d")),
+                sum(1 for l in d if l.lstrip().startswith("\u2570")),
+                sum(1 for l in d if "\u2b21 amber" in l)) == (1, 1, 1)
+
+    d = zoom_session([(16, 70)])
+    check(one_footer(d),                     "[pyte] zoom in (24x100 -> 16x70): exactly one footer")
+    check(all(v in d for v in ("1", "4", "9")), "[pyte] zoom in keeps the transcript")
+
+    d = zoom_session([(40, 130)])
+    check(one_footer(d),                     "[pyte] zoom out (24x100 -> 40x130): exactly one footer")
+    check(all(v in d for v in ("1", "4", "9")), "[pyte] zoom out keeps the transcript")
+
+    d = zoom_session([(34, 104), (29, 90), (25, 78), (21, 68)])
+    check(one_footer(d),                     "[pyte] burst of zoom steps: exactly one footer")
+
+    d = zoom_session([(24, 60)])             # width-only: the region must still be re-set
+    check(one_footer(d),                     "[pyte] width-only resize: exactly one footer")
+
+    d = zoom_session([], R0=24, C0=320, cmds=(b"1*1\r",))
+    top  = [l for l in d if l.lstrip().startswith("\u256d")]
+    side = [l for l in d if l.lstrip().startswith("\u2502")]
+    info = [l for l in d if "\u2b21 amber" in l]
+    check(bool(top) and len(top[0]) == 320 and bool(side) and len(side[0]) == 320,
+          "[pyte] box spans the full width at 320 columns")
+    check(bool(info) and info[0].endswith("exit"),
+          "[pyte] info line right-aligns to the edge at 320 columns")
+except ImportError:
+    print("  SKIP resize/zoom checks (pyte not installed)")
 
 print("test_statusbar: " + ("ALL PASSED" if ok else "FAILURES"))
 sys.exit(0 if ok else 1)

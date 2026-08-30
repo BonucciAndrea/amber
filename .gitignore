@@ -4,6 +4,7 @@
 /k
 *.o
 *.so
+*.dylib
 *.a
 libk.*
 .ltocheck
@@ -20,3 +21,6 @@ wow.txt
 
 # Windows download cruft
 *Zone.Identifier
+
+# macOS Finder cruft
+.DS_Store

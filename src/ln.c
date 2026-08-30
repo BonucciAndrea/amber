@@ -418,9 +418,9 @@ typedef struct {
  * ln.c OWNS the rendering -- a 2-line panel on the bottom rows plus a DECSTBM
  * scroll region above it -- so the bar survives Ctrl-L, a resize and every
  * keystroke without the interpreter having to redraw it. repl.k only supplies
- * the two content strings (via the `sbb verb). OFF by default, so the default
- * REPL and all terminal tests are byte-for-byte unchanged. In a content string,
- * byte 0x01 toggles the accent colour, so repl.k can accent single segments. */
+ * the two content strings (via the `sbb verb). ON by default; \sb turns it off
+ * and restores the plain prompt. In a content string, byte 0x01 toggles the
+ * accent colour, so repl.k can accent single segments. */
 static int  g_sb_on = 0, g_sb_rows = 0;
 static char g_sb_panel[640];                    /* the info-panel template (markers below) */
 static volatile sig_atomic_t g_spin_on = 0;     /* spinner active during an evaluation */
@@ -428,6 +428,7 @@ static int  g_spin_frame = 0;
 static int  g_input_plen = 0;                    /* prompt width, for the spinner's column */
 static volatile sig_atomic_t g_winch = 0;        /* SIGWINCH: terminal was resized */
 static void spin_stop(void);                     /* defined below; stops + erases the spinner */
+static void sb_resync(void);                     /* defined below; full rebuild after a resize */
 static void on_winch(int s) { (void)s; g_winch = 1; }
 
 /* Truecolour: a warm-muted panel + Amber's own hex-logo amber (#FFB020). Terminals
@@ -513,6 +514,17 @@ static int sb_expand(const char *tmpl, char *out, size_t cap) {
     #undef SBPUT
     return sb_disp(out);
 }
+/* Write n spaces, in chunks -- NOT through a fixed stack buffer.  A Retina Mac
+ * at a zoomed-out font is routinely 300-400 columns wide, and the 256/300-byte
+ * buffers this replaces silently CLAMPED the pad there: the info line stopped
+ * reaching the right edge, and the input row's closing box glyph was drawn ~313
+ * columns in while the top and bottom borders still spanned the full width --
+ * a box that looks broken (or doubled) at exactly the widths zooming out gives. */
+static void wsp(int n) {
+    static char SP[64];
+    if (!SP[0]) memset(SP, ' ', sizeof SP);
+    while (n > 0) { int k = n > (int)sizeof SP ? (int)sizeof SP : n; wr(SP, (size_t)k); n -= k; }
+}
 /* one horizontal box-border row (top or bottom), spanning the full width */
 static void sb_border(int row, const char *lc, const char *rc) {
     char seq[32]; int cols = term_cols(), i;
@@ -545,8 +557,7 @@ static void sb_infoline(void) {
     ws_(SB_DIM); ws_("\x1b[K");                        /* dim text on the normal background */
     ws_(left);
     pad = cols - lw - rw;
-    if (pad > 0) { char sp[256]; int k = pad < (int)sizeof sp ? pad : (int)sizeof sp - 1;
-        memset(sp, ' ', (size_t)k); sp[k] = 0; ws_(sp); }
+    if (pad > 0) wsp(pad);
     if (rw && lw + rw <= cols) ws_(right);
     ws_(SB_RESET);
 }
@@ -572,18 +583,16 @@ static void sb_input(LnState *l) {
         if (gl > room) gl = room;
         if (gl) { ws_("\x1b[2m"); wr(l->ghost, gl); ws_(SB_RESET); used += gl; }
     }
-    { int p = inner - (int)used; char sp[300];                   /* pad the text area */
+    { int p = inner - (int)used;                                 /* pad the text area */
       static const char HINT[] = "paste again to view";
       int hw = (int)sizeof HINT - 1;
       if (p < 0) p = 0;
-      if (p > (int)sizeof sp - 1) p = (int)sizeof sp - 1;
       /* when the box holds an unedited paste placeholder and there is room, show a
        * dim right-aligned "paste again to view" hint (Claude-Code style). */
       if (g_paste_folded && g_paste_ph[0] && !strcmp(l->buf, g_paste_ph) && p >= hw + 2) {
-          int lead = p - hw - 1;
-          memset(sp, ' ', (size_t)lead); sp[lead] = 0; ws_(sp);
+          wsp(p - hw - 1);
           ws_("\x1b[2m"); ws_(HINT); ws_(SB_RESET); ws_(" ");
-      } else { memset(sp, ' ', (size_t)p); sp[p] = 0; ws_(sp); }
+      } else wsp(p);
     }
     ws_(" "); ws_(SB_DIM); ws_(BOX_V); ws_(SB_RESET);            /* space + │ (cols-1, cols) */
     sprintf(seq, "\x1b[%d;%dH", rows - 2, 3 + (int)(plen + (l->pos - start)));
@@ -640,9 +649,13 @@ void am_ln_statusbar(int on, const char *panel, const char *info) {
     { static int wired = 0;                              /* watch for resizes while the bar is up */
       if (!wired) { struct sigaction sa; memset(&sa, 0, sizeof sa);
           sa.sa_handler = on_winch; sigaction(SIGWINCH, &sa, NULL); wired = 1; } }
-    if (!g_sb_on || term_rows() != g_sb_rows) sb_region();  /* first enable, or a resize */
-    g_sb_on = 1;
-    sb_chrome();
+    if (!g_sb_on) { sb_region(); g_sb_on = 1; sb_chrome(); return; }   /* first enable */
+    /* A resize that landed while the interpreter was BUSY was never seen by the
+     * editor's read loop, so the previous footer is still on screen at its old
+     * rows.  Resync before drawing: otherwise this sb_chrome() paints a SECOND
+     * box next to the stale one -- the duplicated box seen when zooming. */
+    if (g_winch || term_rows() != g_sb_rows) { g_winch = 0; sb_resync(); }
+    else sb_chrome();
 }
 
 /* ---- execution spinner (status-bar mode only) ----------------------------
@@ -658,6 +671,11 @@ static char g_spin_seq[10][64];
 static void spin_tick(int sig) {
     (void)sig;
     if (!g_spin_on) return;
+    /* The ten escape sequences were precomputed for the geometry in force when
+     * the eval started (they must be, to stay async-signal-safe).  Once a resize
+     * is pending they point at a row that no longer holds the box, so drawing
+     * would scribble inside the scroll region; the imminent resync repaints. */
+    if (g_winch) return;
     const char *s = g_spin_seq[g_spin_frame];
     (void)!write(STDOUT_FILENO, s, strlen(s));
     g_spin_frame = (g_spin_frame + 1) % 10;
@@ -827,7 +845,14 @@ static void sb_repaint_region(void) {
     int rows = term_rows(), cols = term_cols(), rh = rows - SB_FOOT, i, bottom;
     char seq[48];
     if (rh < 1) return;
-    bottom = g_ring_n - 1 - g_scroll;         /* ring line shown on the region's last row */
+    /* Ring line shown on the region's last row.  AT LIVE that row is the EMPTY
+     * one the next line of output will land on -- which is exactly how the screen
+     * looks after ordinary output has scrolled -- so the newest retained line
+     * belongs one row higher.  Getting this wrong let the next prompt echo
+     * (printed at row h-SB_FOOT) overwrite the last transcript line instead of
+     * scrolling it up.  While SCROLLED BACK, fill the last row too, so PgUp shows
+     * as much of the transcript as the region can hold. */
+    bottom = g_ring_n - 1 - g_scroll + (g_scroll ? 0 : 1);
     ws_("\x1b\x37");                          /* save cursor */
     ws_("\x1b[?7l");                          /* no auto-wrap while we paint */
     for (i = 0; i < rh; i++) {
@@ -839,6 +864,35 @@ static void sb_repaint_region(void) {
     ws_("\x1b[?7h");                          /* restore auto-wrap for live output */
     sb_infoline();                            /* info line shows the scroll-back indicator */
     ws_("\x1b\x38");                          /* restore cursor */
+}
+/* Rebuild the entire screen for the CURRENT terminal geometry.  Called for every
+ * SIGWINCH.
+ *
+ * It deliberately assumes NOTHING about what the terminal did to the old
+ * contents, because terminals disagree: xterm clips the alternate screen at the
+ * bottom, Terminal.app and iTerm2 keep the bottom and shift content up, and they
+ * differ again on whether DECSTBM survives a resize at all.  Any repaint that
+ * erases "wherever the old footer was" therefore leaves a stranded copy of the
+ * box on some terminal -- which is exactly the duplicated box seen when zooming
+ * (Cmd-+ / Cmd--) on macOS, where a zoom changes rows AND columns and fires a
+ * burst of SIGWINCHes.
+ *
+ * So: release the region, wipe the WHOLE screen, re-set the region for the new
+ * size, and repaint the transcript from the ring.  Nothing is lost -- the bar
+ * owns the alternate screen and the ring holds every line printed since it came
+ * up -- and the result is identical on every terminal. */
+static void sb_resync(void) {
+    int rh, maxs;
+    if (!g_sb_on) return;
+    ws_("\x1b[r");                     /* release the old region, whatever it was */
+    ws_("\x1b[H\x1b[2J");              /* wipe everything: no stale footer can survive */
+    g_sb_rows = 0;
+    sb_region();                       /* scroll region for the NEW geometry */
+    rh = term_rows() - SB_FOOT;
+    maxs = g_ring_n - rh; if (maxs < 0) maxs = 0;
+    if (g_scroll > maxs) g_scroll = maxs;   /* fewer rows may mean less scroll-back */
+    sb_repaint_region();               /* transcript, re-laid-out at the new width */
+    sb_chrome();
 }
 static void sb_scroll_by(int delta) {
     int rows = term_rows(), rh = rows - SB_FOOT, maxs, old = g_scroll;
@@ -887,16 +941,32 @@ static void sb_strip_comment(char *s) {
     }
 }
 
+/* One byte from the keyboard, retrying on EINTR.  A SIGWINCH -- and a macOS zoom
+ * fires a BURST of them -- or the spinner's SIGALRM must never truncate a
+ * multi-byte escape sequence or a bracketed paste: the unread remainder would
+ * then be parsed as, or inserted as, literal text, which is how a resize during
+ * a paste or a trackpad scroll ends up corrupting the input line.  Returns 1, or
+ * 0 at EOF / a real error.  The MAIN read loop deliberately does NOT use this:
+ * it wants the EINTR so it can service the resize promptly. */
+static int rd1(char *c) {
+    for (;;) {
+        ssize_t k = read(STDIN_FILENO, c, 1);
+        if (k == 1) return 1;
+        if (k < 0 && errno == EINTR) continue;
+        return 0;
+    }
+}
+
 static void paste_preview(LnState *l);   /* defined below; read_paste calls it for "paste again to view" */
 static int read_paste(LnState *l) {
     size_t cap = 1024, n = 0; char *p = (char*)malloc(cap);
     if (!p) return 0;
     for (;;) {
-        char c; if (read(STDIN_FILENO, &c, 1) != 1) break;
+        char c; if (!rd1(&c)) break;
         if (c == 27) {                                   /* possible ESC[201~ end */
-            char e; if (read(STDIN_FILENO, &e, 1) != 1) break;
+            char e; if (!rd1(&e)) break;
             if (e == '[') { int num = 0; char t = 0;
-                while (read(STDIN_FILENO, &t, 1) == 1 && t >= '0' && t <= '9') num = num*10 + (t-'0');
+                while (rd1(&t) && t >= '0' && t <= '9') num = num*10 + (t-'0');
                 if (t == '~' && num == 201) break;       /* end of paste */
             }
             continue;                                    /* ignore any other seq inside a paste */
@@ -1041,16 +1111,9 @@ char *am_ln_readline(const char *prompt) {
     for (;;) {
         char c;
         ssize_t k;
-        if (g_winch) {                       /* terminal resized: recompute the region + repaint */
+        if (g_winch) {                       /* terminal resized (a zoom, a window drag) */
             g_winch = 0;
-            if (g_sb_on) {
-                /* Erase the footer at its OLD row range first -- otherwise growing
-                 * the terminal leaves the previous box stranded inside the new,
-                 * larger scroll region. */
-                if (g_sb_rows) { char s[32]; int t = g_sb_rows - SB_FOOT + 1; if (t < 1) t = 1;
-                    sprintf(s, "\x1b[r\x1b[%d;1H\x1b[J", t); ws_(s); }
-                g_sb_rows = 0; sb_region(); sb_chrome();
-            }
+            sb_resync();                     /* no-op unless the bar owns the screen */
             refresh(&l);
         }
         k = read(STDIN_FILENO, &c, 1);
@@ -1117,7 +1180,7 @@ char *am_ln_readline(const char *prompt) {
         }
         case 27: {                                              /* escape seq */
             char s[3] = {0, 0, 0};
-            if (read(STDIN_FILENO, s, 1) != 1) break;
+            if (!rd1(&s[0])) break;
             if (s[0] == 'v' || s[0] == 'V') {                   /* Alt-V: same as Ctrl-V, for terminals
                                                                  * (WSL / Windows Terminal) that eat Ctrl-V.
                                                                  * Press twice to preview the last paste. */
@@ -1127,12 +1190,12 @@ char *am_ln_readline(const char *prompt) {
                 continue;
             }
             cv_armed = 0;                                       /* any other escape seq breaks the pair */
-            if (read(STDIN_FILENO, s + 1, 1) != 1) break;
+            if (!rd1(&s[1])) break;
             if (s[0] == '[') {
                 if (s[1] == '<') {                          /* SGR mouse report: \x1b[<b;x;y(M|m) */
                     int pb = 0; char t = 0;
-                    while (read(STDIN_FILENO, &t, 1) == 1 && t >= '0' && t <= '9') pb = pb*10 + (t-'0');
-                    while (t && t != 'M' && t != 'm') { if (read(STDIN_FILENO, &t, 1) != 1) break; }
+                    while (rd1(&t) && t >= '0' && t <= '9') pb = pb*10 + (t-'0');
+                    while (t && t != 'M' && t != 'm') { if (!rd1(&t)) break; }
                     if (g_sb_on) {                          /* scroll the transcript, box stays locked */
                         if (pb == 64)      { sb_scroll_by(+3); refresh(&l); }  /* wheel up   -> older */
                         else if (pb == 65) { sb_scroll_by(-3); refresh(&l); }  /* wheel down -> newer */
@@ -1141,7 +1204,7 @@ char *am_ln_readline(const char *prompt) {
                     continue;                               /* the wheel never edits the line */
                 } else if (s[1] == 'M') {                   /* legacy X10 mouse: \x1b[M b x y (3 bytes) */
                     unsigned char mb[3]; int got = 0;
-                    while (got < 3 && read(STDIN_FILENO, (char *)&mb[got], 1) == 1) got++;
+                    while (got < 3 && rd1((char *)&mb[got])) got++;
                     if (got == 3 && g_sb_on) {
                         int b = (mb[0] - 32) & 0x43;        /* button bits incl. the wheel flag (64) */
                         if (b == 64)      { sb_scroll_by(+3); refresh(&l); }   /* wheel up */
@@ -1153,7 +1216,7 @@ char *am_ln_readline(const char *prompt) {
                     /* accumulate the numeric parameter so multi-digit codes work:
                        200~/201~ are bracketed paste, 3~ Delete, 1~/7~ Home, 4~/8~ End */
                     int num = s[1] - '0'; char t = 0;
-                    while (read(STDIN_FILENO, &t, 1) == 1 && t >= '0' && t <= '9') num = num*10 + (t-'0');
+                    while (rd1(&t) && t >= '0' && t <= '9') num = num*10 + (t-'0');
                     if (t == '~') {
                         if (num == 200) { if (read_paste(&l)) goto done; }  /* pasted block */
                         else if ((num == 5 || num == 6) && g_sb_on) {        /* PageUp / PageDown: scroll-back */

@@ -81,8 +81,8 @@ rd:{`rdl x}
 tsfix:{$[(3<#x)&("\\ts"~3#x)&(" "~x 3)|":"~x 3;"\\t",3_x;x]}
 qrwx:{$[0<exthook[{ext.raw x};x];x;(.:"qrw")tsfix x]}
 / ---- Claude-Code-style bottom status bar (\sb toggles) -----------------------
-/ OFF by default, so the default REPL is byte-for-byte unchanged and every
-/ terminal test still passes.  src/ln.c OWNS the panel -- two fixed bottom rows
+/ ON by default (sbon below); \sb turns it off and restores the plain prompt.
+/ src/ln.c OWNS the panel -- two fixed bottom rows
 / (a muted bar + a live info line) plus a DECSTBM scroll region above them -- and
 / repaints it on Ctrl-L, \clear, a resize and every keystroke.  Here we only BUILD
 / the two content strings and hand them to the `sbb verb each prompt.  Byte 0x01

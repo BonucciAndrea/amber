@@ -342,16 +342,58 @@ try:
     # footer is wiped with no event to react to. The next keystroke must restore it.
     st.feed(b"\x1b[H\x1b[2J\x1b[3J")          # the terminal clears itself; the app never sees this
     gone = not any(l.lstrip().startswith("╭") for l in sc.display)
-    os.write(m, b"z"); pump(0.8)
+    os.write(m, b"\r"); pump(1.0)             # recovery is at the PROMPT, not per keystroke
     back = [l.rstrip() for l in sc.display]
     check(gone, "[pyte] simulated Cmd-K wipes the footer (precondition)")
     check(sum(1 for l in back if l.lstrip().startswith("╭")) == 1
           and sum(1 for l in back if l.lstrip().startswith("╰")) == 1
           and any("⬡ amber" in l for l in back),
-          "[pyte] one keystroke after Cmd-K repaints the whole footer")
-    os.write(m, b"\x7f\r"); pump(0.5)
+          "[pyte] the next prompt after Cmd-K repaints the whole footer")
     os.write(m, b"2+2\r"); pump(1.0)
     check(any(l.strip() == "4" for l in sc.display), "[pyte] REPL still evaluates after Cmd-K")
+
+    # Caret stability: ONE keystroke must move the cursor only within the input
+    # row.  Repainting the borders/info line per keystroke (tried, for Cmd-K
+    # recovery) makes the caret visibly flick to the rows above and below the
+    # input line on every character typed.  Assert on the emitted bytes, since a
+    # rendered grid cannot see a cursor that came back before the next flush.
+    m2, p2 = None, None
+    try:
+        m2, s2 = pty.openpty()
+        fcntl.ioctl(s2, termios.TIOCSWINSZ, struct.pack("HHHH", 30, 120, 0, 0))
+        def ctty2():
+            os.setsid()
+            try: fcntl.ioctl(0, termios.TIOCSCTTY, 0)
+            except Exception: pass
+        p2 = subprocess.Popen(["./a"], cwd=ROOT, stdin=s2, stdout=s2, stderr=s2,
+                              preexec_fn=ctty2, env={**os.environ, "TERM": "xterm-256color"})
+        os.close(s2)
+        acc = bytearray()
+        def drain2(t):
+            t0 = time.time()
+            while time.time() - t0 < t:
+                r, _, _ = select.select([m2], [], [], 0.03)
+                if r:
+                    try: d = os.read(m2, 65536)
+                    except OSError: return
+                    if not d: return
+                    acc.extend(d)
+        drain2(2.2)
+        touched = set()
+        for ch in b"abc":
+            acc.clear()
+            os.write(m2, bytes([ch])); drain2(0.5)
+            touched |= {int(x) for x in re.findall(rb"\x1b\[(\d+);\d+H", bytes(acc))}
+        check(touched <= {28}, "[pyte] a keystroke moves the caret only on the input "
+              "row (no flicker); rows touched=%s" % sorted(touched))
+        os.write(m2, b"\\\\\r"); drain2(0.5)
+    finally:
+        if m2 is not None:
+            try: os.close(m2)
+            except OSError: pass
+        if p2 is not None:
+            try: p2.wait(timeout=3)
+            except Exception: p2.kill()
     os.write(m, b"\\\\\r"); pump(0.5)
     try: os.close(m)
     except OSError: pass

@@ -721,16 +721,14 @@ static void refresh(LnState *l) {
     size_t start = 0, show, plen = l->plen;
     size_t cols = (size_t)(l->cols = term_cols());
 
-    if (g_sb_on) {
-        /* Repaint the WHOLE footer, not just the interior row.  A terminal-side
-         * clear that the program never sees -- macOS Cmd-K ("Clear Buffer" in
-         * iTerm2, "Clear Scrollback" in Terminal.app) is the common one; it wipes
-         * the screen locally and sends us nothing -- otherwise leaves the box
-         * erased with no way to know, so the REPL looked broken until the next
-         * prompt.  Redrawing three short rows per keystroke is far cheaper than
-         * the round trip it saves, and terminals coalesce identical cells. */
-        sb_chrome(); sb_input(l); return;
-    }
+    /* ONLY the interior row per keystroke.  Repainting the borders and the info
+     * line here too was tried, to recover from a terminal-side clear (Cmd-K), and
+     * reverted: sb_chrome() walks the cursor to the rows ABOVE and BELOW the input
+     * line, and the terminal renders those intermediate positions, so the caret
+     * visibly flickered off the input line on every keystroke.  Footer recovery
+     * belongs at the prompt (am_ln_readline's entry), where it costs one repaint
+     * per line instead of one per key and no cursor ever moves under the user. */
+    if (g_sb_on) { sb_input(l); return; }       /* box interior + caret; chrome is already up */
 
     g_input_plen = (int)plen;                   /* remember for the spinner column */
     /* Horizontal scroll: keep the cursor visible on one physical line. */
@@ -1182,7 +1180,13 @@ char *am_ln_readline(const char *prompt) {
                  l.len -= l.pos; l.pos = 0; l.buf[l.len] = 0; break;
         case 23: kill_word(&l); break;                          /* Ctrl-W */
         case 12:                                                /* Ctrl-L: clear upper area, keep footer */
-            ws_("\x1b[H\x1b[2J");
+            /* Byte-for-byte what repl.k's \clear emits (it adds ESC[3J, the
+             * scrollback wipe), so the two are interchangeable.  That matters
+             * because macOS Cmd-K cannot be intercepted -- the terminal clears
+             * itself and sends the program nothing -- so the only way to make
+             * Cmd-K behave exactly like \clear is to rebind it in the terminal
+             * to send Ctrl-L (iTerm2: Settings > Keys > +, Send Hex Code 0x0c). */
+            ws_("\x1b[H\x1b[2J\x1b[3J");
             if (g_sb_on) { sb_region(); sb_chrome(); }
             break;
         case 16: case 14: {                                     /* Ctrl-P/N */

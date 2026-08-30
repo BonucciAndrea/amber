@@ -114,7 +114,7 @@ def h_matrix():
     head = "".join(f'<th class="{"eamber" if e.startswith("amber") else ""}">{SHORT[e]}</th>' for e in ORDER)
     rows = []
     for title, ops in CATS:
-        rows.append(f'<tr class="cat"><td colspan="{len(ORDER)+1}">{title}</td></tr>')
+        rows.append(f'<tr class="cat"><td colspan="{len(ORDER)+1}">{html.escape(title)}</td></tr>')
         for op in ops:
             b = best(op)
             tds = []

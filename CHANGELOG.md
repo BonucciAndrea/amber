@@ -1120,7 +1120,7 @@ environment variable still works and now just seeds the initial value.
   gets its own query file per workload, with a header comment on each documenting what
   engine-level optimization was tried, what it measured, and — for the ideas that didn't pay
   off — why not. See the README's
-  [Comparative benchmark query files](../README.md#comparative-benchmark-query-files) section
+  [Comparative benchmark query files](README.md#comparative-benchmark-query-files) section
   for a summary, or the files themselves for the full detail.
 - **`check_parity()`** added to `bench/run_comparative.py`: runs `amber_<id>.k` and `k_<id>.k`
   once each before the timed runs and compares their printed output, so a claimed speed win can
@@ -1138,7 +1138,7 @@ environment variable still works and now just seeds the initial value.
   require rewriting `repl.k`'s raw-keystroke input loop (a fragile, previously-regression-prone
   path in this project), which is a materially different and larger undertaking than a one-shot
   echo command — removed rather than kept as something that doesn't do what its name promises.
-  See [docs/MISSING.md](MISSING.md) for this as a possible future direction.
+  See [docs/MISSING.md](docs/MISSING.md) for this as a possible future direction.
 - No other engine extension is affected: SIMD, the multithreaded vector engine, the bytecode
   disassembler, and the native CSV parser are all unchanged.
 

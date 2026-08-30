@@ -20,7 +20,11 @@ lines:cols:999
 / cannot repeat its own stderr on every line of a session.
 tprobe:1
 tchk:{p:`diag 0;v:.[{`I$"\n"\`x(("/usr/bin/env";"tput";"-S");"lines\ncols\n")};,0;(!0)];`diag p;tprobe::(2=#v)&(&/v>0);$[tprobe;v;lines,cols]}
-tsz:{$[tprobe;tchk[];lines,cols]}
+/ 2.0.0: the size now comes from `bi 0 (ln.c's ioctl(TIOCGWINSZ)) -- no fork at
+/ all, and it is the SAME probe the editor lays the status bar out with, so the
+/ two can never disagree.  The tput path below is kept only as the fallback for a
+/ core too old to report indices 6/7.
+tsz:{v:.[{`bi 0};,0;!0];$[(7<#v)&(0<v 6)&0<v 7;(v 7;v 6);$[tprobe;tchk[];lines,cols]]}
 upd:{(lines;cols)::tsz[]}
 lim:{(x<#y)(x#)/y}
 dd:{(x<#y)(,[;".."](x-2)#)/y}
@@ -99,10 +103,19 @@ sA:`c$1                                             / accent toggle
 sM:`c$2                                             / -> RSS in MB (ln.c fills)
 sSP:`c$3                                            / left / right split
 sB:`c$4                                             / -> build kind (ln.c fills)
-/ exec time, always in ms to 0.1 ms (a sub-millisecond line reads e.g. "0.5 ms").
+/ exec time, always in ms to 3 decimals (a sub-millisecond line reads "0.017 ms").
+/ Built from INTEGER tenths (n), not a float multiply: 0.1*818 is 81.80000000000001
+/ in IEEE double and $ prints every digit of it, so the bar read "81.80000000000001 ms".
+/ Splitting n into _n%1000 and 1000!n gives "81.800" exactly, for every value.
+/ pad3 zero-pads the fraction: 9.008 ms is n=9008, whose 1000!n is 8, and a bare
+/ $8 would render "9.8" -- three digits are mandatory, not cosmetic.
+/ Note also: k has no bare ".1" float literal -- ".1" lexes as the verb "."
+/ applied to 1, which YIELDS 1. The original ".1*_0.5+10*sblast" therefore
+/ silently reported TEN TIMES the real time (a 23 ms line read "230 ms").
 / sblast is milliseconds already: `sbt[] returns monotonic ms since the line was
 / submitted (ln.c stamps the start at Enter), read in line1 right after the eval.
-sbexec:{($.1*_0.5+10*sblast)," ms"}
+pad3:{s:$x;((3-#s)#"0"),s}
+sbexec:{n:_0.5+1000*sblast;($_n%1000),".",pad3[1000!n]," ms"}
 sbpanel:{m:binfo[];rmb:$_0.5+(m@0)%1048576.0;(,sA),"⬡ amber ",(m@4),(,sA),"   ·   exec: ",sbexec[],"   ·   mem: ",(,sM),"/",rmb," MB   ·   [",(,sB),"]",(,sSP),"\\ help   ·   \\\\ exit"}
 sbupd:{$[sbon;`sbb(1;sbpanel[];"");]}
 sbtoggle:{sbon::~sbon;$[sbon;sbupd[];`sbb(0;"";"")]}

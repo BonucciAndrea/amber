@@ -136,6 +136,8 @@ char *am_repl_getline(const char *prompt, size_t *len) {
 void  am_ln_statusbar(int on, const char *main, const char *info) {
     (void)on; (void)main; (void)info;
 }
+int   am_ln_term_cols(void) { return 80; }
+int   am_ln_term_rows(void) { return 24; }
 #else
 
 /* ---- raw mode ------------------------------------------------------------ */
@@ -391,6 +393,9 @@ static int term_rows(void) {
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_row > 4) return ws.ws_row;
     return 24;
 }
+
+int am_ln_term_cols(void) { return term_cols(); }
+int am_ln_term_rows(void) { return term_rows(); }
 
 static void wr(const char *s, size_t n) {
     while (n) {
@@ -716,7 +721,16 @@ static void refresh(LnState *l) {
     size_t start = 0, show, plen = l->plen;
     size_t cols = (size_t)(l->cols = term_cols());
 
-    if (g_sb_on) { sb_input(l); return; }       /* box interior + caret; chrome is already up */
+    if (g_sb_on) {
+        /* Repaint the WHOLE footer, not just the interior row.  A terminal-side
+         * clear that the program never sees -- macOS Cmd-K ("Clear Buffer" in
+         * iTerm2, "Clear Scrollback" in Terminal.app) is the common one; it wipes
+         * the screen locally and sends us nothing -- otherwise leaves the box
+         * erased with no way to know, so the REPL looked broken until the next
+         * prompt.  Redrawing three short rows per keystroke is far cheaper than
+         * the round trip it saves, and terminals coalesce identical cells. */
+        sb_chrome(); sb_input(l); return;
+    }
 
     g_input_plen = (int)plen;                   /* remember for the spinner column */
     /* Horizontal scroll: keep the cursor visible on one physical line. */
@@ -1104,7 +1118,10 @@ char *am_ln_readline(const char *prompt) {
     l.hidx   = g_hist_n;
 
     if (enable_raw() < 0) return NULL;
-    if (g_sb_on) sb_chrome();                /* draw the box + info line before the first keystroke */
+    /* Re-assert the scroll region as well as the chrome: an external clear
+     * (Cmd-K) can reset DECSTBM behind our back, and output would then scroll
+     * straight over the footer. */
+    if (g_sb_on) { sb_region(); sb_chrome(); }
     refresh(&l);
 
     int cv_armed = 0;                        /* one Ctrl-V seen; a second one triggers the paste preview */

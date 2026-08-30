@@ -137,6 +137,16 @@ void  am_ln_sb_capture(const char *s, size_t n);
  * status bar's "exec" figure is the eval's true wall time. */
 double am_ln_exec_ms(void);
 
+/* The terminal's current size, straight from ioctl(TIOCGWINSZ) -- the same probe
+ * the editor uses for its own layout, so the two can never disagree.  Exposed
+ * because repl.k's fmt needs the width to truncate output and used to get it by
+ * FORKING `tput` on every single formatted value: ~3-6 ms per line on macOS
+ * (fork cost there scales with the 1 GB reserved heap), which the status bar
+ * then charged to the user's expression.  Falls back to 80x24 when there is no
+ * terminal. */
+int am_ln_term_cols(void);
+int am_ln_term_rows(void);
+
 /* ---- provided by src/m.c (needs the interpreter's global table) ---------- */
 /* NUL-separated list of global names, terminated by an extra NUL.  Returns the
  * number of names written. */

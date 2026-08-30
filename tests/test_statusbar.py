@@ -275,5 +275,90 @@ try:
 except ImportError:
     print("  SKIP resize/zoom checks (pyte not installed)")
 
+# 6. The exec timer, and recovery from a terminal-side clear (macOS Cmd-K).
+#    The timer bug this pins: k has NO bare ".1" float literal -- ".1" lexes as the
+#    verb "." applied to 1, which yields 1 -- so `.1*_0.5+10*sblast` silently
+#    reported TEN TIMES the real time (a 23 ms line read "230 ms"). Comparing the
+#    bar against \t for the SAME expression catches that regardless of how fast the
+#    machine is, which a fixed millisecond bound could not.
+try:
+    import pyte
+
+    def sess(rows=30, cols=120):
+        m, s = pty.openpty()
+        fcntl.ioctl(s, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
+        def ctty():
+            os.setsid()
+            try: fcntl.ioctl(0, termios.TIOCSCTTY, 0)
+            except Exception: pass
+        p = subprocess.Popen(["./a"], cwd=ROOT, stdin=s, stdout=s, stderr=s,
+                             preexec_fn=ctty, env={**os.environ, "TERM": "xterm-256color"})
+        os.close(s)
+        sc = pyte.Screen(cols, rows); st = pyte.ByteStream(sc)
+        def pump(t):
+            t0 = time.time()
+            while time.time() - t0 < t:
+                r, _, _ = select.select([m], [], [], 0.03)
+                if r:
+                    try: d = os.read(m, 65536)
+                    except OSError: return
+                    if d: st.feed(d)
+        pump(2.2)
+        return m, p, sc, st, pump
+
+    def barms(sc):
+        mm = re.search(r"exec:\s*([0-9]+\.[0-9]+)\s*ms", sc.display[-1])
+        return float(mm.group(1)) if mm else None
+
+    def lastout(sc, rows=30):
+        return [l.rstrip() for l in sc.display[:rows - 4] if l.strip()][-1]
+
+    m, p, sc, st, pump = sess()
+    os.write(m, b"1+1\r"); pump(1.2)
+    v = barms(sc)
+    check(re.search(r"exec:\s*[0-9]+\.[0-9]{3}\s*ms", sc.display[-1]) is not None,
+          "[pyte] exec figure carries exactly 3 decimals")
+    # \t reports the pure eval in whole ms; the bar reports the whole line. They must
+    # be the same ORDER OF MAGNITUDE -- a 10x units bug blows this apart.
+    os.write(m, b"\\t gentq 50000\r"); pump(3.0)
+    try: tms = float(re.sub(r"[^0-9.]", "", lastout(sc)) or "0")
+    except ValueError: tms = 0.0
+    os.write(m, b"gentq 50000\r"); pump(3.0)
+    bms = barms(sc)
+    if tms >= 5 and bms is not None:
+        check(bms < (3 * tms + 25), "[pyte] bar agrees with \\t (no 10x units bug): "
+              "bar=%.1f ms vs \\t=%.0f ms" % (bms, tms))
+        check(bms > (0.3 * tms), "[pyte] bar is not absurdly low vs \\t")
+    else:
+        print("  SKIP timer-vs-\\t (machine too fast to time gentq 50000 in whole ms)")
+    # A trivial line must not be charged the REPL's own overhead: fmt used to fork
+    # `tput` for the terminal width on EVERY value (~3-6 ms/line on macOS, where fork
+    # cost scales with the 1 GB reserved heap). The size now comes from `bi 0.
+    os.write(m, b"1+1\r"); pump(1.2)
+    v = barms(sc)
+    check(v is not None and v < 2.0, "[pyte] a trivial line costs <2 ms (no tput fork per value)")
+
+    # macOS Cmd-K clears the terminal LOCALLY and sends the program nothing, so the
+    # footer is wiped with no event to react to. The next keystroke must restore it.
+    st.feed(b"\x1b[H\x1b[2J\x1b[3J")          # the terminal clears itself; the app never sees this
+    gone = not any(l.lstrip().startswith("╭") for l in sc.display)
+    os.write(m, b"z"); pump(0.8)
+    back = [l.rstrip() for l in sc.display]
+    check(gone, "[pyte] simulated Cmd-K wipes the footer (precondition)")
+    check(sum(1 for l in back if l.lstrip().startswith("╭")) == 1
+          and sum(1 for l in back if l.lstrip().startswith("╰")) == 1
+          and any("⬡ amber" in l for l in back),
+          "[pyte] one keystroke after Cmd-K repaints the whole footer")
+    os.write(m, b"\x7f\r"); pump(0.5)
+    os.write(m, b"2+2\r"); pump(1.0)
+    check(any(l.strip() == "4" for l in sc.display), "[pyte] REPL still evaluates after Cmd-K")
+    os.write(m, b"\\\\\r"); pump(0.5)
+    try: os.close(m)
+    except OSError: pass
+    try: p.wait(timeout=3)
+    except Exception: p.kill()
+except ImportError:
+    print("  SKIP timer / Cmd-K checks (pyte not installed)")
+
 print("test_statusbar: " + ("ALL PASSED" if ok else "FAILURES"))
 sys.exit(0 if ok else 1)

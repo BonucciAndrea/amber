@@ -415,7 +415,7 @@ ZN A1(ox,o8(x);osd(" b",xb);C t=xT;os(" t");I(LH(1,t,tn),ow(&TS[t],1))E(od(t))os
 // amber 1.9.5: a 6th element carries the banner string of whatever extension is
 // compiled in (src/ext.h, am_ext_banner), or "" when the build is stock. Purely
 // additive -- every existing caller indexes 0..4 and is unaffected.
-A1(binfo,L tot=0,nr=0;F(nreg,I(reg[i].p,tot+=reg[i].n;nr++))A a[]={al(tot),al(nr),aCz(AMARCH),aCz(AMCC),aCz(AMBER_VERSION),aCz(am_ext_banner?am_ext_banner:"")};x(aV(tA,6,a)))
+A1(binfo,L tot=0,nr=0;F(nreg,I(reg[i].p,tot+=reg[i].n;nr++))A a[]={al(tot),al(nr),aCz(AMARCH),aCz(AMCC),aCz(AMBER_VERSION),aCz(am_ext_banner?am_ext_banner:""),al((L)am_ln_term_cols()),al((L)am_ln_term_rows())};x(aV(tA,8,a)))
 #define RGS(a...) F(nreg,B f=reg[i].f;V*p=reg[i].p,*q=f?p:p+reg[i].n;a)
 #define OBS(a...) RGS(A x=(A)(p+HD*!f+pg*f),y=(A)q;W(x<y,a;x+=HD<<xb))
 #define XYS(a...) OBS(I(xtR,F(xn|!xn,A y=xa;a)))

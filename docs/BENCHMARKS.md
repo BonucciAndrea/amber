@@ -345,6 +345,187 @@ still sort-based, where kdb runs an O(n) hash group with a fused per-group sum. 
 is the next optimisation (see [MISSING.md](MISSING.md)). The site's benchmarks page renders this as
 charts.
 
+**Reproducing it.** Both sides live in [`bench/qbench/`](../bench/qbench/) and generate their data
+from the same closed form (no RNG), so the two runs are like-for-like:
+
+```sh
+./amber bench/qbench/amber.k        # Amber side  (AMBER_NATIVE=1 for -march=native)
+q bench/qbench/q.q                  # kdb+/q side (needs a real kdb+)
+```
+
+Edit `N` at the top of each file to switch between the 1M and 10M columns.
+
+A far wider comparison against the same reference — 23 operations rather than 6, and twelve other
+engines alongside q — is in [§2.10](#210-scout--every-reachable-engine-23-operations) below.
+
+## 2.10 Scout — every reachable engine, 23 operations
+
+The rest of §2 compares Amber with the four engines the CI harness can install everywhere.
+**Scout** is the widest run in the project: 23 operations against *every* array language and
+columnar engine that could be made to run on one machine — kdb+/q, PeachQ (Rayforce), ngn/k,
+CBQN, J, NumPy, pandas, Polars, DuckDB and a hand-written C reference — plus Amber's portable,
+native, qSQL and 14-thread configurations.
+
+The workloads, the data model and the fairness rules are specified once in
+[`bench/scout/SCOUT_SPEC.md`](../bench/scout/SCOUT_SPEC.md); every engine implements that document
+and nothing else. `bench/scout/scout.py` runs it, `bench/scout/results.json` is the raw output, and
+the tables below are generated straight from that file by `bench/scout/webgen.py --md` — so these
+numbers and the ones on the website cannot drift apart. The narrative analysis lives in
+[`bench/SCOUT_REPORT.md`](../bench/SCOUT_REPORT.md).
+
+**Correctness gate.** Every answer is an integer exactly representable in float64, so the result is
+independent of summation order — SIMD pairwise, Kahan-compensated and naive left-fold summation all
+produce the identical bit pattern. Answers are compared **bit-exactly** against the C reference; an
+engine that disagrees gets `WRONG` instead of a time, and each engine separately checksums its own
+*input* so a divergence in the generator is caught as `BADDATA`. The single exception is
+`mavg_256`, which divides by a growing window count and is therefore genuinely order-dependent; it
+is compared at a relative tolerance of 1e-9.
+
+### Machine and versions
+
+| | |
+|---|---|
+| **CPU** | Intel(R) Core(TM) Ultra 7 255U (14 cores) |
+| **SIMD** | avx avx2 bmi2 sse4_2 |
+| **OS** | Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39 |
+| **Compiler** | gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0 |
+| **Rows** | N = 10,000,000 |
+| **Runs** | 3 timed, 2 warm-up |
+| **kdb+/q** | 4.1 (w64) |
+| **PeachQ** | 0.81 (Rayforce) |
+| **CBQN** | CBQN on commit af583e19566a032b89e0077b866b0ba0dcc2a365 |
+| **NumPy / pandas** | 2.5.2 / 3.0.5 |
+| **Polars / DuckDB** | 1.44.1 / 1.5.5 |
+| **Amber build** | 0bf42f4 |
+
+### Amber vs kdb+/q — all 23 operations
+
+| operation | Amber (ms) | kdb+/q (ms) | ratio | what it is |
+| --- | ---: | ---: | ---: | --- |
+| `mmax_64` | 29.1 | 1357 | **46.57x faster** | moving max, window 64 |
+| `sort_f` | 282 | 1194 | **4.23x faster** | ascending sort, 10M random float64 |
+| `sum_i` | 1.71 | 6.98 | **4.09x faster** | sum of 10M int64 |
+| `mavg_256` | 47.4 | 151 | **3.18x faster** | moving average, window 256 |
+| `group_10` | 44.7 | 122 | **2.72x faster** | group-by, 10 groups |
+| `tablesort` | 114 | 304 | **2.67x faster** | 3-column table sorted by two keys |
+| `asof` | 38.8 | 88.1 | **2.27x faster** | as-of join, the tick-desk workload |
+| `group_100` | 122 | 253 | **2.07x faster** | group-by, 100 groups |
+| `distinct` | 7.90 | 15.7 | **1.99x faster** | distinct over ~10 groups |
+| `grade_i` | 22.7 | 43.1 | **1.90x faster** | grade-up (argsort) of 10M int64 |
+| `sum_f` | 3.39 | 6.23 | **1.84x faster** | sum of 10M float64 |
+| `group_10k` | 173 | 250 | **1.45x faster** | group-by, 10k groups |
+| `arith_mask` | 46.9 | 64.3 | **1.37x faster** | (a*b)+c under a boolean mask |
+| `dot` | 14.1 | 18.8 | **1.33x faster** | dot product of two 10M float64 vectors |
+| `join_inner` | 3.46 | 4.59 | **1.33x faster** | inner join on an int key |
+| `group_100k` | 217 | 276 | **1.27x faster** | group-by, 100k groups |
+| `msum_16` | 45.0 | 55.9 | **1.24x faster** | moving sum, window 16 |
+| `find` | 20.8 | 23.1 | **1.11x faster** | first index of a value in 10M elements |
+| `max_f` | 5.81 | 6.29 | **1.08x faster** | max of 10M float64 |
+| `qsql_select` | 10.7 | 9.41 | 1.14x slower | select ... by ... from - the full query path |
+| `member` | 52.4 | 44.9 | 1.17x slower | membership of 10M against a 10M set |
+| `sort_presorted` | 71.5 | 26.1 | 2.73x slower | sort of already-sorted input (best case) |
+| `distinct_100k` | 197 | 17.1 | 11.46x slower | distinct over 100k groups |
+
+
+Amber is faster on **19 of 23** operations, slower on **4**.
+
+### The full matrix — 23 operations x 14 engines
+
+| operation | C | Amber-nat | Amber | Amber-qSQL | kdb+/q | PeachQ | ngn/k | CBQN | J | NumPy | pandas | Polars | DuckDB | Amber-14t |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| **Reductions & vector arithmetic** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `sum_f` | 5.02 | 3.39 | 4.01 | skip | 6.23 | 4.67 | 5.64 | **1.02** | 4.06 | 4.98 | 10.3 | 3.82 | 17.1 | 4.26 |
+| `sum_i` | 4.87 | 1.71 | 2.56 | skip | 6.98 | 2.33 | 1.91 | **1.30** | 5.04 | 4.01 | 3.55 | 4.12 | 11.4 | 8.62 |
+| `max_f` | 10.8 | 5.81 | 5.74 | skip | 6.29 | 4.78 | 13.4 | **1.23** | 4.03 | 4.04 | 11.5 | 4.60 | 30.8 | 7.03 |
+| `dot` | 8.79 | 14.1 | 15.4 | skip | 18.8 | 8.99 | 15.6 | 6.60 | 27.5 | **6.07** | 6.61 | 13.2 | 22.4 | 15.8 |
+| `arith_mask` | **10.3** | 46.9 | 64.2 | skip | 64.3 | 440 | 53.8 | 49.5 | 48.7 | 45.8 | 98.8 | 59.1 | 65.5 | 71.4 |
+| **Sort & grade** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `sort_f` | 79.2 | 282 | 305 | skip | 1194 | 978 | 540 | **6.09** | 6061 | 58.9 | 895 | 105 | 843 | 313 |
+| `sort_presorted` | 106 | 71.5 | 80.1 | skip | 26.1 | 722 | 289 | **1.34** | 102 | 66.8 | 122 | 19.0 | 642 | 85.1 |
+| `grade_i` | 99.5 | **22.7** | 25.2 | skip | 43.1 | 32.6 | 99.3 | 33.4 | 65.6 | 621 | 841 | 294 | 27.5 | 24.0 |
+| `tablesort` | **71.7** | 114 | 160 | skip | 304 | 1135 | skip | skip | skip | 221 | 132 | 496 | 343 | 128 |
+| **Search, distinct & group-by** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `find` | **15.3** | 20.8 | 20.2 | skip | 23.1 | 89.4 | 1326 | 18.7 | 68.3 | 118 | skip | skip | 34.7 | 31.9 |
+| `member` | 99.6 | 52.4 | 51.5 | skip | 44.9 | 169 | 2347 | **18.7** | 38.8 | 53.6 | 78.6 | 23.4 | 44.6 | 62.0 |
+| `distinct` | 30.8 | 7.90 | 10.2 | skip | 15.7 | 568 | 248 | **5.63** | 33.5 | 340 | 53.0 | 88.8 | 45.7 | 7.99 |
+| `distinct_100k` | 75.4 | 197 | 214 | skip | **17.1** | 1816 | 444 | 47.5 | 48.8 | 784 | 82.8 | 142 | 143 | 271 |
+| `group_10` | 32.2 | 44.7 | 51.7 | 83.9 | 122 | 356 | 46.0 | **25.4** | 46.1 | 269 | 68.6 | 40.1 | 38.9 | 50.0 |
+| `group_100` | **27.0** | 122 | 117 | 198 | 253 | 455 | 113 | 65.8 | 45.9 | 802 | 64.5 | 37.8 | 31.5 | 129 |
+| `group_10k` | 58.0 | 173 | 184 | 284 | 250 | 1807 | 177 | 118 | **42.6** | 997 | 109 | 272 | 64.5 | 184 |
+| `group_100k` | 84.2 | 217 | 229 | 412 | 276 | 4068 | 461 | 249 | **61.0** | 830 | 112 | 345 | 115 | 233 |
+| **Joins** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `join_inner` | **1.83** | 3.46 | 4.81 | 8.38 | 4.59 | 10.8 | 123 | 2.37 | 4.69 | 15.0 | 47.4 | 11.1 | 5.24 | 3.85 |
+| `asof` | **10.3** | 38.8 | 40.5 | skip | 88.1 | 259 | skip | skip | skip | 26.9 | 94.5 | 16.7 | 189 | 41.8 |
+| **Moving windows** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `msum_16` | **12.0** | 45.0 | 46.2 | skip | 55.9 | 426 | 291 | 29.5 | 58.3 | 105 | 132 | 54.1 | 1029 | 44.5 |
+| `mavg_256` | **11.5** | 47.4 | 51.0 | skip | 151 | 11681 | 314 | 51.7 | 101 | 143 | 138 | 60.3 | 1599 | 45.2 |
+| `mmax_64` | **17.5** | 29.1 | 23.5 | skip | 1357 | 2373 | skip | skip | skip | 484 | 148 | 79.6 | 1812 | 28.6 |
+| **qSQL-shaped** |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `qsql_select` | **2.27** | 10.7 | 12.8 | 14.0 | 9.41 | 147 | skip | skip | skip | 50.0 | 16.1 | 11.7 | 10.7 | 23.1 |
+
+
+Milliseconds, lower is better. **Bold** is the fastest single-threaded engine in the row;
+`Amber-14t` is excluded from that comparison as the only multi-core column.
+`skip` means the engine cannot express the operation faithfully under `SCOUT_SPEC.md`.
+
+### Scaling — Amber (native), 100k to 10M rows
+
+| operation | 100,000 | 1,000,000 | 10,000,000 | 100k->10M |
+| --- | ---: | ---: | ---: | ---: |
+| `sum_f` | 0.004 | 0.286 | 3.73 | x932 |
+| `sort_f` | 0.891 | 18.6 | 288 | x324 |
+| `group_10k` | 0.930 | 7.84 | 169 | x182 |
+
+
+### Where Amber is beaten, and by how much
+
+Every operation where at least one single-threaded engine is faster than Amber,
+largest gap first. This is the optimisation backlog, kept public on purpose.
+
+| operation | Amber (ms) | best (ms) | best engine | headroom |
+| --- | ---: | ---: | --- | ---: |
+| `sort_presorted` | 71.5 | 1.34 | CBQN | **53.51x** |
+| `sort_f` | 282 | 6.09 | CBQN | **46.29x** |
+| `distinct_100k` | 197 | 17.1 | kdb+/q | **11.46x** |
+| `max_f` | 5.81 | 1.23 | CBQN | **4.71x** |
+| `qsql_select` | 10.7 | 2.27 | C | **4.70x** |
+| `arith_mask` | 46.9 | 10.3 | C | **4.55x** |
+| `group_100` | 122 | 27.0 | C | **4.52x** |
+| `mavg_256` | 47.4 | 11.5 | C | **4.11x** |
+| `group_10k` | 173 | 42.6 | J | **4.05x** |
+| `asof` | 38.8 | 10.3 | C | **3.78x** |
+| `msum_16` | 45.0 | 12.0 | C | **3.75x** |
+| `group_100k` | 217 | 61.0 | J | **3.56x** |
+| `sum_f` | 3.39 | 1.02 | CBQN | **3.32x** |
+| `member` | 52.4 | 18.7 | CBQN | **2.80x** |
+| `dot` | 14.1 | 6.07 | NumPy | **2.32x** |
+| `join_inner` | 3.46 | 1.83 | C | **1.89x** |
+| `group_10` | 44.7 | 25.4 | CBQN | **1.76x** |
+| `mmax_64` | 29.1 | 17.5 | C | **1.67x** |
+| `tablesort` | 114 | 71.7 | C | **1.59x** |
+| `distinct` | 7.90 | 5.63 | CBQN | **1.40x** |
+| `find` | 20.8 | 15.3 | C | **1.36x** |
+| `sum_i` | 1.71 | 1.30 | CBQN | **1.32x** |
+
+
+### Reading these numbers honestly
+
+**CBQN's numbers are not float64 numbers.** BQN has no user-visible float/int distinction: an array
+of `0..999` is *stored* as narrow integers (i8/i16) and CBQN's kernels run on that storage. On this
+dataset it streams roughly a quarter of the bytes the float64 engines stream, and its sort is a
+range-detected counting sort rather than a comparison or radix sort over 64-bit keys. That is a real
+property of the implementation and worth copying — but the CBQN cells on `sum_f`, `sum_i`, `max_f`,
+`sort_f`, `sort_presorted`, `distinct`, `member` and `group_10` are **not like-for-like** with the
+float64 engines and should not be read as "CBQN's reduction loop is 3x faster than Amber's".
+
+**One engine is missing.** `l` (lv1.sh) was downloaded and checksum-verified, but the only published
+Linux artefact is an AVX-512 build and this CPU (Core Ultra 7 255U) has none; no AVX-2 artefact
+exists. It is a K/q-family runtime built around compressed vectors, SIMD-by-default and fused
+execution, so it is the single most relevant engine still absent from this comparison.
+
+**`Amber-14t` is not part of the single-threaded comparison.** It is the only multi-core column and
+is shown for reference only; the "best engine" in every row is chosen from the single-threaded ones.
+
 ## 3. Running the cross-language harness (growler/k, q, DuckDB, Polars)
 
 The cloud sandbox that produced the numbers above has no k interpreter and no package

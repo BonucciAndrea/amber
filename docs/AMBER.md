@@ -58,9 +58,15 @@ Start an interactive session:
 ./amber repl.k                 # the same thing, without the build-if-stale check
 ```
 
-Since **1.9.5** the REPL has its own line editor (`src/ln.c`) — history, arrow keys,
-`Ctrl-A/E/W/U/K`, and Tab completion over your globals and table columns — so **do not wrap it in
-`rlwrap` or `rlfe`**. Amber puts the terminal in raw mode and reads single keypresses, which is
+Since **1.9.5** the REPL has its own line editor (`src/ln.c`) — history, arrow keys and
+`Ctrl-A/E/W/U/K` — so **do not wrap it in `rlwrap` or `rlfe`**. (Tab completion was removed at
+2.0.0: with k's terse syntax it was near-useless and uncomfortable to use, and Tab is now a no-op.)
+The editor is UTF-8 aware — accented letters, CJK and emoji all measure as the cells the terminal
+actually draws, and Backspace removes a whole character rather than one byte. A line that leaves a
+bracket open (`{`, `(`, `[`) is treated as an incomplete statement: the editor shows a `...>`
+prompt and keeps reading until the brackets balance, then evaluates the joined statement as one.
+`Ctrl-C` abandons a continuation. A bracketed paste of a multi-line function is rejoined by the
+same rule, so a function typed by hand and one pasted produce identical text. Amber puts the terminal in raw mode and reads single keypresses, which is
 exactly the case those wrappers cannot handle: rlwrap prints
 
 ```text

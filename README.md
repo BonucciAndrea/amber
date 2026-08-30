@@ -39,6 +39,33 @@ qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                        / vwap by symbo
 ```
 
 <a name="whats-new"></a>
+## Since 2.0.0 — on `main`, not yet tagged
+
+REPL correctness work, all covered by `tests/test_statusbar.py`:
+
+- **The line editor counts cells, not bytes.** `città però` used to push the input box's border
+  two columns in and **Backspace deleted one *byte* of an accented letter**, leaving a broken
+  sequence that was then handed to the parser. CJK and emoji broke it the other way. Layout and
+  editing are now character- and cell-correct, with a built-in width table rather than
+  `wcwidth()` — the latter answers per `LC_CTYPE`, so the same line would lay out differently on
+  macOS and WSL.
+- **Multi-line input.** A line leaving `{`, `(` or `[` open now continues on a `...>` prompt until
+  the brackets balance, and is evaluated — and stored in history — as one statement. There is no
+  key binding for it: Shift-Enter is indistinguishable from Enter in a terminal, so continuing on
+  incomplete syntax (as python, node, ghci and q do) is the only portable mechanism.
+- **The status-bar exec timer was reporting 10x.** k has no bare `.1` float literal — `.1` lexes
+  as the verb `.` applied to `1` — so `.1*_0.5+10*sblast` was ten times the milliseconds. A 23 ms
+  line read `230 ms`. `fmt` also forked `tput` on *every* line for the terminal size (3–6 ms each
+  on macOS); it now comes from `ioctl` via `` `bi 0``. `1+1` went 62 ms → 0.053 ms.
+- **Terminal robustness** — zoom/resize no longer strands a duplicate box, the box spans terminals
+  wider than ~313 columns, `Ctrl-L` is byte-identical to `\clear`, and the paste path checks every
+  allocation.
+- **Engine** — `az()` computed `n-(I)n` to test whether a value fits in an `int`; for `0W`
+  (`LLONG_MAX`) that overflows, which is undefined behaviour. Fixed.
+
+Full detail in **[CHANGELOG.md](CHANGELOG.md)**.
+
+<a name="whats-new-200"></a>
 ## What's new in 2.0.0
 
 - **Infix notation for the two-argument library dyads.** `2 3 in 2 3 4`, `5 within 3 9`,
@@ -338,6 +365,9 @@ tests/run_tests.sh          # EVERYTHING: build + all K suites + C unit tests + 
 ./amber tests/test_matrix.k # the suites are self-locating - run them from any directory
 tests/run_tests.sh --asan   # ... and re-run it all under AddressSanitizer + UBSan
 bash bench/run.sh           # cross-engine sanity + speed (Amber vs numpy/pandas/…; see BENCHMARKS.md)
+python3 bench/scout/scout.py     # the widest run: 23 ops x 14 engines (kdb+/q, PeachQ, ngn/k,
+                                 #   CBQN, J, NumPy, pandas, Polars, DuckDB, a C reference)
+python3 bench/scout/webgen.py --md   # regenerate the tables in docs/BENCHMARKS.md from results.json
 ```
 
 ---
@@ -345,19 +375,49 @@ bash bench/run.sh           # cross-engine sanity + speed (Amber vs numpy/pandas
 <a name="repl-line-editing"></a>
 ## REPL line editing (native — do not use `rlwrap`)
 
-Amber's REPL edits your line itself. `src/ln.c` is a single-file editor (~700 lines of C99 + POSIX
+Amber's REPL edits your line itself. `src/ln.c` is a single-file editor (~1,650 lines of C99 + POSIX
 `termios`) in the [linenoise](https://github.com/antirez/linenoise) tradition: raw `termios`, one
 visible line, ANSI refresh. No readline, no curses, no terminfo, and nothing allocated on the
 keystroke path beyond the line buffer. **`rlwrap` is no longer needed, and must no longer be used.**
 
 | key | |
 |---|---|
-| `←` `→`, `Ctrl-B` / `Ctrl-F` | move by character |
+| `←` `→`, `Ctrl-B` / `Ctrl-F` | move by character — a *character*, not a byte: `à`, `日` and `😀` step as one |
 | `Ctrl-A` / `Ctrl-E`, `Home` / `End` | start / end of line |
 | `↑` `↓`, `Ctrl-P` / `Ctrl-N` | history (persisted in `~/.amber_history`) |
 | `Backspace`, `Del`, `Ctrl-W` / `Ctrl-U` / `Ctrl-K` | delete char / word / to start / to end |
-| `Tab` | complete globals, table columns, `\` commands, the Amber vocabulary, and whole lines you already ran |
-| `Ctrl-L` | clear screen · `Ctrl-C` abandon the line · `Ctrl-D` exit on an empty line |
+| `Ctrl-L` | clear screen — byte-identical to `\clear` |
+| `Ctrl-C` · `Ctrl-D` | abandon the line (or a continuation) · exit on an empty line |
+| `PgUp` / `PgDn`, wheel | scroll the transcript while the status bar stays locked |
+| `\sb` | toggle the status bar |
+
+`Tab` is a **no-op**. Tab completion existed in 1.9.5 and was removed at 2.0.0: with k's terse
+syntax it was near-useless and uncomfortable to use.
+
+**Multi-line input.** A line that leaves a bracket open (`{`, `(`, `[`) is an incomplete statement,
+so the editor keeps reading on a `...>` prompt until the brackets balance, then evaluates the
+joined statement as one — and stores it in history as one entry:
+
+```text
+amber> f:{
+  ...> x+1
+  ...> }
+amber> f 41
+42
+```
+
+There is deliberately no key for this. Shift-Enter is **indistinguishable from Enter** in a
+terminal (both send CR) unless you opt into an extended keyboard protocol, so continuing on
+incomplete syntax — what python, node, ghci and q all do — is the only portable mechanism.
+`Ctrl-C` abandons a continuation. A bracketed paste of a multi-line function is rejoined by the
+same string- and comment-aware rule, so a function typed by hand and one pasted produce identical
+text; a bracket inside a string (`"a{b"`) or after a comment never triggers it.
+
+**UTF-8.** The buffer holds bytes but a terminal lays out cells, and the editor now converts
+between the two: accented Latin, CJK and emoji all measure as the cells actually drawn, Backspace
+removes a whole character, and horizontal scrolling never cuts a sequence in half. The width table
+is built in rather than taken from `wcwidth()`, which answers per `LC_CTYPE` and would otherwise
+lay the same line out differently on macOS and WSL.
 
 **Why `rlwrap` must not be used.** rlwrap runs the wrapped program on a pty and speaks readline on
 its behalf, which only works for a program that reads whole lines in *canonical* mode. Amber puts

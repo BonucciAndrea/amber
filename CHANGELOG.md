@@ -1,5 +1,141 @@
 # Changelog
 
+## Unreleased — REPL correctness: UTF-8, multi-line input, an honest exec timer
+
+Everything here is in `main` and is **not yet tagged**. It is all REPL/editor work
+plus one engine-level undefined-behaviour fix.
+
+### The line editor now counts cells, not bytes
+
+The line buffer holds **bytes**; a terminal lays out **cells**. Conflating the two broke
+ordinary input:
+
+- `città però` typed with its accents pushed the box's closing border two columns in
+  (each accented letter is 2 bytes but 1 cell), leaving stale glyphs behind — the row
+  rendered as `…però    │││`.
+- CJK and emoji pushed it the other way (1 lead byte counted, 2 cells drawn).
+- **Backspace deleted one BYTE of a multi-byte character**, leaving a stray continuation
+  byte that rendered as a replacement glyph and was then handed to the parser. `Delete`
+  and the arrow keys had the same defect.
+- Horizontal scrolling and truncation could cut a UTF-8 sequence in half.
+
+`src/ln.c` gained a small UTF-8 layer — sequence length, codepoint, display width and
+character-boundary stepping — and every layout and editing path now works in characters
+and cells. The width table is **built in rather than taken from `wcwidth()`** on purpose:
+`wcwidth()` answers according to `LC_CTYPE`, so the same line would lay out differently on
+macOS and on a WSL box with a different locale, and a box that lands in a different column
+per platform is worse than one that is uniformly approximate.
+
+`u8_len` validates continuation bytes, so a lead byte claiming four bytes as the last byte
+before the terminator can no longer read past the array. Verified under ASan+UBSan against
+truncated emoji, lone continuation bytes, overlongs, surrogates and a buffer-full truncated
+lead byte.
+
+The caret window is computed **backward from the caret**, not by scanning forward from the
+start of the buffer: measuring cells forward is quadratic per keystroke and made a
+multi-thousand-character line hang outright. A 5,000-character line now types in ~2 s.
+
+### Multi-line continuation
+
+Typing a function across lines used to be impossible: `f:{` evaluated on the spot, printed a
+puzzling `0#,!0`, and the following `}` was a syntax error. Multi-line definitions only
+worked through paste.
+
+A line that leaves a bracket open (`{`, `(`, `[`) is now understood as an incomplete
+statement: the editor echoes the fragment, shows a `...>` continuation prompt aligned under
+the main one, and keeps reading until the brackets balance. The fragments are joined and
+handed over as **one** statement, which is also what goes into history — `Ctrl-P` recalls
+`f:{ x+1 }`, never a fragment.
+
+```
+amber> f:{
+  ...> x+1
+  ...> }
+amber> f 41
+42
+```
+
+There is deliberately **no key binding** for this. Shift-Enter is indistinguishable from
+Enter in a terminal — both send CR — unless the user opts into an extended keyboard protocol
+(xterm `modifyOtherKeys`, kitty, a hand-made iTerm2 binding), so binding it would work for
+almost nobody and would behave differently on macOS and WSL. Continuing on incomplete syntax
+is what python, node, ghci and q all do, and needs no terminal support at all.
+
+Depth comes from the **same** string- and comment-aware counter the bracketed-paste path uses
+to rejoin a pasted multi-line function, and the fragments are joined the same way, so a
+function typed by hand and one pasted produce identical text. A bracket inside a string
+(`"a{b"`) or after a comment (`1+1 / a { comment`) therefore does not trigger it. `Ctrl-C`
+abandons a continuation.
+
+### The status bar's exec timer was reporting 10x
+
+`sbexec` computed `.1*_0.5+10*sblast`. **k has no bare `.1` float literal** — `.1` lexes as the
+verb `.` applied to `1`, which yields `1` — so the expression evaluated to `1*_0.5+10*sblast`,
+exactly ten times the milliseconds. A 23 ms line read `230 ms`.
+
+Separately, `fmt` called `upd[]` before formatting **every** value, and `upd` forked
+`/usr/bin/env tput -S` to read the terminal size — on every single line. On macOS that cost
+3–6 ms per line, because `fork` copies page tables for the 1 GB reserved heap (measured 3.0 ms,
+rising to 5.8 ms after `gentq 200000`), and the status bar charged all of it to the user's
+expression. The size now comes from `ioctl(TIOCGWINSZ)` via `` `bi 0`` — the same probe
+`src/ln.c` lays the bar out with, so the two can never disagree. `fmt`: **3.3 ms → 0.005 ms**.
+
+| line | before | now | `\t` (eval only) |
+|---|---:|---:|---:|
+| `1+1` | 62 ms | **0.053 ms** | – |
+| `gentq 10000` | 230 ms | **9.735 ms** | 8–9 ms |
+| `gentq 100000` | – | **82.796 ms** | 81 ms |
+
+Resolution is now 3 decimals, built from integer thousandths so no IEEE artefact reaches the
+display (`0.1*818` is `81.80000000000001`, and `$` prints every digit), zero-padded so 9.008 ms
+does not render as `9.8`.
+
+### Terminal robustness
+
+- **Resize / zoom.** A resize now releases the scroll region, wipes the whole screen, re-sets the
+  region and repaints the transcript from the scroll-back ring. It assumes nothing about what the
+  terminal did to the old contents, because terminals disagree — xterm clips the alternate screen
+  at the bottom, Terminal.app and iTerm2 keep the bottom and shift content up, and they differ
+  again on whether DECSTBM survives. Any repaint that erased "where the old footer was" left a
+  stranded copy of the box on some terminal: the duplicated box seen when zooming on macOS. The
+  transcript now survives a resize and reflows to the new width.
+- **A resize that lands while the interpreter is busy** was never seen by the editor's read loop,
+  so the previous footer stayed on screen next to the newly drawn one. Handled at the prompt.
+- **Wide terminals.** Both padding paths ran through fixed 256/300-byte buffers and silently
+  clamped past ~313 columns, leaving the input row's closing border short of the edge while the
+  borders above and below still reached it. A Retina Mac at a zoomed-out font is routinely
+  300–400 columns.
+- **`Ctrl-L` is now byte-identical to `\clear`** (it was missing the `ESC[3J` scrollback wipe).
+  macOS `Cmd-K` cannot be intercepted — Terminal.app and iTerm2 clear the screen locally and send
+  the program nothing — so rebinding `Cmd-K` to send `Ctrl-L` (iTerm2: Settings ▸ Keys ▸ Send Hex
+  Code `0x0c`) is the only way to get exact `\clear` behaviour, and that now holds byte for byte.
+- **The committed command echo erases to end of line.** A row repainted from the ring is not
+  blank, so the tail of a longer previous line survived past the echoed command.
+- **Caret stability.** Repainting the footer on every keystroke (tried, for `Cmd-K` recovery) made
+  the caret visibly flick to the rows above and below the input line on every character typed. It
+  is reverted; recovery happens once per prompt instead.
+- `repl.k`'s `lines` now excludes the status bar's four footer rows, so `fmt` stops laying
+  dictionaries and lists out taller than the visible region.
+- Every allocation in the bracketed-paste path is checked. A paste is the one input whose size the
+  user chooses, so allocation failure is reachable, and the old unchecked `realloc`/`malloc` would
+  have dereferenced NULL.
+
+### Engine
+
+- **`az()` signed overflow (undefined behaviour).** It decided whether a 64-bit value fits in an
+  `I` by computing `n-(I)n`. For `n = LLONG_MAX` (k's `0W`) the truncation is `-1`, so it computed
+  `LLONG_MAX-(-1)` — UBSan flagged it on any qSQL path producing `0W`. It now round-trips the value
+  instead: equivalent in range, defined out of it.
+
+### Portability
+
+- `.gitignore` covers `*.dylib` and `.DS_Store`, so a macOS build no longer leaves the tree dirty.
+
+All of the above is covered by `tests/test_statusbar.py`, which now also drives resize/zoom bursts,
+UTF-8 input, long-line responsiveness, `Cmd-K` recovery, caret stability (asserted on the emitted
+bytes — a rendered grid cannot see a cursor that returned before the next flush) and multi-line
+continuation.
+
 ## 2.0.0 — infix dyads, bare qSQL in scripts, two lexer/verb fixes
 
 This release is about **ergonomics** — closing three long-standing gaps between the

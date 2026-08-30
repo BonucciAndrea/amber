@@ -173,7 +173,12 @@ A aS(U n)_(an(n,tS))
 A aCn(S s,U n)_(aV(tC,n,s))
 A aCm(S p,S q)_(aCn(p,q-p))
 A aCz(S s)_(aCn(s,SL(s)))
-A az(L n)_(n-(I)n?al(n):ai(n))
+/* Does the 64-bit n fit in an I?  Answered by ROUND-TRIPPING it, not by
+ * n-(I)n: for n = LLONG_MAX (k's 0W) the truncation is -1 and the subtraction
+ * LLONG_MAX-(-1) overflows, which is undefined behaviour -- UBSan flags it on
+ * any qSQL path that produces 0W.  The round-trip is exactly equivalent for
+ * every in-range value and well-defined for the rest. */
+A az(L n)_(n!=(L)(I)n?al(n):ai(n))
 A al(L v)_(aV(tl,1,&v))
 A af(F v)_(aV(tf,1,&v))
 A aE(L i,L j)_(Q(i<=j)P(i==j,emp(tG))A x=an(tE,2);*xL=i;xL[1]=j;x)

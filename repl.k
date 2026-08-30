@@ -25,7 +25,13 @@ tchk:{p:`diag 0;v:.[{`I$"\n"\`x(("/usr/bin/env";"tput";"-S");"lines\ncols\n")};,
 / two can never disagree.  The tput path below is kept only as the fallback for a
 / core too old to report indices 6/7.
 tsz:{v:.[{`bi 0};,0;!0];$[(7<#v)&(0<v 6)&0<v 7;(v 7;v 6);$[tprobe;tchk[];lines,cols]]}
-upd:{(lines;cols)::tsz[]}
+/ With the status bar up, ln.c reserves the bottom SB_FOOT (4) rows for the
+/ footer and output scrolls only in rows 1..h-4, so the height fmt may lay a
+/ table out in is FOUR LESS than the terminal's. Using the raw height made a
+/ full-height table 4 rows too tall and silently scrolled its own header off the
+/ top. Guarded, because upd can run before sbon is defined.
+sbfoot:{.[{$[sbon;4;0]};,0;0]}
+upd:{v:tsz[];(lines;cols)::((v@0)-sbfoot[];v@1)}
 lim:{(x<#y)(x#)/y}
 dd:{(x<#y)(,[;".."](x-2)#)/y}
 fmt:{upd[];$[(::)~x;"";|/(@x)=`m`M;("\n"/amfmt x),"\n";(1<#x)&|/`m`M`A=@x;mMA x;(dd[cols]`k@lim[cols]x),"\n"]}

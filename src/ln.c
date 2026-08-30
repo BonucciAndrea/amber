@@ -406,6 +406,111 @@ static void wr(const char *s, size_t n) {
 }
 static void ws_(const char *s) { wr(s, strlen(s)); }
 
+/* ---- UTF-8: bytes in, CELLS out ------------------------------------------
+ * The line buffer holds BYTES; the terminal lays out CELLS.  Conflating the two
+ * is why "citta pero" typed with its accents pushed the box's right border two
+ * columns in (each accented letter is 2 bytes but 1 cell), why CJK and emoji
+ * pushed it further the other way (2 cells, but only 1 byte was counted), and
+ * why Backspace over an accented letter deleted ONE BYTE and left a broken
+ * sequence on screen.  Everything below converts between the two.
+ *
+ * The width table is built in rather than taken from the system wcwidth(),
+ * deliberately: wcwidth() answers according to LC_CTYPE, so the same input would
+ * lay out differently on macOS and on a WSL box with a different locale -- and
+ * an editor whose box lands in a different column per platform is worse than one
+ * that is uniformly approximate.  This is the standard compact set: zero for
+ * combining marks and the emoji joiners, two for the East-Asian Wide/Fullwidth
+ * blocks and the main emoji planes, one for everything else. */
+
+/* bytes in the sequence that starts with byte c (1 for ASCII and for anything
+ * malformed, so a bad byte always advances and can never wedge a loop) */
+static int u8_seq(unsigned char c) {
+    if (c < 0x80) return 1;
+    if ((c & 0xe0) == 0xc0) return 2;
+    if ((c & 0xf0) == 0xe0) return 3;
+    if ((c & 0xf8) == 0xf0) return 4;
+    return 1;
+}
+/* Bytes in the WELL-FORMED sequence at p: 1 for ASCII, and 1 for anything
+ * malformed or truncated.  Validating the continuation bytes here is what stops
+ * a scan running off the end of the buffer: a lead byte claiming 4 bytes as the
+ * last byte before the NUL terminator would otherwise have had its 2nd and 3rd
+ * continuation bytes read from past the array.  A bad byte always advances by
+ * one, so no loop can wedge either. */
+static int u8_len(const char *p) {
+    const unsigned char *u = (const unsigned char *)p;
+    int n = u8_seq(*u), i;
+    for (i = 1; i < n; i++) if ((u[i] & 0xc0) != 0x80) return 1;   /* stops at the NUL */
+    return n;
+}
+/* codepoint at p (0 on a malformed sequence) */
+static unsigned u8_cp(const char *p) {
+    const unsigned char *u = (const unsigned char *)p;
+    int n = u8_len(p);
+    if (n == 1) return *u < 0x80 ? *u : 0;
+    if (n == 2) return (unsigned)((u[0] & 0x1f) << 6 | (u[1] & 0x3f));
+    if (n == 3) return (unsigned)((u[0] & 0x0f) << 12 | (u[1] & 0x3f) << 6 | (u[2] & 0x3f));
+    return (unsigned)((u[0] & 0x07) << 18 | (u[1] & 0x3f) << 12 | (u[2] & 0x3f) << 6 | (u[3] & 0x3f));
+}
+/* display cells taken by the character at p: 0, 1 or 2 */
+static int u8_wide(const char *p) {
+    unsigned c = u8_cp(p);
+    if (c == 0) return 1;                       /* malformed: charge it one cell */
+    if (c < 0x80) return c < 32 ? 0 : 1;
+    if ((c >= 0x0300 && c <= 0x036f) ||         /* combining diacriticals */
+        (c >= 0x200b && c <= 0x200f) ||         /* zero-width space .. RLM */
+        c == 0x2060 || c == 0xfeff ||           /* word joiner, BOM */
+        (c >= 0xfe00 && c <= 0xfe0f)) return 0; /* variation selectors (VS16) */
+    if ((c >= 0x1100 && c <= 0x115f) ||         /* Hangul Jamo */
+        (c >= 0x2e80 && c <= 0xa4cf && c != 0x303f) ||
+        (c >= 0xac00 && c <= 0xd7a3) ||         /* Hangul syllables */
+        (c >= 0xf900 && c <= 0xfaff) ||         /* CJK compatibility ideographs */
+        (c >= 0xfe10 && c <= 0xfe19) ||
+        (c >= 0xfe30 && c <= 0xfe6f) ||
+        (c >= 0xff00 && c <= 0xff60) ||         /* fullwidth forms */
+        (c >= 0xffe0 && c <= 0xffe6) ||
+        (c >= 0x1f300 && c <= 0x1f64f) ||       /* emoji: symbols & pictographs */
+        (c >= 0x1f680 && c <= 0x1f6ff) ||       /* transport & map */
+        (c >= 0x1f900 && c <= 0x1f9ff) ||       /* supplemental symbols */
+        (c >= 0x20000 && c <= 0x3fffd)) return 2;
+    return 1;
+}
+/* byte offset of the character boundary before pos (pos itself when at 0) */
+static size_t u8_prev(const char *b, size_t pos) {
+    if (!pos) return 0;
+    do { pos--; } while (pos && ((unsigned char)b[pos] & 0xc0) == 0x80);
+    return pos;
+}
+/* byte offset of the next character boundary after pos (never past len) */
+static size_t u8_next(const char *b, size_t len, size_t pos) {
+    if (pos >= len) return len;
+    pos += (size_t)u8_len(b + pos);
+    return pos > len ? len : pos;
+}
+/* Left edge of the visible window: walk BACK from the caret until the span fills
+ * `avail` cells, and return that byte offset.  O(cells shown), NOT O(line length):
+ * scanning forward from the start of the buffer -- start=0 then advance -- has to
+ * re-measure the whole line on every keystroke, which is quadratic and makes a
+ * multi-thousand-character line unusable.  Same visible result either way: the
+ * caret sits at the right edge of the window once the line overflows. */
+static size_t u8_window(const char *b, size_t pos, int avail) {
+    size_t q = pos, start = pos;
+    int w = 0;
+    while (q > 0) {
+        size_t pv = u8_prev(b, q);
+        int cw = u8_wide(b + pv);
+        if (w + cw >= avail) break;
+        w += cw; q = pv; start = pv;
+    }
+    return start;
+}
+/* display cells taken by the n bytes starting at s */
+static int u8_cols(const char *s, size_t n) {
+    int w = 0; size_t i = 0;
+    while (i < n) { w += u8_wide(s + i); i += (size_t)u8_len(s + i); }
+    return w;
+}
+
 /* ---- editor state -------------------------------------------------------- */
 
 typedef struct {
@@ -498,9 +603,11 @@ static const char *sb_build_kind(void) {
  * per UTF-8 lead byte (correct for the BMP glyphs used here: hex, arrows, mid-dot). */
 static int sb_disp(const char *s) {
     int w = 0;
-    for (const unsigned char *p = (const unsigned char *)s; *p; p++) {
-        if (*p == 0x1b) { while (*p && *p != 'm') p++; if (!*p) break; continue; }
-        if ((*p & 0xc0) != 0x80) w++;
+    const unsigned char *p = (const unsigned char *)s;
+    while (*p) {
+        if (*p == 0x1b) { while (*p && *p != 'm') p++; if (!*p) break; p++; continue; }
+        w += u8_wide((const char *)p);
+        p += u8_len((const char *)p);
     }
     return w;
 }
@@ -571,24 +678,36 @@ static void sb_infoline(void) {
 static void sb_input(LnState *l) {
     char seq[64]; int cols = term_cols(), rows = term_rows();
     int inner = cols - 4;                             /* text cols between "│ " and " │" */
-    size_t start = 0, show, used, plen = l->plen;
+    size_t start = 0, show, plen = l->plen;
+    int used, caret;
     if (inner < 8) inner = 8;
     g_input_plen = (int)plen;
     if ((int)plen > inner - 2) plen = 0;              /* pathologically narrow width */
-    show = l->len;
-    while ((int)(plen + (l->pos - start)) >= inner) start++;      /* keep caret visible */
-    if ((int)(plen + (show - start)) > inner) show = start + ((size_t)inner - plen);
+    /* Horizontal scroll and truncation both step whole CHARACTERS and measure in
+     * CELLS -- byte arithmetic here put the closing border in the wrong column for
+     * any non-ASCII input and could cut a UTF-8 sequence in half. */
+    start = u8_window(l->buf, l->pos, inner - (int)plen);
+    { size_t q = start; int w = (int)plen;
+      while (q < l->len) {
+          int cw = u8_wide(l->buf + q);
+          if (w + cw > inner) break;
+          w += cw; q = u8_next(l->buf, l->len, q);
+      }
+      show = q; used = w; }
     sprintf(seq, "\x1b[%d;1H", rows - 2); ws_(seq);
     ws_(SB_DIM); ws_(BOX_V); ws_(SB_RESET); ws_(" ");            /* │ + space (cols 1-2) */
     if (plen) wr(l->prompt, plen);
     wr(l->buf + start, show - start);
-    used = plen + (show - start);
     if (l->ghost[0] && l->pos == l->len) {                        /* dim autosuggestion */
-        size_t room = (size_t)inner - used, gl = strlen(l->ghost);
-        if (gl > room) gl = room;
-        if (gl) { ws_("\x1b[2m"); wr(l->ghost, gl); ws_(SB_RESET); used += gl; }
+        size_t gl = 0, gn = strlen(l->ghost); int w = used;
+        while (gl < gn) {                                         /* whole characters only */
+            int cw = u8_wide(l->ghost + gl);
+            if (w + cw > inner) break;
+            w += cw; gl = u8_next(l->ghost, gn, gl);
+        }
+        if (gl) { ws_("\x1b[2m"); wr(l->ghost, gl); ws_(SB_RESET); used = w; }
     }
-    { int p = inner - (int)used;                                 /* pad the text area */
+    { int p = inner - used;                                      /* pad the text area */
       static const char HINT[] = "paste again to view";
       int hw = (int)sizeof HINT - 1;
       if (p < 0) p = 0;
@@ -600,7 +719,8 @@ static void sb_input(LnState *l) {
       } else wsp(p);
     }
     ws_(" "); ws_(SB_DIM); ws_(BOX_V); ws_(SB_RESET);            /* space + │ (cols-1, cols) */
-    sprintf(seq, "\x1b[%d;%dH", rows - 2, 3 + (int)(plen + (l->pos - start)));
+    caret = 3 + (int)plen + u8_cols(l->buf + start, l->pos - start);
+    sprintf(seq, "\x1b[%d;%dH", rows - 2, caret);
     ws_(seq);                                                    /* caret inside the box */
 }
 /* draw the static chrome (both borders + the info line), cursor-neutral */
@@ -731,23 +851,34 @@ static void refresh(LnState *l) {
     if (g_sb_on) { sb_input(l); return; }       /* box interior + caret; chrome is already up */
 
     g_input_plen = (int)plen;                   /* remember for the spinner column */
-    /* Horizontal scroll: keep the cursor visible on one physical line. */
+    /* Horizontal scroll: keep the cursor visible on one physical line.  Measured in
+     * CELLS and stepped by whole characters, exactly as sb_input does. */
     if (plen > cols - 2) plen = 0;              /* absurdly long prompt: drop it */
-    show = l->len;
-    while (plen + (l->pos - start) >= cols - 1) start++;
-    if (plen + (show - start) >= cols - 1) show = start + (cols - 1 - plen);
-
-    ws_("\r");
-    if (plen) wr(l->prompt, plen);
-    wr(l->buf + start, show - start);
-    if (l->ghost[0] && l->pos == l->len) {
-        size_t room = cols - 1 - plen - (show - start);
-        size_t gl = strlen(l->ghost);
-        if (gl > room) gl = room;
-        if (gl) { ws_("\x1b[2m"); wr(l->ghost, gl); ws_("\x1b[0m"); }
+    { int lim = (int)cols - 1;
+      start = u8_window(l->buf, l->pos, lim - (int)plen);
+      { size_t q = start; int w = (int)plen;
+        while (q < l->len) {
+            int cw = u8_wide(l->buf + q);
+            if (w + cw >= lim) break;
+            w += cw; q = u8_next(l->buf, l->len, q);
+        }
+        show = q;
+        ws_("\r");
+        if (plen) wr(l->prompt, plen);
+        wr(l->buf + start, show - start);
+        if (l->ghost[0] && l->pos == l->len) {
+            size_t gl = 0, gn = strlen(l->ghost);
+            while (gl < gn) {
+                int cw = u8_wide(l->ghost + gl);
+                if (w + cw >= lim) break;
+                w += cw; gl = u8_next(l->ghost, gn, gl);
+            }
+            if (gl) { ws_("\x1b[2m"); wr(l->ghost, gl); ws_("\x1b[0m"); }
+        }
+      }
     }
     ws_("\x1b[0K");
-    sprintf(seq, "\r\x1b[%dC", (int)(plen + (l->pos - start)));
+    sprintf(seq, "\r\x1b[%dC", (int)plen + u8_cols(l->buf + start, l->pos - start));
     ws_(seq);
 }
 
@@ -760,17 +891,25 @@ static void ins(LnState *l, const char *s, size_t n) {
     l->buf[l->len] = 0;
 }
 
+/* Backspace removes a whole CHARACTER.  Removing one byte of a 2-byte accented
+ * letter (or a 3-byte CJK glyph) left a stray continuation byte in the buffer,
+ * which rendered as a replacement glyph and was then handed to the parser. */
 static void del_left(LnState *l) {
+    size_t p;
     if (!l->pos) return;
-    memmove(l->buf + l->pos - 1, l->buf + l->pos, l->len - l->pos);
-    l->pos--; l->len--;
+    p = u8_prev(l->buf, l->pos);
+    memmove(l->buf + p, l->buf + l->pos, l->len - l->pos);
+    l->len -= l->pos - p;
+    l->pos = p;
     l->buf[l->len] = 0;
 }
 
 static void del_right(LnState *l) {
+    size_t n;
     if (l->pos >= l->len) return;
-    memmove(l->buf + l->pos, l->buf + l->pos + 1, l->len - l->pos - 1);
-    l->len--;
+    n = u8_next(l->buf, l->len, l->pos) - l->pos;         /* whole character */
+    memmove(l->buf + l->pos, l->buf + l->pos + n, l->len - l->pos - n);
+    l->len -= n;
     l->buf[l->len] = 0;
 }
 
@@ -1004,10 +1143,19 @@ static int read_paste(LnState *l) {
     memcpy(comb, l->buf, cl); memcpy(comb + cl, p, n + 1); free(p);
     free(g_paste_raw); g_paste_raw = strdup(comb);       /* keep a verbatim copy for the preview */
     pq_clear();
-    int cap2 = 8, ns = 0; char **segs = (char**)malloc(cap2 * sizeof *segs);
+    /* Every allocation below is checked: a paste is the one input whose size the
+     * USER chooses, so an allocation failure here is reachable, and the old
+     * unchecked realloc/malloc would have dereferenced NULL.  On failure we drop
+     * the paste rather than crash -- the line buffer is left exactly as it was. */
+    int cap2 = 8, ns = 0; char **segs = (char**)malloc((size_t)cap2 * sizeof *segs);
+    if (!segs) { free(comb); return 0; }
     for (char *q = comb;;) {
         char *nl = strchr(q, '\n'); if (nl) *nl = 0;
-        if (ns >= cap2) { cap2 *= 2; segs = (char**)realloc(segs, cap2 * sizeof *segs); }
+        if (ns >= cap2) {
+            char **nv = (char**)realloc(segs, (size_t)(cap2 * 2) * sizeof *segs);
+            if (!nv) { free(segs); free(comb); return 0; }
+            segs = nv; cap2 *= 2;
+        }
         segs[ns++] = q;
         if (!nl) break; q = nl + 1;
     }
@@ -1019,16 +1167,25 @@ static int read_paste(LnState *l) {
          * one unit.  The batch runs on Enter, echoed only as the placeholder. */
         pq_clear();
         g_pq = (char**)malloc((size_t)ns * sizeof *g_pq);
+        if (!g_pq) { free(segs); free(comb); return 0; }
         for (int i = 0; i < ns; ) {
             int depth = sb_depth_delta(segs[i]);
-            if (depth <= 0) { g_pq[g_pq_n++] = strdup(segs[i]); i++; continue; } /* single line, verbatim */
+            if (depth <= 0) {                            /* single line, verbatim */
+                char *d = strdup(segs[i]);
+                if (!d) break;                           /* OOM: keep the statements gathered so far */
+                g_pq[g_pq_n++] = d; i++; continue;
+            }
             sb_strip_comment(segs[i]);                   /* multi-line: strip comment, then space-join */
             char *stmt = strdup(segs[i]);
+            if (!stmt) break;
             i++;
             while (depth > 0 && i < ns) {                /* bracket still open -> keep pulling lines */
+                char *grown, *cont;
                 sb_strip_comment(segs[i]);
-                char *cont = segs[i]; while (*cont == ' ' || *cont == '\t') cont++;
-                stmt = (char*)realloc(stmt, strlen(stmt) + strlen(cont) + 2);
+                cont = segs[i]; while (*cont == ' ' || *cont == '\t') cont++;
+                grown = (char*)realloc(stmt, strlen(stmt) + strlen(cont) + 2);
+                if (!grown) break;                       /* OOM: keep the statement as far as it got */
+                stmt = grown;
                 strcat(stmt, " "); strcat(stmt, cont);
                 depth += sb_depth_delta(segs[i]);
                 i++;
@@ -1170,10 +1327,10 @@ char *am_ln_readline(const char *prompt) {
             del_left(&l); break;
         case 1:  l.pos = 0; break;               /* Ctrl-A */
         case 5:  l.pos = l.len; break;           /* Ctrl-E */
-        case 2:  if (l.pos) l.pos--; break;      /* Ctrl-B */
+        case 2:  l.pos = u8_prev(l.buf, l.pos); break;          /* Ctrl-B (one char) */
         case 6:                                  /* Ctrl-F / accept ghost */
             if (l.ghost[0] && l.pos == l.len) accept_ghost(&l);
-            else if (l.pos < l.len) l.pos++;
+            else l.pos = u8_next(l.buf, l.len, l.pos);          /* one char */
             break;
         case 11: l.buf[l.pos] = 0; l.len = l.pos; break;       /* Ctrl-K */
         case 21: memmove(l.buf, l.buf + l.pos, l.len - l.pos); /* Ctrl-U */
@@ -1265,9 +1422,9 @@ char *am_ln_readline(const char *prompt) {
                     }
                     case 'C':
                         if (l.ghost[0] && l.pos == l.len) accept_ghost(&l);
-                        else if (l.pos < l.len) l.pos++;
+                        else l.pos = u8_next(l.buf, l.len, l.pos);   /* one char */
                         break;
-                    case 'D': if (l.pos) l.pos--; break;
+                    case 'D': l.pos = u8_prev(l.buf, l.pos); break;  /* one char */
                     case 'H': l.pos = 0; break;
                     case 'F': l.pos = l.len; break;
                     default: break;
@@ -1302,6 +1459,13 @@ done:
         sprintf(dseq, "\x1b[%d;1H", rows - SB_FOOT); ws_(dseq);       /* row h-4 */
         ws_(SB_ACCENT); if (l.plen) wr(l.prompt, l.plen); ws_(SB_RESET);
         wr(l.buf, l.len);
+        ws_("\x1b[K");                                                /* erase to EOL: the row may
+                                                                      * still hold longer text from
+                                                                      * a repaint (scroll-back or a
+                                                                      * resize repaints from the
+                                                                      * ring), whose tail would
+                                                                      * otherwise survive past the
+                                                                      * echoed command. */
         ws_("\r\n");                                                  /* scroll the region up */
         {   /* mirror the echoed prompt+command into the scroll-back transcript */
             char *ce = (char *)malloc(strlen(SB_ACCENT) + l.plen + strlen(SB_RESET) + l.len + 1);

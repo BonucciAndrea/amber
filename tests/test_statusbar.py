@@ -402,5 +402,81 @@ try:
 except ImportError:
     print("  SKIP timer / Cmd-K checks (pyte not installed)")
 
+# 7. UTF-8: the buffer holds BYTES, the terminal lays out CELLS.  Conflating the
+#    two put the box's closing border in the wrong column for any non-ASCII input
+#    (an accented letter is 2 bytes but 1 cell; CJK and emoji are 1 lead byte but
+#    2 cells), and made Backspace delete ONE BYTE of a multi-byte character,
+#    leaving a broken sequence in the buffer and a replacement glyph on screen.
+try:
+    import pyte, unicodedata
+
+    def cells(row):   # pyte collapses a wide char into one display cell
+        return sum(2 if unicodedata.east_asian_width(c) in ("W", "F") else 1 for c in row)
+
+    def utf8_sess(rows=24, cols=60):
+        m, sl = pty.openpty()
+        fcntl.ioctl(sl, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
+        def ctty():
+            os.setsid()
+            try: fcntl.ioctl(0, termios.TIOCSCTTY, 0)
+            except Exception: pass
+        pr = subprocess.Popen(["./a"], cwd=ROOT, stdin=sl, stdout=sl, stderr=sl,
+                              preexec_fn=ctty, env={**os.environ, "TERM": "xterm-256color"})
+        os.close(sl)
+        sc = pyte.Screen(cols, rows); st = pyte.ByteStream(sc)
+        def pump(t):
+            t0 = time.time()
+            while time.time() - t0 < t:
+                r, _, _ = select.select([m], [], [], 0.03)
+                if r:
+                    try: d = os.read(m, 65536)
+                    except OSError: return
+                    if not d: return
+                    st.feed(d)
+        pump(2.2)
+        return m, pr, sc, pump
+
+    m, pr, sc, pump = utf8_sess()
+    def inputrow():
+        rows_ = [l.rstrip() for l in sc.display[-4:] if l.lstrip().startswith("│")]
+        return rows_[0] if rows_ else ""
+    for label, txt in [("accents", 'x:"città però"'),
+                       ("CJK",     'z:"日本語"'),
+                       ("emoji",   'w:"\U0001f600\U0001f680"'),
+                       ("mixed",   'q:"aà日\U0001f600z"')]:
+        os.write(m, b"\x15"); pump(0.2)
+        os.write(m, txt.encode()); pump(0.5)
+        row = inputrow()
+        check(cells(row) == 60 and row.count("│") == 2 and row.endswith("│"),
+              "[pyte] %s: box closes exactly at the terminal edge" % label)
+    # Backspace must remove a whole character, not one byte
+    os.write(m, b"\x15"); pump(0.2)
+    os.write(m, 'y:"città"'.encode()); pump(0.4)
+    os.write(m, b"\x7f\x7f"); pump(0.4)
+    row = inputrow()
+    check("�" not in row and "citt" in row,
+          "[pyte] Backspace over a multi-byte character leaves no broken byte")
+    # A long line must not be quadratic: the caret window is computed from the
+    # caret backwards, not by re-measuring the whole line on every keystroke.
+    os.write(m, b"\x15"); pump(0.3)
+    t0 = time.time()
+    payload = b"x:" + b"9" * 3000
+    for i in range(0, len(payload), 256):
+        os.write(m, payload[i:i+256]); pump(0.05)
+    pump(0.8)
+    dt = time.time() - t0
+    check(dt < 30, "[pyte] a 3000-char line stays responsive (%.1fs, no quadratic redraw)" % dt)
+    check(cells(inputrow()) == 60, "[pyte] box still exact on a 3000-char line")
+    os.write(m, b"\x15\r"); pump(0.5)
+    os.write(m, b"6*7\r"); pump(1.0)
+    check(any(l.strip() == "42" for l in sc.display), "[pyte] REPL evaluates after UTF-8/long-line abuse")
+    os.write(m, b"\\\\\r"); pump(0.5)
+    try: os.close(m)
+    except OSError: pass
+    try: pr.wait(timeout=3)
+    except Exception: pr.kill()
+except ImportError:
+    print("  SKIP UTF-8 checks (pyte not installed)")
+
 print("test_statusbar: " + ("ALL PASSED" if ok else "FAILURES"))
 sys.exit(0 if ok else 1)

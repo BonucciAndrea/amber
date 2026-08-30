@@ -1108,6 +1108,36 @@ static int rd1(char *c) {
     }
 }
 
+/* ---- multi-line continuation ---------------------------------------------
+ * A line that leaves a bracket open ({, ( or [) is not a statement yet, so the
+ * editor keeps reading rather than handing a fragment to the interpreter.  This
+ * is what every REPL does (python, node, ghci, q) and it needs no key of its
+ * own -- which matters, because Shift-Enter is INDISTINGUISHABLE from Enter in a
+ * terminal: both send CR.  Only an opt-in extended keyboard protocol (xterm
+ * modifyOtherKeys, kitty, a hand-made iTerm2 binding) can separate them, so
+ * binding Shift-Enter would work for almost nobody.
+ *
+ * Depth comes from sb_depth_delta -- the SAME string- and comment-aware counter
+ * the bracketed-paste path uses to rejoin a pasted multi-line function -- and
+ * the fragments are joined the same way (trailing comment stripped, single
+ * space), so a function typed by hand and one pasted produce identical text.
+ * Ctrl-C abandons a continuation; Ctrl-D at an empty prompt does too. */
+static char *g_cont;            /* accumulated incomplete statement, NULL when none */
+static int   g_cont_depth;      /* its net open-bracket depth */
+static char  g_cont_prompt[64];
+
+static void cont_clear(void) { free(g_cont); g_cont = NULL; g_cont_depth = 0; }
+
+/* Continuation prompt: the real prompt's width, ending in "...> ", so the
+ * continued lines line up under the first one and the box geometry is unchanged. */
+static const char *cont_prompt(size_t plen) {
+    size_t i, n = plen < sizeof g_cont_prompt - 1 ? plen : sizeof g_cont_prompt - 1;
+    for (i = 0; i < n; i++) g_cont_prompt[i] = ' ';
+    g_cont_prompt[n] = 0;
+    if (n >= 5) memcpy(g_cont_prompt + n - 5, "...> ", 5);
+    return g_cont_prompt;
+}
+
 static void paste_preview(LnState *l);   /* defined below; read_paste calls it for "paste again to view" */
 static int read_paste(LnState *l) {
     size_t cap = 1024, n = 0; char *p = (char*)malloc(cap);
@@ -1262,12 +1292,34 @@ static double mono_ms(void) {
 static void   exec_timer_begin(void) { g_mono_start_ms = mono_ms(); }
 double        am_ln_exec_ms(void)    { return mono_ms() - g_mono_start_ms; }
 
+/* Echo a submitted line into the scrolling transcript at the region's last row
+ * and mirror it into the scroll-back ring.  Shared by the normal submit path and
+ * by every fragment of a multi-line continuation. */
+static void sb_commit_echo(LnState *l) {
+    char dseq[48]; int rows = term_rows();
+    g_scroll = 0;                                                 /* commit at the live tail */
+    sprintf(dseq, "\x1b[%d;1H", rows - SB_FOOT); ws_(dseq);       /* row h-4 */
+    ws_(SB_ACCENT); if (l->plen) wr(l->prompt, l->plen); ws_(SB_RESET);
+    wr(l->buf, l->len);
+    ws_("\x1b[K");                    /* erase to EOL: a row repainted from the ring is not blank */
+    ws_("\r\n");                                                  /* scroll the region up */
+    {   /* mirror the echoed prompt+command into the scroll-back transcript */
+        char *ce = (char *)malloc(strlen(SB_ACCENT) + l->plen + strlen(SB_RESET) + l->len + 1);
+        if (ce) { ce[0] = 0; strcat(ce, SB_ACCENT); if (l->plen) strncat(ce, l->prompt, l->plen);
+                  strcat(ce, SB_RESET); strncat(ce, l->buf, l->len);
+                  ring_push(ce, (int)strlen(ce)); free(ce); }
+    }
+}
+
 char *am_ln_readline(const char *prompt) {
     LnState l;
     char *out;
+    char *joined = NULL;                 /* set when a continuation completes */
+    const char *base = prompt ? prompt : "";
 
+restart:
     memset(&l, 0, sizeof l);
-    l.prompt = prompt ? prompt : "";
+    l.prompt = g_cont ? cont_prompt(strlen(base)) : base;
     l.plen   = strlen(l.prompt);
     l.cols   = term_cols();
     l.hidx   = g_hist_n;
@@ -1291,6 +1343,7 @@ char *am_ln_readline(const char *prompt) {
         k = read(STDIN_FILENO, &c, 1);
         if (k < 0 && errno == EINTR) continue;   /* SIGWINCH/SIGALRM woke us: loop -> handle winch */
         if (k <= 0) { disable_raw();                 /* EOF (Ctrl-D) or read error */
+            cont_clear();
             if (l.len) break;                        /* content pending -> treat as Enter */
             if (g_sb_on) { g_sb_on = 0; sb_teardown(); }  /* abrupt exit never called sbb(0) */
             return NULL; }
@@ -1315,13 +1368,14 @@ char *am_ln_readline(const char *prompt) {
             goto done;
         case 3:                                  /* Ctrl-C: abandon this line */
             l.len = l.pos = 0; l.buf[0] = 0;
+            cont_clear();                        /* and any multi-line statement in progress */
             ws_("^C\r\n");
             disable_raw();
             out = (char *)malloc(1);
             if (out) out[0] = 0;
             return out;
         case 4:                                  /* Ctrl-D */
-            if (!l.len) { disable_raw(); ws_("\r\n"); return NULL; }
+            if (!l.len) { cont_clear(); disable_raw(); ws_("\r\n"); return NULL; }
             del_right(&l); break;
         case 8: case 127:                        /* Backspace */
             del_left(&l); break;
@@ -1446,6 +1500,36 @@ char *am_ln_readline(const char *prompt) {
     }
 
 done:
+    /* --- multi-line continuation ------------------------------------------
+     * Decide BEFORE the exec timer and the spinner start: an incomplete
+     * fragment is not an evaluation, so it must not be timed, must not spin,
+     * and must not enter history on its own. */
+    if (!g_paste_folded) {
+        char frag[LN_MAX_LINE];
+        int d;
+        memcpy(frag, l.buf, l.len); frag[l.len] = 0;
+        sb_strip_comment(frag);           /* else a trailing comment swallows the next line */
+        d = g_cont_depth + sb_depth_delta(frag);
+        if (d > 0) {                      /* still open: echo the fragment and keep reading */
+            size_t have = g_cont ? strlen(g_cont) : 0, fn = strlen(frag);
+            char *j = (char *)realloc(g_cont, have + fn + 2);
+            if (j) {
+                if (have) { j[have] = ' '; memcpy(j + have + 1, frag, fn + 1); }
+                else memcpy(j, frag, fn + 1);
+                g_cont = j; g_cont_depth = d;
+                disable_raw();
+                if (g_sb_on) sb_commit_echo(&l); else ws_("\r\n");
+                goto restart;
+            }
+            cont_clear();                 /* OOM: evaluate what we have rather than lose it */
+        } else if (g_cont) {              /* it closes here: hand over the WHOLE statement */
+            size_t have = strlen(g_cont), fn = strlen(frag);
+            joined = (char *)malloc(have + fn + 2);
+            if (joined) { memcpy(joined, g_cont, have); joined[have] = ' ';
+                          memcpy(joined + have + 1, frag, fn + 1); }
+            cont_clear();
+        }
+    }
     exec_timer_begin();                              /* start the exec stopwatch at submission */
     disable_raw();
     if (g_sb_on) {
@@ -1455,24 +1539,7 @@ done:
          * INSIDE the region, above the fixed box+info footer. */
         char dseq[48]; int rows = term_rows();
         LnState e;
-        g_scroll = 0;                                                 /* commit at the live tail */
-        sprintf(dseq, "\x1b[%d;1H", rows - SB_FOOT); ws_(dseq);       /* row h-4 */
-        ws_(SB_ACCENT); if (l.plen) wr(l.prompt, l.plen); ws_(SB_RESET);
-        wr(l.buf, l.len);
-        ws_("\x1b[K");                                                /* erase to EOL: the row may
-                                                                      * still hold longer text from
-                                                                      * a repaint (scroll-back or a
-                                                                      * resize repaints from the
-                                                                      * ring), whose tail would
-                                                                      * otherwise survive past the
-                                                                      * echoed command. */
-        ws_("\r\n");                                                  /* scroll the region up */
-        {   /* mirror the echoed prompt+command into the scroll-back transcript */
-            char *ce = (char *)malloc(strlen(SB_ACCENT) + l.plen + strlen(SB_RESET) + l.len + 1);
-            if (ce) { ce[0] = 0; strcat(ce, SB_ACCENT); if (l.plen) strncat(ce, l.prompt, l.plen);
-                      strcat(ce, SB_RESET); strncat(ce, l.buf, l.len);
-                      ring_push(ce, (int)strlen(ce)); free(ce); }
-        }
+        sb_commit_echo(&l);
         memset(&e, 0, sizeof e); e.prompt = l.prompt; e.plen = l.plen;
         sb_input(&e);                                                 /* redraw the box empty */
         g_input_plen = (int)l.plen;
@@ -1502,6 +1569,11 @@ done:
         *w = 0;
         pq_clear(); g_paste_folded = 0;
         return out;                                      /* don't add the batch to history */
+    }
+    if (joined) {                        /* a completed multi-line statement: history and the
+                                          * interpreter both get the whole thing, not the last line */
+        am_ln_history_add(joined);
+        return joined;
     }
     out = (char *)malloc(l.len + 1);
     if (!out) return NULL;

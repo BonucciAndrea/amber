@@ -478,5 +478,54 @@ try:
 except ImportError:
     print("  SKIP UTF-8 checks (pyte not installed)")
 
+# 8. Multi-line continuation. A line leaving a bracket open is not a statement
+#    yet, so the editor keeps reading. There is deliberately no key for it:
+#    Shift-Enter is indistinguishable from Enter in a terminal (both send CR)
+#    unless the user opts into an extended keyboard protocol. Depth comes from
+#    the same string/comment-aware counter the paste path uses, so a function
+#    typed by hand and one pasted produce identical text.
+try:
+    import pyte
+
+    m, pr, sc, pump = utf8_sess(rows=26, cols=90)
+    def row():
+        r = [l.rstrip() for l in sc.display[-4:] if l.lstrip().startswith("│")]
+        return r[0] if r else ""
+    def shown(v): return any(l.strip() == v for l in sc.display)
+
+    os.write(m, b"f:{\r"); pump(0.7)
+    check("...>" in row(), "[pyte] an open bracket shows the continuation prompt")
+    check(sum(1 for l in sc.display[-4:] if l.lstrip().startswith("╭")) == 1,
+          "[pyte] footer intact during continuation")
+    os.write(m, b"x+1\r"); pump(0.6)
+    os.write(m, b"}\r");   pump(1.0)
+    os.write(m, b"f 41\r"); pump(1.2)
+    check(shown("42"), "[pyte] hand-typed multi-line function is defined and callable")
+    # history must hold the JOINED statement, not the last fragment. Two Ctrl-P:
+    # the most recent entry is "f 41", the one before it is the definition.
+    os.write(m, b"\x10"); pump(0.4)
+    os.write(m, b"\x10"); pump(0.5)
+    check("f:{ x+1 }" in row(), "[pyte] history holds the joined statement, not a fragment")
+    os.write(m, b"\x15"); pump(0.3)
+    # a bracket inside a string or after a comment must NOT trigger continuation
+    for expr, want in [(b'"a{b"', '"a{b"'), (b"1+1 / a { comment", "2"), (b"{x*2}[21]", "42")]:
+        os.write(m, b"\x15"); pump(0.2)
+        os.write(m, expr + b"\r"); pump(1.2)
+        check(shown(want) and "...>" not in row(),
+              "[pyte] no false continuation for %s" % expr.decode())
+    # Ctrl-C must abandon a continuation and leave the REPL usable
+    os.write(m, b"h:{\r"); pump(0.6)
+    os.write(m, b"\x03"); pump(0.6)
+    check("...>" not in row(), "[pyte] Ctrl-C abandons the continuation")
+    os.write(m, b"6*7\r"); pump(1.2)
+    check(shown("42"), "[pyte] REPL still evaluates after abandoning a continuation")
+    os.write(m, b"\\\\\r"); pump(0.5)
+    try: os.close(m)
+    except OSError: pass
+    try: pr.wait(timeout=3)
+    except Exception: pr.kill()
+except ImportError:
+    print("  SKIP continuation checks (pyte not installed)")
+
 print("test_statusbar: " + ("ALL PASSED" if ok else "FAILURES"))
 sys.exit(0 if ok else 1)

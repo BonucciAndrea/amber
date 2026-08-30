@@ -195,6 +195,7 @@ $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
     \grid MODE  clean rounded sharp heavy
     \clear      clear screen                LINE EDITING   ( never use rlwrap )
     \sb         toggle the status bar          Up/Down history · PgUp/PgDn scroll
+    a line left open ({ ( [) continues on the next line · Ctrl-C abandons it
     \other      shell command                 Ctrl-A/E ends · Ctrl-W/U/K kill
     \a          license (AGPLv3)              Ctrl-L clear · Ctrl-C abandon
     \\          exit                          ~/.amber_history · AMBER_NO_EDIT=1

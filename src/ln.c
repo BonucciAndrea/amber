@@ -36,6 +36,7 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <sys/time.h>
+#include <time.h>      /* clock_gettime(CLOCK_MONOTONIC): the exec timer's clock */
 #if defined(__APPLE__)
 #include <sys/sysctl.h>
 #include <mach/mach.h>
@@ -670,7 +671,11 @@ static void spin_start(void) {
     if (getenv("AMBER_NO_SPINNER")) return;   /* diagnostic: run without the SIGALRM spinner
                                                * (to check whether it slows a parallel eval) */
     for (i = 0; i < 10; i++)
-        snprintf(g_spin_seq[i], sizeof g_spin_seq[i], "\x1b[s\x1b[%d;%dH%s%s%s\x1b[u",
+        /* DECSC/DECRC (ESC 7 / ESC 8) to save+restore the cursor, NOT CSI s/u:
+         * macOS Terminal.app doesn't honour CSI s/u, so the cursor was left on the
+         * spinner cell and streaming output from `\l` (many statements) landed in
+         * the box instead of the scroll region -- i.e. printed nothing visible. */
+        snprintf(g_spin_seq[i], sizeof g_spin_seq[i], "\x1b\x37\x1b[%d;%dH%s%s%s\x1b\x38",
                  row, col, SB_ACCENT, SPIN[i], SB_RESET);
     g_spin_frame = 0; g_spin_on = 1;
     { struct sigaction sa; memset(&sa, 0, sizeof sa);
@@ -1000,6 +1005,24 @@ static void paste_preview(LnState *l) {
     refresh(l);                                                   /* redraw the input (placeholder) */
 }
 
+/* ---- exec timer -----------------------------------------------------------
+ * A precise, monotonic wall-clock stopwatch for the status bar's "exec" figure.
+ * CLOCK_MONOTONIC is the right clock for a stopwatch: it never steps under NTP
+ * and (on real hardware) advances at true wall rate.  g_mono_start_ms is stamped
+ * the instant a line is handed to the interpreter, and repl.k reads `sbt[] (this
+ * clock, in ms) both just before and just after the eval and subtracts -- so the
+ * figure is the eval's true wall time, measured entirely in-interpreter and
+ * excluding hook/cleanup overhead.  The previous basis was gettimeofday, which
+ * over-counted a threaded eval on macOS. */
+static double g_mono_start_ms;
+static double mono_ms(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (double)ts.tv_sec * 1000.0 + (double)ts.tv_nsec / 1.0e6;
+}
+static void   exec_timer_begin(void) { g_mono_start_ms = mono_ms(); }
+double        am_ln_exec_ms(void)    { return mono_ms() - g_mono_start_ms; }
+
 char *am_ln_readline(const char *prompt) {
     LnState l;
     char *out;
@@ -1182,6 +1205,7 @@ char *am_ln_readline(const char *prompt) {
     }
 
 done:
+    exec_timer_begin();                              /* start the exec stopwatch at submission */
     disable_raw();
     if (g_sb_on) {
         /* Commit the typed line to the scrolling transcript (region bottom = h-4),
@@ -1308,6 +1332,7 @@ char *am_repl_getline(const char *prompt, size_t *len) {
     if (out[n - 1] != '\n') out[n++] = '\n';
     out[n] = 0;
     if (len) *len = n;
+    exec_timer_begin();                              /* start the exec stopwatch at submission */
     return out;
 }
 

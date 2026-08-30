@@ -53,7 +53,12 @@ A rdlC(A x) {
     mr(x);
     line = am_repl_getline(p ? p : "", &n);
     free(p);
-    if (!line) return emp(tC);
+    if (!line) {           /* end of input (Ctrl-D or a closed pipe): quit cleanly.
+                            * Returning "" here made the repl.k loop reprint the prompt
+                            * forever on a piped stdin (`echo ... | ./a`) instead of
+                            * exiting.  atexit(on_exit_restore) puts the terminal back. */
+        exit(0);
+    }
     r = aCn((S)line, (U)n);
     free(line);
     return r;
@@ -76,4 +81,12 @@ A sbbC(A x) {
     free(m); free(i);
     mr(x);
     return au;
+}
+
+/* `sbt[] -- milliseconds (monotonic wall clock) the just-submitted line has taken
+ * so far.  repl.k reads it immediately after the eval, before its extension
+ * post-hooks, so the status bar's exec figure is the eval's true wall time. */
+A sbtC(A x) {
+    mr(x);
+    return af((F)am_ln_exec_ms());
 }

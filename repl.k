@@ -100,20 +100,22 @@ sM:`c$2                                             / -> RSS in MB (ln.c fills)
 sSP:`c$3                                            / left / right split
 sB:`c$4                                             / -> build kind (ln.c fills)
 / exec time, always in ms to 0.1 ms (a sub-millisecond line reads e.g. "0.5 ms").
-/ sblast is milliseconds; `t[] is microseconds so line's 0.001* factor -> ms.
+/ sblast is milliseconds already: `sbt[] returns monotonic ms since the line was
+/ submitted (ln.c stamps the start at Enter), read in line1 right after the eval.
 sbexec:{($.1*_0.5+10*sblast)," ms"}
 sbpanel:{m:binfo[];rmb:$_0.5+(m@0)%1048576.0;(,sA),"⬡ amber ",(m@4),(,sA),"   ·   exec: ",sbexec[],"   ·   mem: ",(,sM),"/",rmb," MB   ·   [",(,sB),"]",(,sSP),"\\ help   ·   \\\\ exit"}
 sbupd:{$[sbon;`sbb(1;sbpanel[];"");]}
 sbtoggle:{sbon::~sbon;$[sbon;sbupd[];`sbb(0;"";"")]}
 line0:{c:{0x07~*-2#*x}{(l;r):x;(rd prompt;r,,(-2_l))}/(x;());"\n"/(*|c),,*c}
-line1:{$[#x;;:0];x:-1_x;exthook[{ext.pre x};x];t0:`t[];$[(4<#x)&"\\grid"~5#x;gridcmd x;(5<#x)&"\\clear"~6#x;clearcmd[];(2<#x)&"\\sb"~3#x;sbtoggle[];(1<#x)&"\\\\"~2#x;[`sbb(0;"";"");.:x];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;(4<#x)&"\\ast"~4#x;.[`1:(fmt;fmtx)[" "~*x]@.:;,x;onerr];.[`1:(fmt;fmtx)[" "~*x]@.:;,qrwx x;onerr]];sblast::sblast+0.001*`t[]-t0;exthook[{ext.post x};x];1}
+line1:{$[#x;;:0];x:-1_x;exthook[{ext.pre x};x];s0:`sbt[];$[(4<#x)&"\\grid"~5#x;gridcmd x;(5<#x)&"\\clear"~6#x;clearcmd[];(2<#x)&"\\sb"~3#x;sbtoggle[];(1<#x)&"\\\\"~2#x;[`sbb(0;"";"");.:x];(3>#x)&("\\"=*x)&~^(!cmds)?x 1;cmds[x 1]x 1;(4<#x)&"\\ast"~4#x;.[`1:(fmt;fmtx)[" "~*x]@.:;,x;onerr];.[`1:(fmt;fmtx)[" "~*x]@.:;,qrwx x;onerr]];sblast::sblast+`sbt[]-s0;exthook[{ext.post x};x];1}
 / A folded paste arrives as one line with its statements joined by 0x1e (ln.c's
 / read_paste).  Split on it and run each statement through the normal pipeline so
 / a pasted block of many statements evaluates as a unit in a single read.
 runbatch:{[s]{line1 line0 (x,"\n")}'(`c$30)\-1_s;1}
-/ time the WHOLE input line here (not per statement in line1), so a folded paste
-/ of several statements reports the SUM of their run times, not just the last.
-line:{sblast::0;r:$[(|/x=`c$30);runbatch x;line1 line0 x];r}   / sblast is summed inside line1, around the eval only (excludes exthook/cleanup that inflated a big-workspace op's exec time)
+/ sblast accumulates each statement's `sbt[] delta (measured tightly around the
+/ eval INSIDE line1, both clock reads in k), so a folded paste reports the SUM of
+/ its statements' run times.  Reset to 0 here at the start of every input line.
+line:{sblast::0;r:$[(|/x=`c$30);runbatch x;line1 line0 x];r}
 $["repl.k"~basename`argv 1;{cmds::@[cmds;x[1]1;:;{y;`0:x}2_x]}'{(&x~\:80#"-")_x:(1+*&x~\:,"/")_-1_x}@0:`argv 1;];
 / `bi 0 (process/build info) can throw 'domain on non-Linux builds (e.g. macOS);
 / trap it so the banner still renders.  Returns (heap;used;arch;compiler).

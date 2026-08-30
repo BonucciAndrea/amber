@@ -132,6 +132,11 @@ void  am_ln_statusbar(int on, const char *main, const char *info);
  * the vim-style clean-exit alt screen.  A no-op unless the bar armed capture. */
 void  am_ln_sb_capture(const char *s, size_t n);
 
+/* Milliseconds (monotonic wall clock) since the current line was handed to the
+ * interpreter.  repl.k reads this via the `sbt verb right after the eval so the
+ * status bar's "exec" figure is the eval's true wall time. */
+double am_ln_exec_ms(void);
+
 /* ---- provided by src/m.c (needs the interpreter's global table) ---------- */
 /* NUL-separated list of global names, terminated by an extra NUL.  Returns the
  * number of names written. */

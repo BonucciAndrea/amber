@@ -167,7 +167,7 @@ try:
     check(any("100" in l for l in d2[:20]), "[pyte] wheel-up reveals scrolled-off output (100)")
     check(any(l.strip().startswith("╭") for l in d2[18:22]), "[pyte] box stays locked while scrolled")
     check(screen.cursor.y == 21, "[pyte] cursor stays in the box while scrolled")
-    check("SCROLL-BACK" in d2[23], "[pyte] info line shows the scroll-back indicator")
+    check("SCROLL" in d2[23] and "lines up" in d2[23], "[pyte] info line shows the scroll-back indicator")
     for _ in range(12): os.write(m, b"\x1b[<65;5;5M"); pump(0.08)
     pump(0.2)
     check("⬡ amber 2.0.0" in screen.display[23], "[pyte] wheel-down restores the normal info line")
@@ -180,10 +180,24 @@ try:
     def haserr(disp): return any(("undefined_zzz" in l) or ("E0101" in l) or ("not found" in l) for l in disp)
     for _ in range(12):
         os.write(m, b"\x1b[5~"); pump(0.12)                        # PageUp (keyboard scroll)
-        if "SCROLL-BACK" in screen.display[23]: saw_scroll = True
+        if "SCROLL" in screen.display[23]: saw_scroll = True
         if haserr(screen.display): err_back = True; break
     check(saw_scroll, "[pyte] PageUp scrolls the transcript")
     check(err_back, "[pyte] error diagnostics survive scroll-back")
+    # horizontal scroll: a table wider than the 100-col terminal must NOT wrap; the
+    # box lines stay intact (no-wrap clips them), Shift+Right (CSI 1;2C) pans right
+    # and the info line shows the horizontal indicator; Shift+Left returns to live.
+    os.write(m, b"+(`$\"c\",'$!16)!16#,10000+!10\r"); pump(0.5)
+    def boxrow(disp): return next((l for l in disp[:20] if l.strip().startswith("│") and "10000" in l), "")
+    left_view = boxrow(screen.display)
+    check(left_view != "" and len(left_view.rstrip()) <= 100, "[pyte] wide table clips to the terminal (no wrap)")
+    for _ in range(8): os.write(m, b"\x1b[1;2C"); pump(0.08)   # Shift+Right x8 -> pan right
+    pump(0.2)
+    check("cols right" in screen.display[23], "[pyte] horizontal scroll shows the pan indicator")
+    check(boxrow(screen.display) != left_view, "[pyte] horizontal scroll pans the view to hidden columns")
+    for _ in range(30): os.write(m, b"\x1b[1;2D"); pump(0.05)  # Shift+Left -> back to the left edge
+    pump(0.2)
+    check("cols right" not in screen.display[23], "[pyte] Shift+Left returns to the left edge")
     os.write(m, b"\\\\\r"); pump(0.3)
     try: os.close(m)
     except OSError: pass

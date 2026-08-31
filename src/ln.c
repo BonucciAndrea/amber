@@ -343,6 +343,7 @@ static char  g_ring_part[16384];/* the line currently being accumulated */
 static int   g_ring_plen;
 static int   g_sb_capture;      /* tee ow() only while the bar owns the screen */
 static int   g_scroll;          /* lines scrolled up from live (0 = live/bottom) */
+static int   g_hscroll;         /* display columns panned right (0 = left edge); for wide tables */
 static int   g_paste_folded;    /* the queued lines are a folded paste -> suppress per-line echo (used by sb_input's hint) */
 static char  g_paste_ph[80];    /* the "[Pasted text #N +M lines]" placeholder text currently in the buffer */
 static void disable_raw(void) {
@@ -658,10 +659,14 @@ static void sb_infoline(void) {
         lw = sb_expand(lt, left, sizeof left);
         rw = sb_expand(split + 1, right, sizeof right);
     } else { lw = sb_expand(g_sb_panel, left, sizeof left); right[0] = 0; rw = 0; }
-    if (g_scroll > 0) {                                /* scroll-back active: take over the whole line */
-        int n = snprintf(left, sizeof left,
-            "\x1b[1m\xe2\x96\xb2 SCROLL-BACK \xc2\xb7 %d line%s up \xc2\xb7 PgUp/PgDn or wheel \xc2\xb7 any key = live\x1b[0m",
-            g_scroll, g_scroll == 1 ? "" : "s");
+    if (g_scroll > 0 || g_hscroll > 0) {              /* scrolled: take over the whole info line */
+        char vpart[96] = "", hpart[96] = "";
+        int n;
+        if (g_scroll  > 0) snprintf(vpart, sizeof vpart, "\xe2\x96\xb2 %d line%s up \xc2\xb7 ", g_scroll,  g_scroll  == 1 ? "" : "s");
+        if (g_hscroll > 0) snprintf(hpart, sizeof hpart, "\xe2\x96\xb6 %d col%s right \xc2\xb7 ", g_hscroll, g_hscroll == 1 ? "" : "s");
+        n = snprintf(left, sizeof left,
+            "\x1b[1mSCROLL \xc2\xb7 %s%sPgUp/PgDn \xc2\xb7 Shift+\xe2\x86\x90\xe2\x86\x92/wheel \xc2\xb7 any key = live\x1b[0m",
+            vpart, hpart);
         lw = (n > 0 && n < (int)sizeof left) ? sb_disp(left) : 0;
         right[0] = 0; rw = 0;
     }
@@ -741,6 +746,7 @@ static void sb_region(void) {
  * quitting vim.  No in-place erasing to get wrong after a resize. */
 static void sb_teardown(void) {
     ws_("\x1b[r");                                      /* release the scroll region */
+    ws_("\x1b[?7h");                                    /* restore auto-wrap (we turned it off for the box) */
     ws_("\x1b[?1006l\x1b[?1000l");                      /* stop reporting the wheel */
     ws_("\x1b[?1007h");                                 /* restore alternate-scroll to the terminal default */
     if (g_sb_alt) { ws_("\x1b[?1049l"); g_sb_alt = 0; } /* leave the alt screen -> original restored */
@@ -767,6 +773,10 @@ void am_ln_statusbar(int on, const char *panel, const char *info) {
         ws_("\x1b[?1000h\x1b[?1006h");                   /* report the wheel (SGR mouse) so scroll-up can
                                                           * page the internal transcript with the box
                                                           * locked.  Shift bypasses it for text selection. */
+        ws_("\x1b[?7l");                                 /* no auto-wrap: output wider than the terminal
+                                                          * (a wide table) CLIPS at the right edge instead
+                                                          * of wrapping into a mangled box -- Shift+arrows or
+                                                          * the horizontal wheel then pan to the hidden cols. */
         g_sb_alt = 1;
         g_sb_capture = 1;                                /* start teeing ow() into the scroll-back ring */
         ring_clear();
@@ -974,7 +984,7 @@ static const char *ring_get(int idx) {
 }
 static void ring_clear(void) {
     int i; for (i = 0; i < SB_RING; i++) { free(g_ring[i]); g_ring[i] = NULL; }
-    g_ring_n = g_ring_head = g_ring_plen = 0; g_scroll = 0;
+    g_ring_n = g_ring_head = g_ring_plen = 0; g_scroll = 0; g_hscroll = 0;
 }
 /* Called from m.c's ow() for every kernel stdout write. Splits on '\n' into
  * ring lines; a bare '\r' (in-place redraw) restarts the current line. */
@@ -992,6 +1002,47 @@ void am_ln_sb_capture(const char *s, size_t n) {
  * offset.  The footer rows are never touched, so the box stays locked; auto-wrap
  * is off for the duration so an over-wide line truncates instead of spilling
  * onto the box or scrolling the region. */
+/* Display width of a ring line in terminal columns: ANSI/CSI escapes count 0,
+ * every other UTF-8 character counts 1 (continuation bytes 0x80-0xBF don't
+ * advance).  Matches amber.k's vlen(), which the grid renderer uses. */
+static int sb_dispw(const char *L) {
+    int col = 0; const unsigned char *p = (const unsigned char *)L;
+    while (*p) {
+        if (*p == 0x1b) {                     /* escape sequence -> zero width */
+            p++;
+            if (*p == '[') { p++; while (*p && !(*p >= 0x40 && *p <= 0x7e)) p++; if (*p) p++; }
+            else if (*p) p++;
+            continue;
+        }
+        p++; while ((*p & 0xC0) == 0x80) p++; /* skip UTF-8 continuation bytes */
+        col++;
+    }
+    return col;
+}
+/* Write the horizontal slice of ring line L spanning display columns
+ * [hoff, hoff+w).  Escapes are always emitted (so the SGR colour state at the
+ * window's left edge is correct even after scrolling right); visible glyphs
+ * outside the window are dropped.  A trailing reset keeps the next row clean.
+ * With hoff==0 this simply CLIPS the line to w columns -- which is what stops a
+ * table wider than the terminal from wrapping into a mangled box. */
+static void sb_hslice(const char *L, int hoff, int w) {
+    int col = 0, end = hoff + w;
+    const unsigned char *p = (const unsigned char *)L;
+    while (*p) {
+        if (*p == 0x1b) {
+            const unsigned char *s = p++;
+            if (*p == '[') { p++; while (*p && !(*p >= 0x40 && *p <= 0x7e)) p++; if (*p) p++; }
+            else if (*p) p++;
+            if (col < end) wr((const char *)s, (int)(p - s));
+            continue;
+        }
+        const unsigned char *s = p++;
+        while ((*p & 0xC0) == 0x80) p++;
+        if (col >= hoff && col < end) wr((const char *)s, (int)(p - s));
+        if (++col >= end) break;
+    }
+    ws_("\x1b[0m");
+}
 static void sb_repaint_region(void) {
     int rows = term_rows(), cols = term_cols(), rh = rows - SB_FOOT, i, bottom;
     char seq[48];
@@ -1009,11 +1060,9 @@ static void sb_repaint_region(void) {
     for (i = 0; i < rh; i++) {
         int line = bottom - (rh - 1 - i);
         sprintf(seq, "\x1b[%d;1H\x1b[2K", i + 1); ws_(seq);
-        if (line >= 0 && line < g_ring_n) { const char *L = ring_get(line); wr(L, strlen(L)); ws_("\x1b[0m"); }
+        if (line >= 0 && line < g_ring_n) sb_hslice(ring_get(line), g_hscroll, cols);
     }
-    (void)cols;
-    ws_("\x1b[?7h");                          /* restore auto-wrap for live output */
-    sb_infoline();                            /* info line shows the scroll-back indicator */
+    sb_infoline();                            /* info line shows the scroll indicators */
     ws_("\x1b\x38");                          /* restore cursor */
 }
 /* Rebuild the entire screen for the CURRENT terminal geometry.  Called for every
@@ -1055,9 +1104,30 @@ static void sb_scroll_by(int delta) {
     if (g_scroll == old) return;                    /* already at a boundary (e.g. scroll down at live) -> leave the screen alone */
     sb_repaint_region();
 }
-static void sb_scroll_reset(void) {           /* snap back to live and repaint the tail */
-    if (!g_scroll) return;
-    g_scroll = 0;
+/* Widest visible ring line minus the terminal width: the furthest right we can
+ * usefully pan (0 when everything already fits). */
+static int sb_max_hscroll(void) {
+    int rows = term_rows(), rh = rows - SB_FOOT, cols = term_cols();
+    int bottom = g_ring_n - 1 - g_scroll, i, maxw = 0, m;
+    for (i = 0; i < rh; i++) {
+        int line = bottom - (rh - 1 - i);
+        if (line >= 0 && line < g_ring_n) { int dw = sb_dispw(ring_get(line)); if (dw > maxw) maxw = dw; }
+    }
+    m = maxw - cols; return m < 0 ? 0 : m;
+}
+static void sb_hscroll_by(int delta) {        /* pan the transcript left/right for wide output */
+    int old = g_hscroll, maxh;
+    if (!g_sb_on) return;
+    maxh = sb_max_hscroll();
+    g_hscroll += delta;
+    if (g_hscroll < 0) g_hscroll = 0;
+    if (g_hscroll > maxh) g_hscroll = maxh;
+    if (g_hscroll == old) return;
+    sb_repaint_region();
+}
+static void sb_scroll_reset(void) {           /* snap back to live (bottom-left) and repaint the tail */
+    if (!g_scroll && !g_hscroll) return;
+    g_scroll = 0; g_hscroll = 0;
     sb_repaint_region();
 }
 static void pq_clear(void){ while(g_pq_i<g_pq_n) free(g_pq[g_pq_i++]); free(g_pq); g_pq=NULL; g_pq_n=g_pq_i=0; }
@@ -1429,8 +1499,10 @@ restart:
                     while (rd1(&t) && t >= '0' && t <= '9') pb = pb*10 + (t-'0');
                     while (t && t != 'M' && t != 'm') { if (!rd1(&t)) break; }
                     if (g_sb_on) {                          /* scroll the transcript, box stays locked */
-                        if (pb == 64)      { sb_scroll_by(+3); refresh(&l); }  /* wheel up   -> older */
-                        else if (pb == 65) { sb_scroll_by(-3); refresh(&l); }  /* wheel down -> newer */
+                        if (pb == 64)      { sb_scroll_by(+3);  refresh(&l); }  /* wheel up    -> older */
+                        else if (pb == 65) { sb_scroll_by(-3);  refresh(&l); }  /* wheel down  -> newer */
+                        else if (pb == 66) { sb_hscroll_by(-6); refresh(&l); }  /* wheel left  -> pan left */
+                        else if (pb == 67) { sb_hscroll_by(+6); refresh(&l); }  /* wheel right -> pan right */
                     }
                     l.ghost[0] = 0;
                     continue;                               /* the wheel never edits the line */
@@ -1449,6 +1521,16 @@ restart:
                        200~/201~ are bracketed paste, 3~ Delete, 1~/7~ Home, 4~/8~ End */
                     int num = s[1] - '0'; char t = 0;
                     while (rd1(&t) && t >= '0' && t <= '9') num = num*10 + (t-'0');
+                    if (t == ';') {                                 /* CSI 1 ; mod letter -> a MODIFIED key */
+                        int mod = 0;                                /* 2=Shift 3=Alt 5=Ctrl ... (unused: any mod pans) */
+                        while (rd1(&t) && t >= '0' && t <= '9') mod = mod*10 + (t-'0');
+                        (void)mod;
+                        if (g_sb_on && (t == 'C' || t == 'D')) {    /* Shift/Ctrl/Alt + Right/Left -> pan the box */
+                            sb_hscroll_by(t == 'C' ? +8 : -8); refresh(&l);
+                        }
+                        l.ghost[0] = 0;
+                        continue;                                   /* modified arrows never edit the line */
+                    }
                     if (t == '~') {
                         if (num == 200) { if (read_paste(&l)) goto done; }  /* pasted block */
                         else if ((num == 5 || num == 6) && g_sb_on) {        /* PageUp / PageDown: scroll-back */

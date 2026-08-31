@@ -44,8 +44,10 @@ prd:{$[0=#x;$[`F=@x;1.0;1];*/x]}       / empty: keep the float type
 min:{&/x}
 max:{|/x}
 avg:{(+/x)%#x}
-wsum:{+/x*y}
-wavg:{(+/x*y)%+/x}
+/ fused dot (`wsm) when both sides are float vectors: no product vector is
+/ built, so the 80MB temporary `+/x*y` writes and re-reads never exists.
+wsum:{$[(`F=@x)&`F=@y;`wsm(x;y);+/x*y]}
+wavg:{(wsum[x;y])%+/x}
 var:{avg{x*x}x-avg x}
 dev:{sqrt var x}
 svar:{(n*var x)%-1+n:#x}

@@ -66,6 +66,50 @@ X1(asc,Rt(opn(x))Rm(grdm(x,asc))RM(K1("{(!#x){x@<y x}/|.+x}",x))RS(asc(str(x)))R
  R4(tH,tI,tL,tF,P(xn-(I)xn,ez(x))N n=xn;A y=cntgrd(x);I(!y,y=rdxg(x))P(!y,ascB(x))x(ct(tZ(n-1),y)))
  R_(P(xn-(I)xn,ez(x))ascB(x)))
 X1(dsc,RMT(x=rev(asc(rev(x)));sub(ai(xN-1),x))Rm(grdm(x,dsc))Ril(cls(gl(x)))R_(et(x)))
+// amber: O(n) direct-indexed group for a 32-bit int vector.  This is the hot
+// case: SYMBOLS reach it through cSI (tS is stored as interned 4-byte ids), so
+// every `select ... by sym` lands here, as do the group_* benchmarks whose keys
+// are `k!H` -- dense small non-negative integers.
+//
+// The path this replaces graded the vector (`<x`) and cut it at the boundaries:
+// a full O(n log n) sort to answer a question that only needs equal elements
+// collected.  tG and tH already did the counting version (see RGC/RH below);
+// this is the same idea with the table sized at run time instead of 256/65536.
+//
+// Two passes, both sequential: the first counts occurrences and records each
+// key the FIRST time it is seen, which is exactly the first-appearance key
+// order the old result had -- the partition and the key order are byte-identical,
+// which is the invariant the 2.0.0 id-based change was careful to preserve.
+// The second scatters row indices into the per-group vectors.
+//
+// Returns 0 (not an error) when the value range is too wide to index, and the
+// caller falls back to the sort path: a sparse sweep over a huge table is worse
+// than sorting.  Workspace comes from the HFT scratch arena, as in src/v.c.
+Z A grpI(A x){
+ N n=xn;CO I*RES v=(CO I*)_V(x);
+ I mn=v[0],mx=v[0];
+ F(n,I t=v[i];I(t<mn,mn=t)I(t>mx,mx=t))
+ L rng=(L)mx-(L)mn+1;
+ // cap the table both absolutely and relative to the data: 4M slots, and no
+ // more than 8 slots per row, so a sparse key space cannot blow up the sweep.
+ P(rng>((L)1<<22)||rng>8*(L)n+1024,0)
+ ArenaMark mk=arena_mark();
+ U*RES cnt=(U*)arena_alloc((size_t)rng*SZ(U));P(!cnt,arena_release(mk);0)
+ U*RES gid=(U*)arena_alloc((size_t)rng*SZ(U));P(!gid,arena_release(mk);0)
+ L md=(L)n<rng?(L)n:rng;
+ I*RES fst=(I*)arena_alloc((size_t)md*SZ(I));P(!fst,arena_release(mk);0)
+ MS(cnt,0,(size_t)rng*SZ(U));
+ U nb=0;
+ F(n,L k=(L)v[i]-mn;I(!cnt[k]++,gid[k]=nb;fst[nb]=v[i];nb++))
+ A z=aA(nb);P(!z,arena_release(mk);0)
+ F(nb,_A(z)[i]=aI(cnt[(L)fst[i]-mn]))
+ U*RES fil=(U*)arena_alloc((size_t)nb*SZ(U));P(!fil,arena_release(mk);mr(z);0)
+ MS(fil,0,(size_t)nb*SZ(U));
+ F(n,L k=(L)v[i]-mn;U s=gid[k];_I(_A(z)[s])[fil[s]++]=i)
+ A ky=aV(tI,nb,fst);          // copies out of the arena before it is released
+ arena_release(mk);
+ return am(ky,z);
+}
 Z A cSI(A);// amber 2.0.0: symbol<->int-id reinterpret (defined just below), used by grp's tS fast path
 X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x))
  // amber 2.0.0: group a SYMBOL vector by its interned 4-byte id (tS is stored as
@@ -86,7 +130,9 @@ X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x
  // REGRESSION. Restored verbatim; the lesson is recorded rather than the code.
  RGC(A r[  256]={};UC b[  256];U nb=0;U c[  256]={};F(xn,UC v=xg;I(!c[v]++,b[nb++]=v))A z=aA(nb);F(nb,za=r[b[i]]=aI(c[b[i]]))I(!nb,*zA=emp(tG))MS(c,0,SZ c);F(xn,UC v=xg;_I(r[v])[c[v]++]=i)x(am(aV(xt,nb,b),z)))
  RH( A r[65536]={};UH b[65536];U nb=0;U c[65536]={};F(xn,UH v=xh;I(!c[v]++,b[nb++]=v))A z=aA(nb);F(nb,za=r[b[i]]=aI(c[b[i]]))I(!nb,*zA=emp(tG))MS(c,0,SZ c);F(xn,UH v=xh;_I(r[v])[c[v]++]=i)x(am(aV(xt,nb,b),z)))
- RI(K1("{$[x;x[*'g]!g@:<g:(&~(~*s)=':s:x i)_i:<x;x!0#,!0]}",x))
+ RI(P(!xn,K1("{x!0#,!0}",x))
+  {A g_=grpI(x);P(g_,x(g_))}   /* O(n) counting group; 0 = range too wide, sort instead */
+  K1("{$[x;x[*'g]!g@:<g:(&~(~*s)=':s:x i)_i:<x;x!0#,!0]}",x))
  R5(tA,tE,tL,tF,tM,K1("{$[#x;x[*'g]!g@:<g:(&~x~':x i)_i:<x;x!0#,!0]}",x)))
 Z A1(cSI,Q(xtS||xtI)C t=tS^tI^xt;MINE(x)?AT(t,x):x(aV(t,xn,xV)))
 X1(unq,RM(en(x))Rm(unq(val(x)))RE(x)RS(cSI(unq(cSI(x))))Ril(rndF(gl(x)))R_(et(x))RB(unq(cG(x)))

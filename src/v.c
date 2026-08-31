@@ -404,6 +404,40 @@ Z B cntrange(A x,L*lo,L*hi){
  for(N i=1;i<n;i++){L v=RD4(w,p,i);if(v<a)a=v;if(v>b)b=v;}
  *lo=a;*hi=b;return 1;}
 
+// amber: VALUE-based range for a FLOAT vector.  cntrange() above reads raw bit
+// patterns, so 0.0..999.0 spans several exponents, the guard rejects it, and the
+// data falls to the radix -- even though it is a thousand small integers wearing
+// a float coat, which is exactly what a tick feed produces (prices, sizes and
+// ids all arrive integral).  Reading VALUES instead lets the counting kernel
+// take it.  Measured at 10M elements holding 1000 distinct values: grade is
+// 136 ms as float64 and 10 ms as int32 -- the same work, 13.6x apart, purely
+// because of which branch the type test picked.
+//
+// Left to the radix (return 0) when any element is non-integral, NaN, infinite,
+// beyond 2^53 where doubles stop representing consecutive integers, or is
+// NEGATIVE ZERO.  That last one is not pedantry: the existing float order puts
+// -0.0 strictly before 0.0 -- `<(0.0;-0.0;1.0)` is `1 0 2` -- and a counting
+// sort keyed on the integer value cannot separate them, so admitting -0.0 would
+// silently change the permutation.  Byte-identical output is the contract.
+// *srt comes back 1 when the column is ALREADY non-decreasing.  The radix
+// notices this too (see RDXK below) and answers in one pass with the identity;
+// without reporting it here the counting kernel would win the dispatch and pay
+// for a full histogram + scatter on input that needs neither.  Measured: taking
+// the counting path on sorted 10M float64 costs 76 ms against the radix's 35 ms.
+Z NI B cntrangeF(A x,L*lo,L*hi,B*srt){
+ N n=_n(x);
+ if(_t(x)!=tF||n<2)return 0;
+ CO F*RES a=(CO F*)_V(x);
+ L mn=0,mx=0;B up=1;F pv=0;
+ for(N i=0;i<n;i++){F u=a[i];
+  if(!(u>=-9007199254740992.0&&u<=9007199254740992.0))return 0;   // NaN, +-inf, >2^53
+  L k=(L)u;
+  if((F)k!=u)return 0;                                            // not integral
+  if(u==0.0&&__builtin_signbit(u))return 0;                       // -0.0 sorts before 0.0
+  if(i&&u<pv)up=0;pv=u;
+  if(!i){mn=mx=k;}else{if(k<mn)mn=k;if(k>mx)mx=k;}}
+ *lo=mn;*hi=mx;*srt=up;return 1;}
+
 // Guard shared by both kernels: the histogram must be cheaper than ordering the
 // elements (rg/2 < n), and must fit the cache budget. rg==0 means the span
 // wrapped the whole 64-bit line, which is never small.
@@ -416,7 +450,12 @@ Z B cntok(L lo,L hi,N n,W*rg){
 // stable and order by the same key. Returns aI(n) like rdxg.
 A cntgrd(A x){
  L lo,hi;W rg;N n=_n(x);
- if(!cntrange(x,&lo,&hi))return 0;
+ B isf=_t(x)==tF,srt=0;                        // float holding integral values
+ if(isf?!cntrangeF(x,&lo,&hi,&srt):!cntrange(x,&lo,&hi))return 0;
+ // already ordered: the answer IS the identity, and a stable sort must return
+ // exactly that.  One pass total, where the old float route needed the radix's
+ // separate detection pass on top of this one.
+ if(srt&&n==(N)(U)(I)n){A y=aI((U)n);I*RES o=(I*)_V(y);for(N i=0;i<n;i++)o[i]=(I)i;return y;}
  if(!cntok(lo,hi,n,&rg))return 0;
  if(n!=(N)(U)(I)n)return 0;                    // grade indices are 32-bit
  UC t=_t(x);U w=t==tG?0:t==tH?1:t==tI?2:3;
@@ -424,11 +463,14 @@ A cntgrd(A x){
  N*RES c=(N*)arena_alloc((N)rg*SZ(N));
  if(!c){arena_release(mk);return 0;}
  MS(c,0,(N)rg*SZ(N));
- CO V*p=_V(x);
- for(N i=0;i<n;i++)c[(W)RD4(w,p,i)-(W)lo]++;
+ CO V*p=_V(x);CO F*RES f=(CO F*)p;
+ if(isf){for(N i=0;i<n;i++)c[(W)(L)f[i]-(W)lo]++;}
+ else   {for(N i=0;i<n;i++)c[(W)RD4(w,p,i)-(W)lo]++;}
  {N s=0;for(W b=0;b<rg;b++){N k=c[b];c[b]=s;s+=k;}}
  A y=aI((U)n);I*RES o=(I*)_V(y);
- for(N i=0;i<n;i++)o[c[(W)RD4(w,p,i)-(W)lo]++]=(I)i;   // forward pass => stable
+ // forward pass => stable, so ties keep input order exactly as the radix does
+ if(isf){for(N i=0;i<n;i++)o[c[(W)(L)f[i]-(W)lo]++]=(I)i;}
+ else   {for(N i=0;i<n;i++)o[c[(W)RD4(w,p,i)-(W)lo]++]=(I)i;}
  arena_release(mk);
  return y;}
 

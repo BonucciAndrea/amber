@@ -142,8 +142,73 @@ Z A unqHASH(A x,U wx){
  free(tab);
  return AN(m,z);}
 
+// amber: the same value-based idea as v.c's cntrangeF, applied to DISTINCT.
+// unqL below rejected every float outright (`if(!(xtH||xtI||xtL))return 0;`), so
+// `?x` on a float column fell all the way to the K-level sort-and-dedupe.
+// Measured at 10M elements holding 1000 distinct values: 10 ms as int32 against
+// 423 ms as float64 -- 42x apart for identical data, decided purely by a type
+// test.  A tick feed's prices, sizes and ids are all integral floats.
+//
+// Same exclusions as the sort side.  NEGATIVE ZERO in particular must be left to
+// the old path: `?` separates -0.0 from 0.0 (`?(0.0;-0.0)` returns both) while
+// the integer key cannot, so admitting it would silently drop an element.
+Z NI B unqrangeF(A x,L*lo,W*rg){
+ U n=xn;
+ if(!xtF||n<2)return 0;
+ CO F*RES a=(CO F*)xV;
+ L mn=0,mx=0;
+ for(U i=0;i<n;i++){F u=a[i];
+  if(!(u>=-9007199254740992.0&&u<=9007199254740992.0))return 0;   // NaN, +-inf, >2^53
+  L k=(L)u;
+  if((F)k!=u)return 0;                                            // not integral
+  if(u==0.0&&__builtin_signbit(u))return 0;                       // -0.0 is distinct from 0.0
+  if(!i){mn=mx=k;}else{if(k<mn)mn=k;if(k>mx)mx=k;}}
+ W r=(W)mx-(W)mn+1;
+ if(!r)return 0;
+ *lo=mn;*rg=r;return 1;}
+
+// Both float modes key on the integer VALUE but emit the original double, so
+// first-appearance order -- the contract stated above -- is preserved exactly.
+Z NI A unqLUTF(A x,L lo,W rg){
+ U n=xn;CO F*RES a=(CO F*)xV;
+ UC*seen=amal((N)rg);
+ if(!seen)return 0;
+ MS(seen,0,(N)rg);
+ A z=an(n,xt);F*RES r=(F*)zV;U m=0;
+ for(U i=0;i<n;i++){W s=(W)(L)a[i]-(W)lo;
+  if(!seen[s]){seen[s]=1;r[m++]=a[i];}}
+ free(seen);
+ return AN(m,z);}
+
+Z NI A unqHASHF(A x){
+ U n=xn;CO F*RES a=(CO F*)xV;
+ W cap=16,need=2*(W)n;U lg;
+ while(cap<need)cap<<=1;
+ {W c=cap;lg=0;while(c>1){c>>=1;lg++;}}
+ U sh=64-lg;W msk=cap-1;
+ W*tab=amal((N)cap*SZ(W));
+ if(!tab)return 0;
+ MS(tab,0,(N)cap*SZ(W));
+ A z=an(n,xt);F*RES r=(F*)zV;U m=0;B has0=0;
+ for(U i=0;i<n;i++){L v=(L)a[i];W k=(W)v+1;
+  if(!k){if(!has0){has0=1;r[m++]=a[i];}continue;}
+  W j=(k*GOLD)>>sh;
+  while(tab[j]&&tab[j]!=k)j=(j+1)&msk;
+  if(!tab[j]){tab[j]=k;r[m++]=a[i];}}
+ free(tab);
+ return AN(m,z);}
+
+// The float branch is deliberately LAST and behind a noinline call.  Putting it
+// first, inline, cost the INTEGER path 53% (12.0 -> 18.4 ms on 10M) purely
+// through code layout -- the hot integer loop stopped being inlined once unqL
+// grew.  Measured, not guessed; the ordering here is load-bearing.
+Z NI A unqF(A x){
+ L lo;W rg;
+ if(!unqrangeF(x,&lo,&rg))return 0;
+ return rg<=LUTDOM?unqLUTF(x,lo,rg):unqHASHF(x);}
+
 A unqL(A x){
- if(!(xtH||xtI||xtL))return 0;
+ if(!(xtH||xtI||xtL))return xtF?unqF(x):0;
  U n=xn,wx=xw-3;
  if(n<2||wx>3)return 0;
  CO V*a=xV;

@@ -15,10 +15,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 D = json.load(open(os.path.join(HERE, "results.json")))
 
 # Engine display order + short labels for the wide matrix.
-ORDER = ["c", "amber-native", "amber", "amber-qsql", "q", "peachq", "ngnk",
+ORDER = ["c", "amber-native", "amber", "amber-qsql", "peachq", "ngnk",
          "cbqn", "j", "numpy", "pandas", "polars", "duckdb", "amber-mt"]
 SHORT = {"c": "C", "amber-native": "Amber<sub>nat</sub>", "amber": "Amber",
-         "amber-qsql": "Amber<sub>qSQL</sub>", "q": "kdb+/q", "peachq": "PeachQ",
+         "amber-qsql": "Amber<sub>qSQL</sub>", "peachq": "PeachQ",
          "ngnk": "ngn/k", "cbqn": "CBQN", "j": "J", "numpy": "NumPy",
          "pandas": "pandas", "polars": "Polars", "duckdb": "DuckDB",
          "amber-mt": "Amber<sub>14t</sub>"}
@@ -72,7 +72,7 @@ def best(op):
 def ratios():
     out = []
     for op in [o for _, ops in CATS for o in ops]:
-        a, _ = cell(op, "amber-native"); q, _ = cell(op, "q")
+        a, _ = cell(op, "amber-native"); q, _ = cell(op, "c")
         if a and q: out.append((op, a, q, q / a))
     return sorted(out, key=lambda r: -r[3])
 
@@ -85,7 +85,6 @@ def h_machine():
   <div><span class="bm-k">SIMD</span><span class="bm-v">{html.escape(m['simd'])}</span></div>
   <div><span class="bm-k">OS</span><span class="bm-v">{html.escape(m['os'])}</span></div>
   <div><span class="bm-k">Rows</span><span class="bm-v">N = {D['n']:,} &middot; {D['runs']} timed runs, {D['warmup']} warm-up</span></div>
-  <div><span class="bm-k">kdb+/q</span><span class="bm-v">{html.escape(m['q'])}</span></div>
   <div><span class="bm-k">Amber</span><span class="bm-v">build {html.escape(str(m['amber']))}</span></div>
 </div>"""
 
@@ -104,7 +103,7 @@ def h_diverging():
                 f'<span class="dv-ms">{fmt(a)} / {fmt(q)} ms</span></div>')
     body = "".join(bar(*r) for r in rs)
     return f"""<div class="dv-chart">
-  <div class="dv-head"><span>operation</span><span class="dv-axis"><em>q faster</em><b></b><em>Amber faster</em></span><span></span><span class="dv-ms">Amber / q</span></div>
+  <div class="dv-head"><span>operation</span><span class="dv-axis"><em>C faster</em><b></b><em>Amber faster</em></span><span></span><span class="dv-ms">Amber / C</span></div>
   {body}
 </div>
 <p class="bm-sum">Amber is faster on <strong>{len(wins)} of {len(rs)}</strong> operations, slower on <strong>{len(losses)}</strong>.
@@ -247,15 +246,15 @@ def md_out():
     for k, v in [("CPU", "%s (%s cores)" % (m["cpu"], m["cores"])), ("SIMD", m["simd"]),
                  ("OS", m["os"]), ("Compiler", m["gcc"]), ("Rows", "N = {:,}".format(D["n"])),
                  ("Runs", "%s timed, %s warm-up" % (D["runs"], D["warmup"])),
-                 ("kdb+/q", m["q"]), ("PeachQ", m["peachq"]), ("CBQN", m["cbqn"]),
+                 ("PeachQ", m["peachq"]), ("CBQN", m["cbqn"]),
                  ("NumPy / pandas", "%s / %s" % (m["numpy"], m["pandas"])),
                  ("Polars / DuckDB", "%s / %s" % (m["polars"], m["duckdb"])),
                  ("Amber build", str(m["amber"]))]:
         o.append("| **%s** | %s |" % (k, v))
     o.append("")
     rs = ratios()
-    o.append("### Amber vs kdb+/q — all %d operations\n" % len(rs))
-    o.append(md_table(["operation", "Amber (ms)", "kdb+/q (ms)", "ratio", "what it is"],
+    o.append("### Amber vs the C reference — all %d operations\n" % len(rs))
+    o.append(md_table(["operation", "Amber (ms)", "C (ms)", "ratio", "what it is"],
         [["`%s`" % op, fmt(a), fmt(q),
           ("**%.2fx faster**" % r) if r >= 1 else ("%.2fx slower" % (1 / r)), DESC.get(op, "")]
          for op, a, q, r in rs],

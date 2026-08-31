@@ -365,7 +365,7 @@ tests/run_tests.sh          # EVERYTHING: build + all K suites + C unit tests + 
 ./amber tests/test_matrix.k # the suites are self-locating - run them from any directory
 tests/run_tests.sh --asan   # ... and re-run it all under AddressSanitizer + UBSan
 bash bench/run.sh           # cross-engine sanity + speed (Amber vs numpy/pandas/…; see BENCHMARKS.md)
-python3 bench/scout/scout.py     # the widest run: 23 ops x 14 engines (kdb+/q, PeachQ, ngn/k,
+python3 bench/scout/scout.py     # the widest run: 23 ops x 13 engines (PeachQ, ngn/k,
                                  #   CBQN, J, NumPy, pandas, Polars, DuckDB, a C reference)
 python3 bench/scout/webgen.py --md   # regenerate the tables in docs/BENCHMARKS.md from results.json
 ```

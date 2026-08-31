@@ -228,9 +228,8 @@ untouched). A non-qSQL script is passed through byte-for-byte. (`test_qsql.k` +
 - Grouping a table **by a symbol column** is now ~19&times; faster: `group`
   (`src/o.c`) groups symbols by their interned 4-byte id instead of lexically
   string-sorting them. Same partition, byte-identical first-appearance key order;
-  `select … by sym` on 1M rows went 587&nbsp;ms → 34&nbsp;ms. Verified against a real
-  kdb+/q on the same machine (`docs/BENCHMARKS.md`, and the benchmarks page on the
-  site). (`test.k`, 6 cases.)
+  `select … by sym` on 1M rows went 587&nbsp;ms → 34&nbsp;ms — Amber's own before/after
+  (`docs/BENCHMARKS.md`, and the benchmarks page on the site). (`test.k`, 6 cases.)
 - Right-to-left evaluation of a function's bracketed arguments (already the case,
   and matching kdb+/q) is now pinned by side-effect-based regression tests, together
   with nested/chained-bracket results, so a parser change can't silently flip them

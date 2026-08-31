@@ -6,7 +6,6 @@
   "os": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
   "gcc": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0",
   "python": "3.12.3",
-  "q": "4.1 (w64)",
   "peachq": "0.81 (Rayforce)",
   "cbqn": "CBQN on commit af583e19566a032b89e0077b866b0ba0dcc2a365",
   "j": "j9.6.3/j64/linux/commercial/www.jsoftware.com/2025-04-05T16:24:35/clang-11-0-0/SLEEF=1",
@@ -38,11 +37,6 @@
   "amber-qsql": {
    "label": "Amber qSQL layer",
    "note": "select ... by ... from; fair peer of DuckDB SQL",
-   "mt": false
-  },
-  "q": {
-   "label": "kdb+/q",
-   "note": "the reference to beat",
    "mt": false
   },
   "peachq": {
@@ -119,14 +113,6 @@
    },
    "amber-qsql": {
     "status": "SKIP"
-   },
-   "q": {
-    "status": "OK",
-    "wall_s": 0.6311542987823486,
-    "answer": 4993794647.0,
-    "check": 19930924430.0,
-    "ms": 6.2291,
-    "timing": "in-engine"
    },
    "peachq": {
     "status": "OK",
@@ -229,14 +215,6 @@
    "amber-qsql": {
     "status": "SKIP"
    },
-   "q": {
-    "status": "OK",
-    "wall_s": 0.7041721343994141,
-    "answer": 999.0,
-    "check": 19930924430.0,
-    "ms": 6.294,
-    "timing": "in-engine"
-   },
    "peachq": {
     "status": "OK",
     "wall_s": 2.0610709190368652,
@@ -337,14 +315,6 @@
    },
    "amber-qsql": {
     "status": "SKIP"
-   },
-   "q": {
-    "status": "OK",
-    "wall_s": 0.7927987575531006,
-    "answer": 2510224600637.0,
-    "check": 19930924430.0,
-    "ms": 18.8157,
-    "timing": "in-engine"
    },
    "peachq": {
     "status": "OK",
@@ -447,14 +417,6 @@
    "amber-qsql": {
     "status": "SKIP"
    },
-   "q": {
-    "status": "OK",
-    "wall_s": 0.6599342823028564,
-    "answer": 4993794647.0,
-    "check": 19930924430.0,
-    "ms": 6.9815,
-    "timing": "in-engine"
-   },
    "peachq": {
     "status": "OK",
     "wall_s": 1.6460561752319336,
@@ -555,14 +517,6 @@
    },
    "amber-qsql": {
     "status": "SKIP"
-   },
-   "q": {
-    "status": "OK",
-    "wall_s": 1.1355061531066895,
-    "answer": 17187568834.0,
-    "check": 19930924430.0,
-    "ms": 64.2512,
-    "timing": "in-engine"
    },
    "peachq": {
     "status": "OK",
@@ -665,14 +619,6 @@
    "amber-qsql": {
     "status": "SKIP"
    },
-   "q": {
-    "status": "OK",
-    "wall_s": 6.738619089126587,
-    "answer": 2496.0,
-    "check": 19930924430.0,
-    "ms": 1194.0352,
-    "timing": "in-engine"
-   },
    "peachq": {
     "status": "OK",
     "wall_s": 6.5230302810668945,
@@ -773,14 +719,6 @@
    },
    "amber-qsql": {
     "status": "SKIP"
-   },
-   "q": {
-    "status": "OK",
-    "wall_s": 2.18287992477417,
-    "answer": 2496.0,
-    "check": 19930924430.0,
-    "ms": 26.1484,
-    "timing": "in-engine"
    },
    "peachq": {
     "status": "OK",
@@ -883,14 +821,6 @@
    "amber-qsql": {
     "status": "SKIP"
    },
-   "q": {
-    "status": "OK",
-    "wall_s": 0.8456647396087646,
-    "answer": 465901450.0,
-    "check": 19930924430.0,
-    "ms": 43.1087,
-    "timing": "in-engine"
-   },
    "peachq": {
     "status": "OK",
     "wall_s": 1.7445268630981445,
@@ -992,14 +922,6 @@
    "amber-qsql": {
     "status": "SKIP"
    },
-   "q": {
-    "status": "OK",
-    "wall_s": 0.945500373840332,
-    "answer": 4993794647.0,
-    "check": 19930924430.0,
-    "ms": 23.0793,
-    "timing": "in-engine"
-   },
    "peachq": {
     "status": "OK",
     "wall_s": 2.7993950843811035,
@@ -1092,14 +1014,6 @@
    },
    "amber-qsql": {
     "status": "SKIP"
-   },
-   "q": {
-    "status": "OK",
-    "wall_s": 0.9363715648651123,
-    "answer": 9535.0,
-    "check": 19930924430.0,
-    "ms": 44.907399999999996,
-    "timing": "in-engine"
    },
    "peachq": {
     "status": "OK",
@@ -1202,14 +1116,6 @@
    "amber-qsql": {
     "status": "SKIP"
    },
-   "q": {
-    "status": "OK",
-    "wall_s": 0.739804744720459,
-    "answer": 1000499500.0,
-    "check": 19930924430.0,
-    "ms": 15.725499999999998,
-    "timing": "in-engine"
-   },
    "peachq": {
     "status": "OK",
     "wall_s": 4.434422016143799,
@@ -1310,14 +1216,6 @@
    },
    "amber-qsql": {
     "status": "SKIP"
-   },
-   "q": {
-    "status": "OK",
-    "wall_s": 0.9131655693054199,
-    "answer": 104999950000.0,
-    "check": 19930924430.0,
-    "ms": 17.147299999999998,
-    "timing": "in-engine"
    },
    "peachq": {
     "status": "OK",
@@ -1423,14 +1321,6 @@
     "answer": 27530841770.0,
     "check": 19930924430.0,
     "ms": 83.897,
-    "timing": "in-engine"
-   },
-   "q": {
-    "status": "OK",
-    "wall_s": 2.5940005779266357,
-    "answer": 27530841770.0,
-    "check": 19930924430.0,
-    "ms": 121.5346,
     "timing": "in-engine"
    },
    "peachq": {
@@ -1539,14 +1429,6 @@
     "ms": 197.919,
     "timing": "in-engine"
    },
-   "q": {
-    "status": "OK",
-    "wall_s": 2.1471400260925293,
-    "answer": 260496190510.0,
-    "check": 19930924430.0,
-    "ms": 252.6779,
-    "timing": "in-engine"
-   },
    "peachq": {
     "status": "OK",
     "wall_s": 4.7884297370910645,
@@ -1651,14 +1533,6 @@
     "answer": 657325991831.0,
     "check": 19930924430.0,
     "ms": 283.524,
-    "timing": "in-engine"
-   },
-   "q": {
-    "status": "OK",
-    "wall_s": 2.1635220050811768,
-    "answer": 657325991831.0,
-    "check": 19930924430.0,
-    "ms": 249.82999999999998,
     "timing": "in-engine"
    },
    "peachq": {
@@ -1767,14 +1641,6 @@
     "ms": 411.789,
     "timing": "in-engine"
    },
-   "q": {
-    "status": "OK",
-    "wall_s": 2.3381800651550293,
-    "answer": 627094482633.0,
-    "check": 19930924430.0,
-    "ms": 276.05449999999996,
-    "timing": "in-engine"
-   },
    "peachq": {
     "status": "OK",
     "wall_s": 22.49989366531372,
@@ -1881,14 +1747,6 @@
     "ms": 8.378,
     "timing": "in-engine"
    },
-   "q": {
-    "status": "OK",
-    "wall_s": 0.6809558868408203,
-    "answer": 665380820688.0,
-    "check": 19930924430.0,
-    "ms": 4.592,
-    "timing": "in-engine"
-   },
    "peachq": {
     "status": "OK",
     "wall_s": 1.8222410678863525,
@@ -1989,14 +1847,6 @@
    },
    "amber-qsql": {
     "status": "SKIP"
-   },
-   "q": {
-    "status": "OK",
-    "wall_s": 1.0336658954620361,
-    "answer": 79900629860.0,
-    "check": 19930924430.0,
-    "ms": 55.922,
-    "timing": "in-engine"
    },
    "peachq": {
     "status": "OK",
@@ -2099,14 +1949,6 @@
    "amber-qsql": {
     "status": "SKIP"
    },
-   "q": {
-    "status": "OK",
-    "wall_s": 1.6481585502624512,
-    "answer": 4993777268.9468975,
-    "check": 19930924430.0,
-    "ms": 150.6894,
-    "timing": "in-engine"
-   },
    "peachq": {
     "status": "OK",
     "wall_s": 63.192559003829956,
@@ -2208,14 +2050,6 @@
    "amber-qsql": {
     "status": "SKIP"
    },
-   "q": {
-    "status": "OK",
-    "wall_s": 7.640085935592651,
-    "answer": 9355015204.0,
-    "check": 19930924430.0,
-    "ms": 1357.3397,
-    "timing": "in-engine"
-   },
    "peachq": {
     "status": "OK",
     "wall_s": 13.721176385879517,
@@ -2305,14 +2139,6 @@
    "amber-qsql": {
     "status": "SKIP"
    },
-   "q": {
-    "status": "OK",
-    "wall_s": 1.0463354587554932,
-    "answer": 500497502.0,
-    "check": 19930924430.0,
-    "ms": 88.0659,
-    "timing": "in-engine"
-   },
    "peachq": {
     "status": "OK",
     "wall_s": 3.1008834838867188,
@@ -2398,14 +2224,6 @@
    },
    "amber-qsql": {
     "status": "SKIP"
-   },
-   "q": {
-    "status": "OK",
-    "wall_s": 2.233384847640991,
-    "answer": 3846.0,
-    "check": 19930924430.0,
-    "ms": 303.5634,
-    "timing": "in-engine"
    },
    "peachq": {
     "status": "OK",
@@ -2498,14 +2316,6 @@
     "ms": 14.013,
     "timing": "in-engine"
    },
-   "q": {
-    "status": "OK",
-    "wall_s": 0.7864429950714111,
-    "answer": 34742012734.0,
-    "check": 19930924430.0,
-    "ms": 9.405999999999999,
-    "timing": "in-engine"
-   },
    "peachq": {
     "status": "OK",
     "wall_s": 2.6946911811828613,
@@ -2594,14 +2404,6 @@
     },
     "amber-qsql": {
      "status": "SKIP"
-    },
-    "q": {
-     "status": "OK",
-     "wall_s": 0.11094808578491211,
-     "answer": 49936748.0,
-     "check": 199320011.0,
-     "ms": 0.0076,
-     "timing": "in-engine"
     },
     "peachq": {
      "status": "OK",
@@ -2709,14 +2511,6 @@
      "ms": 8.216,
      "timing": "in-engine"
     },
-    "q": {
-     "status": "OK",
-     "wall_s": 0.1036376953125,
-     "answer": 6572000322.0,
-     "check": 199320011.0,
-     "ms": 0.9356,
-     "timing": "in-engine"
-    },
     "peachq": {
      "status": "OK",
      "wall_s": 1.1515388488769531,
@@ -2817,14 +2611,6 @@
     },
     "amber-qsql": {
      "status": "SKIP"
-    },
-    "q": {
-     "status": "OK",
-     "wall_s": 0.10603213310241699,
-     "answer": 2497.0,
-     "check": 199320011.0,
-     "ms": 1.027,
-     "timing": "in-engine"
     },
     "peachq": {
      "status": "OK",
@@ -2928,14 +2714,6 @@
     },
     "amber-qsql": {
      "status": "SKIP"
-    },
-    "q": {
-     "status": "OK",
-     "wall_s": 0.15372943878173828,
-     "answer": 499362292.0,
-     "check": 1993076587.0,
-     "ms": 0.47759999999999997,
-     "timing": "in-engine"
     },
     "peachq": {
      "status": "OK",
@@ -3043,14 +2821,6 @@
      "ms": 21.096,
      "timing": "in-engine"
     },
-    "q": {
-     "status": "OK",
-     "wall_s": 0.26799559593200684,
-     "answer": 65728255302.0,
-     "check": 1993076587.0,
-     "ms": 18.9205,
-     "timing": "in-engine"
-    },
     "peachq": {
      "status": "OK",
      "wall_s": 1.7228591442108154,
@@ -3151,14 +2921,6 @@
     },
     "amber-qsql": {
      "status": "SKIP"
-    },
-    "q": {
-     "status": "OK",
-     "wall_s": 0.45481181144714355,
-     "answer": 2496.0,
-     "check": 1993076587.0,
-     "ms": 62.900499999999994,
-     "timing": "in-engine"
     },
     "peachq": {
      "status": "OK",
@@ -3262,14 +3024,6 @@
     },
     "amber-qsql": {
      "status": "SKIP"
-    },
-    "q": {
-     "status": "OK",
-     "wall_s": 0.6236510276794434,
-     "answer": 4993794647.0,
-     "check": 19930924430.0,
-     "ms": 6.0542,
-     "timing": "in-engine"
     },
     "peachq": {
      "status": "OK",
@@ -3377,14 +3131,6 @@
      "ms": 279.618,
      "timing": "in-engine"
     },
-    "q": {
-     "status": "OK",
-     "wall_s": 2.1207549571990967,
-     "answer": 657325991831.0,
-     "check": 19930924430.0,
-     "ms": 243.7962,
-     "timing": "in-engine"
-    },
     "peachq": {
      "status": "OK",
      "wall_s": 11.98601508140564,
@@ -3486,14 +3232,6 @@
     "amber-qsql": {
      "status": "SKIP"
     },
-    "q": {
-     "status": "OK",
-     "wall_s": 6.867469310760498,
-     "answer": 2496.0,
-     "check": 19930924430.0,
-     "ms": 1213.5232999999998,
-     "timing": "in-engine"
-    },
     "peachq": {
      "status": "OK",
      "wall_s": 7.767309665679932,
@@ -3568,5 +3306,6 @@
     }
    }
   }
- }
+ },
+ "note": "kdb+/q figures removed: the run was made under a KX evaluation licence, which prohibits disclosing benchmark or performance information to third parties without KX's prior written authorisation. Every other engine here is open source or carries no such restriction."
 }

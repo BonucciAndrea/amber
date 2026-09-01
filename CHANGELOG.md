@@ -1,9 +1,12 @@
 # Changelog
 
-## Unreleased — REPL correctness: UTF-8, multi-line input, an honest exec timer
+## 2.0.0
 
-Everything here is in `main` and is **not yet tagged**. It is all REPL/editor work
-plus one engine-level undefined-behaviour fix.
+The 2.0.0 release. Charts became a real feature — framed, auto-sizing braille plots with
+multiple series and clock-time axes — alongside a faster `O(n)` group-by, a native REPL line
+editor that is UTF-8- and cell-correct with multi-line continuation and an honest exec timer,
+infix notation for the library dyads, bare qSQL inside loaded `.k` scripts, and a set of engine
+and lexer fixes.
 
 ### The line editor now counts cells, not bytes
 
@@ -119,6 +122,11 @@ does not render as `9.8`.
 - Every allocation in the bracketed-paste path is checked. A paste is the one input whose size the
   user chooses, so allocation failure is reachable, and the old unchecked `realloc`/`malloc` would
   have dereferenced NULL.
+- **Wide output scrolls sideways.** Output wider than the terminal — a table with many columns, a
+  wide chart — used to wrap and mangle the box; it now clips at the right edge (auto-wrap off while
+  the bar owns the screen) and **Shift-←/→**, or the horizontal mouse/trackpad wheel, pans the
+  transcript across it, the same way PgUp/PgDn and the wheel scroll it vertically. The slice is
+  ANSI- and UTF-8-aware, so colours and box borders stay intact as you pan.
 
 ### Engine
 
@@ -126,6 +134,17 @@ does not render as `9.8`.
   `I` by computing `n-(I)n`. For `n = LLONG_MAX` (k's `0W`) the truncation is `-1`, so it computed
   `LLONG_MAX-(-1)` — UBSan flagged it on any qSQL path producing `0W`. It now round-trips the value
   instead: equivalent in range, defined out of it.
+
+### Faster aggregation
+
+- **`O(n)` counting group for 32-bit integer keys** (`o.c`). Grouping a column of `int` keys no
+  longer hashes — it counts into a dense table indexed by the key — which is **5.1× faster** on the
+  `group_100k` benchmark and speeds every `qby`/`xgroup` over an integer column.
+- **The SIMD dot-product kernels are now wired into `wsum`/`wavg`.** They had been built but never
+  called; hooking them up gives **1.9×** on the VWAP path.
+- The `by`-clause machinery was rebuilt to compute each group column with the same expression
+  engine the select-list uses, so `by time:1m xbar time` groups on a real computed column rather
+  than on the literal text of the clause.
 
 ### Portability
 
@@ -135,12 +154,6 @@ All of the above is covered by `tests/test_statusbar.py`, which now also drives 
 UTF-8 input, long-line responsiveness, `Cmd-K` recovery, caret stability (asserted on the emitted
 bytes — a rendered grid cannot see a cursor that returned before the next flush) and multi-line
 continuation.
-
-## 2.0.0 — infix dyads, bare qSQL in scripts, two lexer/verb fixes
-
-This release is about **ergonomics** — closing three long-standing gaps between the
-syntax you can type and the syntax the docs told you to type — plus fixing two real
-engine defects that had been tracked in `docs/MISSING.md`.
 
 ### Charting is now a feature, not a party trick
 
@@ -203,6 +216,13 @@ scratch planes moved from a fixed 12,000-byte stack buffer to the arena.
 `examples/graphs.k` is now a 31-chart tour in five parts, and `test-ext.k` gained 17 chart
 tests covering geometry, the legend and title rows, the envelope path at 10⁶ points, an
 all-null series, a zero-range series, an empty series, explicit limits and every style.
+
+**`plot` itself now takes multiple series**, not just `plots`: `plot (a;b;c)` or a dictionary
+draws one labelled line per column. `exec` was extended to match — `exec px,ask from t` returns
+a `` `px`ask `` dictionary of columns (a single column still returns the bare vector), where it
+used to concatenate them into one vector — so `plot exec px,ask from trades taq quotes` draws a
+line for each. **A time-of-day axis renders as `HH:MM:SS`** on round clock boundaries (`09:30`,
+`10:00`, …) rather than raw milliseconds; the tick labels are packed so they never overlap.
 
 ### Documentation
 
@@ -980,7 +1000,7 @@ the REPL banner and the WASM `amber_version()` export all report **1.9.1** from 
 source of truth.
 
 
-## Unreleased — comparative benchmark suite rebuilt for cross-engine fairness
+### comparative benchmark suite rebuilt for cross-engine fairness
 
 ### Two shortcuts removed from the old suite
 - **`+/!10000000` measured an O(1) closed form in Amber.** `src/3.c`'s `arf` constant-folds a sum
@@ -1182,7 +1202,7 @@ environment variable still works and now just seeds the initial value.
   deltas 0#0`), so nothing is hidden.
 - CI (`.github/workflows/ci.yml`) now runs the new suites and the fuzzer on every push.
 
-## Unreleased — separate, independently-tuned comparative benchmark query files
+### separate, independently-tuned comparative benchmark query files
 - **`bench/queries/amber_{vecsum,vecarith,groupby}.k`** added — `bench/run_comparative.py`'s
   Amber row previously reran the same `k_<id>.k` file used for the "K" (ngn/k) row. Amber now
   gets its own query file per workload, with a header comment on each documenting what
@@ -1198,7 +1218,7 @@ environment variable still works and now just seeds the initial value.
   comment line containing only a bare `/` with no trailing space or text silently truncates
   parsing of the rest of the file, with no error raised.
 
-## Unreleased — removed the `\hl` syntax-highlight command
+### removed the `\hl` syntax-highlight command
 - **Removed** `src/highlight.{h,c}`, the `\hl <expr>` REPL command, and `tests/test_highlight.c`.
   `\hl` only ever colorized a line you explicitly ran (`\hl select ...` echoed that one line back
   with ANSI colour) — it never highlighted your keystrokes *as you typed them*, which is what
@@ -1210,7 +1230,7 @@ environment variable still works and now just seeds the initial value.
 - No other engine extension is affected: SIMD, the multithreaded vector engine, the bytecode
   disassembler, and the native CSV parser are all unchanged.
 
-## Unreleased — `\ast` visualizer overhaul
+### `\ast` visualizer overhaul
 - **Bug fixed: generic `<X-atom>` placeholders.** The previous formatter only understood five
   atom tags (symbol/int/long/float/char) and treated everything else -- multi-element data
   vectors (`1 2 3`, `` `a`b`c ``, `"hello"`, ...), verb/adverb atoms appearing bare (inside a
@@ -1256,7 +1276,7 @@ environment variable still works and now just seeds the initial value.
   can appear as a leaf even in an otherwise-uncompiled tree. This module shows that closure's
   captured *source text*, never its bytecode (that remains `\disasm`'s job, `src/vm.{h,c}`).
 
-## Unreleased — fix `peach` worker-count default
+### fix `peach` worker-count default
 - **Bug:** `peach[f;y]`'s default worker count (`src/i.c`'s `peachNW()`) was a hardcoded `4`
   whenever `AMBER_THREADS` was unset, regardless of how many CPUs the host actually had. On a
   small box (e.g. 2 cores) this **oversubscribed** — forking 4 processes onto 2 cores made
@@ -1275,7 +1295,7 @@ environment variable still works and now just seeds the initial value.
   counterparts except for the fix above, never compiled by `build.sh` (which only builds
   `src/*.c`), and a source of confusion if edited by mistake.
 
-## Unreleased — engine extensions (SIMD, parallel, disassembler, CSV)
+### engine extensions (SIMD, parallel, disassembler, CSV)
 - **SIMD vector kernels.** `src/simd.{h,c}` — AVX2 (x86_64), ARM NEON (`aarch64`, incl. Apple
   Silicon), and scalar C99 fallback implementations of `add`/`mul`/`sum` over `int64_t`/`double`
   arrays, selected at compile time. `src/arena.c`'s bump allocator now guarantees genuine
@@ -1297,7 +1317,7 @@ environment variable still works and now just seeds the initial value.
   above); `tests/test_simd.c` and `tests/test_parallel.c` are new standalone C harnesses (no
   Amber dependency) for the SIMD and parallel modules.
 
-## Unreleased — REPL diagnostics + cleanup
+### REPL diagnostics + cleanup
 - **`\v` rich workspace inspector.** `src/inspect.{h,c}` — every currently-defined global as an
   ASCII table (Name / Type / Shape·Length / Memory), with a recursive deep-memory-footprint
   walker (`iv_deepsize`) and a structural table-vs-dict classifier (`iv_as_table`) since both

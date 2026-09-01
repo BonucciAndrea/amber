@@ -70,7 +70,11 @@ chser:{$[`A=@x;x;,x]}                       / one vector, or many -> always a li
 /   colour  0 off, 1 on, 2 = on only when stdout is a terminal
 /   style  per series 0 line, 1 scatter, 2 step, 3 area    col  per series 256-colour code
 chopt:`y`x`w`h`ylim`xlim`grid`axis`legend`colour`title`xlabel`ylabel`names`col`style!(();();0;0;();();1;1;1;2;"";"";"";();0#0;0#0)
-chart:{[d]d:chopt,$[`m=@d;d;chd1[`y;d]];ys:`f$'chser d`y;xs:$[0=#d`x;();`f$'chser d`x];t:chwin[];w:$[d`w;d`w;20|160&((t 1)-14)];h:$[d`h;d`h;6|18&((t 0)-8)];nm:d`names;nm:$[0=#nm;();$[`S=@nm;$'nm;chtxt'nm]];yl:$[2=#d`ylim;`f$d`ylim;0n 0n];xl:$[2=#d`xlim;`f$d`xlim;0n 0n];`0:`plt (ys;xs;(w;h;d`grid;d`axis;$[#nm;d`legend;0];d`colour);`f$yl,xl;chtxt d`title;chtxt d`xlabel;chtxt d`ylabel;nm;d`col;d`style);}
+/ is the x-axis a time-of-day? true when every value is a whole number of
+/ milliseconds within one day and at least an hour in (so it is a clock time, not
+/ a 0-based index).  1 -> the renderer prints ticks as HH:MM:SS instead of ms.
+chxtime:{$[0=#x;0;0=#*x;0;[v:`f$*x;$[(&/v=_v)&(~(&/v)<3.6e6)&~(|/v)>8.64e7;1;0]]]}
+chart:{[d]d:chopt,$[`m=@d;d;chd1[`y;d]];ys:`f$'chser d`y;xs:$[0=#d`x;();`f$'chser d`x];xtf:$[0=#d`x;0;chxtime chser d`x];t:chwin[];w:$[d`w;d`w;20|160&((t 1)-14)];h:$[d`h;d`h;6|18&((t 0)-8)];nm:d`names;nm:$[0=#nm;();$[`S=@nm;$'nm;chtxt'nm]];yl:$[2=#d`ylim;`f$d`ylim;0n 0n];xl:$[2=#d`xlim;`f$d`xlim;0n 0n];`0:`plt (ys;xs;(w;h;d`grid;d`axis;$[#nm;d`legend;0];d`colour;xtf);`f$yl,xl;chtxt d`title;chtxt d`xlabel;chtxt d`ylabel;nm;d`col;d`style);}
 / plot keeps its original shapes -- plot v and plot (v;W;H) -- and now draws them
 / framed and labelled.  (v;W;H) is only taken when the trailing elements really
 / are atoms, so plot (a;b) still means two series rather than a series and a width.

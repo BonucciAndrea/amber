@@ -376,6 +376,19 @@ Z I fmtf(C*b,N bn,F v,I d){F a=fab(v);I r;
  else if(a!=0&&(a>=1e7||a<1e-4))r=snprintf(b,bn,"%.4g",v);
  else r=snprintf(b,bn,"%.*f",d,a==0?0.0:v);
  if(r<0)r=0;if((N)r>=bn)r=(I)bn-1;return r;}
+// Time-of-day tick label: v is milliseconds since midnight (Amber's `t / ttm, and
+// the plain-int ms-of-day columns gentq builds).  Shows HH:MM:SS, adding .mmm only
+// when the tick step is sub-second -- so a normal intraday axis reads "09:30:00"
+// (clean) while a zoomed one keeps its millisecond precision.
+Z I fmttime(C*b,N bn,F v,F step){L t=(L)(v+(v<0?-0.5:0.5));if(t<0)t=0;if(t>86400000)t%=86400000;
+ L h=t/3600000,m=(t/60000)%60,s=(t/1000)%60,ms=t%1000;I r;
+ if(step<1000.0)r=snprintf(b,bn,"%02lld:%02lld:%02lld.%03lld",(long long)h,(long long)m,(long long)s,(long long)ms);
+ else r=snprintf(b,bn,"%02lld:%02lld:%02lld",(long long)h,(long long)m,(long long)s);
+ if(r<0)r=0;if((N)r>=bn)r=(I)bn-1;return r;}
+// Snap a desired axis step to a human time boundary (1s..8h) so time ticks land on
+// round clock times (09:30, 10:00, ...) rather than arbitrary millisecond counts.
+Z F nicetstep(F want){Z CO F TS[]={1e3,5e3,15e3,3e4,6e4,3e5,9e5,18e5,36e5,72e5,1.44e7,2.88e7};
+ F(12,I(TS[i]>=want,return TS[i]))return TS[11];}
 // Value -> pixel, guarded. The quotient is unbounded when explicit limits zoom
 // far inside the data, and (I) of a double past INT_MAX is undefined, so the
 // clamp happens in the float domain BEFORE the cast.
@@ -469,6 +482,7 @@ Z A plotSpec(A x){
  if(!optA||!limA||_n(optA)<6||_n(limA)<4){if(optA)mr(optA);if(limA)mr(limA);return et(x);}
  CO L*opt=(CO L*)_V(optA);CO F*lim=(CO F*)_V(limA);
  I W=(I)opt[0],H=(I)opt[1];B grid=opt[2]!=0,axis=opt[3]!=0,leg=opt[4]!=0;
+ I xtime=_n(optA)>=7?(I)opt[6]:0;   // 0 = numeric x, 1 = x is ms-of-day -> HH:MM:SS labels
  I cmode=(I)opt[5];B colr=cmode==1||(cmode==2&&isatty(1));
  if(W<8)W=8;if(W>400)W=400;if(H<2)H=2;if(H>120)H=120;
  I pw=2*W,ph=4*H;
@@ -512,6 +526,8 @@ Z A plotSpec(A x){
  if(lim[2]==lim[2]||lim[3]==lim[3]){
   if(lim[2]==lim[2])xlo=lim[2];if(lim[3]==lim[3])xhi=lim[3];
   if(!(xhi>xlo)){xhi=xlo+1;}xst=nicen((xhi-xlo)/xnt,1);}
+ // a time x-axis steps on round clock boundaries, not 1-2-5 millisecond counts
+ if(xtime){F w=(xhi-xlo)/(F)xnt;if(!(w>0))w=1;xst=nicetstep(w);}
  F ysp=yhi-ylo,xsp=xhi-xlo;if(!(ysp>0))ysp=1;if(!(xsp>0))xsp=1;
 
  ArenaMark mk=arena_mark();
@@ -553,7 +569,7 @@ Z A plotSpec(A x){
   for(F v=fcl(xlo/xst)*xst;v<=xhi+xst*1e-9;v+=xst){
    I px=vpx(v,xlo,xsp,pw);if(px<0||px>=pw)continue;I c=px>>1;
    if(c<W)xtk[c]=1;
-   C b[24];I l=fmtf(b,24,v,xdc);I st=c-l/2;if(st<0)st=0;if(st+l>xrn)st=xrn-l;if(st<0)continue;
+   C b[24];I l=xtime?fmttime(b,24,v,xst):fmtf(b,24,v,xdc);I st=c-l/2;if(st<0)st=0;if(st+l>xrn)st=xrn-l;if(st<0)continue;
    if(st<=used)continue;                                  // would touch the previous label
    MC(xrow+st,b,(N)l);used=st+l;}}
 

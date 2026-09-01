@@ -36,6 +36,7 @@ mod:{y!x}
 div:{_x%y}
 xbar:{x*_y%x}
 xlog:{(`ln y)%`ln x}
+xexp:{[x;y]$[~y=_y;`exp y*`ln x;[e:$[y<0;-y;y];r:*{0<x[2]}{(x[0]*$[2!x[2];x[1];1.0];x[1]*x[1];_x[2]%2)}/(1.0;1.0*x;e);$[y<0;1%r;r]]]} / x xexp y = x^y (float); fast squaring for integer y, exp/ln for fractional
 round:{[d;x]p:*/d#10;(_0.5+x*p)%p}
 
 / ---- aggregations ----------------------------------------------------------

@@ -39,9 +39,29 @@ qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                        / vwap by symbo
 ```
 
 <a name="whats-new"></a>
-## Since 2.0.0 — on `main`, not yet tagged
+## Since 2.0.0
 
-REPL correctness work, all covered by `tests/test_statusbar.py`:
+**Charts.** `plot` draws a framed, labelled braille line chart that auto-sizes to the
+terminal, alongside `scatter`, `step`, `area`, `hist` and OHLC `candle` (see
+[`examples/graphs.k`](examples/graphs.k)).
+
+- **Multiple series** — `plot (a;b;c)`, a dictionary, or `plot exec px,ask from trades taq
+  quotes` draws **one labelled line per column** with a legend (previously the columns were
+  concatenated into a single mangled series).
+- **Time axes read as clock times** — when an axis is a time of day, ticks render as
+  `HH:MM:SS` on round boundaries (`09:30`, `10:00`, …) instead of raw millisecond counts,
+  and are spaced so they never overlap.
+
+**Wide output scrolls sideways.** A table or chart wider than the terminal now clips cleanly
+at the right edge instead of wrapping into a mangled box; **Shift-←/→**, or the horizontal
+mouse/trackpad wheel, pans across it — exactly as PgUp/PgDn (or the wheel) scroll the
+transcript vertically.
+
+**Faster aggregation.** An `O(n)` counting group for 32-bit integer keys (**5.1×** on the
+`group_100k` benchmark), the SIMD dot-product kernels wired into `wsum`/`wavg` (**1.9×** on
+the VWAP path), and a rebuilt group-by.
+
+**REPL correctness** (all covered by `tests/test_statusbar.py`):
 
 - **The line editor counts cells, not bytes.** `città però` used to push the input box's border
   two columns in and **Backspace deleted one *byte* of an accented letter**, leaving a broken

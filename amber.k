@@ -36,7 +36,7 @@ mod:{y!x}
 div:{_x%y}
 xbar:{x*_y%x}
 xlog:{(`ln y)%`ln x}
-xexp:{[x;y]$[~y=_y;`exp y*`ln x;[e:$[y<0;-y;y];r:*{0<x[2]}{(x[0]*$[2!x[2];x[1];1.0];x[1]*x[1];_x[2]%2)}/(1.0;1.0*x;e);$[y<0;1%r;r]]]} / x xexp y = x^y (float); fast squaring for integer y, exp/ln for fractional
+xexp:{[x;y]$[~y=_y;`exp y*`ln x;[e:$[y<0;-y;y];r:*{0<x[2]}{(x[0]*$[2!x[2];x[1];1.0];x[1]*x[1];_x[2]%2)}/(1.0;1.0*x;e);r:$[y<0;1%r;r];$[(x=_x)&(~y<0)&(r=_r)&9007199254740992.0>$[r<0;0-r;r];_r;r]]]} / x xexp y = x^y; fast squaring for integer y, exp/ln for fractional. An integer base to a non-negative integer power comes back as an INTEGER while the squaring is still exact (below 2^53); past that, or for a fractional/negative exponent, it stays a float. Load euler.k to get the exact bignum answer beyond 2^53.
 round:{[d;x]p:*/d#10;(_0.5+x*p)%p}
 
 / ---- aggregations ----------------------------------------------------------

@@ -75,7 +75,12 @@ qproj:{[t;cs]+(?cs)#+t}
 sel:{[s]s:qnorm s;s:$[(6#s)~"select";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r3:qsplit0[r2 0;" by "];selp:r3 0;u:. r2 1;t:qwhere[u;qmask[u;wh]];C:cols u;$[(selp~,"*")|0=#selp;$[r3 2;[r:qbyx[t;r3 1];nk:except[cols r 0;r 1];qby[r 0;r 1;nk!qlastf'nk]];t];[it:qcut selp;d:(qnm[C]'[!#it;it])!{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;[r:qbyx[t;r3 1];qby[qproj[r 0;(r 1),(,/qrefs[cols r 0]'{(qname x)1}'it)];r 1;d]];qselect[t;d]]]]}
 
 / ---- exec  (return one column / expression, not a table) ------------------
-exq:{[s]s:qnorm s;s:$[(4#s)~"exec";trim 4_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];r2:qsplit[r 0;" from "];u:. r2 1;t:qwhere[u;qmask[u;wh]];(qfn[cols u;(qname trim r2 0)1])t}
+/ exec splits its select-list the SAME way select does (qcut, honouring brackets):
+/   one item  -> the bare vector          exec px from t        exec spread:px-ask from t
+/   many      -> a dict name!(vectors)     exec px,ask from t -> `px`ask!(..;..)
+/ so `exec a,b` yields two named columns (q semantics) instead of joining them into
+/ one vector, which is what lets `plot exec px,ask ...` draw a line per column.
+exq:{[s]s:qnorm s;s:$[(4#s)~"exec";trim 4_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];r2:qsplit[r 0;" from "];u:. r2 1;t:qwhere[u;qmask[u;wh]];C:cols u;it:qcut trim r2 0;v:{[C;t;e]qfn[C;(qname e)1]t}[C;t]'it;$[1=#it;*v;(qnm[C]'[!#it;it])!v]}
 
 / ---- update  (add / replace columns; optional where and by) ---------------
 qasg:{[t;idx;nm;v]@[$[in[nm;cols t];(+t)nm;(#t)#qnull v];idx;:;v]}

@@ -2,7 +2,7 @@
 #include"a.h"
 X1(neg,RE(neg(gZ(x)))Rilc(az((L)(0-(W)gl(x))))Rf(af(-gf(x)))RC(neg(cG(x)))RmMA(e1f(neg,x))RB(neg(cG(x)))R_(et(x))
  RGHILF(U n=xn;I(xw-3<3&&minfZ(0,x)==(L)(~0ull<<((8<<(xw-3))-1)),x=ct(tH+xw-3,x))A y=MINE(x)?x:an(n,xt),z=x-y?x:au;n=((n<<xw-3)+31&~31)>>xw-3;
-  Mz(X(C(tG,F(n,yg=-xg))C(tH,F(n,yh=-xh))C(tI,F(n,yi=-xi))C(tL,F(n,yl=(L)(0-(W)xl)))D(F(n,yf=-xf))))y))
+  Mz(X(C(tG,F(n,yg=-xg))C(tH,F(n,yh=-xh))C(tI,F(n,yi=(I)(0u-(U)xi)))C(tL,F(n,yl=(L)(0-(W)xl)))D(F(n,yf=-xf))))y))
 X1(not,RmMA(e1f(not,x))RU(x(ai(x==au)))
  RB(x=mut(x);W*a=xV;F((xn+255&-256)>>6,*a++^=-1)x)R_(eql(xtsS?as(0):ai(0),x)))
 X1(nul,RmMA(e1f(nul,x))RU(x(ai(x==au)))RB(whr(len(x)))RF(A y=aG(xn);Mx(F(xn,yg=xf!=xf))y)Rf(x(ai(*xF!=*xF)))R_(eql(cn[xt],x)))

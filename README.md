@@ -97,7 +97,7 @@ Full history in **[CHANGELOG.md](CHANGELOG.md)**.
 - [REPL diagnostics (`\v` · `\ast` · `\trace`)](#repl-diagnostics-v--ast--trace)
 - [Engine extensions: SIMD · parallel · disassembler · CSV](#engine-extensions)
 - [HFT toolkit — native `aj`, arena, generators](#hft-toolkit)
-- [Terminal charts (`plot` · `candle`)](#terminal-charts)
+- [Terminal charts (`chart` · `plot` · `plots` · `candle`)](#terminal-charts)
 - [Grid modes (`\grid`)](#grid-modes)
 - [Native temporal types](#native-temporal-types)
 - [Apache Arrow C Data Interface](#apache-arrow)
@@ -810,25 +810,58 @@ select from options where abs[strike-spot]<5     / near-the-money contracts
 ---
 
 <a name="terminal-charts"></a>
-## Terminal charts (`plot` · `candle`)
+## Terminal charts (`chart` · `plot` · `plots` · `candle`)
 
-Pipe a query straight into a chart. `plot` renders a numeric vector as a **Braille** line
-chart (2×4 dots per cell → 2× horizontal, 4× vertical resolution); `candle` renders an OHLC
-table as **Unicode candlesticks** (green up / red down, box-drawing wicks, block bodies).
+Pipe a query straight into a chart. Charts are framed and axis-labelled, take several series
+at once, and downsample a million-point series without turning it into a smear. The surface is
+**Braille** — a 2×4 dot bitmask per character cell, so a `W`×`H` box is a `2W`×`4H` raster.
 
 ```
-plot (14*{sin x%7}'!74;60;9)
+chart `y`title`ylabel!(14*{sin x%7}@!74;"AAPL mid";"price")
 
-13.99999 │     ⢀⠤⠒⠉⠉⠑⠤⡀                            ⢀⠤⠊⠉⠉⠒⠤⡀
-7.000004 │  ⡠⠊          ⠈⠢⡀                     ⡠⠃          ⠈⢢
-1.119252 │⠜                ⠘⢄                ⢠⠊                ⠘⢄
--6.99998 │                    ⠑⡄          ⢀⠜                      ⠣⡀
--13.9999 │                       ⠈⠒⠤⣀⣀⠤⠒⠁                            ⠉
-
-candle bars[10; select from trades where sym=`AAPL]      / OHLC candlesticks in colour
+                               AAPL mid
+price
+    ┌────────────────────────────────────────────────────────────────┐
+    │      ⣀⠔⠒⠒⠤⡀                             ⣀⠔⠒⠒⢄⡀                 │
+ 10 ┤⠄   ⡠⠊  ⠄  ⠈⠑⢄  ⠄   ⠄   ⠄   ⠄   ⠄   ⠄  ⡰⠉   ⠄ ⠈⠑⢄   ⠄   ⠄   ⠄   │
+    │  ⢀⠎          ⠑⡄                     ⢀⠎          ⠣⡀             │
+    │ ⡰⠁            ⠈⢢                  ⢀⠔⠁            ⠈⢢            │
+  0 ┤⠜   ⠄   ⠄   ⠄   ⠄⠣⡀ ⠄   ⠄   ⠄   ⠄ ⢠⠊⠄   ⠄   ⠄   ⠄   ⠣⡀  ⠄   ⠄   │
+    │                  ⠈⢆             ⡠⠃                  ⠑⢄         │
+    │                    ⠱⡀         ⢀⠜                      ⠱⡀       │
+-10 ┤⠂   ⠂   ⠂   ⠂   ⠂   ⠂⠈⢆⡀⠂   ⠂⣀⠔⠁⠂   ⠂   ⠂   ⠂   ⠂   ⠂   ⠈⢆⡀ ⠂   │
+    │                       ⠈⠑⠤⠤⠔⠊                                   │
+    └┬───────────────┬───────────────┬──────────────┬───────────────┬┘
+     0              20              40             60              80
 ```
 
-See [`examples/graphs.k`](examples/graphs.k) for a chart tour.
+| verb | draws |
+|---|---|
+| `chart d` | anything below, from an option dictionary |
+| `plot v` · `plot (v;W;H)` | one line series |
+| `plots (a;b;c)` · ``plots `a`b!(x;y)`` | several series, with a legend |
+| `xyplot (xs;ys)` · `scatter (xs;ys)` | y against a real x axis; points |
+| `step v` · `area v` | piecewise-constant; filled |
+| `hist v` · ``barh `a`b!3 7`` · `heat m` | distribution; labelled bars; matrix |
+| `spark v` | **returns** a one-line string, to embed in a row of text |
+| `candle t` | OHLC candlesticks, green up / red down |
+
+`chart` takes `y x w h ylim xlim grid axis legend colour title xlabel ylabel names col style`.
+Two details do most of the work: the axis range is the data's own range **snapped outward to a
+1/2/5 boundary** (round tick values, without the wasted margin a coarse step would leave), and
+past roughly `4W` points each pixel column is drawn as its **min→max envelope** rather than by
+joining consecutive points — which keeps every spike instead of filling the box in solid.
+
+```
+plots `bid`ask!(q`bid;q`ask)                              / two series and a legend
+chart `y`ylim`title!(px;98 102;"AAPL")                    / pin the axis to zoom
+chart `y`x`names!((px;ma);(!#px;50+!#ma);("px";"MA(50)")) / per-series x, so a shorter
+                                                          / moving average still lines up
+candle bars[10; select from trades where sym=`AAPL]
+```
+
+See [`examples/graphs.k`](examples/graphs.k) for a 31-chart tour and
+[docs/AMBER.md §9c](docs/AMBER.md) for the full option table.
 
 <a name="grid-modes"></a>
 ## Grid modes (`\grid`)
@@ -1140,7 +1173,7 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 | `tests/test_ext_seam.sh`, `tests/ext_probe.c` | installs a miniature extension into `ext/`, checks the verb / `\`-command / `--help` hooks fire and that the engine's own suite is unaffected, then uninstalls it and checks the engine is back to stock |
 | `tests/*.c` | standalone C test harnesses: `test_simd.c`/`test_parallel.c` (no Amber dependency), `test_ast.c` (links the full interpreter — ast.c is inherently built on Amber's real parser) |
 | `bench.k` `bench-fin.k` `bench-std.k` `bench/` | attribute / index / window benchmarks; `bench/run_comparative.py` cross-engine harness (see [docs/BENCHMARKS.md §5](docs/BENCHMARKS.md)); `bench/queries/amber_*.k` and `bench/queries/k_*.k` are separate, independently-tuned scripts per engine — see [Comparative benchmark query files](#comparative-benchmark-query-files) |
-| `docs/` | `AMBER.md` (reference) · `MISSING.md` (roadmap + known leniencies) · `BENCHMARKS.md` · `AUDIT-1.9.md` (the 1.9 security/correctness audit report) |
+| `docs/` | `AMBER.md` (reference) · `MISSING.md` (roadmap + known leniencies) · `BENCHMARKS.md` |
 | `CHANGELOG.md` | release history (2.0.0 first) |
 | `.gitattributes` | forces LF checkout of sources so the REPL's line-based loader works on Windows too |
 

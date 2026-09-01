@@ -61,7 +61,7 @@ comparable across machines**, and the live §2 tables always reflect the current
 | **2.0.0** | table group-by keys on the interned 4-byte symbol id, not a per-character string sort | `select … by sym` — 1M rows | 587 | 34 | **17×** |
 
 Reproduce each row with the harness named in its section: the 1.9.1/1.9.2 rows via
-`bench/run_comparative.py --runs 5 --warmup 2` against `bench/baseline_before.md`; the 1.9.5
+`bench/run_comparative.py --runs 5 --warmup 2` (it prints both columns itself); the 1.9.5
 rows via `bench/suite.k` against `bench/baseline_194_suite.txt` ([§7](#7-195-batch-2--sliding-windows--radix-sort));
 the 2.0.0 row with `./amber bench/qbench/amber.k`, which reports the before/after directly.
 The releases in between (1.9.3, 1.9.4, 1.9.6) were correctness/serializer/tooling work whose four
@@ -579,8 +579,9 @@ Amber appears twice on purpose: `Amber` is array-primitive code (the fair peer o
 ## 6. 1.9.2 self-benchmark — before vs after
 
 Both columns are `bench/run_comparative.py --runs 5 --warmup 2` on the **same machine, same
-data, same harness**: 1.9.1 from `bench/baseline_before.md`, 1.9.2 from
-`bench/comparative_results.md`. Median kernel ms; lower is better.
+data, same harness**, run once before the release and once after. Median kernel ms; lower
+is better. (The two raw dumps these columns were read from are no longer checked in; CI
+regenerates `bench/comparative_results.md` on every benchmark run.)
 
 ### Amber — array primitives (`bench/queries/amber_bench.k`)
 

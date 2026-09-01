@@ -74,7 +74,7 @@ chart:{[d]d:chopt,$[`m=@d;d;chd1[`y;d]];ys:`f$'chser d`y;xs:$[0=#d`x;();`f$'chse
 / plot keeps its original shapes -- plot v and plot (v;W;H) -- and now draws them
 / framed and labelled.  (v;W;H) is only taken when the trailing elements really
 / are atoms, so plot (a;b) still means two series rather than a series and a width.
-plot:{$[~`A=@x;chart chd1[`y;x];~1<#x;chart chd1[`y;x];~chatm x 1;chart `y`names!(x;$'1+!#x);3=#x;chart `y`w`h!x;2=#x;chart `y`w!x;chart chd1[`y;x]]}
+plot:{$[`m=@x;chart `y`names!(value x;$'!x);~`A=@x;chart chd1[`y;x];~1<#x;chart chd1[`y;x];~chatm x 1;chart `y`names!(x;$'1+!#x);3=#x;chart `y`w`h!x;2=#x;chart `y`w!x;chart chd1[`y;x]]}
 plots:{$[`m=@x;chart `y`names!(value x;$'!x);chart `y`names!(x;$'1+!#x)]}   / multi-series; a dict labels the legend
 xyplot:{chart `x`y!(x 0;x 1)}               / y against a real x axis, not the index
 scatter:{chart `x`y`style!(x 0;x 1;,1)}     / points, with no joining line

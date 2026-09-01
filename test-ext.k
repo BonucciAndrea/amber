@@ -123,6 +123,26 @@ t[`plotRows;+/"\n"=`plt (1.0*!30;40;10);10]              / H=10 -> 10 rows
 t[`plotNonEmpty;0<#`plt 1.0*!20;1b]                      / canvas generated
 t[`plotBraille;|/0>`plt 1.0*!30;1b]                      / contains UTF-8 multibyte (braille/box) chars
 t[`candleRows;+/"\n"=`cdl (1.0 2 3;3.0 4 5;0.0 1 2;2.0 3 4);15]  / default H=15
+/ ---- the framed chart: `plt also takes a 10-slot spec (built by sys.k's chart) ----
+/ layout is  [title] [ylabel] top-border H-rows bottom-border xtick-row [xlabel] [legend]
+cs1:(,`f$1.0*!100)
+cs0:(();"";"";();0#0;0#0)
+t[`chartRows;+/"\n"=`plt (cs1;();(40;10;0;1;0;0);0n 0n 0n 0n;"";"";"";();0#0;0#0);13]     / 10 rows + 2 borders + ticks
+t[`chartBare;+/"\n"=`plt (cs1;();(40;10;0;0;0;0);0n 0n 0n 0n;"";"";"";();0#0;0#0);10]     / axis:0 -> canvas only
+t[`chartTitle;+/"\n"=`plt (cs1;();(40;10;0;1;0;0);0n 0n 0n 0n;"Title";"";"";();0#0;0#0);14]   / title adds one row
+t[`chartLegend;+/"\n"=`plt ((`f$1.0*!100;`f$2.0*!100);();(40;10;0;1;1;0);0n 0n 0n 0n;"";"";"";("alpha";"beta");0#0;0#0);14]
+t[`chartGrid;+/"\n"=`plt (cs1;();(40;10;2;1;0;0);0n 0n 0n 0n;"";"";"";();0#0;0#0);13]     / gridlines change no geometry
+t[`chartHuge;+/"\n"=`plt ((,`f$1.0*!1000000);();(40;10;0;1;0;0);0n 0n 0n 0n;"";"";"";();0#0;0#0);13]  / 1e6 points -> envelope, same shape
+t[`chartAllNull;0<#`plt ((,100#0n);();(40;10;0;1;0;0);0n 0n 0n 0n;"";"";"";();0#0;0#0);1b]           / every point null: still renders
+t[`chartFlat;0<#`plt ((,100#7.0);();(40;10;0;1;0;0);0n 0n 0n 0n;"";"";"";();0#0;0#0);1b]             / zero range: axis gets a band
+t[`chartEmpty;"(empty)\n"~`plt ((,0#0.0);();(40;10;0;1;0;0);0n 0n 0n 0n;"";"";"";();0#0;0#0);1b]
+t[`chartXY;+/"\n"=`plt (cs1;(,`f$1.0*!100);(40;10;0;1;0;0);0n 0n 0n 0n;"";"";"";();0#0;0#0);13]      / explicit x axis
+t[`chartStyles;+/"\n"=`plt (cs1;();(40;10;0;1;0;0);0n 0n 0n 0n;"";"";"";();0#0;,3);13]               / area style
+t[`chartYlim;+/"\n"=`plt (cs1;();(40;10;0;1;0;0);(10.0 20.0),0n 0n;"";"";"";();0#0;0#0);13]          / pinned y axis
+t[`sparkLen;#spark `f$!8;24]                             / 8 glyphs, 3 bytes each
+t[`sparkFlat;#spark 8#1.0;24]                            / zero range must not divide by zero
+t[`hbinsN;#(hbins[`f$!100;10]) 1;10]                     / 10 bins out
+t[`hbinsSum;+/(hbins[`f$!100;10]) 1;100]                 / every point lands in exactly one bin
 / ---- Arrow C Data Interface : pointer round-trips ----
 t[`arrowNum;([]a:1 2 3;b:1.5 2.5 3.5)~arrow.import arrow.export ([]a:1 2 3;b:1.5 2.5 3.5);1b]
 t[`arrowSym;([]s:`a`b`c;v:10 20 30)~arrow.import arrow.export ([]s:`a`b`c;v:10 20 30);1b]

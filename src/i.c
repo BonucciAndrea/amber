@@ -42,6 +42,7 @@
 #include<sys/mman.h>
 #include<dirent.h>
 #include"a.h"
+#include<stdio.h>   // snprintf: axis tick labels (see fmtf below)
 #include"arena.h"
 Z U addr(S*p)_(S s=*p;P(!*s,0x0100007f)UC v[4];F(4,I(i,P(*s-'.',ed0())s++)v[i]=pu(&s);P(v[i]>255,ed0()))*p=s;*(U*)v)
 Z I skt(U h,UH p)_(I f=socket(AF_INET,SOCK_STREAM,0);P(f<0,eo0())I v=setsockopt(f,IPPROTO_TCP,TCP_NODELAY,(I[]){1},4);P(v<0,eo0())
@@ -310,32 +311,316 @@ A wjc(A x){
  return x(res);
 }
 // ============ Braille & Unicode terminal charting ============
-// Braille dot bit for sub-cell (sx in 0..1, sy in 0..3).  U+2800 + bitmask -> 2x4 pixel cell.
+// A chart here is three planes over a WxH grid of CHARACTER cells, each cell
+// holding a 2x4 braille dot matrix (U+2800 + bitmask) -- so the drawing surface
+// is 2W x 4H pixels, eight times the resolution of the text grid:
+//   dot[]  the data pixels
+//   own[]  which series owns a cell, so the emitter can colour it
+//   grd[]  the gridline pixels, kept SEPARATE so a gridline can never be
+//          mistaken for data: any cell that carries data drops its grid dots.
 Z CO UC BRA[4][2]={{0x01,0x08},{0x02,0x10},{0x04,0x20},{0x40,0x80}};
 Z V pxset(UC*RES c,I W,I H,I px,I py){if(px>=0&&py>=0&&px<2*W&&py<4*H)c[(py>>2)*W+(px>>1)]|=BRA[py&3][px&1];}
-Z V bres(UC*c,I W,I H,I x0,I y0,I x1,I y1){I ax=x1-x0,ay=y1-y0,dx=ax<0?-ax:ax,sx=x0<x1?1:-1,dy=ay<0?ay:-ay,sy=y0<y1?1:-1,er=dx+dy;//Bresenham
- while(1){pxset(c,W,H,x0,y0);if(x0==x1&&y0==y1)break;I e2=2*er;if(e2>=dy){er+=dy;x0+=sx;}if(e2<=dx){er+=dx;y0+=sy;}}}
+Z V pxs2(UC*RES c,UC*RES k,I W,I H,I px,I py,UC s){
+ if(px>=0&&py>=0&&px<2*W&&py<4*H){I o=(py>>2)*W+(px>>1);c[o]|=BRA[py&3][px&1];k[o]=s;}}
+Z V bres(UC*c,UC*k,I W,I H,I x0,I y0,I x1,I y1,UC s){I ax=x1-x0,ay=y1-y0,dx=ax<0?-ax:ax,sx=x0<x1?1:-1,dy=ay<0?ay:-ay,sy=y0<y1?1:-1,er=dx+dy;//Bresenham
+ while(1){pxs2(c,k,W,H,x0,y0,s);if(x0==x1&&y0==y1)break;I e2=2*er;if(e2>=dy){er+=dy;x0+=sx;}if(e2<=dx){er+=dx;y0+=sy;}}}
 Z C*ebr(C*p,UC b){U cp=0x2800+b;*p++=0xE2;*p++=0x80|(cp>>6&0x3F);*p++=0x80|(cp&0x3F);return p;}//emit braille char
 Z C*elab(C*p,F v,I w){C b[40];L db;MC(&db,&v,8);C*e=sf(b,db);I ll=e-b;I(ll>w,ll=w)F(w-ll,*p++=' ')F(ll,*p++=b[i])return p;}//right-justified label
-// plot: x = numeric vector, or (series;W;H).  Returns a multi-line UTF-8 braille line chart.
-A plotC(A x){
+Z C*puts_(C*p,S s){while(*s)*p++=*s++;return p;}
+
+// ---- axis arithmetic -------------------------------------------------------
+// No <math.h> in this translation unit -- see the note in ast.c about the a.h
+// collision -- and nothing below needs it. The decimal exponent comes from a
+// loop rather than log10(); it runs once per axis, not once per point.
+Z F pw10(I e){F r=1;if(e<0){F(-e,r/=10)}else{F(e,r*=10)}return r;}
+Z F fab(F v){return v<0?-v:v;}
+Z I dxp(F v){I e=0;if(!(v>0))return 0;while(v>=10&&e<300){v/=10;e++;}while(v<1&&e>-300){v*=10;e--;}return e;}
+// (F)(L)v is only defined while v fits a long long; past 2^53 a double is
+// integral anyway, so returning it unchanged is both safe and exact.
+Z F ffl(F v){if(!(v>-1e15&&v<1e15))return v;F t=(F)(L)v;return t>v?t-1:t;}
+Z F fcl(F v){if(!(v>-1e15&&v<1e15))return v;F t=(F)(L)v;return t<v?t+1:t;}
+// The 1-2-5 ladder: the only tick steps a reader decodes without arithmetic.
+Z F nicen(F r,B rnd){if(!(r>0))return 1;I e=dxp(r);F f=r/pw10(e),nf;
+ if(rnd) nf=f<1.5?1:f<3?2:f<7?5:10; else nf=f<=1?1:f<=2?2:f<=5?5:10;
+ return nf*pw10(e);}
+// This is the whole of "zoomed enough, but not too much": take the data's own
+// range and snap it OUTWARD to the nearest 1/2/5 boundary. Not the raw min/max
+// (which pins the extremes to the frame, where they read as clipped), and not a
+// fixed percentage pad (which lands the axis on unreadable numbers).
+// One notch DOWN the 1-2-5 ladder: 10 -> 5 -> 2 -> 1 -> 0.5.
+Z F stepdn(F st){if(!(st>0))return 0;I e=dxp(st);F f=st/pw10(e);
+ if(f>4.5)return 2*pw10(e);if(f>1.5)return pw10(e);return 5*pw10(e-1);}
+Z V axcalc(F lo,F hi,I want,F*olo,F*ohi,F*ost){
+ if(hi<lo){F t=lo;lo=hi;hi=t;}
+ if(!(hi>lo)){F c=lo,d=fab(c)>0?fab(c)*0.5:0.5;lo=c-d;hi=c+d;}   // flat series: give it a band
+ if(want<1)want=1;
+ F st=nicen((hi-lo)/want,1);
+ if(!(st>0)||!(st<1e300)){*olo=lo;*ohi=hi;*ost=hi-lo;return;}
+ F alo=ffl(lo/st)*st,ahi=fcl(hi/st)*st,dr=hi-lo;
+ // Snapping outward must not cost a third of the view to empty margin: a series
+ // spanning -14..14 on a step of 10 lands on a -20..20 axis and throws away 30%
+ // of the height. Walk DOWN the ladder while that is true.
+ for(I k=0;k<3&&dr>0&&(ahi-alo)>1.34*dr;k++){
+  F ns=stepdn(st);if(!(ns>0))break;
+  st=ns;alo=ffl(lo/st)*st;ahi=fcl(hi/st)*st;}
+ if(!(ahi>alo)){*olo=lo;*ohi=hi;*ost=hi-lo;return;}
+ // The label step is computed separately from the snapping step, so tightening
+ // the view above cannot flood the gutter with a label on every row.
+ F ls=nicen((ahi-alo)/want,1);if(!(ls>0))ls=ahi-alo;
+ *olo=alo;*ohi=ahi;*ost=ls;}
+Z I axdec(F st){I e=dxp(st);I d=e<0?-e:0;if(d>6)d=6;return d;}
+// Tick labels never go through %f at extreme magnitudes: 1e300 would want 300
+// digits of it. Anything outside a comfortable fixed-point band gets %g.
+Z I fmtf(C*b,N bn,F v,I d){F a=fab(v);I r;
+ if(v!=v)r=snprintf(b,bn,"nan");
+ else if(a!=0&&(a>=1e7||a<1e-4))r=snprintf(b,bn,"%.4g",v);
+ else r=snprintf(b,bn,"%.*f",d,a==0?0.0:v);
+ if(r<0)r=0;if((N)r>=bn)r=(I)bn-1;return r;}
+// Value -> pixel, guarded. The quotient is unbounded when explicit limits zoom
+// far inside the data, and (I) of a double past INT_MAX is undefined, so the
+// clamp happens in the float domain BEFORE the cast.
+Z I vpx(F v,F lo,F sp,I n){F t=((F)(n-1))*(v-lo)/sp+0.5;if(!(t>-1e6))t=-1e6;if(t>1e6)t=1e6;return (I)t;}
+Z I vpy(F v,F lo,F sp,I n){F t=((F)(n-1))*(1.0-(v-lo)/sp)+0.5;if(!(t>-1e6))t=-1e6;if(t>1e6)t=1e6;return (I)t;}
+
+#define PLTMAXS 12          /* more series than this and no legend is readable */
+#define PLTSPECN 10         /* elements in the canonical spec sys.k's plot builds */
+
+// One series onto the dot/own planes.
+// sty: 0 line, 1 scatter, 2 step, 3 area.
+// When x is non-decreasing AND there are more points than pixel columns, the
+// series is drawn as a per-column min/max ENVELOPE. That is the difference
+// between a readable chart and the solid black smear a million points make when
+// each one is joined to the next: the envelope keeps every spike (it is exactly
+// the range the column covers) while drawing one vertical segment per column.
+// A non-monotonic x means a parametric curve that doubles back, where a column
+// envelope would be wrong, so those fall back to segment-by-segment.
+Z V drawser(UC*dot,UC*own,I W,I H,CO F*Y,CO F*X,U n,F xlo,F xsp,F ylo,F ysp,I sty,UC sid){
+ I pw=2*W,ph=4*H;
+ I base=vpy(0.0>ylo?(0.0<ylo+ysp?0.0:ylo+ysp):ylo,ylo,ysp,ph);   // area baseline: y=0 if in view
+ B mono=1;if(X){for(U i=1;i<n;i++)if(X[i]<X[i-1]){mono=0;break;}}
+ B env=mono&&n>(U)(2*pw);
+ I ppx=0,ppy=0;B have=0;
+ I cpx=-1,cmn=0,cmx=0;                                           // current envelope column
+ for(U i=0;i<n;i++){
+  F cy=Y[i],cx=X?X[i]:(F)i;
+  if(cy!=cy||cx!=cx){have=0;continue;}                           // a null breaks the line
+  I px=vpx(cx,xlo,xsp,pw),py=vpy(cy,ylo,ysp,ph);
+  if(env){
+   if(px!=cpx){
+    if(cpx>=0){bres(dot,own,W,H,cpx,cmn,cpx,cmx,sid);            // the column's whole range
+               if(have)bres(dot,own,W,H,ppx,ppy,cpx,cmn>ppy?cmn:cmx,sid);
+               ppx=cpx;ppy=cmn>cmx?cmn:cmx;have=1;}
+    cpx=px;cmn=cmx=py;}
+   else{if(py<cmn)cmn=py;if(py>cmx)cmx=py;}
+   continue;}
+  if(sty==1){pxs2(dot,own,W,H,px,py,sid);pxs2(dot,own,W,H,px+1,py,sid);pxs2(dot,own,W,H,px,py+1,sid);pxs2(dot,own,W,H,px+1,py+1,sid);}
+  else if(sty==3){bres(dot,own,W,H,px,py,px,base,sid);}
+  else if(have&&sty==2){bres(dot,own,W,H,ppx,ppy,px,ppy,sid);bres(dot,own,W,H,px,ppy,px,py,sid);}
+  else if(have){
+   // Both endpoints off the same edge means the segment is entirely outside the
+   // view; drawing it clamped would paint a false flat line along the frame.
+   B skip=(py<0&&ppy<0)||(py>=ph&&ppy>=ph)||(px<0&&ppx<0)||(px>=pw&&ppx>=pw);
+   if(!skip)bres(dot,own,W,H,ppx,ppy,px,py,sid);}
+  else pxs2(dot,own,W,H,px,py,sid);
+  ppx=px;ppy=py;have=1;}
+ if(env&&cpx>=0)bres(dot,own,W,H,cpx,cmn,cpx,cmx,sid);}
+
+// The legacy surface: `plt v` / `plt (v;W;H)` -- a bare braille canvas with a
+// value gutter and no frame. Kept byte-for-byte because it is the primitive the
+// examples build on, and test-ext.k pins its row count.
+Z A plotBare(A x){
  A dat;I W=70,H=15,mW=120,mH=32;
- /* cap the plot to the live terminal so it never overflows the screen; the
-  * label gutter is ~10 cols and the footer/prompt want a couple of rows. */
  {ST winsize ws;if(ioctl(1,TIOCGWINSZ,&ws)==0&&ws.ws_col>20){mW=(I)ws.ws_col-11;if(ws.ws_row>8)mH=(I)ws.ws_row-4;}}
  if(mW>200)mW=200;if(mW<10)mW=10;if(mH>60)mH=60;if(mH<3)mH=3;
- if(W>mW)W=mW;if(H>mH)H=mH;                                  /* default fits the terminal */
+ if(W>mW)W=mW;if(H>mH)H=mH;
  if(_t(x)==tA){dat=N(ii(x,0));if(_n(x)>1)W=(I)gl(N(ii(x,1)));if(_n(x)>2)H=(I)gl(N(ii(x,2)));}else dat=_R(x);
  mr(x);A ser=N(cF(dat));U n=_n(ser);
  if(!n){mr(ser);return aCz("(empty)\n");}
- if(W<10)W=10;if(W>mW)W=mW;if(H<3)H=3;if(H>mH)H=mH;I PW=2*W,PH=4*H;  /* clamp to terminal */
+ if(W<10)W=10;if(W>mW)W=mW;if(H<3)H=3;if(H>mH)H=mH;I PW=2*W,PH=4*H;
  CO F*d=(CO F*)_V(ser);F mn=d[0],mx=d[0];F(n,I(d[i]<mn,mn=d[i])I(d[i]>mx,mx=d[i]))F rng=mx-mn;I(rng<=0,rng=1)
- UC cells[12000];MS(cells,0,W*H);I ppx=0,ppy=0;
- F(n,I px=n>1?(I)((F)i*(PW-1)/(n-1)+.5):PW/2,py=(I)((PH-1)*(1.-(d[i]-mn)/rng)+.5);I(px>PW-1,px=PW-1)I(py>PH-1,py=PH-1)I(py<0,py=0)I(i,bres(cells,W,H,ppx,ppy,px,py))E(pxset(cells,W,H,px,py))ppx=px;ppy=py)
- A out=aC(H*(16+W*3)+64);C*p=(C*)_V(out);
+ ArenaMark mk=arena_mark();
+ UC*cells=(UC*)arena_alloc((N)W*H),*own=(UC*)arena_alloc((N)W*H);
+ if(!cells||!own){arena_release(mk);mr(ser);return eo(ser);}
+ MS(cells,0,(N)W*H);MS(own,0,(N)W*H);I ppx=0,ppy=0;
+ F(n,I px=n>1?(I)((F)i*(PW-1)/(n-1)+.5):PW/2,py=(I)((PH-1)*(1.-(d[i]-mn)/rng)+.5);I(px>PW-1,px=PW-1)I(py>PH-1,py=PH-1)I(py<0,py=0)I(i,bres(cells,own,W,H,ppx,ppy,px,py,1))E(pxs2(cells,own,W,H,px,py,1))ppx=px;ppy=py)
+ A out=aC((N)H*(16+W*3)+64);if(!out){arena_release(mk);mr(ser);return 0;}C*p=(C*)_V(out);
  F(H,p=elab(p,i==0?mx:i==H-1?mn:mx-rng*i/(H-1),8);*p++=' ';*p++=0xE2;*p++=0x94;*p++=0x82;/*│*/
   Fj(W,UC b=cells[i*W+j];I(b,p=ebr(p,b))E(*p++=' '))*p++='\n')
- mr(ser);return AN(p-(C*)_V(out),out);}
+ arena_release(mk);mr(ser);return AN(p-(C*)_V(out),out);}
+
+// The full chart. spec, built by sys.k's `plot`, is positional so that the C
+// side stays a pure renderer and every default lives in readable k:
+//   0 ys      list of numeric vectors, one per series
+//   1 xs      list of numeric vectors (or () to plot against the index)
+//   2 opt     (W;H;grid;axis;legend;colour)      colour: 0 off 1 on 2 auto
+//   3 lim     (ylo;yhi;xlo;xhi)                  0n on any = autoscale it
+//   4 title   char vector ("" for none)
+//   5 xlab    char vector
+//   6 ylab    char vector
+//   7 names   list of char vectors, for the legend (or ())
+//   8 cols    256-colour codes, one per series (or () for the default palette)
+//   9 styles  0 line, 1 scatter, 2 step, 3 area, one per series (or ())
+Z A plotSpec(A x){
+ A*e=(A*)_V(x);
+ A ysL=e[0];P(_t(ysL)-tA||!_n(ysL),et(x))
+ U ns=_n(ysL);if(ns>PLTMAXS)ns=PLTMAXS;
+ A xsL=e[1];B hasx=_t(xsL)==tA&&_n(xsL)>=ns;
+ A optA=N(cL(_R(e[2]))),limA=N(cF(_R(e[3])));
+ if(!optA||!limA||_n(optA)<6||_n(limA)<4){if(optA)mr(optA);if(limA)mr(limA);return et(x);}
+ CO L*opt=(CO L*)_V(optA);CO F*lim=(CO F*)_V(limA);
+ I W=(I)opt[0],H=(I)opt[1];B grid=opt[2]!=0,axis=opt[3]!=0,leg=opt[4]!=0;
+ I cmode=(I)opt[5];B colr=cmode==1||(cmode==2&&isatty(1));
+ if(W<8)W=8;if(W>400)W=400;if(H<2)H=2;if(H>120)H=120;
+ I pw=2*W,ph=4*H;
+ A title=e[4],xlab=e[5],ylab=e[6],names=e[7];
+ A colA=N(cL(_R(e[8]))),styA=N(cL(_R(e[9])));
+ CO L*cols=colA&&_n(colA)>=ns?(CO L*)_V(colA):0;
+ CO L*stys=styA&&_n(styA)>=ns?(CO L*)_V(styA):0;
+ Z CO L DFC[PLTMAXS]={39,208,78,203,141,179,45,211,116,222,99,150};
+
+ // materialise every series as float64 once
+ A sY[PLTMAXS],sX[PLTMAXS];U nn[PLTMAXS];U nsv=0;
+ for(U s=0;s<ns;s++){
+  A cy=N(cF(_R(((A*)_V(ysL))[s])));if(!cy)continue;
+  A cx=0;if(hasx){A xrf=((A*)_V(xsL))[s];if(_t(xrf)!=tA||_n(xrf))cx=N(cF(_R(xrf)));}
+  U m=_n(cy);if(cx&&_n(cx)<m)m=_n(cx);
+  if(!m){mr(cy);if(cx)mr(cx);continue;}
+  sY[nsv]=cy;sX[nsv]=cx;nn[nsv]=m;nsv++;}
+ if(!nsv){mr(optA);mr(limA);if(colA)mr(colA);if(styA)mr(styA);mr(x);return aCz("(empty)\n");}
+
+ // data extent, skipping nulls and infinities so one bad point cannot flatten
+ // every other series into a single row
+ F ymn=0,ymx=0,xmn=0,xmx=0;B first=1;
+ for(U s=0;s<nsv;s++){CO F*Y=(CO F*)_V(sY[s]),*X=sX[s]?(CO F*)_V(sX[s]):0;
+  for(U i=0;i<nn[s];i++){F v=Y[i],u=X?X[i]:(F)i;
+   if(v!=v||!(v>-1e308&&v<1e308))continue;
+   if(u!=u||!(u>-1e308&&u<1e308))continue;
+   if(first){ymn=ymx=v;xmn=xmx=u;first=0;}
+   else{if(v<ymn)ymn=v;if(v>ymx)ymx=v;if(u<xmn)xmn=u;if(u>xmx)xmx=u;}}}
+ if(first){ymn=0;ymx=1;xmn=0;xmx=1;}
+
+ I ynt=H/3;if(ynt<2)ynt=2;if(ynt>8)ynt=8;
+ I xnt=W/14;if(xnt<2)xnt=2;if(xnt>8)xnt=8;
+ F ylo,yhi,yst,xlo,xhi,xst;
+ axcalc(ymn,ymx,ynt,&ylo,&yhi,&yst);
+ axcalc(xmn,xmx,xnt,&xlo,&xhi,&xst);
+ // Explicit limits are taken verbatim -- an axis the caller pinned must not be
+ // silently widened to a round number -- but still need a tick step.
+ if(lim[0]==lim[0]||lim[1]==lim[1]){
+  if(lim[0]==lim[0])ylo=lim[0];if(lim[1]==lim[1])yhi=lim[1];
+  if(!(yhi>ylo)){yhi=ylo+1;}yst=nicen((yhi-ylo)/ynt,1);}
+ if(lim[2]==lim[2]||lim[3]==lim[3]){
+  if(lim[2]==lim[2])xlo=lim[2];if(lim[3]==lim[3])xhi=lim[3];
+  if(!(xhi>xlo)){xhi=xlo+1;}xst=nicen((xhi-xlo)/xnt,1);}
+ F ysp=yhi-ylo,xsp=xhi-xlo;if(!(ysp>0))ysp=1;if(!(xsp>0))xsp=1;
+
+ ArenaMark mk=arena_mark();
+ UC*dot=(UC*)arena_alloc((N)W*H),*own=(UC*)arena_alloc((N)W*H),*grd=(UC*)arena_alloc((N)W*H);
+ if(!dot||!own||!grd){arena_release(mk);mr(optA);mr(limA);if(colA)mr(colA);if(styA)mr(styA);
+  for(U s=0;s<nsv;s++){mr(sY[s]);if(sX[s])mr(sX[s]);}return eo(x);}
+ MS(dot,0,(N)W*H);MS(own,0,(N)W*H);MS(grd,0,(N)W*H);
+
+ // gridlines first, into their own plane, dashed so they read as background
+  // Horizontal gridlines are the ones that earn their clutter -- they let a
+ // reader put a value on a point. Vertical ones are opt-in (grid:2).
+ if(grid){
+  for(F v=fcl(ylo/yst)*yst;v<=yhi+yst*1e-9;v+=yst){I py=vpy(v,ylo,ysp,ph);
+   if(py<0||py>=ph)continue;for(I px=0;px<pw;px+=8)pxset(grd,W,H,px,py);}
+  if(grid>1)for(F v=fcl(xlo/xst)*xst;v<=xhi+xst*1e-9;v+=xst){I px=vpx(v,xlo,xsp,pw);
+   if(px<0||px>=pw)continue;for(I py=0;py<ph;py+=8)pxset(grd,W,H,px,py);}}
+
+ for(U s=0;s<nsv;s++)
+  drawser(dot,own,W,H,(CO F*)_V(sY[s]),sX[s]?(CO F*)_V(sX[s]):0,nn[s],xlo,xsp,ylo,ysp,
+          stys?(I)stys[s]:0,(UC)(s+1));
+
+ // ---- y tick labels, and the gutter width they imply ----------------------
+ I ydc=axdec(yst);
+ C ylb[128][24];I yrow[128];I nyl=0;
+ if(axis){
+  for(F v=fcl(ylo/yst)*yst;v<=yhi+yst*1e-9&&nyl<120;v+=yst){
+   I py=vpy(v,ylo,ysp,ph);if(py<0||py>=ph)continue;I r=py>>2;
+   B dup=0;F(nyl,I(yrow[i]==r,dup=1))if(dup)continue;
+   fmtf(ylb[nyl],24,v,ydc);yrow[nyl]=r;nyl++;}}
+ I gw=0;F(nyl,I l=(I)strlen(ylb[i]);I(l>gw,gw=l))
+ if(axis&&gw<1)gw=1;
+
+ // ---- x tick labels, packed into one row so they cannot collide -----------
+ I xdc=axdec(xst);
+ C xrow[512];I xrn=W+2;if(xrn>510)xrn=510;
+ MS(xrow,' ',(N)xrn);xrow[xrn]=0;
+ UC xtk[400];MS(xtk,0,(N)W);
+ if(axis){I used=-1;
+  for(F v=fcl(xlo/xst)*xst;v<=xhi+xst*1e-9;v+=xst){
+   I px=vpx(v,xlo,xsp,pw);if(px<0||px>=pw)continue;I c=px>>1;
+   if(c<W)xtk[c]=1;
+   C b[24];I l=fmtf(b,24,v,xdc);I st=c-l/2;if(st<0)st=0;if(st+l>xrn)st=xrn-l;if(st<0)continue;
+   if(st<=used)continue;                                  // would touch the previous label
+   MC(xrow+st,b,(N)l);used=st+l;}}
+
+ // ---- emit ----------------------------------------------------------------
+ // Worst case per cell is a colour change (11 bytes) plus a 3-byte glyph; the
+ // +80 per row covers the gutter, the frame and the trailing reset.
+ N cap=(N)(H+8)*((N)W*20+(N)gw+96)+1024;
+ A out=aC(cap);if(!out){arena_release(mk);mr(optA);mr(limA);if(colA)mr(colA);if(styA)mr(styA);
+  for(U s=0;s<nsv;s++){mr(sY[s]);if(sX[s])mr(sX[s]);}return 0;}
+ C*p=(C*)_V(out);
+ I inner=W,total=(axis?gw+1+2:0)+inner;
+ C cb[24];
+ #define SETC(n) do{if(colr){snprintf(cb,24,"\033[38;5;%dm",(I)(n));p=puts_(p,cb);}}while(0)
+ #define RSTC()  do{if(colr)p=puts_(p,"\033[0m");}while(0)
+
+ if(_t(title)==tC&&_n(title)){I l=(I)_n(title);I pad=(total-l)/2;if(pad<0)pad=0;
+  F(pad,*p++=' ')if(colr)p=puts_(p,"\033[1m");MC(p,(CO C*)_V(title),(N)l);p+=l;if(colr)p=puts_(p,"\033[0m");*p++='\n';}
+ if(_t(ylab)==tC&&_n(ylab)){I l=(I)_n(ylab);SETC(245);MC(p,(CO C*)_V(ylab),(N)l);p+=l;RSTC();*p++='\n';}
+
+ if(axis){SETC(240);F(gw+1,*p++=' ')p=puts_(p,"┌");F(W,p=puts_(p,"─"))p=puts_(p,"┐");RSTC();*p++='\n';}
+
+ for(I r=0;r<H;r++){
+  if(axis){
+   I li=-1;F(nyl,I(yrow[i]==r,li=i))
+   if(li>=0){I l=(I)strlen(ylb[li]);SETC(245);F(gw-l,*p++=' ')MC(p,ylb[li],(N)l);p+=l;RSTC();}
+   else F(gw,*p++=' ')
+   *p++=' ';SETC(240);p=puts_(p,li>=0?"┤":"│");RSTC();}
+  I cur=-1;
+  for(I j=0;j<W;j++){
+   UC b=dot[r*W+j];I want;
+   if(b)want=(I)(cols?cols[own[r*W+j]-1]:DFC[(own[r*W+j]-1)%PLTMAXS]);
+   else if(grid&&grd[r*W+j]){b=grd[r*W+j];want=237;}
+   else{if(cur!=-1){RSTC();cur=-1;}*p++=' ';continue;}
+   if(colr&&want!=cur){snprintf(cb,24,"\033[38;5;%dm",want);p=puts_(p,cb);cur=want;}
+   p=ebr(p,b);}
+  if(cur!=-1)RSTC();
+  if(axis){SETC(240);p=puts_(p,"│");RSTC();}
+  *p++='\n';}
+
+ if(axis){SETC(240);F(gw+1,*p++=' ')p=puts_(p,"└");
+  F(W,p=puts_(p,xtk[i]?"┬":"─"))p=puts_(p,"┘");RSTC();*p++='\n';
+  I last=xrn;while(last>0&&xrow[last-1]==' ')last--;
+  if(last>0){SETC(245);F(gw+2,*p++=' ')MC(p,xrow,(N)last);p+=last;RSTC();*p++='\n';}}
+
+ if(_t(xlab)==tC&&_n(xlab)){I l=(I)_n(xlab);I pad=(total-l)/2;if(pad<0)pad=0;
+  F(pad,*p++=' ')SETC(245);MC(p,(CO C*)_V(xlab),(N)l);p+=l;RSTC();*p++='\n';}
+
+ if(leg&&_t(names)==tA&&_n(names)){U nl=_n(names);if(nl>nsv)nl=nsv;
+  F(gw+2,*p++=' ')
+  for(U s=0;s<nl;s++){A nm=((A*)_V(names))[s];if(_t(nm)!=tC)continue;
+   SETC(cols?(I)cols[s]:(I)DFC[s%PLTMAXS]);p=puts_(p,"──");RSTC();*p++=' ';
+   I l=(I)_n(nm);if(l>24)l=24;MC(p,(CO C*)_V(nm),(N)l);p+=l;
+   if(s+1<nl){*p++=' ';*p++=' ';}}
+  *p++='\n';}
+ #undef SETC
+ #undef RSTC
+
+ arena_release(mk);mr(optA);mr(limA);if(colA)mr(colA);if(styA)mr(styA);
+ for(U s=0;s<nsv;s++){mr(sY[s]);if(sX[s])mr(sX[s]);}
+ mr(x);
+ return AN((U)(p-(C*)_V(out)),out);}
+
+// plt: the canonical 10-element spec goes to the full renderer; a bare vector
+// or the legacy (v;W;H) triple keeps the original bare-canvas behaviour.
+A plotC(A x){
+ if(_t(x)==tA&&_n(x)==PLTSPECN&&_t(((A*)_V(x))[0])==tA)return plotSpec(x);
+ return plotBare(x);}
 // candle: x = (open;high;low;close) 4 numeric vectors.  Box wicks + block bodies + ANSI colour.
 A candleC(A x){
  P(_t(x)-tA||_n(x)-4,et(x))

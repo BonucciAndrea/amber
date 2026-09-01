@@ -421,7 +421,7 @@ order for floats, and symbol order is interning order). This keeps results exact
 `peach[f;y]` is a drop-in parallel replacement for `` f'y `` (each): it forks
 `AMBER_THREADS` worker **processes** (default: the online CPU count, via `sysconf`;
 previously a hardcoded `4`, which oversubscribed small boxes and under-used large ones — see
-[CHANGELOG](CHANGELOG.md)), each applies `f` to a slice of `y`,
+[CHANGELOG](../CHANGELOG.md)), each applies `f` to a slice of `y`,
 serialises its result with the binary serializer (`-8!`, §10b — it was `` `k `` text before
 1.9.3) and streams it back, and the parent decodes it with `-9!` and concatenates. The result is
 **identical** to serial `` f'y `` for every value (vectors, symbols, tables, nested, ragged).
@@ -577,22 +577,74 @@ alignment, ANSI suppression when colour is off, and the complete category → co
 
 ---
 
-## 9c. Terminal charts — `plot` · `candle`
+## 9c. Terminal charts — `chart` and its presets
 
-`plot v` (or `plot (v;W;H)`) renders a numeric vector as a **Braille** line chart — a 2×4
-dot bitmask per character cell gives 2× horizontal and 4× vertical resolution — with min/max
-scaling, Y-axis tick labels, and Bresenham-drawn curves. `candle t` renders an OHLC table
-(columns `open/high/low/close` or `o/h/l/c`, keyed or not) as **Unicode candlesticks** with
-ANSI colour (green up / red down), box-drawing wicks (`│`) and block bodies (`█`).
+Charts are a first-class output format, not a debugging aid: framed, with a scaled and
+labelled axis, several series at a time, and a downsampler that keeps a million-point series
+readable. The drawing surface is **Braille** — a 2×4 dot bitmask per character cell, so a
+`W`×`H` box is really a `2W`×`4H` raster.
+
+Everything funnels into **`chart`**, which takes a dictionary of options. The other verbs are
+presets over it, so there is exactly one place where a default lives.
+
+| verb | takes | draws |
+|---|---|---|
+| `chart d` | option dictionary | anything below, fully specified |
+| `plot v` · `plot (v;W;H)` | a vector | one line series |
+| `plots (a;b;c)` · `plots \`a\`b!(x;y)` | several vectors, or a dict | several series + legend |
+| `xyplot (xs;ys)` | two vectors | y against a **real x axis** |
+| `scatter (xs;ys)` | two vectors | points, unjoined |
+| `step v` / `area v` | a vector | piecewise-constant / filled |
+| `hist v` · `hist (v;nbins)` | a vector | a binned distribution |
+| `barh \`a\`b!3 7` | dict or `(labels;values)` | labelled horizontal block bars |
+| `heat \`a\`b!(r1;r2)` | dict or `(labels;rows)` | a matrix as truecolour cells |
+| `spark v` | a vector | **returns** a one-line string, to embed in a row |
+| `candle t` | an OHLC table | Unicode candlesticks, green up / red down |
+
+### Options
+
+`chart` accepts these keys; anything omitted takes the default in `chopt`.
+
+| key | default | meaning |
+|---|---|---|
+| `y` | — | a vector, or a list of vectors (one per series) |
+| `x` | index | matching x coordinates; one vector, or one per series |
+| `w` `h` | fit terminal | size in character cells |
+| `ylim` `xlim` | auto | `(lo;hi)` to pin an axis |
+| `grid` | `1` | `0` none, `1` horizontal gridlines, `2` horizontal and vertical |
+| `axis` | `1` | frame, tick marks and tick labels; `0` gives the bare canvas |
+| `legend` | `1` | draw `names` under the chart |
+| `colour` | `2` | `0` off, `1` on, `2` on only when stdout is a terminal |
+| `title` `xlabel` `ylabel` | `""` | text |
+| `names` | `()` | one label per series |
+| `col` | palette | one 256-colour code per series |
+| `style` | `0` | per series: `0` line, `1` scatter, `2` step, `3` area |
 
 ```q
-plot t`px                               / braille line chart of a price column
-plot (10*{sin x%6}'!120;100;16)         / (series; width; height)
+plot t`px                                       / one column, framed and labelled
+plots `bid`ask!(q`bid;q`ask)                    / two series, legend from the keys
+chart `y`title`ylabel`ylim!(px;"AAPL";"price";98 102)
+chart `y`x`names!((px;ma);(!#px;50+!#ma);("price";"MA(50)"))   / per-series x
 candle bars[10; select from trades where sym=`AAPL]
 ```
 
-Both print directly (via `` `0:``); the C kernels are `plotC`/`candleC` in `i.c`. See
-`examples/graphs.k` for a 13-chart tour.
+### Two things that make the output readable
+
+**The axis is snapped, not padded.** `axcalc` takes the data's own range and rounds it
+*outward* to the nearest 1/2/5 boundary, so ticks land on numbers a reader decodes without
+arithmetic. Raw min/max would pin the extremes to the frame, where they look clipped; a fixed
+percentage pad would land the axis on values like `7.31942`.
+
+**More points than pixels are drawn as an envelope.** Above roughly `4W` points, each pixel
+column is drawn as the min→max range of the points that fall in it, rather than joining
+consecutive points. One vertical segment per column keeps every spike and avoids the solid
+smear a joined million-point series produces. The envelope needs a non-decreasing `x`, so
+parametric curves that double back (a Lissajous figure, a spiral) fall back to segment drawing
+automatically.
+
+All of these print directly via `` `0:``. The C kernels are `plotC`/`candleC` in `i.c`; the
+`plt` kernel also still accepts the bare `(v;W;H)` form, which returns an unframed canvas.
+See [`examples/graphs.k`](../examples/graphs.k) for a 31-chart tour.
 
 ## 9d. Apache Arrow C Data Interface — `arrow.export` · `arrow.import`
 
@@ -731,7 +783,8 @@ joins      lj ij uj pj ej aj aj0 asof wj
 strings    lower upper ltrim rtrim trim ss ssr sv vs like lk1
 temporal   hms hh mm sec milli minute second stime ptime  bar minbar tsym
            year month day dow thh tmm tss  dstr pdate pstr ptstamp  (native types)
-display    show amfmt amtab amkeyed amdict  plot candle
+display    show amfmt amtab amkeyed amdict
+charts     chart plot plots xyplot scatter step area hist barh heat spark candle
            COLOR CT cwrap vlen vstrip (ANSI highlighting)  CROWS (preview height)
 attributes `sa `ua `pa `ga (set sorted/unique/parted/grouped)   `at (get)  [kernel primitives]
 moving     mcount msum mavg mprd mvar mdev mmin mmax   (std.k, O(n) prefix)
@@ -780,7 +833,7 @@ table — see `src/inspect.{h,c}`); `\ast expr` a colour-coded parse tree, parse
 executed (`src/ast.{h,c}` — every leaf is typed explicitly, `Int64`/`Float64`/`Symbol`/`Char`/a
 `(TypeName Vector[len])` preview, never a generic placeholder; tacit hooks `(f g)`, forks
 `(f g h)`, and curried projections `1+`/`f[x;;z]` get their own explicit labels; see
-[CHANGELOG](CHANGELOG.md)); `\trace expr` a 4-phase timing report (parse/arena/exec/format) plus
+[CHANGELOG](../CHANGELOG.md)); `\trace expr` a 4-phase timing report (parse/arena/exec/format) plus
 the arena's peak scratch usage for that evaluation, running the same qSQL rewrite the prompt uses
 so tracing a table or `select …` expression renders correctly (`src/trace.{h,c}`); `\disasm expr`
 compiles an expression and prints the real bytecode Amber's compiler/VM (`src/b.c`) produces for

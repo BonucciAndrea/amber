@@ -243,7 +243,8 @@ prompt with no wrapper:
 ```k
 select avg px by sym from trades where px>100     / grouped aggregate
 select sym,px from trades where px>180            / chosen columns, filtered
-exec avg px from trades where sym=`AAPL           / one column/expression
+exec avg px from trades where sym=`AAPL           / one column/expression -> a vector
+exec px,sz from trades where sym=`AAPL            / several -> a `px`sz dict of columns
 update mid:0.5*bid+ask from quotes                / add/replace columns
 delete from trades where sz<300                   / drop rows
 r:select n:#px, avg px by sym from trades         / assign; also  5#select …  count select …
@@ -590,7 +591,7 @@ presets over it, so there is exactly one place where a default lives.
 | verb | takes | draws |
 |---|---|---|
 | `chart d` | option dictionary | anything below, fully specified |
-| `plot v` · `plot (v;W;H)` | a vector | one line series |
+| `plot v` · `plot (v;W;H)` · `plot (a;b;c)` | a vector, or a list/dict of columns | one line — or one labelled line per column |
 | `plots (a;b;c)` · `plots \`a\`b!(x;y)` | several vectors, or a dict | several series + legend |
 | `xyplot (xs;ys)` | two vectors | y against a **real x axis** |
 | `scatter (xs;ys)` | two vectors | points, unjoined |
@@ -600,6 +601,10 @@ presets over it, so there is exactly one place where a default lives.
 | `heat \`a\`b!(r1;r2)` | dict or `(labels;rows)` | a matrix as truecolour cells |
 | `spark v` | a vector | **returns** a one-line string, to embed in a row |
 | `candle t` | an OHLC table | Unicode candlesticks, green up / red down |
+
+A **time-of-day x-axis** — integer milliseconds since midnight, as Amber's `time` columns hold —
+is detected automatically and labelled `HH:MM:SS` on round clock boundaries (`09:30`, `10:00`, …),
+so `xyplot (trades\`time; trades\`px)` reads as a clock, not a column of raw millisecond counts.
 
 ### Options
 

@@ -39,7 +39,8 @@ qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                        / vwap by symbo
 ```
 
 <a name="whats-new"></a>
-## Since 2.0.0
+<a name="whats-new-200"></a>
+## What's new in 2.0.0
 
 **Charts.** `plot` draws a framed, labelled braille line chart that auto-sizes to the
 terminal, alongside `scatter`, `step`, `area`, `hist` and OHLC `candle` (see
@@ -83,10 +84,7 @@ the VWAP path), and a rebuilt group-by.
 - **Engine** — `az()` computed `n-(I)n` to test whether a value fits in an `int`; for `0W`
   (`LLONG_MAX`) that overflows, which is undefined behaviour. Fixed.
 
-Full detail in **[CHANGELOG.md](CHANGELOG.md)**.
-
-<a name="whats-new-200"></a>
-## What's new in 2.0.0
+**Language & qSQL.**
 
 - **Infix notation for the two-argument library dyads.** `2 3 in 2 3 4`, `5 within 3 9`,
   `` t lj kt``, `` `sym xasc t``, `` "/" sv `a`b`c`` now work infix, exactly as in kdb+/q. The

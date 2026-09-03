@@ -65,6 +65,15 @@ typedef int64_t  vi64 __attribute__((vector_size(VBYTES)));
 typedef int32_t  vi32 __attribute__((vector_size(VBYTES)));
 typedef int16_t  vi16 __attribute__((vector_size(VBYTES)));
 typedef int8_t   vi8  __attribute__((vector_size(VBYTES)));
+/* The INTEGER kernels compute in this unsigned counterpart, never in vi64 --
+ * same reason as AMB_ADDU below and the note in src/2.c: the wrap is
+ * deliberate (oZZ() reads the overflow back out of the result's sign bits and
+ * the caller re-runs one width wider), and signed overflow is undefined
+ * behaviour that UBSan reports and that the optimiser is entitled to assume
+ * away, taking the check with it. Two's-complement wrap in the unsigned type
+ * is defined and lowers to the identical vpaddq/vpmullq. UBSan caught this on
+ * test-euler.k, whose bignum limbs add straight through 2^63. */
+typedef uint64_t vu64 __attribute__((vector_size(VBYTES)));
 
 /* vector OP vector */
 /* The inner loop is emitted TWICE: once with all three pointers restrict-
@@ -75,7 +84,11 @@ typedef int8_t   vi8  __attribute__((vector_size(VBYTES)));
  * scalar-ish fallback; the original hand-written kernels in 2.c carried RES on
  * every pointer, and dropping it cost ~12% on float multiply (measured on the
  * inner-join cell, where it showed up as a whole-workload regression). */
-#define AMB_VV_BODY(T, VT, OP, A, B, O)                                        \
+/* CT is the type the arithmetic is DONE in: T itself for the float kernels,
+ * T's unsigned counterpart for the integer ones. VT is the vector type that
+ * matches CT. The load and the store are byte copies either way, so reading a
+ * const T* into a VT and storing a VT back through a T* is exact. */
+#define AMB_VV_BODY(T, CT, VT, OP, A, B, O)                                    \
         { const size_t L = VBYTES / sizeof(T);                                 \
           size_t i = 0;                                                        \
           for (; i + L <= n; i += L) {                                         \
@@ -85,35 +98,35 @@ typedef int8_t   vi8  __attribute__((vector_size(VBYTES)));
               vo = va OP vb;                                                   \
               __builtin_memcpy((O) + i, &vo, VBYTES);                          \
           }                                                                    \
-          for (; i < n; i++) (O)[i] = (T)((A)[i] OP (B)[i]); }
-#define AMB_VV(FN, T, VT, OP)                                                  \
+          for (; i < n; i++) (O)[i] = (T)((CT)(A)[i] OP (CT)(B)[i]); }
+#define AMB_VV(FN, T, CT, VT, OP)                                              \
     static void FN##_r(const T *__restrict a, const T *__restrict b,           \
                        T *__restrict out, size_t n)                            \
-        AMB_VV_BODY(T, VT, OP, a, b, out)                                      \
+        AMB_VV_BODY(T, CT, VT, OP, a, b, out)                                  \
     static void FN##_a(const T *a, const T *b, T *out, size_t n)               \
-        AMB_VV_BODY(T, VT, OP, a, b, out)                                      \
+        AMB_VV_BODY(T, CT, VT, OP, a, b, out)                                  \
     void FN(const T *a, const T *b, T *out, size_t n) {                        \
         if (out == a || out == b) FN##_a(a, b, out, n);                        \
         else                      FN##_r(a, b, out, n);                        \
     }
 /* scalar OP vector (broadcast) */
-#define AMB_SV(FN, T, VT, OP)                                                  \
+#define AMB_SV(FN, T, CT, VT, OP)                                              \
     void FN(T v, const T *b, T *out, size_t n) {                               \
         const size_t L = VBYTES / sizeof(T);                                   \
         size_t i = 0;                                                          \
         VT vv;                                                                 \
-        { size_t k; T *s = (T *)&vv; for (k = 0; k < L; k++) s[k] = v; }       \
+        { size_t k; CT *s = (CT *)&vv; for (k = 0; k < L; k++) s[k] = (CT)v; } \
         for (; i + L <= n; i += L) {                                           \
             VT vb, vo;                                                         \
             __builtin_memcpy(&vb, b + i, VBYTES);                              \
             vo = vv OP vb;                                                     \
             __builtin_memcpy(out + i, &vo, VBYTES);                            \
         }                                                                      \
-        for (; i < n; i++) out[i] = (T)(v OP b[i]);                            \
+        for (; i < n; i++) out[i] = (T)((CT)v OP (CT)b[i]);                    \
     }
 /* reduction with FOUR independent vector accumulators: 4 x VBYTES in flight,
  * which is what it takes to cover FP-add latency on a modern core. */
-#define AMB_SUM(FN, T, VT, ZERO)                                               \
+#define AMB_SUM(FN, T, CT, VT, ZERO)                                           \
     T FN(const T *__restrict a, size_t n) {                                    \
         const size_t L = VBYTES / sizeof(T);                                   \
         VT s0 = ZERO, s1 = ZERO, s2 = ZERO, s3 = ZERO;                         \
@@ -129,29 +142,29 @@ typedef int8_t   vi8  __attribute__((vector_size(VBYTES)));
         for (; i + L <= n; i += L) {                                           \
             VT v0; __builtin_memcpy(&v0, a + i, VBYTES); s0 += v0;             \
         }                                                                      \
-        { T r = 0; size_t k;                                                   \
+        { CT r = 0; size_t k;                                                  \
           VT t0 = (s0 + s1) + (s2 + s3);                                       \
-          const T *lanes = (const T *)&t0;                                     \
+          const CT *lanes = (const CT *)&t0;                                   \
           for (k = 0; k < L; k++) r += lanes[k];                               \
-          for (; i < n; i++) r += a[i];                                        \
-          return r; }                                                          \
+          for (; i < n; i++) r += (CT)a[i];                                    \
+          return (T)r; }                                                       \
     }
 
-AMB_VV(simd_add_f64, double,  vf64, +)
-AMB_VV(simd_mul_f64, double,  vf64, *)
-AMB_VV(simd_add_i64, int64_t, vi64, +)
-AMB_VV(simd_mul_i64, int64_t, vi64, *)
-AMB_SUM(simd_sum_f64, double,  vf64, (vf64){0})
-AMB_SUM(simd_sum_i64, int64_t, vi64, (vi64){0})
+AMB_VV(simd_add_f64, double,  double,   vf64, +)
+AMB_VV(simd_mul_f64, double,  double,   vf64, *)
+AMB_VV(simd_add_i64, int64_t, uint64_t, vu64, +)
+AMB_VV(simd_mul_i64, int64_t, uint64_t, vu64, *)
+AMB_SUM(simd_sum_f64, double,  double,   vf64, (vf64){0})
+AMB_SUM(simd_sum_i64, int64_t, uint64_t, vu64, (vu64){0})
 
 #else  /* no vector extensions: plain scalar loops, as before */
-#define AMB_SCALAR_VV(FN, T, OP) \
+#define AMB_SCALAR_VV(FN, T, CT, OP) \
     void FN(const T *a, const T *b, T *out, size_t n) { \
-        for (size_t i = 0; i < n; i++) out[i] = (T)(a[i] OP b[i]); }
-AMB_SCALAR_VV(simd_add_f64, double,  +)
-AMB_SCALAR_VV(simd_mul_f64, double,  *)
-AMB_SCALAR_VV(simd_add_i64, int64_t, +)
-AMB_SCALAR_VV(simd_mul_i64, int64_t, *)
+        for (size_t i = 0; i < n; i++) out[i] = (T)((CT)a[i] OP (CT)b[i]); }
+AMB_SCALAR_VV(simd_add_f64, double,  double,   +)
+AMB_SCALAR_VV(simd_mul_f64, double,  double,   *)
+AMB_SCALAR_VV(simd_add_i64, int64_t, uint64_t, +)
+AMB_SCALAR_VV(simd_mul_i64, int64_t, uint64_t, *)
 double  simd_sum_f64(const double *a, size_t n) {
     double s0=0,s1=0,s2=0,s3=0; size_t m=n&~(size_t)3,i=0;
     for(;i<m;i+=4){s0+=a[i];s1+=a[i+1];s2+=a[i+2];s3+=a[i+3];}

@@ -190,6 +190,13 @@ if [ "$ASAN" = 1 ]; then
     out=$(o/san/amber "$s" 2>&1); rc=$?
     echo "$out" | grep -vE '^(simd|par):' | tail -8
     if echo "$out" | grep -Eq 'runtime error:|AddressSanitizer:|LeakSanitizer:'; then
+      # `tail -8` above shows the END of the run (the suite's own summary), so a
+      # diagnostic emitted near the START has already scrolled off -- which is
+      # how a CI log came to say "diagnostics above" with no diagnostic in it.
+      # Reprint the reason, plus the frames that name the offending source line.
+      echo "  sanitizer diagnostics:"
+      echo "$out" | grep -E 'runtime error:|AddressSanitizer:|LeakSanitizer:' | head -20
+      echo "$out" | grep -E '^ +#[0-9]+ .* in .* src/' | head -12
       echo "  -> FAIL (sanitizer diagnostics above)"; fail=1
     elif [ "$rc" = 0 ] && echo "$out" | grep -Eq '0 failures'; then echo "  -> PASS"
     else echo "  -> FAIL rc=$rc"; fail=1; fi
@@ -225,6 +232,9 @@ if [ "$TSAN" = 1 ]; then
     out=$(AMBER_THREADS=4 o/tsan/amber "$s" 2>&1); rc=$?
     echo "$out" | grep -vE '^(simd|par):' | tail -6
     if echo "$out" | grep -Eq 'ThreadSanitizer: (data race|lock-order|deadlock)'; then
+      echo "  ThreadSanitizer diagnostics:"
+      echo "$out" | grep -E 'ThreadSanitizer: (data race|lock-order|deadlock)' | head -20
+      echo "$out" | grep -E '^ +#[0-9]+ .* in .* src/' | head -12
       echo "  -> FAIL (ThreadSanitizer diagnostics above)"; fail=1
     elif echo "$out" | grep -Eq '0 failures'; then echo "  -> PASS (0 races)"
     else echo "  -> FAIL rc=$rc"; fail=1; fi

@@ -1,5 +1,30 @@
 # Changelog
 
+## 2.0.1
+
+Tacit **trains** — hooks and forks — are now first-class. A parenthesised,
+semicolon-separated list whose every element is a function is applied as a
+**train** instead of being indexed:
+
+- **Hook** `(f;g)` — monadic `(f;g) y` is `y f (g y)`; dyadic `(f;g)[x;y]` is `x f (g y)`.
+- **Fork** `(f;g;h)` — monadic `(f;g;h) y` is `(f y) g (h y)`; dyadic `(f;g;h)[x;y]` is `(x f y) g (x h y)`.
+
+So `avg:(+/;%;#)` is a working mean, `(%;+/)` normalises a vector to sum 1, and
+`(|/;-;&/)` is the range. Trains freely combine primitives, derived verbs
+(`+/`), lambdas and projections; they can be named, stored and passed around
+like any other value; and they apply **monadically by juxtaposition**
+(`train x`) or **dyadically in bracket form** (`train[x;y]`). Nothing else
+changes: a **space-separated** group `(f g)` is still ordinary right-to-left
+composition (`f(g x)`), a list of four or more verbs still indexes, and any
+list containing a non-function element still indexes.
+
+Implementation: the apply path `_1`/`_2` (`src/a.c`) recognises a 2- or
+3-element all-function general list and evaluates the train, applying each
+primitive element straight through the index-aligned monad/dyad tables
+(`v1`/`v2`) by its verb index so a stored verb never accidentally projects; any
+other function element (lambda, projection, composition, derived verb) is
+applied through `_1`/`_2`. The full test suite passes unchanged.
+
 ## 2.0.0
 
 The 2.0.0 release. Charts became a real feature — framed, auto-sizing braille plots with

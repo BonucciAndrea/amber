@@ -126,6 +126,34 @@ Amber follows a terse **array grammar**, which differs from kdb+/q in a few ways
 
 These are properties of the host, not bugs, and the library is written to respect them.
 
+### Tacit trains — hooks and forks (since 2.0.1)
+
+A parenthesised, **semicolon-separated** list whose every element is a function
+is applied as a **train** rather than indexed. Two shapes exist:
+
+| shape | name | monadic `t y` | dyadic `t[x;y]` |
+|-------|------|---------------|-----------------|
+| `(f;g)`   | **hook** | `y f (g y)`         | `x f (g y)`             |
+| `(f;g;h)` | **fork** | `(f y) g (h y)`     | `(x f y) g (x h y)`     |
+
+```text
+avg:(+/;%;#)                      / mean, tacitly:  (sum % count)
+avg 2 4 6 8 10                    / 6.0
+(|/;-;&/) 5 2 9 1                 / range = max - min = 8
+(%;+/) 1 2 3 4                    / normalise to sum 1 -> 0.1 0.2 0.3 0.4
+(,;|) 1 2 3                       / a value followed by its reverse -> 1 2 3 3 2 1
+(+;*;-)[10;3]                     / dyadic fork -> (10+3)*(10-3) = 91
+```
+
+The elements may be primitives, derived verbs (`+/`), lambdas or projections; a
+train is an ordinary value, so it can be named, stored and passed around. Apply
+it **monadically by juxtaposition** (`t y`) or **dyadically in bracket form**
+(`t[x;y]`). Note the distinction from a **space-separated** group: `(f g)` (no
+semicolon) is plain right-to-left composition `f(g x)`, whereas `(f;g)` is a
+hook. Any list that is not exactly two or three functions — four+ verbs, or a
+list with a non-function element — still **indexes** as before. See the online
+[Tacit programming guide](https://amber-lang.org/docs/tacit.html) for a full tour.
+
 ---
 
 ## 3. Type & null quick reference

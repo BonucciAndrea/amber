@@ -106,7 +106,7 @@ static inline const void*amb_alchk(const void*p_,const char*f_,int l_){
 // v1.7 while README.md already advertised 1.9).
 #define AMBER_VERSION_MAJOR 2
 #define AMBER_VERSION_MINOR 0
-#define AMBER_VERSION_PATCH 0
+#define AMBER_VERSION_PATCH 1
 #define AMBER_VERSION M2(AMBER_VERSION_MAJOR) "." M2(AMBER_VERSION_MINOR) "." M2(AMBER_VERSION_PATCH)
 #define REFB  1
 #define MINE(x) (_r(x)==REFB)

@@ -12,7 +12,7 @@
 **A low-latency array language — columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-2.0.0-orange)
+![version](https://img.shields.io/badge/version-2.0.1-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
 ![tests](https://img.shields.io/badge/tests-742%20K--suite%20cases-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
@@ -39,6 +39,27 @@ qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                        / vwap by symbo
 ```
 
 <a name="whats-new"></a>
+<a name="whats-new-201"></a>
+## What's new in 2.0.1
+
+**Tacit trains — hooks and forks.** A parenthesised, semicolon-separated list
+whose every element is a function now runs as a **train** when applied, instead
+of being indexed:
+
+- **Fork** `(f;g;h)` applies the outer verbs to the argument and combines them:
+  `(f;g;h) y` is `(f y) g (h y)`. So `avg:(+/;%;#)` is the mean, and
+  `(|/;-;&/)` is the range.
+- **Hook** `(f;g)` feeds `g`'s result back in: `(f;g) y` is `y f (g y)`. So
+  `(%;+/)` normalises a vector to sum 1.
+
+Trains combine primitives, derived verbs (`+/`), lambdas and projections; they
+can be named, stored and passed like any value; they apply **monadically by
+juxtaposition** (`train x`) or **dyadically in bracket form** (`train[x;y]`). A
+**space-separated** group `(f g)` stays ordinary composition (`f(g x)`), and any
+list that isn't exactly two or three functions still indexes as before. See the
+[Tacit programming guide](https://amber-lang.org/docs/tacit.html) for a full
+tour.
+
 <a name="whats-new-200"></a>
 ## What's new in 2.0.0
 
@@ -366,7 +387,7 @@ instant.
 Check the interpreter version, or list every option and REPL command:
 
 ```sh
-./amber --version           # amber 2.0.0
+./amber --version           # amber 2.0.1
 ./amber --help              # options + the full \-command reference
 ```
 

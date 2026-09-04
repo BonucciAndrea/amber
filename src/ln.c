@@ -962,6 +962,7 @@ static int g_paste_no;       /* running [Pasted text #N] counter */
 static char *g_paste_raw;    /* verbatim text of the last folded paste (for the Ctrl-V-Ctrl-V preview) */
 static int g_paste_raw_n;    /* its physical-line count */
 static char *g_last_paste;   /* the raw bytes of the last folded paste, for "paste again to view" detection */
+static int g_preview_shown;  /* a paste preview is currently drawn in the transcript -> wipe it on the next submit */
 
 /* ---- scroll-back ring helpers (state declared up top) --------------------- */
 static void ring_push(const char *s, int n) {
@@ -1342,6 +1343,7 @@ static void paste_preview(LnState *l) {
     ws_("\x1b[?7h");                                              /* restore auto-wrap */
     if (g_sb_on) sb_chrome();                                     /* restore box borders + info line */
     refresh(l);                                                   /* redraw the input (placeholder) */
+    g_preview_shown = 1;                                          /* mark it drawn so the next submit wipes it */
 }
 
 /* ---- exec timer -----------------------------------------------------------
@@ -1621,6 +1623,7 @@ done:
          * INSIDE the region, above the fixed box+info footer. */
         char dseq[48]; int rows = term_rows();
         LnState e;
+        if (g_preview_shown) { g_preview_shown = 0; sb_repaint_region(); }  /* a paste preview was on screen -> wipe it before the result */
         sb_commit_echo(&l);
         memset(&e, 0, sizeof e); e.prompt = l.prompt; e.plen = l.plen;
         sb_input(&e);                                                 /* redraw the box empty */

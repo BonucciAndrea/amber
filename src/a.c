@@ -747,7 +747,7 @@ Z A ap1(A f,A y){UC t=_t0(f);if(t==tu||t==tv)return v1[_v(f)](y);return _1(f,y);
 Z A ap2(A f,A y,A z){UC t=_t0(f);if(t==tu||t==tv)return v2[_v(f)](y,z);return _2(f,y,z);}
 Z A trn1(A x,A y,I m){A*e=_A(x);if(m==2){A g=ap1(e[1],_R(y));return ap2(e[0],y,g);}A f=ap1(e[0],_R(y)),h=ap1(e[2],y);return ap2(e[1],f,h);}
 Z A trn2(A x,A y,A z,I m){A*e=_A(x);if(m==2){A g=ap1(e[1],z);return ap2(e[0],y,g);}A l=ap2(e[0],_R(y),_R(z)),r=ap2(e[2],y,z);return ap2(e[1],l,r);}
-A2(_1,/*01*/{I tn=istrain(x);if(tn)return trn1(x,y,tn);}P(!xtt,i1(x,y))U k=xK;P(1<k,k==2&&!xtp?prj(x,A8(y,GAP),2):prj(x,&y,1))
+A2(_1,/*01*/{I tn=istrain(x);if(tn&&!(_tz(y)&&gl(y)>=0&&gl(y)<(I)_n(x)))return trn1(x,y,tn);}P(!xtt,i1(x,y))U k=xK;P(1<k,k==2&&!xtp?prj(x,A8(y,GAP),2):prj(x,&y,1))
  X(Ro(run(x,&y,1))Rp(P(k>7,er(y))I m=xn-1,j=0;Ab8;F(m,b[i]=xA[i+1]==GAP&&!j?j++,y:_R(xA[i+1]))I l=MAX(0,1-j);MC(b+m,&y,8*l);_8(xx,b,m+l))
   Rq(_1(xx,N(_1(xy,y))))Rr(w1(xE,xx,y))Rs(sym1(xv,y))Ru(v1[xv](y))Rw(AK(xv-1<3u&&yK==2?1:ytU?yK:1,AW(xv,aV(tr,1,&y))))Rx(ext(x,&y,1))R_(et(y)))0)
 A3(_2,/*001*/{I tn=istrain(x);if(tn)return trn2(x,y,z,tn);}P(!xtt,i2(x,y,z))A a[]={y,z};U k=xK;P(2<k,yR;prj(x,a,2))

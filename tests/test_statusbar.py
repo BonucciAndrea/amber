@@ -6,7 +6,7 @@
 #     h-3  box top      ╭────────────────────────────────╮
 #     h-2  input line   │ amber> <text>                  │   (cursor lives here)
 #     h-1  box bottom   ╰────────────────────────────────╯
-#      h   info line    ⬡ amber 2.0.0 · exec · mem · [native|portable] …
+#      h   info line    ⬡ amber 2.0.1 · exec · mem · [native|portable] …
 # Output scrolls in a DECSTBM region above it (rows 1..h-4).  It is ON by default;
 # \sb toggles it off.  This drives the real ./a REPL over a pty and asserts the
 # footer's escapes; if `pyte` is importable it ALSO renders the screen grid and
@@ -77,7 +77,7 @@ check("╭".encode() in txt and "╮".encode() in txt, "box top border drawn")
 check("╰".encode() in txt and "╯".encode() in txt, "box bottom border drawn")
 check("│".encode() in txt,                          "box side border drawn")
 check(b"amber>" in txt,                             "prompt rendered inside the box")
-check("⬡ amber 2.0.0".encode() in txt,             "truecolor hex logo + brand on the info line")
+check("⬡ amber 2.0.1".encode() in txt,             "truecolor hex logo + brand on the info line")
 check(b"exec:" in txt and b"mem:" in txt,           "info line shows exec timing + arena size")
 check(re.search(rb"\[(native|portable)\]", txt) is not None, "build tag [native]/[portable]")
 check(b"4" in txt,                                  "command evaluated (2+2 -> 4)")
@@ -149,7 +149,7 @@ try:
     disp = screen.display
     check(any(l.strip().startswith("╭") for l in disp[18:22]), "[pyte] box top on a footer row")
     check(disp[21].lstrip().startswith("│") and "amber>" in disp[21], "[pyte] input row is the box interior")
-    check("⬡ amber 2.0.0" in disp[23], "[pyte] info line on the last row")
+    check("⬡ amber 2.0.1" in disp[23], "[pyte] info line on the last row")
     check(any("42" in l for l in disp[:20]), "[pyte] eval output (42) visible in the scroll region")
     check(screen.cursor.y == 21, "[pyte] cursor sits on the box input row")
     # scrolling DOWN while already at live must not touch/break the box
@@ -170,7 +170,7 @@ try:
     check("SCROLL" in d2[23] and "lines up" in d2[23], "[pyte] info line shows the scroll-back indicator")
     for _ in range(12): os.write(m, b"\x1b[<65;5;5M"); pump(0.08)
     pump(0.2)
-    check("⬡ amber 2.0.0" in screen.display[23], "[pyte] wheel-down restores the normal info line")
+    check("⬡ amber 2.0.1" in screen.display[23], "[pyte] wheel-down restores the normal info line")
     # an ERROR must survive scroll-back too (errors go to stderr, a separate path).
     # Scroll up a line at a time and confirm the error text reappears somewhere.
     os.write(m, b"undefined_zzz\r"); pump(0.4)

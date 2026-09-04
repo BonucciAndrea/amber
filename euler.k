@@ -153,3 +153,66 @@ collatz:{-1+#{x>1}{$[2!x;1+3*x;_x%2]}\x}            / Collatz chain length
 tri:{_(x*x+1)%2}                                    / x-th triangular number
 pent:{_(x*-1+3*x)%2}                                / x-th pentagonal number
 hexn:{x*-1+2*x}                                     / x-th hexagonal number
+sqr:{x*x}                                          / x-th square
+hept:{_(x*-3+5*x)%2}                               / x-th heptagonal number
+oct:{x*-2+3*x}                                     / x-th octagonal number
+istri:{s:isqrt 1+8*x;(1+8*x)=s*s}                  / is x triangular?
+ispent:{$[x<1;0;[t:1+24*x;s:isqrt t;$[~t=s*s;0;0=6!1+s]]]}   / is x pentagonal?
+ishex:{$[x<1;0;[t:1+8*x;s:isqrt t;$[~t=s*s;0;0=4!1+s]]]}     / is x hexagonal?
+
+/ ---- more machine-int number theory (built on `pri, pfactor, divisors) ----
+ipow:{$[y=0;1;*/y#x]}                               / x^y for small y (machine int, may overflow past 2^63)
+nextprime:{{~isprime x}{x+1}/x+1}                   / smallest prime > x
+prevprime:{{~isprime x}{x-1}/x-1}                   / largest prime < x (x>2)
+primepi:{#`pri x+1}                                 / number of primes <= x
+nthprime:{$[x<1;'`err;[l:`ln x;b:$[x<6;13;3+_x*l+`ln l];(`pri 1+b)x-1]]}   / the x-th prime, 1-indexed
+omega:{$[x<2;0;#?pfactor x]}                        / number of DISTINCT prime factors
+bigomega:{$[x<2;0;#pfactor x]}                      / number of prime factors WITH multiplicity
+radical:{$[x<2;1;*/?pfactor x]}                     / product of the distinct prime factors
+issquarefree:{$[x<1;0;f:pfactor x;(#f)=#?f]}        / is x square-free?
+mobius:{$[x=1;1;f:pfactor x;$[(#f)>#?f;0;$[2!#f;-1;1]]]}   / Moebius mu(x)
+iscoprime:{1=gcd[x;y]}                              / gcd(x;y)=1 ?
+sigmak:{[k;n]+/ipow[;k]'divisors n}                 / sum of k-th powers of divisors (k=0 -> ndivisors, k=1 -> sigma)
+isperfect:{x=aliquot x}                             / is x a perfect number?
+isabundant:{x<aliquot x}                            / is x abundant?
+isdeficient:{(aliquot x)<x}                         / is x deficient?
+amicable:{a:aliquot x;$[(~a=x)&x=aliquot a;a;0]}    / the amicable partner of x, or 0 if none
+
+/ ---- modular arithmetic (machine int; keep the modulus below ~3e9) --------
+modpow:{[b;e;m]*{0<x 2}{[m;s](m!s[0]*$[2!s 2;s 1;1];m!s[1]*s 1;_s[2]%2)}[m]/(1;m!b;e)}   / b^e mod m
+egcd:{[a;b]$[b=0;(a;1;0);[e:egcd[b;b!a];(e 0;e 2;(e 1)-(_a%b)*e 2)]]}   / extended gcd -> (g;s;t): a*s+b*t=g
+modinv:{[a;m]e:egcd[m!a;m];$[1=e 0;m!m+m!e 1;'`err"no modular inverse"]}   / inverse of a modulo m
+mulorder:{[a;n]({[a;n;x]~1=modpow[a;x;n]}[a;n]){x+1}/1}   / multiplicative order of a mod n (needs gcd(a;n)=1)
+crt:{[rs;ms]*{[s;p]r1:s 0;m1:s 1;r2:p 0;m2:p 1;M:m1*m2;(M!r1+m1*m2!(r2-r1)*modinv[m1;m2];M)}/[(rs 0;ms 0);+(1_rs;1_ms)]}   / Chinese remainder: solve x = rs[i] (mod ms[i]), coprime moduli
+lam1:{[p;e]$[p=2;$[e=1;1;e=2;2;ipow[2;e-2]];(ipow[p;e-1])*p-1]}   / Carmichael lambda of the prime power p^e
+carmichael:{$[x<2;1;[d:pfe x;ps:!d;{lcm[x;y]}/lam1'[ps;d ps]]]}   / Carmichael function lambda(x)
+
+/ ---- partitions ----------------------------------------------------------
+partinto:{[n;parts]P:parts@&parts<1+n;*|(1,n#0){[n;w;p]w{[p;w;j]@[w;j;+;w j-p]}[p]/p+!1+n-p}[n]/P}   / # partitions of n using the given part sizes (coins: PE31/76/77)
+partitions:{$[x<0;0;partinto[x;1+!x]]}              / p(n): number of unrestricted partitions of n
+primepart:{partinto[x;`pri x+1]}                    / number of partitions of n into primes (PE77)
+partmod:{[n;m]K:2+isqrt 2*n;os:,/{(_(x*-1+3*x)%2;_(x*1+3*x)%2)}'1+!K;sg:,/{$[2!x;1 1;-1 -1]}'1+!K;*|(n{[m;os;sg;p]j:#p;i:&os<1+j;p,m!m++/(sg@i)*p@j-os@i}[m;os;sg]/,1)}   / p(n) mod m, fast Euler pentagonal recurrence (PE78)
+
+/ ---- continued fractions -------------------------------------------------
+cfsqrt:{[n]a0:isqrt n;$[n=a0*a0;,a0;({[a0;s]~(s 2)=2*a0}[a0]{[n;a0;s]m:((s 1)*s 2)-s 0;d:_(n-m*m)%s 1;a:_(a0+m)%d;(m;d;a;(s 3),a)}[n;a0]/(0;1;a0;,a0))3]}   / CF of sqrt n as [a0; a1..a_period] (PE64)
+cfperiod:{-1+#cfsqrt x}                             / length of the repeating block (0 for a perfect square)
+cfe:{[n]2,{[p]$[2=3!p;2*_(p+1)%3;1]}'1+!n-1}        / first n terms of the CF of e: 2,1,2,1,1,4,1,1,6,... (PE65)
+cfstep:{[st;a]h:zadd[zmuls[st 0;a];st 1];k:zadd[zmuls[st 2;a];st 3];(h;st 0;k;st 2)}   / one convergent recurrence step (internal)
+cfconv:{[cf]s:*|((,1;,0;,0;,1)cfstep\cf);(bv s 0;bv s 2)}   / exact (numerator;denominator) of a finite CF list
+pell:{[D]$[D=(isqrt D)*isqrt D;'`err"pell: D must be a non-square";[cs:cfsqrt D;per:1_cs;coeffs:(cs 0),(2*#per)#per;sts:1_((,1;,0;,0;,1)cfstep\coeffs);ok:{[D;s]0=zcmp[zmul[s 0;s 0];zadd[zmul[zint D;zmul[s 2;s 2]];,1]]}[D];s:sts@*&ok'sts;(bv s 0;bv s 2)]]}   / fundamental (x;y) solving x^2 - D y^2 = 1, exact (PE66)
+
+/ ---- base & digit tools --------------------------------------------------
+tobase:{[b;n]$[n=0;,0;b\n]}                         / n -> base-b digits (big-endian)
+frombase:{[b;ds]b/ds}                               / base-b digits -> n
+basedigitsum:{[b;n]+/b\n}                           / digit sum of n written in base b
+numcat:{10/(10\x),10\y}                             / concatenate the decimal digits of x and y
+isperm:{d:10\x;e:10\y;(d@<d)~e@<e}                  / do x and y share the same multiset of digits?
+ispandigital:{d:10\x;(d@<d)~1+!#d}                  / does x use the digits 1..k exactly once (k = #digits)?
+rotations:{d:10\x;10/'{[d;k]d@(#d)!k+!#d}[d]'!#d}   / all cyclic digit rotations of x (PE35)
+iscircular:{&/isprime'rotations x}                  / are all digit rotations of x prime?
+
+/ ---- bignum extras -------------------------------------------------------
+bmodpow:{[b;e;m]mm:bx m;s:{0<x 2}{[mm;s]((zdivmod[zmul[s 0;$[2!s 2;s 1;,1]];mm])1;(zdivmod[zmul[s 1;s 1];mm])1;_s[2]%2)}[mm]/(,1;(zdivmod[bx b;mm])1;e);bv s 0}   / b^e mod m, exact (bignum b and m, machine-int e)
+bcatalan:{bdiv[bcomb[2*x;x];1+x]}                   / n-th Catalan number, exact
+zpstep:{[os;sg;p]j:#p;i:&os<1+j;pv:p@j-os@i;gi:sg@i;sp:(,0)zadd/pv@&gi>0;sn:(,0)zadd/pv@&gi<0;p,,zsub[sp;sn]}   / one exact-partition DP step (internal)
+bpartition:{[n]K:2+isqrt 2*n;os:,/{(_(x*-1+3*x)%2;_(x*1+3*x)%2)}'1+!K;sg:,/{$[2!x;1 1;-1 -1]}'1+!K;p:n zpstep[os;sg]/,,1;bv[*|p]}   / exact p(n) as a bignum

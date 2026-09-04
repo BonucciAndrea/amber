@@ -541,5 +541,47 @@ try:
 except ImportError:
     print("  SKIP continuation checks (pyte not installed)")
 
+# The paste preview is TRANSIENT (2.0.1): it is drawn into the transcript on
+# Ctrl-V Ctrl-V but never pushed to the scroll-back ring, so submitting the
+# batch repaints the region from the ring and the "Pasted text #N" block is
+# gone -- only the result remains.  Guards ln.c's clear-on-submit behaviour.
+try:
+    import pyte
+    m, pr, sc, pump = utf8_sess(rows=24, cols=90)
+    os.write(m, b"\x1b[200~a1:11\na2:22\na1+a2\x1b[201~"); pump(0.6)
+    os.write(m, b"\x16"); pump(0.2); os.write(m, b"\x16"); pump(0.5)
+    # the preview shows the pasted SOURCE (a1:11 ...) with a line-number gutter;
+    # the folded placeholder line never does, so the source text is what tells a
+    # visible preview apart from the ordinary "[Pasted text #N +M lines]" echo.
+    check(any("a1:11" in l for l in sc.display),
+          "[pyte] paste preview shows the pasted source on Ctrl-V Ctrl-V")
+    os.write(m, b"\r"); pump(0.9)
+    check(not any("a1:11" in l for l in sc.display),
+          "[pyte] paste preview (its source lines) is cleared from the transcript on submit")
+    check(any("33" in l for l in sc.display),
+          "[pyte] the submitted paste result (33) stands after the preview clears")
+    # Ctrl-L must drop the retained transcript too: a paste preview submitted
+    # AFTER a Ctrl-L used to resurrect the wiped lines (repaint reads the ring).
+    os.write(m, b"mk:818181\r"); pump(0.5)
+    check(any("818181" in l for l in sc.display),
+          "[pyte] a marker line is on screen before Ctrl-L")
+    os.write(m, b"\x0c"); pump(0.5)
+    check(not any("818181" in l for l in sc.display),
+          "[pyte] Ctrl-L wipes the screen (and the ring)")
+    os.write(m, b"\x1b[200~b1:100\nb2:200\nb1+b2\x1b[201~"); pump(0.5)
+    os.write(m, b"\x16"); pump(0.2); os.write(m, b"\x16"); pump(0.5)
+    os.write(m, b"\r"); pump(0.9)
+    check(not any("818181" in l for l in sc.display),
+          "[pyte] Ctrl-L'd lines do NOT reappear after a later paste-preview submit")
+    check(any("300" in l for l in sc.display),
+          "[pyte] the post-Ctrl-L paste still evaluates (b1+b2 -> 300)")
+    os.write(m, b"\\\\\r"); pump(0.5)
+    try: os.close(m)
+    except OSError: pass
+    try: pr.wait(timeout=3)
+    except Exception: pr.kill()
+except ImportError:
+    print("  SKIP paste-preview-clear check (pyte not installed)")
+
 print("test_statusbar: " + ("ALL PASSED" if ok else "FAILURES"))
 sys.exit(0 if ok else 1)

@@ -1470,6 +1470,10 @@ restart:
              * Cmd-K behave exactly like \clear is to rebind it in the terminal
              * to send Ctrl-L (iTerm2: Settings > Keys > +, Send Hex Code 0x0c). */
             ws_("\x1b[H\x1b[2J\x1b[3J");
+            ring_clear();     /* also drop the retained transcript: otherwise a later repaint
+                               * (a paste preview submitting, or PgUp scroll-back) resurrects the
+                               * very lines Ctrl-L just wiped -- exactly the "old lines reappear
+                               * above the new one" a paste-after-Ctrl-L used to show. */
             if (g_sb_on) { sb_region(); sb_chrome(); }
             break;
         case 16: case 14: {                                     /* Ctrl-P/N */

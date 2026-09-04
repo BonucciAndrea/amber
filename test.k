@@ -349,6 +349,25 @@ t[`groupSymSingle; =`x`x`x;               (,`x)!,0 1 2]
 t[`groupSymEmptyCount; #(=0#`a);          0]
 t[`groupSymMatchesInt; value(=`b`a`b`c`a); value(=2 1 2 3 1)]
 
+/ ---- tacit trains (hooks/forks) + function-list indexing (since 2.0.1) ----
+/ A literal verb/lambda list applied to DATA runs as a train; the SAME shape of
+/ list indexed by a scalar still INDEXES -- that is the (fmt;fmtx)[" "~*x] REPL
+/ formatter dispatch, whose regression these cases exist to prevent recurring.
+t[`forkMean;       (+/;%;#) 2 4 6 8 10;        6.0]
+t[`forkRange;      (|/;-;&/) 5 2 9 1;          8]
+t[`forkStored;     {m:(+/;%;#);m 1 2 3 4 5} 0; 3.0]
+t[`hookAppendRev;  (,;|) 1 2 3;                1 2 3 3 2 1]
+t[`hookNormSum;    +/(%;+/) 3 1 4 1 5;         1.0]
+t[`forkDyadic;     (+;*;-)[10;3];              91]
+t[`forkLambdas;    ({x*2};+;{x*10}) 5;         60]
+t[`fnListIdx0;     ((+/;|/;&/)[0]) 5 2 9;      16]
+t[`fnListIdx1;     ((+/;|/;&/)[1]) 5 2 9;      9]
+t[`fnListIdx2;     ((+/;|/;&/)[2]) 5 2 9;      2]
+t[`fnListMatchIdx; ((#;+/)[" "~" "]) 1 2 3;    6]
+t[`fnListIdxType;  @(#;+/)[0];                 `v]
+t[`nonFnListIdx;   @(&/;1;|/)[1];              `i]
+t[`fourVerbIdx;    @(+;-;*;%)[2];              `v]
+
 / ---- report ----
 fails:r@&{"FAIL"~4#x}'r[;1]
 `0:""

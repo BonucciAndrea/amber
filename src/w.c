@@ -57,8 +57,8 @@ Z A3(f2,/*010*/Zt(y(x2(y,zR)))P(xtv&&xv<11&&ytzfc&&ztZFC,arf(x,y,z))P(x==CAT,raz
 L cfm(CO A*a/*0*/,I n)_(L m=-1;F(n,A x=a[i];I(!xtt,U v=xN;P(m>=0&&m-v,-2)m=v))m)
 AX(f8,/*01..1*/P(n==1,f1(x,*a))P(n==2,A y=*a,z=a[1];z(f2(x,y,z)))n--;A y=*a++,z=*a;L m=cfm(a,n);P(m==-1,y?x8(a-1,n+1):z)P(m<0,I(y,y(0))el8(a,n))P(!m&&!y,x=ie(x,z);mrn(n,a);x)
  L i=!y;I(i,y=ii(z,0))Ab8;W(i<m,*b=y;Fj(n,b[j+1]=ii(a[j],i))y=x8(b,n+1);B(!y)i++)mrn(n-1,a+1);z(y))
-Z A3(s2,/*010*/Zt(y(x2(y,zR)))Zm(A u=N(s2(x,y,zy));am(_R(zx),u))P(!zN,y(zR))P(xtv&&xv<11&&ytzc&&ztZC,ars(x,y,z))A u=aA0(zN);F(zN,y=y(x2(y,ii(z,i)));P(!y,u(0))PSH(u,yR))y(u))
-Z A2(s1,/*01*/Yt(y)P(!yN,y)Ym(A z=kv(&y);am(y,Ny(s1(x,z))))P(x==CAT,y(s2(x,emp(tA),y)))P(xtv&&xv<11&&ytZC,y(ars(x,0,y)))
+Z A3(s2,/*010*/Zt(y(x2(y,zR)))Zm(A u=N(s2(x,y,zy));am(_R(zx),u))P(!zN,y(zR))P(xtv&&xv<11&&ytzfc&&ztZFC,ars(x,y,z))A u=aA0(zN);F(zN,y=y(x2(y,ii(z,i)));P(!y,u(0))PSH(u,yR))y(u))
+Z A2(s1,/*01*/Yt(y)P(!yN,y)Ym(A z=kv(&y);am(y,Ny(s1(x,z))))P(x==CAT,y(s2(x,emp(tA),y)))P(xtv&&xv<11&&ytZFC,y(ars(x,0,y)))
  A z=ii(y,0),u=enl(zR);F(yN-1,z=z(x2(z,ii(y,i+1)));P(!z,y(u(0)))PSH(u,zR))z(y(u)))
 Z AX(s8,/*01..1*/A y=*a;P(n==1,s1(x,y))P(n==2,A z=a[1];z(s2(x,y,z)))L m=cfm(a+1,n-1);P(m==-2,el8(a,n))I(m<0,m=1)a++;n--;
  A z=aA0(m);Ab8;F(m,*b=y;Fj(n,b[j+1]=ii(a[j],i))y=x8(b,n+1);P(!y,mrn(n,a);z(0))PSH(z,yR))mrn(n,a);y(z))

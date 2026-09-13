@@ -139,10 +139,31 @@ Z A3(subs,/*010*/y=neg(y?y:mul(ai(2),ii(z,0)));neg(adms(ADD,y,z)))
 Z A3(mxms,/*010*/P((!y||ytz)&&ztZ,L v=y?gl(y):-WL,l=(L)(~0ull<<((1<<zw)-1)),h=~l;U n=zn;I(v<=l||h<=v,P(v>=0,rsz(n,az(v)))v=v<0?l:h)
                                   A u=an(n,zt);F4(zw-3,n,ug=v=MAX(v,zg),uh=v=MAX(v,zh),ui=v=MAX(v,zi),ul=v=MAX(v,zl))u)___s(x,y,z))
 Z A3(mnms,/*010*/P((!y||ytz)&&ztZ,z=inv(zR);z(inv(mxms(MXM,y?az(~gl(y)):0,z))))___s(x,y,z))
+// ---- amber: float scans ---------------------------------------------------
+// ars() accepted only Z (integer) and C (char) data, so every float `+\`, `*\`,
+// `&\` and `|\` -- sums/prds/mins/maxs on doubles -- fell through to ___s():
+// a boxed loop that allocates an atom and goes through the generic dyadic
+// apply once per element. Measured 57 ns/element (maxs over 21600 doubles)
+// against 0.69 ns/element for the identical scan on longs. The reduction side
+// already had admf/mmmf; these are their scan counterparts.
+Z A3(admsf,/*010*/B i=xv==3;U n=zn;A u=an(n,tF);F*RES r=uF;
+ F v=y?gf(cF(y)):(F)i;z=cF(zR);CO F*RES q=zV;
+ Mz(I(i,F(n,r[i]=v*=q[i]))E(F(n,r[i]=v+=q[i])))u)
+// Min/max: reuse the engine's canonical float ordering rather than raw IEEE
+// compares, so scan and reduce agree bit-for-bit on NaN and signed zero.
+// of1() folds the doubles into an order-preserving integer domain, the fast
+// integer scan runs there, of0() folds back -- two extra linear passes, still
+// ~15x the boxed path it replaces.
+Z A3(mmmsf,/*010*/B i=xv==7;
+ y=of1(y?cF(y):aV(tf,1,A((L)((W)i<<63)|WFL)));
+ z=of1(cF(zR));
+ of0(N(z((i?mxms:mnms)(x,y,z)))))
 Z A3(eqls,/*010*/U n=zn,i=!y;L v=gl(y?y:io(z,0)),a=v;A u=aG(n);S4(zw-3,W(i<n,ug=v=v==zg;i++),W(i<n,ug=v=v==zh;i++),W(i<n,ug=v=v==zi;i++),W(i<n,ug=v=v==zl;i++))y||!n?u:a4(u,ai(0),av,az(a)))
-A3(ars,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzc)Q(ztZC)
+A3(ars,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzfc)Q(ztZFC)
  ZE(z=gZ(zR);z(ars(x,y,z)))
  ZB(z=cG(zR);z(ars(x,y,z)))
+ P(ztF&&(xv==1||xv==3),admsf(x,y,z))
+ P(ztF&&(xv==6||xv==7),mmmsf(x,y,z))
  G(&dexs,adms,subs,adms,___s,___s,mnms,mxms,___s,___s,eqls)[xv](x,y,z))
 
 Z A3(dexp,/*010*/zn?cat11(y?y:_R(cn[zt]),drp(-1,zR)):y(zR))

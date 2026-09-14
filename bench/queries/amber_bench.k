@@ -51,7 +51,7 @@ kReduce:{[q](+/px)+(|/px)++/px*py}
 / so the weights must be taken from the group keys themselves. Weighting by a
 / positional 1..G vector silently pairs each group sum with the wrong weight --
 / caught by the cross-engine ANSWER check against the C and NumPy references.
-kGroupby:{[q]d:=gk;+/(1.0+0.0+!d)*{[s]+/px s}'. d}
+kGroupby:{[q]d:gsum[gk;px];+/(1.0+0.0+!d)*. d}      / 2.1: gsum = one-pass fused group aggregate, same first-appearance key order as =gk
 / Real key lookup: kr is sparse and unsorted, so `?` performs a genuine
 / search per left key -- it cannot degrade into an array index (SPEC.md §2).
 kJoin:{[q]+/vl*vr kr?kl}

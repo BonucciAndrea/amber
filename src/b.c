@@ -52,6 +52,32 @@ Z I cl(A x,A y/*00*/,B r){Q(cm(xx))I v=_v(xx),o=xo;                             
       U i=gi(y);M(v?bM:bS)MG(i)I(v,M(v))I(r,M(bG)MG(i))OK)
    RA(I n=yn-1;P(!n||n>8u,o)A z=yx;P(z==MKL&&(xx==av||_t(xx)==tu),M(bL)M(n)F(n,Nl(x,yA[i+1],0))I(r,P(xx-av,o))E(M(bP))OK)
       ZS(F(n,Nr(yA[n-i],1))M(bl)M(n)I i=zn-1?-1:li(*zI);I(i>=0,M(r?by:bx))E(i=gi(z);M(r?bY:bX))MG(i)M(v)OK)o))}
+// ---- amber 2.1: idiom fusion ---------------------------------------------
+// A handful of expression SHAPES are compiled to one fused primitive instead
+// of a chain of primitives that materialise intermediates. Every fused entry
+// point reproduces the unfused semantics exactly (it falls back to the very
+// same primitives when the operands are not the flat vectors it handles), so
+// this is a pure rewrite of the bytecode, invisible to the program:
+//   +/x*y  +/x=y  +/x<y  +/x>y    ->  fredC   (no product / mask vector)
+//   x@&m                          ->  cmprC   (no index vector)
+//   a+s*b  a-s*b  (s a literal)   ->  fmaC    (one pass, no s*b vector)
+//   x@<x   x@>x                   ->  srtC / srtdC (sort by value, no grade)
+Z B fnode(A x,A v)_(x!=GAP&&!_tU(x))                                             //an operand node (not a gap, not a bare verb)
+Z B numlit(A x)_(_tz(x)||_tf(x))                                                //a literal number in the tree
+Z I fus(A x,B r){U n=xn;A y=xx;I o=xo;                                                //OK when it emitted fused code, -2 when not an idiom, else the error
+ I(n==2&&((_tA(y)&&_n(y)==2&&_A(y)[0]==aw+1&&_A(y)[1]==ADD)||(!_tP(y)&&_t(y)==tr&&_E(y)==1&&_n(y)==1&&_A(y)[0]==ADD)),A z=xy;// +/ (folded by cf() into a tr constant, or still a node) applied to a dyad node
+  I(_tA(z)&&_n(z)==3,A d=_A(z)[0];I(d==MUL||d==EQL||d==LTN||d==GTN,A oa=_A(z)[1],ob=_A(z)[2];
+   I(fnode(oa,0)&&fnode(ob,0),Nr(ob,1)Nr(oa,1)cc(ai(_v(d)),xo);cc(FUS1,xo);M(ba)M(3)I(!r,M(bP))return OK;))
+   // +/x@&m : sum of the masked elements, no compressed vector
+   I(d==AP1,A oa=_A(z)[1],w=_A(z)[2];I(_tA(w)&&_n(w)==2&&_A(w)[0]==WHR&&fnode(oa,0)&&fnode(_A(w)[1],0),
+    Nr(_A(w)[1],1)Nr(oa,1)cc(ai(18),xo);cc(FUS1,xo);M(ba)M(3)I(!r,M(bP))return OK;))))
+ I(n==3&&y==AP1,A oa=xy,z=xz;
+  I(_tA(z)&&_n(z)==2&&_A(z)[0]==WHR&&fnode(oa,0)&&fnode(_A(z)[1],0),Nr(_A(z)[1],1)Nr(oa,1)M(bv+27)I(!r,M(bP))return OK;)   // x@&m
+  I(_tA(z)&&_n(z)==2&&(_A(z)[0]==ASC||_A(z)[0]==DSC)&&_tS(oa)&&_tS(_A(z)[1])&&mtc_(oa,_A(z)[1]),Nr(oa,1)M(bu+(_A(z)[0]==ASC?27:28))I(!r,M(bP))return OK;))// x@<x
+ I(n==3&&(y==ADD||y==SUB),A oa=xy,z=xz;
+  I(_tA(z)&&_n(z)==3&&_A(z)[0]==MUL,A p=_A(z)[1],q=_A(z)[2];A sc=numlit(p)?p:numlit(q)?q:0,ob=sc==p?q:p;
+   I(sc&&fnode(oa,0)&&fnode(ob,0)&&!numlit(ob),Nr(ob,1)Nr(sc,1)Nr(oa,1)cc(ai(y==SUB),xo);cc(FUS2,xo);M(ba)M(4)I(!r,M(bP))return OK;)))
+ return -2;}
 Z I cr(A x/*0*/,B r)_(I o=xo;                                                                       //compile rvalue (x:tree,r:wantResult)
  XS(I i=xn-1?-1:li(*xI);I(i>=0,M(bg+i))J(xn==1&&*xI=='o',M(bo))E(M(bG)MG(gi(x)))I(!r,M(bP))OK)       // x.y      variable (possibly qualified)
  P(!xtA||!xn,I(r,cc(x-GAP?x:au,o))OK)                                                               // 0        constant
@@ -64,6 +90,7 @@ Z I cr(A x/*0*/,B r)_(I o=xo;                                                   
  P(n>3&&(y==av||y==DLR),n--;I p[n];A*a=xA;F(n&~1,Nr(*++a,1);M(i&1?bj:bz)p[i]=nb;M(0))               // :[x;y;z] cond
   Nr(n&1?*++a:au,1);F(n&~1,I d=(i&1?nb-1:p[i+1])-p[i];I(i&1,I j=(n&~1)-1;W(i<j&&d>255,d=p[j]-1-p[i];j-=2))P(d>255,o)b[p[i]]=d)I(!r,M(bP))OK)
  I(n==2&&y==FIR,A z=xy;I(ztA&&zn==2,P(zx-REV<3u,Nr(zy,1);M(bu+zx-REV+LAS-au)I(!r,M(bP))OK)))        // *|x      recognized idioms
+ {I f_=fus(x,r);P(f_!=-2,f_)}                                                                        // amber 2.1 fused idioms
  I p=0;F(n-1,A z=xA[n-1-i];I(z-GAP,Nr(z,1))E(p=1;cc(GAP,o)))I(p,Nr(xx,1);M(bp)M(n-1))               // x[y;]    projection
  J(y==MKL,n--;P(n>255u,o)M(bl)M(n))                                                                 // (x;y)    list
  J(n==2&&ytu,M(bu+yv))                                                                              // +x       monad

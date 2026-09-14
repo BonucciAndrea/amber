@@ -22,6 +22,7 @@
 #define AMPARN 1000000u
 #ifdef _OPENMP
  #define AMPRAGMA(x) _Pragma(#x)
+ #define AMSIMDR(...) AMPRAGMA(omp simd reduction(__VA_ARGS__))
  // One combined directive: `omp simd` must be immediately followed by the loop,
  // so vectorisation and threading cannot be stacked as two separate pragmas.
  // Variadic, because the four-way kernels below reduce over a LIST of partials
@@ -30,6 +31,7 @@
  #define AMPFOR(...) AMPRAGMA(omp parallel for simd reduction(__VA_ARGS__) schedule(static))
 #else
  #define AMPFOR(...)
+ #define AMSIMDR(...)
 #endif
 // AMRED(n,body,clause...): run `body` threaded when the vector is big enough to
 // pay for a team, and as a PLAIN serial loop otherwise. Body comes first because
@@ -46,7 +48,13 @@
 // and at/above the threshold the two are identical (within 1%), since the same
 // pragma runs. Interactive qSQL aggregates are overwhelmingly sub-threshold, so
 // this is the path that matters most.
-#define AMRED(n,body,...) I((n)>=AMPARN,AMPFOR(__VA_ARGS__) body)E(body)
+// amber 2.1: the `parallel for` is GONE. With OMP_NUM_THREADS unset (every
+// ordinary user) it spun up a full thread team on every reduction over a
+// million elements, and a team of 14 summing 80 MB is SLOWER than one core
+// (sum_i measured 8.6 ms threaded against 1.7 ms serial: the data is
+// bandwidth-bound and the fork/join is pure cost). Only the `omp simd`
+// vectorisation hint remains; multi-core work belongs to peach.
+#define AMRED(n,body,...) AMSIMDR(__VA_ARGS__) body
 // ---- four-way partial reduction kernels -------------------------------------
 // `*/`, `&/` and `|/` were left as single-accumulator scalar chains when `+/`
 // was split in 1.9.2, so every element cost one imul (3-cycle latency) or one
@@ -84,9 +92,9 @@ NI A1(inv,x=mut(x);L*p=xL;F(((W)xn<<xw)+255>>8<<2,*p++^=-1)x)
 Z A3(___f,/*010*/U i=!y;I(i,y=io(z,0))U n=zn;W(i<n,y=y(x2(y,ii(z,i++)));B(!y))y)
 Z A3(dexf,/*010*/A u=las(zR);I(y,y(0))u)
   L addfB(CO V*a,U n)_(CO W*p=a;U r=0;F(n>>6,r+=PC(*p++))n&=63;n?r+PC(*p&~(-1ll<<n)):r)
-Z L addfG(CO V*a,U n)_(CO G*RES p=a;L r=0;AMRED(n,for(U i=0;i<n;i++)r+=p[i];,+:r)r)
-Z L addfH(CO V*a,U n)_(CO H*RES p=a;L r=0;AMRED(n,for(U i=0;i<n;i++)r+=p[i];,+:r)r)
-Z L addfI(CO V*a,U n)_(CO I*RES p=a;L r=0;AMRED(n,for(U i=0;i<n;i++)r+=p[i];,+:r)r)
+Z L addfG(CO V*a,U n)_(simd_sum_i8(a,n))
+Z L addfH(CO V*a,U n)_(simd_sum_i16(a,n))
+Z L addfI(CO V*a,U n)_(simd_sum_i32(a,n))
 Z L addfL(CO V*a,U n)_(simd_sum_i64(a,n))
 Z L mulfG(CO V*a,U n)_(MUL4(G))
 Z L mulfH(CO V*a,U n)_(MUL4(H))
@@ -230,3 +238,34 @@ A wsmC(A x){
  if(_t(p)==tF&&_t(q)==tF){F r=simd_dot_f64((CO F*)_V(p),(CO F*)_V(q),n);mr(x);return af(r);}
  if(_t(p)==tL&&_t(q)==tL){L r=simd_dot_i64((CO L*)_V(p),(CO L*)_V(q),n);mr(x);return al(r);}
  return et(x);}
+
+// ---- amber 2.1: fused reduction over a dyad -- +/x*y, +/x=y, +/x<y, +/x>y ----
+// The compiler (src/b.c fus()) turns `+/ (x DYAD y)` into fredC(dyad;x;y).
+// Flat same-typed float or long vectors (and vector/atom pairs for the
+// comparisons) run in one pass with no intermediate. Everything else -- and
+// any float comparison involving a NaN or a negative zero, whose ordering the
+// of1() domain defines differently from IEEE -- is computed EXACTLY as the
+// unfused program would: the dyad, then the derived verb +/ applied to it.
+Z A fredslow(L d,A x,A y){A t=d==18?cmprC(x,_R(y)):v2[d](x,_R(y));P(!t,0)A dv=_1(aw+1,ADD);A r=_1(dv,t);mr(dv);return r;}
+AA(fredC,/*10..0*/P(n!=3,en(*a))L d=gl(*a);A x=a[1],y=a[2];
+ I(d==18,I(!_tP(y)&&ytG&&yn&&yn<=xn,int bad=0;
+  I(xtF,F s=simd_masksum_f64(xV,yV,yn,&bad);I(!bad,return af(s)))
+  I(xtL,L s=simd_masksum_i64(xV,yV,yn,&bad);I(!bad,return az(s)))))
+ I(d==3,I(xtF&&ytF&&xn==yn,return af(simd_dot_f64(xV,yV,xn)))I(xtL&&ytL&&xn==yn,return az(simd_dot_i64(xV,yV,xn))))
+ I(d>=8&&d<=10,I op=d==8?0:d==9?1:2,fl=d==8?1:d==9?0:2;int bad=0;
+  I(xtF&&ytF&&xn==yn,L c=simd_cntcmpv_f64(xV,yV,xn,op,&bad);I(!bad,return az(c)))
+  J(xtF&&ytf,L c=simd_cntcmps_f64(xV,*yF,xn,op,&bad);I(!bad,return az(c)))
+  J(xtf&&ytF,L c=simd_cntcmps_f64(yV,*xF,yn,fl,&bad);I(!bad,return az(c)))
+  J(xtL&&ytL&&xn==yn,return az(simd_cntcmpv_i64(xV,yV,xn,op)))
+  J(xtL&&ytz,return az(simd_cntcmps_i64(xV,gl_(y),xn,op)))
+  J(xtz&&ytL,return az(simd_cntcmps_i64(yV,gl_(x),yn,fl))))
+ fredslow(d,x,y))
+// ---- amber 2.1: fused a+s*b / a-s*b with a literal scalar s ---------------
+// One pass over a and b; the product is rounded before the add (no FMA
+// contraction), so the result is bit-identical to `s*b` then `a+`. The result
+// is written in place into whichever float operand is a dying temporary,
+// exactly the reuse the unfused path had.
+AA(fmaC,/*10..0*/P(n!=4,en(*a))L sb=gl(*a);A x=a[1],sc=a[2],b=a[3];
+ I(_tF(x)&&_tF(b)&&xn==_n(b)&&(_tf(sc)||_tz(sc)),F sv=_tf(sc)?*_F(sc):(F)gl_(sc);A z=MINE(b)?b:MINE(x)?x:aF(xn);
+  simd_fma_f64(xV,sv,_V(b),zV,xn,(int)sb);_at(z)=0;return z==b||z==x?_R(z):z;)
+ A t=v2[3](sc,_R(b));P(!t,0)v2[sb?2:1](x,t))

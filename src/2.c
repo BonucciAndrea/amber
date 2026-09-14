@@ -7,8 +7,8 @@
 // then reads for its overflow check, is bit-identical to the old code.
 #define AMEL(g,T) ((U)(g)*(U)(32/SZ(T)))
 #define AMCMPN 2000000u/*element count above which the direct float compare wins*/
-Z CO W msk[]={0x8080808080808080ll,0x8000800080008000ll,0x8000000080000000ll};
 ZN V aFF(CO V*RES a,CO V*RES b,V*RES c,U n){simd_add_f64(AL(a),AL(b),AL(c),AMEL(n,F));}
+ZN V sFF(CO V*RES a,CO V*RES b,V*RES c,U n){simd_sub_f64(AL(a),AL(b),AL(c),AMEL(n,F));}
 ZN V mFF(CO V*RES a,CO V*RES b,V*RES c,U n){simd_mul_f64(AL(a),AL(b),AL(c),AMEL(n,F));}
 ZN V dFF(CO V*RES a,CO V*RES b,V*RES c,U n){simd_div_f64(AL(a),AL(b),AL(c),AMEL(n,F));}
 // amber: the INTEGER add kernels wrap on purpose -- oZZ()/ozZ() below detect
@@ -18,41 +18,50 @@ ZN V dFF(CO V*RES a,CO V*RES b,V*RES c,U n){simd_div_f64(AL(a),AL(b),AL(c),AMEL(
 // the very check that depends on it (UBSan flags this on examples/graphs.k).
 // Doing the addition in the unsigned counterpart type is defined two's
 // complement wraparound and compiles to the identical instruction.
-ZN V aLL(CO V*RES a,CO V*RES b,V*RES c,U n){simd_add_i64(AL(a),AL(b),AL(c),AMEL(n,L));}
-ZN V aII(CO V*RES a,CO V*RES b,V*RES c,U n){simd_add_i32(AL(a),AL(b),AL(c),AMEL(n,I));}
-ZN V aHH(CO V*RES a,CO V*RES b,V*RES c,U n){simd_add_i16(AL(a),AL(b),AL(c),AMEL(n,H));}
-ZN V aGG(CO V*RES a,CO V*RES b,V*RES c,U n){simd_add_i8 (AL(a),AL(b),AL(c),AMEL(n,G));}
-ZN A amdFF(A x,A y,U f)_(U n=xn;P(n-yn,el(y))A z=MINE(y)?y:aF(n);G(&aFF,0,mFF,dFF)[f-1](xV,yV,zV,n+3>>2);y-z?y(z):z)
-ZN B oZZ(CO W*x,CO W*y,CO W*r,U n,U w)_(x=AL(x);y=AL(y);r=AL(r);W t[4]={};F(((W)n<<w)+31>>5,Fj(4,t[j]|=(*r^*x)&(*r^*y);r++;x++;y++))!!((t[0]|t[1]|t[2]|t[3])&msk[w]))
-Z A addZZ(A x,A y,U f)_(U w=MAX(xw-3,yw-3);P(xw-3-w,x=ct(tG+w,xR);x(addZZ(x,y,f)))y=ct(tG+w,y);U n=yn;A z=an(n,yt);
- G(&aGG,aHH,aII,aLL)[w](xV,yV,zV,n+(31>>w)>>5-w);
- P(w<3&&oZZ(xV,yV,zV,n,w),z(0);y=ct(tG+w+1,y);x=ct(tG+w+1,xR);x(addZZ(x,y,f)))y(z))
-Z A mulZZ(A x,A y,U f)_(U n=yn,i=0,w=MAX(xw-3,yw-3);P(xw-3-w,x=ct(tG+w,xR);x(mulZZ(x,y,f)))y=ct(tG+w,y);A z=an(n,yt);
- S4(w,W(i<n,I v=(I)xg*yg;B(v-(G)v)zg=v;i++),
-      W(i<n,I v=(I)xh*yh;B(v-(H)v)zh=v;i++),
-      W(i<n,L v=(L)xi*yi;B(v-(I)v)zi=v;i++),
-      W(i<n,zl=(L)((W)xl*(W)yl);i++))
- P(i<n,z(0);x=ct(tG+w+1,xR);x(mulZZ(x,ct(tG+w+1,y),f)))y(z))
+ZN A amdFF(A x,A y,U f)_(U n=xn;P(n-yn,el(y))A z=MINE(y)?y:aF(n);G(&aFF,sFF,mFF,dFF)[f-1](xV,yV,zV,n+3>>2);y-z?y(z):z)
+// amber 2.1: the overflow test is fused into the kernel (simd_addc_*: one pass
+// over x, y and z instead of the add plus a second read of all three), and the
+// integer multiply is a vectorisable flag-accumulating loop instead of a scalar
+// loop with a per-element break. On overflow the result is discarded and the
+// operation redone one width wider, exactly as before.
+// In place when y is a dying temporary (MINE) of the result width: the sum is
+// written over y. Should the width overflow, y is recovered EXACTLY from the
+// wrapped result (y = z - x, modular) before the operation is redone wider.
+Z A addZZ(A x,A y,U f)_(U w=MAX(xw-3,yw-3);P(xw-3-w,x=ct(tG+w,xR);x(addZZ(x,y,f)))y=ct(tG+w,y);U n=yn;A z=MINE(y)?y:an(n,yt);I ov=0;
+ S4(w,ov=simd_addc_i8(xV,yV,zV,n),ov=simd_addc_i16(xV,yV,zV,n),ov=simd_addc_i32(xV,yV,zV,n),simd_add_i64(xV,yV,zV,n))
+ I(z==y,_at(z)=0)
+ P(ov,I(z==y,S4(w,simd_sub_i8(zV,xV,yV,n),simd_sub_i16(zV,xV,yV,n),simd_sub_i32(zV,xV,yV,n),))E(z(0))y=ct(tG+w+1,y);x=ct(tG+w+1,xR);x(addZZ(x,y,f)))z==y?z:y(z))
+Z A subZZ(A x,A y,U f)_(U w=MAX(xw-3,yw-3);P(xw-3-w,x=ct(tG+w,xR);x(subZZ(x,y,f)))y=ct(tG+w,y);U n=yn;A z=MINE(y)?y:an(n,yt);I ov=0;
+ S4(w,ov=simd_subc_i8(xV,yV,zV,n),ov=simd_subc_i16(xV,yV,zV,n),ov=simd_subc_i32(xV,yV,zV,n),simd_sub_i64(xV,yV,zV,n))
+ I(z==y,_at(z)=0)
+ P(ov,I(z==y,S4(w,simd_sub_i8(xV,zV,yV,n),simd_sub_i16(xV,zV,yV,n),simd_sub_i32(xV,zV,yV,n),))E(z(0))y=ct(tG+w+1,y);x=ct(tG+w+1,xR);x(subZZ(x,y,f)))z==y?z:y(z))
+Z A mulZZ(A x,A y,U f)_(U n=yn,w=MAX(xw-3,yw-3);P(xw-3-w,x=ct(tG+w,xR);x(mulZZ(x,y,f)))y=ct(tG+w,y);A z=an(n,yt);I ov=0;
+ S4(w,ov=simd_mulc_i8(xV,yV,zV,n),ov=simd_mulc_i16(xV,yV,zV,n),ov=simd_mulc_i32(xV,yV,zV,n),simd_mul_i64(xV,yV,zV,n))
+ P(ov,z(0);x=ct(tG+w+1,xR);x(mulZZ(x,ct(tG+w+1,y),f)))y(z))
 
-// scalar-plus-vector add: same intentional wrap, same defined-behaviour form.
-ZN V alL(L v,V*RES b,V*RES c,U n){simd_adds_i64((int64_t)v,AL(b),AL(c),AMEL(n,L));}
-ZN V aiI(L v,V*RES b,V*RES c,U n){simd_adds_i32((int32_t)v,AL(b),AL(c),AMEL(n,I));}
-ZN V ahH(L v,V*RES b,V*RES c,U n){simd_adds_i16((int16_t)v,AL(b),AL(c),AMEL(n,H));}
-ZN V agG(L v,V*RES b,V*RES c,U n){simd_adds_i8 ((int8_t) v,AL(b),AL(c),AMEL(n,G));}
-ZN B ozZ(L v,CO W*y,CO W*r,U n,U w)_(r=AL(r);y=AL(y);F(3-w,v|=(L)((W)v<<(8<<(w+i))))W t[4]={};F(((W)n<<w)+31>>5,Fj(4,t[j]|=(*r^v)&(*r^*y);r++;y++))!!((t[0]|t[1]|t[2]|t[3])&msk[w]))
-Z A addzZ(L v,A y,U f)_(U n=yn,w=MAX(tZ(v)-tG,yw-3);y=ct(tG+w,y);A z=an(n,yt);G(&agG,ahH,aiI,alL)[w](v,yV,zV,n+(31>>w)>>5-w);
- P(w<3&&ozZ(v,yV,zV,n,w),z(0);y=ct(tG+w+1,y);addzZ(v,y,f))y(z))
+Z A addzZ(L v,A y,U f)_(U n=yn,w=MAX(tZ(v)-tG,yw-3);y=ct(tG+w,y);A z=MINE(y)?y:an(n,yt);I ov=0;
+ S4(w,ov=simd_addsc_i8(v,yV,zV,n),ov=simd_addsc_i16(v,yV,zV,n),ov=simd_addsc_i32(v,yV,zV,n),simd_adds_i64(v,yV,zV,n))
+ I(z==y,_at(z)=0)
+ P(ov,I(z==y,S4(w,simd_addsc_i8(-(G)v,zV,yV,n),simd_addsc_i16(-(H)v,zV,yV,n),simd_addsc_i32(-(I)v,zV,yV,n),))E(z(0))y=ct(tG+w+1,y);addzZ(v,y,f))z==y?z:y(z))
+Z A subzZ(L v,A y,U f)_(U n=yn,w=MAX(tZ(v)-tG,yw-3);y=ct(tG+w,y);A z=MINE(y)?y:an(n,yt);I ov=0;/* v - y */
+ S4(w,ov=simd_subsc_i8(v,yV,zV,n),ov=simd_subsc_i16(v,yV,zV,n),ov=simd_subsc_i32(v,yV,zV,n),simd_subs_i64(v,yV,zV,n))
+ I(z==y,_at(z)=0)
+ P(ov,I(z==y,S4(w,simd_subsc_i8(v,zV,yV,n),simd_subsc_i16(v,zV,yV,n),simd_subsc_i32(v,zV,yV,n),))E(z(0))y=ct(tG+w+1,y);subzZ(v,y,f))z==y?z:y(z))
 
-Z A mulzZ(L a,A y,U f)_(U n=yn,i=0,w=MAX(tZ(a)-tG,yw-3);y=ct(tG+w,y);A z=an(n,yt);
- S4(w,W(i<n,I v=a*yg;B(v-(G)v)zg=v;i++),
-      W(i<n,I v=a*yh;B(v-(H)v)zh=v;i++),
-      W(i<n,L v=a*yi;B(v-(I)v)zi=v;i++),
-      W(i<n,zl=(L)((W)a*(W)yl);i++))
- i<n?mulzZ(a,ct(tG+w+1,z(y)),f):y(z))
+Z A mulzZ(L a,A y,U f)_(U n=yn,w=MAX(tZ(a)-tG,yw-3);y=ct(tG+w,y);A z=an(n,yt);I ov=0;
+ S4(w,ov=simd_mulsc_i8(a,yV,zV,n),ov=simd_mulsc_i16(a,yV,zV,n),ov=simd_mulsc_i32(a,yV,zV,n),{CO L*RES p=yV;L*RES r=zV;F(n,r[i]=(L)((W)a*(W)p[i]))})
+ ov?mulzZ(a,ct(tG+w+1,z(y)),f):y(z))
 
+#define AMMOD(TY,AT) {CO TY*RES p=yV;AT mm=(AT)m;S4(zw-3,F(zn,{AT r=(AT)p[i]%mm;zg=(G)(r<0?r+mm:r);}),F(zn,{AT r=(AT)p[i]%mm;zh=(H)(r<0?r+mm:r);}),F(zn,{AT r=(AT)p[i]%mm;zi=(I)(r<0?r+mm:r);}),F(zn,{AT r=(AT)p[i]%mm;zl=(L)(r<0?r+mm:r);}))}
 Z A modzZ(L m,A y,U f)_(P(!m,y)
  P(m<0,m=-m;A z=an(yn,yt);S4(yw-3,F(zn,C v=yg;zg=v<0?-1-~v/m:v/m),F(zn,H v=yh;zh=v<0?-1-~v/m:v/m),F(zn,I v=yi;zi=v<0?-1-~v/m:v/m),F(zn,L v=yl;zl=v<0?-1-~v/m:v/m))y(z))
- P(m&m-1,A z=an(yn,tZ(m));U wy=yw-3;S4(zw-3,F(zn,zg=(iw(y,wy,i)%m+m)%m),F(zn,zh=(iw(y,wy,i)%m+m)%m),F(zn,zi=(iw(y,wy,i)%m+m)%m),F(zn,zl=(iw(y,wy,i)%m+m)%m))y(z))
+ // amber 2.1: a general modulus used to read every element through iw() -- a
+ // function call and two 64-bit divisions per element. Width-switched plain
+ // loops with one division and a sign fix-up; 32-bit arithmetic when both the
+ // data and the modulus fit it (the 32-bit idiv is several times cheaper).
+ P(m&m-1,A z=an(yn,tZ(m));U wy=yw-3;
+  I(wy<3&&m<=0x7fffffffll,S4(wy,AMMOD(G,I),AMMOD(H,I),AMMOD(I,I),))E(S4(wy,AMMOD(G,L),AMMOD(H,L),AMMOD(I,L),AMMOD(L,L)))
+  y(z))
  m--;U t=tZ(m),w=t-tG;y=mut(N(ct(t,y)));F(3-w,m|=m<<(8<<w+i))L*p=yV;F((yn<<w)+31>>5,Fj(4,*p++&=m))y)
 Z A modzf(L n,A y,U f)_(P(!n,y)P(n<0,en(y))K2("{y-x*(-x)!_y}",az(n),y))
 Z A mmmzZ(L v,A y,U f)_(C t=tZ(v),u=tG+yw-3;I(u<t||u-yt,y=ct(t,y))E(t=u)U n=yn;A z=MINE(y)?y:an(n,t);C w=t-tG;n+=31>>w;L m=-(f==7);v^=m;
@@ -89,7 +98,8 @@ Z A cmpzZ(L v,A y,U f)_(U w=yw-3;P(tG+w<tZ(v),y(rsz(yn,ai(f==8?v<0:f==9?v>0:0)))
 Z A addzE(L v,A x)_(Lij x(0);aE(i+v,j+v))
 Z A addfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);U n=zn+3&-4;SIMD F(n,zf=v+yf)y-z?y(z):z)
 Z A mulfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);U n=zn+3&-4;SIMD F(n,zf=v*yf)y-z?y(z):z)
-Z A admfF(F v,A y,U f)_((f==3?mulfF:addfF)(v,y,f))
+Z A subfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);simd_subs_f64(v,yV,zV,yn);y-z?y(z):z)/* v - y */
+Z A admfF(F v,A y,U f)_((f==3?mulfF:f==2?subfF:addfF)(v,y,f))
 Z A dvdfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);U n=zn+3&-4;SIMD F(n,zf=v/yf)y-z?y(z):z)
 Z A dvdFf(A x,F v,U f)_(A z=aF(xn);SIMD F(xn,zf=xf/v)z)
 Z A dvdzZ(L v,A y,U f)_(dvdfF(v,cF(y),f))
@@ -103,20 +113,21 @@ Z A dvdZZ(A x,A y,U f)_(x=cF(xR);x(amdFF(x,cF(y),f)))
 #define NEGW(v) ((L)(0-(W)(v)))
 Z A arizz(L a,L b,U f)_(P(f==4,af((F)a/b))
  az(f==1?(L)((W)a+(W)b)
+   :f==2?(L)((W)a-(W)b)
    :f==3?(L)((W)a*(W)b)
    :f==5?(!a?b:a<0?(b<0?(L)((W)-1-(W)(~b/NEGW(a))):b/NEGW(a)):(L)(((W)((L)((W)(b%a)+(W)a)%a))))
    :f==6?MIN(a,b):f==7?MAX(a,b):f==8?a<b:f==9?a>b:f==10?a==b:0))
-Z A arizZ(L v,A y,U f)_(A(&addzZ,0,mulzZ,dvdzZ,modzZ,mmmzZ,mmmzZ,cmpzZ,cmpzZ,cmpzZ)[f-1](v,y,f))
-Z A ariZZ(A x,A y,U f)_(P(xn-yn,el(y))A(&addZZ,0,mulZZ,dvdZZ,0,mmmZZ,mmmZZ,cmpZZ,cmpZZ,cmpZZ)[f-1](x,y,f))
-ZN A ariz(A x,A y,U f){S(xtT<<1|ytT,R(0,arizz(gl_(x),gl(y),f))R(1,arizZ(gl_(x),y,f))R(2,P(f==4,ari(x,cF(y)))arizZ(gl(y),xR,f-8<2u?f^8^9:f))R_(ariZZ(x,y,f)))}
+Z A arizZ(L v,A y,U f)_(A(&addzZ,subzZ,mulzZ,dvdzZ,modzZ,mmmzZ,mmmzZ,cmpzZ,cmpzZ,cmpzZ)[f-1](v,y,f))
+Z A ariZZ(A x,A y,U f)_(P(xn-yn,el(y))A(&addZZ,subZZ,mulZZ,dvdZZ,0,mmmZZ,mmmZZ,cmpZZ,cmpZZ,cmpZZ)[f-1](x,y,f))
+ZN A ariz(A x,A y,U f){S(xtT<<1|ytT,R(0,arizz(gl_(x),gl(y),f))R(1,arizZ(gl_(x),y,f))R(2,P(f==4,ari(x,cF(y)))P(f==2,arizZ((L)(0-(W)gl(y)),xR,1))arizZ(gl(y),xR,f-8<2u?f^8^9:f))R_(ariZZ(x,y,f)))}
 ZN A arif(A x,A y,U f)_(C t=xt,u=yt;
  P(f==5,xtz?modzf(gl(x),y,f):et(y))
  P(t-tf&&t-tF,x=Ny(cF(xR));x(ari(x,y)))
  P(u-tf&&u-tF,ari(x,N(cF(y))))
  P(f<5,U k=(t<tM)<<1|(u<tM);S(k,
-  R(0,F a=*xF,b=gf(y);af(f==1?a+b:f==3?a*b:a/b))
+  R(0,F a=*xF,b=gf(y);af(f==1?a+b:f==2?a-b:f==3?a*b:a/b))
   R(1,f<4?admfF(*xF,y,f):dvdfF(*xF,y,f))
-  R(2,f<4?admfF(gf(y),xR,f):dvdFf(x,gf(y),f))
+  R(2,f==2?admfF(-gf(y),xR,1):f<4?admfF(gf(y),xR,f):dvdFf(x,gf(y),f))
   R_(amdFF(x,y,f)))0)
  P(f==10,ariz(x,y,f))
  // amber item 4: direct IEEE comparison instead of the of1() integer-domain
@@ -164,7 +175,7 @@ A2(ari,C t=xt,u=yt;U v=1<<t|1<<u;
  P(v&(1<<tm|1<<tM|1<<tA),e2(av+f,x,y))
  P(t==tB,x=cG(xR);x(ari(x,y)))
  P(u==tB,ari(x,cG(y)))
- P(t==tE,P(f==1&&ytzc,addzE(gl(y),xR))x=gZ(xR);x(ari(x,y)))
+ P(t==tE,P(f==1&&ytzc,addzE(gl(y),xR))P(f==2&&ytzc,addzE((L)(0-(W)gl(y)),xR))x=gZ(xR);x(ari(x,y)))
  P(u==tE,P(f==1&&xtzc,addzE(gl_(x),y))ari(x,gZ(y)))
  P(v&(1<<tf|1<<tF),arif(x,y,f))
  I(f-8<3u,
@@ -175,7 +186,7 @@ A2(ari,C t=xt,u=yt;U v=1<<t|1<<u;
 #define M(s,i) A2(s,U o=f;f=i;x=ari(x,y);f=o;x)
  M(add,1)M(mul,3)M(dvd,4)M(mod,5)M(mnm,6)M(mxm,7)M(ltn,8)M(gtn,9)M(eql,10)
 #undef M
-A2(dex,y)A2(sub,P(_t(x)>=tdt||_t(y)>=tdt,tari(x,y,2))add(x,N(neg(y))))X2(exc,RMT(ytm||rnk(x)<0?ed(y):ytt?exc(x,rsz(xN,y)):xN-yN?el(y):am(xR,y))Rs(x=rsz(yN,x);x(exc(x,y)))Rilc(/* amber 1.9.3: `!` with a negative integer left argument is the
+A2(dex,y)A2(sub,U o=f;f=2;x=ari(x,y);f=o;x)X2(exc,RMT(ytm||rnk(x)<0?ed(y):ytt?exc(x,rsz(xN,y)):xN-yN?el(y):am(xR,y))Rs(x=rsz(yN,x);x(exc(x,y)))Rilc(/* amber 1.9.3: `!` with a negative integer left argument is the
  * q-family system-verb slot -- -8!x serialises to a byte vector and -9!y
  * deserialises it (src/ser.c). Only -8 and -9, and only on a genuine
  * integer atom, are intercepted; every other left argument (negative ones

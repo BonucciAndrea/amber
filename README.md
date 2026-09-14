@@ -12,7 +12,7 @@
 **A low-latency array language — columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-2.0.1-orange)
+![version](https://img.shields.io/badge/version-2.1.0-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
 ![tests](https://img.shields.io/badge/tests-742%20K--suite%20cases-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
@@ -39,6 +39,36 @@ qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                        / vwap by symbo
 ```
 
 <a name="whats-new"></a>
+<a name="whats-new-210"></a>
+## What's new in 2.1.0
+
+**A performance release.** Results are bit-identical to 2.0.1 (two differential scripts in
+`tests/` compare 1.1 million lines of output between the two binaries); the engine is simply
+faster, and the **portable** build now runs AVX2 kernels wherever the CPU has them.
+
+- **Idiom fusion.** `+/x*y`, `+/x<y`, `+/x@&m`, `x@&m`, `a+s*b`, `x@<x` and friends compile to
+  one fused primitive each -- no product, mask or index vector is ever written. `\disasm`
+  shows the fused call; `+/x*y` over 10M floats went from 14 ms to 7 ms.
+- **Fused group-by.** `gsum[k;v]`, `gavg`, `gmin`, `gmax`, `gcount`, `gfirst`, `glast` (and the
+  `` `gagg `` kernel behind them) aggregate in one pass with the same key order as `=k`;
+  `select sum px by sym from t where ...` takes the same path with the where-clause as a mask.
+  Group-by at 100-100k groups is 5-7x faster and now beats CBQN, DuckDB and Polars.
+- **One-pass membership** (`in`, via `` `memb ``): 5x. **Distinct** at 100k keys: 9x.
+  **As-of join**: 5x, at the speed of the hand-written C reference. **Moving windows**: 2.5x.
+- **Value sorts** of integral-valued floats are counting sorts with no grade and no gather
+  (3.4x), sorted results carry `` `s ``, and multi-column `xasc` packs its keys into one radix.
+- **Portable = native.** `src/simd.c` is compiled twice (AVX2 and baseline) and the right
+  body is picked at load time, so `./build.sh` without `AMBER_NATIVE=1` is now as fast as the
+  native build on every kernel in that file. OpenMP `parallel for` is gone from the
+  reductions (it was a net loss).
+- Subtraction is a direct kernel, integer add/sub check overflow in the same pass and reuse a
+  dying operand in place, symbol `?` uses the hash index, `-0.0` sorts before `0.0` as
+  documented.
+
+On the 23-operation comparative matrix (10M elements, one core) Amber now beats **CBQN on 11
+of the 19 operations both implement** (was 4); see [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md)
+and [`CHANGELOG.md`](CHANGELOG.md) for every number and every change.
+
 <a name="whats-new-201"></a>
 ## What's new in 2.0.1
 
@@ -387,7 +417,7 @@ instant.
 Check the interpreter version, or list every option and REPL command:
 
 ```sh
-./amber --version           # amber 2.0.1
+./amber --version           # amber 2.1.0
 ./amber --help              # options + the full \-command reference
 ```
 

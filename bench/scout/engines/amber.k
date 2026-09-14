@@ -42,7 +42,7 @@ mat:{[v]v@!#v}
 / LEXICOGRAPHIC order xasc uses agree with the numeric order the C reference
 / sorts by, so tablesort answers are comparable across engines.
 SYM:`$'{"s",(-2)#"00",x}'$!100
-grp:{[g;v]d:=g;+/(1+251!!d)*(+/v@)'. d}          / group-sum, weighted by key
+grp:{[g;v]d:gsum[g;v];+/(1+251!!d)*. d}           / group-sum (gsum: fused C group aggregate, 2.1), weighted by key
 
 / ---- fixed-size workload constants ---------------------------------------
 MJ:1000000                                        / join left rows

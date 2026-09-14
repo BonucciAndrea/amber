@@ -118,11 +118,10 @@ def build_engines(threads):
         Engine("polars", "Polars", py("polars"), ALL_OPS, "Arrow + vectorised kernels"),
         Engine("duckdb", "DuckDB", py("duckdb"), ALL_OPS, "vectorised push execution"),
     ]
-    engines.append(Engine(
-        "amber-mt", "Amber (native, %d threads)" % threads,
-        [amber_bin("native"), os.path.join(ENG, "amber.k")], ALL_OPS,
-        "multi-core row; NOT part of the single-thread ranking",
-        env={"OMP_NUM_THREADS": str(threads), "AMBER_THREADS": str(threads)}, mt=True))
+    # amber 2.1: the "amber-mt" row is gone. It measured the reductions' OpenMP
+    # `parallel for`, which was removed (a thread team per reduction was a net
+    # loss); OMP_NUM_THREADS no longer changes anything. peach is the multi-core
+    # path and is measured by tests/test_parallel.c, not by this matrix.
     return engines
 
 

@@ -69,10 +69,23 @@ qrefs:{[C;s]$[0=#s;0#`;[m:qword 0+s;bnd:&differ m;tk:bnd _ s;fl:m bnd;sy:`$'tk;?
 / read.  Projecting first makes that cost scale with columns USED, not columns
 / present.  Only ever narrows, so it cannot change a result.
 qproj:{[t;cs]+(?cs)#+t}
+/ 2.1: a select-list item of the form `agg col` with agg one of qsimp and col a
+/ real column is a SIMPLE aggregate; a by-query whose every item is simple is
+/ answered by qaggf through the fused C group-aggregate (`gagg) -- one pass per
+/ aggregate over the raw columns, no per-group sub-tables, no lambda per group.
+/ Integer results are narrowed with `i$ so column types match the generic path.
+qsimp:`sum`avg`min`max`count`first`last
+qsagg:{[C;e]w:" "vs trim e;$[2=#w;$[(in[`$w 0;qsimp])&in[`$w 1;C];(`$w 0;`$w 1);()];()]}
+/ the by-branch of sel, split out so sel itself stays under the bytecode limit
+/ the by-branch of sel, split out so sel itself stays under the bytecode limit.
+/ u is the UNFILTERED table and m the where-mask: the fused path hands the mask
+/ to `gagg and never builds the filtered table; the generic path filters first.
+qselby:{[u;m;byp;it;d]r:qbyx[u;byp];sg:qsagg[cols r 0]'{(qname x)1}'it;fa:$[&/{0<#x}'sg;qaggf[r 0;r 1;(!d)!sg;m];()];$[#fa;fa;[t:qwhere[r 0;m];qby[qproj[t;(r 1),(,/qrefs[cols t]'{(qname x)1}'it)];r 1;d]]]}
+qaggf:{[t;b;sg;m]d:+t;bc:d b;k:$[1=#b;*bc;qcard[bc]<qEXACT;qenc bc;()];$[0=#k;();[rs:{[d;k;m;p]`gagg(p 0;k;d p 1;m)}[d;k;m]'sg;$[&/value[{0<#x}'rs];[fr:(*value[rs])2;(+b!bc@\:fr)!+{v:x 1;$[`I=@v;`i$v;v]}'rs];()]]]}
 
 
 / ---- select ---------------------------------------------------------------
-sel:{[s]s:qnorm s;s:$[(6#s)~"select";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r3:qsplit0[r2 0;" by "];selp:r3 0;u:. r2 1;t:qwhere[u;qmask[u;wh]];C:cols u;$[(selp~,"*")|0=#selp;$[r3 2;[r:qbyx[t;r3 1];nk:except[cols r 0;r 1];qby[r 0;r 1;nk!qlastf'nk]];t];[it:qcut selp;d:(qnm[C]'[!#it;it])!{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;[r:qbyx[t;r3 1];qby[qproj[r 0;(r 1),(,/qrefs[cols r 0]'{(qname x)1}'it)];r 1;d]];qselect[t;d]]]]}
+sel:{[s]s:qnorm s;s:$[(6#s)~"select";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r3:qsplit0[r2 0;" by "];selp:r3 0;u:. r2 1;m:qmask[u;wh];t:qwhere[u;m];C:cols u;$[(selp~,"*")|0=#selp;$[r3 2;[r:qbyx[t;r3 1];nk:except[cols r 0;r 1];qby[r 0;r 1;nk!qlastf'nk]];t];[it:qcut selp;d:(qnm[C]'[!#it;it])!{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;qselby[u;m;r3 1;it;d];qselect[t;d]]]]}
 
 / ---- exec  (return one column / expression, not a table) ------------------
 / exec splits its select-list the SAME way select does (qcut, honouring brackets):

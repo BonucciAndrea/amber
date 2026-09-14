@@ -1,5 +1,78 @@
 # Changelog
 
+## 2.1.0
+
+A performance release. Every change keeps the language's results bit-identical (the two
+differential scripts in `tests/` compare 1.1 million lines of output between the 2.0.1 and
+2.1.0 binaries) except two deliberate fixes noted below. Measured on the 23-operation
+comparative matrix (`bench/scout`, 10M elements, one core), the portable build is now faster
+than CBQN on 11 of the 19 operations both implement, up from 4; group-by is 5-7x faster,
+membership 5x, high-cardinality distinct 9x, the as-of join 5x, moving windows 2.5x, `+/x*y`
+2x, and every kernel that lives in `src/simd.c` runs its AVX2 body inside the **portable**
+binary.
+
+### Engine
+
+- **Function multiversioning.** `src/simd.c` is compiled with
+  `__attribute__((target_clones("avx2","default")))` on x86-64 ELF builds without `-march`,
+  so the default `./build.sh` binary selects AVX2 kernels at load time on a CPU that has them
+  and still runs on any x86-64. `` `simd[] `` reports the backend as `vec256-mv` (AVX2
+  selected) or `vec128-mv` on such builds. The `AMBER_NATIVE=1` build is unchanged.
+- **Idiom fusion in the compiler.** `+/x*y`, `+/x=y`, `+/x<y`, `+/x>y`, `+/x@&m`, `x@&m`,
+  `a+s*b` and `a-s*b` (with `s` a numeric literal), `x@<x` and `x@>x` compile to one fused
+  primitive each instead of a chain that materialises intermediates (`\disasm` shows the
+  fused call). Every fused entry point falls back to the very primitives it replaces for any
+  operand shape it does not handle, so results are identical, including NaN, `-0.0`, nulls,
+  generic lists and masks with counts above 1.
+- **Fused group aggregate.** `` `gagg (op;k;v[;m]) `` does `acc[group] op= v` in one pass
+  (`op` in `` `sum`count`min`max`avg`first`last ``; keys in first-appearance order, exactly as
+  `=k`; optional 0/1 mask `m` skips rows). Library verbs `gsum gavg gmin gmax gcount gfirst
+  glast` wrap it and keep the portable K definition as their fallback.
+- **qSQL fast path.** A `select agg col, ... by ... from t [where ...]` whose every item is a
+  simple aggregate over a real column is answered through `` `gagg `` with the where-clause as a
+  mask -- no filtered table, no per-group sub-tables, no lambda per group. Same result table,
+  same key order, same column types. Anything else takes the generic path unchanged.
+- **Membership.** `` `memb (x;y) `` answers `x in y` in one pass (a bitmap over the set's
+  range when it fits 8 MB, else a hash sized to the set); `in` uses it, with `~^y?x` as the
+  fallback. `?` (find) on symbol vectors takes the hash/LUT index path (it was a linear scan).
+- **Sorting.** A value sort (`asc`, `x@<x`, `` `srt``) of an integral-valued float vector is a
+  counting sort with no grade and no gather; an already-sorted input is answered with itself;
+  results carry the `` `s `` attribute. Multi-column `xasc`/`xdesc` packs the columns' key
+  bytes into one 64-bit key and runs a single radix when they fit; float columns holding
+  integral values are keyed by integer value; symbol columns are ranked through a direct
+  table.
+- **Distinct** at high cardinality uses a bitmap over the key range (up to 2^26 keys) and a
+  hash that grows with the distinct count beyond that (the table used to be sized to the
+  input length).
+- **As-of join.** The per-trade group-slice pass (`` `wjb ``) uses a direct table for a
+  single narrow key column; the join now runs at the speed of one binary search per row.
+- **Moving windows** no longer copy float inputs, take their scratch from the bucket
+  allocator instead of a fresh mapping per call, and `mmin`/`mmax` keep a ring.
+- **Arithmetic.** Subtraction is a direct kernel (it was `x + -y`, a full extra pass);
+  integer add/sub detect overflow inside the same pass (was a second pass) and write in place
+  over a dying temporary; integer multiply is vectorisable; a general modulus no longer calls a
+  function per element; float `|/` and `&/` run at vector width; `where` on a 0/1 byte mask is
+  one branch-free pass.
+- **Reductions no longer spawn OpenMP teams.** `+/`, `*/`, `&/`, `|/` over a million or more
+  integers used to open a `parallel for`; with `OMP_NUM_THREADS` unset that was a 14-thread
+  team per call and a slower answer. `OMP_NUM_THREADS` no longer affects Amber; multi-core work
+  is `peach`.
+
+### Behaviour changes
+
+- Ascending value sorts return vectors flagged `` `s `` (`` `at asc x `` is `` `s ``), so a
+  later `?`, `in`, `bin` or `aj` on them takes the O(log n) path. `desc`/`x@>x` do not.
+- `-0.0` sorts strictly before `0.0` and stays distinct in `?`, as the code always documented:
+  the counting grade's `signbit` test had been folded away by the build's `-fno-signed-zeros`,
+  so a float vector containing `-0.0` was graded with it equal to `0.0`. The test is now on the
+  bit pattern.
+
+### Tests
+
+`tests/test_arith_diff.k` and `tests/test_fusion_diff.k` are differential oracles: run each
+under two binaries and `diff` the outputs. The full suite passes under ASan, UBSan and
+LeakSanitizer.
+
 ## 2.0.1
 
 Tacit **trains** — hooks and forks — are now first-class. A parenthesised,

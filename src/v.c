@@ -1,4 +1,5 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+#include"simd.h"
 // ---- vectorisation hints ---------------------------------------------------
 // Same probe-don't-assume policy as src/3.c: build.sh only adds -fopenmp when
 // the compiler actually accepts it, so where it is absent these expand to

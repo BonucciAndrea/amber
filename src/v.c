@@ -43,7 +43,18 @@ V tilV(V*p,L v,L n,U w){L*RES a=p;W k=(W)G(0x101010101010101ll,0x1000100010001ll
 X1(til,RA(K1("{x@'!#'x}",x))Ril(L n=gl(x);I(n==NL,n=0)aE(MIN(0,n),MAX(0,n)))REBGHIL(K1("{(*a)#'&'x#'1_a:|*\\|x,1}",x))RmM(x(_R(xx)))Ro(val(x))RS(gns(_v(jS(x))))Rs(gns(xv))R_(et(x)))
 X1(whr,Ril(whr(enl(x)))RA(P(!xn,x(an(0,tI)))K1("{$[`A~@x;(,&#'*'x),,'/x@\\:!0|/#'x:o'x;,&x]}",x))Rm(A y=kv(&x);x(x1(Nx(whr(y)))))RE(whr(gZ(x)))R_(et(x))
  RB(U m=xn,n=addfB(xV,m);A y=aI(n);I*r=yV;Mx(F(m+7>>3,C v=xg;W(v,U j=CTZ(v);v&=~(1<<j);*r++=i<<3|j)))Q(r-yI==n);y)
- RGHIL(L m=xn,n=addfZ(0,x);P(n<0||minfZ(0,x)<0,ed(x))C t=tZ(m-!!m);P(t>tI,ez(x))A y=an(n,t);I w=xw-3;
+ RGHIL(I w=xw-3;
+  // amber 2.1: a 0/1 byte mask (every comparison result) is answered by one
+  // branch-free pass: sum+OR of the mask sizes the output and proves every
+  // byte is 0 or 1, then simd_where_* writes the indices with an unconditional
+  // store and a masked cursor advance. Anything else takes the general
+  // replicate-by-count loop below.
+  I(w==0&&xn,{unsigned orv_=0;L n_=simd_masksum_u8(xV,xn,&orv_);
+   I(orv_<=1,C t_=tZ((L)xn-1);A y_=an((U)n_,t_);int bad_=0;
+    I(t_==tG,{G*r_=_V(y_);U k_=0;CO UC*mm_=xV;F(xn,r_[k_]=(G)i;k_+=mm_[i]!=0)})
+    J(t_==tH,simd_where_i16(xV,_V(y_),xn,&bad_))E(simd_where_i32(xV,_V(y_),xn,&bad_))
+    return x(y_);)})
+  L m=xn,n=addfZ(0,x);P(n<0||minfZ(0,x)<0,ed(x))C t=tZ(m-!!m);P(t>tI,ez(x))A y=an(n,t);
   Mx(S4(t-tG,{G*r=yV;S4(w,F(m,Fj(xg,*r++=i)),F(m,Fj(xh,*r++=i)),F(m,Fj(xi,*r++=i)),F(m,Fj(xl,*r++=i)))},
              {H*r=yV;S4(w,F(m,Fj(xg,*r++=i)),F(m,Fj(xh,*r++=i)),F(m,Fj(xi,*r++=i)),F(m,Fj(xl,*r++=i)))},
              {I*r=yV;S4(w,F(m,Fj(xg,*r++=i)),F(m,Fj(xh,*r++=i)),F(m,Fj(xi,*r++=i)),F(m,Fj(xl,*r++=i)))},))y))
@@ -180,16 +191,19 @@ MWRUN(mwdev,1,SQ(MWVARQ))
 // window, and an index leaves the deque either because a newer element beats it
 // or because it fell out of the window. Amortised O(1) per element, so the
 // whole pass is O(n) no matter how wide w is.
+// amber 2.1: the deque never holds more than w+1 live indices, so it is a RING
+// of the next power of two above that (masked indexing) instead of an n-entry
+// array that a 10M-row pass wrote from end to end.
 #define MWDQ1(NM,T,ISNUL,CMP)                                                  \
-Z V NM(CO T*RES p,T*RES r,N n,N w,U*RES dq){                                    \
+Z V NM(CO T*RES p,T*RES r,N n,N w,U*RES dq,N mk){                               \
   N h=0,t=0;                                                                   \
   for(N i=0;i<n;i++){                                                          \
     T v=p[i];                                                                  \
     if(!(ISNUL)){                                                              \
-      while(t>h&&!(p[dq[t-1]] CMP v))t--;                                      \
-      dq[t++]=(U)i;}                                                           \
-    while(t>h&&(N)dq[h]+w<=i)h++;                                              \
-    r[i]=t>h?p[dq[h]]:v;}}   /* t==h only when the whole window was null */
+      while(t>h&&!(p[dq[(t-1)&mk]] CMP v))t--;                                 \
+      dq[t&mk]=(U)i;t++;}                                                      \
+    while(t>h&&(N)dq[h&mk]+w<=i)h++;                                           \
+    r[i]=t>h?p[dq[h&mk]]:v;}}   /* t==h only when the whole window was null */
 #define MWDQ(T,SFX,ISNUL) MWDQ1(mwmin##SFX,T,ISNUL,<) MWDQ1(mwmax##SFX,T,ISNUL,>)
 MWDQ(G,G,0) MWDQ(H,H,0) MWDQ(I,I,0) MWDQ(L,L,0) MWDQ(F,F,v!=v)
 
@@ -216,29 +230,38 @@ A mwC(A x){
  // cannot do it at all -- `(-w)_s` on a shorter-than-w vector is a 'length
  // error -- so falling back would turn "no rows" into an exception.
  P(!n,x(an(0,code<=MWDEV?tF:t)))
- ArenaMark mk=arena_mark();A y=0;
+ // amber 2.1: a float input is read IN PLACE (mwld used to memcpy 80 MB of
+ // f64 into scratch first), integer inputs are widened into a bucket-allocated
+ // vector (recycled by the allocator; the arena overflow block for anything
+ // this size was a fresh mmap and an munmap on every call), and the deque
+ // scratch is a small ring. Semantics unchanged: the kernels treat NaN as
+ // absent, which is exactly what mwld produced for the integer nulls.
+ A y=0;
  if(code<=MWDEV){
-   F*RES d=(F*)arena_alloc(n*SZ(F));
-   P(!d,arena_release(mk);x(emp(tA)))
-   mwld(c,d,n);
+   A tmp=0;CO F*d;
+   if(t==tF)d=(CO F*)_V(c);
+   else{tmp=an((U)n,tF);F*RES dd=(F*)_V(tmp);mwld(c,dd,n);d=dd;}
    y=an((U)n,tF);F*RES r=(F*)_V(y);
    switch((U)code){
      case MWSUM: mwsum(d,r,n,(N)w);break;
      case MWAVG: mwavg(d,r,n,(N)w);break;
      case MWVAR: mwvar(d,r,n,(N)w);break;
      default:    mwdev(d,r,n,(N)w);break;}
+   if(tmp)mr(tmp);
  }else{
-   U*RES dq=(U*)arena_alloc(n*SZ(U));
-   P(!dq,arena_release(mk);x(emp(tA)))
+   // plain n-entry scratch from the bucket allocator (recycled after the first
+   // call): measured faster than a masked ring for the deque's access pattern.
+   N mk=(N)-1;
+   A dqa=an((U)n,tI);U*RES dq=(U*)_V(dqa);
    y=an((U)n,t);V*r=_V(y);CO V*p=_V(c);int mx=code==MWMAX;
    switch(t){
-     case tG: mx?mwmaxG(p,r,n,(N)w,dq):mwminG(p,r,n,(N)w,dq);break;
-     case tH: mx?mwmaxH(p,r,n,(N)w,dq):mwminH(p,r,n,(N)w,dq);break;
-     case tI: mx?mwmaxI(p,r,n,(N)w,dq):mwminI(p,r,n,(N)w,dq);break;
-     case tL: mx?mwmaxL(p,r,n,(N)w,dq):mwminL(p,r,n,(N)w,dq);break;
-     default: mx?mwmaxF(p,r,n,(N)w,dq):mwminF(p,r,n,(N)w,dq);break;}
+     case tG: mx?mwmaxG(p,r,n,(N)w,dq,mk):mwminG(p,r,n,(N)w,dq,mk);break;
+     case tH: mx?mwmaxH(p,r,n,(N)w,dq,mk):mwminH(p,r,n,(N)w,dq,mk);break;
+     case tI: mx?mwmaxI(p,r,n,(N)w,dq,mk):mwminI(p,r,n,(N)w,dq,mk);break;
+     case tL: mx?mwmaxL(p,r,n,(N)w,dq,mk):mwminL(p,r,n,(N)w,dq,mk);break;
+     default: mx?mwmaxF(p,r,n,(N)w,dq,mk):mwminF(p,r,n,(N)w,dq,mk);break;}
+   mr(dqa);
  }
- arena_release(mk);
  return x(y);}
 
 // ---- 2. LSD radix grade ----------------------------------------------------
@@ -403,6 +426,15 @@ Z B cntrange(A x,L*lo,L*hi){
  L a=RD4(w,p,0),b=a;
  for(N i=1;i<n;i++){L v=RD4(w,p,i);if(v<a)a=v;if(v>b)b=v;}
  *lo=a;*hi=b;return 1;}
+// same, but also reports whether the vector is already non-decreasing
+Z B cntrangeS(A x,L*lo,L*hi,B*srt){
+ UC t=_t(x);N n=_n(x);U w;
+ switch(t){case tG:w=0;break;case tH:w=1;break;case tI:w=2;break;case tL:w=3;break;default:return 0;}
+ if(n<2)return 0;
+ CO V*p=_V(x);
+ L a=RD4(w,p,0),b=a,pv=a;B up=1;
+ for(N i=1;i<n;i++){L v=RD4(w,p,i);if(v<a)a=v;if(v>b)b=v;if(v<pv)up=0;pv=v;}
+ *lo=a;*hi=b;*srt=up;return 1;}
 
 // amber: VALUE-based range for a FLOAT vector.  cntrange() above reads raw bit
 // patterns, so 0.0..999.0 spans several exponents, the guard rejects it, and the
@@ -424,19 +456,14 @@ Z B cntrange(A x,L*lo,L*hi){
 // without reporting it here the counting kernel would win the dispatch and pay
 // for a full histogram + scatter on input that needs neither.  Measured: taking
 // the counting path on sorted 10M float64 costs 76 ms against the radix's 35 ms.
+// amber 2.1: the scan is simd_frange_f64 (src/simd.c, vectorised and
+// multiversioned): 25 ms -> ~5 ms at 10M elements.
 Z NI B cntrangeF(A x,L*lo,L*hi,B*srt){
  N n=_n(x);
  if(_t(x)!=tF||n<2)return 0;
- CO F*RES a=(CO F*)_V(x);
- L mn=0,mx=0;B up=1;F pv=0;
- for(N i=0;i<n;i++){F u=a[i];
-  if(!(u>=-9007199254740992.0&&u<=9007199254740992.0))return 0;   // NaN, +-inf, >2^53
-  L k=(L)u;
-  if((F)k!=u)return 0;                                            // not integral
-  if(u==0.0&&__builtin_signbit(u))return 0;                       // -0.0 sorts before 0.0
-  if(i&&u<pv)up=0;pv=u;
-  if(!i){mn=mx=k;}else{if(k<mn)mn=k;if(k>mx)mx=k;}}
- *lo=mn;*hi=mx;*srt=up;return 1;}
+ F mn,mx;int so=0;
+ if(!simd_frange_f64((CO F*)_V(x),n,&mn,&mx,&so))return 0;
+ *lo=(L)mn;*hi=(L)mx;*srt=(B)so;return 1;}
 
 // Guard shared by both kernels: the histogram must be cheaper than ordering the
 // elements (rg/2 < n), and must fit the cache budget. rg==0 means the span
@@ -475,17 +502,25 @@ A cntgrd(A x){
  return y;}
 
 // Counting SORT: emits values directly, no index vector, no gather.
+// amber 2.1: also takes a FLOAT vector holding integral values (the cntrangeF
+// test above: no NaN, no -0.0, everything integral and within 2^53) and emits
+// the doubles in runs, so `X@<X` on a tick-shaped price column never grades
+// and never gathers; and an input that is ALREADY sorted is answered with the
+// input itself (retained, flagged `s) in the same range pass.
 A cntsrt(A x){
  L lo,hi;W rg;N n=_n(x);
- if(!cntrange(x,&lo,&hi))return 0;
+ B isf=_t(x)==tF,srt=0;
+ if(isf?!cntrangeF(x,&lo,&hi,&srt):!cntrangeS(x,&lo,&hi,&srt))return 0;
+ if(srt){_at(x)=1;return _R(x);}
  if(!cntok(lo,hi,n,&rg))return 0;
  UC t=_t(x);U w=t==tG?0:t==tH?1:t==tI?2:3;
  ArenaMark mk=arena_mark();
  N*RES c=(N*)arena_alloc((N)rg*SZ(N));
  if(!c){arena_release(mk);return 0;}
  MS(c,0,(N)rg*SZ(N));
- CO V*p=_V(x);
- for(N i=0;i<n;i++)c[(W)RD4(w,p,i)-(W)lo]++;
+ CO V*p=_V(x);CO F*RES f=(CO F*)p;
+ if(isf){for(N i=0;i<n;i++)c[(W)(L)f[i]-(W)lo]++;}
+ else   {for(N i=0;i<n;i++)c[(W)RD4(w,p,i)-(W)lo]++;}
  A z=an((U)n,t);V*q=_V(z);
  N o=0;
  // Counted inner loop, not `while(k--)`: the decrementing form carries a loop
@@ -493,7 +528,8 @@ A cntsrt(A x){
  for(W b=0;b<rg;b++){
   N k=c[b];
   if(k){L v=lo+(L)b;
-   switch(w){
+   if(isf){F*d=(F*)q+o;F u=(F)v;for(N j=0;j<k;j++)d[j]=u;}
+   else switch(w){
     case 0:{G*d=(G*)q+o;G u=(G)v;for(N j=0;j<k;j++)d[j]=u;break;}
     case 1:{H*d=(H*)q+o;H u=(H)v;for(N j=0;j<k;j++)d[j]=u;break;}
     case 2:{I*d=(I*)q+o;I u=(I)v;for(N j=0;j<k;j++)d[j]=u;break;}
@@ -502,3 +538,28 @@ A cntsrt(A x){
  arena_release(mk);
  _at(z)=1;                                      // result IS sorted: keep `s#
  return z;}
+
+// ---- amber 2.1: sort-by-value monads and the compress dyad -----------------
+// srtC is what the compiler emits for `x@<x` (and `srt / asc reach it too):
+// counting sort when the range allows, else grade+gather -- never the K path
+// for a flat vector. srtdC is `x@>x`. Results carry the `s attribute when
+// ascending (they are sorted; the flag is what lets `?`, bin and aj skip work).
+// Both are total: any x that is not a flat vector takes exactly the generic
+// grade-then-index route in C (never a K expression, which would compile back
+// into this very idiom).
+A1(srtC,UC t=_t(x);
+ I(!_tP(x)&&LH(tG,t,tS),A c=cntsrt(x);I(c,return x(c)))
+ A g=asc(xR);P(!g,x(0))A r=i1(x,g);x(0);P(!r,0)I(!_tP(r)&&LH(tG,_t(r),tC),_at(r)=1)r)
+A1(srtdC,UC t=_t(x);
+ I(!_tP(x)&&LH(tG,t,tS),A c=cntsrt(x);I(c,A r=rev(x(c));P(!r,0)I(!_tP(r),_at(r)=0)return r;))
+ A g=dsc(xR);P(!g,x(0))A r=i1(x,g);x(0);r)
+// x@&y with y a 0/1 byte mask: one branch-free pass, no index vector. Any
+// other shape (bit masks, counts above 1, generic lists, a mask longer than x)
+// is exactly the old sequence: index by where.
+A2(cmprC,/*01*/UC t=xt;
+ I(!_tP(x)&&LH(tG,t,tS)&&!_tP(y)&&yt==tG&&yn&&yn<=xn,{
+  U n=yn;A z=an(n,t);int bad=0;N k=0;
+  S4(xw-3,k=simd_compress_8(xV,yV,zV,n,&bad),k=simd_compress_16(xV,yV,zV,n,&bad),k=simd_compress_32(xV,yV,zV,n,&bad),k=simd_compress_64(xV,yV,zV,n,&bad))
+  I(!bad,y(0);return AN((U)k,z))
+  mr(z);})
+ i1(x,whr(y)))

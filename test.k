@@ -57,7 +57,7 @@ t[`crossN;cross[1 2;10 20];((1;10);(1;20);(2;10);(2;20))]
 t[`razeN;raze(1 2;3 4;5);1 2 3 4 5]
 
 / ---- attributes: sorted-attr find must equal linear find, and be a speedup ----
-base:{x@<x}200000?1000000
+base:0+{x@<x}200000?1000000          / 0+ strips the `s attribute a value sort now carries (2.1)
 q:base@1000?#base
 bAttr:`sa base
 lin:base?q

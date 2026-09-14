@@ -90,7 +90,6 @@ WHY_ENGINE = {
     "pandas": "NumPy underneath, plus a hash group-by and a C rolling-window kernel",
     "polars": "Arrow layout with hand-vectorised Rust kernels and a hash group-by",
     "duckdb": "vectorised push-based execution over 2048-row chunks",
-    "amber-mt": "the same Amber kernels with OpenMP threads unpinned (multi-core row)",
 }
 
 STATUS_NOTE = {
@@ -154,8 +153,7 @@ def main():
     w("- `N = %s`, median of **%d** timed runs after **%d** warm-ups, kernel time only."
       % ("{:,}".format(N), runs, warm))
     w("- Every engine pinned to **one thread** (`-s 0` for q/PeachQ, `SET threads TO 1`")
-    w("  for DuckDB, `OMP_NUM_THREADS=1` and friends for the rest). `amber-mt` is the")
-    w("  separate multi-core row and is excluded from every ranking.")
+    w("  for DuckDB, `OMP_NUM_THREADS=1` and friends for the rest).")
     w("- `join_inner`, `asof`, `tablesort` and `qsql_select` have sizes fixed by the spec")
     w("  and do not scale with `N`.")
     w("")
@@ -237,10 +235,6 @@ def main():
             for i, (t, k) in enumerate(ok, 1):
                 mark = " **<-- Amber**" if k == BASE else ""
                 w("| %d | `%s`%s | %s | %s |" % (i, k, mark, ms(t), ratio(t, bms)))
-            mt = row.get("amber-mt", {})
-            if mt.get("status") == "OK" and mt.get("ms"):
-                w("| - | `amber-mt` *(multi-core, not ranked)* | %s | %s |"
-                  % (ms(mt["ms"]), ratio(mt["ms"], bms)))
             bad = ["`%s` %s" % (k, STATUS_NOTE.get(v["status"], v["status"]))
                    for k, v in sorted(row.items())
                    if v.get("status") not in ("OK",)]

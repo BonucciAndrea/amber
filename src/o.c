@@ -140,3 +140,79 @@ X1(unq,RM(en(x))Rm(unq(val(x)))RE(x)RS(cSI(unq(cSI(x))))Ril(rndF(gl(x)))R_(et(x)
  R5(tA,tH,tI,tL,tF,P(xn<2,x)
   {A u_=unqL(x);P(u_,x(u_))}                 /*amber: C hash/LUT distinct, 0 = not handled*/
   P(xn<<xw-3<pg&&!xtA,K1("{x@&(x?x)=!#x}",x))K1("{x@i@<i@:&@[;0;:;1]@~~':x@i:<x}",x)))
+
+// ---- amber 2.1: `gagg (op;k;v[;m]) -- fused group aggregate -----------------
+// One pass: acc[group(k[i])] op= v[i]. op is a symbol (`sum `count `min `max
+// `avg `first `last) or the matching small int. Groups are numbered in FIRST
+// APPEARANCE order, exactly the key order `=` produces, so a caller that
+// already has `=k` sees the same rows. Keys tG/tH/tI/tL/tS (ids); values any
+// numeric vector (count ignores v; first/last accept any vector). The optional
+// m is a 0/1 byte mask: masked-out rows are skipped, so `where` never has to
+// build an index vector or gather the columns. Returns
+//     (keys ; aggregates ; first row index per group)
+// or () when the shape is not handled (the K wrapper then takes the generic
+// path). Small key ranges (<= 4M and <= 8 slots per row) use a direct table;
+// wider ranges an open-addressed hash that grows with the distinct count.
+V free(V*);V*malloc(N);V*realloc(V*,N);
+#define GOLD 0x9E3779B97F4A7C15ull
+enum{GA_SUM,GA_CNT,GA_MIN,GA_MAX,GA_AVG,GA_FST,GA_LST};
+#define GARD(w,p,i) ((w)==0?(L)((CO G*)(p))[i]:(w)==1?(L)((CO H*)(p))[i]:(w)==2?(L)((CO I*)(p))[i]:((CO L*)(p))[i])
+#define GA_GROW() I(ng==cap,U nc=cap*2;gk=realloc(gk,(N)nc*SZ(L));gf=realloc(gf,(N)nc*SZ(I));af=realloc(af,(N)nc*SZ(F));al_=realloc(al_,(N)nc*SZ(L));gc=realloc(gc,(N)nc*SZ(L));cap=nc;)
+#define GA_ADD(g,i) {af[g]=0;al_[g]=0;gc[g]=0;gf[g]=(I)(i);I(code==GA_MIN,af[g]=WF;al_[g]=WL)I(code==GA_MAX,af[g]=-WF;al_[g]=NL)}
+A1(gaggC,P(_t(x)-tA||(_n(x)-3&&_n(x)-4),et(x))A*e=_A(x);A op=e[0],k=e[1],v=e[2],m=_n(x)==4?e[3]:0;
+ I code=-1;
+ I(_ts(op),S nm=su(_v(op));code=!strcmp(nm,"sum")?GA_SUM:!strcmp(nm,"count")?GA_CNT:!strcmp(nm,"min")?GA_MIN:!strcmp(nm,"max")?GA_MAX:!strcmp(nm,"avg")?GA_AVG:!strcmp(nm,"first")?GA_FST:!strcmp(nm,"last")?GA_LST:-1)
+ J(_tz(op),code=(I)gl_(op))
+ P(code<0||code>GA_LST,x(emp(tA)))
+ UC kt=_t(k);P(_tP(k)||!(kt==tG||kt==tH||kt==tI||kt==tL||kt==tS),x(emp(tA)))
+ N n=_n(k);U wk=kt==tG?0:kt==tH?1:(kt==tI||kt==tS)?2:3;
+ UC vt=code==GA_CNT?tL:_t(v);B vf=vt==tF;U wv=vt==tG?0:vt==tH?1:vt==tI?2:3;
+ I(code!=GA_CNT&&code!=GA_FST&&code!=GA_LST,P(_tP(v)||!(vt==tG||vt==tH||vt==tI||vt==tL||vt==tF)||_n(v)!=n,x(emp(tA))))
+ I(code==GA_FST||code==GA_LST,P(_tP(v)||_N(v)!=n,x(emp(tA))))
+ A mb_=0;I(m&&!_tP(m)&&_t(m)==tB,mb_=m=cG(_R(m)))   // a bit mask is widened to bytes
+ I(m,P(_tP(m)||_t(m)!=tG||_n(m)!=n,I(mb_,mr(mb_))x(emp(tA))))
+ CO V*kp=_V(k),*vp=code==GA_CNT?0:_V(v);CO UC*mp=m?_V(m):0;
+ I(!n,A ky=an(0,kt),vl=an(0,vf||code==GA_AVG?tF:tL);I(mb_,mr(mb_))return x(aV(tA,3,A(ky,vl,aI(0))));)
+ // ---- key range
+ L lo=GARD(wk,kp,0),hi=lo;F(n,L t=GARD(wk,kp,i);I(t<lo,lo=t)I(t>hi,hi=t))
+ W rg=(W)hi-(W)lo+1;B direct=rg&&rg<=((W)1<<22)&&rg<=8*(W)n+1024;
+ // ---- group tables (grow on demand): key, first row, accumulators
+ U cap=direct?(U)MIN((W)n,rg):1024,ng=0;
+ L*RES gk=malloc((N)cap*SZ(L));I*RES gf=malloc((N)cap*SZ(I));F*RES af=malloc((N)cap*SZ(F));L*RES al_=malloc((N)cap*SZ(L));L*RES gc=malloc((N)cap*SZ(L));B fail=0;
+ I*RES slot=0;W*RES ht=0;W hcap=0;U hlg=0;
+ I(direct,slot=malloc((N)rg*SZ(I));I(slot,MS(slot,0xff,(N)rg*SZ(I))))
+ E(hcap=2048;hlg=11;ht=malloc((N)hcap*SZ(W));I(ht,MS(ht,0,(N)hcap*SZ(W))))
+ P(!gk||!gf||!af||!al_||!gc||(direct?!slot:!ht),free(gk);free(gf);free(af);free(al_);free(gc);free(slot);free(ht);I(mb_,mr(mb_))x(emp(tA)))
+ for(N i=0;i<n;i++){
+  I(mp&&!mp[i],continue)
+  L key=GARD(wk,kp,i);I g;
+  I(direct,W sidx=(W)key-(W)lo;g=slot[sidx];I(g<0,GA_GROW();g=(I)ng++;slot[sidx]=g;gk[g]=key;GA_ADD(g,i)))
+  E(I((W)ng*2>=hcap,W nc=hcap<<1;U nl=hlg+1;W*nt=malloc((N)nc*SZ(W));I(!nt,fail=1;break)MS(nt,0,(N)nc*SZ(W));
+      F(hcap,I(ht[i],W gi=ht[i]-1;W j=((W)gk[gi]*GOLD)>>(64-nl);W(nt[j],j=(j+1)&(nc-1))nt[j]=ht[i]))free(ht);ht=nt;hcap=nc;hlg=nl;)
+    W j=((W)key*GOLD)>>(64-hlg),msk=hcap-1;
+    W(ht[j]&&gk[ht[j]-1]!=key,j=(j+1)&msk)
+    I(ht[j],g=(I)(ht[j]-1))E(GA_GROW();g=(I)ng++;ht[j]=(W)g+1;gk[g]=key;GA_ADD(g,i)))
+  gc[g]++;
+  S(code,
+   C(GA_SUM,I(vf,af[g]+=((CO F*)vp)[i])E(al_[g]+=GARD(wv,vp,i)))
+   C(GA_AVG,I(vf,af[g]+=((CO F*)vp)[i])E(af[g]+=(F)GARD(wv,vp,i)))
+   C(GA_MIN,I(vf,F t=((CO F*)vp)[i];I(t<af[g],af[g]=t))E(L t=GARD(wv,vp,i);I(t<al_[g],al_[g]=t)))
+   C(GA_MAX,I(vf,F t=((CO F*)vp)[i];I(t>af[g],af[g]=t))E(L t=GARD(wv,vp,i);I(t>al_[g],al_[g]=t)))
+   C(GA_LST,gf[g]=(I)i)
+   D())}
+ P(fail,free(gk);free(gf);free(af);free(al_);free(gc);free(slot);free(ht);I(mb_,mr(mb_))x(emp(tA)))
+ // ---- results
+ A ky=an(ng,kt);S4(wk,F(ng,_G(ky)[i]=(G)gk[i]),F(ng,_H(ky)[i]=(H)gk[i]),F(ng,_I(ky)[i]=(I)gk[i]),F(ng,_L(ky)[i]=gk[i]))
+ A fr=aV(tI,ng,gf);A vl;
+ S(code,
+  C(GA_SUM,I(vf,vl=aV(tF,ng,af))E(vl=aV(tL,ng,al_)))
+  C(GA_AVG,vl=an(ng,tF);F(ng,_F(vl)[i]=af[i]/(F)gc[i]))
+  C(GA_MIN,I(vf,vl=aV(tF,ng,af))E(vl=aV(tL,ng,al_)))
+  C(GA_MAX,I(vf,vl=aV(tF,ng,af))E(vl=aV(tL,ng,al_)))
+  C(GA_CNT,vl=aV(tL,ng,gc))
+  D(vl=i1(v,_R(fr))))
+ free(gk);free(gf);free(af);free(al_);free(gc);free(slot);free(ht);I(mb_,mr(mb_))
+ P(!vl,mr(ky);mr(fr);x(0))
+ x(aV(tA,3,A(ky,vl,fr))))
+#undef GA_GROW
+#undef GA_ADD

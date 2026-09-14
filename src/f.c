@@ -1,5 +1,6 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include"arena.h"
+#include"simd.h"
 I rnk(A x/*0*/){X(RA(I v=rnk(xx);P(v<0,v)F(xn,P(v-rnk(xa),-1))v+1)RmM(rnk(xy))RT_A(1)R_(0))}//-1 for mixed rank
 Z U urnk(A x/*0*/){X(RA(urnk(xx)+1)RmM(urnk(xy))RT_A(1)R_(0))}//assuming unirank
 
@@ -59,7 +60,7 @@ Z V*amal(N b)_(V*p=0;P(posix_memalign(&p,64,b),(V*)0)p)
 #define RD(w,p,i) ((w)==0?(L)((CO G*)(p))[i]:(w)==1?(L)((CO H*)(p))[i]:(w)==2?(L)((CO I*)(p))[i]:((CO L*)(p))[i])
 Z A fndL(A x,A y,B srt)_(
  P(srt,0)
- P(!(xtH||xtI||xtL),0)
+ P(!(xtH||xtI||xtL||xtS),0)   // amber 2.1: symbol vectors too (interned 32-bit ids, compared by value)
  U wx=xw-3,wy=yw-3,m=xn,n=yn;
  P(wx>3||wy>3||!m||!n,0)
  CO V*a=xV;CO V*b=yV;
@@ -121,24 +122,40 @@ Z A unqLUT(A x,L lo,W rg,U wx){
  free(seen);
  return AN(m,z);}
 
+// amber 2.1: a BITMAP over the key range whenever it fits in 8 MB (2^26 keys),
+// which covers every id/category column in practice: one bit test per element
+// against an L2-resident table, no hashing. Beyond that a hash table that
+// starts small and GROWS with the number of distinct keys seen (it used to be
+// sized to 2n slots up front -- 256 MB for a 10M-element input, random-access
+// bound even when the input held a few thousand distinct values).
+#define BMDOM ((W)1<<26)
+Z A unqBM(A x,L lo,W rg,U wx){
+ U n=xn;CO V*a=xV;N nb=(N)((rg+63)>>6);
+ W*bm=amal(nb*SZ(W));
+ if(!bm)return 0;
+ MS(bm,0,nb*SZ(W));
+ A z=an(n,xt);V*r=zV;U m=0;
+ for(U i=0;i<n;i++){L v=RD(wx,a,i);W s=(W)v-(W)lo;W b=1ull<<(s&63);W*w=bm+(s>>6);
+  if(!(*w&b)){*w|=b;UNQW(r,m,v,wx);m++;}}
+ free(bm);
+ return AN(m,z);}
 Z A unqHASH(A x,U wx){
  U n=xn;CO V*a=xV;
- W cap=16,need=2*(W)n;U lg;
- while(cap<need)cap<<=1;
- {W c=cap;lg=0;while(c>1){c>>=1;lg++;}}
- U sh=64-lg;W msk=cap-1;
- // slot 0 == empty, so keys are stored biased by +1 on the unsigned line;
- // the bias wraps for v==-1 only, which lands on 0 and is handled by the
- // explicit `has0` flag rather than by the table.
+ W cap=1024;U lg=10;
  W*tab=amal((N)cap*SZ(W));
  if(!tab)return 0;
  MS(tab,0,(N)cap*SZ(W));
- A z=an(n,xt);V*r=zV;U m=0;B has0=0;
+ A z=an(n,xt);V*r=zV;U m=0,used=0;B has0=0;
  for(U i=0;i<n;i++){L v=RD(wx,a,i);W k=(W)v+1;
   if(!k){if(!has0){has0=1;UNQW(r,m,v,wx);m++;}continue;}
-  W j=(k*GOLD)>>sh;
+  if((W)used*2>=cap){                         // grow: rehash every stored key
+   W ncap=cap<<1;U nlg=lg+1;W*nt=amal((N)ncap*SZ(W));if(!nt){free(tab);mr(z);return 0;}
+   MS(nt,0,(N)ncap*SZ(W));
+   for(W s=0;s<cap;s++)if(tab[s]){W kk=tab[s],j=(kk*GOLD)>>(64-nlg);while(nt[j])j=(j+1)&(ncap-1);nt[j]=kk;}
+   free(tab);tab=nt;cap=ncap;lg=nlg;}
+  W j=(k*GOLD)>>(64-lg),msk=cap-1;
   while(tab[j]&&tab[j]!=k)j=(j+1)&msk;
-  if(!tab[j]){tab[j]=k;UNQW(r,m,v,wx);m++;}}
+  if(!tab[j]){tab[j]=k;used++;UNQW(r,m,v,wx);m++;}}
  free(tab);
  return AN(m,z);}
 
@@ -155,17 +172,11 @@ Z A unqHASH(A x,U wx){
 Z NI B unqrangeF(A x,L*lo,W*rg){
  U n=xn;
  if(!xtF||n<2)return 0;
- CO F*RES a=(CO F*)xV;
- L mn=0,mx=0;
- for(U i=0;i<n;i++){F u=a[i];
-  if(!(u>=-9007199254740992.0&&u<=9007199254740992.0))return 0;   // NaN, +-inf, >2^53
-  L k=(L)u;
-  if((F)k!=u)return 0;                                            // not integral
-  if(u==0.0&&__builtin_signbit(u))return 0;                       // -0.0 is distinct from 0.0
-  if(!i){mn=mx=k;}else{if(k<mn)mn=k;if(k>mx)mx=k;}}
- W r=(W)mx-(W)mn+1;
+ F mn,mx;int so=0;
+ if(!simd_frange_f64((CO F*)xV,n,&mn,&mx,&so))return 0;   // vectorised scan (src/simd.c)
+ W r=(W)(L)mx-(W)(L)mn+1;
  if(!r)return 0;
- *lo=mn;*rg=r;return 1;}
+ *lo=(L)mn;*rg=r;return 1;}
 
 // Both float modes key on the integer VALUE but emit the original double, so
 // first-appearance order -- the contract stated above -- is preserved exactly.
@@ -207,6 +218,32 @@ Z NI A unqF(A x){
  if(!unqrangeF(x,&lo,&rg))return 0;
  return rg<=LUTDOM?unqLUTF(x,lo,rg):unqHASHF(x);}
 
+// ---- amber 2.1: `memb (x;y) -- x in y, one pass, one byte per element -------
+// amber.k's `in` was ~^y?x: a full index vector (8 bytes per element), a null
+// test and a not -- three passes for a boolean. Here the set y is indexed once
+// (a bitmap over its range when that fits 8 MB, else a hash sized to the key
+// COUNT) and each element of x costs one probe writing one byte. Integer and
+// symbol keys only; anything else returns () and amber.k falls back.
+A1(membC,P(_t(x)-tA||_n(x)-2,et(x))A v=_A(x)[0],y=_A(x)[1];
+ B va=_tz(v);UC vt=va?tl:_t(v),yt_=_t(y);
+ P(_tP(y)||!(yt_==tH||yt_==tI||yt_==tL||yt_==tS)||!(va||vt==tH||vt==tI||vt==tL||vt==tS),x(emp(tA)))
+ U wy=_w(y)-3,m=_n(y),n=va?1:_n(v),wv=va?3:_w(v)-3;CO V*b=_V(y);L sv=va?gl_(v):0;CO V*a=va?&sv:_V(v);
+ I(!m,I(va,return x(ai(0)))A z=an(n,tG);MS(_V(z),0,n);return x(z);)
+ L lo=RD(wy,b,0),hi=lo;
+ F(m,L t=RD(wy,b,i);I(t<lo,lo=t)I(t>hi,hi=t))
+ W rg=(W)hi-(W)lo+1;
+ A z=an(n,tG);G*RES r=_V(z);
+ I(rg&&rg<=BMDOM,N nb=(N)((rg+63)>>6);W*bm=amal(nb*SZ(W));P(!bm,mr(z);x(emp(tA)))MS(bm,0,nb*SZ(W));
+  F(m,W s=(W)RD(wy,b,i)-(W)lo;bm[s>>6]|=1ull<<(s&63))
+  F(n,W s=(W)RD(wv,a,i)-(W)lo;r[i]=s<rg&&((bm[s>>6]>>(s&63))&1))
+  free(bm);)
+ E(W cap=16,need=2*(W)m;U lg;W(cap<need,cap<<=1;){W c=cap;lg=0;W(c>1,c>>=1;lg++)}U sh=64-lg;W msk=cap-1;
+  W*tab=amal((N)cap*SZ(W));P(!tab,mr(z);x(emp(tA)))MS(tab,0,(N)cap*SZ(W));B has0=0;
+  F(m,L t=RD(wy,b,i);W k=(W)t+1;I(!k,has0=1;continue)W j=(k*GOLD)>>sh;W(tab[j]&&tab[j]!=k,j=(j+1)&msk)tab[j]=k)
+  F(n,L t=RD(wv,a,i);W k=(W)t+1;I(!k,r[i]=has0;continue)W j=(k*GOLD)>>sh;W(tab[j]&&tab[j]!=k,j=(j+1)&msk)r[i]=!!tab[j])
+  free(tab);)
+ x(va?({A r_=ai(r[0]);mr(z);r_;}):z))
+
 A unqL(A x){
  if(!(xtH||xtI||xtL))return xtF?unqF(x):0;
  U n=xn,wx=xw-3;
@@ -217,7 +254,7 @@ A unqL(A x){
  W rg=(W)hi-(W)lo+1;
  // rg==0 means the span wrapped the whole 64-bit line (lo=LLONG_MIN,
  // hi=LLONG_MAX); treat that as "sparse", never as a 0-slot table.
- return rg&&rg<=LUTDOM?unqLUT(x,lo,rg,wx):unqHASH(x,wx);}
+ return rg&&rg<=LUTDOM?unqLUT(x,lo,rg,wx):rg&&rg<=BMDOM?unqBM(x,lo,rg,wx):unqHASH(x,wx);}
 
 Z A1(fN,A y=_R(cn[tl]);x(xtt?y:rsz(xN,y)))
 

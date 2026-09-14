@@ -220,6 +220,35 @@ run in O(log n) — see §9.
 
 ---
 
+### 5a. Fused idioms and one-pass kernels (since 2.1.0)
+
+The compiler recognises a few expression shapes and compiles them to one fused primitive
+instead of a chain that materialises intermediates. The result is identical to the unfused
+expression in every case (the fused entry point falls back to the same primitives for any
+operand shape it does not handle):
+
+```
++/x*y  +/x=y  +/x<y  +/x>y     sum of products / count of matches, no product or mask vector
++/x@&m                        sum of the elements selected by a 0/1 mask, no compressed vector
+x@&m                          compress by mask, no index vector
+a+s*b  a-s*b   (s a literal)  one pass, no s*b vector
+x@<x   x@>x                   sort by value: counting sort for integral-valued data, else grade+index
+```
+
+`\disasm +/x*y` shows the fused call. Two one-pass kernels are also reachable directly:
+
+```
+`memb(x;y)                    x in y, one byte per element   (amber.k's `in` uses it)
+`gagg(op;k;v)  `gagg(op;k;v;m) group aggregate: op in `sum`count`min`max`avg`first`last,
+                              returns (keys;values;first row per group) in first-appearance
+                              order; m is a 0/1 mask of rows to keep. Wrapped by
+                              gsum[k;v] gavg gmin gmax gcount[k] gfirst glast -> keys!values
+```
+
+Every ascending value sort (`asc x`, `x@<x`, `` `srt x``, a single-column `xasc`) returns its
+result flagged `` `s``, so `?`, `in`, `bin` and `aj` on it take the O(log n) path without an
+explicit `` `sa``.
+
 ## 6. Dictionaries, tables and keyed tables
 
 A **dictionary** is `keys!values`; a **table** is a flipped column dictionary `+d` (type `` `M``);
@@ -812,6 +841,7 @@ order/set  rank iasc idesc asc desc xrank xprev rotate in except inter union raz
 tables     istable isdict iskeyed cols keys rows atr xkey unkey xcolall xcols xasc
            xdesc meta insert
 grouping   qwhere qselect qby xgroup ungroup fby
+           gsum gavg gmin gmax gcount gfirst glast   (2.1: one-pass `gagg kernel)
 joins      lj ij uj pj ej aj aj0 asof wj
 strings    lower upper ltrim rtrim trim ss ssr sv vs like lk1
 temporal   hms hh mm sec milli minute second stime ptime  bar minbar tsym
@@ -820,6 +850,9 @@ display    show amfmt amtab amkeyed amdict
 charts     chart plot plots xyplot scatter step area hist barh heat spark candle
            COLOR CT cwrap vlen vstrip (ANSI highlighting)  CROWS (preview height)
 attributes `sa `ua `pa `ga (set sorted/unique/parted/grouped)   `at (get)  [kernel primitives]
+           ascending value sorts (asc, x@<x, `srt, xasc) return `s-flagged results (2.1)
+kernels    `memb (membership) `gagg (group aggregate) `srt (value sort) `mw (windows)
+           `xs (multi-column grade) `aj `wjb `ajs (as-of join)  [2.1: see section 5a]
 moving     mcount msum mavg mprd mvar mdev mmin mmax   (std.k, O(n) prefix)
 math       dot mmu (matrix multiply)                   (std.k)
 parse/ser  parse eval reval ser deser protect          (std.k; text serialise)

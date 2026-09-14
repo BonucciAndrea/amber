@@ -68,10 +68,14 @@ All four kdb+ attributes are set in C: **sorted (`` `sa``)**, **unique (`` `ua``
 **parted (`` `pa``)**, **grouped (`` `ga``)**, read back with `` `at``. **Sorted and parted**
 vectors take the O(log n) binary-search find path; grouped pairs with `fin.k`'s group index
 (`bysym`/`symrows`) for O(1) per-symbol slicing.
+- **Since 2.1.0:** every ascending value sort (`asc`, `x@<x`, `` `srt``, `xasc` on a flat
+  numeric column) returns its result flagged `` `s``, so a later `?`, `in`, `bin` or `aj` on it
+  takes the O(log n) path without an explicit `` `sa``.
 - **Still missing:** dedicated find/`where=` acceleration driven by the `` `u`` / `` `g``
   attribute *itself* (grouped speed currently comes from the separate group index, not the
-  attribute), and **attribute preservation through ops** — the flag is dropped whenever an op
-  builds a new vector, whereas q keeps/drops attributes by defined per-op rules.
+  attribute), and general **attribute preservation through ops** — apart from sorts, the flag
+  is dropped whenever an op builds a new vector, whereas q keeps/drops attributes by defined
+  per-op rules.
 
 ## 7. Enumerations, foreign keys, linked columns
 `` `sym$`` enumeration domains, `.Q.en`, foreign keys (`` `t$`` and dotted `order.customer.name`

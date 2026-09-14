@@ -16,12 +16,11 @@ D = json.load(open(os.path.join(HERE, "results.json")))
 
 # Engine display order + short labels for the wide matrix.
 ORDER = ["c", "amber-native", "amber", "amber-qsql", "peachq", "ngnk",
-         "cbqn", "j", "numpy", "pandas", "polars", "duckdb", "amber-mt"]
+         "cbqn", "j", "numpy", "pandas", "polars", "duckdb"]
 SHORT = {"c": "C", "amber-native": "Amber<sub>nat</sub>", "amber": "Amber",
          "amber-qsql": "Amber<sub>qSQL</sub>", "peachq": "PeachQ",
          "ngnk": "ngn/k", "cbqn": "CBQN", "j": "J", "numpy": "NumPy",
-         "pandas": "pandas", "polars": "Polars", "duckdb": "DuckDB",
-         "amber-mt": "Amber<sub>14t</sub>"}
+         "pandas": "pandas", "polars": "Polars", "duckdb": "DuckDB"}
 SHORT_MD = {k: v.replace("<sub>", "-").replace("</sub>", "") for k, v in SHORT.items()}
 
 CATS = [
@@ -129,8 +128,7 @@ def h_matrix():
 <thead><tr><th class="op">operation</th>{head}</tr></thead>
 <tbody>{"".join(rows)}</tbody></table></div>
 <p class="bm-note">Milliseconds, lower is better. <span class="k-best">Amber-coloured</span> is the fastest
-single-threaded engine in that row; <code>Amber<sub>14t</sub></code> is shown for reference but is excluded
-from that comparison because it is the only multi-core column. <code>skip</code> means the engine has no
+single-threaded engine in that row. <code>skip</code> means the engine has no
 faithful way to express the operation under <code>SCOUT_SPEC.md</code>, not that it failed.</p>"""
 
 def h_scaling():
@@ -271,8 +269,7 @@ def md_out():
             b = best(op)
             rows.append(["`%s`" % op] + [("**%s**" % cell(op, e)[1]) if e == b else cell(op, e)[1] for e in ORDER])
     o.append(md_table(hdr, rows))
-    o.append("\nMilliseconds, lower is better. **Bold** is the fastest single-threaded engine in the row;")
-    o.append("`Amber-14t` is excluded from that comparison as the only multi-core column.")
+    o.append("\nMilliseconds, lower is better. **Bold** is the fastest engine in the row (every engine runs one thread).")
     o.append("`skip` means the engine cannot express the operation faithfully under `SCOUT_SPEC.md`.\n")
     sizes = sorted(D["scaling"].keys(), key=int)
     o.append("### Scaling — Amber (native), 100k to 10M rows\n")

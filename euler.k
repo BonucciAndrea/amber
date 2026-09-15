@@ -190,6 +190,7 @@ carmichael:{$[x<2;1;[d:pfe x;ps:!d;{lcm[x;y]}/lam1'[ps;d ps]]]}   / Carmichael f
 / ---- partitions ----------------------------------------------------------
 partinto:{[n;parts]P:parts@&parts<1+n;*|(1,n#0){[n;w;p]w{[p;w;j]@[w;j;+;w j-p]}[p]/p+!1+n-p}[n]/P}   / # partitions of n using the given part sizes (coins: PE31/76/77)
 partitions:{$[x<0;0;partinto[x;1+!x]]}              / p(n): number of unrestricted partitions of n
+partall:{[n]{[n;w;p]w{[p;w;j]@[w;j;+;w j-p]}[p]/p+!1+n-p}[n]/[1,n#0;1+!n]} / partitions of all ints up until n
 primepart:{partinto[x;`pri x+1]}                    / number of partitions of n into primes (PE77)
 partmod:{[n;m]K:2+isqrt 2*n;os:,/{(_(x*-1+3*x)%2;_(x*1+3*x)%2)}'1+!K;sg:,/{$[2!x;1 1;-1 -1]}'1+!K;*|(n{[m;os;sg;p]j:#p;i:&os<1+j;p,m!m++/(sg@i)*p@j-os@i}[m;os;sg]/,1)}   / p(n) mod m, fast Euler pentagonal recurrence (PE78)
 

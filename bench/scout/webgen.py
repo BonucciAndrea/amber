@@ -33,9 +33,18 @@ CATS = [
     ("qSQL-shaped",                    ["qsql_select"]),
 ]
 DESC = {
- "sum_f": "sum of 10M float64", "sum_i": "sum of 10M int64",
+ "sum_f": "sum of 10M float64",
+ # Engines differ in how wide they store these values: Amber narrows int storage to the
+ # value range (2 B/element for 0..999), CBQN likewise, while C/NumPy/q use real int64.
+ # The row therefore compares memory traffic as much as reduction speed - disclosed
+ # rather than dropped, because narrow storage is a genuine advantage, just not "+/a".
+ "sum_i": "sum of 10M integers 0..999 (engines differ in element width)",
  "max_f": "max of 10M float64", "dot": "dot product of two 10M float64 vectors",
- "arith_mask": "(a*b)+c under a boolean mask", "sort_f": "ascending sort, 10M random float64",
+ "arith_mask": "(a*b)+c under a boolean mask",
+ # NOT random data: 10M values drawn from 1000 distinct integral-valued floats, the shape
+ # Amber's 2.1.0 counting sort (and CBQN's narrow-int path) recognises. On genuinely
+ # random float64 Amber is ~864 ms, i.e. the advantage over a general sort is ~1.4x.
+ "sort_f": "ascending sort, 10M float64 from 1000 distinct values",
  "sort_presorted": "sort of already-sorted input (best case)", "grade_i": "grade-up (argsort) of 10M int64",
  "tablesort": "3-column table sorted by two keys", "find": "first index of a value in 10M elements",
  "member": "membership of 10M against a 10M set", "distinct": "distinct over ~10 groups",

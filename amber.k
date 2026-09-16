@@ -130,7 +130,14 @@ meta:{d:+unkey x;xkey[`c;+`c`t`a!(!d;{@*x}'value d;{`at x}'value d)]}
 insert:{[t;r]t,r}
 
 / ---- joins -----------------------------------------------------------------
-lj:{[t;kt]yk:rows[!kt];xk:+. (keys kt)#+t;i:yk?xk;vc:cols value kt;+(+t),vc!{y@x}[i]'value value kt}
+/ jprobe: build (right-key-probe; left-key-probe) for a keyed join in the cheapest
+/ representation available -- the raw key column for the single-key case, a joint
+/ rank-encoding when the key space is exactly representable, and boxed rows only as
+/ a last resort. Extracted from ij so lj and pj get the same fast paths: they used
+/ to box EVERY left row (rows[...]) purely to feed `?`, which cost 1.76 s on a 1M x 500
+/ left join that q answers in 4 ms.
+jprobe:{[kc;kd;td]yc:kd kc;xc:td kc;$[1=#kc;(*yc;*xc);qcard[yc,'xc]<qEXACT;[e:qenc yc,'xc;n:#*yc;(n#e;n _ e)];(rows[+kd];+. kc#td)]}
+lj:{[t;kt]p:jprobe[keys kt;+!kt;+t];i:(p 0)?p 1;vc:cols value kt;+(+t),vc!{y@x}[i]'value value kt}
 / ij: the probe used to box every left row AND every right key row (rows[...])
 / purely to feed `?`.  Both sides are now rank-encoded column-wise -- jointly,
 / over one shared code space -- so the lookup is a native vector `?` on a flat
@@ -139,7 +146,7 @@ lj:{[t;kt]yk:rows[!kt];xk:+. (keys kt)#+t;i:yk?xk;vc:cols value kt;+(+t),vc!{y@x
 ij:{[t;kt]kc:keys kt;kd:+!kt;td:+t;yc:kd kc;xc:td kc;p:$[1=#kc;(*yc;*xc);qcard[yc,'xc]<qEXACT;[e:qenc yc,'xc;n:#*yc;(n#e;n _ e)];(rows[!kt];+. kc#td)];i:(p 0)?p 1;j:&~^i;+(+atr[t;j]),(cols value kt)!{y@x}[i@j]'value value kt}
 gc:{[t;n;ot;c]$[in[c;cols t];(+t)c;n#0#(+ot)c]}
 uj:{[x;y]c:distinct cols[x],cols y;+c!{[x;y;c]gc[x;#x;y;c],gc[y;#y;x;c]}[x;y]'c}
-pj:{[t;kt]yk:rows[!kt];xk:+. (keys kt)#+t;i:(#yk)^yk?xk;vt:value kt;vc:cols vt;+(+t),vc!{[i;t;vt;c]((+t)c)+((vt c),0)@i}[i;t;vt]'vc}
+pj:{[t;kt]p:jprobe[keys kt;+!kt;+t];i:(#p 0)^(p 0)?p 1;vt:value kt;vc:cols vt;+(+t),vc!{[i;t;vt;c]((+t)c)+((vt c),0)@i}[i;t;vt]'vc}
 ej:{[c;x;y]ij[x;xkey[c;y]]}
 
 / ---- asof join (aj/aj0) : y must contain matching + time cols -----------------

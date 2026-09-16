@@ -21,7 +21,14 @@ qword:{((x>64)&x<91)|((x>96)&x<123)|((x>47)&x<58)|x=95}                         
 qsimple:{(0<#x)&&/qword 0+x}                                                       / is a bare identifier
 qidsub:{[cols;s]$[0=#s;s;,/{[cols;t;f]$[f&in[`$t;cols];"(x`",t,")";t]}[cols]'[bnd _ s;(qword 0+s)bnd:&differ qword 0+s]]}
 qfn:{[cols;e]. "{[x]",qidsub[cols;e],"}"}                                          / expr string -> 1-arg fn
-qmask:{[t;w]$[0=#w;(#t)#1b;&/{[t;c]qfn[cols t;c]t}[t]'qcut w]}                      / where -> boolean mask
+/ NB the all-true mask is built as ~(#t)#0b, NOT (#t)#1b. A take of a scalar is kept in
+/ Amber's compact constant form, and the fused C group-aggregate (`gagg, src/o.c) rejects a
+/ mask in that form: it returns an empty result, qaggf reads that as "cannot fuse" and the
+/ whole query silently falls back to the per-group path. So `select .. by ..` with NO where
+/ clause never fused, while the same query WITH a where clause did. ~(#t)#0b is materialised,
+/ ~-identical to (#t)#1b, and fuses. (Verified: gagg with (#t)#1b -> 0 rows; with ~(#t)#0b,
+/ K=K or 0<1+!#t -> the correct rows.)
+qmask:{[t;w]$[0=#w;~(#t)#0b;&/{[t;c]qfn[cols t;c]t}[t]'qcut w]}                    / where -> boolean mask
 / qdec: drop a trailing K comment from a query string.
 / A "/" that STARTS a token -- at the beginning of the string, or preceded by a
 / space or a tab -- and is not inside a "…" literal begins a comment.  The qSQL

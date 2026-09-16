@@ -82,13 +82,24 @@ qproj:{[t;cs]+(?cs)#+t}
 / aggregate over the raw columns, no per-group sub-tables, no lambda per group.
 / Integer results are narrowed with `i$ so column types match the generic path.
 qsimp:`sum`avg`min`max`count`first`last
-qsagg:{[C;e]w:" "vs trim e;$[2=#w;$[(in[`$w 0;qsimp])&in[`$w 1;C];(`$w 0;`$w 1);()];()]}
+/ 2.1+: a THREE-word item of the form `w wavg c` / `w wsum c`, with w and c both real
+/ columns, is also fused -- qaggf answers it with two `gagg sum passes (over w*c and over w)
+/ and one divide, instead of dropping the whole query onto the per-group path. Without this,
+/ one weighted average in the select list de-optimised every other aggregate beside it.
+qwagg:`wavg`wsum
+qsagg:{[C;e]w:" "vs trim e;$[2=#w;$[(in[`$w 0;qsimp])&in[`$w 1;C];(`$w 0;`$w 1);()];3=#w;$[(in[`$w 1;qwagg])&(in[`$w 0;C])&in[`$w 2;C];(`$w 1;`$w 0;`$w 2);()];()]}
 / the by-branch of sel, split out so sel itself stays under the bytecode limit
 / the by-branch of sel, split out so sel itself stays under the bytecode limit.
 / u is the UNFILTERED table and m the where-mask: the fused path hands the mask
 / to `gagg and never builds the filtered table; the generic path filters first.
 qselby:{[u;m;byp;it;d]r:qbyx[u;byp];sg:qsagg[cols r 0]'{(qname x)1}'it;fa:$[&/{0<#x}'sg;qaggf[r 0;r 1;(!d)!sg;m];()];$[#fa;fa;[t:qwhere[r 0;m];qby[qproj[t;(r 1),(,/qrefs[cols t]'{(qname x)1}'it)];r 1;d]]]}
-qaggf:{[t;b;sg;m]d:+t;bc:d b;k:$[1=#b;*bc;qcard[bc]<qEXACT;qenc bc;()];$[0=#k;();[rs:{[d;k;m;p]`gagg(p 0;k;d p 1;m)}[d;k;m]'sg;$[&/value[{0<#x}'rs];[fr:(*value[rs])2;(+b!bc@\:fr)!+{v:x 1;$[`I=@v;`i$v;v]}'rs];()]]]}
+/ gag1: one select-list item -> one fused result triple (head;values;first-row-indices).
+/ (agg;col)        -> a single `gagg pass, as before.
+/ (wavg|wsum;w;c)  -> two `gagg sum passes over the same keys and mask, so the group order
+/                     matches, then divide for wavg. Returns () if either pass declines,
+/                     which keeps the existing "cannot fuse -> fall back" contract.
+gag1:{[d;k;m;p]$[2=#p;`gagg(p 0;k;d p 1;m);[wv:d p 1;a:`gagg(`sum;k;wv*d p 2;m);$[(p 0)~`wsum;a;$[0=#a;();[b:`gagg(`sum;k;wv;m);$[0=#b;();(a 0;(a 1)%b 1;a 2)]]]]]]}
+qaggf:{[t;b;sg;m]d:+t;bc:d b;k:$[1=#b;*bc;qcard[bc]<qEXACT;qenc bc;()];$[0=#k;();[rs:gag1[d;k;m]'sg;$[&/value[{0<#x}'rs];[fr:(*value[rs])2;(+b!bc@\:fr)!+{v:x 1;$[`I=@v;`i$v;v]}'rs];()]]]}
 
 
 / ---- select ---------------------------------------------------------------

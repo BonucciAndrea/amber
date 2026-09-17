@@ -191,21 +191,29 @@ Z NI A unqLUTF(A x,L lo,W rg){
  free(seen);
  return AN(m,z);}
 
+// amber 2.2: this table GROWS with the number of distinct keys, exactly as
+// unqHASH above already did. It used to be sized to 2n slots before the first
+// probe, which is 16*2n bytes -- 320 MB allocated and memset for a 10M-element
+// float column -- even when the column holds a few thousand distinct values.
+// That is the same defect the integer path was fixed for in 2.1; the float
+// path, sitting a few lines below it, was missed.
 Z NI A unqHASHF(A x){
  U n=xn;CO F*RES a=(CO F*)xV;
- W cap=16,need=2*(W)n;U lg;
- while(cap<need)cap<<=1;
- {W c=cap;lg=0;while(c>1){c>>=1;lg++;}}
- U sh=64-lg;W msk=cap-1;
+ W cap=1024;U lg=10;
  W*tab=amal((N)cap*SZ(W));
  if(!tab)return 0;
  MS(tab,0,(N)cap*SZ(W));
- A z=an(n,xt);F*RES r=(F*)zV;U m=0;B has0=0;
+ A z=an(n,xt);F*RES r=(F*)zV;U m=0,used=0;B has0=0;
  for(U i=0;i<n;i++){L v=(L)a[i];W k=(W)v+1;
   if(!k){if(!has0){has0=1;r[m++]=a[i];}continue;}
-  W j=(k*GOLD)>>sh;
+  if((W)used*2>=cap){                         // grow: rehash every stored key
+   W ncap=cap<<1;U nlg=lg+1;W*nt=amal((N)ncap*SZ(W));if(!nt){free(tab);mr(z);return 0;}
+   MS(nt,0,(N)ncap*SZ(W));
+   for(W s=0;s<cap;s++)if(tab[s]){W kk=tab[s],j=(kk*GOLD)>>(64-nlg);while(nt[j])j=(j+1)&(ncap-1);nt[j]=kk;}
+   free(tab);tab=nt;cap=ncap;lg=nlg;}
+  W j=(k*GOLD)>>(64-lg),msk=cap-1;
   while(tab[j]&&tab[j]!=k)j=(j+1)&msk;
-  if(!tab[j]){tab[j]=k;r[m++]=a[i];}}
+  if(!tab[j]){tab[j]=k;used++;r[m++]=a[i];}}
  free(tab);
  return AN(m,z);}
 

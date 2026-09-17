@@ -80,7 +80,18 @@ xprev:{y[(!#y)-x]}
 rotate:{$[0=#y;y;n:(#y)!x;(n_y),n#y]}
 
 / ---- membership / set ops --------------------------------------------------
-in:{r:`memb(x;y);$[`A~@r;~^y?x;r]}                / 2.1: one-pass C membership; K fallback for other types
+/ x in y : which elements of x are members of y.
+/ y is ENLISTED when it is an atom.  Without that, an atom y fell through the
+/ C membership kernel (which takes a vector set) onto the `~^y?x` fallback --
+/ and with y an integer atom `y?x` is not find, it is k's RANDOM DEAL, so
+/   1 2 3 in 2   ->  1 1      (two random picks, wrong values AND wrong length)
+/   `a`b`c in `b ->  'domain
+/ silently in the first case.  Every set operation below is built on `in`, so
+/ `except`, `inter` and `union` were wrong for an atom argument too:
+/   1 2 3 except 2  ->  !0    where q gives  1 3
+/ q accepts an atom on the right of all four, so this is parity as well as a fix.
+isatm:{"a"<*$@x}                                  / type symbol lowercase -> atom
+in:{y:$[isatm y;,y;y];r:`memb(x;y);$[`A~@r;~^y?x;r]}   / 2.1: one-pass C membership; K fallback for other types
 / 2.1: fused group aggregates. `gagg (src/o.c) does acc[group]op=v in ONE pass
 / with the same first-appearance key order as =k; each wrapper keeps the
 / portable K definition as its fallback for shapes the kernel declines.

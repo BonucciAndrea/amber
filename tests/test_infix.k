@@ -66,6 +66,54 @@ ti["monadic-avg-lambda"; avg {x*x} 1 2 3.0;     (1.0+4+9)%3]   / must NOT rank-e
 ti["monadic-sum";        sum 1 2 3;             6]
 ti["monadic-neg-notfix"; neg 1 2 3;             -1 -2 -3]
 
-hexpect[26]
+/ ---- amber 2.2: a NAME that happens to be an infix verb is still a name -----
+/ The infix reading was made from the name alone, so a lambda PARAMETER called
+/ `ss` was parsed as the string-search verb: `1_ss` built a projection instead
+/ of dropping and the function silently returned its input.  The same applied to
+/ a global the program had rebound to data, because the hard-coded keyword list
+/ claims a name whatever the name currently holds.
+pdrop:{[r;ss]1_ss}
+ti["param-shadows-ss";     #pdrop[0;,(1;2)];    0]
+ti["param-shadows-ss-2";   pdrop[0;(1;2;3)];    (2;3)]
+pin:{[x;in]1_in}
+ti["param-shadows-in";     pin[0;1 2 3];        2 3]
+pex:{[except]#except}
+ti["param-shadows-except"; pex[1 2 3 4];        4]
+pxa:{[xasc;xdesc]xasc+xdesc}
+ti["param-shadows-xasc";   pxa[10;3];           13]
+/ a rebound GLOBAL is data too, not a verb
+ss:1 2 3
+ti["global-rebound-ss";    #1_ss;               2]
+ti["global-rebound-drop";  1_ss;                2 3]
+ss:{[s;p]$[(#s)<#p;!0;&{[s;p;i]p~(#p)#i_s}[s;p]'!1+(#s)-#p]}   / put it back
+ti["ss-restored-infix";    "abcabc" ss "bc";    ss["abcabc";"bc"]]
+/ ... and the ordinary infix readings are all still infix
+ti["still-infix-in";       3 in 1 2 3;          1b]
+ti["still-infix-except";   1 2 3 except 2;      1 3]
+ti["still-infix-xasc";     `a xasc t;           xasc[`a;t]]
+
+/ ---- amber 2.2: `in` and the set ops accept an ATOM on the right -----------
+/ An atom y fell through the C membership kernel onto `~^y?x`, and with y an
+/ integer atom `y?x` is k's RANDOM DEAL, not find -- so `1 2 3 in 2` answered
+/ `1 1`: two random picks, the wrong values AND the wrong length, with no error.
+/ A symbol atom raised 'domain.  q accepts an atom on the right of all four.
+ti["in-atom-int";      1 2 3 in 2;          0 1 0]
+ti["in-atom-sym";      `a`b`c in `b;        0 1 0]
+ti["in-atom-float";    1.0 2 3 in 2.0;      0 1 0]
+ti["in-atom-char";     "abc" in "b";        0 1 0]
+ti["in-atom-miss";     1 2 3 in 9;          0 0 0]
+ti["in-atom-vs-1vec";  1 2 3 in 2;          1 2 3 in ,2]
+ti["except-atom";      1 2 3 except 2;      1 3]
+ti["except-atom-sym";  `a`b`c except `b;    `a`c]
+ti["except-atom-miss"; 1 2 3 except 9;      1 2 3]
+ti["inter-atom";       1 2 3 inter 2;       ,2]
+ti["inter-atom-miss";  1 2 3 inter 9;       !0]
+ti["union-atom";       1 2 3 union 5;       1 2 3 5]
+ti["union-atom-dup";   1 2 3 union 2;       1 2 3]
+/ the vector forms are untouched
+ti["in-vec-unchanged";     1 2 3 in 2 3;    0 1 1]
+ti["except-vec-unchanged"; 1 2 3 except 2 3;,1]
+
+hexpect[52]
 hreport"AMBER INFIX DYADS"
 $[FAILN;`exit 1;]

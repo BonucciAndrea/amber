@@ -311,6 +311,27 @@ Bare column names in the expressions become `x`col`, so `wavg[sz;px]` just works
 templates are also callable as strings (`sel"select …"`, `exq`, `upd`, `del`) and via the
 **functional form** below (handy when you build the query programmatically).
 
+### Sorted and limited selects — `select[…]`
+
+```k
+select[5] from trades                 / the first 5 rows
+select[-5] from trades                / the last 5
+select[>px] from trades               / sorted by px, descending
+select[<sym] from trades              / ... ascending
+select[5;>px] from trades             / sorted, THEN limited -- q's order
+select[<sym;>px] from trades          / several keys: the FIRST listed is primary
+select[3;>s] s:sum px by sym from trades      / on a grouped result too
+select[2;>px*sz] from trades          / a sort key may be any expression
+```
+
+The clauses run in q's order: **where → by/select → sort → limit**. A bracket item beginning
+`>` or `<` is a sort key; anything else is the row limit, and a negative limit takes from the
+end. A bare column name goes through `xasc`/`xdesc`, so the result keeps the `` `s `` attribute
+where that applies; any other expression is computed over the result and graded. On a keyed
+(by-clause) result the spec is applied to the rows and the key is put back. The bracket is
+accepted by the bare prompt form and by `sel"…"` alike — and only after `select`, since `exec`,
+`update` and `delete` take no bracket in q.
+
 **Interactive prompt vs. `.k` scripts.** The bare `select … from …` rewriting above is applied
 line-by-line by `repl.k` (via `qsql.k`'s `qrw`) as you type at the `amber>` prompt. A script run
 with `./amber file.k` does not go through that per-line rewrite, so bare qSQL sugar will not parse

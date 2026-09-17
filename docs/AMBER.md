@@ -659,9 +659,45 @@ presets over it, so there is exactly one place where a default lives.
 | `spark v` | a vector | **returns** a one-line string, to embed in a row |
 | `candle t` | an OHLC table | Unicode candlesticks, green up / red down |
 
-A **time-of-day x-axis** — integer milliseconds since midnight, as Amber's `time` columns hold —
-is detected automatically and labelled `HH:MM:SS` on round clock boundaries (`09:30`, `10:00`, …),
-so `xyplot (trades\`time; trades\`px)` reads as a clock, not a column of raw millisecond counts.
+| `tplot (ts;vs)` · `dplot` · `pplot` | two vectors | `xyplot` with the x axis labelled as a time / date / timestamp |
+
+### Temporal axes
+
+An axis whose values are a **time** is labelled as a time, not as the integer the column
+actually holds. Amber's temporal types keep numeric storage inside a column (§1), so a *vector*
+cannot carry its own unit — only an atom can. The unit is therefore either **stated** or
+**inferred**:
+
+| `xunit` / `yunit` | the values are | labels look like |
+|---|---|---|
+| `` `num `` | plain numbers | `1000`, `2000`, … |
+| `` `time `` (`` `ms ``) | milliseconds of day — Amber's `time` columns | `09:30:00`, and `09:30:00.250` once the step is sub-second |
+| `` `sec `` | seconds of day | `09:30:00` |
+| `` `date `` (`` `day ``) | days since `2000.01.01` — Amber's `date` columns | `2024.03.02` |
+| `` `stamp `` (`` `ns ``) | nanoseconds since `2000.01.01` — `timestamp` columns | a clock inside one day, `MM.DDDHH:MM` under a month, else a date |
+| `` `auto `` (default) | — | inferred, see below |
+
+Ticks land on **round clock and calendar boundaries** (`09:30`, `10:00`, a Monday, the first of
+the month) rather than on 1-2-5 counts of the underlying integer, and the number of ticks is
+chosen from how wide that unit's labels are — so a 19-character timestamp label gets fewer,
+well-spaced ticks instead of a row of labels that collide and get dropped. The plot area is
+unaffected: the labels live in the gutter, so the same series at the same size draws the same
+shape whatever the unit.
+
+`` `auto `` is deliberately narrow, because guessing wrong turns an ordinary count into a clock:
+
+* whole numbers at or above `1e15` are **ns timestamps** (any instant more than eleven days past
+  the epoch — nothing anyone plots is a raw count that big);
+* whole numbers inside one day and **at least an hour in** are **milliseconds of day**;
+* everything else is a plain number.
+
+So `xyplot (trades\`time; trades\`px)` reads as a clock for a normal session, while an index of
+a few million samples stays a number. A session that genuinely starts near midnight, or a
+`date` column (whose values overlap ordinary small counts), needs the unit stated —
+`chart \`x\`y\`xunit!(t;v;\`time)`, or the `tplot` / `dplot` / `pplot` shorthands.
+
+`candle` passes a `time` or `date` column straight through, so OHLC bars from `bars[10;t]` are
+labelled with the clock times of the bars.
 
 ### Options
 
@@ -681,6 +717,7 @@ so `xyplot (trades\`time; trades\`px)` reads as a clock, not a column of raw mil
 | `names` | `()` | one label per series |
 | `col` | palette | one 256-colour code per series |
 | `style` | `0` | per series: `0` line, `1` scatter, `2` step, `3` area |
+| `xunit` `yunit` | `` `auto `` | how to label that axis — see **Temporal axes** above |
 
 ```q
 plot t`px                                       / one column, framed and labelled

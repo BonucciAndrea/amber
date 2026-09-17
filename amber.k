@@ -309,7 +309,15 @@ NULLS:("0N";"0n";"0w";"-0w";"0Nn";,"`")            / null sentinels rendered fai
 PREC:7                                             / float precision (decimals) in grids; PREC:0N = full precision
 comma:{$[4>#x;x;(comma -3_x),",",-3#x]}            / thousands separators on a digit string
 vstrip:{p:((`c$27))\x;,/(1#p),{(1+x?"m")_x}'1_p}   / drop ANSI escape sequences
-vlen:{#vstrip x}                                    / visible (printed) width
+/ visible (printed) width: ANSI sequences removed, then UTF-8 CODE POINTS
+/ counted rather than bytes.  #vstrip counted bytes, so any cell holding a
+/ non-ASCII character made the grid's borders too long by two bytes per
+/ character -- a box-drawing glyph is three bytes and a `sym with an accent two.
+/ A continuation byte is 0x80..0xBF, which as a signed char is -128..-65, so
+/ everything that is NOT a continuation byte starts exactly one code point.
+/ (Double-width CJK and emoji still count as one column here; the terminal
+/ layer in src/ln.c is what knows their real width.)
+vlen:{+/~(0+vstrip x)<-64}                          / visible (printed) width
 cwrap:{[c;s]$[COLOR&#c;(CSI,c,"m"),s,RST;s]}        / wrap s in SGR code c
 atcol:{$[`b=@x;CT`bool;|/`f`F`e=@x;CT`flt;|/`i`I`j`l`L`h`H`G=@x;CT`num;|/`s`S=@x;CT`sym;|/`c`C=@x;CT`str;""]}  / value type -> colour
 palN:{PAL@(#PAL)!x}                                 / n-th column colour (cycles the palette)

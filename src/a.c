@@ -719,12 +719,17 @@ Z B xskey(A c,CO I*RES ix,W*RES k,N n,U*nbo,int desc){
   case tH:{CO H*RES p=q;for(N i=0;i<n;i++)k[i]=(W)AMKH(p[ix[i]]);*nbo=2;}break;
   case tI:{CO I*RES p=q;for(N i=0;i<n;i++)k[i]=(W)AMKI(p[ix[i]]);*nbo=4;}break;
   case tL:{CO L*RES p=q;for(N i=0;i<n;i++)k[i]=AMKL(p[ix[i]]);*nbo=8;}break;
-  case tF:{CO F*RES p=q;F mn,mx;int so=0;
+  case tF:{CO F*RES p=q;F mn,mx;int so=0,spf=0;
    // amber 2.1: a float column holding integral values (prices, sizes, ids in
    // a tick table) is keyed by its INTEGER value, which orders identically and
    // needs 1-4 key bytes instead of 8 -- what lets a (sym;px) sort pack into
    // one radix below. NaN, -0.0 and non-integral columns keep the IEEE fold.
-   if(simd_frange_f64(p,n,&mn,&mx,&so)&&(mx-mn)<4294967296.0){L lo=(L)mn;W sp=(W)((L)mx-lo);
+   // amber 2.2: the range scan's two halves are called in this order so the
+   // < 2^32 span test -- which this path needs anyway and which rejects on the
+   // range alone -- runs BEFORE the integrality pass instead of after it. A
+   // column that is going to take the IEEE fold now costs one pass, not two.
+   simd_frange0_f64(p,n,&mn,&mx,&so,&spf);
+   if(!spf&&(mx-mn)<4294967296.0&&simd_fintegral_f64(p,n)){L lo=(L)mn;W sp=(W)((L)mx-lo);
      for(N i=0;i<n;i++)k[i]=(W)((L)p[ix[i]]-lo);*nbo=sp<256u?1:sp<65536u?2:sp<16777216u?3:4;}
    else{for(N i=0;i<n;i++)k[i]=amkF(p[ix[i]]);*nbo=8;}}break;
   case tS: P(!xssym(c,ix,k,n,nbo),0) break;

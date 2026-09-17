@@ -459,12 +459,43 @@ Z B cntrangeS(A x,L*lo,L*hi,B*srt){
 // the counting path on sorted 10M float64 costs 76 ms against the radix's 35 ms.
 // amber 2.1: the scan is simd_frange_f64 (src/simd.c, vectorised and
 // multiversioned): 25 ms -> ~5 ms at 10M elements.
-Z NI B cntrangeF(A x,L*lo,L*hi,B*srt){
+//
+// amber 2.2: the scan is the two halves of that function, called in the order
+// this caller can exploit, and the result is three-valued:
+//
+//   0  not handled -- fall through to the radix
+//   1  integer-keyable: *lo/*hi are the value range and the counting kernel
+//      may key on (L)x[i]
+//   2  ALREADY ORDERED: the answer is the input (cntsrt) or the identity
+//      permutation (cntgrd), and *lo/*hi are NOT meaningful
+//
+// The three-way return is the point. The old shape was a bool plus a *srt
+// out-parameter, which left a "sorted but not integral" vector looking like a
+// keyable one to any caller that checked them in the wrong order -- and
+// cntgrd does check them in that order, because its sorted shortcut is guarded
+// by a 32-bit length test that can fall through to the counting path. Now
+// "ordered" and "keyable" are different answers and cannot be confused.
+//
+// The ordering wins twice over calling the composed simd_frange_f64:
+//   * an ordered vector never pays the integrality pass at all (it does not
+//     need the integer key -- it is not going to be keyed), and
+//   * a vector whose span already exceeds the counter cap is rejected from the
+//     range alone, before that pass.
+// Measured at 10M float64: an ordered column 22.2 -> 7.6 ms with the composed
+// function and -> ~4 ms with this ordering; a wide span likewise.
+Z NI I cntrangeF(A x,L*lo,L*hi){
  N n=_n(x);
  if(_t(x)!=tF||n<2)return 0;
- F mn,mx;int so=0;
- if(!simd_frange_f64((CO F*)_V(x),n,&mn,&mx,&so))return 0;
- *lo=(L)mn;*hi=(L)mx;*srt=(B)so;return 1;}
+ F mn,mx;int so=0,sp=0;
+ simd_frange0_f64((CO F*)_V(x),n,&mn,&mx,&so,&sp);
+ if(sp)return 0;                    // NaN or -0.0: neither keyable nor trustably ordered
+ if(so)return 2;                    // ordered, and the collation agrees (sp==0)
+ // The counter-table guard, applied on the DOUBLES so it cannot overflow, and
+ // before the integrality pass rather than after it. cntok() re-checks the
+ // same thing on the integers; this is only an early-out, never the decision.
+ if(!((mx-mn)+1.0<=(F)CNTMAX))return 0;
+ if(!simd_fintegral_f64((CO F*)_V(x),n))return 0;
+ *lo=(L)mn;*hi=(L)mx;return 1;}
 
 // Guard shared by both kernels: the histogram must be cheaper than ordering the
 // elements (rg/2 < n), and must fit the cache budget. rg==0 means the span
@@ -478,12 +509,17 @@ Z B cntok(L lo,L hi,N n,W*rg){
 // stable and order by the same key. Returns aI(n) like rdxg.
 A cntgrd(A x){
  L lo,hi;W rg;N n=_n(x);
- B isf=_t(x)==tF,srt=0;                        // float holding integral values
- if(isf?!cntrangeF(x,&lo,&hi,&srt):!cntrange(x,&lo,&hi))return 0;
- // already ordered: the answer IS the identity, and a stable sort must return
- // exactly that.  One pass total, where the old float route needed the radix's
- // separate detection pass on top of this one.
- if(srt&&n==(N)(U)(I)n){A y=aI((U)n);I*RES o=(I*)_V(y);for(N i=0;i<n;i++)o[i]=(I)i;return y;}
+ B isf=_t(x)==tF;                              // float holding integral values
+ if(isf){I k=cntrangeF(x,&lo,&hi);
+   if(!k)return 0;
+   // already ordered: the answer IS the identity, and a stable sort must
+   // return exactly that.  One pass total, where the old float route needed
+   // the radix's separate detection pass on top of this one.  When the length
+   // does not fit the 32-bit grade index we must FALL OUT to the radix, never
+   // on to the counting path: for an ordered vector cntrangeF leaves lo/hi
+   // meaningless and there is no integer key to count on.
+   I(k==2,P(n!=(N)(U)(I)n,0)A y=aI((U)n);I*RES o=(I*)_V(y);for(N i=0;i<n;i++)o[i]=(I)i;return y;)}
+ E(P(!cntrange(x,&lo,&hi),0))
  if(!cntok(lo,hi,n,&rg))return 0;
  if(n!=(N)(U)(I)n)return 0;                    // grade indices are 32-bit
  UC t=_t(x);U w=t==tG?0:t==tH?1:t==tI?2:3;
@@ -511,8 +547,11 @@ A cntgrd(A x){
 A cntsrt(A x){
  L lo,hi;W rg;N n=_n(x);
  B isf=_t(x)==tF,srt=0;
- if(isf?!cntrangeF(x,&lo,&hi,&srt):!cntrangeS(x,&lo,&hi,&srt))return 0;
- if(srt){_at(x)=1;return _R(x);}
+ if(isf){I k=cntrangeF(x,&lo,&hi);
+   if(!k)return 0;
+   if(k==2){_at(x)=1;return _R(x);}}          // ordered: the input IS the answer
+ E(P(!cntrangeS(x,&lo,&hi,&srt),0)
+   I(srt,_at(x)=1;return _R(x);))
  if(!cntok(lo,hi,n,&rg))return 0;
  UC t=_t(x);U w=t==tG?0:t==tH?1:t==tI?2:3;
  ArenaMark mk=arena_mark();

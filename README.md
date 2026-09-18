@@ -12,9 +12,9 @@
 **A low-latency array language — columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-2.1.0-orange)
+![version](https://img.shields.io/badge/version-2.2.0-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
-![tests](https://img.shields.io/badge/tests-742%20K--suite%20cases-brightgreen)
+![tests](https://img.shields.io/badge/tests-873%20K--suite%20cases-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
 
 </div>
@@ -39,6 +39,47 @@ qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                        / vwap by symbo
 ```
 
 <a name="whats-new"></a>
+<a name="whats-new-220"></a>
+## What's new in 2.2.0
+
+**A correctness and performance release.** Four defects that returned a **wrong value
+rather than an error** are fixed -- none of them raised, so none of them was visible:
+
+- A lambda **parameter** named `ss`, `in`, `except` or any other infix verb parsed as the
+  verb, so `1_ss` silently built a projection instead of dropping an element.
+- `1 2 3 in 2` answered `1 1`: an atom right argument fell through to `y?x`, which for an
+  integer atom is k's **random deal**.
+- Float literals below `1e-308` did not parse at all -- `pfu` returned without advancing
+  the cursor.
+- `?x` on a float column allocated `2n` hash slots up front (320 MB at 10M rows).
+
+And the engine got faster where it matters for a price column:
+
+- **A keys-only radix sort.** The order-preserving radix key is a bijection, so the
+  permutation is applied to the **keys** and unfolded, instead of gathering the input. The
+  gather was a third of the cost of a sort. Non-integral float64, 10M: **2.6x**.
+- **The float range scan is split** from the integrality test, and `floor()` is gone from
+  it. Already-sorted 10M float64: **5.8x**. Float `distinct`: **2.0x**. Grade: **1.4x**.
+- **`+/(a±s*b)@&m` fuses** to a single masked pass: **1.5x**.
+- **`select` stops materialising the filtered table** on the paths that ignore it:
+  `select from t` is **8-19x** faster depending on how wide the table is.
+- **`select[n;>col]`** -- q's sorted and limited select, including on a grouped result.
+- **Charts label a temporal axis as a time**, not as the integer underneath: `xunit`/`yunit`,
+  `tplot`/`dplot`/`pplot`, ticks on round clock and calendar boundaries, and candles that
+  carry their bar times.
+
+On the 24-operation comparative matrix (10M elements, one core, every timing gated on an
+exact answer match against a C reference) Amber beats **CBQN on 12 of the 20 operations
+both implement**, is faster than the **C reference on 16 of 24**, and is the fastest of
+the twelve published engines on **9**. See [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md),
+[`bench/SCOUT_REPORT.md`](bench/SCOUT_REPORT.md) and [`CHANGELOG.md`](CHANGELOG.md) for
+every number and every change.
+
+One row moved the wrong way and is published rather than dropped: `max_f` is 3% slower,
+which is code layout and not a code change -- LTO inlines `simd_max_f64` into the float
+min/max reducer, and that function is 937 instructions, instruction-for-instruction
+identical in both builds, differing only in address.
+
 <a name="whats-new-210"></a>
 ## What's new in 2.1.0
 
@@ -65,12 +106,9 @@ faster, and the **portable** build now runs AVX2 kernels wherever the CPU has th
   dying operand in place, symbol `?` uses the hash index, `-0.0` sorts before `0.0` as
   documented.
 
-On the 24-operation comparative matrix (10M elements, one core, every timing gated on an
-exact answer match against a C reference) Amber beats **CBQN on 12 of the 20 operations
-both implement**, is faster than the **C reference on 16 of 24**, and is the fastest of
-the twelve published engines on **9**. See [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md),
-[`bench/SCOUT_REPORT.md`](bench/SCOUT_REPORT.md) and [`CHANGELOG.md`](CHANGELOG.md) for
-every number and every change.
+On the comparative matrix as it stood at 2.1.0 Amber beat **CBQN on 11 of the 19
+operations both implement** (it was 4); see [`CHANGELOG.md`](CHANGELOG.md) for every
+number and every change.
 
 <a name="whats-new-201"></a>
 ## What's new in 2.0.1
@@ -160,6 +198,7 @@ Full history in **[CHANGELOG.md](CHANGELOG.md)**.
 
 ## Table of contents
 
+- [What's new in 2.2.0](#whats-new-220)
 - [Quick showcase](#quick-showcase)
 - [Download & install](#download--install)
 - [A quick taste](#a-quick-taste)

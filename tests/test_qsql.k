@@ -261,9 +261,25 @@ t[`selWhereStill;   sel"select from st where sz>25"; st@&(st`sz)>25]
 t[`selByNoWhere;    sel"select s:sum px by sym from st"; ([sym:`c`a`b] s:9.0 5 7)]
 t[`selByWhere;      sel"select s:sum px by sym from st where sz>15"; ([sym:`c`b`a] s:9.0 7 4)]
 
+/ ---- fby inside a WHERE-CLAUSE -------------------------------------------
+/ docs/MISSING.md claimed this was not implemented. It always was: qidsub
+/ substitutes the column names inside the aggregate pair too, so
+/ "px=(max;px) fby sym" becomes (x`px)=(max;(x`px)) fby (x`sym) and `fby`
+/ applies infix like any other dyadic name. These pin it down so the claim
+/ cannot drift again.
+ft:([]sym:`a`b`a`b`a; ex:`X`X`Y`Y`X; px:10 20 30 40 50.0; sz:1 2 3 4 5)
+t[`fbyWhereMax;   (sel"select sym,px from ft where px=(max;px) fby sym")`px; 40 50.0]
+t[`fbyWhereAvg;   (sel"select px from ft where px>(avg;px) fby sym")`px;     40 50.0]
+t[`fbyWhereSum;   #sel"select from ft where sz<(sum;sz) fby sym";            5]
+t[`fbySelectList; (sel"select sym, m:(max;px) fby sym from ft")`m;   50 40 50 40 50.0]
+t[`fbyExec;       exq"exec px from ft where px=(max;px) fby sym";            40 50.0]
+t[`fbyUpdate;     (upd"update f:(max;px) fby sym from ft")`f;        50 40 50 40 50.0]
+/ and on SEVERAL group columns, which used to return one value per column
+t[`fbyWhereCols;  (sel"select px from ft where px=(max;px) fby (sym;ex)")`px; 20 30 40 50.0]
+
 / Guard against a silently skipped block (see tests/harness.k): this is the
 / exact number of assertions this file is expected to record. Bump it when
 / you add or remove cases -- if it ever disagrees, some of them stopped running.
-hexpect[148]
+hexpect[155]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

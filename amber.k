@@ -247,7 +247,15 @@ qgrp:{[t;b]d:+t;bc:d b;g:$[1=#b;=*bc;qcard[bc]<qEXACT;=qenc bc;=rows[b#+t]];iv:v
 qby:{[t;b;a]b:b,();r:qgrp[t;b];kt:+b!r 0;iv:r 1;subs:atr[t]'iv;vt:+(!a)!{[subs;f]f'subs}[subs]'value a;kt!vt}
 xgroup:{[k;t]k:k,();r:qgrp[t;k];kt:+k!r 0;vc:except[cols t;k];+(+kt),vc!{[t;iv;c]((+t)c)@/:iv}[t;r 1]'vc}
 ungroup:{[x]t:unkey x;d:+t;v:value d;m:{`A=@x}'v;cnt:#:'*v@&m;+(!d)!{[cnt;m;c]$[m;raze c;raze cnt#'c]}[cnt]'[m;v]}
-fby:{[fc;g]f:fc 0;d:fc 1;gi:=g;iv:value gi;agg:{[f;d;i]f d@i}[f;d]'iv;@[(#g)#*agg;raze iv;:;raze(#:'iv)#'agg]}
+/ fbymc: is g a PER-COLUMN group spec -- (sym;ex) rather than one vector?  q lets
+/ `fby` group on several columns, and `=` on such a list groups the COLUMNS, not
+/ the rows, so it silently returned one value per column instead of one per row.
+/ A table group spec ((]s;e)) was always fine: #t is already its row count.
+/ Only flip when the shape says so -- #g is the column count and #*g the row
+/ count -- so an ordinary group vector, and a general list that really does have
+/ one item per datum, are both left exactly as they were.
+fbymc:{[g;d]$[~`A~@g;0;0=#g;0;(#g)=#d;0;(#d)=#*g]}
+fby:{[fc;g]f:fc 0;d:fc 1;g:$[fbymc[g;d];+g;g];gi:=g;iv:value gi;agg:{[f;d;i]f d@i}[f;d]'iv;@[(#g)#*agg;raze iv;:;raze(#:'iv)#'agg]}
 
 / ---- strings ---------------------------------------------------------------
 lower:{_x}

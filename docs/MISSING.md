@@ -41,8 +41,15 @@ inside a **`.k` script** loaded once the stdlib is up (the loader runs each file
 - **Since 2.2:** **sorted and limited selects** are done — `select[5]`, `select[-5]`,
   `select[>px]`, `select[<sym]`, `select[5;>px]` and multi-key `select[<sym;>px]`, on plain and
   keyed results alike, with q's clause order (where → by/select → sort → limit). See AMBER.md §7.
-- Still missing: the general functional forms `?[t;where;by;select]` / `![t;where;by;cols]`,
-  `fby` *inside* a where-clause, and correlated subqueries.
+- **Since 2.2:** `fby` **inside a where-clause** works — `select from t where
+  px=(max;px) fby sym` — and its group spec may be one column, a *list* of columns
+  or a table. (The where-clause form was always implemented; this list used to say
+  otherwise. The multi-column list form returned one value per column instead of
+  one per row and is fixed.)
+- Still missing: the general functional forms `?[t;where;by;select]` /
+  `![t;where;by;cols]`, and correlated subqueries. Note that `?` at arity 3+ is
+  already `ins` in this dialect, so the `?[…]` spelling cannot be added without
+  breaking k semantics; `![…]` at arity 4 is free.
 - **Amber has:** bare + string `select/exec/update/delete`, plus the functional helpers
   `qwhere qselect qby fby xgroup ungroup`.
 

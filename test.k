@@ -209,6 +209,15 @@ st:+`s`v!(`a`b`a`b`a;1 2 3 4 5)
 t[`qwhere;(+qwhere[st;st[`v]>2])`v;3 4 5]
 t[`qbyTot;(value qby[st;`s;(,`tot)!,{sum x`v}])`tot;9 6]
 t[`fby;fby[(sum;10 20 30 40 50);`a`b`a`b`a];90 60 90 60 90]
+/ fby on SEVERAL group columns, q's (max;px) fby (sym;ex).  `=` on a list of
+/ columns groups the columns, so this used to return one value per COLUMN
+/ (2 of them) instead of one per row -- a wrong answer, not an error.
+t[`fbyCols;fby[(max;10 20 30 40 50.0);(`a`b`a`b`a;`X`X`Y`Y`X)];50 20 30 40 50.0]
+t[`fbyCols2;fby[(sum;1 2 3 4 5);(`a`b`a`b`a;`X`X`Y`Y`X)];6 2 3 4 6]
+/ the same grouping written as a table was always right: #t is its row count
+t[`fbyTable;fby[(sum;1 2 3 4 5);([]s:`a`b`a`b`a;e:`X`X`Y`Y`X)];6 2 3 4 6]
+/ ... and a general list that genuinely has one item per datum is NOT flipped
+t[`fbyListSame;fby[(sum;10 20);(`a`b;`a`b)];30 30]
 t[`xgroupUngroup;ungroup xgroup[`s;st];+`s`v!(`a`a`a`b`b;1 3 5 2 4)]
 
 / ---- strings ----

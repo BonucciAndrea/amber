@@ -2,7 +2,7 @@
 
 ## 2.2.0 (unreleased)
 
-A correctness and performance release. Three defects that returned a **wrong value rather
+A correctness and performance release. Four defects that returned a **wrong value rather
 than an error** are fixed; the charts learned to label a temporal axis as a time; the query
 layer stopped materialising tables it never reads and gained q's sorted/limited `select[…]`;
 and two more fusions land, one of which removes a random gather from every non-integral sort.
@@ -26,6 +26,18 @@ diffing: **1,085,384 and 32,185 lines, byte-identical**.
   not find. `1 2 3 in 2` answered `1 1` — two random picks, the wrong values *and* the wrong
   length, with no error; `` `a`b`c in `b `` raised `'domain`; `1 2 3 except 2` was empty where
   q gives `1 3`. `except`, `inter` and `union` are all defined on `in` and were all affected.
+- **`fby` on several group columns answered per column, not per row.** q lets the group
+  spec be a list of columns — `(max;px) fby (sym;ex)` — but `=` on a list of columns
+  groups *the columns*, so a 5-row table grouped on two columns returned **two** values
+  instead of five, with no error. The table spelling (`([]s:sym;e:ex)`) was always right,
+  because a table's count is already its row count. The list form is now flipped to rows
+  first, and only when the shape says so: `#g` is the column count and `#*g` the row
+  count, so an ordinary group vector — and a general list that genuinely has one item per
+  datum — are both left exactly as they were.
+
+  Separately, `fby` **inside a where-clause** turns out to have worked all along:
+  `select from t where px=(max;px) fby sym`. `docs/MISSING.md` listed it as missing. It is
+  now tested (7 cases) so the claim cannot drift again, and the doc is corrected.
 - **Float literals below `1e-308` did not parse.** `pfu` clamped an out-of-range exponent and
   returned *before* advancing the parse cursor, so `1e-309` left `e-309` in the input and the
   literal died with `'value` (and `1e309` likewise). Every subnormal double was unwritable —

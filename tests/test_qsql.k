@@ -234,6 +234,10 @@ t[`selSortExpr;   (sel"select[>px*sz] from st")`px; 6.0 5 4 3 2 1]
 / ... and it applies to a KEYED (by-clause) result with the key put back
 t[`selSortKeyed;  (value sel"select[>s] s:sum px by sym from st")`s; 9.0 7 5]
 t[`selLimitKeyed; #sel"select[2] s:sum px by sym from st"; 2]
+/ both at once on a grouped result -- the form docs/language.html publishes:
+/ group, then sort the aggregate descending, then take the first n.
+t[`selSortLimitKeyed;  (value sel"select[3;>v] v:sum px by sym from st")`v; 9.0 7 5]
+t[`selSortLimitKeyed2; #sel"select[2;>v] v:sum px by sym from st"; 2]
 / the bare (unquoted) form must accept the bracket too, and only for `select`
 t[`qrwBracket;    qrw"select[2;>px] from st";  "sel\"select[2;>px] from st\""]
 t[`qrwBracketAsg; qrw"z:select[3] from st";    "z:sel\"select[3] from st\""]
@@ -260,6 +264,6 @@ t[`selByWhere;      sel"select s:sum px by sym from st where sz>15"; ([sym:`c`b`
 / Guard against a silently skipped block (see tests/harness.k): this is the
 / exact number of assertions this file is expected to record. Bump it when
 / you add or remove cases -- if it ever disagrees, some of them stopped running.
-hexpect[146]
+hexpect[148]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

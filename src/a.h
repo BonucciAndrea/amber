@@ -173,7 +173,7 @@ A2 _1,aA2,aM,add,am,psh,ari,bin,ct,cat,cat10,cat11,dlr,dex,dot,dvd,eql,exc,crt,f
 A3 _2,aA3,arf,arp,ars,cpl,e2,r2,try;
 A4 ara,a4,d4;
 AX _8,e8,f8,prj,run;
-AA a8,d8,ins,no8,fredC,fmaC;
+AA a8,d8,ins,no8,fredC,fmaC,fmsC;
 TD A TAU(U);TAU aA0,aA,aB,aG,aC,aF,aI,aL,aS,gns,emp;
 TD A TAL(L);TAL al,az,cls,rndF;
 TD A TALA(L,A);TALA drp,rnd,rsz;
@@ -188,8 +188,10 @@ A peach_pool(A,A,U,I);//persistent thread-pool morsel-driven peach (src/peachpoo
 C*sf(C*,L),*sl(C*,L),sup(A*,A*),tZ(L),*strchrnul(S,I);
 U gi(A);
 B am_infix_dyad(S,U);//p.c: is a name a defined rank-2 global fn? -> infix
+B am_name_nonfn(S,U);//p.c: is a name BOUND to something that is not a rank-2 fn? -> not infix
 A unqL(A);//amber: O(n) integer distinct (f.c), 0 = not handled
 A cntgrd(A),cntsrt(A);//amber: counting/bucket grade + counting sort (v.c), 0 = not handled
+A rdxsrt(A);//amber 2.2: keys-only radix SORT, no index vector and no gather (v.c), 0 = not handled
 U amlb(CO L*RES,U,U,L);//branch-free lower_bound over a sorted long slice (a.c)
 U amub(CO L*RES,U,U,L);//branch-free upper_bound (first >key) -- no key+1 overflow (a.c)
 // AMGALLOP: how far a time-series join's merge cursor walks forward linearly
@@ -283,14 +285,15 @@ enum                 {tA=1,tE,tB,tG,tH,tI,tL,tF,tC,tS,tM,tm,ti,tl,tf,tc,ts,to,tp
 #define ax(v,k) (Lt(tx)|(W)(k)<<48|(W)(v)<<16>>16)
 #define V_ A1*v1[]={sam,flp,neg,fir,sqr,til,whr,rev,asc,dsc,grp,not,enl,nul,len,flr,str,unq,typ,val,u0c,u1c,u2c,las,imn,imx,out,srtC,srtdC,en,en,en};\
            A2*v2[]={dex,add,sub,mul,dvd,exc,mnm,mxm,ltn,gtn,eql,mtc,cat,crt,hsh,und,dlr,que, _1,dot,v0c,v1c,v2c,dex,dex,dex,dex,cmprC,no2,no2,no2,no2};\
-           AA*v8[]={no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,ins, a8, d8,no8,no8,no8,no8,no8,no8,no8,fredC,fmaC,no8,no8,no8};\
+           AA*v8[]={no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,ins, a8, d8,no8,no8,no8,no8,no8,no8,no8,fredC,fmaC,fmsC,no8,no8};\
          CO C vc[]={':','+','-','*','%','!','&','|','<','>','=','~',',','^','#','_','$','?','@','.','0','1','2','3','4','5','6',0};
 // amber 2.1: verb slots 27..31 have no source character; they are reached only
 // through bytecode the compiler emits for recognised idioms (src/b.c cr()):
 //   27  monad srtC   x@<x        dyad cmprC  x@&y        triad fredC  +/x*y family
 //   28  monad srtdC  x@>x                                 tetrad fmaC  a+s*b, a-s*b
+//   29                                                    5-ary  fmsC  +/(a+-s*b)@&m
 enum         {au=Lt(tu),FLP,NEG,FIR,SQR,TIL,WHR,REV,ASC,DSC,GRP,NOT,ENL,NUL,LEN,FLR,STR,UNQ,TYP,VAL,U0C,U1C,U2C,LAS,IMN,IMX,OUT,SRT,SRTD,
-              av=Lt(tv),ADD,SUB,MUL,DVD,EXC,MNM,MXM,LTN,GTN,EQL,MTC,CAT,CRT,RSH,UND,DLR,QUE,AP1,DOT,V0C,V1C,V2C,V3C,V4C,MKL,GAP,FUS1,FUS2,
+              av=Lt(tv),ADD,SUB,MUL,DVD,EXC,MNM,MXM,LTN,GTN,EQL,MTC,CAT,CRT,RSH,UND,DLR,QUE,AP1,DOT,V0C,V1C,V2C,V3C,V4C,MKL,GAP,FUS1,FUS2,FUS3,
               aw=Lt(tw)};
 #define NFL 0x7ff8000000000000ll
 #define WFL 0x7ff0000000000000ll

@@ -748,6 +748,36 @@ AMB_MV int64_t simd_masksum_i64(const int64_t *a, const unsigned char *m, size_t
     *bad = acc > 1; return (int64_t)r;
 }
 
+/* ==== amber 2.2: +/(a +- s*b)@&m in ONE pass ==============================
+ * The three kernels this replaces already existed and each is already fused:
+ * simd_fma_f64 (a +- s*b), simd_compress_64 (x@&m) and simd_masksum_f64
+ * (+/x@&m). Chained, they still write and re-read a full-width intermediate
+ * for the arithmetic -- at 10M float64 that is 80 MB stored and 80 MB loaded
+ * that nothing else ever looks at, which is most of the gap to a C loop doing
+ * the same work.
+ *
+ * Bit-identical to the chain, not merely close: the product is rounded before
+ * the add (AMB_NOFMA, no contraction), `a - s*b` is computed as a + (-s)*b
+ * which is exact because negation is exact, and the accumulation uses the SAME
+ * 16-lane tree in the same order as simd_masksum_f64. So a program that fuses
+ * and one that does not produce the same double.
+ * *bad = 1 when a mask byte is neither 0 nor 1; the caller then discards the
+ * answer and takes the unfused path, exactly as the other masked kernels do. */
+AMB_MV AMB_NOFMA double simd_masksum_fma_f64(const double *a, double s, const double *b,
+                                             const unsigned char *m, size_t n, int sub,
+                                             int *bad) {
+    double acc[16]; size_t i = 0, k; unsigned char o = 0;
+    const double sv = sub ? -s : s;
+    for (k = 0; k < 16; k++) acc[k] = 0;
+    for (; i + 16 <= n; i += 16)
+        for (k = 0; k < 16; k++) { unsigned char mi = m[i + k]; o |= mi;
+            acc[k] += mi ? (a[i + k] + sv * b[i + k]) : 0.0; }
+    { double r = 0; for (k = 0; k < 16; k++) r += acc[k];
+      for (; i < n; i++) { unsigned char mi = m[i]; o |= mi;
+          r += mi ? (a[i] + sv * b[i]) : 0.0; }
+      *bad = o > 1; return r; }
+}
+
 /* sum and OR of a byte mask in one pass (sizing + validity for `&`). */
 AMB_MV int64_t simd_masksum_u8(const unsigned char *m, size_t n, unsigned *orv) {
     int64_t s = 0; unsigned o = 0; size_t i = 0;

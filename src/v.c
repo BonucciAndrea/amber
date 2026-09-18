@@ -579,6 +579,112 @@ A cntsrt(A x){
  _at(z)=1;                                      // result IS sorted: keep `s#
  return z;}
 
+// ---- amber 2.2: radix SORT (not grade) for a flat numeric vector -----------
+// `x@<x` -- which is what `asc` compiles to -- used to grade and then gather.
+// Measured at 10M float64 on a column the counting kernel declines (any
+// non-integral column, i.e. every real price series):
+//     <x          175.7 ms
+//     x@grade     132.4 ms      <- a fully random 80 MB read, DRAM-latency bound
+//     x@<x        319.8 ms
+// The gather is a third of the cost and buys nothing here, because the KEY THE
+// RADIX ALREADY SORTS IS INVERTIBLE. AMKG/AMKH/AMKI/AMKL are xor-with-the-sign-
+// bit and amkF is a composition of bijections on the 64-bit line, so sorting
+// the keys and mapping them back yields exactly the sorted values -- bit for
+// bit, including which NaN payload and which zero sign each element had.
+//
+// So this kernel carries no index vector at all. Per pass it moves 8 bytes per
+// element instead of 12, it allocates two key buffers instead of two key
+// buffers plus two index buffers, and there is no final gather.
+//
+// It is only valid for a SORT. A GRADE still needs rdxg: two elements with the
+// same key are indistinguishable here, which is exactly why the gather can be
+// dropped, and exactly why a permutation cannot be recovered.
+#define AMUKG(k) ((G)((k)^0x80u))
+#define AMUKH(k) ((H)((k)^0x8000u))
+#define AMUKI(k) ((I)((k)^0x80000000u))
+#define AMUKL(k) ((L)((k)^0x8000000000000000ull))
+// the inverse of amkF: undo the sign-bit flip, the bias, and the
+// flip-the-low-63-bits step (which is its own inverse).
+Z F amuF(W k){W t=k^0x8000000000000000ull;t-=(W)((-1ull>>12)-1);
+ W b=t^((W)((L)t>>63)>>1);F f;MC(&f,&b,SZ(F));return f;}
+// Keys-only LSD radix. Same plan as amrdx -- all histograms in one pass, a
+// constant byte column contributes nothing to the order and is skipped -- with
+// the index array removed.
+#define AMRDXK(NM,KT)                                                          \
+Z KT* NM(KT*RES ka,KT*RES kb,N n,U nb){                                        \
+  N cnt[8][256];U d,ord[8],np=0;                                               \
+  MS(cnt,0,SZ cnt);                                                            \
+  for(N i=0;i<n;i++){KT v=ka[i];for(d=0;d<nb;d++)cnt[d][(v>>(8*d))&255]++;}     \
+  for(d=0;d<nb;d++)if(cnt[d][(ka[0]>>(8*d))&255]-n)ord[np++]=d;                \
+  for(U q=0;q<np;q++){                                                         \
+    d=ord[q];                                                                  \
+    {N s=0;for(U b=0;b<256;b++){N t=cnt[d][b];cnt[d][b]=s;s+=t;}}               \
+    for(N i=0;i<n;i++){KT v=ka[i];N j=cnt[d][(v>>(8*d))&255]++;kb[j]=v;}        \
+    {KT*tk=ka;ka=kb;kb=tk;}}                                                   \
+  return ka;}
+AMRDXK(amrdxk4,U)
+AMRDXK(amrdxk8,W)
+// amnorm, but reporting the minimum it subtracted so the unfold can add it
+// back. Translating the keys to a zero minimum can cut passes on clustered
+// data (a nanosecond timestamp within one session spans barely 2^47), and it
+// stays invertible as long as the caller remembers the offset.
+#define AMNORMS(NM,KT)                                                         \
+Z U NM(KT*RES k,N n,U nb,KT*mnout){                                            \
+  KT mn=k[0],mx=k[0],dif=0,f=k[0];                                             \
+  *mnout=0;                                                                    \
+  for(N i=1;i<n;i++){KT v=k[i];dif|=v^f;if(v<mn)mn=v;if(v>mx)mx=v;}            \
+  if(!dif)return 0;                                                            \
+  {U base=0;for(U b=0;b<nb;b++)if((dif>>(8*b))&255)base++;                     \
+   KT sp=mx-mn;U w=0;while(sp){w++;sp>>=8;}                                    \
+   if(w>=base)return nb;                                                       \
+   if(mn){for(N i=0;i<n;i++)k[i]-=mn;*mnout=mn;}                               \
+   return w;}}
+AMNORMS(amnorms4,U)
+AMNORMS(amnorms8,W)
+// Extract the order-preserving keys, and notice in the same pass whether the
+// vector is already non-decreasing -- the common case for a time column or a
+// `s-attributed one, which then costs one read and no passes at all.
+#define RDXSK(KT,T,EXPR)                                                       \
+ {CO T*RES p=_V(x);KT*RES k=(KT*)kA;KT pv=0;                                    \
+  for(N i=0;i<n;i++){KT v=(KT)(EXPR);k[i]=v;if(i&&v<pv)srt=0;pv=v;}}
+A rdxsrt(A x){
+ UC t=_t(x);N n=_n(x);U nb;
+ switch(t){
+  case tG: case tC: nb=1;break;
+  case tH: nb=2;break;
+  case tI: nb=4;break;
+  case tL: case tF: nb=8;break;
+  default: return 0;}
+ if(n<2)return 0;                       // the caller's own paths handle these
+ ArenaMark mk=arena_mark();
+ N kw=nb<=4?4u:8u;
+ V*kA=arena_alloc(n*kw),*kB=arena_alloc(n*kw);
+ if(!kA||!kB){arena_release(mk);return 0;}
+ B srt=1;
+ switch(t){
+  case tG: case tC: RDXSK(U,G,AMKG(p[i])) break;
+  case tH: RDXSK(U,H,AMKH(p[i])) break;
+  case tI: RDXSK(U,I,AMKI(p[i])) break;
+  case tL: RDXSK(W,L,AMKL(p[i])) break;
+  default: RDXSK(W,F,amkF(p[i])) break;}
+ if(srt){arena_release(mk);_at(x)=1;return _R(x);}
+ A z=an((U)n,t);if(!z){arena_release(mk);return 0;}
+ if(nb<=4){
+  U mn=0;U w=amnorms4((U*)kA,n,nb,&mn);
+  U*r=w?amrdxk4((U*)kA,(U*)kB,n,w):(U*)kA;
+  switch(t){
+   case tG: case tC:{G*RES o=(G*)_V(z);for(N i=0;i<n;i++)o[i]=AMUKG(r[i]+mn);}break;
+   case tH:{H*RES o=(H*)_V(z);for(N i=0;i<n;i++)o[i]=AMUKH(r[i]+mn);}break;
+   default:{I*RES o=(I*)_V(z);for(N i=0;i<n;i++)o[i]=AMUKI(r[i]+mn);}break;}
+ }else{
+  W mn=0;U w=amnorms8((W*)kA,n,nb,&mn);
+  W*r=w?amrdxk8((W*)kA,(W*)kB,n,w):(W*)kA;
+  if(t==tL){L*RES o=(L*)_V(z);for(N i=0;i<n;i++)o[i]=AMUKL(r[i]+mn);}
+  else     {F*RES o=(F*)_V(z);for(N i=0;i<n;i++)o[i]=amuF(r[i]+mn);}}
+ arena_release(mk);
+ _at(z)=1;                              // the result IS sorted: keep `s#
+ return z;}
+
 // ---- amber 2.1: sort-by-value monads and the compress dyad -----------------
 // srtC is what the compiler emits for `x@<x` (and `srt / asc reach it too):
 // counting sort when the range allows, else grade+gather -- never the K path
@@ -588,10 +694,12 @@ A cntsrt(A x){
 // grade-then-index route in C (never a K expression, which would compile back
 // into this very idiom).
 A1(srtC,UC t=_t(x);
- I(!_tP(x)&&LH(tG,t,tS),A c=cntsrt(x);I(c,return x(c)))
+ I(!_tP(x)&&LH(tG,t,tS),A c=cntsrt(x);I(c,return x(c))
+                        c=rdxsrt(x);I(c,return x(c)))
  A g=asc(xR);P(!g,x(0))A r=i1(x,g);x(0);P(!r,0)I(!_tP(r)&&LH(tG,_t(r),tC),_at(r)=1)r)
 A1(srtdC,UC t=_t(x);
- I(!_tP(x)&&LH(tG,t,tS),A c=cntsrt(x);I(c,A r=rev(x(c));P(!r,0)I(!_tP(r),_at(r)=0)return r;))
+ I(!_tP(x)&&LH(tG,t,tS),A c=cntsrt(x);I(c,A r=rev(x(c));P(!r,0)I(!_tP(r),_at(r)=0)return r;)
+                        c=rdxsrt(x);I(c,A r=rev(x(c));P(!r,0)I(!_tP(r),_at(r)=0)return r;))
  A g=dsc(xR);P(!g,x(0))A r=i1(x,g);x(0);r)
 // x@&y with y a 0/1 byte mask: one branch-free pass, no index vector. Any
 // other shape (bit masks, counts above 1, generic lists, a mask longer than x)

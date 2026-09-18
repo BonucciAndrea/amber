@@ -113,6 +113,12 @@ int64_t simd_masksum_u8(const unsigned char *m, size_t n, unsigned *orv);
 /* +/x@&m in one pass; *bad=1 when a mask byte exceeds 1. */
 double  simd_masksum_f64(const double *a, const unsigned char *m, size_t n, int *bad);
 int64_t simd_masksum_i64(const int64_t *a, const unsigned char *m, size_t n, int *bad);
+/* amber 2.2: +/(a +- s*b)@&m in one pass -- no full-width intermediate for the
+ * arithmetic. Bit-identical to simd_fma_f64 followed by simd_masksum_f64
+ * (product rounded before the add, same 16-lane accumulation order).
+ * sub=0 for a+s*b, sub=1 for a-s*b. *bad=1 when a mask byte exceeds 1. */
+double  simd_masksum_fma_f64(const double *a, double s, const double *b,
+                             const unsigned char *m, size_t n, int sub, int *bad);
 /* Float range scan: 1 if all finite, integral, |x|<=2^53 and no -0.0; then
  * *mn/*mx hold the min/max and *sorted whether the vector is non-decreasing. */
 int simd_frange_f64(const double *a, size_t n, double *mn, double *mx, int *sorted);

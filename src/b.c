@@ -70,6 +70,16 @@ Z I fus(A x,B r){U n=xn;A y=xx;I o=xo;                                          
    I(fnode(oa,0)&&fnode(ob,0),Nr(ob,1)Nr(oa,1)cc(ai(_v(d)),xo);cc(FUS1,xo);M(ba)M(3)I(!r,M(bP))return OK;))
    // +/x@&m : sum of the masked elements, no compressed vector
    I(d==AP1,A oa=_A(z)[1],w=_A(z)[2];I(_tA(w)&&_n(w)==2&&_A(w)[0]==WHR&&fnode(oa,0)&&fnode(_A(w)[1],0),
+    // amber 2.2: and when the thing being masked is itself `a +- s*b` with a
+    // literal scalar, the arithmetic joins the same pass -- otherwise the FMA
+    // rule below fires on the operand and materialises a full-width vector that
+    // only this sum ever reads. Tried before the plain form so the narrower
+    // shape wins; if it does not match, nothing has been emitted yet.
+    I(_tA(oa)&&_n(oa)==3&&(_A(oa)[0]==ADD||_A(oa)[0]==SUB),A zm=_A(oa)[2],aa=_A(oa)[1];
+     I(_tA(zm)&&_n(zm)==3&&_A(zm)[0]==MUL,A p=_A(zm)[1],q=_A(zm)[2];
+      A sc=numlit(p)?p:numlit(q)?q:0,ob=sc==p?q:p;
+      I(sc&&fnode(aa,0)&&fnode(ob,0)&&!numlit(ob),
+       Nr(_A(w)[1],1)Nr(ob,1)Nr(sc,1)Nr(aa,1)cc(ai(_A(oa)[0]==SUB),xo);cc(FUS3,xo);M(ba)M(5)I(!r,M(bP))return OK;)))
     Nr(_A(w)[1],1)Nr(oa,1)cc(ai(18),xo);cc(FUS1,xo);M(ba)M(3)I(!r,M(bP))return OK;))))
  I(n==3&&y==AP1,A oa=xy,z=xz;
   I(_tA(z)&&_n(z)==2&&_A(z)[0]==WHR&&fnode(oa,0)&&fnode(_A(z)[1],0),Nr(_A(z)[1],1)Nr(oa,1)M(bv+27)I(!r,M(bP))return OK;)   // x@&m

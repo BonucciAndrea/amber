@@ -87,3 +87,55 @@ gsum[100000!H;X]~{[v;i]+/v i}[X]'=100000!H
 (sel"select min px,max px,count px by g from T")~qby[T;`g;`px`px`px!({min x`px};{max x`px};{count x`px})]
 (sel"select sum px by sym,g from T")~qby[T;`sym`g;(,`px)!,{sum x`px}]
 (sel"select sum px by sym from T where sz>250")~qby[qwhere[T;T[`sz]>250];`sym;(,`px)!,{sum x`px}]
+
+/ ---- amber 2.2: +/(a +- s*b)@&m fused into ONE pass (src/3.c fmsC) ----------
+/ Every one of these must equal the unfused program exactly. The literal scalar
+/ may sit on either side of the *, the outer verb may be + or -, and anything
+/ the kernel declines (ints, a bit mask, a length mismatch, NaN or -0.0 in the
+/ operands) must fall back to fmaC-then-fredC and still agree.
+p[+/(Y+2.5*X)@&M0]; p[+/(Y-2.5*X)@&M0]; p[+/(Y+X*2.5)@&M0]; p[+/(Y-X*2.5)@&M0]
+p[+/(X+1.0*Y)@&M0]; p[+/(X+0.0*Y)@&M0]; p[+/(X+2.5*X)@&M0]
+p[+/(Y+2*X)@&M0];   p[+/(Y+2.5*X)@&B1]
+p[+/(NX+2.5*X)@&M0];p[+/(X+2.5*NX)@&M0];p[+/(ZX+2.5*X)@&M0];p[+/(X+2.5*ZX)@&M0]
+p[+/(F1+2.5*F2)@&M0]
+p[+/(L1+2*L2)@&M0]
+p[+/((0#0.0)+2.5*0#0.0)@&0#0b]
+p[+/(Y+2.5*X)@&X>1000000]
+p[+/(Y+2.5*X)@&X>(-1.0)]
+/ the same values reached WITHOUT the idiom, so the two spellings must agree
+T25:Y+2.5*X
+p[+/T25@&M0]
+(+/(Y+2.5*X)@&M0)~+/T25@&M0
+(+/(Y-2.5*X)@&M0)~+/(Y-2.5*X)@&M0
+(+/(NX+2.5*X)@&M0)~+/(NX+2.5*X)@&M0
+
+/ ---- amber 2.2: keys-only radix SORT (src/v.c rdxsrt) ----------------------
+/ asc/desc on a column the counting kernel declines now sorts the ORDER-
+/ PRESERVING KEYS and inverts them, with no grade and no gather. The fold is a
+/ bijection, so the answer must be bit-identical to grade-then-index -- which is
+/ what these compare against, for every shape that stresses the fold: NaN, both
+/ zeros, the infinities, duplicates, already-sorted and reversed input, and each
+/ integer width.
+noat:{x@!#x}
+FN:0.5+X                              / non-integral: the counting kernel declines
+FW:1e9*X                              / span too wide for a counter table
+p[(noat asc FN)~noat FN@iasc FN]
+p[(noat asc FW)~noat FW@iasc FW]
+p[(noat asc NX)~noat NX@iasc NX]
+p[(noat asc ZX)~noat ZX@iasc ZX]
+p[(noat asc F1)~noat F1@iasc F1]
+p[(noat asc L1)~noat L1@iasc L1]
+p[(noat asc H1)~noat H1@iasc H1]
+p[(noat asc I1)~noat I1@iasc I1]
+p[(noat asc S1)~noat S1@iasc S1]
+p[(noat desc FN)~noat FN@idesc FN]
+p[(noat desc FW)~noat FW@idesc FW]
+p[(noat desc L1)~noat L1@idesc L1]
+p[(noat asc asc FN)~noat asc FN]
+p[(noat asc |asc FN)~noat asc FN]
+p[asc 0#0.0]; p[asc ,1.5]; p[asc 1.5 0.5]; p[asc 100#,1.5]
+p[asc (0n;0w;-0w;0.0;-0.0;1.5;-1.5)]
+p[asc (0W;0;1;-1;0N)]
+p[desc (0n;0w;-0w;0.0;-0.0;1.5;-1.5)]
+p[asc "zyxabc"]
+p[`at asc FN]; p[`at asc FW]; p[`at asc 0.5+`f$!100]

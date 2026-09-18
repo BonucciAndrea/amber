@@ -2,7 +2,7 @@
 / sys.k  -  Amber system namespaces (.z .Q .j .h).  Loaded after temporal.k.
 / Clocks, utility functions, JSON, number formatting, a little HTML.
 / Times are computed from the microsecond wall clock `t[] (epoch 1970),
-/ re-based to kdb's 2000.01.01 epoch via the temporal.k layer.
+/ re-based to the 2000.01.01 epoch via the temporal.k layer.
 / ============================================================================
 
 / ---- .z : clocks & handlers ----------------------------------------------

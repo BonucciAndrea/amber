@@ -16,7 +16,7 @@ page. The install steps themselves stay in the README.
 # folder uninstalls it completely.
 export AMBER_HOME="$HOME/amber"
 
-# amber  -> the full REPL: repl.k, the q/kdb+ vocabulary and the stdlib.
+# amber  -> the full REPL: repl.k, the q vocabulary and the stdlib.
 # AMBER_NATIVE is read by build.sh, which ./a re-runs whenever the sources are
 # newer than the binary -- so the first run after a git pull rebuilds with
 # -march=native (or -mcpu=native on Apple Silicon / aarch64).

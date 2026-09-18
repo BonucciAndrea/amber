@@ -147,11 +147,11 @@ stored narrow and CBQN reads 10–20 MB where Amber reads 80. Measured directly,
 moves 80 MB at 18.5 GB/s and `simd_max_f64` at 15.7 GB/s — this machine's single-core bandwidth.
 
 **Publication hygiene.** `bench/scout/strip_private.py` is new: it removes the engines whose
-figures may not be published (kdb+/q, run under a KX evaluation licence whose terms forbid
+figures may not be published (one engine is run under an evaluation licence whose terms forbid
 disclosing benchmark information) from a results file, and `--check` exits non-zero if one appears
 anywhere in it — matrix, scaling buckets, engine map or machine block. That removal used to be a
 manual step. `bench/scout/report.py` is scored against the C reference throughout, instead of
-generating a section headed "Amber against kdb+/q". `scout.py --build` now builds **and runs**
+generating a section headed with that named comparison. `scout.py --build` now builds **and runs**
 (it used to build and exit, which looked like the harness had died); `--build-only` keeps the old
 behaviour.
 
@@ -495,7 +495,7 @@ on every run. Every reference to them has been updated rather than left dangling
 ### Infix notation for the two-argument library dyads
 
 The join family and the set/search dyads can now be written **infix**, exactly as
-in kdb+/q, instead of only in bracket form:
+in q, instead of only in bracket form:
 
 ```q
 2 3 9 in 2 3 4          / 1 1 0        (was: in[2 3 9;2 3 4])
@@ -516,7 +516,7 @@ worked before breaks. Lambda literals are deliberately **not** made infix: `f
 {lambda} x` must keep meaning `f({lambda}[x])`, and a purely syntactic parser cannot
 tell that apart from `noun {lambda} noun` the way q's type-aware one can. Verified
 against the reference: `x in y`, `x within y`, `t lj kt` and the rest produce output
-identical to kdb+/q and to the bracket form (`test.k`, 12 cases).
+identical to q and to the bracket form (`test.k`, 12 cases).
 
 ### Bare qSQL now works in a loaded `.k` file — no `sel"…"` wrapper
 
@@ -581,7 +581,7 @@ untouched). A non-qSQL script is passed through byte-for-byte. (`test_qsql.k` +
   `select … by sym` on 1M rows went 587&nbsp;ms → 34&nbsp;ms — Amber's own before/after
   (`docs/BENCHMARKS.md`, and the benchmarks page on the site). (`test.k`, 6 cases.)
 - Right-to-left evaluation of a function's bracketed arguments (already the case,
-  and matching kdb+/q) is now pinned by side-effect-based regression tests, together
+  and matching q) is now pinned by side-effect-based regression tests, together
   with nested/chained-bracket results, so a parser change can't silently flip them
   (`test.k`, 7 cases).
 
@@ -1681,7 +1681,7 @@ environment variable still works and now just seeds the initial value.
   Type-aware arithmetic: `10:00:00.000+00:00:05.000` → `10:00:05.000`, `date-date` → days,
   `date+n` → date, plus comparisons. String casts `"D"$`/`"T"$`/`"P"$`, accessors
   `year`/`month`/`day`/`dow`/`thh`/`tmm`/`tss`, and `` `i$`` to extract the raw value.
-  Columns keep numeric storage (as kdb does) so `xasc`/`s#` and name-based `time`-column
+  Columns keep numeric storage (as q does) so `xasc`/`s#` and name-based `time`-column
   display continue to work. Implemented across `a.h` (enum + type tables + `TU`/`TP` macros),
   `p.c` (literal scanner), `s.c` (formatter), `2.c` (arithmetic), `c.c` (casts).
 - **C-kernel window join.** `wj` moved from an interpreted per-row K loop to a C routine
@@ -1727,7 +1727,7 @@ environment variable still works and now just seeds the initial value.
   worker count (`=1` forces serial). Implemented as a new C primitive (`peachC` in `i.c`,
   wired through the `sym1` system-function table) — additive, so it can't affect the serial
   core. Fork-based (copy-on-write heap) so there are **no data races**: this matches how
-  kdb+ gets multi-core and avoids the atomic-refcount tax that shared-memory threading would
+  q gets multi-core and avoids the atomic-refcount tax that shared-memory threading would
   put on all single-threaded code. Unlike Python threads (GIL-bound), Amber's workers run on
   all cores at once. Best for coarse-grained, compute-heavy per-item work; see BENCHMARKS.md
   for when the fork/serialise overhead makes serial `'` the better choice.
@@ -1774,7 +1774,7 @@ environment variable still works and now just seeds the initial value.
   `spreadbps` `micro` `imbal`); trade analytics (`vwap` `twap` `tsign` `signedvol`
   `effspread` `notional`); returns/vol (`ret` `logret` `rvol` `movavg` `movsum` `movmax`
   `movmin` `ema` `rollstd`); `bars` (OHLCV) and `symstats`; and `pt` (time-formatted print).
-- **All four kdb attributes now exist in C**: `` `sa`` (sorted), `` `ua`` (unique),
+- **All four attributes now exist in C**: `` `sa`` (sorted), `` `ua`` (unique),
   `` `pa`` (parted), `` `ga`` (grouped); `` `at`` reports `s`/`u`/`p`/`g`; `meta` shows them.
   Sorted **and parted** columns get O(log n) kernel find; grouped + the group index give O(1)
   per-symbol slicing (see `bench-fin.k`: ~20,000x vs a linear scan).
@@ -1804,7 +1804,7 @@ environment variable still works and now just seeds the initial value.
   `NOTICE`, as the licence requires.)
 - **New banner** — a clean wordmark, no clutter.
 - **`bench.k`** — attribute speed harness (find/`in`, sorted vs unsorted, across sizes).
-- **`MISSING.md`** — an honest map of kdb+/q features not yet in Amber, with a roadmap.
+- **`MISSING.md`** — an honest map of q features not yet in Amber, with a roadmap.
 - **`round[d;x]`**, table-literal tests; suite now 104 assertions.
 
 
@@ -1824,6 +1824,6 @@ environment variable still works and now just seeds the initial value.
 - **CI**: GitHub Actions builds and runs the test suite (now 97 assertions) on every push.
 
 ## 1.0
-- Amber: a low-latency array language with a q/kdb+ vocabulary. Aggregations, dictionaries, tables, keyed tables,
+- Amber: a low-latency array language with a q vocabulary. Aggregations, dictionaries, tables, keyed tables,
   joins (`lj ij uj pj ej aj aj0 wj asof`), qSQL (`qwhere qselect qby fby xgroup ungroup`),
   strings, and **C-level sorted attributes** that turn `?`/`in` into O(log n) binary search.

@@ -97,8 +97,8 @@ This document records (1) **correctness cross-checks** of Amber against the main
 array/columnar tools (numpy + pandas), and (2) **speed benchmarks** on the same workloads.
 It also ships two **portable harnesses** in `bench/`: `run_suite.sh` (the 40-workload
 cross-engine suite behind §2, covering Amber, numpy/pandas, Polars and DuckDB) and `run.sh`
-(the original sanity harness, which additionally runs **growler/k** and **kdb+/q** the moment
-those are present on the machine).
+(the original sanity harness, which additionally runs **growler/k** the moment it is
+present on the machine).
 
 [§1](#1-sanity-checks--amber-vs-numpypandas--n--1000000) comes from `bench/bench.k` +
 `bench/bench.py`; [§2](#2-speed--amber-vs-numpypandas-polars-and-duckdb-ms-per-operation-single-core)
@@ -349,14 +349,6 @@ The rest of §2 compares Amber with the four engines the CI harness can install 
 columnar engine that could be made to run on one machine — PeachQ (Rayforce), ngn/k, CBQN, J,
 NumPy, pandas, Polars, DuckDB and a hand-written C reference — plus Amber's portable, native
 and qSQL configurations (every engine on one thread).
-
-> **On kdb+/q.** Amber's vocabulary is modelled on q, so it is the obvious comparison to want.
-> It is deliberately **not** published here. The runs were made under a KX evaluation licence,
-> which states that the licensee "will not disclose any benchmark, test or performance
-> information or any report which contains a competitive analysis regarding the Software to any
-> third party except as explicitly authorized in advance by us in writing." No such authorisation
-> was sought, so those figures are omitted — and the baseline throughout this section is the
-> hand-written C reference instead, which is a harder target anyway.
 
 The workloads, the data model and the fairness rules are specified once in
 [`bench/scout/SCOUT_SPEC.md`](../bench/scout/SCOUT_SPEC.md); every engine implements that document

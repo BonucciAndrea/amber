@@ -1,6 +1,6 @@
 \l amber.k
 / ============================================================================
-/ examples/tick.k  -  realistic intraday trades & quotes, kdb+/tick style.
+/ examples/tick.k  -  realistic intraday trades & quotes, tickerplant style.
 / run from the amber folder:   ./amber examples/tick.k
 / or from the REPL (./a):      \l examples/tick.k
 / ============================================================================

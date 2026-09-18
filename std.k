@@ -9,7 +9,7 @@
 / ============================================================================
 
 / ---- moving / window aggregates -------------------------------------------
-/ kdb semantics: a growing window for the first w-1 points, then a fixed w.
+/ q semantics: a growing window for the first w-1 points, then a fixed w.
 / .
 / All of msum/mavg/mvar/mdev/mmin/mmax now run as SINGLE-PASS O(n) C kernels
 / (`mw, src/v.c).  msum/mavg/mvar/mdev carry a running difference
@@ -18,7 +18,7 @@
 / monotonic index deque, which makes them O(n) *independent of the window* --
 / the K definitions below were O(n*w) AND built one index vector plus one slice
 / per element.  Nulls (0n) are treated as absent rather than poisoning every
-/ later element, which is what kdb does; on null-free input the results are
+/ later element, which is what q does; on null-free input the results are
 / identical to the K definitions.
 / .
 / Each wrapper keeps its original K definition as mXXXK and falls back to it

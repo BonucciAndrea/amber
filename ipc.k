@@ -2,7 +2,7 @@
 / ipc.k  -  IPC and a tick architecture for Amber.  Loaded after hdb.k.
 /   hopen/hclose/hsend/hrecv/hsync   raw-socket messaging (needs a peer)
 /   u.*                              an in-process tickerplant (pub / sub)
-/ NOTE on IPC: Amber's core speaks raw sockets (text), not the kdb+ binary
+/ NOTE on IPC: Amber's core speaks raw sockets (text), not the q binary
 / wire protocol, so hsync exchanges plain Amber expressions/results as text.
 / The tickerplant below is fully in-process and needs no network.
 / ============================================================================

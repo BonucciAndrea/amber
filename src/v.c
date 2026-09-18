@@ -135,7 +135,7 @@ X1(imn,RF(imn(of1(x)))RE(Lij x(0);az(NL*(i==j)))R_(fir(N(asc(x))))
 // `mw (code; w; x)  ->  the window aggregate as a vector, or () to tell the
 // caller (std.k) to fall back to the portable K definition.
 //
-// kdb/K window semantics: a GROWING window over the first w-1 points, then a
+// q/K window semantics: a GROWING window over the first w-1 points, then a
 // fixed w-wide window. The old K definitions were
 //     msum: sums 0.0+x  then a shifted subtraction   -- O(n) but three full
 //           materialised vectors and two passes
@@ -152,7 +152,7 @@ X1(imn,RF(imn(of1(x)))RE(Lij x(0);az(NL*(i==j)))R_(fir(N(asc(x))))
 //     msum -> the sum of the non-null members of the window (0 if all null)
 //     mavg -> sum / count-of-non-nulls, or 0n when the window is all null
 //     mmin/mmax -> the extreme of the non-null members, 0n when there are none
-// which is what kdb does and what the prefix-sum version could not do (one 0n
+// which is what q does and what the prefix-sum version could not do (one 0n
 // anywhere made every later element 0n). Integer nulls (0Ni/0N) are recognised
 // on the sum path and mapped to 0n. On null-free input every result is
 // identical to the K definitions it replaces.

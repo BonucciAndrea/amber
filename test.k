@@ -67,7 +67,7 @@ t[`attrIsSet;`at bAttr;`s]
 t0:`t[];rr0:bAttr?q;t1:`t[]
 t2:`t[];rr1:base?q;t3:`t[]
 t[`attrSpeedup;(t3-t2)>2*1|t1-t0;1]
-/ the four kdb-style attributes
+/ the four q-style attributes
 t[`attrSorted;`at(`sa 1 2 3);`s]
 t[`attrUnique;`at(`ua 3 1 2);`u]
 t[`attrParted;`at(`pa 1 1 2 2);`p]
@@ -334,9 +334,9 @@ t[`infixCross;   1 2 cross 3 4;         cross[1 2;3 4]]
 t[`infixBracketStillWorks; in[1 2 3;2 3]; 0 1 1]
 t[`infixLj; (([]k:1 2 3;v:`a`b`c) lj ([k:1 2]w:10 20)); lj[([]k:1 2 3;v:`a`b`c);([k:1 2]w:10 20)]]
 
-/ ---- nested/chained brackets: right-to-left evaluation (matches kdb+/q) ----
+/ ---- nested/chained brackets: right-to-left evaluation (matches q) ----
 / Amber evaluates a function's bracketed arguments RIGHT-to-LEFT, exactly as
-/ kdb+/q does (verified: `f[mark 1;mark 2;mark 3]` logs 3 2 1 in both).  These
+/ q does (verified: `f[mark 1;mark 2;mark 3]` logs 3 2 1 in both).  These
 / pin that order (via side effects) and the nested/chained-bracket results so a
 / parser change can never silently flip them.
 RTLOG:()

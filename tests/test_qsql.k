@@ -160,7 +160,7 @@ tqe[`emptyQuery;    "sel\"\""];
 tqk[`byOnly;        "select by sym from trades"];
 tqk[`starWhere;     "select * from trades where sz>2"];
 tqk[`nestedAgg;     "select t:sum px*sz by sym from trades"];
-/ An unknown by-key now RAISES, the way kdb+ does.  Until 1.9.7 the by-clause was
+/ An unknown by-key now RAISES, the way q does.  Until 1.9.7 the by-clause was
 / turned into a symbol of its own source text and grouping on a column no table
 / has collapsed every row into one null-keyed group, so the query returned a
 / single wrong row and returned it silently.  By-items are compiled like any

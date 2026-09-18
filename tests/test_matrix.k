@@ -140,7 +140,7 @@ tv[`enlEnl;"#,,1";1];
 tv[`oneVsAtom;"(+/,7)~+/7";1b];
 
 / ======================== 5. special / null values ==========================
-/ NOTE: like kdb+, Amber does NOT propagate the LONG null through arithmetic --
+/ NOTE: like q, Amber does NOT propagate the LONG null through arithmetic --
 / 0N is LLONG_MIN and 0N+1 wraps to -0W. Float nulls (0n) DO propagate.
 tv[`nullAddI;"0N+1";-9223372036854775807];
 tv[`nullAddF;"0n+1.0";0n];
@@ -180,7 +180,7 @@ tv[`nullDistinct;"#?0N 0N 1";2];
  t[`$"whereBool.",$n;      #&x>0;             +/x>0];
  }'small;
 / attributes: Amber spells these `sa/`ua/`pa/`ga (setter) and `at (getter),
-/ NOT kdb's `s#/`u#/`p#/`g# -- see README "Attributes".
+/ NOT q's `s#/`u#/`p#/`g# -- see README "Attributes".
 tv[`attrSorted;"`at(`sa 1 2 3)";`s];
 tv[`attrUnique;"`at(`ua 3 1 2)";`u];
 tv[`attrParted;"`at(`pa 1 1 2 2)";`p];

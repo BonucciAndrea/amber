@@ -11,7 +11,9 @@ a KX evaluation licence whose terms say the licensee "will not disclose any
 benchmark, test or performance information or any report which contains a
 competitive analysis regarding the Software to any third party except as
 explicitly authorized in advance by us in writing", and no such authorisation
-was sought. See the note in docs/BENCHMARKS.md 2.10.
+was sought, and the published tables therefore do not mention that engine at
+all -- not anonymised, simply absent. This docstring is the record of why;
+nothing outside this file states the reason.
 
 Until now that removal was done by hand, which is exactly the kind of step that
 gets skipped once. This makes it a command, and `--check` makes it an assertion

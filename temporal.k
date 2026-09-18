@@ -1,6 +1,6 @@
 / ============================================================================
 / temporal.k  -  a temporal-types layer for Amber.  Loaded after qsql.k.
-/ Values are held numerically (kdb-style, epoch 2000.01.01):
+/ Values are held numerically (q-style, epoch 2000.01.01):
 /   date       = integer days since 2000.01.01   (2000.01.01 -> 0)
 /   timestamp  = long nanoseconds since 2000.01.01
 / with constructors, formatting, parsing, arithmetic and day-of-week.

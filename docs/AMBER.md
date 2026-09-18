@@ -1,7 +1,7 @@
 # Amber
 
 **Amber** is a low-latency **array language**: a fast, compact array interpreter that provides
-the major functionality of **q/kdb+** — aggregations, dictionaries, tables, keyed tables,
+the major functionality of **q** — aggregations, dictionaries, tables, keyed tables,
 the join family (left / inner / union / plus / equi / **as-of** / **window**), a qSQL‑style
 select/by, string utilities, and **column attributes** that accelerate search.
 
@@ -106,11 +106,11 @@ Amber is q semantics in a terse array notation, at array-language speed.
 
 ### Dialect notes (important)
 
-Amber follows a terse **array grammar**, which differs from kdb+/q in a few ways you must know:
+Amber follows a terse **array grammar**, which differs from q in a few ways you must know:
 
 * **The two-argument library dyads work infix *or* in bracket form (since 2.0.0).** The join
   family and the set/search dyads — `in within like lj ij uj aj aj0 wj wj1 pj ej cross inter
-  union except ss sv vs xasc xdesc` — may be written `x f y` just like kdb+/q, as well as
+  union except ss sv vs xasc xdesc` — may be written `x f y` just like q, as well as
   `f[x;y]`: `t lj kt`, `2 3 in 1 2`, `5 within 3 9`, `` `sym xasc t``, `` "/" sv `a`b`c`` all work,
   and are identical to the bracket call. Built‑in verbs
   (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) are infix as usual. An *arbitrary* user lambda is
@@ -252,7 +252,7 @@ explicit `` `sa``.
 ## 6. Dictionaries, tables and keyed tables
 
 A **dictionary** is `keys!values`; a **table** is a flipped column dictionary `+d` (type `` `M``);
-a **keyed table** is a dictionary whose key *and* value are both tables (exactly kdb+’s model).
+a **keyed table** is a dictionary whose key *and* value are both tables (exactly q’s model).
 
 ```k
 t:([]sym:`a`b`c; px:100 200 300; sz:10 20 30)   / a 3-row table (literal syntax)
@@ -436,8 +436,8 @@ Pass several aggregates at once: `((`mx;max;`bid);(`mn;min;`bid);(`n;count;`bid)
 
 ### What was added
 
-kdb+ attaches *attributes* to vectors to speed up operations. Amber implements **all four
-kdb+ attributes** — sorted (`` `s``), unique (`` `u``), parted (`` `p``) and grouped (`` `g``) —
+q attaches *attributes* to vectors to speed up operations. Amber implements **all four
+of them** — sorted (`` `s``), unique (`` `u``), parted (`` `p``) and grouped (`` `g``) —
 at the **kernel level**, because that is where search lives. Five symbol‑verbs are exposed by
 the interpreter:
 
@@ -492,7 +492,7 @@ at least 2× faster on a 200k sample.
   ```
 
 The attribute is intentionally **dropped by operations that build new vectors** (the byte is
-zero on allocation), matching kdb+ semantics: it is a promise about *this* vector’s current
+zero on allocation), matching q semantics: it is a promise about *this* vector’s current
 contents, re‑established by `asc`/`` `sa`` when you know the data is ordered.
 
 Only integer widths are accelerated; floats and symbols keep the scan (raw‑bit order ≠ value
@@ -525,7 +525,7 @@ AMBER_THREADS=8 ./amber examples/peach.k   / a Monte-Carlo demo timing serial vs
 ```
 
 It uses `fork` (copy-on-write heap), so there are no shared-memory data races and no
-atomic-refcount tax on ordinary single-threaded code — the same reason kdb+ parallelises
+atomic-refcount tax on ordinary single-threaded code — the same reason q parallelises
 with processes rather than threading its interpreter. And with no GIL, every worker runs on
 a real core at once. Use it for **coarse-grained, compute-heavy** per-item work (Monte-Carlo,
 per-symbol fits, bootstraps, parallel loads); for fine-grained work the fork + serialise
@@ -854,11 +854,11 @@ year 2026.07.30                 / accessors: year month day dow  ·  thh tmm tss
 `i$2026.07.30                   / extract the raw numeric value
 ```
 
-Columns keep numeric storage (as kdb does internally), so `xasc` and the `s#` attribute work
+Columns keep numeric storage (as q does internally), so `xasc` and the `s#` attribute work
 unchanged and a `time`-named column auto-renders as `HH:MM:SS.mmm` in a grid.
 
 Underneath, a **time of day** is an integer number of **milliseconds since midnight**, the
-same convention as kdb+’s `time`. The q dotted temporal accessors map to plain Amber calls:
+same convention as q’s `time`. The q dotted temporal accessors map to plain Amber calls:
 
 | q            | Amber        | meaning                              |
 |--------------|--------------|--------------------------------------|
@@ -934,7 +934,7 @@ form, a large slice of q's system vocabulary:
 
 * **`std.k`** — vectorised **moving aggregates** (`mcount msum mavg mprd mvar mdev mmin mmax`,
   O(n) prefix sums), a little linear algebra (`dot`, `mmu`), **`parse`/`eval`/`reval`** and a
-  text **`ser`/`deser`** round‑trip (portable Amber text, *not* the kdb binary `-8!`/`-9!`),
+  text **`ser`/`deser`** round‑trip (portable Amber text, *not* the q binary `-8!`/`-9!`),
   `protect` (like `.Q.trp`), typed cast helpers, `peach`, and `ts` (time an expression).
 * **`sys.k`** — the `.z` clocks/handlers (`z.p z.P z.n z.d z.D z.t z.T z.z`; `z.pg z.ps z.po
   z.pc z.ts z.exit` are stubs), `.Q` utilities (`Q.f Q.fmt Q.s Q.ty Q.qt Q.id Q.dd Q.gc Q.w
@@ -944,7 +944,7 @@ form, a large slice of q's system vocabulary:
   database with `par.txt`). Storage is portable Amber text read back with `eval` — human‑readable
   and version‑independent, but not memory‑mapped.
 * **`ipc.k`** — raw‑socket messaging (`hopen hclose hsend hrecv hsync`, text protocol — not the
-  kdb binary wire) and an in‑process tickerplant (`u.def u.sub u.pub u.get u.end`).
+  q binary wire) and an in‑process tickerplant (`u.def u.sub u.pub u.get u.end`).
 
 ## Help inside the REPL
 

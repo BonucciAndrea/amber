@@ -12,7 +12,7 @@
 #   5. adds the Amber shell block to the rc file YOUR shell actually reads
 #
 # Installs NOTHING system-wide, needs no root, and never touches your other
-# k/q installs (kdb+, kona, ngn/k, ...). Everything lives in this folder;
+# k/q installs (kona, ngn/k, ...). Everything lives in this folder;
 # deleting the folder uninstalls Amber completely.
 #
 # Options:
@@ -245,7 +245,7 @@ if [ "$DO_ALIAS" = 1 ]; then
 # with no bin/ directory and nothing installed system-wide.
 export AMBER_HOME="$here"
 
-# amber  -> the full REPL: loads repl.k, the q/kdb+ vocabulary and the stdlib.
+# amber  -> the full REPL: loads repl.k, the q vocabulary and the stdlib.
 # AMBER_NATIVE is read by build.sh, which ./a re-runs whenever the sources are
 # newer than the binary -- so the first run after a git pull rebuilds with
 # -march=native (or -mcpu=native on Apple Silicon / aarch64).

@@ -1,7 +1,7 @@
 \l amber.k
 \l fin.k
 / ============================================================================
-/ examples/attributes.k  -  the four kdb-style column attributes.
+/ examples/attributes.k  -  the four q-style column attributes.
 / ============================================================================
 hr:{`0:"";`0:"== ",x," ",(48-#x)#"=";}
 

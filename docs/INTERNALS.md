@@ -37,7 +37,7 @@ Three properties are worth stating explicitly, because they are what the layout 
 
 * **No optional feature is switched off.** Everything in `src/` is compiled, always. There is no
   AI code, no network code and no TLS anywhere in this repository — `grep -r socket src/` finds
-  only `src/0.c`'s IPC support, the same code kdb-style `hopen` uses.
+  only `src/0.c`'s IPC support, the same code a q-style `hopen` uses.
 * **`src/ln.c` has no interpreter dependency.** It includes `<termios.h>` and `src/ext.h` and
   nothing else of Amber's; the interpreter-facing verb lives in the separate `src/lnk.c`. The
   editor can be lifted into another project as-is.

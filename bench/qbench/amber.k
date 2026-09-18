@@ -1,4 +1,6 @@
-/ bench/qbench/amber.k - Amber side of the kdb+/q comparison (docs/BENCHMARKS.md 2.9).
+/ bench/qbench/amber.k - Amber side of the private comparison harness. Its results
+/ are NOT publishable: see bench/scout/strip_private.py for why, and run that over
+/ any results file before it is committed or rendered.
 / Run:  ./amber bench/qbench/amber.k     (or with AMBER_NATIVE=1 for -march=native)
 / Identical closed-form data to bench/qbench/q.q (no RNG), so the two are like-for-like.
 \l amber.k

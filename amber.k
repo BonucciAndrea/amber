@@ -1,5 +1,5 @@
 / ============================================================================
-/ Amber standard library  -  the q/kdb+ vocabulary of the Amber array language.
+/ Amber standard library  -  the q vocabulary of the Amber array language.
 / (c) 2026 the Amber authors.  GNU AGPLv3 (see LICENSE and NOTICE).
 / One definition per line (an Amber statement is a line).  Loaded at startup.
 / ============================================================================

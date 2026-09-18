@@ -1,9 +1,9 @@
-# Amber vs kdb+/q — what's still missing
+# What's still missing
 
 Amber covers a large slice of q's *vocabulary* (aggregations, dicts, tables, keyed tables,
 the join family, qSQL-style select/by, strings, tick bars, native temporal types, all four
 attributes, moving aggregates, a text-based on-disk / IPC layer, and the `.z`/`.Q`/`.j`/`.h`
-namespaces). This is an honest map of what kdb+/q has that Amber does **not** yet — roughly in
+namespaces). This is an honest map of what a full q implementation has that Amber does **not** yet — roughly in
 order of how much it would change day-to-day use. "partial" means some of it exists.
 
 ## 0. New in 1.9 (not q gaps — Amber-specific)
@@ -14,7 +14,7 @@ above; they're recorded for completeness:
   `aj`/`aj0` are covered; **on-disk `aj` over partitions** is still missing (see §4).
 - **HFT zero-allocation arena** — a thread-local 16 MB bump allocator for the transient buffers
   produced during evaluation, rewound per eval cycle to keep `malloc`/`free` jitter off the hot
-  path. (q has no user-facing equivalent; kdb+ manages this internally.)
+  path. (q has no user-facing equivalent; it is managed internally there.)
 - **Rust-style diagnostics** — opt-in (`AMBER_DIAG=1`) `error[CODE]` reports with a `-->` locator,
   a gutter-aligned source line, `^^^` underlines and a `= help:` note. This is *richer* than q's
   single-line `'error` and than Amber's own default caret line, which both remain.
@@ -74,7 +74,7 @@ Amber now has a **text-serialised** on-disk layer: `dset`/`dget` (value ↔ sing
 value, with `par.txt`). Files are portable Amber text read back with `eval`, so they are
 human-readable and version-independent.
 - **Still missing:** true **date-partitioned** on-disk format, **memory-mapping** (data is fully
-  read into RAM, not mapped), `.Q.dpft` (save partitioned in kdb layout), `.Q.en` (enumerate
+  read into RAM, not mapped), `.Q.dpft` (save in the partitioned layout), `.Q.en` (enumerate
   syms), `.Q.chk`, `.Q.ind`, `.Q.fs`/`.Q.fsn` (chunked file streaming), on-disk `aj` over
   partitions, and a binary (not text) on-disk encoding.
 
@@ -82,13 +82,13 @@ human-readable and version-independent.
 Amber now ships `hopen`/`hclose`/`hsend`/`hrecv`/`hsync` (raw-socket messaging) and an
 **in-process tickerplant** — `u.def` (define a stream), `u.sub`/`u.pub` (subscribe / publish),
 `u.get`/`u.end`. `.z.pg`/`.z.ps` handlers exist as evaluate-stubs in `sys.k`.
-- **Still missing:** the kdb+ **binary wire protocol** (Amber's sockets exchange plain text
+- **Still missing:** q's **binary wire protocol** (Amber's sockets exchange plain text
   expressions, not IPC-encoded messages), real over-the-network `.z.pg`/`.z.ps`/`.z.po`/`.z.pc`
   handler dispatch, `.z.w`, websockets, TLS, and the full multi-process tickerplant / RDB / HDB /
   gateway pattern (`tick.q`, `r.q`, `u.q`, `w.q`).
 
 ## 6. Attributes — 4 of 4 (setters); find accel on 2
-All four kdb+ attributes are set in C: **sorted (`` `sa``)**, **unique (`` `ua``)**,
+All four attributes are set in C: **sorted (`` `sa``)**, **unique (`` `ua``)**,
 **parted (`` `pa``)**, **grouped (`` `ga``)**, read back with `` `at``. **Sorted and parted**
 vectors take the O(log n) binary-search find path; grouped pairs with `fin.k`'s group index
 (`bysym`/`symrows`) for O(1) per-symbol slicing.
@@ -148,7 +148,7 @@ Amber text via `` `k``, inverted by `eval`) and `protect` (like `.Q.trp`). Amber
 ## 12. Concurrency & performance ops — partial
 `peach` is real **multi-core** (forks `AMBER_THREADS` worker processes, C kernel), and `ts`
 (`\ts`) times an expression.
-- **Still missing:** kdb-style secondary threads (`-s`), a *parallel* `.Q.fc` (Amber's is a
+- **Still missing:** q-style secondary threads (`-s`), a *parallel* `.Q.fc` (Amber's is a
   sequential fallback), map-reduce over on-disk partitions, and compression. `peach` currently
   shipped each worker's result back as **text** (`` `k``) until 1.9.3; it now uses the binary
   serialiser (§11), which cut
@@ -214,7 +214,7 @@ Surfaced by the qSQL matrix (`tests/test_qsql.k`) and pinned there with `tk[...]
 behaviour shows up as a test failure rather than a silent regression.
 
 - ~~**Unknown `by` key does not raise.**~~ **Fixed in 1.9.7.** `select t:sum px by nosuchkey from t`
-  used to group by nulls instead of rejecting the query the way kdb+ does. The old `qbc` turned
+  used to group by nulls instead of rejecting the query the way q does. The old `qbc` turned
   each by-item into a symbol of its own source text, so grouping ran on a column no table has and
   `` b#+t`` yielded nulls. `qbyx` now compiles by-items with the same `qfn` machinery the
   select-list uses, so an unknown name raises as an undefined variable and — the reason the fix
@@ -230,7 +230,7 @@ behaviour shows up as a test failure rather than a silent regression.
   primitives themselves.
 - **`5#0#0` promotes byte/narrow-int nulls to long nulls.** `cn[tG]` aliases the long null, so a
   take from an empty narrow vector widens the element type.
-- **Attribute syntax is `` `sa``/`` `ua``/`` `pa``/`` `ga`` (set) and `` `at`` (get), not kdb's
+- **Attribute syntax is `` `sa``/`` `ua``/`` `pa``/`` `ga`` (set) and `` `at`` (get), not q's
   `` `s#``/`` `u#``/`` `p#``/`` `g#``.** Several doc passages still write `s#` informally when
   describing the sorted attribute; the working syntax is `` `at(`sa 1 2 3)``.
 - **`f [a;b]` with a space is not a call.** K reads `[a;b]` as a bracketed statement block, so

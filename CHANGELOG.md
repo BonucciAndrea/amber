@@ -1428,7 +1428,7 @@ environment variable still works and now just seeds the initial value.
   gets its own query file per workload, with a header comment on each documenting what
   engine-level optimization was tried, what it measured, and — for the ideas that didn't pay
   off — why not. See the README's
-  [Comparative benchmark query files](README.md#comparative-benchmark-query-files) section
+  [Comparative benchmark query files](docs/BENCHMARKS.md#comparative-benchmark-query-files) section
   for a summary, or the files themselves for the full detail.
 - **`check_parity()`** added to `bench/run_comparative.py`: runs `amber_<id>.k` and `k_<id>.k`
   once each before the timed runs and compares their printed output, so a claimed speed win can

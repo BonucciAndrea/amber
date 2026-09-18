@@ -345,7 +345,7 @@ directly, exactly as `test.k` and every script under `examples/` already do.
 | `qby[t;b;a]`         | `select … by b` → **keyed table**              |
 | `xgroup[k;t]`        | `` `k xgroup t`` (nested value columns)         |
 | `ungroup x`          | flatten nested columns                          |
-| `fby[(f;d);g]`       | `(f;d) fby g`                                   |
+| `fby[(f;d);g]`       | `(f;d) fby g` — `g` may be one column, a list of columns, or a table; works inside a where-clause |
 | `insert[t;r]`        | append rows                                     |
 
 `a` (the aggregate spec) is a dictionary from result‑name to a function that receives the group
@@ -362,7 +362,12 @@ qby[t;`sym;`tot`avgpx!({sum x`sz};{avg x`px})]
 /  =>  (+(,`sym)!,`a`b) ! +`tot`avgpx!(90 60; 300.0 300.0)
 
 / fby: group-broadcast (sum sz within each sym, aligned to rows):
-fby[(sum;t`sz);t`sym]    / 90 60 90 60 90
+fby[(sum;t`sz);t`sym]                  / 90 60 90 60 90
+/ ... on several group columns, as a list of columns or as a table:
+fby[(sum;t`sz);(t`sym;t`ex)]           / grouped on the (sym;ex) pair
+fby[(sum;t`sz);([]s:t`sym;e:t`ex)]     / the same thing
+/ and infix, inside a where-clause, exactly as in q:
+sel"select from t where px=(max;px) fby sym"
 ```
 
 `qby` returns a **keyed table** keyed on the by‑columns, just like q.
@@ -964,7 +969,7 @@ compiles an expression and prints the real bytecode Amber's compiler/VM (`src/b.
 it — locals, constant pool, instruction stream — without executing it (`src/vm.{h,c}`).
 
 **Engine extensions** (all additive, standalone modules — see the README's
-[Engine extensions](../README.md#engine-extensions) section for full detail and benchmarks):
+[Engine extensions](INTERNALS.md#engine-extensions) section for full detail and benchmarks):
 SIMD vector kernels (`src/simd.{h,c}`, AVX2/NEON/scalar, self-test `` `simd 0``), a
 multithreaded vector engine for arrays over 100,000 elements (`src/parallel.{h,c}`, self-test
 `` `para 0``), and a native CSV parser that reads a file straight into a typed table

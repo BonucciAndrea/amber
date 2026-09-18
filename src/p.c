@@ -16,12 +16,25 @@ Z L plN(S*p)_(L v=pl(p);!v&&**p=='N'?(*p)++,NL:v)                               
 // behaviour reachable from a malformed literal such as `1.5e` or `1.5each`,
 // found by tests/fuzz.py under UBSan. Both the mantissa and the exponent are
 // now normalised before use: a no-digit mantissa reads as 0, and the exponent
-// is accumulated in L and clamped to the +/-309 the power table covers
-// before it is narrowed to I.
+// is accumulated in L and clamped before it is narrowed to I.
+//
+// amber 2.2: an exponent outside the power table's range used to return EARLY,
+// before `*p=s`, so the parse cursor was never advanced past it. `1e-309` left
+// `e-309` sitting in the input and the whole literal died with 'value; `1e309`
+// did the same. Every SUBNORMAL double was therefore unwritable as a literal --
+// which is a round-trip hole, not only a nuisance: std.k's text ser/deser is
+// `k followed by eval, so a table holding one serialised to text that could not
+// be read back.
+//
+// Both returns now advance the cursor, and the small-exponent case scales in
+// two steps (v/1e308 then /1e(-e-308)) instead of answering 0, so a subnormal
+// parses to its actual value. Below about 1e-616 the result genuinely is 0.
 Z L pfu(S*p)_(L v=pu(p);I(v==NL,v=0)S s=*p;C c=*s;P(c=='w',(*p)++;WFL)P(c=='n',(*p)++;v^NFL)I e=0;  //parse float unsigned
- I(c=='.',c=*++s;W(C09(c),I((W)v<(1ull<<63)/10,v=(L)(10*(W)v+(W)(c-'0'));e--)c=*++s))
- I(c=='e',s++;L d=pl(&s);I(d==NL,d=0)d+=e;e=(I)MAX(-400ll,MIN(400ll,d));P(e<-308,0)P(e>308,WFL))
  Z F t[309];I(!*t,*t=1;F(308,t[i+1]=10*t[i]))
+ I(c=='.',c=*++s;W(C09(c),I((W)v<(1ull<<63)/10,v=(L)(10*(W)v+(W)(c-'0'));e--)c=*++s))
+ I(c=='e',s++;L d=pl(&s);I(d==NL,d=0)d+=e;e=(I)MAX(-700ll,MIN(400ll,d));
+  I(e>308,*p=s;return WFL;)
+  I(e<-308,*p=s;I(e<-616,return 0;)F r_=((F)v/t[308])/t[-e-308];return *(L*)&r_;))
  *p=s;*(L*)A(e<0?v/t[-e]:v*t[e]))
 L pf(S*p)_(B m=**p=='-';(*p)+=m;L v=(L)((W)m<<63)|pfu(p);(*p)+=**p=='f';v)                               //parse float
 Z A pV(C t,TY(pl)*f)_(L a[1<<9];U n=0;                                                              //parse ints or floats
@@ -75,13 +88,50 @@ Z A pTmp(){S p=s;if(!C09(*p))return 0;W a=0;S q=p;while(C09(*q)){a=10*a+(W)(*q-'
 // The `*s!=':'` guard at the call site keeps the name an ordinary lvalue while it
 // is being DEFINED (`in:{...}` in amber.k) or amended.
 Z B infixkw(S p,U n)_(static CO C*const kw[]={"in","within","like","lj","ij","uj","aj","aj0","wj","wj1","pj","ej","cross","inter","union","except","ss","sv","vs","xasc","xdesc"};F(L(kw),P(SL(kw[i])==n&&!memcmp(kw[i],p,n),1))0)
+// amber 2.2: the parameter names of the lambda currently being parsed.
+//
+// The infix decision above is made from the NAME, and until now from nothing
+// else -- so a name that is a PARAMETER of the enclosing lambda was still read
+// as a verb:
+//     f:{[r;ss] ... 1_ss ... }
+// parsed `ss` as the string-search verb, which makes `1_ss` a projection rather
+// than a drop. The function then silently returned its input. 21 names are
+// affected and none of them errors.
+//
+// Only the INNERMOST frame is consulted, and that is exactly right rather than
+// a simplification: k has no closures, so a name that is an outer lambda's
+// parameter genuinely is a global reference when it appears inside an inner
+// lambda, and reading it as the verb there is the correct behaviour.
+Z A pfrm;
+Z B isparm(S p,U n){
+ I(!pfrm||_t(pfrm)!=tS,return 0)
+ U m=_n(pfrm);
+ F(m,S q=su((U)_I(pfrm)[i]);I(SL(q)==n&&!memcmp(q,p,n),return 1))
+ return 0;}
 Z A pt(C*v)_(C c=*s;                                                                                //parse term
  P(c=='`',qte(p1(N(pS('`')))))
  P(c=='"',p1(pC()))
  P(c=='[',s++;pb(GAP,']'))
  P(c=='(',s++;P(*s=='[',amtbl())P(*s==')',s++;emp(tA))A x=N(pb(MKL,')'));xn-2?x:las(x))
- P(c=='{',C k0=k;k=1;S s1=s0,t=s0=s++;A y=N(pp()),z=pb(GAP,'}');P(!z,s0=s1;y(0))I(y==au,y=aS(k);F(3,yi='x'+i))A x=N(cpl(aCn(t,s-t),z,y));s0=s1;k=k0;x)
- P(id0(c),S p=s;A x=pP();I(s-p==1&&c-'y'<2u,k=MAX(k,c-'w'))I((infixkw(p,s-p)||am_infix_dyad(p,s-p))&&*s!=':',*v=1)AO(p-s0,x))
+ P(c=='{',C k0=k;k=1;S s1=s0,t=s0=s++;A y=N(pp());
+  // The body is parsed with this lambda's parameters in scope, so pt() below
+  // does not read one of them as an infix verb. Saved and restored rather than
+  // just cleared, because lambdas nest. An implicit-argument lambda has no
+  // parameter list yet (y is au here; x/y/z are filled in after the body is
+  // parsed), and none of those three single letters is an infix name.
+  A pf0=pfrm;pfrm=y==au?0:y;
+  A z=pb(GAP,'}');
+  pfrm=pf0;
+  P(!z,s0=s1;y(0))I(y==au,y=aS(k);F(3,yi='x'+i))A x=N(cpl(aCn(t,s-t),z,y));s0=s1;k=k0;x)
+ // A name reads as an infix verb when it is one of the curated keywords or a
+ // rank-2 global -- but NOT when it is a parameter of the lambda being parsed,
+ // and NOT when the program has rebound it to something that is not a rank-2
+ // function. Without those two exclusions the reading is made from the name
+ // alone, and `{[r;ss] 1_ss}` or a top-level `ss:5` silently turned a drop into
+ // a projection. `*s!=':'` still keeps the name an ordinary lvalue while it is
+ // being defined or amended.
+ P(id0(c),S p=s;A x=pP();I(s-p==1&&c-'y'<2u,k=MAX(k,c-'w'))
+  I((infixkw(p,s-p)||am_infix_dyad(p,s-p))&&*s!=':'&&!isparm(p,s-p)&&!am_name_nonfn(p,s-p),*v=1)AO(p-s0,x))
  P(C09(c)&&s[1]==':',B u=s[2]==':';s+=2+u;U i=20+c-'0';P(i>25,ep0())*v=1;Lt(tv-u)|i)
  P(c=='0'&&s[1]=='x',s+=2;p1(p0x()))
  P(num(s)&&(c-'-'||s==s0||(!id1(s[-1])&&!strchr(")]}\"",s[-1]))),

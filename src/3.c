@@ -269,3 +269,32 @@ AA(fmaC,/*10..0*/P(n!=4,en(*a))L sb=gl(*a);A x=a[1],sc=a[2],b=a[3];
  I(_tF(x)&&_tF(b)&&xn==_n(b)&&(_tf(sc)||_tz(sc)),F sv=_tf(sc)?*_F(sc):(F)gl_(sc);A z=MINE(b)?b:MINE(x)?x:aF(xn);
   simd_fma_f64(xV,sv,_V(b),zV,xn,(int)sb);_at(z)=0;return z==b||z==x?_R(z):z;)
  A t=v2[3](sc,_R(b));P(!t,0)v2[sb?2:1](x,t))
+// ---- amber 2.2: +/(a +- s*b)@&m -- the whole chain in one pass -------------
+// The compiler (src/b.c fus()) emits this for `+/(a+s*b)@&m` and its `-` and
+// operand-order variants. Every piece of it was ALREADY fused -- fmaC does
+// a+-s*b, cmprC does x@&m, fredC does +/x@&m -- but chained they still wrote
+// and re-read a full-width intermediate for the arithmetic: at 10M float64
+// that is 80 MB stored and 80 MB loaded that nothing else ever reads, which is
+// most of what separated this expression from the same loop written in C.
+// simd_masksum_fma_f64 is bit-identical to the chain (the product is rounded
+// before the add, and the accumulation tree is the one simd_masksum_f64 uses),
+// so fusing cannot move an answer.
+// Anything the kernel does not handle -- a non-float operand, a length
+// mismatch, a mask byte above 1 -- is computed by calling fmaC and then fredC,
+// i.e. by running EXACTLY the unfused program through the same two entry points
+// the compiler would have emitted without this rule.
+// The fallback runs the unfused program through the SAME two entry points the
+// compiler would have emitted without this rule -- fmaC for the arithmetic,
+// then fredC's masked sum -- rather than re-deriving the chain here, so the two
+// paths cannot drift apart and the ownership rules are the proven ones.
+Z A fmsslow(L sb,A x,A sc,A b,A m){
+ A fa[4];fa[0]=az(sb);fa[1]=x;fa[2]=sc;fa[3]=b;
+ A u=fmaC(fa,4);if(!u)return 0;
+ A fr[3];fr[0]=az(18);fr[1]=u;fr[2]=m;
+ A r=fredC(fr,3);mr(u);return r;}
+AA(fmsC,/*10..0*/P(n!=5,en(*a))L sb=gl(*a);A x=a[1],sc=a[2],b=a[3],m=a[4];
+ I(_tF(x)&&_tF(b)&&xn==_n(b)&&(_tf(sc)||_tz(sc))&&!_tP(m)&&_t(m)==tG&&_n(m)&&_n(m)<=xn,
+  F sv=_tf(sc)?*_F(sc):(F)gl_(sc);int bad=0;
+  F r=simd_masksum_fma_f64(xV,sv,_V(b),_V(m),_n(m),(int)sb,&bad);
+  I(!bad,return af(r)))
+ fmsslow(sb,x,sc,b,m))

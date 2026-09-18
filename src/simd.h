@@ -113,9 +113,32 @@ int64_t simd_masksum_u8(const unsigned char *m, size_t n, unsigned *orv);
 /* +/x@&m in one pass; *bad=1 when a mask byte exceeds 1. */
 double  simd_masksum_f64(const double *a, const unsigned char *m, size_t n, int *bad);
 int64_t simd_masksum_i64(const int64_t *a, const unsigned char *m, size_t n, int *bad);
+/* amber 2.2: +/(a +- s*b)@&m in one pass -- no full-width intermediate for the
+ * arithmetic. Bit-identical to simd_fma_f64 followed by simd_masksum_f64
+ * (product rounded before the add, same 16-lane accumulation order).
+ * sub=0 for a+s*b, sub=1 for a-s*b. *bad=1 when a mask byte exceeds 1. */
+double  simd_masksum_fma_f64(const double *a, double s, const double *b,
+                             const unsigned char *m, size_t n, int sub, int *bad);
 /* Float range scan: 1 if all finite, integral, |x|<=2^53 and no -0.0; then
  * *mn/*mx hold the min/max and *sorted whether the vector is non-decreasing. */
 int simd_frange_f64(const double *a, size_t n, double *mn, double *mx, int *sorted);
+/* amber 2.2: the two halves simd_frange_f64 is now composed of, exposed so a
+ * caller that does not always need the integrality verdict can skip the
+ * second pass. Both run at memory bandwidth; the fused loop did not.
+ *   frange0   min, max, non-decreasing, and *special (the flags below).
+ *             Needs n >= 1, always fills every out-parameter, never fails.
+ *             *sorted may only be trusted when *special is 0 -- IEEE `<`
+ *             calls -0.0 and 0.0 equal and every NaN unordered, so with
+ *             either present "non-decreasing" is not the collation order.
+ *   fintegral 1 when every element is integral and |x| <= 2^53 (NaN and the
+ *             infinities fail that); -0.0 is integral and is frange0's to
+ *             report, not this one's. n may be 0.
+ * simd_frange_f64(a,n,...) == frange0(...) && !special && fintegral(a,n). */
+#define SIMD_FR_NAN  1
+#define SIMD_FR_NEGZ 2
+void simd_frange0_f64(const double *a, size_t n, double *mn, double *mx,
+                      int *sorted, int *special);
+int  simd_fintegral_f64(const double *a, size_t n);
 
 #ifdef __cplusplus
 }

@@ -212,9 +212,54 @@ t[`qrwfInString;qrwf"y:\"select px from t\"";  "y:\"select px from t\""]
 / keys are first-appearance order (c,a,b) and aggregates are correct
 t[`selectBySymGroup; sel"select s:sum v by k from ([]k:`c`a`b`a`c; v:1 2 3 4 5)"; ([k:`c`a`b] s:6 6 3)]
 
+/ ---- amber 2.2: select[...] -- q's sorted and limited select --------------
+/ Order is q's: where, then by/select, then sort, then limit.  A sort spec is
+/ ">expr" or "<expr"; anything else in the bracket is the row limit.  Several
+/ sort keys apply right-to-left so the FIRST one listed is the primary key.
+st:([]sym:`c`a`b`a`c`b; px:3.0 1 2 4 6 5; sz:30 10 20 40 60 50)
+t[`selLimit;      sel"select[3] from st";        3#st]
+t[`selLimitNeg;   sel"select[-2] from st";       -2#st]
+t[`selLimitCols;  sel"select[3] sym,px from st"; 3#sel"select sym,px from st"]
+t[`selLimitZero;  sel"select[0] from st";        0#st]
+t[`selSortDesc;   sel"select[>px] from st";      st@>st`px]
+t[`selSortAsc;    sel"select[<px] from st";      st@<st`px]
+t[`selSortSym;    (sel"select[<sym] from st")`sym; `a`a`b`b`c`c]
+t[`selSortLimit;  sel"select[2;>px] from st";    2#st@>st`px]
+t[`selSortLimitA; sel"select[2;<px] from st";    2#st@<st`px]
+/ two keys: sym ascending, px descending inside each sym
+t[`selTwoKeys;    (sel"select[<sym;>px] from st")`px; 4.0 1 5 2 6 3]
+t[`selSortWhere;  sel"select[2;>px] from st where sz>15"; 2#(st@&(st`sz)>15)@>(st@&(st`sz)>15)`px]
+/ a sort key may be any expression over the columns, not only a column name
+t[`selSortExpr;   (sel"select[>px*sz] from st")`px; 6.0 5 4 3 2 1]
+/ ... and it applies to a KEYED (by-clause) result with the key put back
+t[`selSortKeyed;  (value sel"select[>s] s:sum px by sym from st")`s; 9.0 7 5]
+t[`selLimitKeyed; #sel"select[2] s:sum px by sym from st"; 2]
+/ the bare (unquoted) form must accept the bracket too, and only for `select`
+t[`qrwBracket;    qrw"select[2;>px] from st";  "sel\"select[2;>px] from st\""]
+t[`qrwBracketAsg; qrw"z:select[3] from st";    "z:sel\"select[3] from st\""]
+t[`qokcSpace;     qokc["select";" "]; 1]
+t[`qokcBracket;   qokc["select";"["]; 1]
+t[`qokcExecBrk;   qokc["exec";"["];   0]
+/ an unbalanced bracket is left alone rather than eating the query
+t[`qbrkUnbalanced; qbrk"[3 from st"; ("";"[3 from st")]
+t[`qbrkNone;       qbrk"px from st"; ("";"px from st")]
+t[`qbrkPeel;       qbrk"[2;>px] from st"; ("2;>px";"from st")]
+/ the spec is semicolon-separated, unlike a select list
+t[`qscut;          qscut"2;>px";  (,"2";">px")]
+t[`qscutNested;    qscut"2;>f[a;b]"; (,"2";">f[a;b]")]
+
+/ ---- amber 2.2: the filtered table is not built on paths that ignore it ----
+/ `select from t` with no where clause returns the table itself rather than a
+/ row-by-row copy of it, and every by-query keeps its exact previous answer.
+t[`selAllIdentity;  (sel"select from st")~st; 1]
+t[`selStarIdentity; (sel"select * from st")~st; 1]
+t[`selWhereStill;   sel"select from st where sz>25"; st@&(st`sz)>25]
+t[`selByNoWhere;    sel"select s:sum px by sym from st"; ([sym:`c`a`b] s:9.0 5 7)]
+t[`selByWhere;      sel"select s:sum px by sym from st where sz>15"; ([sym:`c`b`a] s:9.0 7 4)]
+
 / Guard against a silently skipped block (see tests/harness.k): this is the
 / exact number of assertions this file is expected to record. Bump it when
 / you add or remove cases -- if it ever disagrees, some of them stopped running.
-hexpect[117]
+hexpect[146]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

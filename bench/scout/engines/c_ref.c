@@ -155,6 +155,15 @@ static double k_sum_f(void)  { double s = 0; for (int64_t i = 0; i < N; i++) s +
 static double k_max_f(void)  { double m = X[0]; for (int64_t i = 0; i < N; i++) if (X[i] > m) m = X[i]; return m; }
 static double k_dot(void)    { double s = 0; for (int64_t i = 0; i < N; i++) s += X[i] * Y[i]; return s; }
 static double k_sum_i(void)  { int64_t s = 0; for (int64_t i = 0; i < N; i++) s += A[i]; return (double)s; }
+/* scan_f: the running sum, MATERIALISED -- every array engine's `+\` writes
+ * the whole vector, so the reference writes it too and reads three of its
+ * elements back.  Every partial sum is an exact integer below 2^53, so the
+ * answer does not depend on the association a parallel scan chooses. */
+static double k_scan_f(void) {
+    double *o = scratch3, acc = 0;
+    for (int64_t i = 0; i < N; i++) { acc += X[i]; o[i] = acc; }
+    return o[0] + o[N / 2] + o[N - 1];
+}
 static double k_arith(void)  { double s = 0; for (int64_t i = 0; i < N; i++) if (X[i] > 50.0) s += Y[i] + 2.5 * X[i]; return s; }
 
 static double k_sort_f(void) {
@@ -356,6 +365,9 @@ int main(int argc, char **argv) {
     kern_t kern = 0;
     if      (!strcmp(op, "sum_f"))  kern = k_sum_f;
     else if (!strcmp(op, "max_f"))  kern = k_max_f;
+    /* scan_f materialises the running sum, so it needs an output buffer --
+     * allocated here, outside the timed region, exactly as the sort kernels do. */
+    else if (!strcmp(op, "scan_f")) { scratch3 = xmalloc(N * 8); kern = k_scan_f; }
     else if (!strcmp(op, "dot"))    kern = k_dot;
     else if (!strcmp(op, "sum_i"))  kern = k_sum_i;
     else if (!strcmp(op, "arith_mask")) kern = k_arith;

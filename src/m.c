@@ -237,6 +237,35 @@ B am_infix_dyad(S p,U n){
     return !_t0(v) && TU(_T(v)) && _k(v) == 2;
 }
 
+// amber 2.2: is `p[0..n)` a global that is BOUND to something which is NOT a
+// rank-2 function?
+//
+// src/p.c decides whether an identifier reads as an INFIX verb, and one half of
+// that decision is a hard-coded keyword list (infixkw: in, within, like, the
+// join family, ss, sv, vs, xasc, xdesc, ...). That list claims a name whatever
+// the name currently holds, so
+//     ss:5
+//     1_ss
+// parsed `ss` as the string-search verb and built a PROJECTION instead of
+// dropping -- silently, with no error. Consulting this function first means a
+// name the program has rebound to data stops being read as a verb.
+//
+// A name that is not bound AT ALL answers 0, and that is what keeps the
+// bootstrap working: while amber.k is still being loaded, `in`, `except` and
+// the rest are undefined, and they must stay infix or the library's own source
+// does not parse.
+B am_name_nonfn(S p, U n) {
+    C b[64]; W k; U i; A v;
+    if (!n || n >= sizeof b) return 0;
+    MC(b, p, n); b[n] = 0;
+    k = us(b);
+    if (!(k >> 32)) k |= (W)gd << 32;
+    i = fL(gk, gn, k);
+    if (i >= gn || !gv[i]) return 0;        // unbound: leave the keyword list alone
+    v = gv[i];
+    return !(!_t0(v) && TU(_T(v)) && _k(v) == 2);
+}
+
 // ---- 1.9.5: workspace introspection -----------------------------------------
 // gk/gn are file-local to m.c, so the two readers that describe the workspace
 // live here.  Both are pure reads: no refcount is touched, nothing is copied

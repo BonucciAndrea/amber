@@ -37,9 +37,12 @@ set of typed nulls/infinities (`0Nh 0Ne 0Wp 0Nd …`). Amber has long/float/char
 The `select … by … from … where …` template now works **bare** (no `sel"…"` wrapper), along
 with `exec`, `update`, and `delete` — see AMBER.md §7. Since **2.0.0** this bare form also works
 inside a **`.k` script** loaded once the stdlib is up (the loader runs each file through the same
-`qrw` rewriter the REPL uses), so `sel"…"` is no longer needed in files either. Still missing: the general functional
-forms `?[t;where;by;select]` / `![t;where;by;cols]`, sorted/limited selects (`select[>px]`,
-`select[5]`), `fby` *inside* a where-clause, and correlated subqueries.
+`qrw` rewriter the REPL uses), so `sel"…"` is no longer needed in files either.
+- **Since 2.2:** **sorted and limited selects** are done — `select[5]`, `select[-5]`,
+  `select[>px]`, `select[<sym]`, `select[5;>px]` and multi-key `select[<sym;>px]`, on plain and
+  keyed results alike, with q's clause order (where → by/select → sort → limit). See AMBER.md §7.
+- Still missing: the general functional forms `?[t;where;by;select]` / `![t;where;by;cols]`,
+  `fby` *inside* a where-clause, and correlated subqueries.
 - **Amber has:** bare + string `select/exec/update/delete`, plus the functional helpers
   `qwhere qselect qby fby xgroup ungroup`.
 

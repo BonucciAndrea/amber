@@ -80,7 +80,18 @@ xprev:{y[(!#y)-x]}
 rotate:{$[0=#y;y;n:(#y)!x;(n_y),n#y]}
 
 / ---- membership / set ops --------------------------------------------------
-in:{r:`memb(x;y);$[`A~@r;~^y?x;r]}                / 2.1: one-pass C membership; K fallback for other types
+/ x in y : which elements of x are members of y.
+/ y is ENLISTED when it is an atom.  Without that, an atom y fell through the
+/ C membership kernel (which takes a vector set) onto the `~^y?x` fallback --
+/ and with y an integer atom `y?x` is not find, it is k's RANDOM DEAL, so
+/   1 2 3 in 2   ->  1 1      (two random picks, wrong values AND wrong length)
+/   `a`b`c in `b ->  'domain
+/ silently in the first case.  Every set operation below is built on `in`, so
+/ `except`, `inter` and `union` were wrong for an atom argument too:
+/   1 2 3 except 2  ->  !0    where q gives  1 3
+/ q accepts an atom on the right of all four, so this is parity as well as a fix.
+isatm:{"a"<*$@x}                                  / type symbol lowercase -> atom
+in:{y:$[isatm y;,y;y];r:`memb(x;y);$[`A~@r;~^y?x;r]}   / 2.1: one-pass C membership; K fallback for other types
 / 2.1: fused group aggregates. `gagg (src/o.c) does acc[group]op=v in ONE pass
 / with the same first-appearance key order as =k; each wrapper keeps the
 / portable K definition as its fallback for shapes the kernel declines.
@@ -309,7 +320,15 @@ NULLS:("0N";"0n";"0w";"-0w";"0Nn";,"`")            / null sentinels rendered fai
 PREC:7                                             / float precision (decimals) in grids; PREC:0N = full precision
 comma:{$[4>#x;x;(comma -3_x),",",-3#x]}            / thousands separators on a digit string
 vstrip:{p:((`c$27))\x;,/(1#p),{(1+x?"m")_x}'1_p}   / drop ANSI escape sequences
-vlen:{#vstrip x}                                    / visible (printed) width
+/ visible (printed) width: ANSI sequences removed, then UTF-8 CODE POINTS
+/ counted rather than bytes.  #vstrip counted bytes, so any cell holding a
+/ non-ASCII character made the grid's borders too long by two bytes per
+/ character -- a box-drawing glyph is three bytes and a `sym with an accent two.
+/ A continuation byte is 0x80..0xBF, which as a signed char is -128..-65, so
+/ everything that is NOT a continuation byte starts exactly one code point.
+/ (Double-width CJK and emoji still count as one column here; the terminal
+/ layer in src/ln.c is what knows their real width.)
+vlen:{+/~(0+vstrip x)<-64}                          / visible (printed) width
 cwrap:{[c;s]$[COLOR&#c;(CSI,c,"m"),s,RST;s]}        / wrap s in SGR code c
 atcol:{$[`b=@x;CT`bool;|/`f`F`e=@x;CT`flt;|/`i`I`j`l`L`h`H`G=@x;CT`num;|/`s`S=@x;CT`sym;|/`c`C=@x;CT`str;""]}  / value type -> colour
 palN:{PAL@(#PAL)!x}                                 / n-th column colour (cycles the palette)

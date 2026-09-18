@@ -326,6 +326,12 @@ Z V bres(UC*c,UC*k,I W,I H,I x0,I y0,I x1,I y1,UC s){I ax=x1-x0,ay=y1-y0,dx=ax<0
  while(1){pxs2(c,k,W,H,x0,y0,s);if(x0==x1&&y0==y1)break;I e2=2*er;if(e2>=dy){er+=dy;x0+=sx;}if(e2<=dx){er+=dx;y0+=sy;}}}
 Z C*ebr(C*p,UC b){U cp=0x2800+b;*p++=0xE2;*p++=0x80|(cp>>6&0x3F);*p++=0x80|(cp&0x3F);return p;}//emit braille char
 Z C*elab(C*p,F v,I w){C b[40];L db;MC(&db,&v,8);C*e=sf(b,db);I ll=e-b;I(ll>w,ll=w)F(w-ll,*p++=' ')F(ll,*p++=b[i])return p;}//right-justified label
+// amber 2.2: the same, but formatted to a fixed number of decimals instead of
+// the value's full repr TRUNCATED to w. Truncation is what printed a candle
+// chart's price axis as "186.6792" and "182.3342" -- eight characters of an
+// exact double, which reads as noise next to "187.3". Callers that know their
+// axis step pass the matching decimal count (see axdec).
+Z C*elabd(C*p,F v,I w,I d);//defined after fmtf, which it uses
 Z C*puts_(C*p,S s){while(*s)*p++=*s++;return p;}
 
 // ---- axis arithmetic -------------------------------------------------------
@@ -376,19 +382,90 @@ Z I fmtf(C*b,N bn,F v,I d){F a=fab(v);I r;
  else if(a!=0&&(a>=1e7||a<1e-4))r=snprintf(b,bn,"%.4g",v);
  else r=snprintf(b,bn,"%.*f",d,a==0?0.0:v);
  if(r<0)r=0;if((N)r>=bn)r=(I)bn-1;return r;}
-// Time-of-day tick label: v is milliseconds since midnight (Amber's `t / ttm, and
-// the plain-int ms-of-day columns gentq builds).  Shows HH:MM:SS, adding .mmm only
-// when the tick step is sub-second -- so a normal intraday axis reads "09:30:00"
-// (clean) while a zoomed one keeps its millisecond precision.
-Z I fmttime(C*b,N bn,F v,F step){L t=(L)(v+(v<0?-0.5:0.5));if(t<0)t=0;if(t>86400000)t%=86400000;
- L h=t/3600000,m=(t/60000)%60,s=(t/1000)%60,ms=t%1000;I r;
- if(step<1000.0)r=snprintf(b,bn,"%02lld:%02lld:%02lld.%03lld",(long long)h,(long long)m,(long long)s,(long long)ms);
- else r=snprintf(b,bn,"%02lld:%02lld:%02lld",(long long)h,(long long)m,(long long)s);
+Z C*elabd(C*p,F v,I w,I d){C b[40];I l=fmtf(b,SZ b,v,d);I(l>w,l=w)F(w-l,*p++=' ')F(l,*p++=b[i])return p;}
+// ---- temporal axis labels --------------------------------------------------
+// An axis whose values are a TIME must read as a time. Amber's temporal types
+// are stored as plain numbers in a column (see docs/MISSING.md 1: "columns keep
+// numeric storage so xasc/s# work unchanged"), so which unit a vector is in is
+// NOT recoverable from its type -- only an atom carries tdt/ttm/tnp. The unit
+// therefore arrives from sys.k as a small code in the spec, either detected
+// there or stated by the caller as `xunit/`yunit.
+//
+//   AXN  0  plain number
+//   AXT  1  milliseconds since midnight     (`t / ttm)          -> 09:30:00
+//   AXD  2  days since 2000.01.01           (`d / tdt)          -> 2026.09.18
+//   AXP  3  nanoseconds since 2000.01.01    (`p / tnp)          -> date and/or time
+//   AXS  4  seconds since midnight                              -> 09:30:00
+enum{AXN,AXT,AXD,AXP,AXS};
+// Civil date from a day count: the inverse of p.c's ymd2days (Howard Hinnant's
+// algorithm, same epoch shift), so a label round-trips the literal the parser
+// would have produced for it.
+// (the out-parameters are NOT named yy/mm/dd: g.h defines `yy` as a macro for
+// _y(y), so a parameter with that name expands mid-declaration.)
+Z V axymd(L z,L*outy,L*outm,L*outd){z+=730425;L era=(z>=0?z:z-146096)/146097,doe=z-era*146097;
+ L yoe=(doe-doe/1460+doe/36524-doe/146096)/365,y=yoe+era*400;
+ L doy=doe-(365*yoe+yoe/4-yoe/100),mp=(5*doy+2)/153,d=doy-(153*mp+2)/5+1;
+ L m=mp+(mp<10?3:-9);*outy=y+(m<=2);*outm=m;*outd=d;}
+Z I axclock(C*b,N bn,L ns,F stepns){//ns within a day -> HH:MM:SS[.frac]
+ L h=ns/3600000000000LL,m=(ns/60000000000LL)%60,s=(ns/1000000000LL)%60,fr=ns%1000000000LL;I r;
+ if(stepns>=1e9)      r=snprintf(b,bn,"%02lld:%02lld:%02lld",(long long)h,(long long)m,(long long)s);
+ else if(stepns>=1e6) r=snprintf(b,bn,"%02lld:%02lld:%02lld.%03lld",(long long)h,(long long)m,(long long)s,(long long)(fr/1000000));
+ else if(stepns>=1e3) r=snprintf(b,bn,"%02lld:%02lld:%02lld.%06lld",(long long)h,(long long)m,(long long)s,(long long)(fr/1000));
+ else                 r=snprintf(b,bn,"%02lld:%02lld:%02lld.%09lld",(long long)h,(long long)m,(long long)s,(long long)fr);
  if(r<0)r=0;if((N)r>=bn)r=(I)bn-1;return r;}
-// Snap a desired axis step to a human time boundary (1s..8h) so time ticks land on
-// round clock times (09:30, 10:00, ...) rather than arbitrary millisecond counts.
-Z F nicetstep(F want){Z CO F TS[]={1e3,5e3,15e3,3e4,6e4,3e5,9e5,18e5,36e5,72e5,1.44e7,2.88e7};
- F(12,I(TS[i]>=want,return TS[i]))return TS[11];}
+// One tick label. `step` is the axis step in the axis's OWN unit; `span` the
+// full axis width, which is what decides whether a timestamp axis needs the
+// date at all (an intraday tape gets clock times, a multi-day one gets dates).
+Z I fmtax(C*b,N bn,F v,F step,F span,I kind){
+ L t;I r;
+ switch(kind){
+ case AXT: t=(L)(v+(v<0?-0.5:0.5)); if(t<0)t=0; t%=86400000LL;
+           return axclock(b,bn,t*1000000LL,step*1e6);
+ case AXS: t=(L)(v+(v<0?-0.5:0.5)); if(t<0)t=0; t%=86400LL;
+           return axclock(b,bn,t*1000000000LL,step*1e9);
+ case AXD:{L y,m,d;t=(L)(v+(v<0?-0.5:0.5));axymd(t,&y,&m,&d);
+           r=snprintf(b,bn,"%04lld.%02lld.%02lld",(long long)y,(long long)m,(long long)d);
+           if(r<0)r=0;if((N)r>=bn)r=(I)bn-1;return r;}
+ case AXP:{L y,mo,d;F av=v<0?-v:v;
+           // (L) of a double past LLONG_MAX is undefined; a timestamp that far
+           // out is not a date, so fall back to the plain number.
+           if(!(av<9.2e18))break;
+           t=(L)(v+(v<0?-0.5:0.5));
+           {L day=t/86400000000000LL,ns=t%86400000000000LL;
+            if(ns<0){day--;ns+=86400000000000LL;}
+            if(span<86400000000000.0){       // inside one day: clock only
+              return axclock(b,bn,ns,step);}
+            axymd(day,&y,&mo,&d);
+            if(span<2.6e15){                 // under ~30 days: date + HH:MM
+              r=snprintf(b,bn,"%02lld.%02lldD%02lld:%02lld",(long long)mo,(long long)d,
+                         (long long)(ns/3600000000000LL),(long long)((ns/60000000000LL)%60));}
+            else r=snprintf(b,bn,"%04lld.%02lld.%02lld",(long long)y,(long long)mo,(long long)d);
+            if(r<0)r=0;if((N)r>=bn)r=(I)bn-1;return r;}}
+ default: break;}
+ return fmtf(b,bn,v,axdec(step));}
+// The widest label a kind can produce, so the tick COUNT can be chosen from it
+// (below) instead of the labels being packed and silently dropped afterwards.
+Z I axwidth(I kind,F step,F span){
+ switch(kind){
+ case AXT: return step<1e3?12:8;
+ case AXS: return 8;
+ case AXD: return 10;
+ case AXP: return span<86400000000000.0?(step<1e9?(step<1e6?19:12):8):(span<2.6e15?11:10);
+ default:  return 8;}}
+// Snap a desired axis step to a human boundary in the axis's own unit, so ticks
+// land on round clock times (09:30, 10:00) or round dates rather than on
+// arbitrary 1-2-5 counts of the underlying integer.
+// (MS is a.h's memset macro, so the millisecond ladder cannot be called that.)
+Z F nicetstep(F want,I kind){
+ Z CO F LMS[]={1e0,1e1,1e2,1e3,5e3,15e3,3e4,6e4,3e5,9e5,18e5,36e5,72e5,1.44e7,2.88e7,8.64e7};
+ Z CO F LSC[]={1e0,5e0,15e0,3e1,6e1,3e2,9e2,18e2,36e2,72e2,1.44e4,2.88e4,8.64e4};
+ Z CO F LDY[]={1e0,7e0,14e0,28e0,91e0,182e0,365e0,730e0,1826e0,3652e0};
+ Z CO F LNS[]={1e3,1e4,1e5,1e6,1e7,1e8,1e9,5e9,15e9,3e10,6e10,3e11,9e11,18e11,36e11,72e11,
+               1.44e13,2.88e13,8.64e13,6.048e14,2.592e15,3.1536e16};
+ CO F*tb;U nt;
+ switch(kind){case AXT:tb=LMS;nt=L(LMS);break;case AXS:tb=LSC;nt=L(LSC);break;
+              case AXD:tb=LDY;nt=L(LDY);break;default:tb=LNS;nt=L(LNS);break;}
+ F(nt,I(tb[i]>=want,return tb[i]))return tb[nt-1];}
 // Value -> pixel, guarded. The quotient is unbounded when explicit limits zoom
 // far inside the data, and (I) of a double past INT_MAX is undefined, so the
 // clamp happens in the float domain BEFORE the cast.
@@ -482,7 +559,14 @@ Z A plotSpec(A x){
  if(!optA||!limA||_n(optA)<6||_n(limA)<4){if(optA)mr(optA);if(limA)mr(limA);return et(x);}
  CO L*opt=(CO L*)_V(optA);CO F*lim=(CO F*)_V(limA);
  I W=(I)opt[0],H=(I)opt[1];B grid=opt[2]!=0,axis=opt[3]!=0,leg=opt[4]!=0;
- I xtime=_n(optA)>=7?(I)opt[6]:0;   // 0 = numeric x, 1 = x is ms-of-day -> HH:MM:SS labels
+ // amber 2.2: slot 6 was a 0/1 "x is ms-of-day" flag and is now the axis UNIT
+ // code (AXN/AXT/AXD/AXP/AXS above). 1 still means milliseconds-of-day, so a
+ // spec built by an older sys.k keeps its exact meaning. Slot 7 is the y unit,
+ // absent in older specs and then plain-numeric as before.
+ I xtime=_n(optA)>=7?(I)opt[6]:0;
+ I ytime=_n(optA)>=8?(I)opt[7]:0;
+ if(xtime<0||xtime>AXS)xtime=AXN;
+ if(ytime<0||ytime>AXS)ytime=AXN;
  I cmode=(I)opt[5];B colr=cmode==1||(cmode==2&&isatty(1));
  if(W<8)W=8;if(W>400)W=400;if(H<2)H=2;if(H>120)H=120;
  I pw=2*W,ph=4*H;
@@ -514,7 +598,20 @@ Z A plotSpec(A x){
  if(first){ymn=0;ymx=1;xmn=0;xmx=1;}
 
  I ynt=H/3;if(ynt<2)ynt=2;if(ynt>8)ynt=8;
- I xnt=W/14;if(xnt<2)xnt=2;if(xnt>8)xnt=8;
+ // amber 2.2: the x tick COUNT is derived from how wide this unit's labels
+ // actually are, not from a fixed 14 columns. A timestamp label is up to 19
+ // characters and a date 10, so asking for W/14 ticks and then discarding
+ // whichever labels collided (what the packer below does) silently threw most
+ // of a temporal axis away. Choosing the count from the width means every tick
+ // that is drawn is also labelled, and none of them touch. The PLOT AREA is
+ // unaffected -- the gutter comes from the y labels, so the shape does not
+ // move with this.
+ // The provisional step is span/8 -- the most ticks this axis will ever ask
+ // for -- because the real step is not known until the count is. Passing 1.0
+ // instead made a timestamp axis assume nanosecond-resolution labels (19
+ // characters) and settle for three ticks on an 80-column chart.
+ I xlw=axwidth(xtime,(xmx-xmn)/8.0,xmx-xmn)+2;
+ I xnt=W/(xlw<10?10:xlw);if(xnt<2)xnt=2;if(xnt>8)xnt=8;
  F ylo,yhi,yst,xlo,xhi,xst;
  axcalc(ymn,ymx,ynt,&ylo,&yhi,&yst);
  axcalc(xmn,xmx,xnt,&xlo,&xhi,&xst);
@@ -526,8 +623,10 @@ Z A plotSpec(A x){
  if(lim[2]==lim[2]||lim[3]==lim[3]){
   if(lim[2]==lim[2])xlo=lim[2];if(lim[3]==lim[3])xhi=lim[3];
   if(!(xhi>xlo)){xhi=xlo+1;}xst=nicen((xhi-xlo)/xnt,1);}
- // a time x-axis steps on round clock boundaries, not 1-2-5 millisecond counts
- if(xtime){F w=(xhi-xlo)/(F)xnt;if(!(w>0))w=1;xst=nicetstep(w);}
+ // a temporal axis steps on round clock/date boundaries, not on 1-2-5 counts of
+ // the underlying integer
+ if(xtime){F w=(xhi-xlo)/(F)xnt;if(!(w>0))w=1;xst=nicetstep(w,xtime);}
+ if(ytime){F w=(yhi-ylo)/(F)ynt;if(!(w>0))w=1;yst=nicetstep(w,ytime);}
  F ysp=yhi-ylo,xsp=xhi-xlo;if(!(ysp>0))ysp=1;if(!(xsp>0))xsp=1;
 
  ArenaMark mk=arena_mark();
@@ -556,12 +655,15 @@ Z A plotSpec(A x){
   for(F v=fcl(ylo/yst)*yst;v<=yhi+yst*1e-9&&nyl<120;v+=yst){
    I py=vpy(v,ylo,ysp,ph);if(py<0||py>=ph)continue;I r=py>>2;
    B dup=0;F(nyl,I(yrow[i]==r,dup=1))if(dup)continue;
-   fmtf(ylb[nyl],24,v,ydc);yrow[nyl]=r;nyl++;}}
+   fmtax(ylb[nyl],24,v,yst,ysp,ytime);yrow[nyl]=r;nyl++;}}
  I gw=0;F(nyl,I l=(I)strlen(ylb[i]);I(l>gw,gw=l))
  if(axis&&gw<1)gw=1;
 
  // ---- x tick labels, packed into one row so they cannot collide -----------
- I xdc=axdec(xst);
+ // A label is centred on its tick and skipped if it would touch the previous
+ // one. With the tick count now chosen from the label width (above) the skip
+ // is a backstop rather than the normal case: a 19-character timestamp label
+ // used to mean most ticks lost their text.
  C xrow[512];I xrn=W+2;if(xrn>510)xrn=510;
  MS(xrow,' ',(N)xrn);xrow[xrn]=0;
  UC xtk[400];MS(xtk,0,(N)W);
@@ -569,7 +671,7 @@ Z A plotSpec(A x){
   for(F v=fcl(xlo/xst)*xst;v<=xhi+xst*1e-9;v+=xst){
    I px=vpx(v,xlo,xsp,pw);if(px<0||px>=pw)continue;I c=px>>1;
    if(c<W)xtk[c]=1;
-   C b[24];I l=xtime?fmttime(b,24,v,xst):fmtf(b,24,v,xdc);I st=c-l/2;if(st<0)st=0;if(st+l>xrn)st=xrn-l;if(st<0)continue;
+   C b[32];I l=fmtax(b,32,v,xst,xsp,xtime);I st=c-l/2;if(st<0)st=0;if(st+l>xrn)st=xrn-l;if(st<0)continue;
    if(st<=used)continue;                                  // would touch the previous label
    MC(xrow+st,b,(N)l);used=st+l;}}
 
@@ -637,24 +739,53 @@ Z A plotSpec(A x){
 A plotC(A x){
  if(_t(x)==tA&&_n(x)==PLTSPECN&&_t(((A*)_V(x))[0])==tA)return plotSpec(x);
  return plotBare(x);}
-// candle: x = (open;high;low;close) 4 numeric vectors.  Box wicks + block bodies + ANSI colour.
+// candle: x = (open;high;low;close) 4 numeric vectors, or, since amber 2.2,
+// (open;high;low;close;times;unit) -- `times` aligned with the bars and `unit`
+// one of the AXN..AXS codes, which adds a labelled time axis under the chart.
+// Box wicks + block bodies + ANSI colour.
 A candleC(A x){
- P(_t(x)-tA||_n(x)-4,et(x))
- A o=N(cF(N(ii(x,0)))),h=N(cF(N(ii(x,1)))),l=N(cF(N(ii(x,2)))),c=N(cF(N(ii(x,3))));mr(x);
- U n=_n(o);I H=15;if(!n){mr(o);mr(h);mr(l);mr(c);return aCz("(empty)\n");}
+ U ne=_t(x)==tA?_n(x):0;
+ P(!ne||(ne-4&&ne-6),et(x))
+ A o=N(cF(N(ii(x,0)))),h=N(cF(N(ii(x,1)))),l=N(cF(N(ii(x,2)))),c=N(cF(N(ii(x,3))));
+ A tv=0;I tu=AXN;
+ if(ne==6){A t4=N(ii(x,4));if(t4){if(_N(t4))tv=cF(t4);else mr(t4);}
+           A u5=N(ii(x,5));if(u5){tu=(I)gl(u5);if(tu<0||tu>AXS)tu=AXN;}}
+ mr(x);
+ U n=_n(o);I H=15;if(!n){mr(o);mr(h);mr(l);mr(c);if(tv)mr(tv);return aCz("(empty)\n");}
  CO F*O=_V(o),*Hi=_V(h),*Lo=_V(l),*Cl=_V(c);
+ CO F*Tm=tv&&_n(tv)>=n?(CO F*)_V(tv):0;
  /* cap to the terminal: show only the most recent candles that fit its width,
   * and shrink the height on a short screen, so a big series never overflows. */
  {I mW=120;ST winsize ws;if(ioctl(1,TIOCGWINSZ,&ws)==0&&ws.ws_col>20){mW=((I)ws.ws_col-10)/2;if(mW<1)mW=1;if(ws.ws_row>10&&H>(I)ws.ws_row-4)H=(I)ws.ws_row-4;}
-  if(n>(U)mW){U off=n-(U)mW;O+=off;Hi+=off;Lo+=off;Cl+=off;n-=off;}}
+  if(n>(U)mW){U off=n-(U)mW;O+=off;Hi+=off;Lo+=off;Cl+=off;if(Tm)Tm+=off;n-=off;}}
  F mn=Lo[0],mx=Hi[0];F(n,I(Lo[i]<mn,mn=Lo[i])I(Hi[i]>mx,mx=Hi[i]))F rng=mx-mn;I(rng<=0,rng=1)
- A out=aC(H*(9+n*24)+64);C*p=(C*)_V(out);
- F(H,I r=i;p=elab(p,i==0?mx:i==H-1?mn:mx-rng*i/(H-1),8);*p++=0xE2;*p++=0x94;*p++=0x82;
+ A out=aC(H*(9+n*24)+64+(N)n*2+64);C*p=(C*)_V(out);
+ I pdc=axdec(rng/(F)(H>1?H-1:1));                 // decimals matching one row
+ F(H,I r=i;p=elabd(p,i==0?mx:i==H-1?mn:mx-rng*i/(H-1),8,pdc);*p++=0xE2;*p++=0x94;*p++=0x82;
   Fj(n,I rh=(I)((H-1)*(1.-(Hi[j]-mn)/rng)+.5),rl=(I)((H-1)*(1.-(Lo[j]-mn)/rng)+.5),bt=O[j]>Cl[j]?O[j]:Cl[j],bb=O[j]<Cl[j]?O[j]:Cl[j];
    I rbt=(I)((H-1)*(1.-(bt-mn)/rng)+.5),rbb=(I)((H-1)*(1.-(bb-mn)/rng)+.5);B up=Cl[j]>=O[j];
    S col=up?"\033[32m":"\033[31m";
    I(r>=rbt&&r<=rbb,MC(p,col,5);p+=5;*p++=0xE2;*p++=0x96;*p++=0x88;/*█*/MC(p,"\033[0m",4);p+=4)
    J(r>=rh&&r<=rl,MC(p,col,5);p+=5;*p++=0xE2;*p++=0x94;*p++=0x82;/*│*/MC(p,"\033[0m",4);p+=4)
    E(*p++=' ')*p++=' ')*p++='\n')
- mr(o);mr(h);mr(l);mr(c);return AN(p-(C*)_V(out),out);}
+ // ---- time axis ----------------------------------------------------------
+ // Candles are CATEGORICAL: each one owns two columns, so a label belongs to a
+ // particular bar rather than to an interpolated position. Labels are placed on
+ // whole bars, spaced far enough apart that the widest one this unit produces
+ // still fits, so nothing ever overlaps and nothing has to be dropped.
+ if(Tm&&tu!=AXN&&n){
+  F span=Tm[n-1]-Tm[0];if(!(span>0))span=1;
+  F st=n>1?(Tm[n-1]-Tm[0])/(F)(n-1):1.0;if(!(st>0))st=1.0;
+  I lw=axwidth(tu,st,span),every=(lw+2+1)/2;if(every<1)every=1;
+  I row=(I)n*2+2;C*q=p;
+  F(9,*q++=' ')                                   // the value gutter plus its border
+  F(row,*q++=' ')
+  {C*base=p+9;I used=-1;
+   for(U j=0;j<n;j+=(U)every){
+    C b[32];I lb=fmtax(b,32,Tm[j],st,span,tu);
+    I ctr=(I)j*2,sp=ctr-lb/2;if(sp<0)sp=0;if(sp+lb>row)sp=row-lb;if(sp<0)continue;
+    if(sp<=used)continue;
+    MC(base+sp,b,(N)lb);used=sp+lb;}}
+  p=q;*p++='\n';}
+ mr(o);mr(h);mr(l);mr(c);if(tv)mr(tv);return AN(p-(C*)_V(out),out);}
 L now()_(ST timeval t;gettimeofday(&t,0);1000000ll*t.tv_sec+t.tv_usec)

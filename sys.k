@@ -69,12 +69,46 @@ chser:{$[`A=@x;x;,x]}                       / one vector, or many -> always a li
 /   grid  0 none, 1 horizontal gridlines, 2 horizontal and vertical
 /   colour  0 off, 1 on, 2 = on only when stdout is a terminal
 /   style  per series 0 line, 1 scatter, 2 step, 3 area    col  per series 256-colour code
-chopt:`y`x`w`h`ylim`xlim`grid`axis`legend`colour`title`xlabel`ylabel`names`col`style!(();();0;0;();();1;1;1;2;"";"";"";();0#0;0#0)
-/ is the x-axis a time-of-day? true when every value is a whole number of
-/ milliseconds within one day and at least an hour in (so it is a clock time, not
-/ a 0-based index).  1 -> the renderer prints ticks as HH:MM:SS instead of ms.
-chxtime:{$[0=#x;0;0=#*x;0;[v:`f$*x;$[(&/v=_v)&(~(&/v)<3.6e6)&~(|/v)>8.64e7;1;0]]]}
-chart:{[d]d:chopt,$[`m=@d;d;chd1[`y;d]];ys:`f$'chser d`y;xs:$[0=#d`x;();`f$'chser d`x];xtf:$[0=#d`x;0;chxtime chser d`x];t:chwin[];w:$[d`w;d`w;20|160&((t 1)-14)];h:$[d`h;d`h;6|18&((t 0)-8)];nm:d`names;nm:$[0=#nm;();$[`S=@nm;$'nm;chtxt'nm]];yl:$[2=#d`ylim;`f$d`ylim;0n 0n];xl:$[2=#d`xlim;`f$d`xlim;0n 0n];`0:`plt (ys;xs;(w;h;d`grid;d`axis;$[#nm;d`legend;0];d`colour;xtf);`f$yl,xl;chtxt d`title;chtxt d`xlabel;chtxt d`ylabel;nm;d`col;d`style);}
+/   xunit yunit  how to LABEL an axis: `auto (the default) `num `time (ms of
+/                day) `sec `date (days since 2000.01.01) `stamp (ns since
+/                2000.01.01).  See chunit below.
+chopt:`y`x`w`h`ylim`xlim`grid`axis`legend`colour`title`xlabel`ylabel`names`col`style`xunit`yunit!(();();0;0;();();1;1;1;2;"";"";"";();0#0;0#0;`auto;`auto)
+/ ---- axis units -----------------------------------------------------------
+/ Amber's temporal types are stored as plain numbers inside a column (a date
+/ column is an `I of days, a time column an `I of milliseconds), so a VECTOR
+/ does not carry its unit -- only an atom does.  The unit therefore has to be
+/ either stated by the caller (`xunit`yunit) or inferred from the values, and
+/ the inference is deliberately narrow: guessing wrong turns an ordinary count
+/ into a clock, which is worse than showing the number.
+/   0 number   1 ms of day   2 days since 2000.01.01   3 ns since 2000.01.01
+/   4 seconds of day
+chunit:`num`number`int`time`ms`t`sec`second`s`date`day`d`stamp`timestamp`ns`p!0 0 0 1 1 1 4 4 4 2 2 2 3 3 3 3
+/ auto: only the two cases that cannot be mistaken for something else.
+/   ns timestamps -- whole numbers at or above 1e15, i.e. any instant more than
+/   eleven days past the 2000.01.01 epoch.  Nobody plots a raw count that big.
+/   ms of day -- whole numbers inside one day and at least an hour in.  The
+/   one-hour floor is what keeps a 0-based index of a few million samples from
+/   being drawn as a clock; a session that really does start at midnight needs
+/   xunit:`time, which is exactly why that option exists.
+/ (spelled with ~< rather than >= : this dialect has no >= or <= operator)
+chauto:{$[0=#x;0;~&/x=_x;0;~(&/x)<1e15;3;(~(&/x)<3.6e6)&~(|/x)>8.64e7;1;0]}
+chuk:{[u;v]$[0=#v;0;0=#*v;0;~`auto~u;$[in[u;!chunit];chunit u;0];chauto `f$*v]}
+/ chart is built in three lambdas rather than one.  The single-lambda version
+/ was already at the compiler's per-lambda ceiling; adding the two unit locals
+/ pushed it over and every call failed with a bare evaluation error pointing at
+/ an innocent statement.  Splitting is also how sel/qselby are arranged, for the
+/ same reason.  chsz picks the size, chspec assembles the 10-slot `plt spec.
+chsz:{[d;t;k]$[d k;d k;$[k~`w;20|160&((t 1)-14);6|18&((t 0)-8)]]}
+chnms:{[d]nm:d`names;$[0=#nm;();$[`S=@nm;$'nm;chtxt'nm]]}
+chspec:{[d;ys;xs;o;nm]yl:$[2=#d`ylim;`f$d`ylim;0n 0n];xl:$[2=#d`xlim;`f$d`xlim;0n 0n];`0:`plt (ys;xs;o;`f$yl,xl;chtxt d`title;chtxt d`xlabel;chtxt d`ylabel;nm;d`col;d`style);}
+chdraw:{[d;t]ys:`f$'chser d`y;xs:$[0=#d`x;();`f$'chser d`x];xu:$[0=#d`x;0;chuk[d`xunit;chser d`x]];nm:chnms d;o:(chsz[d;t;`w];chsz[d;t;`h];d`grid;d`axis;$[#nm;d`legend;0];d`colour;xu;chuk[d`yunit;chser d`y]);chspec[d;ys;xs;o;nm]}
+chart:{[d]chdraw[chopt,$[`m=@d;d;chd1[`y;d]];chwin[]]}
+/ tplot (times;values) -- a time series against its real clock axis, with the
+/ x axis labelled as a time rather than as the millisecond count it is stored
+/ as.  This is xyplot plus the unit, which the values alone cannot imply.
+tplot:{chart `x`y`xunit!(x 0;x 1;`time)}
+dplot:{chart `x`y`xunit!(x 0;x 1;`date)}    / ... against a date axis
+pplot:{chart `x`y`xunit!(x 0;x 1;`stamp)}   / ... against an ns-timestamp axis
 / plot keeps its original shapes -- plot v and plot (v;W;H) -- and now draws them
 / framed and labelled.  (v;W;H) is only taken when the trailing elements really
 / are atoms, so plot (a;b) still means two series rather than a series and a width.
@@ -92,7 +126,13 @@ barh:{d:$[`m=@x;($'!x;value x);($'x 0;x 1)];lb:d 0;bv:`f$d 1;mx:$[#bv;|/bv;1.0];
 chhot:{$[x>0;(chflr 60+195*x;chflr 50+90*(1-x);55);(55;chflr 70+110*(1+x);chflr 60+195*(-x))]}
 heat:{d:$[`m=@x;($'!x;value x);($'x 0;x 1)];lb:d 0;m:`f$'d 1;lo:&/(&/'m);hi:|/(|/'m);rg:$[hi>lo;hi-lo;1.0];lw:|/#'lb;`0:("\n"/{[lb;m;lo;rg;lw;i]((lw$lb i)," ",,/{chbg[chhot x],"  ",chrs}'(-1+2*((m i)-lo)%rg))}[lb;m;lo;rg;lw]'!#m),"\n";}
 spark:{v:`f$x;lo:&/v;hi:|/v;rg:$[hi>lo;hi-lo;1.0];,/chsb'chflr 7.999*(v-lo)%rg}   / returns the string: it is meant to sit inside a row
-candle:{x:unkey x;p:{[t;n;a;b]t@$[in[a;n];a;b]}[x;cols x];`0:`cdl (p[`open;`o];p[`high;`h];p[`low;`l];p[`close;`c]);}  / candlestick from OHLC table
+/ candlestick from an OHLC table.  When the table carries a `time column (which
+/ `bars` produces) it is passed through as the x axis with its unit, so the bars
+/ are labelled with clock times instead of being an unlabelled row of boxes.
+chcol:{[t;n;a;b]t@$[in[a;n];a;b]}
+chtm:{[t;n]$[in[`time;n];`f$t`time;in[`date;n];`f$t`date;()]}
+chtu:{[t;n]$[in[`time;n];chuk[`time;,`f$t`time];in[`date;n];2;0]}
+candle:{x:unkey x;n:cols x;p:chcol[x;n];`0:`cdl (p[`open;`o];p[`high;`h];p[`low;`l];p[`close;`c];chtm[x;n];chtu[x;n]);}
 
 / ---- arrow : Apache Arrow C Data Interface (zero-dependency, C ABI) -------
 arrow.export:{x:unkey x;`aex (cols x;value flip x)}   / table -> (schemaAddr;arrayAddr) 64-bit C ABI pointers

@@ -13,7 +13,7 @@ status instead of a time.
 | SIMD | avx avx2 bmi2 sse4_2 |
 | OS | Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39 |
 | Compiler | gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0 |
-| Amber commit | `v2.1.0` |
+| Amber commit | `7e6de84 (2.2.0)` |
 | PeachQ | v0.81 |
 | CBQN | CBQN on commit af583e19566a032b89e0077b866b0ba0dcc2a365 |
 | J | j9.6.3/j64/linux/commercial/www.jsoftware.com/2025-04-05T16:24:35/clang-11-0-0/SLEEF=1 |
@@ -23,7 +23,7 @@ status instead of a time.
 | DuckDB | 1.5.5 |
 | Python | 3.12.3 |
 
-- `N = 10,000,000`, median of **3** timed runs after **2** warm-ups, kernel time only.
+- `N = 10,000,000`, median of **5** timed runs after **2** warm-ups, kernel time only.
 - Every engine pinned to **one thread** (`-s 0` for q/PeachQ, `SET threads TO 1`
   for DuckDB, `OMP_NUM_THREADS=1` and friends for the rest).
 - `join_inner`, `asof`, `tablesort` and `qsql_select` have sizes fixed by the spec
@@ -46,38 +46,49 @@ status instead of a time.
 | `polars` | Polars | Arrow + vectorised kernels |
 | `duckdb` | DuckDB | vectorised push execution |
 
-## 2. Headline - Amber against kdb+/q
+## 2. Headline - Amber against the C reference
 
 `amber-native` is the Amber row (native build, array primitives). **Ratio > 1.00x means Amber
-is SLOWER than q on that operation.**
+is SLOWER than the C reference on that operation.**
 
-| op | what it measures | Amber ms | q ms | Amber / q | |
+| op | what it measures | Amber ms | C ms | Amber / C | |
 |---|---|---:|---:|---:|---|
-| `sum_f` | `+/x` over 10M float64 | 3.414 | - | - | - |
-| `max_f` | `\|/x` over 10M float64 | 4.611 | - | - | - |
-| `dot` | `+/x*y`, 10M float64 dot product | 6.855 | - | - | - |
-| `sum_i` | `+/a` over 10M int64 | 0.891 | - | - | - |
-| `arith_mask` | `+/(y+2.5*x)@&x>50` - mask, gather, fused arithmetic, reduce | 25.36 | - | - | - |
-| `sort_f` | ascending sort of 10M float64 (1000 distinct values) | 51.55 | - | - | - |
-| `sort_presorted` | the same sort on already-sorted input (adaptivity) | 38.39 | - | - | - |
-| `grade_i` | stable grade-up of 10M int64 | 23.58 | - | - | - |
-| `tablesort` | 2M-row table sorted by `(sym, px)` | 94.16 | - | - | - |
-| `find` | `kr?probe` - 10M probes into a 1000-entry unsorted table | 21.47 | - | - | - |
-| `member` | `h in kr` - 10M values against a 1000-element set | 14.36 | - | - | - |
-| `distinct` | `?a` - 10M values, 1000 distinct | 7.723 | - | - | - |
-| `distinct_100k` | `?g` - 10M values, 100k distinct | 15.47 | - | - | - |
-| `group_10` | group-sum, 10 groups | 19.90 | - | - | - |
-| `group_100` | group-sum, 100 groups | 21.17 | - | - | - |
-| `group_10k` | group-sum, 10 000 groups | 28.25 | - | - | - |
-| `group_100k` | group-sum, 100 000 groups | 33.54 | - | - | - |
-| `join_inner` | inner join, 1M left rows against 1000 sparse unsorted keys | 2.800 | - | - | - |
-| `asof` | as-of join on `(sym,time)`, 1M trades against 200k quotes | 7.824 | - | - | - |
-| `msum_16` | moving sum, width 16, over 10M | 16.13 | - | - | - |
-| `mavg_256` | moving average, width 256, over 10M (tolerance op) | 17.60 | - | - | - |
-| `mmax_64` | moving max, width 64, over 10M | 32.73 | - | - | - |
-| `qsql_select` | `select sum px by sym from t where sz>250`, 2M rows | 4.571 | - | - | - |
+| `sum_f` | `+/x` over 10M float64 | 3.516 | 5.653 | 0.62x | Amber wins |
+| `max_f` | `\|/x` over 10M float64 | 5.303 | 9.548 | 0.56x | Amber wins |
+| `dot` | `+/x*y`, 10M float64 dot product | 6.367 | 7.749 | 0.82x | Amber wins |
+| `sum_i` | `+/a` over 10M int64 | 0.873 | 4.671 | 0.19x | Amber wins |
+| `arith_mask` | `+/(y+2.5*x)@&x>50` - mask, gather, fused arithmetic, reduce | 15.38 | 8.518 | 1.81x | C wins |
+| `sort_f` | ascending sort of 10M float64 (1000 distinct values) | 39.64 | 89.45 | 0.44x | Amber wins |
+| `sort_presorted` | the same sort on already-sorted input (adaptivity) | 20.82 | 146.2 | 0.14x | Amber wins |
+| `grade_i` | stable grade-up of 10M int64 | 22.93 | 84.42 | 0.27x | Amber wins |
+| `tablesort` | 2M-row table sorted by `(sym, px)` | 88.33 | 69.14 | 1.28x | C wins |
+| `find` | `kr?probe` - 10M probes into a 1000-entry unsorted table | 19.09 | 15.50 | 1.23x | C wins |
+| `member` | `h in kr` - 10M values against a 1000-element set | 9.320 | 90.28 | 0.10x | Amber wins |
+| `distinct` | `?a` - 10M values, 1000 distinct | 7.562 | 25.64 | 0.29x | Amber wins |
+| `distinct_100k` | `?g` - 10M values, 100k distinct | 10.24 | 61.67 | 0.17x | Amber wins |
+| `group_10` | group-sum, 10 groups | 19.87 | 23.92 | 0.83x | Amber wins |
+| `group_100` | group-sum, 100 groups | 20.85 | 24.12 | 0.86x | Amber wins |
+| `group_10k` | group-sum, 10 000 groups | 22.47 | 47.67 | 0.47x | Amber wins |
+| `group_100k` | group-sum, 100 000 groups | 23.90 | 74.72 | 0.32x | Amber wins |
+| `join_inner` | inner join, 1M left rows against 1000 sparse unsorted keys | 2.838 | 1.684 | 1.69x | C wins |
+| `asof` | as-of join on `(sym,time)`, 1M trades against 200k quotes | 8.033 | 8.398 | 0.96x | tie |
+| `msum_16` | moving sum, width 16, over 10M | 16.01 | 11.20 | 1.43x | C wins |
+| `mavg_256` | moving average, width 256, over 10M (tolerance op) | 17.52 | 11.43 | 1.53x | C wins |
+| `mmax_64` | moving max, width 64, over 10M | 35.43 | 15.30 | 2.32x | C wins |
+| `qsql_select` | `select sum px by sym from t where sz>250`, 2M rows | 4.505 | 2.162 | 2.08x | C wins |
 
-**Amber is at least as fast as q on every operation in this matrix.**
+### Operations where Amber is slower than the C reference, worst first
+
+| rank | op | Amber ms | C ms | Amber is |
+|---:|---|---:|---:|---|
+| 1 | `mmax_64` | 35.43 | 15.30 | **2.32x slower** |
+| 2 | `qsql_select` | 4.505 | 2.162 | **2.08x slower** |
+| 3 | `arith_mask` | 15.38 | 8.518 | **1.81x slower** |
+| 4 | `join_inner` | 2.838 | 1.684 | **1.69x slower** |
+| 5 | `mavg_256` | 17.52 | 11.43 | **1.53x slower** |
+| 6 | `msum_16` | 16.01 | 11.20 | **1.43x slower** |
+| 7 | `tablesort` | 88.33 | 69.14 | **1.28x slower** |
+| 8 | `find` | 19.09 | 15.50 | **1.23x slower** |
 
 ## 3. Per-operation rankings
 
@@ -90,101 +101,101 @@ means that engine beats Amber.**
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `cbqn` | 1.229 | 0.36x |
-| 2 | `amber-native` **<-- Amber** | 3.414 | 1.00x |
-| 3 | `polars` | 3.528 | 1.03x |
-| 4 | `amber` | 3.904 | 1.14x |
-| 5 | `j` | 4.200 | 1.23x |
-| 6 | `peachq` | 4.354 | 1.28x |
-| 7 | `c` | 4.991 | 1.46x |
-| 8 | `numpy` | 5.371 | 1.57x |
-| 9 | `ngnk` | 5.651 | 1.66x |
-| 10 | `duckdb` | 8.715 | 2.55x |
-| 11 | `pandas` | 9.902 | 2.90x |
+| 1 | `cbqn` | 1.127 | 0.32x |
+| 2 | `amber-native` **<-- Amber** | 3.516 | 1.00x |
+| 3 | `polars` | 3.633 | 1.03x |
+| 4 | `amber` | 3.866 | 1.10x |
+| 5 | `j` | 3.920 | 1.11x |
+| 6 | `peachq` | 4.262 | 1.21x |
+| 7 | `numpy` | 4.625 | 1.32x |
+| 8 | `ngnk` | 5.131 | 1.46x |
+| 9 | `c` | 5.653 | 1.61x |
+| 10 | `pandas` | 9.324 | 2.65x |
+| 11 | `duckdb` | 9.744 | 2.77x |
 
 Not ranked: `amber-qsql` n/a.
 
-**Fastest: `cbqn`** (1.229 ms). Why: CBQN stores these 0..999 values in a NARROW integer array (i16), so its `+/` streams ~20 MB where the float64 engines stream 80 MB - a memory-bandwidth win from BQN's number model, not a better reduction kernel.
+**Fastest: `cbqn`** (1.127 ms). Why: CBQN stores these 0..999 values in a NARROW integer array (i16), so its `+/` streams ~20 MB where the float64 engines stream 80 MB - a memory-bandwidth win from BQN's number model, not a better reduction kernel.
 
 #### `max_f` - `\|/x` over 10M float64
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `cbqn` | 1.092 | 0.24x |
-| 2 | `numpy` | 3.946 | 0.86x |
-| 3 | `j` | 4.013 | 0.87x |
-| 4 | `peachq` | 4.078 | 0.88x |
-| 5 | `amber-native` **<-- Amber** | 4.611 | 1.00x |
-| 6 | `amber` | 4.802 | 1.04x |
-| 7 | `polars` | 4.991 | 1.08x |
-| 8 | `c` | 8.711 | 1.89x |
-| 9 | `pandas` | 11.70 | 2.54x |
-| 10 | `ngnk` | 12.27 | 2.66x |
-| 11 | `duckdb` | 37.23 | 8.07x |
+| 1 | `cbqn` | 1.025 | 0.19x |
+| 2 | `numpy` | 3.721 | 0.70x |
+| 3 | `polars` | 4.037 | 0.76x |
+| 4 | `j` | 4.172 | 0.79x |
+| 5 | `peachq` | 4.224 | 0.80x |
+| 6 | `amber` | 5.112 | 0.96x |
+| 7 | `amber-native` **<-- Amber** | 5.303 | 1.00x |
+| 8 | `c` | 9.548 | 1.80x |
+| 9 | `pandas` | 10.84 | 2.04x |
+| 10 | `ngnk` | 13.09 | 2.47x |
+| 11 | `duckdb` | 26.50 | 5.00x |
 
 Not ranked: `amber-qsql` n/a.
 
-**Fastest: `cbqn`** (1.092 ms). Why: same narrow-integer storage; the max runs over i16 lanes.
+**Fastest: `cbqn`** (1.025 ms). Why: same narrow-integer storage; the max runs over i16 lanes.
 
 #### `dot` - `+/x*y`, 10M float64 dot product
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `numpy` | 6.044 | 0.88x |
-| 2 | `pandas` | 6.185 | 0.90x |
-| 3 | `cbqn` | 6.294 | 0.92x |
-| 4 | `amber` | 6.389 | 0.93x |
-| 5 | `amber-native` **<-- Amber** | 6.855 | 1.00x |
-| 6 | `c` | 8.250 | 1.20x |
-| 7 | `peachq` | 9.210 | 1.34x |
-| 8 | `polars` | 13.50 | 1.97x |
-| 9 | `ngnk` | 14.90 | 2.17x |
-| 10 | `duckdb` | 17.72 | 2.58x |
-| 11 | `j` | 28.83 | 4.21x |
+| 1 | `pandas` | 5.994 | 0.94x |
+| 2 | `numpy` | 6.059 | 0.95x |
+| 3 | `amber` | 6.067 | 0.95x |
+| 4 | `amber-native` **<-- Amber** | 6.367 | 1.00x |
+| 5 | `cbqn` | 6.406 | 1.01x |
+| 6 | `c` | 7.749 | 1.22x |
+| 7 | `peachq` | 8.310 | 1.31x |
+| 8 | `polars` | 13.03 | 2.05x |
+| 9 | `ngnk` | 15.50 | 2.43x |
+| 10 | `duckdb` | 17.41 | 2.73x |
+| 11 | `j` | 27.95 | 4.39x |
 
 Not ranked: `amber-qsql` n/a.
 
-**Fastest: `numpy`** (6.044 ms). Why: one C ufunc per step, each pass fully vectorised but each materialising a temporary.
+**Fastest: `pandas`** (5.994 ms). Why: NumPy underneath, plus a hash group-by and a C rolling-window kernel.
 
 #### `sum_i` - `+/a` over 10M int64
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `amber-native` **<-- Amber** | 0.891 | 1.00x |
-| 2 | `amber` | 0.971 | 1.09x |
-| 3 | `cbqn` | 1.264 | 1.42x |
-| 4 | `ngnk` | 1.441 | 1.62x |
-| 5 | `peachq` | 2.071 | 2.32x |
-| 6 | `numpy` | 3.532 | 3.96x |
-| 7 | `pandas` | 3.647 | 4.09x |
-| 8 | `polars` | 3.711 | 4.17x |
-| 9 | `c` | 4.245 | 4.76x |
-| 10 | `j` | 4.248 | 4.77x |
-| 11 | `duckdb` | 14.64 | 16.43x |
+| 1 | `amber-native` **<-- Amber** | 0.873 | 1.00x |
+| 2 | `amber` | 1.034 | 1.18x |
+| 3 | `cbqn` | 1.204 | 1.38x |
+| 4 | `ngnk` | 1.666 | 1.91x |
+| 5 | `peachq` | 2.490 | 2.85x |
+| 6 | `numpy` | 3.561 | 4.08x |
+| 7 | `polars` | 4.004 | 4.59x |
+| 8 | `pandas` | 4.357 | 4.99x |
+| 9 | `c` | 4.671 | 5.35x |
+| 10 | `j` | 5.228 | 5.99x |
+| 11 | `duckdb` | 11.61 | 13.30x |
 
 Not ranked: `amber-qsql` n/a.
 
-**Fastest: `amber-native`** (0.891 ms). Why: Amber array primitives with `-march=native` SIMD.
+**Fastest: `amber-native`** (0.873 ms). Why: Amber array primitives with `-march=native` SIMD.
 
 #### `arith_mask` - `+/(y+2.5*x)@&x>50` - mask, gather, fused arithmetic, reduce
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `c` | 10.65 | 0.42x |
-| 2 | `amber` | 23.49 | 0.93x |
-| 3 | `amber-native` **<-- Amber** | 25.36 | 1.00x |
-| 4 | `numpy` | 46.98 | 1.85x |
-| 5 | `j` | 48.64 | 1.92x |
-| 6 | `cbqn` | 51.83 | 2.04x |
-| 7 | `polars` | 55.02 | 2.17x |
-| 8 | `ngnk` | 57.36 | 2.26x |
-| 9 | `duckdb` | 70.44 | 2.78x |
-| 10 | `pandas` | 90.89 | 3.58x |
-| 11 | `peachq` | 373.3 | 14.72x |
+| 1 | `c` | 8.518 | 0.55x |
+| 2 | `amber-native` **<-- Amber** | 15.38 | 1.00x |
+| 3 | `amber` | 15.93 | 1.04x |
+| 4 | `numpy` | 43.98 | 2.86x |
+| 5 | `j` | 45.17 | 2.94x |
+| 6 | `cbqn` | 51.81 | 3.37x |
+| 7 | `ngnk` | 52.91 | 3.44x |
+| 8 | `polars` | 55.38 | 3.60x |
+| 9 | `duckdb` | 58.07 | 3.77x |
+| 10 | `pandas` | 94.71 | 6.16x |
+| 11 | `peachq` | 371.1 | 24.12x |
 
 Not ranked: `amber-qsql` n/a.
 
-**Fastest: `c`** (10.65 ms). Why: hand-written single-pass C with an open-address hash and a generic LSD radix sort.
+**Fastest: `c`** (8.518 ms). Why: hand-written single-pass C with an open-address hash and a generic LSD radix sort.
 
 ### Sort and grade
 
@@ -192,78 +203,78 @@ Not ranked: `amber-qsql` n/a.
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `cbqn` | 6.144 | 0.12x |
-| 2 | `amber-native` **<-- Amber** | 51.55 | 1.00x |
-| 3 | `amber` | 54.20 | 1.05x |
-| 4 | `numpy` | 61.45 | 1.19x |
-| 5 | `c` | 88.90 | 1.72x |
-| 6 | `polars` | 126.4 | 2.45x |
-| 7 | `ngnk` | 522.0 | 10.13x |
-| 8 | `duckdb` | 867.4 | 16.83x |
-| 9 | `pandas` | 909.1 | 17.63x |
-| 10 | `peachq` | 1080 | 20.95x |
-| 11 | `j` | 5831 | 113.11x |
+| 1 | `cbqn` | 6.543 | 0.17x |
+| 2 | `amber-native` **<-- Amber** | 39.64 | 1.00x |
+| 3 | `amber` | 44.84 | 1.13x |
+| 4 | `numpy` | 51.94 | 1.31x |
+| 5 | `c` | 89.45 | 2.26x |
+| 6 | `polars` | 93.77 | 2.37x |
+| 7 | `ngnk` | 531.5 | 13.41x |
+| 8 | `duckdb` | 775.8 | 19.57x |
+| 9 | `pandas` | 847.3 | 21.38x |
+| 10 | `peachq` | 880.1 | 22.20x |
+| 11 | `j` | 5299 | 133.68x |
 
 Not ranked: `amber-qsql` n/a.
 
-**Fastest: `cbqn`** (6.144 ms). Why: BQN has no user-visible float/int split, so CBQN stores these 0..999 values in a narrow integer array and range-detects into a counting sort; it is not sorting float64 at all.
+**Fastest: `cbqn`** (6.543 ms). Why: BQN has no user-visible float/int split, so CBQN stores these 0..999 values in a narrow integer array and range-detects into a counting sort; it is not sorting float64 at all.
 
 #### `sort_presorted` - the same sort on already-sorted input (adaptivity)
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `cbqn` | 1.232 | 0.03x |
-| 2 | `polars` | 19.18 | 0.50x |
-| 3 | `amber-native` **<-- Amber** | 38.39 | 1.00x |
-| 4 | `amber` | 39.51 | 1.03x |
-| 5 | `numpy` | 65.46 | 1.71x |
-| 6 | `j` | 91.33 | 2.38x |
-| 7 | `c` | 103.6 | 2.70x |
-| 8 | `pandas` | 114.0 | 2.97x |
-| 9 | `ngnk` | 280.8 | 7.32x |
-| 10 | `duckdb` | 734.2 | 19.13x |
-| 11 | `peachq` | 830.6 | 21.64x |
+| 1 | `cbqn` | 1.503 | 0.07x |
+| 2 | `polars` | 18.53 | 0.89x |
+| 3 | `amber-native` **<-- Amber** | 20.82 | 1.00x |
+| 4 | `amber` | 23.27 | 1.12x |
+| 5 | `numpy` | 62.43 | 3.00x |
+| 6 | `j` | 87.59 | 4.21x |
+| 7 | `pandas` | 114.4 | 5.50x |
+| 8 | `c` | 146.2 | 7.02x |
+| 9 | `ngnk` | 274.5 | 13.19x |
+| 10 | `duckdb` | 629.4 | 30.24x |
+| 11 | `peachq` | 661.7 | 31.79x |
 
 Not ranked: `amber-qsql` n/a.
 
-**Fastest: `cbqn`** (1.232 ms). Why: same narrow-int counting-sort path as `sort_f`.
+**Fastest: `cbqn`** (1.503 ms). Why: same narrow-int counting-sort path as `sort_f`.
 
 #### `grade_i` - stable grade-up of 10M int64
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `amber-native` **<-- Amber** | 23.58 | 1.00x |
-| 2 | `duckdb` | 26.70 | 1.13x |
-| 3 | `amber` | 30.29 | 1.28x |
-| 4 | `cbqn` | 32.62 | 1.38x |
-| 5 | `peachq` | 37.17 | 1.58x |
-| 6 | `j` | 55.61 | 2.36x |
-| 7 | `ngnk` | 88.67 | 3.76x |
-| 8 | `c` | 147.3 | 6.25x |
-| 9 | `polars` | 279.9 | 11.87x |
-| 10 | `numpy` | 678.9 | 28.79x |
-| 11 | `pandas` | 771.3 | 32.71x |
+| 1 | `amber-native` **<-- Amber** | 22.93 | 1.00x |
+| 2 | `amber` | 23.07 | 1.01x |
+| 3 | `duckdb` | 25.03 | 1.09x |
+| 4 | `cbqn` | 30.17 | 1.32x |
+| 5 | `peachq` | 33.09 | 1.44x |
+| 6 | `j` | 61.53 | 2.68x |
+| 7 | `c` | 84.42 | 3.68x |
+| 8 | `ngnk` | 85.97 | 3.75x |
+| 9 | `polars` | 268.7 | 11.72x |
+| 10 | `numpy` | 576.6 | 25.15x |
+| 11 | `pandas` | 758.9 | 33.10x |
 
 Not ranked: `amber-qsql` n/a.
 
-**Fastest: `amber-native`** (23.58 ms). Why: Amber array primitives with `-march=native` SIMD.
+**Fastest: `amber-native`** (22.93 ms). Why: Amber array primitives with `-march=native` SIMD.
 
 #### `tablesort` - 2M-row table sorted by `(sym, px)`
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `c` | 69.81 | 0.74x |
-| 2 | `amber-native` **<-- Amber** | 94.16 | 1.00x |
-| 3 | `amber` | 100.7 | 1.07x |
-| 4 | `pandas` | 115.0 | 1.22x |
-| 5 | `numpy` | 227.8 | 2.42x |
-| 6 | `duckdb` | 384.7 | 4.09x |
-| 7 | `polars` | 463.6 | 4.92x |
-| 8 | `peachq` | 995.1 | 10.57x |
+| 1 | `c` | 69.14 | 0.78x |
+| 2 | `amber-native` **<-- Amber** | 88.33 | 1.00x |
+| 3 | `amber` | 96.42 | 1.09x |
+| 4 | `pandas` | 107.2 | 1.21x |
+| 5 | `numpy` | 189.4 | 2.14x |
+| 6 | `duckdb` | 292.5 | 3.31x |
+| 7 | `polars` | 410.3 | 4.65x |
+| 8 | `peachq` | 1022 | 11.58x |
 
 Not ranked: `amber-qsql` n/a, `cbqn` n/a, `j` n/a, `ngnk` n/a.
 
-**Fastest: `c`** (69.81 ms). Why: hand-written single-pass C with an open-address hash and a generic LSD radix sort.
+**Fastest: `c`** (69.14 ms). Why: hand-written single-pass C with an open-address hash and a generic LSD radix sort.
 
 ### Search, distinct and group-by
 
@@ -271,155 +282,155 @@ Not ranked: `amber-qsql` n/a, `cbqn` n/a, `j` n/a, `ngnk` n/a.
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `c` | 16.21 | 0.75x |
-| 2 | `cbqn` | 18.48 | 0.86x |
-| 3 | `amber-native` **<-- Amber** | 21.47 | 1.00x |
-| 4 | `amber` | 21.75 | 1.01x |
-| 5 | `duckdb` | 39.73 | 1.85x |
-| 6 | `j` | 98.72 | 4.60x |
-| 7 | `peachq` | 99.81 | 4.65x |
-| 8 | `numpy` | 134.1 | 6.25x |
-| 9 | `ngnk` | 1437 | 66.95x |
+| 1 | `c` | 15.50 | 0.81x |
+| 2 | `cbqn` | 18.52 | 0.97x |
+| 3 | `amber-native` **<-- Amber** | 19.09 | 1.00x |
+| 4 | `amber` | 20.52 | 1.07x |
+| 5 | `duckdb` | 30.39 | 1.59x |
+| 6 | `j` | 51.23 | 2.68x |
+| 7 | `peachq` | 82.04 | 4.30x |
+| 8 | `numpy` | 119.2 | 6.24x |
+| 9 | `ngnk` | 1114 | 58.35x |
 
 Not ranked: `amber-qsql` n/a, `pandas` n/a, `polars` n/a.
 
-**Fastest: `c`** (16.21 ms). Why: one open-address hash probe per element.
+**Fastest: `c`** (15.50 ms). Why: one open-address hash probe per element.
 
 #### `member` - `h in kr` - 10M values against a 1000-element set
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `amber` | 13.85 | 0.96x |
-| 2 | `amber-native` **<-- Amber** | 14.36 | 1.00x |
-| 3 | `cbqn` | 15.83 | 1.10x |
-| 4 | `polars` | 36.17 | 2.52x |
-| 5 | `numpy` | 53.07 | 3.70x |
-| 6 | `j` | 53.09 | 3.70x |
-| 7 | `duckdb` | 74.84 | 5.21x |
-| 8 | `pandas` | 77.24 | 5.38x |
-| 9 | `c` | 91.52 | 6.37x |
-| 10 | `peachq` | 188.7 | 13.14x |
-| 11 | `ngnk` | 2910 | 202.68x |
+| 1 | `amber-native` **<-- Amber** | 9.320 | 1.00x |
+| 2 | `amber` | 9.582 | 1.03x |
+| 3 | `cbqn` | 16.32 | 1.75x |
+| 4 | `polars` | 26.20 | 2.81x |
+| 5 | `j` | 33.19 | 3.56x |
+| 6 | `duckdb` | 40.22 | 4.31x |
+| 7 | `numpy` | 52.96 | 5.68x |
+| 8 | `pandas` | 74.80 | 8.03x |
+| 9 | `c` | 90.28 | 9.69x |
+| 10 | `peachq` | 149.7 | 16.06x |
+| 11 | `ngnk` | 2142 | 229.84x |
 
 Not ranked: `amber-qsql` n/a.
 
-**Fastest: `amber`** (13.85 ms). Why: Amber array primitives, portable build.
+**Fastest: `amber-native`** (9.320 ms). Why: Amber array primitives with `-march=native` SIMD.
 
 #### `distinct` - `?a` - 10M values, 1000 distinct
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `cbqn` | 5.459 | 0.71x |
-| 2 | `amber-native` **<-- Amber** | 7.723 | 1.00x |
-| 3 | `amber` | 8.756 | 1.13x |
-| 4 | `c` | 30.34 | 3.93x |
-| 5 | `j` | 32.39 | 4.19x |
-| 6 | `pandas` | 51.08 | 6.61x |
-| 7 | `duckdb` | 60.34 | 7.81x |
-| 8 | `polars` | 88.59 | 11.47x |
-| 9 | `ngnk` | 256.9 | 33.27x |
-| 10 | `numpy` | 363.0 | 47.00x |
-| 11 | `peachq` | 1277 | 165.36x |
+| 1 | `cbqn` | 5.486 | 0.73x |
+| 2 | `amber-native` **<-- Amber** | 7.562 | 1.00x |
+| 3 | `amber` | 8.418 | 1.11x |
+| 4 | `c` | 25.64 | 3.39x |
+| 5 | `j` | 36.87 | 4.88x |
+| 6 | `duckdb` | 39.16 | 5.18x |
+| 7 | `pandas` | 45.38 | 6.00x |
+| 8 | `polars` | 79.67 | 10.54x |
+| 9 | `ngnk` | 218.0 | 28.82x |
+| 10 | `numpy` | 301.6 | 39.89x |
+| 11 | `peachq` | 1318 | 174.29x |
 
 Not ranked: `amber-qsql` n/a.
 
-**Fastest: `cbqn`** (5.459 ms). Why: narrow-int storage lets distinct become a 1000-entry bitmap.
+**Fastest: `cbqn`** (5.486 ms). Why: narrow-int storage lets distinct become a 1000-entry bitmap.
 
 #### `distinct_100k` - `?g` - 10M values, 100k distinct
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `amber-native` **<-- Amber** | 15.47 | 1.00x |
-| 2 | `amber` | 17.98 | 1.16x |
-| 3 | `cbqn` | 45.11 | 2.92x |
-| 4 | `j` | 57.71 | 3.73x |
-| 5 | `c` | 81.91 | 5.29x |
-| 6 | `pandas` | 85.77 | 5.54x |
-| 7 | `duckdb` | 98.94 | 6.39x |
-| 8 | `polars` | 124.1 | 8.02x |
-| 9 | `ngnk` | 453.7 | 29.33x |
-| 10 | `numpy` | 658.8 | 42.58x |
-| 11 | `peachq` | 1441 | 93.10x |
+| 1 | `amber-native` **<-- Amber** | 10.24 | 1.00x |
+| 2 | `amber` | 16.10 | 1.57x |
+| 3 | `cbqn` | 46.33 | 4.53x |
+| 4 | `j` | 50.11 | 4.89x |
+| 5 | `c` | 61.67 | 6.02x |
+| 6 | `pandas` | 69.29 | 6.77x |
+| 7 | `duckdb` | 94.38 | 9.22x |
+| 8 | `polars` | 120.4 | 11.76x |
+| 9 | `ngnk` | 395.5 | 38.63x |
+| 10 | `numpy` | 672.7 | 65.71x |
+| 11 | `peachq` | 1608 | 157.06x |
 
 Not ranked: `amber-qsql` n/a.
 
-**Fastest: `amber-native`** (15.47 ms). Why: Amber array primitives with `-march=native` SIMD.
+**Fastest: `amber-native`** (10.24 ms). Why: Amber array primitives with `-march=native` SIMD.
 
 #### `group_10` - group-sum, 10 groups
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `amber-native` **<-- Amber** | 19.90 | 1.00x |
-| 2 | `amber` | 21.22 | 1.07x |
-| 3 | `c` | 24.86 | 1.25x |
-| 4 | `cbqn` | 27.29 | 1.37x |
-| 5 | `duckdb` | 28.46 | 1.43x |
-| 6 | `j` | 44.60 | 2.24x |
-| 7 | `ngnk` | 51.77 | 2.60x |
-| 8 | `polars` | 56.56 | 2.84x |
-| 9 | `pandas` | 69.81 | 3.51x |
-| 10 | `amber-qsql` | 114.1 | 5.73x |
-| 11 | `numpy` | 255.2 | 12.82x |
-| 12 | `peachq` | 388.4 | 19.52x |
+| 1 | `amber-native` **<-- Amber** | 19.87 | 1.00x |
+| 2 | `amber` | 21.26 | 1.07x |
+| 3 | `c` | 23.92 | 1.20x |
+| 4 | `amber-qsql` | 25.05 | 1.26x |
+| 5 | `cbqn` | 28.24 | 1.42x |
+| 6 | `duckdb` | 30.44 | 1.53x |
+| 7 | `polars` | 32.61 | 1.64x |
+| 8 | `j` | 44.03 | 2.22x |
+| 9 | `ngnk` | 51.12 | 2.57x |
+| 10 | `pandas` | 56.11 | 2.82x |
+| 11 | `numpy` | 271.1 | 13.64x |
+| 12 | `peachq` | 345.1 | 17.37x |
 
-**Fastest: `amber-native`** (19.90 ms). Why: Amber array primitives with `-march=native` SIMD.
+**Fastest: `amber-native`** (19.87 ms). Why: Amber array primitives with `-march=native` SIMD.
 
 #### `group_100` - group-sum, 100 groups
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `amber-native` **<-- Amber** | 21.17 | 1.00x |
-| 2 | `c` | 25.51 | 1.20x |
-| 3 | `duckdb` | 28.43 | 1.34x |
-| 4 | `amber` | 34.16 | 1.61x |
-| 5 | `polars` | 38.00 | 1.79x |
-| 6 | `j` | 54.26 | 2.56x |
-| 7 | `pandas` | 59.93 | 2.83x |
-| 8 | `ngnk` | 114.3 | 5.40x |
-| 9 | `cbqn` | 142.1 | 6.71x |
-| 10 | `amber-qsql` | 211.3 | 9.98x |
-| 11 | `peachq` | 481.7 | 22.75x |
-| 12 | `numpy` | 804.9 | 38.01x |
+| 1 | `amber-native` **<-- Amber** | 20.85 | 1.00x |
+| 2 | `amber` | 21.08 | 1.01x |
+| 3 | `c` | 24.12 | 1.16x |
+| 4 | `amber-qsql` | 25.88 | 1.24x |
+| 5 | `duckdb` | 28.60 | 1.37x |
+| 6 | `polars` | 40.16 | 1.93x |
+| 7 | `j` | 40.39 | 1.94x |
+| 8 | `pandas` | 58.29 | 2.80x |
+| 9 | `cbqn` | 62.24 | 2.98x |
+| 10 | `ngnk` | 114.5 | 5.49x |
+| 11 | `peachq` | 464.0 | 22.25x |
+| 12 | `numpy` | 794.8 | 38.11x |
 
-**Fastest: `amber-native`** (21.17 ms). Why: Amber array primitives with `-march=native` SIMD.
+**Fastest: `amber-native`** (20.85 ms). Why: Amber array primitives with `-march=native` SIMD.
 
 #### `group_10k` - group-sum, 10 000 groups
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `amber-native` **<-- Amber** | 28.25 | 1.00x |
-| 2 | `amber` | 42.81 | 1.52x |
-| 3 | `c` | 48.78 | 1.73x |
-| 4 | `j` | 58.78 | 2.08x |
-| 5 | `duckdb` | 59.09 | 2.09x |
-| 6 | `pandas` | 102.3 | 3.62x |
-| 7 | `cbqn` | 126.1 | 4.46x |
-| 8 | `ngnk` | 179.8 | 6.36x |
-| 9 | `amber-qsql` | 301.8 | 10.68x |
-| 10 | `polars` | 351.1 | 12.43x |
-| 11 | `numpy` | 908.1 | 32.15x |
-| 12 | `peachq` | 1687 | 59.71x |
+| 1 | `amber-native` **<-- Amber** | 22.47 | 1.00x |
+| 2 | `amber` | 23.40 | 1.04x |
+| 3 | `amber-qsql` | 28.39 | 1.26x |
+| 4 | `j` | 40.11 | 1.78x |
+| 5 | `c` | 47.67 | 2.12x |
+| 6 | `duckdb` | 59.72 | 2.66x |
+| 7 | `pandas` | 110.8 | 4.93x |
+| 8 | `cbqn` | 122.6 | 5.46x |
+| 9 | `ngnk` | 167.5 | 7.45x |
+| 10 | `polars` | 257.3 | 11.45x |
+| 11 | `numpy` | 871.1 | 38.76x |
+| 12 | `peachq` | 1646 | 73.23x |
 
-**Fastest: `amber-native`** (28.25 ms). Why: Amber array primitives with `-march=native` SIMD.
+**Fastest: `amber-native`** (22.47 ms). Why: Amber array primitives with `-march=native` SIMD.
 
 #### `group_100k` - group-sum, 100 000 groups
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `amber-native` **<-- Amber** | 33.54 | 1.00x |
-| 2 | `amber` | 33.70 | 1.00x |
-| 3 | `j` | 55.86 | 1.67x |
-| 4 | `c` | 76.25 | 2.27x |
-| 5 | `pandas` | 102.7 | 3.06x |
-| 6 | `duckdb` | 108.2 | 3.22x |
-| 7 | `cbqn` | 234.6 | 6.99x |
-| 8 | `amber-qsql` | 397.7 | 11.86x |
-| 9 | `polars` | 404.0 | 12.05x |
-| 10 | `ngnk` | 440.1 | 13.12x |
-| 11 | `numpy` | 828.7 | 24.71x |
-| 12 | `peachq` | 4048 | 120.68x |
+| 1 | `amber-native` **<-- Amber** | 23.90 | 1.00x |
+| 2 | `amber` | 30.74 | 1.29x |
+| 3 | `amber-qsql` | 31.00 | 1.30x |
+| 4 | `j` | 59.10 | 2.47x |
+| 5 | `c` | 74.72 | 3.13x |
+| 6 | `duckdb` | 103.4 | 4.32x |
+| 7 | `pandas` | 107.5 | 4.50x |
+| 8 | `cbqn` | 239.3 | 10.01x |
+| 9 | `polars` | 392.4 | 16.42x |
+| 10 | `ngnk` | 467.6 | 19.57x |
+| 11 | `numpy` | 685.6 | 28.69x |
+| 12 | `peachq` | 3671 | 153.62x |
 
-**Fastest: `amber-native`** (33.54 ms). Why: Amber array primitives with `-march=native` SIMD.
+**Fastest: `amber-native`** (23.90 ms). Why: Amber array primitives with `-march=native` SIMD.
 
 ### Joins
 
@@ -427,37 +438,37 @@ Not ranked: `amber-qsql` n/a.
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `c` | 1.903 | 0.68x |
-| 2 | `cbqn` | 2.247 | 0.80x |
-| 3 | `amber-native` **<-- Amber** | 2.800 | 1.00x |
-| 4 | `amber` | 3.309 | 1.18x |
-| 5 | `duckdb` | 4.523 | 1.62x |
-| 6 | `j` | 4.713 | 1.68x |
-| 7 | `amber-qsql` | 8.012 | 2.86x |
-| 8 | `peachq` | 10.56 | 3.77x |
-| 9 | `polars` | 13.00 | 4.64x |
-| 10 | `numpy` | 14.87 | 5.31x |
-| 11 | `pandas` | 45.36 | 16.20x |
-| 12 | `ngnk` | 149.4 | 53.36x |
+| 1 | `c` | 1.684 | 0.59x |
+| 2 | `cbqn` | 2.301 | 0.81x |
+| 3 | `amber-native` **<-- Amber** | 2.838 | 1.00x |
+| 4 | `amber` | 3.241 | 1.14x |
+| 5 | `j` | 4.438 | 1.56x |
+| 6 | `duckdb` | 5.149 | 1.81x |
+| 7 | `amber-qsql` | 7.973 | 2.81x |
+| 8 | `peachq` | 10.16 | 3.58x |
+| 9 | `polars` | 11.31 | 3.99x |
+| 10 | `numpy` | 14.98 | 5.28x |
+| 11 | `pandas` | 48.85 | 17.21x |
+| 12 | `ngnk` | 115.3 | 40.64x |
 
-**Fastest: `c`** (1.903 ms). Why: hand-written single-pass C with an open-address hash and a generic LSD radix sort.
+**Fastest: `c`** (1.684 ms). Why: hand-written single-pass C with an open-address hash and a generic LSD radix sort.
 
 #### `asof` - as-of join on `(sym,time)`, 1M trades against 200k quotes
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `amber` | 7.543 | 0.96x |
-| 2 | `amber-native` **<-- Amber** | 7.824 | 1.00x |
-| 3 | `c` | 8.112 | 1.04x |
-| 4 | `polars` | 17.47 | 2.23x |
-| 5 | `numpy` | 25.23 | 3.22x |
-| 6 | `pandas` | 89.04 | 11.38x |
-| 7 | `duckdb` | 235.7 | 30.12x |
-| 8 | `peachq` | 265.2 | 33.90x |
+| 1 | `amber` | 7.375 | 0.92x |
+| 2 | `amber-native` **<-- Amber** | 8.033 | 1.00x |
+| 3 | `c` | 8.398 | 1.05x |
+| 4 | `polars` | 14.91 | 1.86x |
+| 5 | `numpy` | 25.54 | 3.18x |
+| 6 | `pandas` | 73.50 | 9.15x |
+| 7 | `duckdb` | 170.4 | 21.21x |
+| 8 | `peachq` | 245.2 | 30.53x |
 
 Not ranked: `amber-qsql` n/a, `cbqn` n/a, `j` n/a, `ngnk` n/a.
 
-**Fastest: `amber`** (7.543 ms). Why: Amber array primitives, portable build.
+**Fastest: `amber`** (7.375 ms). Why: Amber array primitives, portable build.
 
 ### Moving windows
 
@@ -465,58 +476,58 @@ Not ranked: `amber-qsql` n/a, `cbqn` n/a, `j` n/a, `ngnk` n/a.
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `c` | 10.88 | 0.67x |
-| 2 | `amber` | 15.48 | 0.96x |
-| 3 | `amber-native` **<-- Amber** | 16.13 | 1.00x |
-| 4 | `cbqn` | 28.56 | 1.77x |
-| 5 | `polars` | 52.30 | 3.24x |
-| 6 | `j` | 56.59 | 3.51x |
-| 7 | `numpy` | 102.9 | 6.38x |
-| 8 | `pandas` | 119.6 | 7.41x |
-| 9 | `ngnk` | 257.2 | 15.94x |
-| 10 | `peachq` | 397.6 | 24.64x |
-| 11 | `duckdb` | 1169 | 72.48x |
+| 1 | `c` | 11.20 | 0.70x |
+| 2 | `amber-native` **<-- Amber** | 16.01 | 1.00x |
+| 3 | `amber` | 16.80 | 1.05x |
+| 4 | `cbqn` | 30.34 | 1.90x |
+| 5 | `polars` | 46.83 | 2.93x |
+| 6 | `j` | 55.74 | 3.48x |
+| 7 | `numpy` | 104.0 | 6.50x |
+| 8 | `pandas` | 121.9 | 7.62x |
+| 9 | `ngnk` | 258.0 | 16.12x |
+| 10 | `peachq` | 414.3 | 25.88x |
+| 11 | `duckdb` | 938.6 | 58.63x |
 
 Not ranked: `amber-qsql` n/a.
 
-**Fastest: `c`** (10.88 ms). Why: hand-written single-pass C with an open-address hash and a generic LSD radix sort.
+**Fastest: `c`** (11.20 ms). Why: hand-written single-pass C with an open-address hash and a generic LSD radix sort.
 
 #### `mavg_256` - moving average, width 256, over 10M (tolerance op)
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `c` | 11.37 | 0.65x |
-| 2 | `amber-native` **<-- Amber** | 17.60 | 1.00x |
-| 3 | `amber` | 22.50 | 1.28x |
-| 4 | `cbqn` | 52.30 | 2.97x |
-| 5 | `j` | 105.0 | 5.96x |
-| 6 | `polars` | 129.0 | 7.33x |
-| 7 | `pandas` | 141.4 | 8.04x |
-| 8 | `numpy` | 171.9 | 9.77x |
-| 9 | `ngnk` | 278.9 | 15.85x |
-| 10 | `duckdb` | 1459 | 82.92x |
-| 11 | `peachq` | 12832 | 729.12x |
+| 1 | `c` | 11.43 | 0.65x |
+| 2 | `amber-native` **<-- Amber** | 17.52 | 1.00x |
+| 3 | `amber` | 21.09 | 1.20x |
+| 4 | `cbqn` | 49.92 | 2.85x |
+| 5 | `polars` | 54.88 | 3.13x |
+| 6 | `j` | 98.21 | 5.60x |
+| 7 | `pandas` | 126.7 | 7.23x |
+| 8 | `numpy` | 151.7 | 8.66x |
+| 9 | `ngnk` | 280.6 | 16.01x |
+| 10 | `duckdb` | 1354 | 77.29x |
+| 11 | `peachq` | 10409 | 593.98x |
 
 Not ranked: `amber-qsql` n/a.
 
-**Fastest: `c`** (11.37 ms). Why: hand-written single-pass C with an open-address hash and a generic LSD radix sort.
+**Fastest: `c`** (11.43 ms). Why: hand-written single-pass C with an open-address hash and a generic LSD radix sort.
 
 #### `mmax_64` - moving max, width 64, over 10M
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `c` | 16.43 | 0.50x |
-| 2 | `amber-native` **<-- Amber** | 32.73 | 1.00x |
-| 3 | `amber` | 43.96 | 1.34x |
-| 4 | `polars` | 64.06 | 1.96x |
-| 5 | `pandas` | 145.5 | 4.45x |
-| 6 | `numpy` | 472.6 | 14.44x |
-| 7 | `duckdb` | 1787 | 54.60x |
-| 8 | `peachq` | 2211 | 67.53x |
+| 1 | `c` | 15.30 | 0.43x |
+| 2 | `amber` | 28.21 | 0.80x |
+| 3 | `amber-native` **<-- Amber** | 35.43 | 1.00x |
+| 4 | `polars` | 61.10 | 1.72x |
+| 5 | `pandas` | 129.8 | 3.66x |
+| 6 | `numpy` | 455.5 | 12.86x |
+| 7 | `duckdb` | 1537 | 43.38x |
+| 8 | `peachq` | 2065 | 58.30x |
 
 Not ranked: `amber-qsql` n/a, `cbqn` n/a, `j` n/a, `ngnk` n/a.
 
-**Fastest: `c`** (16.43 ms). Why: O(n) monotonic index deque; no engine can beat one pass.
+**Fastest: `c`** (15.30 ms). Why: O(n) monotonic index deque; no engine can beat one pass.
 
 ### qSQL-shaped
 
@@ -524,43 +535,42 @@ Not ranked: `amber-qsql` n/a, `cbqn` n/a, `j` n/a, `ngnk` n/a.
 
 | # | engine | ms | vs Amber |
 |---:|---|---:|---:|
-| 1 | `c` | 2.296 | 0.50x |
-| 2 | `amber-native` **<-- Amber** | 4.571 | 1.00x |
-| 3 | `amber` | 5.834 | 1.28x |
-| 4 | `amber-qsql` | 7.259 | 1.59x |
-| 5 | `duckdb` | 8.041 | 1.76x |
-| 6 | `polars` | 12.51 | 2.74x |
-| 7 | `pandas` | 15.09 | 3.30x |
-| 8 | `numpy` | 50.49 | 11.05x |
-| 9 | `peachq` | 167.8 | 36.70x |
+| 1 | `c` | 2.162 | 0.48x |
+| 2 | `amber-qsql` | 3.787 | 0.84x |
+| 3 | `amber-native` **<-- Amber** | 4.505 | 1.00x |
+| 4 | `amber` | 5.047 | 1.12x |
+| 5 | `duckdb` | 8.026 | 1.78x |
+| 6 | `polars` | 11.62 | 2.58x |
+| 7 | `pandas` | 17.74 | 3.94x |
+| 8 | `numpy` | 48.09 | 10.68x |
+| 9 | `peachq` | 139.5 | 30.97x |
 
 Not ranked: `cbqn` n/a, `j` n/a, `ngnk` n/a.
 
-**Fastest: `c`** (2.296 ms). Why: the group key is small and dense, so the accumulator is L1-resident.
+**Fastest: `c`** (2.162 ms). Why: the group key is small and dense, so the accumulator is L1-resident.
 
 ## 4. Biggest optimisation opportunities for Amber
 
 Every operation where at least one single-threaded engine beats Amber, ordered by
 how much headroom the winner demonstrates.
 
-| rank | op | Amber ms | best ms | best engine | headroom | q ms |
+| rank | op | Amber ms | best ms | best engine | headroom | C ms |
 |---:|---|---:|---:|---|---:|---:|
-| 1 | `sort_presorted` | 38.39 | 1.232 | `cbqn` | **31.17x** | - |
-| 2 | `sort_f` | 51.55 | 6.144 | `cbqn` | **8.39x** | - |
-| 3 | `max_f` | 4.611 | 1.092 | `cbqn` | **4.22x** | - |
-| 4 | `sum_f` | 3.414 | 1.229 | `cbqn` | **2.78x** | - |
-| 5 | `arith_mask` | 25.36 | 10.65 | `c` | **2.38x** | - |
-| 6 | `mmax_64` | 32.73 | 16.43 | `c` | **1.99x** | - |
-| 7 | `qsql_select` | 4.571 | 2.296 | `c` | **1.99x** | - |
-| 8 | `mavg_256` | 17.60 | 11.37 | `c` | **1.55x** | - |
-| 9 | `msum_16` | 16.13 | 10.88 | `c` | **1.48x** | - |
-| 10 | `join_inner` | 2.800 | 1.903 | `c` | **1.47x** | - |
-| 11 | `distinct` | 7.723 | 5.459 | `cbqn` | **1.41x** | - |
-| 12 | `tablesort` | 94.16 | 69.81 | `c` | **1.35x** | - |
-| 13 | `find` | 21.47 | 16.21 | `c` | **1.32x** | - |
-| 14 | `dot` | 6.855 | 6.044 | `numpy` | **1.13x** | - |
-| 15 | `asof` | 7.824 | 7.543 | `amber` | **1.04x** | - |
-| 16 | `member` | 14.36 | 13.85 | `amber` | **1.04x** | - |
+| 1 | `sort_presorted` | 20.82 | 1.503 | `cbqn` | **13.85x** | 146.2 |
+| 2 | `sort_f` | 39.64 | 6.543 | `cbqn` | **6.06x** | 89.45 |
+| 3 | `max_f` | 5.303 | 1.025 | `cbqn` | **5.17x** | 9.548 |
+| 4 | `sum_f` | 3.516 | 1.127 | `cbqn` | **3.12x** | 5.653 |
+| 5 | `mmax_64` | 35.43 | 15.30 | `c` | **2.32x** | 15.30 |
+| 6 | `qsql_select` | 4.505 | 2.162 | `c` | **2.08x** | 2.162 |
+| 7 | `arith_mask` | 15.38 | 8.518 | `c` | **1.81x** | 8.518 |
+| 8 | `join_inner` | 2.838 | 1.684 | `c` | **1.69x** | 1.684 |
+| 9 | `mavg_256` | 17.52 | 11.43 | `c` | **1.53x** | 11.43 |
+| 10 | `msum_16` | 16.01 | 11.20 | `c` | **1.43x** | 11.20 |
+| 11 | `distinct` | 7.562 | 5.486 | `cbqn` | **1.38x** | 25.64 |
+| 12 | `tablesort` | 88.33 | 69.14 | `c` | **1.28x** | 69.14 |
+| 13 | `find` | 19.09 | 15.50 | `c` | **1.23x** | 15.50 |
+| 14 | `asof` | 8.033 | 7.375 | `amber` | **1.09x** | 8.398 |
+| 15 | `dot` | 6.367 | 5.994 | `pandas` | **1.06x** | 7.749 |
 
 ## 5. How to read this table - caveats, and defects found while building it
 
@@ -630,9 +640,6 @@ one line; the same shape works at the REPL. Worth a look at the script reader.
 
 ### Notes on the other engines
 
-- **kdb+/q needs `` `p# `` on the quote table** for `aj` to be O(log n) per row.
-  Without it `asof` takes **~47 s** instead of ~88 ms. The harness applies it
-  outside the timed region, which is the documented, idiomatic setup.
 - **ngn/k has no hash index**: `?` and `in` are linear scans, which is why `find`
   (1326 ms) and `member` (2347 ms) are two orders of magnitude off everyone else.
   That gap is exactly the value Amber's search kernels add over its own upstream.

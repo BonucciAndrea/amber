@@ -102,8 +102,51 @@ gag1:{[d;k;m;p]$[2=#p;`gagg(p 0;k;d p 1;m);[wv:d p 1;a:`gagg(`sum;k;wv*d p 2;m);
 qaggf:{[t;b;sg;m]d:+t;bc:d b;k:$[1=#b;*bc;qcard[bc]<qEXACT;qenc bc;()];$[0=#k;();[rs:gag1[d;k;m]'sg;$[&/value[{0<#x}'rs];[fr:(*value[rs])2;(+b!bc@\:fr)!+{v:x 1;$[`I=@v;`i$v;v]}'rs];()]]]}
 
 
+/ ---- select[...] : q's sorted and limited select ---------------------------
+/   select[5] from t          the first 5 rows       select[-5] from t   the last 5
+/   select[>px] from t        sorted by px, descending
+/   select[<sym] from t       ... ascending
+/   select[5;>px] from t      sorted, THEN limited -- q's order, not the reverse
+/   select[<sym;>px] from t   several keys: the FIRST listed is the primary one
+/ A sort key may be any expression over the columns, not only a column name; a
+/ bare column name goes through xasc/xdesc so the result keeps the `s attribute
+/ where that applies.  On a keyed (by-clause) result the spec is applied to the
+/ unkeyed rows and the key is put back, which is what q does.
+/ qbrk: peel a leading "[...]" off the select-part -> (spec-text; rest).
+/ (the char tests are "["=*s, not "["~1#s : a char ATOM never matches a
+/ one-element char VECTOR, so the ~ form is false for every input)
+qbrk:{[s]$[0=#s;("";s);~"["=*s;("";s);[d:sums(s="[")-s="]";c:&d=0;$[0=#c;("";s);[i:*c;(trim 1_i#s;trim(1+i)_s)]]]]}
+qsdir:{[e]$[0=#e;();"<"=*e;(0;trim 1_e);">"=*e;(1;trim 1_e);()]}     / () = not a sort item
+qsone:{[r;p]C:cols r;e:p 1;$[in[`$e;C];$[p 0;xdesc[`$e;r];xasc[`$e;r]];[v:qfn[C;e]r;r@$[p 0;>v;<v]]]}
+/ (the parameter is sk, not ss: `ss` is one of the names the parser treats as
+/ an INFIX verb, and it does that from the name alone -- so `1_ss` inside a
+/ lambda whose parameter is called ss parses ss as the string-search verb and
+/ silently builds a projection instead of dropping.  See tests/test_infix.k.)
+qsapp:{[r;sk]$[0=#sk;r;qsone[qsapp[r;1_sk];*sk]]}                   / first listed = primary
+/ the bracket spec is SEMICOLON-separated (q: select[5;>px]), not comma-separated
+/ like a select list, so it needs its own depth-aware splitter.
+qscut:{[s]d:sums(s="[")-s="]";b:0,&(s=";")&d=0;trim'{$[#x;$[";"=*x;1_x;x];x]}'b _ s}
+qlim1:{[r;sp]it:qscut sp;ds:qsdir'it;sk:ds@&{0<#x}'ds;nn:it@&{0=#x}'ds;r:qsapp[r;sk];$[0=#nn;r;(. *nn)#r]}
+qlim:{[r;sp]$[0=#sp;r;iskeyed r;[k:keys r;xkey[k;qlim1[unkey r;sp]]];qlim1[r;sp]]}
+
 / ---- select ---------------------------------------------------------------
-sel:{[s]s:qnorm s;s:$[(6#s)~"select";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r3:qsplit0[r2 0;" by "];selp:r3 0;u:. r2 1;m:qmask[u;wh];t:qwhere[u;m];C:cols u;$[(selp~,"*")|0=#selp;$[r3 2;[r:qbyx[t;r3 1];nk:except[cols r 0;r 1];qby[r 0;r 1;nk!qlastf'nk]];t];[it:qcut selp;d:(qnm[C]'[!#it;it])!{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;qselby[u;m;r3 1;it;d];qselect[t;d]]]]}
+/ qflt: the rows this query selects.  With no where clause at all there is
+/ nothing to select, so the table is handed back as-is rather than copied
+/ through t@&m -- an all-true mask still made qwhere rebuild every column of
+/ every row, which for `select from t` is a full copy of the table to answer a
+/ query that asked for the table.
+qflt:{[u;m;hw]$[hw;qwhere[u;m];u]}
+/ qselall: `select from t` / `select * from t`, with or without a by-clause.
+qselall:{[u;m;hw;r3]$[r3 2;[r:qbyx[qflt[u;m;hw];r3 1];nk:except[cols r 0;r 1];qby[r 0;r 1;nk!qlastf'nk]];qflt[u;m;hw]]}
+/ qsel0: the select-list branch.  The filtered table is built ONLY here, and
+/ only on the no-by path: the by path (qselby) takes the UNFILTERED table plus
+/ the mask, so the fused group aggregate reads the raw columns and never
+/ materialises the selected rows.  sel used to build that table eagerly for
+/ EVERY query, before it knew which branch would run, so a
+/ `select .. by .. where ..` copied every column of every selected row and then
+/ threw the copy away.
+qsel0:{[u;m;hw;selp;r3;C]$[(selp~,"*")|0=#selp;qselall[u;m;hw;r3];[it:qcut selp;d:(qnm[C]'[!#it;it])!{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;qselby[u;m;r3 1;it;d];qselect[qflt[u;m;hw];d]]]]}
+sel:{[s]s:qnorm s;s:$[(6#s)~"select";trim 6_s;s];b:qbrk s;s:b 1;r:qsplit[s;" where "];wh:$[r 2;r 1;""];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r3:qsplit0[r2 0;" by "];u:. r2 1;qlim[qsel0[u;qmask[u;wh];r 2;r3 0;r3;cols u];b 0]}
 
 / ---- exec  (return one column / expression, not a table) ------------------
 / exec splits its select-list the SAME way select does (qcut, honouring brackets):
@@ -136,7 +179,12 @@ qbig:1000000
 qesc:{,/{$[x="\\";"\\\\";$[x="\"";"\\\"";,x]]}'x}                                 / escape \ and " for a "…" literal
 qsmask:{[t]q:(t="\"")&~0,-1_t="\\";1=2!0,-1_sums q}                              / 1b where inside a "…" literal
 qendx:{[t;p]b:p_t;n:#b;op:(b="(")|(b="[")|b="{";cl:(b=")")|(b="]")|b="}";dep:sums op-cl;dB:0,-1_dep;ns:(dep<0)|(b=";")&dB=0;p+min((!n)*ns)+n*~ns}  / end of the expr starting at p
-qokp:{[t;sm;kw;p]((p=0)|(qpre?t[p-1])<#qpre)&(((p+#kw)<#t)&" "=t[p+#kw])&~sm p}   / is a valid keyword start at p
+/ is a valid keyword start at p?  The keyword must be followed by a space -- or,
+/ for `select` only, by the "[" of a sorted/limited select[n;>c].  The other
+/ three keywords take no bracket in q, so admitting one for them would only let
+/ a typo reach the wrong parser.
+qokc:{[kw;c]$[" "~c;1;("["~c)&kw~"select";1;0]}
+qokp:{[t;sm;kw;p]((p=0)|(qpre?t[p-1])<#qpre)&(((p+#kw)<#t)&qokc[kw;t[p+#kw]])&~sm p}
 qmin1:{[t;sm;kw]$[(#t)<#kw;qbig;[ps:ss[t;kw];$[0=#ps;qbig;[ok:qokp[t;sm;kw]'ps;v:ps+qbig*~ok;min v]]]]}  / earliest valid start of kw
 qfind:{[t]sm:qsmask t;mins:qmin1[t;sm]'qkws;best:min mins;$[~best<qbig;();(best;mins?best)]}             / (pos;keyword-index) or ()
 / qml: fold a MULTI-LINE qSQL statement onto one line before the rewriter looks

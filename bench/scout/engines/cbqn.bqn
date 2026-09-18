@@ -40,6 +40,7 @@ have ← 0
 F ← {𝕤⋄0}
 { op≡"sum_f"          ? have↩1 ⋄ F↩{𝕤⋄+´x} ; @ }
 { op≡"max_f"          ? have↩1 ⋄ F↩{𝕤⋄⌈´x} ; @ }
+{ op≡"scan_f"         ? have↩1 ⋄ F↩{𝕤⋄s←+`x ⋄ m←≠s ⋄ (⊑s)+(s⊑˜⌊m÷2)+(¯1⊑s)} ; @ }
 { op≡"dot"            ? have↩1 ⋄ F↩{𝕤⋄+´x×y} ; @ }
 { op≡"sum_i"          ? have↩1 ⋄ F↩{𝕤⋄+´a} ; @ }
 { op≡"arith_mask"     ? have↩1 ⋄ F↩{𝕤⋄+´(y+2.5×x)/˜x>50} ; @ }

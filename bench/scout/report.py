@@ -6,7 +6,14 @@
 import json, sys, collections
 
 BASE = "amber-native"          # the Amber row every ratio is taken against
-RIVAL = "q"                    # the engine the report is explicitly scored against
+RIVAL = "c"                    # the engine the report is explicitly scored against
+# NOT "q". This file is committed and published, and kdb+ figures may not be:
+# the runs are made under a KX evaluation licence whose terms forbid disclosing
+# benchmark or competitive-analysis information (see docs/BENCHMARKS.md 2.10).
+# bench/scout/strip_private.py removes the q cells from results.json before it
+# is committed, so scoring against "q" here would also produce an empty column.
+# The C reference is the harder target anyway, and every cell is already gated
+# on matching its answer exactly.
 
 OP_ORDER = [
     ("Reductions and vector arithmetic",
@@ -80,7 +87,6 @@ WHY_ENGINE = {
     "amber": "Amber array primitives, portable build",
     "amber-native": "Amber array primitives with `-march=native` SIMD",
     "amber-qsql": "Amber's `select ... by ... from` query layer",
-    "q": "kdb+ hash group-by with a fused per-group aggregate, and attribute-driven search",
     "peachq": "PeachQ on the Rayforce engine - an early-preview q, kernels not yet tuned",
     "ngnk": "ngn/k: compact interpreter, but `?`/`in` are linear scans and there is no "
             "hash index",
@@ -143,7 +149,7 @@ def main():
     w("| OS | %s |" % m.get("os", "?"))
     w("| Compiler | %s |" % m.get("gcc", "?"))
     w("| Amber commit | `%s` |" % m.get("amber", "?"))
-    for key, label in (("q", "kdb+/q"), ("peachq", "PeachQ"), ("cbqn", "CBQN"),
+    for key, label in (("peachq", "PeachQ"), ("cbqn", "CBQN"),
                        ("j", "J"), ("numpy", "NumPy"), ("pandas", "pandas"),
                        ("polars", "Polars"), ("duckdb", "DuckDB"),
                        ("python", "Python")):
@@ -168,13 +174,13 @@ def main():
     w("")
 
     # ---- headline vs q
-    w("## 2. Headline - Amber against kdb+/q")
+    w("## 2. Headline - Amber against the C reference")
     w("")
     w("`%s` is the Amber row (native build, array primitives). **Ratio > 1.00x means Amber"
       % BASE)
-    w("is SLOWER than q on that operation.**")
+    w("is SLOWER than the C reference on that operation.**")
     w("")
-    w("| op | what it measures | Amber ms | q ms | Amber / q | |")
+    w("| op | what it measures | Amber ms | C ms | Amber / C | |")
     w("|---|---|---:|---:|---:|---|")
     gaps = []
     for _, ops in OP_ORDER:
@@ -185,7 +191,7 @@ def main():
             qm = q.get("ms") if q.get("status") == "OK" else None
             if am and qm:
                 r = am / qm
-                verdict = "Amber wins" if r < 0.95 else ("q wins" if r > 1.05 else "tie")
+                verdict = "Amber wins" if r < 0.95 else ("C wins" if r > 1.05 else "tie")
                 if r > 1.05:
                     gaps.append((r, op, am, qm))
             else:
@@ -196,9 +202,9 @@ def main():
     w("")
     if gaps:
         gaps.sort(reverse=True)
-        w("### Operations where Amber is slower than q, worst first")
+        w("### Operations where Amber is slower than the C reference, worst first")
         w("")
-        w("| rank | op | Amber ms | q ms | Amber is |")
+        w("| rank | op | Amber ms | C ms | Amber is |")
         w("|---:|---|---:|---:|---|")
         for i, (r, op, am, qm) in enumerate(gaps, 1):
             w("| %d | `%s` | %s | %s | **%.2fx slower** |" % (i, op, ms(am), ms(qm), r))
@@ -253,7 +259,7 @@ def main():
     w("Every operation where at least one single-threaded engine beats Amber, ordered by")
     w("how much headroom the winner demonstrates.")
     w("")
-    w("| rank | op | Amber ms | best ms | best engine | headroom | q ms |")
+    w("| rank | op | Amber ms | best ms | best engine | headroom | C ms |")
     w("|---:|---|---:|---:|---|---:|---:|")
     opps = []
     for _, ops in OP_ORDER:
@@ -349,9 +355,6 @@ def main():
     w("")
     w("### Notes on the other engines")
     w("")
-    w("- **kdb+/q needs `` `p# `` on the quote table** for `aj` to be O(log n) per row.")
-    w("  Without it `asof` takes **~47 s** instead of ~88 ms. The harness applies it")
-    w("  outside the timed region, which is the documented, idiomatic setup.")
     w("- **ngn/k has no hash index**: `?` and `in` are linear scans, which is why `find`")
     w("  (1326 ms) and `member` (2347 ms) are two orders of magnitude off everyone else.")
     w("  That gap is exactly the value Amber's search kernels add over its own upstream.")

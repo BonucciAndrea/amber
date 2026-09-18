@@ -65,9 +65,12 @@ faster, and the **portable** build now runs AVX2 kernels wherever the CPU has th
   dying operand in place, symbol `?` uses the hash index, `-0.0` sorts before `0.0` as
   documented.
 
-On the 23-operation comparative matrix (10M elements, one core) Amber now beats **CBQN on 11
-of the 19 operations both implement** (was 4); see [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md)
-and [`CHANGELOG.md`](CHANGELOG.md) for every number and every change.
+On the 24-operation comparative matrix (10M elements, one core, every timing gated on an
+exact answer match against a C reference) Amber beats **CBQN on 12 of the 20 operations
+both implement**, is faster than the **C reference on 16 of 24**, and is the fastest of
+the twelve published engines on **9**. See [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md),
+[`bench/SCOUT_REPORT.md`](bench/SCOUT_REPORT.md) and [`CHANGELOG.md`](CHANGELOG.md) for
+every number and every change.
 
 <a name="whats-new-201"></a>
 ## What's new in 2.0.1

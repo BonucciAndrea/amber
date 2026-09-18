@@ -161,6 +161,32 @@ t[`mAllNull; ^*mavg[2;0n 0n];    1b]
 dv:1000000+gflt 200000
 t[`msumDrift; 1e-3>|/|(msum[50;dv])-msumK[50;dv]; 1b]
 
-hexpect[296]
+/ ---- amber 2.2: distinct on a FLOAT column, across all three kernels --------
+/ ?x on floats picks a table by the value range: a byte LUT up to 64K, a bitmap
+/ up to 2^26, else an open-addressed hash.  The hash arm used to be sized to 2n
+/ slots before the first probe -- 16*2n bytes, 320 MB for a 10M column -- even
+/ when the column held a handful of distinct values; it now grows with the
+/ distinct COUNT, as the integer arm already did.  These pin the ANSWER (first-
+/ appearance order, which is `?`'s contract) on each arm, including the sparse
+/ one that exercises the growth and its rehash.
+/ firstapp: distinct by definition -- keep an element when this is the FIRST
+/ index at which it occurs.  Independent of every kernel under test.
+firstapp:{x@&(x?x)=!#x}
+dbase:gint 60000
+dsmall:`f$dbase                             / span 2000       -> byte LUT
+dbm:`f$1000*dbase                           / span 2e6        -> bitmap
+dwide:`f$1000000*dbase                      / span 2e9        -> hash, with growth
+dfrac:0.5+`f$gint 5000                      / non-integral    -> generic path
+t[`distFloatLUT;    ?dsmall;               firstapp dsmall]
+t[`distFloatBitmap; ?dbm;                  firstapp dbm]
+t[`distFloatHash;   ?dwide;                firstapp dwide]
+t[`distFloatCount;  #?dwide;               #?dbase]
+t[`distFloatStable; (?dwide)~?dwide;       1b]
+t[`distFloatFrac;   ?dfrac;                firstapp dfrac]
+/ -0.0 and 0.0 are DIFFERENT elements for `?`, which is why the integer-keyed
+/ kernels must refuse a column containing -0.0
+t[`distFloatNegZero; #?(0.0;-0.0;1.0;0.0); 3]
+
+hexpect[303]
 hreport"AMBER SORT / WINDOW DIFFERENTIAL"
 $[FAILN;`exit 1;]

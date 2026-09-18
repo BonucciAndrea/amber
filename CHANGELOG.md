@@ -1,5 +1,127 @@
 # Changelog
 
+## 2.2.0 (unreleased)
+
+A correctness and performance release. Three defects that returned a **wrong value rather
+than an error** are fixed; the charts learned to label a temporal axis as a time; the query
+layer stopped materialising tables it never reads and gained q's sorted/limited `select[…]`;
+and two more fusions land, one of which removes a random gather from every non-integral sort.
+
+Every performance change was verified by running `tests/test_fusion_diff.k` and
+`tests/test_arith_diff.k` under a build of the previous commit and under the new one and
+diffing: **1,085,384 and 32,185 lines, byte-identical**.
+
+### Fixed — wrong answers
+
+- **A name that is also an infix verb was always read as the verb.** The parser decided
+  infix-ness from the name alone, so a lambda *parameter* called `ss` (or `in`, `except`,
+  `xasc`, … — 21 names) was parsed as the verb: `{[r;ss] 1_ss}` built a *projection* instead
+  of dropping and silently returned its input. The same applied to a global the program had
+  rebound to data (`ss:5` then `1_ss`). A parameter of the lambda being parsed, and a name
+  currently bound to something that is not a rank-2 function, are no longer read as verbs. A
+  name that is not bound at all still follows the keyword list, which is what keeps the
+  library's own source parsing while it is being loaded.
+- **`in` and the set operations were wrong for an atom right argument.** An atom fell through
+  the C membership kernel onto `~^y?x`, and with an integer atom `y?x` is k's **random deal**,
+  not find. `1 2 3 in 2` answered `1 1` — two random picks, the wrong values *and* the wrong
+  length, with no error; `` `a`b`c in `b `` raised `'domain`; `1 2 3 except 2` was empty where
+  q gives `1 3`. `except`, `inter` and `union` are all defined on `in` and were all affected.
+- **Float literals below `1e-308` did not parse.** `pfu` clamped an out-of-range exponent and
+  returned *before* advancing the parse cursor, so `1e-309` left `e-309` in the input and the
+  literal died with `'value` (and `1e309` likewise). Every subnormal double was unwritable —
+  a round-trip hole, since `std.k`'s text `ser`/`deser` is `` `k `` followed by `eval`. A
+  subnormal now parses to its actual value rather than to 0, and `1e309` reads as `0w`.
+- **`?x` on a float column allocated `2n` hash slots up front** — 320 MB for a 10M-element
+  column holding a handful of distinct values. It now grows with the distinct count, as the
+  integer path already did.
+- **`vlen` counted bytes, not display columns**, so every non-ASCII character in a table cell
+  made that row's border too long (a box-drawing glyph is three bytes). It now counts UTF-8
+  code points.
+
+### Charts
+
+- **Temporal axes.** An axis whose values are a time is labelled as a time instead of as the
+  integer the column holds. `xunit`/`yunit` take `` `num `` `` `time `` (ms of day) `` `sec ``
+  `` `date `` (days since 2000.01.01) `` `stamp `` (ns since 2000.01.01), or `` `auto ``;
+  `tplot`/`dplot`/`pplot` are `xyplot` with the unit supplied. Ticks land on round clock and
+  calendar boundaries, and the tick *count* is derived from how wide that unit's labels are,
+  so a 19-character timestamp label no longer loses most of its ticks to collision. The plot
+  area is unaffected — labels live in the gutter.
+- **`candle` carries its bar times**, so OHLC bars from `bars[10;t]` are labelled with clock
+  times instead of being an unlabelled row of boxes; its price gutter formats to a sensible
+  number of decimals instead of truncating an exact double to eight characters.
+
+### qSQL
+
+- **`select[n]`, `select[>col]`, `select[<col]`, `select[n;>col]`** — q's sorted and limited
+  select, with q's clause order (where → by/select → sort → limit), negative limits taking
+  from the end, several keys applying right-to-left so the first listed is primary, and
+  support on keyed (by-clause) results. Accepted by the bare prompt form and by `sel"…"`.
+- **The filtered table is only built where it is read.** `sel` computed `qwhere[u;m]` before
+  it knew which branch would run, so `select from t` rebuilt every column of every row to
+  answer a query that asked for the table, and a fused `by` query built a table the fused path
+  never looks at. At 2M rows: `select from t` **8.2x**, an 8-column table **19.0x**, `by`
+  queries **1.8–2.9x**.
+
+### Performance
+
+- **`+/(a ± s*b)@&m` is one pass.** Each piece was already fused, but chained they still wrote
+  and re-read an 80 MB intermediate at 10M elements. **1.46x**; the expression now runs at
+  memory bandwidth.
+- **A keys-only radix sort.** `asc` on a column the counting kernel declines — which is every
+  non-integral column, i.e. every real price series — used to grade and then gather, and the
+  gather is a fully random 80 MB read (132 ms of a 320 ms sort at 10M). The order-preserving
+  key the radix already sorts is a *bijection*, so the sort now permutes the keys and maps
+  them back: no index vector, 8 bytes per element per pass instead of 12, and no gather.
+  **2.29x** on non-integral floats, **1.43x** on a wide span. A *grade* still uses the
+  index-carrying radix — equal keys are indistinguishable once the gather is gone, which is
+  exactly why a permutation cannot be recovered.
+- **The float range scan is split in two and no longer calls `floor()`.** It sat on the hot
+  path of every float sort, grade, distinct and multi-column tablesort and ran at 3.4 GB/s,
+  five times off memory bandwidth. Float sort **1.73x**, already-sorted **2.92x**, float grade
+  **1.42x**, float distinct **2.13x**.
+
+### Benchmarks
+
+The comparative matrix grew a **scan** operation (`scan_f`, the materialised running sum) — a
+family it had no representative of, and a different shape from a reduction: `+\` writes *n*
+elements where `+/` writes one, so it is store-bandwidth bound, and an engine that parallelises it
+has to choose an association. Implemented in all seven engines plus the C reference; the answer is
+read back from three positions so an implementation correct only at its endpoints cannot pass, and
+every partial sum is an exact integer below 2^53 so the answer is association-independent.
+
+Re-run on the final tree: **24 operations × 13 engines**, 10M elements, median of 5 timed runs
+after 2 warm-ups, every engine on one thread, every timing gated on an exact answer match against
+the C reference — zero `WRONG`, zero `BADDATA`, zero `ERROR`.
+
+* Faster than the **C reference on 16 of 24** (`member` 9.7x, `sort_presorted` 7.0x,
+  `distinct_100k` 6.0x, `sum_i` 5.4x, `grade_i` 3.7x).
+* Faster than **CBQN on 12 of the 20** operations both implement, up from 11 of 19.
+* The **fastest of the twelve published engines on 9**: `sum_i`, `grade_i`, `member`,
+  `distinct_100k`, all four `group_*`, and `asof`.
+
+CBQN's four large wins (`sum_f`, `max_f`, `sort_f`, `sort_presorted`) are a *storage-width*
+difference, not a kernel one: BQN has no int/float distinction, so a vector of values 0..999 is
+stored narrow and CBQN reads 10–20 MB where Amber reads 80. Measured directly, `simd_sum_f64`
+moves 80 MB at 18.5 GB/s and `simd_max_f64` at 15.7 GB/s — this machine's single-core bandwidth.
+
+**Publication hygiene.** `bench/scout/strip_private.py` is new: it removes the engines whose
+figures may not be published (kdb+/q, run under a KX evaluation licence whose terms forbid
+disclosing benchmark information) from a results file, and `--check` exits non-zero if one appears
+anywhere in it — matrix, scaling buckets, engine map or machine block. That removal used to be a
+manual step. `bench/scout/report.py` is scored against the C reference throughout, instead of
+generating a section headed "Amber against kdb+/q". `scout.py --build` now builds **and runs**
+(it used to build and exit, which looked like the harness had died); `--build-only` keeps the old
+behaviour.
+
+### Tests
+
+1434 K assertions, up from 1309, including a new `tests/test_chart.k` (63) and new sections in
+`tests/test_infix.k`, `tests/test_qsql.k`, `tests/test_sort_window.k`, `tests/test_fusion_diff.k`
+and `test.k` for every defect above. The whole suite is also green under AddressSanitizer +
+UndefinedBehaviorSanitizer, including the sanitized fuzz pass and the `libamber.so` C API leg,
+with zero sanitizer diagnostics.
+
 ## 2.1.0
 
 A performance release. Every change keeps the language's results bit-identical (the two

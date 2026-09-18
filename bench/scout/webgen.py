@@ -24,7 +24,7 @@ SHORT = {"c": "C", "amber-native": "Amber<sub>nat</sub>", "amber": "Amber",
 SHORT_MD = {k: v.replace("<sub>", "-").replace("</sub>", "") for k, v in SHORT.items()}
 
 CATS = [
-    ("Reductions & vector arithmetic", ["sum_f", "sum_i", "max_f", "dot", "arith_mask"]),
+    ("Reductions & vector arithmetic", ["sum_f", "sum_i", "max_f", "dot", "arith_mask", "scan_f"]),
     ("Sort & grade",                   ["sort_f", "sort_presorted", "grade_i", "tablesort"]),
     ("Search, distinct & group-by",    ["find", "member", "distinct", "distinct_100k",
                                         "group_10", "group_100", "group_10k", "group_100k"]),
@@ -41,6 +41,10 @@ DESC = {
  "sum_i": "sum of 10M integers 0..999 (engines differ in element width)",
  "max_f": "max of 10M float64", "dot": "dot product of two 10M float64 vectors",
  "arith_mask": "(a*b)+c under a boolean mask",
+ # DuckDB spells this as an ordered window function, which must establish the
+ # order an array language's scan already has -- strictly more work, disclosed
+ # rather than dropped.
+ "scan_f": "running sum over 10M float64, materialised",
  # NOT random data: 10M values drawn from 1000 distinct integral-valued floats, the shape
  # Amber's 2.1.0 counting sort (and CBQN's narrow-int path) recognises. On genuinely
  # random float64 Amber is ~864 ms, i.e. the advantage over a general sort is ~1.4x.

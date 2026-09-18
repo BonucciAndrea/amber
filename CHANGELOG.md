@@ -2,7 +2,7 @@
 
 ## 2.2.0 (unreleased)
 
-A correctness and performance release. Four defects that returned a **wrong value rather
+A correctness and performance release. Five defects that returned a **wrong value rather
 than an error** are fixed; the charts learned to label a temporal axis as a time; the query
 layer stopped materialising tables it never reads and gained q's sorted/limited `select[…]`;
 and two more fusions land, one of which removes a random gather from every non-integral sort.
@@ -26,6 +26,35 @@ diffing: **1,085,384 and 32,185 lines, byte-identical**.
   not find. `1 2 3 in 2` answered `1 1` — two random picks, the wrong values *and* the wrong
   length, with no error; `` `a`b`c in `b `` raised `'domain`; `1 2 3 except 2` was empty where
   q gives `1 3`. `except`, `inter` and `union` are all defined on `in` and were all affected.
+- **`?` (distinct) was not a function of its input.** `-0.0` and `0.0` were two values for
+  `?` and for find, but one value for `=`, `~`, `in` and `=` (group). Worse, *which* answer
+  you got depended on the vector's **length**: `o.c`'s generic distinct reaches find for a
+  short vector and `~':` (match, which calls them equal) for a long one, so
+
+  ```
+  #?(-0.0 0.0)          / 2        <- two elements
+  #?(300#-0.0 0.0)      / 1        <- the same two values, six hundred times
+  ```
+
+  Both now answer 1. `-0.0` and `0.0` are one value for distinct and find, which agrees
+  with the rest of Amber, with q (`count distinct (0.0;-0.0;1.0;0.0)` is 2 there too), and
+  with itself at every length. Distinct keeps the **first** spelling it saw, as q does.
+  This reverses half of a 2.0.1 note: `-0.0` no longer "stays distinct in `?`". The other
+  half stands — the **collation** is unchanged and `-0.0` still sorts before `0.0`, which is
+  now a tie-break between equal values rather than a strict ordering.
+
+  Find on floats went through `fLL`, a raw 64-bit word compare; floats now use `fFL`, which
+  normalises the one double that has two spellings (a compare and a cmov per element). NaN
+  still compares by bit pattern, which is q's answer too — `(0n;1.0)?0n` is 0, not a miss.
+
+  `unqrangeF` no longer declines a column containing `-0.0`: its integer key collapses the
+  two spellings, which used to be the reason to refuse and is now the correct behaviour. So
+  a price column with a signed zero in it keeps the fast distinct path instead of falling to
+  the K-level sort-and-dedupe.
+
+  Verified: both differential oracles byte-identical (1,085,384 and 32,185 lines), so no
+  sort, grade or fusion path moved; 14 new cases in `tests/test_sort_window.k` pin the
+  answer at each length that changes which path is taken.
 - **`fby` on several group columns answered per column, not per row.** q lets the group
   spec be a list of columns — `(max;px) fby (sym;ex)` — but `=` on a list of columns
   groups *the columns*, so a 5-row table grouped on two columns returned **two** values

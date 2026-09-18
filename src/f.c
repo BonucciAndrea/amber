@@ -14,6 +14,22 @@ Z L fHL(CO V*a,U n,L v)_(P(v!=(H)v,NL)U i=fH(a,n,v);i<n?i:NL)
 Z L fIL(CO V*a,U n,L v)_(P(v!=(I)v,NL)U i=fI(a,n,v);i<n?i:NL)
 Z L fLL(CO V*a,U n,L v)_(             U i=fL(a,n,v);i<n?i:NL)
 
+//amber 2.2: find on FLOATS went through fLL, which compares the raw 64-bit
+// words -- so -0.0 and 0.0 were two different values, while `=`, `~`, `in` and
+// `=` (group) all call them equal, and so does q. That also made `?x`
+// (distinct) depend on LENGTH rather than on content: o.c reaches find only for
+// short vectors and `~':` (match, which calls them equal) for long ones, so
+// `#?(-0.0 0.0)` was 2 while `#?(300#-0.0 0.0)` was 1 -- the same values, a
+// different answer. Normalising the one double that has two spellings fixes
+// both, and costs a compare and a cmov per element. NaN still compares by
+// word, which is what q does too (`(0n;1.0)?0n` is 0, not a miss).
+// The sign-bit-only word, compared UNSIGNED: converting 0x8000..ull to a signed
+// L is implementation-defined, and this file is meant to build warning-clean
+// on any conforming compiler, not just the two that make it LLONG_MIN.
+#define AMNZ(w) ((W)(w)==0x8000000000000000ull?(L)0:(w))
+Z U fFs(CO L*a,U n,L v)_(U i=0;W(i<n&&AMNZ(a[i])!=v,i++)i)
+Z L fFL(CO V*a,U n,L v)_(             U i=fFs(a,n,AMNZ(v));i<n?i:NL)
+
 //amber: binary search on a sorted(`s#) vector -> O(log n) find; returns index or NL
 Z L bGL(CO V*a,U n,L v)_(P(v!=(G)v,NL)CO G*p=a;U lo=0,hi=n;W(lo<hi,U m=lo+hi>>1;I(p[m]<(G)v,lo=m+1)E(hi=m))lo<n&&p[lo]==(G)v?(L)lo:NL)
 Z L bHL(CO V*a,U n,L v)_(P(v!=(H)v,NL)CO H*p=a;U lo=0,hi=n;W(lo<hi,U m=lo+hi>>1;I(p[m]<(H)v,lo=m+1)E(hi=m))lo<n&&p[lo]==(H)v?(L)lo:NL)
@@ -166,14 +182,23 @@ Z A unqHASH(A x,U wx){
 // 423 ms as float64 -- 42x apart for identical data, decided purely by a type
 // test.  A tick feed's prices, sizes and ids are all integral floats.
 //
-// Same exclusions as the sort side.  NEGATIVE ZERO in particular must be left to
-// the old path: `?` separates -0.0 from 0.0 (`?(0.0;-0.0)` returns both) while
-// the integer key cannot, so admitting it would silently drop an element.
+// NaN is excluded: (L)NaN is undefined and it is not in any integer range.
+//
+// amber 2.2: NEGATIVE ZERO is no longer excluded. It used to be, on the
+// grounds that `?` separates -0.0 from 0.0 and the integer key cannot, so
+// admitting it would drop an element. That premise was the bug: `?` only
+// separated them here and in the short generic path, while the long generic
+// path (`~':`, i.e. match) merged them -- so distinct's answer depended on the
+// vector's length. -0.0 and 0.0 are one value everywhere else in Amber and in
+// q, so the integer key collapsing them is now the CORRECT behaviour, and this
+// path no longer has to be declined for a column that holds a signed zero.
 Z NI B unqrangeF(A x,L*lo,W*rg){
  U n=xn;
  if(!xtF||n<2)return 0;
- F mn,mx;int so=0;
- if(!simd_frange_f64((CO F*)xV,n,&mn,&mx,&so))return 0;   // vectorised scan (src/simd.c)
+ F mn,mx;int so=0,sp=0;
+ simd_frange0_f64((CO F*)xV,n,&mn,&mx,&so,&sp);           // vectorised scan (src/simd.c)
+ if(sp&SIMD_FR_NAN)return 0;
+ if(!simd_fintegral_f64((CO F*)xV,n))return 0;
  W r=(W)(L)mx-(W)(L)mn+1;
  if(!r)return 0;
  *lo=(L)mn;*rg=r;return 1;}
@@ -293,7 +318,7 @@ X2(fnd,
   YmMA(r2f(fnd,x,y))
   YE(fnd(x,gZ(y)))
   P(xt==TT[yt]||xtZ&&ytzZ,
-   B srt=!_tP(x)&&xt!=tF&&xt!=tS&&(_at(x)==1||_at(x)==3);TY(fGL)*f=(srt?G(&bGL,bHL,bIL,bLL):G(&fGL,fHL,fIL,fLL))[xw-3];V*a=xV;U m=xn;
+   B srt=!_tP(x)&&xt!=tF&&xt!=tS&&(_at(x)==1||_at(x)==3);TY(fGL)*f=xt==tF?fFL:(srt?G(&bGL,bHL,bIL,bLL):G(&fGL,fHL,fIL,fLL))[xw-3];V*a=xV;U m=xn;
    Yt(az(f(a,m,gl(y))))
    A zl_=fndL(x,y,srt);P(zl_,zl_)
    U n=yn;A z=aL(n);My(S4(yw-3,F(n,zl=f(a,m,yg)),F(n,zl=f(a,m,yh)),F(n,zl=f(a,m,yi)),F(n,zl=f(a,m,yl))))z)

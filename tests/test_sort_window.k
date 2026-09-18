@@ -183,10 +183,34 @@ t[`distFloatHash;   ?dwide;                firstapp dwide]
 t[`distFloatCount;  #?dwide;               #?dbase]
 t[`distFloatStable; (?dwide)~?dwide;       1b]
 t[`distFloatFrac;   ?dfrac;                firstapp dfrac]
-/ -0.0 and 0.0 are DIFFERENT elements for `?`, which is why the integer-keyed
-/ kernels must refuse a column containing -0.0
-t[`distFloatNegZero; #?(0.0;-0.0;1.0;0.0); 3]
+/ amber 2.2: -0.0 and 0.0 are ONE value for `?` and for find, as they already
+/ were for `=`, `~`, `in` and `=` (group), and as they are in q. This case used
+/ to expect 3. The old answer was not merely a different convention, it was not
+/ a function of the input at all: `?` reached find for a short vector and `~':`
+/ for a long one, so the same values gave 2 distinct at length 2 and 1 at
+/ length 600. The length sweep below is the real regression test.
+t[`distFloatNegZero;  #?(0.0;-0.0;1.0;0.0); 2]
+t[`distNZfirst;       ?(0.0;-0.0);          ,0.0]      / the FIRST spelling is kept
+t[`distNZfirstRev;    ?(-0.0;0.0);          ,-0.0]
+/ the same values at every length that changes the path taken
+t[`distNZlen2;        #?2#-0.0 0.0;         1]
+t[`distNZlen600;      #?600#-0.0 0.0;       1]
+t[`distNZlen4000;     #?4000#-0.0 0.0;      1]
+/ ... and with a non-integral value present, so the integer-keyed path declines
+t[`distNZfrac3;       #?(-0.0;0.0;1.5);     2]
+t[`distNZfrac4002;    #?4002#-0.0 0.0 1.5;  2]
+/ find agrees, whichever spelling is stored and whichever is looked up
+t[`findNZa;           (-0.0 0.0)?0.0;       0]
+t[`findNZb;           (-0.0 0.0)?-0.0;      0]
+t[`findNZc;           (0.0 -0.0)?-0.0;      0]
+/ NaN still matches by bit pattern, which is q's answer too
+t[`findNaN;           (0n;1.0)?0n;          0]
+t[`distNaN;           #?(0n;0n;1.0);        2]
+/ and the collation is UNCHANGED: -0.0 still sorts before 0.0 (a tie-break now,
+/ since they compare equal -- q's asc is stable here instead, see MISSING.md)
+t[`ascNZ;             asc(0.0;-0.0);        -0.0 0.0]
+t[`groupNZ;           #=(0.0;-0.0);         1]
 
-hexpect[303]
+hexpect[317]
 hreport"AMBER SORT / WINDOW DIFFERENTIAL"
 $[FAILN;`exit 1;]

@@ -53,6 +53,20 @@ inside a **`.k` script** loaded once the stdlib is up (the loader runs each file
 - **Amber has:** bare + string `select/exec/update/delete`, plus the functional helpers
   `qwhere qselect qby fby xgroup ungroup`.
 
+## 3b. Signed zero in the collation — a known divergence from q
+
+Since 2.2 `-0.0` and `0.0` are **one value** for `=`, `~`, `in`, `=` (group), `?`
+(distinct) and find, exactly as in q.
+
+They still differ in **sort order**: Amber puts `-0.0` before `0.0` unconditionally, so
+`asc (0.0;-0.0)` is `-0.0 0.0` and `<(0.0;-0.0)` is `1 0`. q's sort is *stable* for equal
+elements and leaves them alone — `asc (0.0;-0.0)` is `0 -0f` there, `iasc` is `0 1`.
+
+Now that the two compare equal this is a tie-break, not an ordering, and Amber's is a
+total order over the bit patterns: defensible, deterministic, and cheap (the radix key is
+a bijection, which is what makes the keys-only sort possible at all). Making it stable
+would mean carrying the original index through the sort kernels for a case no program
+should depend on, so it is disclosed rather than changed.
 ## 4. On-disk data (HDB) — partial (`hdb.k`)
 Amber now has a **text-serialised** on-disk layer: `dset`/`dget` (value ↔ single file),
 `splay`/`dload` (splayed table ↔ directory, one file per column plus a `.d`), and

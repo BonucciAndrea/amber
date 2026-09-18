@@ -33,6 +33,49 @@ BRAND = "⬡ amber " + _amber_version()
 ESC = b"\x1b"
 RELEASE = ESC + b"[r"
 
+# Waits are QUIESCENCE-based, not fixed sleeps.  Every wait in this file used to
+# be `while time.time() - t0 < t`, so the suite always paid its worst case: 47
+# seconds of literal waits across 70 call sites, 2m17s of wall clock, driving a
+# REPL that answers in milliseconds.  `t` is still the ceiling, so a wait that
+# never goes quiet behaves exactly as it always did -- but the common case,
+# where the program has said everything it is going to say, returns at once.
+#
+# IDLE must stay comfortably ABOVE the exec spinner's 90 ms SIGALRM tick (see
+# src/ln.c) or a still-running computation would read as finished.
+# Measured on one machine, same binary, minutes apart:
+#     fixed sleeps (before)   2m17.5s
+#     IDLE=0.25               1m06.1s   2.08x   <- the default
+#     IDLE=0.15               0m50.9s   2.70x
+# 0.15 passes too, but it is only 1.67x the spinner's 90 ms tick, and a flaky
+# pty test costs far more than the 15 seconds it saves. Lower it by hand with
+# AMBER_TEST_IDLE=0.15 if you are iterating locally.
+IDLE = float(os.environ.get('AMBER_TEST_IDLE', '0.25'))
+
+def reader(fd, sink, poll=0.03, stop_on_eof=True):
+    """Return wait(t, until=None): read fd into sink until the stream is quiet."""
+    def wait(t, until=None):
+        t0 = last = time.time()
+        end = t0 + t
+        # `until` guards the other direction: a wait must not finish before the
+        # process has produced what it is being waited on -- a slow startup
+        # would otherwise look like quiescence.  Until the predicate holds, the
+        # ceiling is the only exit.
+        armed = until is None
+        while True:
+            now = time.time()
+            if now >= end: return
+            if armed and now - last >= IDLE: return
+            r, _, _ = select.select([fd], [], [], poll)
+            if not r: continue
+            try: d = os.read(fd, 65536)
+            except OSError: return
+            if not d:
+                if stop_on_eof: return
+                continue
+            sink(d); last = time.time()
+            if not armed and until(): armed = True
+    return wait
+
 def drive(cmds, rows=24, cols=100, settle=4.0):
     m, s = pty.openpty()
     fcntl.ioctl(s, termios.TIOCSWINSZ, struct.pack("HHHH", rows, cols, 0, 0))
@@ -40,16 +83,8 @@ def drive(cmds, rows=24, cols=100, settle=4.0):
                          env={**os.environ, "TERM": "xterm-256color"})
     os.close(s)
     out = bytearray()
-    def drain(dur):                          # read CONTINUOUSLY so no byte is missed
-        end = time.time() + dur
-        while time.time() < end:
-            r, _, _ = select.select([m], [], [], 0.1)
-            if not r: continue
-            try: d = os.read(m, 65536)
-            except OSError: return
-            if not d: return
-            out.extend(d)
-    drain(2.4)                               # banner + stdlib load (slow on CI runners)
+    drain = reader(m, out.extend, poll=0.1)                          # read CONTINUOUSLY so no byte is missed
+    drain(2.4, until=lambda: b'amber>' in bytes(out))                               # banner + stdlib load (slow on CI runners)
     for b, dt in cmds:
         try: os.write(m, b)
         except OSError: break
@@ -149,15 +184,8 @@ try:
                          env={**os.environ, "TERM": "xterm-256color"})
     os.close(s)
     screen = pyte.Screen(100, 24); stream = pyte.ByteStream(screen)
-    def pump(t):
-        t0 = time.time()
-        while time.time() - t0 < t:
-            r, _, _ = select.select([m], [], [], 0.08)
-            if r:
-                try: d = os.read(m, 65536)
-                except OSError: return
-                if d: stream.feed(d)
-    pump(1.6)
+    pump = reader(m, stream.feed, poll=0.08, stop_on_eof=False)
+    pump(1.6, until=lambda: any('amber>' in l for l in screen.display))
     os.write(m, b"6*7\r"); pump(0.8)
     disp = screen.display
     check(any(l.strip().startswith("╭") for l in disp[18:22]), "[pyte] box top on a footer row")
@@ -245,15 +273,8 @@ try:
                              preexec_fn=ctty, env={**os.environ, "TERM": "xterm-256color"})
         os.close(s)
         sc = pyte.Screen(C0, R0); st = pyte.ByteStream(sc)
-        def pump(t):
-            t0 = time.time()
-            while time.time() - t0 < t:
-                r, _, _ = select.select([m], [], [], 0.08)
-                if r:
-                    try: d = os.read(m, 65536)
-                    except OSError: return
-                    if d: st.feed(d)
-        pump(1.8)
+        pump = reader(m, st.feed, poll=0.08, stop_on_eof=False)
+        pump(1.8, until=lambda: any('amber>' in l for l in sc.display))
         for c in cmds: os.write(m, c); pump(0.4)
         for (rr, cc) in steps:
             fcntl.ioctl(m, termios.TIOCSWINSZ, struct.pack("HHHH", rr, cc, 0, 0))
@@ -322,15 +343,8 @@ try:
                              preexec_fn=ctty, env={**os.environ, "TERM": "xterm-256color"})
         os.close(s)
         sc = pyte.Screen(cols, rows); st = pyte.ByteStream(sc)
-        def pump(t):
-            t0 = time.time()
-            while time.time() - t0 < t:
-                r, _, _ = select.select([m], [], [], 0.03)
-                if r:
-                    try: d = os.read(m, 65536)
-                    except OSError: return
-                    if d: st.feed(d)
-        pump(2.2)
+        pump = reader(m, st.feed, stop_on_eof=False)
+        pump(2.2, until=lambda: any('amber>' in l for l in sc.display))
         return m, p, sc, st, pump
 
     def barms(sc):
@@ -396,16 +410,8 @@ try:
                               preexec_fn=ctty2, env={**os.environ, "TERM": "xterm-256color"})
         os.close(s2)
         acc = bytearray()
-        def drain2(t):
-            t0 = time.time()
-            while time.time() - t0 < t:
-                r, _, _ = select.select([m2], [], [], 0.03)
-                if r:
-                    try: d = os.read(m2, 65536)
-                    except OSError: return
-                    if not d: return
-                    acc.extend(d)
-        drain2(2.2)
+        drain2 = reader(m2, acc.extend)
+        drain2(2.2, until=lambda: b'amber>' in bytes(acc))
         touched = set()
         for ch in b"abc":
             acc.clear()
@@ -451,16 +457,8 @@ try:
                               preexec_fn=ctty, env={**os.environ, "TERM": "xterm-256color"})
         os.close(sl)
         sc = pyte.Screen(cols, rows); st = pyte.ByteStream(sc)
-        def pump(t):
-            t0 = time.time()
-            while time.time() - t0 < t:
-                r, _, _ = select.select([m], [], [], 0.03)
-                if r:
-                    try: d = os.read(m, 65536)
-                    except OSError: return
-                    if not d: return
-                    st.feed(d)
-        pump(2.2)
+        pump = reader(m, st.feed)
+        pump(2.2, until=lambda: any('amber>' in l for l in sc.display))
         return m, pr, sc, pump
 
     m, pr, sc, pump = utf8_sess()

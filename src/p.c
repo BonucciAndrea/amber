@@ -16,12 +16,25 @@ Z L plN(S*p)_(L v=pl(p);!v&&**p=='N'?(*p)++,NL:v)                               
 // behaviour reachable from a malformed literal such as `1.5e` or `1.5each`,
 // found by tests/fuzz.py under UBSan. Both the mantissa and the exponent are
 // now normalised before use: a no-digit mantissa reads as 0, and the exponent
-// is accumulated in L and clamped to the +/-309 the power table covers
-// before it is narrowed to I.
+// is accumulated in L and clamped before it is narrowed to I.
+//
+// amber 2.2: an exponent outside the power table's range used to return EARLY,
+// before `*p=s`, so the parse cursor was never advanced past it. `1e-309` left
+// `e-309` sitting in the input and the whole literal died with 'value; `1e309`
+// did the same. Every SUBNORMAL double was therefore unwritable as a literal --
+// which is a round-trip hole, not only a nuisance: std.k's text ser/deser is
+// `k followed by eval, so a table holding one serialised to text that could not
+// be read back.
+//
+// Both returns now advance the cursor, and the small-exponent case scales in
+// two steps (v/1e308 then /1e(-e-308)) instead of answering 0, so a subnormal
+// parses to its actual value. Below about 1e-616 the result genuinely is 0.
 Z L pfu(S*p)_(L v=pu(p);I(v==NL,v=0)S s=*p;C c=*s;P(c=='w',(*p)++;WFL)P(c=='n',(*p)++;v^NFL)I e=0;  //parse float unsigned
- I(c=='.',c=*++s;W(C09(c),I((W)v<(1ull<<63)/10,v=(L)(10*(W)v+(W)(c-'0'));e--)c=*++s))
- I(c=='e',s++;L d=pl(&s);I(d==NL,d=0)d+=e;e=(I)MAX(-400ll,MIN(400ll,d));P(e<-308,0)P(e>308,WFL))
  Z F t[309];I(!*t,*t=1;F(308,t[i+1]=10*t[i]))
+ I(c=='.',c=*++s;W(C09(c),I((W)v<(1ull<<63)/10,v=(L)(10*(W)v+(W)(c-'0'));e--)c=*++s))
+ I(c=='e',s++;L d=pl(&s);I(d==NL,d=0)d+=e;e=(I)MAX(-700ll,MIN(400ll,d));
+  I(e>308,*p=s;return WFL;)
+  I(e<-308,*p=s;I(e<-616,return 0;)F r_=((F)v/t[308])/t[-e-308];return *(L*)&r_;))
  *p=s;*(L*)A(e<0?v/t[-e]:v*t[e]))
 L pf(S*p)_(B m=**p=='-';(*p)+=m;L v=(L)((W)m<<63)|pfu(p);(*p)+=**p=='f';v)                               //parse float
 Z A pV(C t,TY(pl)*f)_(L a[1<<9];U n=0;                                                              //parse ints or floats

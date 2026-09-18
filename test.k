@@ -368,6 +368,32 @@ t[`fnListIdxType;  @(#;+/)[0];                 `v]
 t[`nonFnListIdx;   @(&/;1;|/)[1];              `i]
 t[`fourVerbIdx;    @(+;-;*;%)[2];              `v]
 
+/ ---- amber 2.2: float literals below 1e-308 (subnormals) ------------------
+/ pfu (src/p.c) clamped an out-of-range exponent and returned EARLY, before it
+/ advanced the parse cursor -- so `1e-309` left "e-309" in the input and the
+/ literal died with 'value, and `1e309` did the same.  Every subnormal double
+/ was unwritable, which is a round-trip hole: std.k's text ser/deser is `k
+/ followed by eval, so a table holding one serialised to text that could not be
+/ read back.  Now the cursor is advanced on both paths, and a small exponent is
+/ scaled in two steps instead of answering 0.
+t[`litSubnormalParses;  1e-309>0.0;              1b]
+t[`litSmallestSubnorm;  5e-324>0.0;              1b]
+t[`litSubnormalValue;   1e-320;                  1e-320]
+t[`litSubnormalNeg;     (neg 5e-324)<0.0;        1b]
+t[`litSubnormalMantissa;1.5e-310>1.0e-310;       1b]
+t[`litUnderflowToZero;  1e-400;                  0.0]
+t[`litDeepUnderflow;    1e-700;                  0.0]
+t[`litOverflowToInf;    1e309;                   0w]
+t[`litDeepOverflow;     1e400;                   0w]
+t[`litNormalUnchanged;  2.5e2;                   250.0]
+t[`litNegExpUnchanged;  2.5e-2;                  0.025]
+t[`litExpBoundary;      1e-308>0.0;              1b]
+/ the whole literal is consumed: a following token must still parse
+t[`litCursorAdvanced;   1e-309 1.5;              1e-309 1.5]
+t[`litCursorOverflow;   1e309 1.5;               0w 1.5]
+t[`litRoundTrip;        . `k 5e-324;             5e-324]
+t[`litRoundTripVec;     . `k (5e-324;1e-320;1.5);(5e-324;1e-320;1.5)]
+
 / ---- report ----
 fails:r@&{"FAIL"~4#x}'r[;1]
 `0:""

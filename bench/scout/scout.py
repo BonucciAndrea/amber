@@ -7,6 +7,7 @@ gates every timing on an exact answer match against the C reference, and emits
 a ranked "who wins at what" report.
 
     python3 bench/scout/scout.py --list
+    python3 bench/scout/scout.py --build --out bench/scout/results.json
     python3 bench/scout/scout.py --smoke
     python3 bench/scout/scout.py --n 10000000 --runs 5 --out bench/scout/results.json
     python3 bench/scout/scout.py --from-json bench/scout/results.json \
@@ -31,7 +32,7 @@ QREL = "bench/scout/engines/q.q"
 
 # ---------------------------------------------------------------- op matrix
 CORE_OPS = [
-    "sum_f", "max_f", "dot", "sum_i", "arith_mask",
+    "sum_f", "max_f", "dot", "sum_i", "arith_mask", "scan_f",
     "sort_f", "sort_presorted", "grade_i",
     "find", "member", "distinct", "distinct_100k",
     "group_10", "group_100", "group_10k", "group_100k",
@@ -43,7 +44,7 @@ ALL_OPS = CORE_OPS + TABLE_OPS
 OP_GROUP = {
     "sum_f": "Reductions & arithmetic", "max_f": "Reductions & arithmetic",
     "dot": "Reductions & arithmetic", "sum_i": "Reductions & arithmetic",
-    "arith_mask": "Reductions & arithmetic",
+    "arith_mask": "Reductions & arithmetic", "scan_f": "Reductions & arithmetic",
     "sort_f": "Sort & grade", "sort_presorted": "Sort & grade",
     "grade_i": "Sort & grade", "tablesort": "Sort & grade",
     "find": "Search, distinct & group", "member": "Search, distinct & group",
@@ -306,7 +307,11 @@ def main():
     ap.add_argument("--engines", default="")
     ap.add_argument("--out", default="")
     ap.add_argument("--scaling", default="")
-    ap.add_argument("--build", action="store_true")
+    ap.add_argument("--build", action="store_true",
+                    help="force a rebuild of the C reference and both Amber "
+                         "binaries, then run the matrix")
+    ap.add_argument("--build-only", action="store_true",
+                    help="build and exit without running anything")
     ap.add_argument("--resume", action="store_true",
                     help="load --out if it exists and skip ops already recorded")
     args = ap.parse_args()
@@ -329,10 +334,14 @@ def main():
             print("%-10s %s" % (k, info[k]))
         return 0
 
-    if args.build:
-        ensure_binaries(force=True)
+    # --build forces a rebuild of the C reference and both Amber variants and
+    # then RUNS, which is what every use of it wants. It used to `return 0`
+    # immediately after building, so `scout.py --build --out results.json`
+    # silently produced no results and looked like the harness had died.
+    # --build-only keeps the old behaviour for a caller that really wants it.
+    ensure_binaries(force=args.build or args.build_only)
+    if args.build_only:
         return 0
-    ensure_binaries()
 
     engines = [e for e in engines if e.available()]
     n = 100_000 if args.smoke else args.n

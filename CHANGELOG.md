@@ -81,11 +81,46 @@ diffing: **1,085,384 and 32,185 lines, byte-identical**.
   five times off memory bandwidth. Float sort **1.73x**, already-sorted **2.92x**, float grade
   **1.42x**, float distinct **2.13x**.
 
+### Benchmarks
+
+The comparative matrix grew a **scan** operation (`scan_f`, the materialised running sum) — a
+family it had no representative of, and a different shape from a reduction: `+\` writes *n*
+elements where `+/` writes one, so it is store-bandwidth bound, and an engine that parallelises it
+has to choose an association. Implemented in all seven engines plus the C reference; the answer is
+read back from three positions so an implementation correct only at its endpoints cannot pass, and
+every partial sum is an exact integer below 2^53 so the answer is association-independent.
+
+Re-run on the final tree: **24 operations × 13 engines**, 10M elements, median of 5 timed runs
+after 2 warm-ups, every engine on one thread, every timing gated on an exact answer match against
+the C reference — zero `WRONG`, zero `BADDATA`, zero `ERROR`.
+
+* Faster than the **C reference on 16 of 24** (`member` 9.7x, `sort_presorted` 7.0x,
+  `distinct_100k` 6.0x, `sum_i` 5.4x, `grade_i` 3.7x).
+* Faster than **CBQN on 12 of the 20** operations both implement, up from 11 of 19.
+* The **fastest of the twelve published engines on 9**: `sum_i`, `grade_i`, `member`,
+  `distinct_100k`, all four `group_*`, and `asof`.
+
+CBQN's four large wins (`sum_f`, `max_f`, `sort_f`, `sort_presorted`) are a *storage-width*
+difference, not a kernel one: BQN has no int/float distinction, so a vector of values 0..999 is
+stored narrow and CBQN reads 10–20 MB where Amber reads 80. Measured directly, `simd_sum_f64`
+moves 80 MB at 18.5 GB/s and `simd_max_f64` at 15.7 GB/s — this machine's single-core bandwidth.
+
+**Publication hygiene.** `bench/scout/strip_private.py` is new: it removes the engines whose
+figures may not be published (kdb+/q, run under a KX evaluation licence whose terms forbid
+disclosing benchmark information) from a results file, and `--check` exits non-zero if one appears
+anywhere in it — matrix, scaling buckets, engine map or machine block. That removal used to be a
+manual step. `bench/scout/report.py` is scored against the C reference throughout, instead of
+generating a section headed "Amber against kdb+/q". `scout.py --build` now builds **and runs**
+(it used to build and exit, which looked like the harness had died); `--build-only` keeps the old
+behaviour.
+
 ### Tests
 
 1434 K assertions, up from 1309, including a new `tests/test_chart.k` (63) and new sections in
 `tests/test_infix.k`, `tests/test_qsql.k`, `tests/test_sort_window.k`, `tests/test_fusion_diff.k`
-and `test.k` for every defect above.
+and `test.k` for every defect above. The whole suite is also green under AddressSanitizer +
+UndefinedBehaviorSanitizer, including the sanitized fuzz pass and the `libamber.so` C API leg,
+with zero sanitizer diagnostics.
 
 ## 2.1.0
 

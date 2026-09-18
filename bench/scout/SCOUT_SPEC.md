@@ -218,3 +218,34 @@ python3 bench/scout/scout.py --scaling 100000,1000000,10000000 \
         --out bench/scout/scaling.json
 python3 bench/scout/report.py bench/scout/results.json > bench/SCOUT_REPORT.md
 ```
+
+## scan_f — the running sum (added 2.2)
+
+| id | task | answer |
+|---|---|---|
+| `scan_f` | the running sum of `x`, **materialised** | `s[0] + s[floor(N/2)] + s[N-1]` where `s[i] = sum of x[0..i]` |
+
+The scan family had no representative in the matrix. `+\` is a different shape
+from a reduction — it writes `N` elements rather than one, so it is bound by
+store bandwidth where `+/` is bound by load bandwidth, and an engine that
+parallelises it has to choose an association.
+
+**Why the answer is order-independent.** Every `x[i]` is an integer in `0..999`
+and the largest partial sum is `N*999 = 9.99e9`, comfortably below `2^53`, so
+every partial sum is exactly representable and a sequential scan, a
+work-efficient parallel scan and a blocked scan all produce identical values.
+Three elements are read back rather than one so a scan that is correct only at
+its endpoints cannot pass.
+
+**The reference materialises.** `k_scan_f` in `c_ref.c` writes the whole vector
+into pre-allocated scratch before reading three of its elements, because that is
+what every array language's `+\` does. A C loop that only tracked the three
+positions of interest would be doing strictly less work than the engines it is
+the baseline for.
+
+**DuckDB is disclosed, not dropped.** SQL's running sum is
+`sum(x) OVER (ORDER BY i ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)`,
+which must establish an order that an array language's scan already has. That is
+more work for the same answer, and it is the only way SQL expresses it; the row
+is published with this note rather than omitted, on the same principle as
+`amber-qsql` appearing beside `amber`.

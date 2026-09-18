@@ -54,6 +54,7 @@ setup =: 3 : 0
  F =: 0
  if.     OP -: 'sum_f'          do. F =: 3 : '+/ X'
  elseif. OP -: 'max_f'          do. F =: 3 : '>./ X'
+ elseif. OP -: 'scan_f'         do. F =: 3 : '+/ (0 , (<. N%2) , N-1) { +/\ X'
  elseif. OP -: 'dot'            do. F =: 3 : '+/ X * Y'
  elseif. OP -: 'sum_i'          do. F =: 3 : '0.0 + +/ A'
  elseif. OP -: 'arith_mask'     do. F =: 3 : '+/ (X > 50) # (Y + 2.5 * X)'

@@ -55,6 +55,7 @@ MT:1000000                                        / trade rows
 F:0
 F:$[OP~"sum_f";          {+/X};F]
 F:$[OP~"max_f";          {|/X};F]
+F:$[OP~"scan_f";         {s:+\X;(s@0)+(s@_NN%2)+(s@NN-1)};F]
 F:$[OP~"dot";            {+/X*Y};F]
 F:$[OP~"sum_i";          {+/A};F]
 F:$[OP~"arith_mask";     {+/(Y+2.5*X)@&X>50};F]

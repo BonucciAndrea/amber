@@ -70,6 +70,10 @@ def build_numpy(op, N):
         return order[pos]
 
     if op == "sum_f":      f = lambda: float(x.sum())
+    elif op == "scan_f":
+        def f():
+            s_ = np.cumsum(x)
+            return float(s_[0] + s_[N // 2] + s_[N - 1])
     elif op == "max_f":    f = lambda: float(x.max())
     elif op == "dot":      f = lambda: float(x.dot(y))
     elif op == "sum_i":    f = lambda: float(a.sum())
@@ -158,6 +162,10 @@ def build_pandas(op, N):
     sx, sy_, sa = pd.Series(x), pd.Series(y), pd.Series(a)
 
     if op == "sum_f":   f = lambda: float(sx.sum())
+    elif op == "scan_f":
+        def f():
+            s_ = sx.cumsum()
+            return float(s_.iloc[0] + s_.iloc[N // 2] + s_.iloc[N - 1])
     elif op == "max_f": f = lambda: float(sx.max())
     elif op == "dot":   f = lambda: float(sx.dot(sy_))
     elif op == "sum_i": f = lambda: float(sa.sum())
@@ -239,6 +247,10 @@ def build_polars(op, N):
     df = pl.DataFrame({"h": h, "a": a, "x": x, "y": y})
 
     if op == "sum_f":   f = lambda: float(df.select(pl.col("x").sum()).item())
+    elif op == "scan_f":
+        def f():
+            s_ = df.select(pl.col("x").cum_sum().alias("s"))["s"]
+            return float(s_[0] + s_[N // 2] + s_[N - 1])
     elif op == "max_f": f = lambda: float(df.select(pl.col("x").max()).item())
     elif op == "dot":
         f = lambda: float(df.select((pl.col("x") * pl.col("y")).sum()).item())
@@ -324,6 +336,11 @@ DUCK_SQL = {
     "dot":         "SELECT sum(x*y) FROM v",
     "sum_i":       "SELECT sum(a)::DOUBLE FROM v",
     "arith_mask":  "SELECT sum(y+2.5*x) FROM v WHERE x>50",
+    # A running sum in SQL is an ordered window function, which is strictly more
+    # work than an array language's +\ (it must establish the order). Reported
+    # with that noted rather than omitted.
+    "scan_f":      ("WITH s AS (SELECT i, sum(x) OVER (ORDER BY i ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS c FROM v) "
+                    "SELECT (SELECT c FROM s WHERE i=0)+(SELECT c FROM s WHERE i=(SELECT max(i)/2 FROM s)::BIGINT)+(SELECT c FROM s WHERE i=(SELECT max(i) FROM s))"),
     "member":      "SELECT count(*)::DOUBLE FROM v WHERE h IN (SELECT k FROM r)",
     "distinct":    "SELECT 1e6*count(*)+sum(d) FROM (SELECT DISTINCT a AS d FROM v)",
     "distinct_100k":
@@ -373,7 +390,7 @@ def build_duckdb(op, N):
     con.execute("SET threads TO 1")
     i = np.arange(N, dtype=np.int64)
 
-    if op in ("sum_f", "max_f", "dot", "sum_i", "arith_mask", "distinct",
+    if op in ("sum_f", "max_f", "dot", "sum_i", "arith_mask", "distinct", "scan_f",
               "distinct_100k", "msum_16", "mavg_256", "mmax_64", "member",
               "sort_f", "sort_presorted", "grade_i"):
         con.register("vv", pd.DataFrame({"i": i, "h": h, "a": a, "x": x, "y": y}))

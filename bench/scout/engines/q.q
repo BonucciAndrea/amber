@@ -33,6 +33,7 @@ MJ:1000000; NT:2000000; MQ:200000; QP:2000; MT:1000000;
 F:0N;
 if[op~"sum_f";           F:{[]sum X}];
 if[op~"max_f";           F:{[]max X}];
+if[op~"scan_f";          F:{[]s:sums X;(s 0)+(s "j"$floor N%2)+(s N-1)}];
 if[op~"dot";             F:{[]sum X*Y}];
 if[op~"sum_i";           F:{[]"f"$sum A}];
 if[op~"arith_mask";      F:{[]sum (Y+2.5*X) where X>50}];

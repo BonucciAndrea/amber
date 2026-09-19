@@ -9,6 +9,6 @@ retained here solely as the AGPLv3 requires; this NOTICE is the single place it
 is recorded. Amber is an independent language and is not affiliated with, nor a
 distribution of, that project.
 
-All Amber-specific work -- the q/kdb+ vocabulary, the C-level column attributes,
+All Amber-specific work -- the q vocabulary, the C-level column attributes,
 the ([]...) table-literal syntax, the temporal/tick functions, the REPL, tooling
 and documentation -- is (c) 2026 the Amber authors, under the GNU AGPLv3.

@@ -1,4 +1,5 @@
-/ bench/qbench/q.q - kdb+/q side of the comparison (docs/BENCHMARKS.md 2.9).
+/ bench/qbench/q.q - the q side of the private comparison harness. Its results
+/ are NOT publishable: see bench/scout/strip_private.py.
 / Run:  q bench/qbench/q.q -q < /dev/null      (identical closed-form data to amber.k)
 N:1000000;                                    / set to 10000000 for the 10M row column
 i:til N;

@@ -20,7 +20,7 @@ KBIN="${K:-}"; [ -z "$KBIN" ] && for c in growler k ngn ok; do command -v "$c" >
 if [ -n "$KBIN" ]; then "$KBIN" bench/bench_k.k 2>/dev/null | grep -E '^(SANITY|TIME)' > "$OUT/growler_k.txt"
   [ -s "$OUT/growler_k.txt" ] && say "growler/k" "ok ($KBIN)" || { rm -f "$OUT/growler_k.txt"; say "growler/k" "ran but no output (check dialect/timer in bench_k.k)"; }
 else say "growler/k" "skip (set K=/path/to/growler)"; fi
-# kdb+/q
+# q
 if command -v q >/dev/null 2>&1; then q bench/bench_q.q -q 2>/dev/null | grep -E '^(SANITY|TIME)' > "$OUT/q.txt"; [ -s "$OUT/q.txt" ] && say q "ok" || { rm -f "$OUT/q.txt"; say q "ran but no output"; }
 else say q "skip (not installed)"; fi
 echo; python3 bench/compare.py "$OUT"

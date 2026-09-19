@@ -1,4 +1,4 @@
-/ bench/scout/engines/q.q - kdb+/q side of the scout matrix (also runs on PeachQ).
+/ bench/scout/engines/q.q - the q side of the scout matrix (also runs on PeachQ).
 / Run:  q bench/scout/engines/q.q <op> <N> <runs> <warmup> -q -s 0 < /dev/null
 / Protocol and data model: bench/scout/SCOUT_SPEC.md
 / .
@@ -67,7 +67,7 @@ if[op~"tablesort";       HT::(262147*til NT) mod 1048573;
                             +1e9*sum ((1_sp)<-1_sp) or ((1_sp)=-1_sp) and (1_rp)<-1_rp}];
 if[op~"asof";            qj::til MQ;
                          / quotes are generated already sorted by (sym,time); the
-                         / `p# attribute on sym is the documented, idiomatic kdb+
+                         / `p# attribute on sym is the documented, idiomatic q
                          / setup for aj and is applied outside the timed region.
                          / Without it this op takes ~47 s instead of ~90 ms.
                          Q0::([]sym:SYM qj div QP;

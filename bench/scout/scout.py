@@ -102,7 +102,7 @@ def build_engines(threads):
                ["group_10", "group_100", "group_10k", "group_100k",
                 "join_inner", "qsql_select"],
                "select ... by ... from; fair peer of DuckDB SQL"),
-        Engine("q", "kdb+/q", [QEXE, QREL], ALL_OPS, "the reference to beat"),
+        Engine("q", "q", [QEXE, QREL], ALL_OPS, "the reference to beat"),
         Engine("peachq", "PeachQ (Rayforce)", [PEACHQ, QREL], ALL_OPS,
                "open-source q on the Rayforce engine"),
         Engine("ngnk", "ngn/k", [os.path.join(OPTBIN, "ngnk"),

@@ -1,4 +1,4 @@
-/ kdb+/q benchmark — run:  q bench/bench_q.q -q
+/ q benchmark — run:  q bench/bench_q.q -q
 N:1000000; i:til N;
 px:0.001*(2654435761*i) mod 100000; sym:i mod 10; v:(2654435761*i) mod 100000;
 -1 "SANITY sum ",string sum px;

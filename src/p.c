@@ -49,13 +49,22 @@ Z A0(pC,C a[1<<9];U n=0;C c=*++s;                                               
  P(!c,ep0())P(n>=L(a),ez0())s++;aV(tC,n,a))
 Z A0(p0x,S p=s;W(CA9(*p),p++)A x=N(unhC(s,p-s));s=p;x)                                              //parse 0x string
 Z A0(ps,S p=s;C c=*s;I(id0(c),s=pID(s))J(c>>7,W(*++s<-64)s+=*s==':')aCm(p,s))                       //parse symbol
-Z A pS(C c)_(I a[256];U n=0;                                                                        //parse symbols
- W(1,P(n>=L(a),ez0())A y=*++s-'"'?ps():N(pC());y=str0(y);a[n++]=us(yC);y(0);S p=pw(s);B(*p-c)s=p)
+// amber 2.2: `w` says whether whitespace may PRECEDE an item.
+// A parameter list may: `{[a; b]x}` and `{[ a;b]x}` are ordinary spellings and
+// used to be a bare syntax error pointing at the whole lambda, which is a
+// miserable thing to hand someone pasting an example.
+// A backtick symbol VECTOR may NOT: `a `b is two separate symbols, and
+// skipping the space there would silently fuse them into one two-item vector.
+// Trailing space before the closing bracket is handled by pp() below, because
+// the loop breaks without consuming it.
+Z A pSw(C c,B w)_(I a[256];U n=0;                                                                   //parse symbols
+ W(1,P(n>=L(a),ez0())s++;I(w,s=pw(s))A y=*s-'"'?ps():N(pC());y=str0(y);a[n++]=us(yC);y(0);S p=pw(s);B(*p-c)s=p)
  aV(tS,n,a))
+Z A pS(C c)_(pSw(c,0))
 Z A0(pP,I a[8];U n=0;                                                                               //parse dot-separated path of identifiers
  W(1,P(n>=L(a),ez0())A y=str0(ps());a[n++]=us(yV);y(0);B(*s-'.'||!id0(s[1]))++s)
  aV(tS,n,a))
-Z A0(pp,P(*s-'[',au)A x=N(pS(';'));P(*s-']'||!xn,ep(x))P(xN>8,ez(x))s++;x)                          //parse parameter list
+Z A0(pp,P(*s-'[',au)A x=N(pSw(';',1));s=pw(s);P(*s-']'||!xn,ep(x))P(xN>8,ez(x))s++;x)                          //parse parameter list
 Z S pws(S s)_(W(*s==32||*s==10,s++)s)                                                               //skip spaces and newlines
 Z A amkl(CO A*e,U n)_(A x=aA1(MKL);F(n,PSH(x,e[i]))x)                                                //make-list node (e0;e1;..)
 Z A amcg(C end,U*np)_(I nm[256];A ex[256];U n=0;s=pws(s);                                            //parse `name:expr;..` group up to end -> (names ! (e0;e1;..))

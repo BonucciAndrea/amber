@@ -286,16 +286,25 @@ like:{[x;p]$[`C=@x;lk1[x;p];lk1[;p]'x]}
 / ---- temporal : time-of-day held as milliseconds since midnight (like q time)
 / q's  time.minute / time.hh / time.ss  become  minute t / hh t / ss t  in Amber.
 hms:{[h;m;s]1000*s+(60*m)+3600*h}                  / build a time from h m s
-hh:{_(x%3600000)}                                  / hour of day      (q time.hh)
-mm:{60!_(x%60000)}                                 / minute of hour   (q time.mm)
-sec:{60!_(x%1000)}                                 / second of minute (q time.ss; ss=string-search)
-milli:{1000!x}                                     / millisecond      (q time.ms)
-minute:{_(x%60000)}                                / minutes since midnight (q time.minute)
-second:{_(x%1000)}                                 / seconds since midnight (q time.second)
+/ amber 2.2: the accessors do arithmetic, so they needed the NUMERIC storage.
+/ A time literal has type `t, which means `hh 09:30:00.000` -- the obvious thing
+/ to type, and the spelling every example uses -- raised, while `hh 34200000`
+/ on the identical value worked. tnum0 coerces a temporal tag to its storage
+/ and leaves everything else exactly as it was, so both spellings now work.
+/ Deliberately NOT the nanosecond tags (`p timestamp, `n timespan): `i$ would
+/ truncate them, and a silently wrong hour is worse than an error. There is no
+/ `j$ cast in this dialect -- it raises -- so there is nothing wider to use.
+tnum0:{$[|/(@x)=`t`T`d`D`u`U`v`V;`i$x;x]}
+hh:{_((tnum0 x)%3600000)}                          / hour of day      (q time.hh)
+mm:{60!_((tnum0 x)%60000)}                         / minute of hour   (q time.mm)
+sec:{60!_((tnum0 x)%1000)}                         / second of minute (q time.ss; ss=string-search)
+milli:{1000!tnum0 x}                               / millisecond      (q time.ms)
+minute:{_((tnum0 x)%60000)}                        / minutes since midnight (q time.minute)
+second:{_((tnum0 x)%1000)}                         / seconds since midnight (q time.second)
 z2:{-2$"0",$x}
 z3:{-3$"00",$x}
 stime1:{(z2 hh x),":",(z2 mm x),":",(z2 sec x),".",z3 milli x}
-stime:{$[|/(@x)=`i`j;stime1 x;stime1'x]}           / time -> "HH:MM:SS.mmm"
+stime:{x:tnum0 x;$[|/(@x)=`i`j;stime1 x;stime1'x]} / time -> "HH:MM:SS.mmm"
 ptime:{p:"."\x;t:`I$":"\*p;m:$[1<#p;`I$3#(p 1),"000";0];(3600000*t 0)+(60000*t 1)+(1000*t 2)+m}
 bar:{[w;u;t]s:w*u;s*_(t%s)}                        / w u-unit bars: bar[5;60000;t] = 5-min bars(ms)
 minbar:{[w;t]60000*xbar[w;minute t]}               / w-minute bar as a time (ms)

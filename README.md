@@ -111,6 +111,8 @@ dependencies. Temporal axes are labelled as clocks and calendars rather than as 
 integers underneath:
 
 ```q
+gentq 1000                                          / sets `trades` and `quotes`
+
 plot (14*{sin x%7}'!74;60;9)                        / braille line chart
 tplot (trades`time; trades`px)                      / x axis reads 09:30:00
 candle bars[10; select from trades where sym=`AAPL] / candlesticks, clock-labelled

@@ -194,7 +194,17 @@ qfind:{[t]sm:qsmask t;mins:qmin1[t;sm]'qkws;best:min mins;$[~best<qbig;();(best;
 / query has no " from " for qokp/qsplit to find and used to fail on its first
 / fragment ("undefined variable `select`").  Only text that both spans lines and
 / mentions a qSQL keyword is folded, so ordinary input is untouched.
-qml:{[s]$[(|/s="\n")&|/{0<#ss[x;y]}[s]'qkws;qnorm s;s]}
+/ amber 2.2: strip the trailing comment from a SINGLE line too, not only from a
+/ multi-line block. qdec was reached only through qnorm, i.e. only when the
+/ input had a newline, so a line typed at the prompt kept its comment -- and
+/ qendx then found the `;` INSIDE that comment and ended the statement there:
+/   select[<sym;>px] from trades   / two keys; the first listed is primary
+/ rewrote to   sel"select[<sym;>px] from trades   / two keys"; the first ...
+/ and the tail was evaluated as code ('primary undefined). The identical text
+/ in a file loaded with \l was fine, which is the tell: one input, two paths,
+/ two answers. Only lines that actually contain a qSQL keyword are touched, so
+/ ` / ` used as an adverb anywhere else is left exactly as it was.
+qml:{[s]$[~|/{0<#ss[x;y]}[s]'qkws;s;|/s="\n";qnorm s;qdec s]}
 qrw:{[s]s:qml s;$[2>#s;s;[r:qfind s;$[0=#r;s;[p:r 0;ki:r 1;e:qendx[s;p];body:(e-p)#p_s;$[0<#ss[body;" from "];(p#s),qkfn[ki],"\"",(qesc body),"\"",qrw e_s;[L:p+#qkws ki;(L#s),qrw L_s]]]]]]}
 / qtry / qrwf: the SAME rewrite applied to a WHOLE .k file so bare qSQL works in
 / scripts, not just at the prompt -- the C loader bsl() calls qrwf before eval.

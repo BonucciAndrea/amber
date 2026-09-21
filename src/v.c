@@ -50,11 +50,10 @@ X1(whr,Ril(whr(enl(x)))RA(P(!xn,x(an(0,tI)))K1("{$[`A~@x;(,&#'*'x),,'/x@\\:!0|/#
   // byte is 0 or 1, then simd_where_* writes the indices with an unconditional
   // store and a masked cursor advance. Anything else takes the general
   // replicate-by-count loop below.
-  I(w==0&&xn,{unsigned orv_=0;L n_=simd_masksum_u8(xV,xn,&orv_);
-   I(orv_<=1,C t_=tZ((L)xn-1);A y_=an((U)n_,t_);int bad_=0;
-    I(t_==tG,{G*r_=_V(y_);U k_=0;CO UC*mm_=xV;F(xn,r_[k_]=(G)i;k_+=mm_[i]!=0)})
-    J(t_==tH,simd_where_i16(xV,_V(y_),xn,&bad_))E(simd_where_i32(xV,_V(y_),xn,&bad_))
-    return x(y_);)})
+  I(w==0&&xn,{C t_=tZ((L)xn-1);A y_=an(xn,t_);int bad_=0;N k_=0;
+    I(t_==tG,{G*r_=_V(y_);CO UC*mm_=xV;unsigned char acc_=0;F(xn,acc_|=mm_[i];r_[k_]=(G)i;k_+=mm_[i]!=0)bad_=acc_>1;})
+    J(t_==tH,k_=simd_where_i16(xV,_V(y_),xn,&bad_))E(k_=simd_where_i32(xV,_V(y_),xn,&bad_))
+    I(!bad_,return x(AN((U)k_,y_));)mr(y_);})
   L m=xn,n=addfZ(0,x);P(n<0||minfZ(0,x)<0,ed(x))C t=tZ(m-!!m);P(t>tI,ez(x))A y=an(n,t);
   Mx(S4(t-tG,{G*r=yV;S4(w,F(m,Fj(xg,*r++=i)),F(m,Fj(xh,*r++=i)),F(m,Fj(xi,*r++=i)),F(m,Fj(xl,*r++=i)))},
              {H*r=yV;S4(w,F(m,Fj(xg,*r++=i)),F(m,Fj(xh,*r++=i)),F(m,Fj(xi,*r++=i)),F(m,Fj(xl,*r++=i)))},

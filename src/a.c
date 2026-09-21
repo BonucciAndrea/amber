@@ -620,7 +620,12 @@ A2(i1,/*01*/P(y==GAP||y==au,xR)
         RmM(A z=kv(&y);am(y,Ny(i1(x,z))))
         RA(r2(AP1,x,y))
         RE(L i=*yL,j=yL[1];P(0<=i&&i<j&&j<xN,y(0);slc(x,i,j))i1(x,gZ(y)))
-        R4(tB,tG,tH,tC,i1(x,cI(y)))
+        R2(tB,tC,i1(x,cI(y)))
+        // amber 2.2: a short byte/short index vector (every literal index list
+        // is stored that narrow) is widened on the stack, not into a fresh
+        // 32-bit K vector that is allocated, filled and freed on every gather.
+        R2(tG,tH,C t=xt;P(yn>256||t-tG>=7u,i1(x,cI(y)))U n=yn,b[288];I(yt==tG,F(n,b[i]=(U)(I)yg))E(F(n,b[i]=(U)(I)yh))
+         B k=t-tG<3u&&maxfU(b,n)>=xn;A z=an(n,k?tL:t);G(&iG,iH,iI,oL,oF,iC,iS,oG,oH,oI)[7*k+t-tG](xV,xn,b,zV,n);y(z))
         R_(et(y))
         RL(A z=aI(yn);My(F(yn+3&-4,L v=yl;zi=v|-(v!=(I)v)))i1(x,z))
         RI(U n=yn;

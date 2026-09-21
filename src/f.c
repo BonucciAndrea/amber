@@ -292,18 +292,28 @@ A unqL(A x){
 Z A1(fN,A y=_R(cn[tl]);x(xtt?y:rsz(xN,y)))
 
 Z AM_TLS_IE L t[256];// per-call char/byte find scratch; thread-local for peach workers
+Z A fndGxW(A x)_(U m=xn;A y=aL(m);
+  S4(xw-3,F(m,yl=t[(UC)xc]),
+   F(m,H v=xh;yl=v==(C)v?t[(UC)v]:NL),
+   F(m,I v=xi;yl=v==(C)v?t[(UC)v]:NL),
+   F(m,L v=xl;yl=v==(C)v?t[(UC)v]:NL))
+  x(0);sqzZ(y))
+// amber 2.2: a char/byte needle list against a char/byte haystack ("acgt"?s)
+// used to write an 8-byte index per element and then squeeze it -- 9 bytes of
+// traffic per input byte for a result that is one byte wide. The table is
+// narrowed first; a "not found" is a sentinel that the OR of the outputs
+// reveals, and only then does the old wide path run (its result is identical).
 Z X1(fndGx,
  R_(fN(x))
  RmMA(e1f(fndGx,x))
  Rilc(L v=gl(x);az(v==(C)v?t[(UC)v]:NL))
  RE(fndGx(gZ(x)))
  RB(fndGx(cG(x)))
- RGHILC(U m=xn;A y=aL(m);
-  S4(xw-3,F(m,yl=t[(UC)xc]),
-   F(m,H v=xh;yl=v==(C)v?t[(UC)v]:NL),
-   F(m,I v=xi;yl=v==(C)v?t[(UC)v]:NL),
-   F(m,L v=xl;yl=v==(C)v?t[(UC)v]:NL))
-  x(0);sqzZ(y)))
+ RGC(U m=xn;L mx=-1;F(256,I(t[i]!=NL&&t[i]>mx,mx=t[i]))CO UC*a=xV;
+  I(mx<128,UC tb[256];F(256,tb[i]=t[i]==NL?0x80:(UC)t[i])A y=aG(m);UC acc=0;UC*r=yV;F(m,acc|=r[i]=tb[a[i]])I(!(acc&0x80),return x(y);)mr(y);return fndGxW(x);)
+  I(mx<32768,UH th[256];F(256,th[i]=t[i]==NL?0x8000:(UH)t[i])A y=an(m,tH);UH acc=0;UH*r=yV;F(m,acc|=r[i]=th[a[i]])I(!(acc&0x8000),return x(y);)mr(y);return fndGxW(x);)
+  fndGxW(x))
+ R3(tH,tI,tL,fndGxW(x)))
 X2(fnd,
  R_(et(y))
  Rm(i1(xx,N(fnd(xy,y))))

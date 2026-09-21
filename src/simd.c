@@ -532,6 +532,40 @@ AMB_MV int64_t simd_cntcmpv_i64(const int64_t *a, const int64_t *q, size_t n, in
     return c;
 }
 
+/* ==== amber 2.2: counted comparisons on narrow integers and chars ===========
+ * `+/x=y` on a byte vector used to materialise the byte mask and sum it (two
+ * passes, one allocation). These count in blocks of 128 with a byte
+ * accumulator, which the compiler lowers to a packed compare and a packed
+ * subtract -- 32 elements per instruction on AVX2. */
+#define AMB_CNTS(FN, T, OP)                                                    \
+    static inline int64_t FN(const T *a, T v, size_t n) {                     \
+        int64_t c = 0; size_t i = 0;                                           \
+        for (; i + 128 <= n; i += 128) {                                       \
+            unsigned char s = 0;                                               \
+            for (size_t k = 0; k < 128; k++) s += (unsigned char)(a[i+k] OP v); \
+            c += s; }                                                          \
+        for (; i < n; i++) c += (a[i] OP v);                                   \
+        return c; }
+#define AMB_CNTV(FN, T, OP)                                                    \
+    static inline int64_t FN(const T *a, const T *b, size_t n) {              \
+        int64_t c = 0; size_t i = 0;                                           \
+        for (; i + 128 <= n; i += 128) {                                       \
+            unsigned char s = 0;                                               \
+            for (size_t k = 0; k < 128; k++) s += (unsigned char)(a[i+k] OP b[i+k]); \
+            c += s; }                                                          \
+        for (; i < n; i++) c += (a[i] OP b[i]);                                \
+        return c; }
+#define AMB_CNTFAM(W, T)                                                       \
+    AMB_CNTS(amb_cs_lt_##W, T, <) AMB_CNTS(amb_cs_gt_##W, T, >) AMB_CNTS(amb_cs_eq_##W, T, ==) \
+    AMB_CNTV(amb_cv_lt_##W, T, <) AMB_CNTV(amb_cv_gt_##W, T, >) AMB_CNTV(amb_cv_eq_##W, T, ==) \
+    AMB_MV int64_t simd_cntcmps_##W(const T *a, T v, size_t n, int op) {      \
+        return op == 0 ? amb_cs_lt_##W(a, v, n) : op == 1 ? amb_cs_gt_##W(a, v, n) : amb_cs_eq_##W(a, v, n); } \
+    AMB_MV int64_t simd_cntcmpv_##W(const T *a, const T *b, size_t n, int op) { \
+        return op == 0 ? amb_cv_lt_##W(a, b, n) : op == 1 ? amb_cv_gt_##W(a, b, n) : amb_cv_eq_##W(a, b, n); }
+AMB_CNTFAM(i8,  int8_t)
+AMB_CNTFAM(i16, int16_t)
+AMB_CNTFAM(i32, int32_t)
+
 /* ==== amber 2.1: fused scalar*vector+vector ===============================
  * out = a + s*b (sub=0) or a - s*b (sub=1), product rounded before the add
  * (no FMA contraction) so the result matches `s*b` then `a+` bit for bit.
@@ -548,28 +582,202 @@ AMB_MV AMB_NOFMA void simd_fma_f64(const double *a, double s, const double *b, d
  * neither 0 nor 1, in which case the caller discards the output and takes the
  * general path (`&` replicates by count). The cursor advances by (m!=0), so
  * the output can never run past n. */
+/* amber 2.2: the mask is read eight bytes at a time. An all-zero word is
+ * skipped and an all-one word is copied as a block, so a sparse mask (a few
+ * hits in millions) or a dense one (drop the newlines) both run at memory
+ * speed; only mixed words take the per-byte branch-free step. */
+#define AMB_ONES8 0x0101010101010101ull
+/* amber 2.2: AVX2 versions of where / compress. One 32-byte compare gives a
+ * bit per element; a block with no hit is skipped, a full block is copied,
+ * and a mixed block is walked bit by bit when sparse or byte by byte
+ * (branch-free) when dense. The portable binary picks these at run time. */
+#if defined(__x86_64__) && !defined(wasm)
+#include <immintrin.h>
+#define AMB_AVX2K 1
+#if defined(__AVX2__)
+#define AMB_AVX2_FN
+static inline int amb_use_avx2(void) { return 1; }
+#else
+#define AMB_AVX2_FN __attribute__((target("avx2")))
+static int amb_avx2_flag = -1;
+static inline int amb_use_avx2(void) { if (amb_avx2_flag < 0) amb_avx2_flag = __builtin_cpu_supports("avx2"); return amb_avx2_flag; }
+#endif
+#define AMB_CMPRS_AVX2(FN, T)                                                  \
+    AMB_AVX2_FN static size_t FN(const T *src, const unsigned char *m, T *out, size_t n, int *bad) { \
+        size_t k = 0, i = 0; unsigned char acc = 0;                            \
+        __m256i zero = _mm256_setzero_si256(), orv = zero;                     \
+        for (; i + 32 <= n; i += 32) {                                         \
+            __m256i v = _mm256_loadu_si256((const __m256i *)(m + i));          \
+            orv = _mm256_or_si256(orv, v);                                     \
+            uint32_t nz = ~(uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(v, zero)); \
+            if (!nz) continue;                                                 \
+            if (nz == 0xffffffffu) { __builtin_memcpy(out + k, src + i, 32 * sizeof(T)); k += 32; continue; } \
+            if (__builtin_popcount(nz) > 6) {                                  \
+                for (int q = 0; q < 32; q += 8) { unsigned sub = (nz >> q) & 0xffu; \
+                    if (!sub) continue;                                        \
+                    if (sub == 0xffu) { __builtin_memcpy(out + k, src + i + q, 8 * sizeof(T)); k += 8; continue; } \
+                    for (int j = q; j < q + 8; j++) { out[k] = src[i + j]; k += (m[i + j] != 0); } } \
+            } else { while (nz) { int j = __builtin_ctz(nz); out[k++] = src[i + j]; nz &= nz - 1; } } } \
+        { unsigned char ob[32]; _mm256_storeu_si256((__m256i *)ob, orv); for (int j = 0; j < 32; j++) acc |= ob[j]; } \
+        for (; i < n; i++) { unsigned char mi = m[i]; acc |= mi; out[k] = src[i]; k += (mi != 0); } \
+        *bad = acc > 1; return k;                                              \
+    }
+#define AMB_WHERE_AVX2(FN, T)                                                  \
+    AMB_AVX2_FN static size_t FN(const unsigned char *m, T *out, size_t n, int *bad) { \
+        size_t k = 0, i = 0; unsigned char acc = 0;                            \
+        __m256i zero = _mm256_setzero_si256(), orv = zero;                     \
+        for (; i + 32 <= n; i += 32) {                                         \
+            __m256i v = _mm256_loadu_si256((const __m256i *)(m + i));          \
+            orv = _mm256_or_si256(orv, v);                                     \
+            uint32_t nz = ~(uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(v, zero)); \
+            if (!nz) continue;                                                 \
+            if (nz == 0xffffffffu) { for (int j = 0; j < 32; j++) out[k + j] = (T)(i + j); k += 32; continue; } \
+            if (__builtin_popcount(nz) > 6) {                                  \
+                for (int q = 0; q < 32; q += 8) { unsigned sub = (nz >> q) & 0xffu; \
+                    if (!sub) continue;                                        \
+                    if (sub == 0xffu) { for (int j = 0; j < 8; j++) out[k + j] = (T)(i + q + j); k += 8; continue; } \
+                    for (int j = q; j < q + 8; j++) { out[k] = (T)(i + j); k += (m[i + j] != 0); } } \
+            } else { while (nz) { int j = __builtin_ctz(nz); out[k++] = (T)(i + j); nz &= nz - 1; } } } \
+        { unsigned char ob[32]; _mm256_storeu_si256((__m256i *)ob, orv); for (int j = 0; j < 32; j++) acc |= ob[j]; } \
+        for (; i < n; i++) { unsigned char mi = m[i]; acc |= mi; out[k] = (T)i; k += (mi != 0); } \
+        *bad = acc > 1; return k;                                              \
+    }
+AMB_CMPRS_AVX2(amb_compress_8_avx2,  int8_t)
+AMB_CMPRS_AVX2(amb_compress_16_avx2, int16_t)
+AMB_CMPRS_AVX2(amb_compress_32_avx2, int32_t)
+AMB_CMPRS_AVX2(amb_compress_64_avx2, int64_t)
+AMB_WHERE_AVX2(amb_where_i32_avx2, int32_t)
+AMB_WHERE_AVX2(amb_where_i16_avx2, int16_t)
+#endif
 #define AMB_CMPRS(FN, T)                                                       \
-    AMB_MV size_t FN(const T *src, const unsigned char *m, T *out, size_t n, int *bad) { \
-        size_t k = 0; unsigned char acc = 0;                                   \
-        for (size_t i = 0; i < n; i++) {                                       \
+    static size_t FN(const T *src, const unsigned char *m, T *out, size_t n, int *bad) { \
+        size_t k = 0, i = 0; unsigned char acc = 0;                            \
+        for (; i + 8 <= n; i += 8) {                                           \
+            uint64_t w; __builtin_memcpy(&w, m + i, 8);                        \
+            if (!w) continue;                                                  \
+            if (w == AMB_ONES8) { __builtin_memcpy(out + k, src + i, 8 * sizeof(T)); k += 8; continue; } \
+            for (int j = 0; j < 8; j++) {                                      \
+                unsigned char mi = m[i + j]; acc |= mi;                        \
+                out[k] = src[i + j]; k += (mi != 0); } }                       \
+        for (; i < n; i++) {                                                   \
             unsigned char mi = m[i]; acc |= mi;                                \
             out[k] = src[i]; k += (mi != 0); }                                 \
         *bad = acc > 1; return k;                                              \
     }
-AMB_CMPRS(simd_compress_8,  int8_t)
-AMB_CMPRS(simd_compress_16, int16_t)
-AMB_CMPRS(simd_compress_32, int32_t)
-AMB_CMPRS(simd_compress_64, int64_t)
-AMB_MV size_t simd_where_i32(const unsigned char *m, int32_t *out, size_t n, int *bad) {
-    size_t k = 0; unsigned char acc = 0;
-    for (size_t i = 0; i < n; i++) { unsigned char mi = m[i]; acc |= mi; out[k] = (int32_t)i; k += (mi != 0); }
-    *bad = acc > 1; return k;
-}
-AMB_MV size_t simd_where_i16(const unsigned char *m, int16_t *out, size_t n, int *bad) {
-    size_t k = 0; unsigned char acc = 0;
-    for (size_t i = 0; i < n; i++) { unsigned char mi = m[i]; acc |= mi; out[k] = (int16_t)i; k += (mi != 0); }
-    *bad = acc > 1; return k;
-}
+AMB_CMPRS(amb_compress_8_gen,  int8_t)
+AMB_CMPRS(amb_compress_16_gen, int16_t)
+AMB_CMPRS(amb_compress_32_gen, int32_t)
+AMB_CMPRS(amb_compress_64_gen, int64_t)
+
+#if defined(AMB_AVX2K)
+size_t simd_compress_8 (const int8_t  *src, const unsigned char *m, int8_t  *out, size_t n, int *bad) { return amb_use_avx2() ? amb_compress_8_avx2 (src, m, out, n, bad) : amb_compress_8_gen (src, m, out, n, bad); }
+size_t simd_compress_16(const int16_t *src, const unsigned char *m, int16_t *out, size_t n, int *bad) { return amb_use_avx2() ? amb_compress_16_avx2(src, m, out, n, bad) : amb_compress_16_gen(src, m, out, n, bad); }
+size_t simd_compress_32(const int32_t *src, const unsigned char *m, int32_t *out, size_t n, int *bad) { return amb_use_avx2() ? amb_compress_32_avx2(src, m, out, n, bad) : amb_compress_32_gen(src, m, out, n, bad); }
+size_t simd_compress_64(const int64_t *src, const unsigned char *m, int64_t *out, size_t n, int *bad) { return amb_use_avx2() ? amb_compress_64_avx2(src, m, out, n, bad) : amb_compress_64_gen(src, m, out, n, bad); }
+#else
+size_t simd_compress_8 (const int8_t  *src, const unsigned char *m, int8_t  *out, size_t n, int *bad) { return amb_compress_8_gen (src, m, out, n, bad); }
+size_t simd_compress_16(const int16_t *src, const unsigned char *m, int16_t *out, size_t n, int *bad) { return amb_compress_16_gen(src, m, out, n, bad); }
+size_t simd_compress_32(const int32_t *src, const unsigned char *m, int32_t *out, size_t n, int *bad) { return amb_compress_32_gen(src, m, out, n, bad); }
+size_t simd_compress_64(const int64_t *src, const unsigned char *m, int64_t *out, size_t n, int *bad) { return amb_compress_64_gen(src, m, out, n, bad); }
+#endif
+#define AMB_WHERE(FN, T)                                                       \
+    static size_t FN(const unsigned char *m, T *out, size_t n, int *bad) {    \
+        size_t k = 0, i = 0; unsigned char acc = 0;                            \
+        for (; i + 8 <= n; i += 8) {                                           \
+            uint64_t w; __builtin_memcpy(&w, m + i, 8);                        \
+            if (!w) continue;                                                  \
+            if (w == AMB_ONES8) { for (int j = 0; j < 8; j++) out[k + j] = (T)(i + j); k += 8; continue; } \
+            for (int j = 0; j < 8; j++) {                                      \
+                unsigned char mi = m[i + j]; acc |= mi;                        \
+                out[k] = (T)(i + j); k += (mi != 0); } }                       \
+        for (; i < n; i++) { unsigned char mi = m[i]; acc |= mi; out[k] = (T)i; k += (mi != 0); } \
+        *bad = acc > 1; return k;                                              \
+    }
+AMB_WHERE(amb_where_i32_gen, int32_t)
+AMB_WHERE(amb_where_i16_gen, int16_t)
+#if defined(AMB_AVX2K)
+size_t simd_where_i32(const unsigned char *m, int32_t *out, size_t n, int *bad) { return amb_use_avx2() ? amb_where_i32_avx2(m, out, n, bad) : amb_where_i32_gen(m, out, n, bad); }
+size_t simd_where_i16(const unsigned char *m, int16_t *out, size_t n, int *bad) { return amb_use_avx2() ? amb_where_i16_avx2(m, out, n, bad) : amb_where_i16_gen(m, out, n, bad); }
+#else
+size_t simd_where_i32(const unsigned char *m, int32_t *out, size_t n, int *bad) { return amb_where_i32_gen(m, out, n, bad); }
+size_t simd_where_i16(const unsigned char *m, int16_t *out, size_t n, int *bad) { return amb_where_i16_gen(m, out, n, bad); }
+#endif
+
+/* ==== amber 2.2: where-by-comparison and compress-by-comparison ============
+ * `&x=c` and `s@&x>c` on a byte/char vector never write the mask: the 32-byte
+ * compare feeds the same block emission as where / compress above. */
+#define AMB_CMPOP(A, V, OP) ((OP) == 2 ? ((A) == (V)) : (OP) == 1 ? ((A) > (V)) : ((A) < (V)))
+#define AMB_WHERECMP_GEN(FN, T)                                                \
+    static size_t FN(const int8_t *a, int8_t v, int op, size_t n, T *out) {   \
+        size_t k = 0;                                                          \
+        if (op == 2)      for (size_t i = 0; i < n; i++) { out[k] = (T)i; k += (a[i] == v); } \
+        else if (op == 1) for (size_t i = 0; i < n; i++) { out[k] = (T)i; k += (a[i] > v); }  \
+        else              for (size_t i = 0; i < n; i++) { out[k] = (T)i; k += (a[i] < v); }  \
+        return k; }
+#define AMB_COMPRESSCMP_GEN(FN, T)                                             \
+    static size_t FN(const T *src, const int8_t *a, int8_t v, int op, size_t n, T *out) { \
+        size_t k = 0;                                                          \
+        if (op == 2)      for (size_t i = 0; i < n; i++) { out[k] = src[i]; k += (a[i] == v); } \
+        else if (op == 1) for (size_t i = 0; i < n; i++) { out[k] = src[i]; k += (a[i] > v); }  \
+        else              for (size_t i = 0; i < n; i++) { out[k] = src[i]; k += (a[i] < v); }  \
+        return k; }
+AMB_WHERECMP_GEN(amb_wherecmp_i8_32_gen, int32_t)
+AMB_WHERECMP_GEN(amb_wherecmp_i8_16_gen, int16_t)
+AMB_COMPRESSCMP_GEN(amb_compresscmp_8_gen,  int8_t)
+AMB_COMPRESSCMP_GEN(amb_compresscmp_16_gen, int16_t)
+AMB_COMPRESSCMP_GEN(amb_compresscmp_32_gen, int32_t)
+AMB_COMPRESSCMP_GEN(amb_compresscmp_64_gen, int64_t)
+#if defined(AMB_AVX2K)
+AMB_AVX2_FN static inline uint32_t amb_cmpmask32(__m256i x, __m256i bv, int op) {
+    __m256i c = op == 2 ? _mm256_cmpeq_epi8(x, bv) : op == 1 ? _mm256_cmpgt_epi8(x, bv) : _mm256_cmpgt_epi8(bv, x);
+    return (uint32_t)_mm256_movemask_epi8(c); }
+#define AMB_WHERECMP_AVX2(FN, T)                                               \
+    AMB_AVX2_FN static size_t FN(const int8_t *a, int8_t v, int op, size_t n, T *out) { \
+        size_t k = 0, i = 0; __m256i bv = _mm256_set1_epi8(v);                 \
+        for (; i + 32 <= n; i += 32) {                                         \
+            uint32_t nz = amb_cmpmask32(_mm256_loadu_si256((const __m256i *)(a + i)), bv, op); \
+            if (!nz) continue;                                                 \
+            if (nz == 0xffffffffu) { for (int j = 0; j < 32; j++) out[k + j] = (T)(i + j); k += 32; continue; } \
+            if (__builtin_popcount(nz) > 6) {                                  \
+                for (int j = 0; j < 32; j++) { out[k] = (T)(i + j); k += (nz >> j) & 1u; } \
+            } else { while (nz) { int j = __builtin_ctz(nz); out[k++] = (T)(i + j); nz &= nz - 1; } } } \
+        for (; i < n; i++) { out[k] = (T)i; k += AMB_CMPOP(a[i], v, op); }     \
+        return k; }
+#define AMB_COMPRESSCMP_AVX2(FN, T)                                            \
+    AMB_AVX2_FN static size_t FN(const T *src, const int8_t *a, int8_t v, int op, size_t n, T *out) { \
+        size_t k = 0, i = 0; __m256i bv = _mm256_set1_epi8(v);                 \
+        for (; i + 32 <= n; i += 32) {                                         \
+            uint32_t nz = amb_cmpmask32(_mm256_loadu_si256((const __m256i *)(a + i)), bv, op); \
+            if (!nz) continue;                                                 \
+            if (nz == 0xffffffffu) { __builtin_memcpy(out + k, src + i, 32 * sizeof(T)); k += 32; continue; } \
+            if (__builtin_popcount(nz) > 6) {                                  \
+                for (int q = 0; q < 32; q += 8) { unsigned sub = (nz >> q) & 0xffu; \
+                    if (!sub) continue;                                        \
+                    if (sub == 0xffu) { __builtin_memcpy(out + k, src + i + q, 8 * sizeof(T)); k += 8; continue; } \
+                    for (int j = q; j < q + 8; j++) { out[k] = src[i + j]; k += (nz >> j) & 1u; } } \
+            } else { while (nz) { int j = __builtin_ctz(nz); out[k++] = src[i + j]; nz &= nz - 1; } } } \
+        for (; i < n; i++) { out[k] = src[i]; k += AMB_CMPOP(a[i], v, op); }   \
+        return k; }
+AMB_WHERECMP_AVX2(amb_wherecmp_i8_32_avx2, int32_t)
+AMB_WHERECMP_AVX2(amb_wherecmp_i8_16_avx2, int16_t)
+AMB_COMPRESSCMP_AVX2(amb_compresscmp_8_avx2,  int8_t)
+AMB_COMPRESSCMP_AVX2(amb_compresscmp_16_avx2, int16_t)
+AMB_COMPRESSCMP_AVX2(amb_compresscmp_32_avx2, int32_t)
+AMB_COMPRESSCMP_AVX2(amb_compresscmp_64_avx2, int64_t)
+size_t simd_wherecmp_i8_32(const int8_t *a, int8_t v, int op, size_t n, int32_t *out) { return amb_use_avx2() ? amb_wherecmp_i8_32_avx2(a, v, op, n, out) : amb_wherecmp_i8_32_gen(a, v, op, n, out); }
+size_t simd_wherecmp_i8_16(const int8_t *a, int8_t v, int op, size_t n, int16_t *out) { return amb_use_avx2() ? amb_wherecmp_i8_16_avx2(a, v, op, n, out) : amb_wherecmp_i8_16_gen(a, v, op, n, out); }
+size_t simd_compresscmp_8 (const int8_t  *src, const int8_t *a, int8_t v, int op, size_t n, int8_t  *out) { return amb_use_avx2() ? amb_compresscmp_8_avx2 (src, a, v, op, n, out) : amb_compresscmp_8_gen (src, a, v, op, n, out); }
+size_t simd_compresscmp_16(const int16_t *src, const int8_t *a, int8_t v, int op, size_t n, int16_t *out) { return amb_use_avx2() ? amb_compresscmp_16_avx2(src, a, v, op, n, out) : amb_compresscmp_16_gen(src, a, v, op, n, out); }
+size_t simd_compresscmp_32(const int32_t *src, const int8_t *a, int8_t v, int op, size_t n, int32_t *out) { return amb_use_avx2() ? amb_compresscmp_32_avx2(src, a, v, op, n, out) : amb_compresscmp_32_gen(src, a, v, op, n, out); }
+size_t simd_compresscmp_64(const int64_t *src, const int8_t *a, int8_t v, int op, size_t n, int64_t *out) { return amb_use_avx2() ? amb_compresscmp_64_avx2(src, a, v, op, n, out) : amb_compresscmp_64_gen(src, a, v, op, n, out); }
+#else
+size_t simd_wherecmp_i8_32(const int8_t *a, int8_t v, int op, size_t n, int32_t *out) { return amb_wherecmp_i8_32_gen(a, v, op, n, out); }
+size_t simd_wherecmp_i8_16(const int8_t *a, int8_t v, int op, size_t n, int16_t *out) { return amb_wherecmp_i8_16_gen(a, v, op, n, out); }
+size_t simd_compresscmp_8 (const int8_t  *src, const int8_t *a, int8_t v, int op, size_t n, int8_t  *out) { return amb_compresscmp_8_gen (src, a, v, op, n, out); }
+size_t simd_compresscmp_16(const int16_t *src, const int8_t *a, int8_t v, int op, size_t n, int16_t *out) { return amb_compresscmp_16_gen(src, a, v, op, n, out); }
+size_t simd_compresscmp_32(const int32_t *src, const int8_t *a, int8_t v, int op, size_t n, int32_t *out) { return amb_compresscmp_32_gen(src, a, v, op, n, out); }
+size_t simd_compresscmp_64(const int64_t *src, const int8_t *a, int8_t v, int op, size_t n, int64_t *out) { return amb_compresscmp_64_gen(src, a, v, op, n, out); }
+#endif
 /* ==== amber 2.1: float range scan for the counting sort / distinct ==========
  * One vectorised pass: min, max, whether the vector is non-decreasing, and
  * whether every element is a "plain integer": finite, integral, within 2^53

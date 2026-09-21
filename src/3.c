@@ -247,7 +247,45 @@ A wsmC(A x){
 // of1() domain defines differently from IEEE -- is computed EXACTLY as the
 // unfused program would: the dyad, then the derived verb +/ applied to it.
 Z A fredslow(L d,A x,A y){A t=d==18?cmprC(x,_R(y)):v2[d](x,_R(y));P(!t,0)A dv=_1(aw+1,ADD);A r=_1(dv,t);mr(dv);return r;}
+// amber 2.2: `#'=x` (count per group) as one counting pass over a byte, short
+// or char vector; keys in first-appearance order and counts squeezed to the
+// narrowest width, exactly as `=x` then `#'` produce them. Anything else runs
+// the unfused pair. Reached through fredC with code 19 (see b.c fus()).
+Z A fcntC(A x){UC tx=_t(x);
+ I(!_tP(x)&&(tx==tG||tx==tC),U n=xn;CO UC*p=xV;U c0[256]={0},c1[256]={0},c2[256]={0},c3[256]={0};U i=0;
+  for(;i+4<=n;i+=4){c0[p[i]]++;c1[p[i+1]]++;c2[p[i+2]]++;c3[p[i+3]]++;}for(;i<n;i++)c0[p[i]]++;
+  U nd=0;F(256,c0[i]+=c1[i]+c2[i]+c3[i];nd+=c0[i]>0)
+  UC b[256];U nb=0;UC seen[256]={0};F(n,UC v=p[i];I(!seen[v],seen[v]=1;b[nb++]=v;I(nb==nd,break;)))
+  A ky=aV(tx,nb,b);A cn=aL(nb);F(nb,_L(cn)[i]=c0[b[i]])return am(ky,sqzZ(cn));)
+ I(!_tP(x)&&tx==tH,U n=xn;CO UH*p=xV;U*c=(U*)calloc(4*65536,SZ(U));P(!c,die("OOM"))U*c1=c+65536,*c2=c+2*65536,*c3=c+3*65536;U i=0;
+  for(;i+4<=n;i+=4){c[p[i]]++;c1[p[i+1]]++;c2[p[i+2]]++;c3[p[i+3]]++;}for(;i<n;i++)c[p[i]]++;
+  U nd=0;F(65536,c[i]+=c1[i]+c2[i]+c3[i];nd+=c[i]>0)
+  UH*b=(UH*)malloc(65536*SZ(UH));P(!b,free(c);die("OOM"))UC*seen=(UC*)calloc(65536,1);P(!seen,free(c);free(b);die("OOM"))U nb=0;
+  F(n,UH v=p[i];I(!seen[v],seen[v]=1;b[nb++]=v;I(nb==nd,break;)))
+  A ky=aV(tH,nb,b);A cn=aL(nb);F(nb,_L(cn)[i]=c[b[i]])free(c);free(b);free(seen);return am(ky,sqzZ(cn));)
+ A g=grp(_R(x));P(!g,0)A dv=_1(aw,LEN);A r=_1(dv,g);mr(dv);return r;}
+// amber 2.2: `&x=c` / `&x<c` / `&x>c` on a char or byte vector against an atom
+// that fits its width: one compare-and-emit pass, no mask vector. The index
+// width is the one `&` on the mask would have chosen. Other shapes run the
+// unfused pair (the comparison, then `&`).
+Z A whrcmpC(L op,A x,A y){UC tx=_t(x),ty=_t(y);I opc=op==8?0:op==9?1:2;
+ I((_tz(x)||tx==tc)&&!_tP(y)&&(ty==tG||ty==tC),return whrcmpC(op==8?9:op==9?8:op,y,x))
+ I(!_tP(x)&&(tx==tG||tx==tC)&&(_tz(y)||ty==tc),L v=ty==tc?(L)(C)_v(y):gl_(y);
+  I(tZ(v)<=tG,U n=xn;C t_=tZ((L)n-1);A z=an(n,t_);N k=0;
+   I(t_==tG,{G*r=zV;CO G*p=xV;G w=(G)v;F(n,r[k]=(G)i;k+=opc==2?p[i]==w:opc==1?p[i]>w:p[i]<w)})
+   J(t_==tH,k=simd_wherecmp_i8_16(xV,(G)v,opc,n,zV))E(k=simd_wherecmp_i8_32(xV,(G)v,opc,n,zV))
+   return AN((U)k,z);))
+ A t=v2[op](x,_R(y));P(!t,0)return whr(t);}
+Z A cmpcmpC(L op,A s,A x,A y){UC ts=_t(s),tx=_t(x),ty=_t(y);I opc=op==8?0:op==9?1:2;
+ I((_tz(x)||tx==tc)&&!_tP(y)&&(ty==tG||ty==tC),return cmpcmpC(op==8?9:op==9?8:op,s,y,x))
+ I(!_tP(s)&&LH(tG,ts,tS)&&!_tP(x)&&(tx==tG||tx==tC)&&xn==_n(s)&&(_tz(y)||ty==tc),L v=ty==tc?(L)(C)_v(y):gl_(y);
+  I(tZ(v)<=tG,U n=xn;A z=an(n,ts);N k=0;
+   S4(Tw[ts]-3,k=simd_compresscmp_8(_V(s),xV,(G)v,opc,n,zV),k=simd_compresscmp_16(_V(s),xV,(G)v,opc,n,zV),k=simd_compresscmp_32(_V(s),xV,(G)v,opc,n,zV),k=simd_compresscmp_64(_V(s),xV,(G)v,opc,n,zV))
+   return AN((U)k,z);))
+ A m=v2[op](x,_R(y));P(!m,0)return cmprC(s,m);}
 AA(fredC,/*10..0*/P(n!=3,en(*a))L d=gl(*a);A x=a[1],y=a[2];
+ I(d==19,return fcntC(x))
+ I(d>=108&&d<=110,return whrcmpC(d-100,x,y))
  I(d==18,I(!_tP(y)&&ytG&&yn&&yn<=xn,int bad=0;
   I(xtF,F s=simd_masksum_f64(xV,yV,yn,&bad);I(!bad,return af(s)))
   I(xtL,L s=simd_masksum_i64(xV,yV,yn,&bad);I(!bad,return az(s)))))
@@ -259,6 +297,14 @@ AA(fredC,/*10..0*/P(n!=3,en(*a))L d=gl(*a);A x=a[1],y=a[2];
   J(xtL&&ytL&&xn==yn,return az(simd_cntcmpv_i64(xV,yV,xn,op)))
   J(xtL&&ytz,return az(simd_cntcmps_i64(xV,gl_(y),xn,op)))
   J(xtz&&ytL,return az(simd_cntcmps_i64(yV,gl_(x),yn,fl))))
+ // amber 2.2: byte / short / int / char vectors against an atom that fits
+ // their width, or against a vector of the same width, count in one pass.
+ I(d>=8&&d<=10,I op=d==8?0:d==9?1:2,fl=d==8?1:d==9?0:2;UC tx=_t(x),ty=_t(y);
+  B vx=!_tP(x)&&(tx==tG||tx==tH||tx==tI||tx==tC),vy=!_tP(y)&&(ty==tG||ty==tH||ty==tI||ty==tC);
+  U wx=vx?Tw[tx]-3:0,wy=vy?Tw[ty]-3:0;
+  I(vx&&vy&&wx==wy&&xn==yn,return az(wx==0?simd_cntcmpv_i8(xV,yV,xn,op):wx==1?simd_cntcmpv_i16(xV,yV,xn,op):simd_cntcmpv_i32(xV,yV,xn,op)))
+  I(vx&&(_tz(y)||ty==tc),L v=ty==tc?(L)(C)_v(y):gl_(y);I(tZ(v)<=tG+wx,return az(wx==0?simd_cntcmps_i8(xV,(G)v,xn,op):wx==1?simd_cntcmps_i16(xV,(H)v,xn,op):simd_cntcmps_i32(xV,(I)v,xn,op))))
+  I(vy&&(_tz(x)||tx==tc),L v=tx==tc?(L)(C)_v(x):gl_(x);I(tZ(v)<=tG+wy,return az(wy==0?simd_cntcmps_i8(yV,(G)v,yn,fl):wy==1?simd_cntcmps_i16(yV,(H)v,yn,fl):simd_cntcmps_i32(yV,(I)v,yn,fl)))))
  fredslow(d,x,y))
 // ---- amber 2.1: fused a+s*b / a-s*b with a literal scalar s ---------------
 // One pass over a and b; the product is rounded before the add (no FMA
@@ -266,6 +312,7 @@ AA(fredC,/*10..0*/P(n!=3,en(*a))L d=gl(*a);A x=a[1],y=a[2];
 // is written in place into whichever float operand is a dying temporary,
 // exactly the reuse the unfused path had.
 AA(fmaC,/*10..0*/P(n!=4,en(*a))L sb=gl(*a);A x=a[1],sc=a[2],b=a[3];
+ I(sb>=108&&sb<=110,return cmpcmpC(sb-100,x,sc,b))
  I(_tF(x)&&_tF(b)&&xn==_n(b)&&(_tf(sc)||_tz(sc)),F sv=_tf(sc)?*_F(sc):(F)gl_(sc);A z=MINE(b)?b:MINE(x)?x:aF(xn);
   simd_fma_f64(xV,sv,_V(b),zV,xn,(int)sb);_at(z)=0;return z==b||z==x?_R(z):z;)
  A t=v2[3](sc,_R(b));P(!t,0)v2[sb?2:1](x,t))

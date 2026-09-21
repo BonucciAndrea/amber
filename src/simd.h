@@ -97,6 +97,21 @@ int64_t simd_cntcmps_f64(const double *a, double v, size_t n, int op, int *bad);
 int64_t simd_cntcmpv_f64(const double *a, const double *b, size_t n, int op, int *bad);
 int64_t simd_cntcmps_i64(const int64_t *a, int64_t v, size_t n, int op);
 int64_t simd_cntcmpv_i64(const int64_t *a, const int64_t *b, size_t n, int op);
+/* amber 2.2: the same counts for 8/16/32-bit integer (and char) vectors. */
+int64_t simd_cntcmps_i8 (const int8_t  *a, int8_t  v, size_t n, int op);
+int64_t simd_cntcmps_i16(const int16_t *a, int16_t v, size_t n, int op);
+int64_t simd_cntcmps_i32(const int32_t *a, int32_t v, size_t n, int op);
+int64_t simd_cntcmpv_i8 (const int8_t  *a, const int8_t  *b, size_t n, int op);
+int64_t simd_cntcmpv_i16(const int16_t *a, const int16_t *b, size_t n, int op);
+int64_t simd_cntcmpv_i32(const int32_t *a, const int32_t *b, size_t n, int op);
+/* amber 2.2: positions where a byte vector compares (op 0 <, 1 >, 2 ==) against an atom,
+ * and compress of a vector by that comparison. The out buffer must hold every hit. */
+size_t simd_wherecmp_i8_32(const int8_t *a, int8_t v, int op, size_t n, int32_t *out);
+size_t simd_wherecmp_i8_16(const int8_t *a, int8_t v, int op, size_t n, int16_t *out);
+size_t simd_compresscmp_8 (const int8_t  *src, const int8_t *a, int8_t v, int op, size_t n, int8_t  *out);
+size_t simd_compresscmp_16(const int16_t *src, const int8_t *a, int8_t v, int op, size_t n, int16_t *out);
+size_t simd_compresscmp_32(const int32_t *src, const int8_t *a, int8_t v, int op, size_t n, int32_t *out);
+size_t simd_compresscmp_64(const int64_t *src, const int8_t *a, int8_t v, int op, size_t n, int64_t *out);
 
 /* out = a + s*b (sub=0) or a - s*b (sub=1); product rounded before the add. */
 void simd_fma_f64(const double *a, double s, const double *b, double *out, size_t n, int sub);

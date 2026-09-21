@@ -81,7 +81,16 @@ Z I fus(A x,B r){U n=xn;A y=xx;I o=xo;                                          
       I(sc&&fnode(aa,0)&&fnode(ob,0)&&!numlit(ob),
        Nr(_A(w)[1],1)Nr(ob,1)Nr(sc,1)Nr(aa,1)cc(ai(_A(oa)[0]==SUB),xo);cc(FUS3,xo);M(ba)M(5)I(!r,M(bP))return OK;)))
     Nr(_A(w)[1],1)Nr(oa,1)cc(ai(18),xo);cc(FUS1,xo);M(ba)M(3)I(!r,M(bP))return OK;))))
+ // #'=x : count per group in one pass, no index lists (amber 2.2)
+ I(n==2&&((_tA(y)&&_n(y)==2&&_A(y)[0]==aw&&_A(y)[1]==LEN)||(!_tP(y)&&_t(y)==tr&&_E(y)==0&&_n(y)==1&&_A(y)[0]==LEN)),A z=xy;
+  I(_tA(z)&&_n(z)==2&&_A(z)[0]==GRP&&fnode(_A(z)[1],0),cc(au,xo);Nr(_A(z)[1],1)cc(ai(19),xo);cc(FUS1,xo);M(ba)M(3)I(!r,M(bP))return OK;))
+ // &(x OP y) : positions of a comparison without the mask (amber 2.2)
+ I(n==2&&y==WHR,A z=xy;I(_tA(z)&&_n(z)==3,A d=_A(z)[0];I(d==EQL||d==LTN||d==GTN,A oa=_A(z)[1],ob=_A(z)[2];
+   I(fnode(oa,0)&&fnode(ob,0),Nr(ob,1)Nr(oa,1)cc(ai(100+_v(d)),xo);cc(FUS1,xo);M(ba)M(3)I(!r,M(bP))return OK;))))
  I(n==3&&y==AP1,A oa=xy,z=xz;
+  // s@&(x OP y) : compress by a comparison without the mask (amber 2.2)
+  I(_tA(z)&&_n(z)==2&&_A(z)[0]==WHR&&fnode(oa,0),A w=_A(z)[1];I(_tA(w)&&_n(w)==3,A d=_A(w)[0];I(d==EQL||d==LTN||d==GTN,A p=_A(w)[1],q=_A(w)[2];
+    I(fnode(p,0)&&fnode(q,0),Nr(q,1)Nr(p,1)Nr(oa,1)cc(ai(100+_v(d)),xo);cc(FUS2,xo);M(ba)M(4)I(!r,M(bP))return OK;))))
   I(_tA(z)&&_n(z)==2&&_A(z)[0]==WHR&&fnode(oa,0)&&fnode(_A(z)[1],0),Nr(_A(z)[1],1)Nr(oa,1)M(bv+27)I(!r,M(bP))return OK;)   // x@&m
   I(_tA(z)&&_n(z)==2&&(_A(z)[0]==ASC||_A(z)[0]==DSC)&&_tS(oa)&&_tS(_A(z)[1])&&mtc_(oa,_A(z)[1]),Nr(oa,1)M(bu+(_A(z)[0]==ASC?27:28))I(!r,M(bP))return OK;))// x@<x
  I(n==3&&(y==ADD||y==SUB),A oa=xy,z=xz;

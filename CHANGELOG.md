@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.2.0 (unreleased)
+## 2.2.0
 
 A correctness and performance release. Five defects that returned a **wrong value rather
 than an error** are fixed; the charts learned to label a temporal axis as a time; the query

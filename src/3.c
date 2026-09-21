@@ -1,5 +1,6 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include"simd.h"
+#include <stdlib.h>
 // ---- amber 1.9.2: vectorised reduction kernels ------------------------------
 // The reduction loops below were plain scalar accumulator chains. A float `+/`
 // over 10M elements ran at 8.9 ms (~3.5 cycles/element), which is exactly the

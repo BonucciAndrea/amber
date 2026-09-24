@@ -4,7 +4,7 @@ Every engine in `bench/run_comparative.py` implements **this document**, nothing
 The rules exist so a number in the results table can only be won by being faster, never by
 solving a smaller problem.
 
-## 1. Data model — identical, deterministic, and exactly representable
+## 1. Data model: identical, deterministic, and exactly representable
 
 ```
 N = 10_000_000        elements for the vector workloads
@@ -49,11 +49,11 @@ vl[i] = x[i]                                         left value
 ```
 
 **Why the right keys are sparse.** If `kr` were the dense range `0..K-1`, the "join" degenerates
-into a single array index (`vr[kl]`) in every array language — an O(1) lookup, not a join, while
+into a single array index (`vr[kl]`) in every array language, an O(1) lookup rather than a join, while
 DuckDB would still build a hash table. The previous suite had exactly this hole. Sparse,
 unsorted keys force every engine to perform a real key lookup.
 
-## 3. Exact arithmetic — why the answers are bit-comparable
+## 3. Exact arithmetic: why the answers are bit-comparable
 
 Every reported answer is an **integer that fits in float64 without rounding**, and every sum is
 over such integers, so the result is independent of summation order:
@@ -113,7 +113,7 @@ TIME_MS <median kernel milliseconds, float>
 ```
 
 `TIME_MS` may be omitted by an engine with no clock; the runner then falls back to subtracting a
-measured startup baseline. BQN scripts must not depend on `•args` being bound — the runner passes
+measured startup baseline. BQN scripts must not depend on `•args` being bound. The runner passes
 no arguments, and several BQN environments do not provide it at all; take defaults instead (see
 `bench/queries/bqn_*.bqn` for the `•BQN`+`⎊` wrapper used here). Anything else on stdout is ignored, so engines that unavoidably print
 a banner are still usable.

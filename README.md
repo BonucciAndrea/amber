@@ -9,7 +9,7 @@
   ╚═╝  ╚═╝╚═╝     ╚═╝╚═════╝ ╚══════╝╚═╝  ╚═╝
 ```
 
-**A low-latency array language — columnar, vectorised, in-memory.**
+**A low-latency array language: columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
 ![version](https://img.shields.io/badge/version-2.2.0-orange)
@@ -22,12 +22,12 @@
 ## What is Amber
 
 Amber is a small, fast, self-contained array language with the working vocabulary of
-**q** — dictionaries, **tables & keyed tables** with `([]…)` literal syntax, the full
+**q**: dictionaries, **tables & keyed tables** with `([]…)` literal syntax, the full
 **join family** (left · inner · union · plus · equi · **as-of** · **window**), qSQL-style
 select/by, strings, intraday **tick / OHLC** temporals, and **column attributes implemented
-in C** that turn search from `O(n)` into `O(log n)` — **~1000–2000× faster** on large data.
+in C** that turn search from `O(n)` into `O(log n)`, which is **~1000–2000× faster** on large data.
 
-Amber's interpreter core is built on **[ngn/k](https://codeberg.org/ngn/k)** — ngn's compact,
+Amber's interpreter core is built on **[ngn/k](https://codeberg.org/ngn/k)**, ngn's compact,
 AGPLv3 implementation of the K array language. Amber keeps that engine's speed and small
 footprint and layers a q vocabulary, C-level column attributes, native temporal types,
 `([]…)` table syntax, a tick/HFT toolkit, and a modern REPL on top. (The attribution is
@@ -43,13 +43,13 @@ qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                        / vwap by symbo
 ## What's new in 2.2.0
 
 **A correctness and performance release.** Five defects that returned a **wrong value
-rather than an error** are fixed — none of them raised, so none was visible:
+rather than an error** are fixed. None of them raised, so none was visible:
 
 - a lambda **parameter** named `ss`, `in` or any other infix verb parsed as the verb;
 - `1 2 3 in 2` answered `1 1`, because an atom fell onto k's **random deal**;
 - float literals below `1e-308` did not parse at all;
 - `(max;px) fby (sym;ex)` answered once per **column** instead of once per row;
-- `?` (distinct) was **not a function of its input** — `#?(-0.0 0.0)` was 2 while
+- `?` (distinct) was **not a function of its input**: `#?(-0.0 0.0)` was 2 while
   `#?(300#-0.0 0.0)` was 1, the same values at a different length.
 
 And, measured A/B against 2.1.0 on one machine with every answer bit-identical: an
@@ -125,7 +125,7 @@ Full gallery and the axis-unit rules: [`docs/QUICKSTART.md`](docs/QUICKSTART.md)
 ## Native temporal types
 
 Dates, times and timestamps are **first-class types** with literal syntax, auto-display and
-type-aware arithmetic — no wrappers:
+type-aware arithmetic, with no wrappers:
 
 ```q
 2026.07.30                          / date         -> 2026.07.30
@@ -146,11 +146,11 @@ mentioned anywhere in `src/`, and none of it is compiled, linked or configured b
 | repository | seam | what it is |
 |---|---|---|
 | [`python-amber`](https://github.com/BonucciAndrea/python-amber) | `libamber.so` | `pip install amber`. Zero-copy NumPy views of Amber columns, pandas and Arrow bridges, dynamic dispatch (`am.gentq(10_000_000)`). |
-| [`amber-arrow`](https://github.com/BonucciAndrea/amber-arrow) | `libamber.so` | `ArrowArrayStream` over an Amber table — batches that are *windows* onto one export, not slices of it. Plus `amberd`, the TCP query server, and an Arrow Flight daemon. |
+| [`amber-arrow`](https://github.com/BonucciAndrea/amber-arrow) | `libamber.so` | `ArrowArrayStream` over an Amber table, batches that are *windows* onto one export, not slices of it. Plus `amberd`, the TCP query server, and an Arrow Flight daemon. |
 | [`amber-jupyter`](https://github.com/BonucciAndrea/amber-jupyter) | `python-amber` | A Jupyter kernel. Amber cells and `%%python` cells in **one process**, so a column crosses as a pointer. |
 | [`vscode-amber`](https://github.com/BonucciAndrea/vscode-amber) | `amberd` socket | Syntax highlighting, and a standalone LSP daemon with qSQL-aware completion, idiom hovers and diagnostics that never evaluate. |
 | [`grafana-amber-datasource`](https://github.com/BonucciAndrea/grafana-amber-datasource) | `amberd` socket | Live dashboards. Bare qSQL panels, column-oriented on the wire. |
-| [`amber-flame`](https://github.com/BonucciAndrea/amber-flame) | `python-amber` / `amberd` | A visual profiler — flamegraphs, Speedscope and Chrome tracing, built on the engine's own `\trace`. |
+| [`amber-flame`](https://github.com/BonucciAndrea/amber-flame) | `python-amber` / `amberd` | A visual profiler, flamegraphs, Speedscope and Chrome tracing, built on the engine's own `\trace`. |
 
 The engine gained **one build flag, one export map and one section of `ext.h`** for all of it.
 
@@ -177,25 +177,25 @@ Results are identical; only the time differs. `asc` / `xasc` set the attribute f
 Amber uses a terse array notation. A few things worth knowing:
 
 * **Two-argument library dyads work infix *or* in brackets.** Since 2.0.0, `x in y`, `t lj kt`,
-  `` `sym xasc t``, `5 within 3 9`, `` "/" sv `a`b`c`` all work infix, exactly like q — and the
-  bracket form `f[x;y]` and prefix form `f x` still work. The infix set is a curated list —
-  `in within like lj ij uj aj aj0 wj wj1 pj ej cross inter union except ss sv vs xasc xdesc` — plus
+  `` `sym xasc t``, `5 within 3 9`, `` "/" sv `a`b`c`` all work infix, exactly like q, and the
+  bracket form `f[x;y]` and prefix form `f x` still work. The infix set is a curated list
+  (`in within like lj ij uj aj aj0 wj wj1 pj ej cross inter union except ss sv vs xasc xdesc`) plus
   the built-in symbol verbs (``+ - * % ! & | < > = ~ , ^ # _ $ ? @ .``). Arbitrary user lambdas are
   **not** infix.
-* **No `>=` / `<=`** — write `~a<b` and `~a>b`.
-* **qSQL is bare — at the prompt *and* in scripts.** Type `select … by … from … where …` (also
-  `exec` / `update` / `delete`) with no `sel"…"` wrapper — bare column names like `wavg[sz;px]` just
+* **No `>=` / `<=`.** Write `~a<b` and `~a>b`.
+* **qSQL is bare, at the prompt *and* in scripts.** Type `select … by … from … where …` (also
+  `exec` / `update` / `delete`) with no `sel"…"` wrapper; bare column names like `wavg[sz;px]` just
   work. Since 2.0.0 this bare form also works inside a `.k` file loaded once the stdlib is up (the
   loader runs each file through the same rewriter the REPL uses); the `sel"…"` / `exq"…"` / `upd"…"`
   / `del"…"` string forms and the functional forms `qselect`/`qby`/`qwhere` still work too.
-* **`peach[f;y]` is real multi-core** — it forks `AMBER_THREADS` worker processes (default: the
+* **`peach[f;y]` is real multi-core.** It forks `AMBER_THREADS` worker processes (default: the
   online CPU count, detected via `sysconf`; `=1` forces serial), so heavy per-item work scales
   across cores with no GIL and it won't oversubscribe a small box or leave a big one idle.
-* **Grids preview Q-style** — `show t` prints the first `CROWS` rows (default 20) then `..`, with
+* **Grids preview Q-style.** `show t` prints the first `CROWS` rows (default 20) then `..`, with
   a dimmed `[N rows x M cols]` footer and ANSI syntax highlighting.
 * **Errors show a `^` caret** under the failing token plus a descriptive message; set
   `AMBER_DIAG=1` for the full Rust-style report (see [Rust-style diagnostics](docs/REPL.md#rust-style-diagnostics)).
-* **Symbols have no `_`** — use a quoted symbol `` `"a_b" ``.
+* **Symbols have no `_`.** Use a quoted symbol `` `"a_b" ``.
 * Tables: `([]col:vals;…)`; keyed tables: `([key:vals]col:vals)`. A bare table at the prompt
   auto-renders as a grid.
 
@@ -241,7 +241,7 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 | [`docs/INTERNALS.md`](docs/INTERNALS.md) | architecture, extensions, SIMD/parallel, Arrow, `libamber.so` |
 | [`docs/BENCHMARKS.md`](docs/BENCHMARKS.md) | the full engine matrix, methodology, and the query files |
 | [`docs/INSTALL.md`](docs/INSTALL.md) | shell configuration |
-| [`docs/MISSING.md`](docs/MISSING.md) | what is deliberately not implemented yet |
+| [`docs/MISSING.md`](docs/MISSING.md) | what is not implemented yet, and why |
 | [`CHANGELOG.md`](CHANGELOG.md) | every release |
 
 <a name="whats-inside"></a>
@@ -250,27 +250,27 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 | file | |
 |------|--|
 | `a`, `build.sh` | launcher (build-if-stale) and portable compile (gcc / clang) |
-| `src/*.c`, `src/*.h` | the interpreter — ngn/k core + Amber extensions (`src/p.c` the `([]…)` parser; `src/ar.c` Arrow; `src/arena.{h,c}` the HFT arena, 32-byte aligned; `src/diagnostic.{h,c}` the Rust-style formatter; the native `aj` kernel in `src/a.c`; `src/inspect.{h,c}` the `\v` inspector; `src/ast.{h,c}` the `\ast` visualiser; `src/trace.{h,c}` the `\trace` profiler; `src/fmtutil.{h,c}` and `src/ansi.h` shared formatting/colour helpers; `src/simd.{h,c}` AVX2/NEON/scalar kernels; `src/parallel.{h,c}` the pthreads vector engine; `src/vm.{h,c}` the bytecode disassembler behind `\disasm`; `src/csv.{h,c}` the native CSV parser behind `` `csvr``) |
+| `src/*.c`, `src/*.h` | the interpreter, ngn/k core + Amber extensions (`src/p.c` the `([]…)` parser; `src/ar.c` Arrow; `src/arena.{h,c}` the HFT arena, 32-byte aligned; `src/diagnostic.{h,c}` the Rust-style formatter; the native `aj` kernel in `src/a.c`; `src/inspect.{h,c}` the `\v` inspector; `src/ast.{h,c}` the `\ast` visualiser; `src/trace.{h,c}` the `\trace` profiler; `src/fmtutil.{h,c}` and `src/ansi.h` shared formatting/colour helpers; `src/simd.{h,c}` AVX2/NEON/scalar kernels; `src/parallel.{h,c}` the pthreads vector engine; `src/vm.{h,c}` the bytecode disassembler behind `\disasm`; `src/csv.{h,c}` the native CSV parser behind `` `csvr``) |
 | `amber.k` | the q vocabulary (auto-loaded) |
-| `repl.k` | the REPL — banner, grid rendering, `\grid`/`\clear`, help; CRLF-safe module loader; reads its input through `` `rdl`` (the native editor) and exposes the optional `ext.*` hooks |
-| `src/ln.{h,c}`, `src/lnk.c` | the native line editor (raw `termios`, history, Tab completion) and the `` `rdl`` verb that the REPL reads through — this is what replaced `rlwrap` |
-| `src/ext.{h,c}`, `ext/` | **both** extension seams. Sections 1-5: the in-process registry — runtime verbs plus `\`-command / editor / startup hooks, and the (empty by default) directory `build.sh` compiles out-of-tree extensions from. Section 6: the out-of-process **dynamic C API** behind `libamber.so` (`amber_init`, `amber_eval_str`, `amber_get_vector_ptr`, …) |
+| `repl.k` | the REPL, banner, grid rendering, `\grid`/`\clear`, help; CRLF-safe module loader; reads its input through `` `rdl`` (the native editor) and exposes the optional `ext.*` hooks |
+| `src/ln.{h,c}`, `src/lnk.c` | the native line editor (raw `termios`, history, Tab completion) and the `` `rdl`` verb that the REPL reads through, this is what replaced `rlwrap` |
+| `src/ext.{h,c}`, `ext/` | **both** extension seams. Sections 1-5: the in-process registry, runtime verbs plus `\`-command / editor / startup hooks, and the (empty by default) directory `build.sh` compiles out-of-tree extensions from. Section 6: the out-of-process **dynamic C API** behind `libamber.so` (`amber_init`, `amber_eval_str`, `amber_get_vector_ptr`, …) |
 | `src/libamber.map` | the linker export map for the shared build: only `amber_*` and `am_ext_*` reach a host process's dynamic namespace, so the engine's terse internals (`mr`, `run`, `add`, …) cannot collide with a host's symbols |
-| `fin.k` | finance / HFT module (auto-loaded) — see `\m` help |
+| `fin.k` | finance / HFT module (auto-loaded), see `\m` help |
 | `std.k` `qsql.k` `temporal.k` `sys.k` `hdb.k` `ipc.k` `tick.k` | modules (auto-loaded) |
 | `examples/` | `tour.k` · `basics.k` · `tick.k` · `hft.k` · `peach.k` · `wj.k` · `graphs.k` · … |
 | `test.k` `test-fin.k` `test-ext.k` | assertion suites (202 + 35 + 79) |
-| `tests/harness.k` | shared assertion harness — `t` (value), `tv` (trapped expression), `te` (must-raise), `tk` (must-not-raise), `hexpect` (assertion-count guard), `hreport` |
+| `tests/harness.k` | shared assertion harness, `t` (value), `tv` (trapped expression), `te` (must-raise), `tk` (must-not-raise), `hexpect` (assertion-count guard), `hreport` |
 | `tests/test_matrix.k` | **309-case combinatorial matrix**: every primitive × every element type × sizes 0 / 1 / 10 / 100 000+ (crossing the SIMD and `PAR_THRESHOLD` boundaries), asserted as invariants (shape, algebraic identity, vector-kernel-vs-scalar-reference) rather than frozen literals |
-| `tests/test_qsql.k` | **117-case qSQL matrix**, written in the **bare `select … from t` syntax you actually type** (run through the same `qrw` rewrite the REPL and loader apply): the full `select`/`exec`/`update`/`delete` clause lattice, multi-key `by`, empty / single-row / heavily-duplicated tables, and malformed queries asserted to raise cleanly |
-| `tests/fuzz.py` | malformed-input & deep-nesting crash fuzzer — asserts a clean K error, never a signal or a hang |
-| `tests/test_capi.{c,sh}` | the dynamic C API: 81 assertions against `libamber.so`, linked as a satellite would link it (`src/ext.h` and nothing else from `src/`), run once at `-O2` and once under ASan + UBSan with leak detection — the ownership rules in the header are prose, and this is what checks them |
+| `tests/test_qsql.k` | **117-case qSQL matrix**, written in the **bare `select … from t` syntax you type** (run through the same `qrw` rewrite the REPL and loader apply): the full `select`/`exec`/`update`/`delete` clause lattice, multi-key `by`, empty / single-row / heavily-duplicated tables, and malformed queries asserted to raise cleanly |
+| `tests/fuzz.py` | malformed-input & deep-nesting crash fuzzer, asserts a clean K error, never a signal or a hang |
+| `tests/test_capi.{c,sh}` | the dynamic C API: 81 assertions against `libamber.so`, linked as a satellite would link it (`src/ext.h` and nothing else from `src/`), run once at `-O2` and once under ASan + UBSan with leak detection, the ownership rules in the header are prose, and this is what checks them |
 | `tests/test_qsql_script.sh`, `tests/test_comments.sh` | shell suites for the 2.0.0 loader work: bare qSQL inside a loaded `.k` file, and the unterminated bare-`/` comment now raising cleanly |
 | `tests/run_tests.sh` | runs all of the above (`--asan` re-runs everything under ASan + UBSan) |
 | `tests/test_repl_term.py` | **pty-driven REPL terminal suite**: asserts no `rlwrap:` diagnostic ever reaches a session, that `termios` is byte-for-byte restored after a normal exit *and* after `^C`, that the editing keys really edit, and that piped/non-tty behaviour is unchanged |
 | `tests/test_ext_seam.sh`, `tests/ext_probe.c` | installs a miniature extension into `ext/`, checks the verb / `\`-command / `--help` hooks fire and that the engine's own suite is unaffected, then uninstalls it and checks the engine is back to stock |
-| `tests/*.c` | standalone C test harnesses: `test_simd.c`/`test_parallel.c` (no Amber dependency), `test_ast.c` (links the full interpreter — ast.c is inherently built on Amber's real parser) |
-| `bench.k` `bench-fin.k` `bench-std.k` `bench/` | attribute / index / window benchmarks; `bench/run_comparative.py` cross-engine harness (see [docs/BENCHMARKS.md §5](docs/BENCHMARKS.md)); `bench/queries/amber_*.k` and `bench/queries/k_*.k` are separate, independently-tuned scripts per engine — see [Comparative benchmark query files](docs/BENCHMARKS.md#comparative-benchmark-query-files) |
+| `tests/*.c` | standalone C test harnesses: `test_simd.c`/`test_parallel.c` (no Amber dependency), `test_ast.c` (links the full interpreter, ast.c is inherently built on Amber's real parser) |
+| `bench.k` `bench-fin.k` `bench-std.k` `bench/` | attribute / index / window benchmarks; `bench/run_comparative.py` cross-engine harness (see [docs/BENCHMARKS.md §5](docs/BENCHMARKS.md)); `bench/queries/amber_*.k` and `bench/queries/k_*.k` are separate, independently-tuned scripts per engine, see [Comparative benchmark query files](docs/BENCHMARKS.md#comparative-benchmark-query-files) |
 | `docs/` | `AMBER.md` (reference) · `MISSING.md` (roadmap + known leniencies) · `BENCHMARKS.md` |
 | `CHANGELOG.md` | release history (2.0.0 first) |
 | `.gitattributes` | forces LF checkout of sources so the REPL's line-based loader works on Windows too |
@@ -278,7 +278,7 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 <a name="roadmap"></a>
 ## Roadmap
 
-Amber covers a large slice of q. [docs/MISSING.md](docs/MISSING.md) is an honest map of what's next —
+Amber covers a large slice of q. [docs/MISSING.md](docs/MISSING.md) is an honest map of what's next;
 top picks: wiring the `` `g`` grouped attribute into the C find path; **attribute preservation
 through ops** (keep/drop by q's per-op rules); the missing atom types
 (`short`/`real`/`byte`/`guid`); a true partitioned / memory-mapped HDB; and **live REPL syntax

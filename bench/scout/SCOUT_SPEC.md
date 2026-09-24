@@ -9,7 +9,7 @@ document is silent, `bench/SPEC.md` governs. Where it speaks, it wins.
 
 ---
 
-## 1. Data model — one closed-form generator, no RNG
+## 1. Data model: one closed-form generator, no RNG
 
 ```
 N                                       scale (default 10_000_000)
@@ -27,7 +27,7 @@ the modulus and keeps every workload's key distribution near-uniform.
 
 The largest intermediate is `262147 * (N-1) = 2.62e12 < 2^53`, so float64-only engines (BQN,
 Uiua, JavaScript) generate **bit-identical** input to the int64 engines. Same reasoning and same
-constant as `bench/SPEC.md §1`, deliberately: scout numbers stay comparable with the existing
+constant as `bench/SPEC.md §1`, on purpose: scout numbers stay comparable with the existing
 suite.
 
 ### Derived structures
@@ -53,7 +53,7 @@ sz[i]  = h[i] mod 500
 ```
 
 Symbol names are **zero-padded and letter-prefixed** (`s00`…`s99`) so that the lexicographic
-order a symbol sort actually uses agrees with the numeric order the C reference sorts by.
+order a symbol sort uses agrees with the numeric order the C reference sorts by.
 With bare `` `0 … `99 `` the two disagree (`"10" < "2"`) and `tablesort` answers would not be
 comparable across engines.
 
@@ -124,7 +124,7 @@ ANSWER     = ordstat + 1e9 * inversions
 ```
 
 The order statistics pin the distribution; the inversion count (one extra linear pass, identical
-work for every engine, negligible next to the sort itself) proves the output is actually ordered.
+work for every engine, negligible next to the sort itself) proves the output is ordered.
 `tablesort` uses the lexicographic version: `sym[j] < sym[j-1]`, or equal `sym` and
 `px[j] < px[j-1]`.
 
@@ -150,13 +150,13 @@ fold all produce the identical bit pattern, and the harness compares exactly.
 | sorts | `5*999` when correct (0 inversions) | exact |
 
 **`mavg_256` is the one exception.** A moving average divides by a growing window count
-(1, 2, …, 256), and division by 3 is not exact, so the summed result genuinely depends on the
+(1, 2, …, 256), and division by 3 is not exact, so the summed result does depend on the
 reduction order. It is compared at a relative tolerance of `1e-9`, comfortably looser than the
 worst case for a naive left fold over 10M positive terms (`N * eps ≈ 2.2e-9` bounded loosely;
 every real engine does far better). Every other op is bit-exact, and the report labels this one.
 
-Each engine also prints `CHECK = sum(a) + 3*sum(b)` over the full `N`-element base vectors —
-identical for every op — so a divergence in the *input* is diagnosed separately from a divergence
+Each engine also prints `CHECK = sum(a) + 3*sum(b)` over the full `N`-element base vectors,
+identical for every op, so a divergence in the *input* is diagnosed separately from a divergence
 in the *result*.
 
 ---
@@ -183,7 +183,7 @@ in the *result*.
    `ERROR`, `TIMEOUT` or `SKIP`.
 7. **Idiomatic per engine, disclosed in the report.** Each engine uses the formulation a
    competent user of that engine would write (K's `?` find, DuckDB's `ASOF JOIN`, NumPy's
-   `searchsorted`), and the report names the algorithm each one lands on — the algorithmic
+   `searchsorted`), and the report names the algorithm each one lands on. The algorithmic
    difference is the finding, not a flaw to be normalised away. What is forbidden is exploiting
    a property of *this* dataset, such as bincounting group keys because they happen to be dense.
 
@@ -219,14 +219,14 @@ python3 bench/scout/scout.py --scaling 100000,1000000,10000000 \
 python3 bench/scout/report.py bench/scout/results.json > bench/SCOUT_REPORT.md
 ```
 
-## scan_f — the running sum (added 2.2)
+## scan_f: the running sum (added 2.2)
 
 | id | task | answer |
 |---|---|---|
 | `scan_f` | the running sum of `x`, **materialised** | `s[0] + s[floor(N/2)] + s[N-1]` where `s[i] = sum of x[0..i]` |
 
 The scan family had no representative in the matrix. `+\` is a different shape
-from a reduction — it writes `N` elements rather than one, so it is bound by
+from a reduction: it writes `N` elements rather than one, so it is bound by
 store bandwidth where `+/` is bound by load bandwidth, and an engine that
 parallelises it has to choose an association.
 

@@ -11,11 +11,11 @@ Every performance change was verified by running `tests/test_fusion_diff.k` and
 `tests/test_arith_diff.k` under a build of the previous commit and under the new one and
 diffing: **1,085,384 and 32,185 lines, byte-identical**.
 
-### Fixed — wrong answers
+### Fixed: wrong answers
 
 - **A name that is also an infix verb was always read as the verb.** The parser decided
   infix-ness from the name alone, so a lambda *parameter* called `ss` (or `in`, `except`,
-  `xasc`, … — 21 names) was parsed as the verb: `{[r;ss] 1_ss}` built a *projection* instead
+  `xasc`, … , 21 names in all) was parsed as the verb: `{[r;ss] 1_ss}` built a *projection* instead
   of dropping and silently returned its input. The same applied to a global the program had
   rebound to data (`ss:5` then `1_ss`). A parameter of the lambda being parsed, and a name
   currently bound to something that is not a rank-2 function, are no longer read as verbs. A
@@ -23,7 +23,7 @@ diffing: **1,085,384 and 32,185 lines, byte-identical**.
   library's own source parsing while it is being loaded.
 - **`in` and the set operations were wrong for an atom right argument.** An atom fell through
   the C membership kernel onto `~^y?x`, and with an integer atom `y?x` is k's **random deal**,
-  not find. `1 2 3 in 2` answered `1 1` — two random picks, the wrong values *and* the wrong
+  not find. `1 2 3 in 2` answered `1 1`, two random picks, the wrong values *and* the wrong
   length, with no error; `` `a`b`c in `b `` raised `'domain`; `1 2 3 except 2` was empty where
   q gives `1 3`. `except`, `inter` and `union` are all defined on `in` and were all affected.
 - **`?` (distinct) was not a function of its input.** `-0.0` and `0.0` were two values for
@@ -40,12 +40,12 @@ diffing: **1,085,384 and 32,185 lines, byte-identical**.
   with the rest of Amber, with q (`count distinct (0.0;-0.0;1.0;0.0)` is 2 there too), and
   with itself at every length. Distinct keeps the **first** spelling it saw, as q does.
   This reverses half of a 2.0.1 note: `-0.0` no longer "stays distinct in `?`". The other
-  half stands — the **collation** is unchanged and `-0.0` still sorts before `0.0`, which is
+  half stands: the **collation** is unchanged and `-0.0` still sorts before `0.0`, which is
   now a tie-break between equal values rather than a strict ordering.
 
   Find on floats went through `fLL`, a raw 64-bit word compare; floats now use `fFL`, which
   normalises the one double that has two spellings (a compare and a cmov per element). NaN
-  still compares by bit pattern, which is q's answer too — `(0n;1.0)?0n` is 0, not a miss.
+  still compares by bit pattern, which is q's answer too, so `(0n;1.0)?0n` is 0, not a miss.
 
   `unqrangeF` no longer declines a column containing `-0.0`: its integer key collapses the
   two spellings, which used to be the reason to refuse and is now the correct behaviour. So
@@ -56,23 +56,23 @@ diffing: **1,085,384 and 32,185 lines, byte-identical**.
   sort, grade or fusion path moved; 14 new cases in `tests/test_sort_window.k` pin the
   answer at each length that changes which path is taken.
 - **`fby` on several group columns answered per column, not per row.** q lets the group
-  spec be a list of columns — `(max;px) fby (sym;ex)` — but `=` on a list of columns
+  spec be a list of columns, as in `(max;px) fby (sym;ex)`, but `=` on a list of columns
   groups *the columns*, so a 5-row table grouped on two columns returned **two** values
   instead of five, with no error. The table spelling (`([]s:sym;e:ex)`) was always right,
   because a table's count is already its row count. The list form is now flipped to rows
   first, and only when the shape says so: `#g` is the column count and `#*g` the row
-  count, so an ordinary group vector — and a general list that genuinely has one item per
-  datum — are both left exactly as they were.
+  count, so an ordinary group vector, and a general list that really has one item per
+  datum, are both left exactly as they were.
 
   Separately, `fby` **inside a where-clause** turns out to have worked all along:
   `select from t where px=(max;px) fby sym`. `docs/MISSING.md` listed it as missing. It is
   now tested (7 cases) so the claim cannot drift again, and the doc is corrected.
 - **Float literals below `1e-308` did not parse.** `pfu` clamped an out-of-range exponent and
   returned *before* advancing the parse cursor, so `1e-309` left `e-309` in the input and the
-  literal died with `'value` (and `1e309` likewise). Every subnormal double was unwritable —
+  literal died with `'value` (and `1e309` likewise). Every subnormal double was unwritable,
   a round-trip hole, since `std.k`'s text `ser`/`deser` is `` `k `` followed by `eval`. A
   subnormal now parses to its actual value rather than to 0, and `1e309` reads as `0w`.
-- **`?x` on a float column allocated `2n` hash slots up front** — 320 MB for a 10M-element
+- **`?x` on a float column allocated `2n` hash slots up front**, 320 MB for a 10M-element
   column holding a handful of distinct values. It now grows with the distinct count, as the
   integer path already did.
 - **`vlen` counted bytes, not display columns**, so every non-ASCII character in a table cell
@@ -87,14 +87,14 @@ diffing: **1,085,384 and 32,185 lines, byte-identical**.
   `tplot`/`dplot`/`pplot` are `xyplot` with the unit supplied. Ticks land on round clock and
   calendar boundaries, and the tick *count* is derived from how wide that unit's labels are,
   so a 19-character timestamp label no longer loses most of its ticks to collision. The plot
-  area is unaffected — labels live in the gutter.
+  area is unaffected, because labels live in the gutter.
 - **`candle` carries its bar times**, so OHLC bars from `bars[10;t]` are labelled with clock
   times instead of being an unlabelled row of boxes; its price gutter formats to a sensible
   number of decimals instead of truncating an exact double to eight characters.
 
 ### qSQL
 
-- **`select[n]`, `select[>col]`, `select[<col]`, `select[n;>col]`** — q's sorted and limited
+- **`select[n]`, `select[>col]`, `select[<col]`, `select[n;>col]`**: q's sorted and limited
   select, with q's clause order (where → by/select → sort → limit), negative limits taking
   from the end, several keys applying right-to-left so the first listed is primary, and
   support on keyed (by-clause) results. Accepted by the bare prompt form and by `sel"…"`.
@@ -109,13 +109,13 @@ diffing: **1,085,384 and 32,185 lines, byte-identical**.
 - **`+/(a ± s*b)@&m` is one pass.** Each piece was already fused, but chained they still wrote
   and re-read an 80 MB intermediate at 10M elements. **1.46x**; the expression now runs at
   memory bandwidth.
-- **A keys-only radix sort.** `asc` on a column the counting kernel declines — which is every
-  non-integral column, i.e. every real price series — used to grade and then gather, and the
+- **A keys-only radix sort.** `asc` on a column the counting kernel declines, which is every
+  non-integral column, meaning every real price series, used to grade and then gather, and the
   gather is a fully random 80 MB read (132 ms of a 320 ms sort at 10M). The order-preserving
   key the radix already sorts is a *bijection*, so the sort now permutes the keys and maps
   them back: no index vector, 8 bytes per element per pass instead of 12, and no gather.
   **2.29x** on non-integral floats, **1.43x** on a wide span. A *grade* still uses the
-  index-carrying radix — equal keys are indistinguishable once the gather is gone, which is
+  index-carrying radix, because equal keys are indistinguishable once the gather is gone, which is
   exactly why a permutation cannot be recovered.
 - **The float range scan is split in two and no longer calls `floor()`.** It sat on the hot
   path of every float sort, grade, distinct and multi-column tablesort and ran at 3.4 GB/s,
@@ -124,8 +124,8 @@ diffing: **1,085,384 and 32,185 lines, byte-identical**.
 
 ### Benchmarks
 
-The comparative matrix grew a **scan** operation (`scan_f`, the materialised running sum) — a
-family it had no representative of, and a different shape from a reduction: `+\` writes *n*
+The comparative matrix grew a **scan** operation (`scan_f`, the materialised running sum),
+a family it had no representative of, and a different shape from a reduction: `+\` writes *n*
 elements where `+/` writes one, so it is store-bandwidth bound, and an engine that parallelises it
 has to choose an association. Implemented in all seven engines plus the C reference; the answer is
 read back from three positions so an implementation correct only at its endpoints cannot pass, and
@@ -133,7 +133,7 @@ every partial sum is an exact integer below 2^53 so the answer is association-in
 
 Re-run on the final tree: **24 operations × 13 engines**, 10M elements, median of 5 timed runs
 after 2 warm-ups, every engine on one thread, every timing gated on an exact answer match against
-the C reference — zero `WRONG`, zero `BADDATA`, zero `ERROR`.
+the C reference: zero `WRONG`, zero `BADDATA`, zero `ERROR`.
 
 * Faster than the **C reference on 16 of 24** (`member` 9.7x, `sort_presorted` 7.0x,
   `distinct_100k` 6.0x, `sum_i` 5.4x, `grade_i` 3.7x).
@@ -144,12 +144,12 @@ the C reference — zero `WRONG`, zero `BADDATA`, zero `ERROR`.
 CBQN's four large wins (`sum_f`, `max_f`, `sort_f`, `sort_presorted`) are a *storage-width*
 difference, not a kernel one: BQN has no int/float distinction, so a vector of values 0..999 is
 stored narrow and CBQN reads 10–20 MB where Amber reads 80. Measured directly, `simd_sum_f64`
-moves 80 MB at 18.5 GB/s and `simd_max_f64` at 15.7 GB/s — this machine's single-core bandwidth.
+moves 80 MB at 18.5 GB/s and `simd_max_f64` at 15.7 GB/s, which is this machine's single-core bandwidth.
 
 **Publication hygiene.** `bench/scout/strip_private.py` is new: it removes the engines whose
 figures may not be published (one engine is run under an evaluation licence whose terms forbid
 disclosing benchmark information) from a results file, and `--check` exits non-zero if one appears
-anywhere in it — matrix, scaling buckets, engine map or machine block. That removal used to be a
+anywhere in it, whether in the matrix, scaling buckets, engine map or machine block. That removal used to be a
 manual step. `bench/scout/report.py` is scored against the C reference throughout, instead of
 generating a section headed with that named comparison. `scout.py --build` now builds **and runs**
 (it used to build and exit, which looked like the harness had died); `--build-only` keeps the old
@@ -238,12 +238,12 @@ LeakSanitizer.
 
 ## 2.0.1
 
-Tacit **trains** — hooks and forks — are now first-class. A parenthesised,
+Tacit **trains**, hooks and forks, are now first-class. A parenthesised,
 semicolon-separated list whose every element is a function is applied as a
 **train** instead of being indexed:
 
-- **Hook** `(f;g)` — monadic `(f;g) y` is `y f (g y)`; dyadic `(f;g)[x;y]` is `x f (g y)`.
-- **Fork** `(f;g;h)` — monadic `(f;g;h) y` is `(f y) g (h y)`; dyadic `(f;g;h)[x;y]` is `(x f y) g (x h y)`.
+- **Hook** `(f;g)`: monadic `(f;g) y` is `y f (g y)`; dyadic `(f;g)[x;y]` is `x f (g y)`.
+- **Fork** `(f;g;h)`: monadic `(f;g;h) y` is `(f y) g (h y)`; dyadic `(f;g;h)[x;y]` is `(x f y) g (x h y)`.
 
 So `avg:(+/;%;#)` is a working mean, `(%;+/)` normalises a vector to sum 1, and
 `(|/;-;&/)` is the range. Trains freely combine primitives, derived verbs
@@ -263,8 +263,8 @@ applied through `_1`/`_2`. The full test suite passes unchanged.
 
 ## 2.0.0
 
-The 2.0.0 release. Charts became a real feature — framed, auto-sizing braille plots with
-multiple series and clock-time axes — alongside a faster `O(n)` group-by, a native REPL line
+The 2.0.0 release. Charts became a real feature, with framed, auto-sizing braille plots carrying
+multiple series and clock-time axes, alongside a faster `O(n)` group-by, a native REPL line
 editor that is UTF-8- and cell-correct with multi-line continuation and an honest exec timer,
 infix notation for the library dyads, bare qSQL inside loaded `.k` scripts, and a set of engine
 and lexer fixes.
@@ -275,7 +275,7 @@ The line buffer holds **bytes**; a terminal lays out **cells**. Conflating the t
 ordinary input:
 
 - `città però` typed with its accents pushed the box's closing border two columns in
-  (each accented letter is 2 bytes but 1 cell), leaving stale glyphs behind — the row
+  (each accented letter is 2 bytes but 1 cell), leaving stale glyphs behind, so the row
   rendered as `…però    │││`.
 - CJK and emoji pushed it the other way (1 lead byte counted, 2 cells drawn).
 - **Backspace deleted one BYTE of a multi-byte character**, leaving a stray continuation
@@ -283,8 +283,8 @@ ordinary input:
   and the arrow keys had the same defect.
 - Horizontal scrolling and truncation could cut a UTF-8 sequence in half.
 
-`src/ln.c` gained a small UTF-8 layer — sequence length, codepoint, display width and
-character-boundary stepping — and every layout and editing path now works in characters
+`src/ln.c` gained a small UTF-8 layer for sequence length, codepoint, display width and
+character-boundary stepping, and every layout and editing path now works in characters
 and cells. The width table is **built in rather than taken from `wcwidth()`** on purpose:
 `wcwidth()` answers according to `LC_CTYPE`, so the same line would lay out differently on
 macOS and on a WSL box with a different locale, and a box that lands in a different column
@@ -308,7 +308,7 @@ worked through paste.
 A line that leaves a bracket open (`{`, `(`, `[`) is now understood as an incomplete
 statement: the editor echoes the fragment, shows a `...>` continuation prompt aligned under
 the main one, and keeps reading until the brackets balance. The fragments are joined and
-handed over as **one** statement, which is also what goes into history — `Ctrl-P` recalls
+handed over as **one** statement, which is also what goes into history, so `Ctrl-P` recalls
 `f:{ x+1 }`, never a fragment.
 
 ```
@@ -319,8 +319,8 @@ amber> f 41
 42
 ```
 
-There is deliberately **no key binding** for this. Shift-Enter is indistinguishable from
-Enter in a terminal — both send CR — unless the user opts into an extended keyboard protocol
+There is **no key binding** for this. Shift-Enter is indistinguishable from
+Enter in a terminal, since both send CR, unless the user opts into an extended keyboard protocol
 (xterm `modifyOtherKeys`, kitty, a hand-made iTerm2 binding), so binding it would work for
 almost nobody and would behave differently on macOS and WSL. Continuing on incomplete syntax
 is what python, node, ghci and q all do, and needs no terminal support at all.
@@ -333,15 +333,15 @@ abandons a continuation.
 
 ### The status bar's exec timer was reporting 10x
 
-`sbexec` computed `.1*_0.5+10*sblast`. **k has no bare `.1` float literal** — `.1` lexes as the
-verb `.` applied to `1`, which yields `1` — so the expression evaluated to `1*_0.5+10*sblast`,
+`sbexec` computed `.1*_0.5+10*sblast`. **k has no bare `.1` float literal**: `.1` lexes as the
+verb `.` applied to `1`, which yields `1`, so the expression evaluated to `1*_0.5+10*sblast`,
 exactly ten times the milliseconds. A 23 ms line read `230 ms`.
 
 Separately, `fmt` called `upd[]` before formatting **every** value, and `upd` forked
-`/usr/bin/env tput -S` to read the terminal size — on every single line. On macOS that cost
+`/usr/bin/env tput -S` to read the terminal size, on every single line. On macOS that cost
 3–6 ms per line, because `fork` copies page tables for the 1 GB reserved heap (measured 3.0 ms,
 rising to 5.8 ms after `gentq 200000`), and the status bar charged all of it to the user's
-expression. The size now comes from `ioctl(TIOCGWINSZ)` via `` `bi 0`` — the same probe
+expression. The size now comes from `ioctl(TIOCGWINSZ)` via `` `bi 0``, the same probe
 `src/ln.c` lays the bar out with, so the two can never disagree. `fmt`: **3.3 ms → 0.005 ms**.
 
 | line | before | now | `\t` (eval only) |
@@ -358,7 +358,7 @@ does not render as `9.8`.
 
 - **Resize / zoom.** A resize now releases the scroll region, wipes the whole screen, re-sets the
   region and repaints the transcript from the scroll-back ring. It assumes nothing about what the
-  terminal did to the old contents, because terminals disagree — xterm clips the alternate screen
+  terminal did to the old contents, because terminals disagree: xterm clips the alternate screen
   at the bottom, Terminal.app and iTerm2 keep the bottom and shift content up, and they differ
   again on whether DECSTBM survives. Any repaint that erased "where the old footer was" left a
   stranded copy of the box on some terminal: the duplicated box seen when zooming on macOS. The
@@ -370,8 +370,8 @@ does not render as `9.8`.
   borders above and below still reached it. A Retina Mac at a zoomed-out font is routinely
   300–400 columns.
 - **`Ctrl-L` is now byte-identical to `\clear`** (it was missing the `ESC[3J` scrollback wipe).
-  macOS `Cmd-K` cannot be intercepted — Terminal.app and iTerm2 clear the screen locally and send
-  the program nothing — so rebinding `Cmd-K` to send `Ctrl-L` (iTerm2: Settings ▸ Keys ▸ Send Hex
+  macOS `Cmd-K` cannot be intercepted, because Terminal.app and iTerm2 clear the screen locally and send
+  the program nothing, so rebinding `Cmd-K` to send `Ctrl-L` (iTerm2: Settings ▸ Keys ▸ Send Hex
   Code `0x0c`) is the only way to get exact `\clear` behaviour, and that now holds byte for byte.
 - **The committed command echo erases to end of line.** A row repainted from the ring is not
   blank, so the tail of a longer previous line survived past the echoed command.
@@ -383,8 +383,8 @@ does not render as `9.8`.
 - Every allocation in the bracketed-paste path is checked. A paste is the one input whose size the
   user chooses, so allocation failure is reachable, and the old unchecked `realloc`/`malloc` would
   have dereferenced NULL.
-- **Wide output scrolls sideways.** Output wider than the terminal — a table with many columns, a
-  wide chart — used to wrap and mangle the box; it now clips at the right edge (auto-wrap off while
+- **Wide output scrolls sideways.** Output wider than the terminal, such as a table with many columns or a
+  wide chart, used to wrap and mangle the box; it now clips at the right edge (auto-wrap off while
   the bar owns the screen) and **Shift-←/→**, or the horizontal mouse/trackpad wheel, pans the
   transcript across it, the same way PgUp/PgDn and the wheel scroll it vertically. The slice is
   ANSI- and UTF-8-aware, so colours and box borders stay intact as you pan.
@@ -393,13 +393,13 @@ does not render as `9.8`.
 
 - **`az()` signed overflow (undefined behaviour).** It decided whether a 64-bit value fits in an
   `I` by computing `n-(I)n`. For `n = LLONG_MAX` (k's `0W`) the truncation is `-1`, so it computed
-  `LLONG_MAX-(-1)` — UBSan flagged it on any qSQL path producing `0W`. It now round-trips the value
+  `LLONG_MAX-(-1)`, which UBSan flagged on any qSQL path producing `0W`. It now round-trips the value
   instead: equivalent in range, defined out of it.
 
 ### Faster aggregation
 
 - **`O(n)` counting group for 32-bit integer keys** (`o.c`). Grouping a column of `int` keys no
-  longer hashes — it counts into a dense table indexed by the key — which is **5.1× faster** on the
+  longer hashes. It counts into a dense table indexed by the key, which is **5.1× faster** on the
   `group_100k` benchmark and speeds every `qby`/`xgroup` over an integer column.
 - **The SIMD dot-product kernels are now wired into `wsum`/`wavg`.** They had been built but never
   called; hooking them up gives **1.9×** on the VWAP path.
@@ -413,13 +413,13 @@ does not render as `9.8`.
 
 All of the above is covered by `tests/test_statusbar.py`, which now also drives resize/zoom bursts,
 UTF-8 input, long-line responsiveness, `Cmd-K` recovery, caret stability (asserted on the emitted
-bytes — a rendered grid cannot see a cursor that returned before the next flush) and multi-line
+bytes, because a rendered grid cannot see a cursor that returned before the next flush) and multi-line
 continuation.
 
 ### Charting is now a feature, not a party trick
 
 `plot` used to draw a bare braille canvas: no frame, no axis, min/max scaling straight off the
-data, one series only, and every point joined to the next — which meant a series with more
+data, one series only, and every point joined to the next, which meant a series with more
 points than pixel columns rendered as a solid black smear. All of that is replaced.
 
 Everything now funnels into **`chart`**, which takes a dictionary of options, so there is one
@@ -440,14 +440,14 @@ place where a default lives and one place to extend. The other verbs are presets
 
 `chart` accepts `y x w h ylim xlim grid axis legend colour title xlabel ylabel names col style`.
 `style` is per series (line / scatter / step / area), `col` is a per-series 256-colour code, and
-`colour:2` — the default — emits ANSI only when stdout is a terminal, so a piped chart stays
+`colour:2`, the default, emits ANSI only when stdout is a terminal, so a piped chart stays
 plain text.
 
 **The axis is snapped, not padded.** The view is the data's own range rounded *outward* to a
 1/2/5 boundary, so ticks land on numbers a reader decodes without arithmetic. Raw min/max pins
 the extremes to the frame, where they read as clipped; a fixed percentage pad lands the axis on
-values like `7.31942`. Snapping alone is not enough either — a series spanning −14..14 snaps to
-a step of 10 and lands on a −20..20 axis, throwing away 30% of the height — so the axis walks
+values like `7.31942`. Snapping alone is not enough either: a series spanning −14..14 snaps to
+a step of 10 and lands on a −20..20 axis, throwing away 30% of the height, so the axis walks
 *down* the 1/2/5 ladder while the snapped range exceeds the data range by more than a third.
 The label step is computed separately from the snapping step, so tightening the view cannot
 flood the gutter with a label on every row.
@@ -456,18 +456,18 @@ flood the gutter with a label on every row.
 column is drawn as the min→max range of the points falling in it rather than by joining
 consecutive points. One vertical segment per column keeps every spike and cannot fill the box
 in solid. A 200,000-point random walk is now legible. The envelope needs a non-decreasing `x`,
-so parametric curves that double back — a Lissajous figure, a spiral — detect that and fall
+so parametric curves that double back, a Lissajous figure or a spiral, detect that and fall
 back to segment drawing automatically.
 
 Also new: a frame with tick marks (`┤` on the value axis, `┬` on the x axis), gridlines
 (`grid:1` horizontal, `grid:2` both), per-series colour with a legend, titles and axis labels,
-and per-series `x` vectors — which is what lets a 50-tick moving average line up with the price
+and per-series `x` vectors, which is what lets a 50-tick moving average line up with the price
 it was computed from instead of being stretched across the same index range.
 
 Gridlines live in their own plane, and any cell carrying data drops its grid dots, so a
 gridline can never be mistaken for a data point. Nulls and infinities are skipped when the
 extent is computed, so one bad tick cannot flatten every other series into a single row, and a
-segment with both endpoints off the same edge is dropped rather than clamped — clamping paints
+segment with both endpoints off the same edge is dropped rather than clamped, since clamping paints
 a false flat line along the frame.
 
 The `plt` kernel still accepts the original `v` and `(v;W;H)` forms and still answers them with
@@ -479,9 +479,9 @@ tests covering geometry, the legend and title rows, the envelope path at 10⁶ p
 all-null series, a zero-range series, an empty series, explicit limits and every style.
 
 **`plot` itself now takes multiple series**, not just `plots`: `plot (a;b;c)` or a dictionary
-draws one labelled line per column. `exec` was extended to match — `exec px,ask from t` returns
+draws one labelled line per column. `exec` was extended to match: `exec px,ask from t` returns
 a `` `px`ask `` dictionary of columns (a single column still returns the bare vector), where it
-used to concatenate them into one vector — so `plot exec px,ask from trades taq quotes` draws a
+used to concatenate them into one vector, so `plot exec px,ask from trades taq quotes` draws a
 line for each. **A time-of-day axis renders as `HH:MM:SS`** on round clock boundaries (`09:30`,
 `10:00`, …) rather than raw milliseconds; the tick labels are packed so they never overlap.
 
@@ -489,7 +489,7 @@ line for each. **A time-of-day axis renders as `HH:MM:SS`** on round clock bound
 
 `docs/CHANGELOG.md` (a stub that only pointed here) and `docs/AUDIT-1.9.md` (a point-in-time
 report on a superseded release) are removed, as are the two generated benchmark dumps
-`bench/baseline_before.md` and `bench/comparative_results.md` — the latter is regenerated by CI
+`bench/baseline_before.md` and `bench/comparative_results.md`, the latter regenerated by CI
 on every run. Every reference to them has been updated rather than left dangling.
 
 ### Infix notation for the two-argument library dyads
@@ -506,19 +506,19 @@ t lj kt                 / left join    (was: lj[t;kt])
 1 2 3 except 2          / 1 3          (was: except[1 2 3;2])
 ```
 
-The infix set is a curated list of Amber's two-argument dyads — `in within like lj
+The infix set is a curated list of Amber's two-argument dyads: `in within like lj
 ij uj aj aj0 wj wj1 pj ej cross inter union except ss sv vs xasc xdesc`. The parser
 change extends the same mechanism ngn/k already applies to every *unicode*-named
 identifier (which were always infix) to these ASCII names. **The bracket form still
 works unchanged**, `f[x;y]` and `f x` too, and a name is left an ordinary lvalue
 when it is being defined or amended (`in:{…}` still assigns), so nothing that
-worked before breaks. Lambda literals are deliberately **not** made infix: `f
+worked before breaks. Lambda literals are **not** made infix: `f
 {lambda} x` must keep meaning `f({lambda}[x])`, and a purely syntactic parser cannot
 tell that apart from `noun {lambda} noun` the way q's type-aware one can. Verified
 against the reference: `x in y`, `x within y`, `t lj kt` and the rest produce output
 identical to q and to the bracket form (`test.k`, 12 cases).
 
-### Bare qSQL now works in a loaded `.k` file — no `sel"…"` wrapper
+### Bare qSQL now works in a loaded `.k` file: no `sel"…"` wrapper
 
 `select … by … from … where …` (and `exec` / `update` / `delete`) previously worked
 **bare** only on the interactive input line; inside a script you had to wrap it in
@@ -541,35 +541,35 @@ untouched). A non-qSQL script is passed through byte-for-byte. (`test_qsql.k` +
 
 - **`&()` (where on a literal empty generic list) returned `,!0` instead of `!0`.**
   `whr`'s generic-list branch (`src/v.c`) ran its nested-grouping K expression on a
-  simply-empty `()` — which also has type `` `A`` — instead of recognising "zero
+  bare empty `()`, which also has type `` `A``, instead of recognising "zero
   elements, nothing to do". It now short-circuits an empty generic list to an empty
   int vector, byte-identical to `&!0`. This was silently affecting `ss` and any qSQL
   path that built a literal empty `()`. (`test.k`, 5 cases.)
 - **A bare `/` line opening an unterminated block comment silently truncated the
   file.** A `/`-on-its-own-line block comment with no closing `\` line ran to EOF and
-  exited 0 with no diagnostic — quietly dropping the rest of the file. It now raises
+  exited 0 with no diagnostic, quietly dropping the rest of the file. It now raises
   a clean parse error. Properly-closed `/ … \` blocks and trailing `/ …` line
   comments are unchanged. (`tests/test_comments.sh`.)
 
-### REPL — bracketed paste and an optional status bar
+### REPL: bracketed paste and an optional status bar
 
 - **Bracketed paste.** The native line editor (`src/ln.c`) now enables bracketed
   paste (`ESC[?2004h`). Pasting a multi-line script runs it **line by line, exactly
-  as if each line were typed** — so inline (`x:1 / c`) and full-line (`/ c`)
+  as if each line were typed**, so inline (`x:1 / c`) and full-line (`/ c`)
   comments work, and bare qSQL in a pasted line is rewritten just as at the prompt.
   The first pasted line submits immediately; the rest are queued and drained under
-  the prompt. (Whole-block `. text` eval was rejected — it raises `'limit` on a
+  the prompt. (Whole-block `. text` eval was rejected: it raises `'limit` on a
   multi-statement string.) Paste mode is torn down on every exit path.
   (`tests/test_paste.py`, pty-driven.)
-- **Optional Claude-Code-style status bar — `\sb`.** Off by default (the default
+- **Optional Claude-Code-style status bar, `\sb`.** Off by default (the default
   REPL is byte-for-byte unchanged and every terminal test still passes). `\sb`
   sets a DECSTBM scroll region and paints a **two-line bottom panel**: a muted bar
   with a coral-accented `✻ amber 2.0.0` brand and key hints, and a live info line
   under it (the last command's wall-time, then a digest of your workspace tables).
-  `src/ln.c` OWNS the rendering — a new `am_ln_statusbar()` fed by repl.k through
+  `src/ln.c` OWNS the rendering: a new `am_ln_statusbar()` fed by repl.k through
   the `` `sbb`` verb — so the panel survives **Ctrl-L, `\clear`, a resize and every
   keystroke**, and the atexit hook releases the scroll region on **every** exit
-  path (`\\`, Ctrl-D, a crash). Standard Unicode only (`✻ ↑ ↓ ·`) — no Nerd Font
+  path (`\\`, Ctrl-D, a crash). Standard Unicode only (`✻ ↑ ↓ ·`), with no Nerd Font
   needed; truecolour palette degrades to the nearest 256-colour cell.
   (`tests/test_statusbar.py`, pty-driven.)
 
@@ -578,21 +578,21 @@ untouched). A non-qSQL script is passed through byte-for-byte. (`test_qsql.k` +
 - Grouping a table **by a symbol column** is now ~19&times; faster: `group`
   (`src/o.c`) groups symbols by their interned 4-byte id instead of lexically
   string-sorting them. Same partition, byte-identical first-appearance key order;
-  `select … by sym` on 1M rows went 587&nbsp;ms → 34&nbsp;ms — Amber's own before/after
+  `select … by sym` on 1M rows went 587&nbsp;ms → 34&nbsp;ms, measured on Amber's own before/after
   (`docs/BENCHMARKS.md`, and the benchmarks page on the site). (`test.k`, 6 cases.)
 - Right-to-left evaluation of a function's bracketed arguments (already the case,
   and matching q) is now pinned by side-effect-based regression tests, together
   with nested/chained-bracket results, so a parser change can't silently flip them
   (`test.k`, 7 cases).
 
-## 1.9.6 — `libamber.so`: the out-of-process seam
+## 1.9.6: `libamber.so`, the out-of-process seam
 
 ### What this release is
 
 1.9.5 gave the engine a seam for extending it **in process**: drop a `.c` file into
 `ext/`, rebuild, and it plugs itself in through `src/ext.h` without a line of `src/`
 being patched. That covers everything written in C. It covers nothing written in
-Python, Go, TypeScript or anything else — and a columnar engine that cannot be
+Python, Go, TypeScript or anything else, and a columnar engine that cannot be
 reached from a notebook, a dashboard or a gRPC service is an engine nobody outside
 this repository can use.
 
@@ -609,7 +609,7 @@ an existing header, and one test file.
 ### The C API (`src/ext.h` §6, `src/ext.c`)
 
 About sixty entry points, all named `amber_*`, all taking and returning C99
-builtins or an opaque 64-bit handle. Nothing in the header — or in the core build —
+builtins or an opaque 64-bit handle. Nothing in the header, or in the core build,
 mentions Python.h, an Arrow header, gRPC or any other consumer's world.
 
 - **lifecycle** `amber_init` (optionally loading the `.k` standard library),
@@ -622,7 +622,7 @@ mentions Python.h, an Arrow header, gRPC or any other consumer's world.
   borrows it
 - **the zero-copy seam** `amber_get_vector_ptr` hands back the engine's own column
   payload, with its type, length and element width **in bits** (bool vectors are
-  genuinely bit-packed)
+  bit-packed)
 - **tables and dictionaries**, **constructors** for pushing data back in, the
   **Arrow C Data Interface** (including a caller-allocates form that leaves nothing
   to free), **rendering** (with an ANSI-stripped variant), and `amber_plugin_load`
@@ -632,19 +632,19 @@ mentions Python.h, an Arrow header, gRPC or any other consumer's world.
 **The executable did not change.** The shared library is a separate object set
 (`-fPIC -Dshared`), not a relink of `o/*.o`. Position-independent code and the TLS
 model below both change code generation, and sharing objects would have silently
-pessimised `./amber` — the one thing this repository will not trade away.
+pessimised `./amber`, the one thing this repository will not trade away.
 
 **Only `amber_*` and `am_ext_*` are exported** (`src/libamber.map`). The engine's
 internals are called `mr`, `su`, `us`, `err`, `run`, `add`, `sub`, `pk`, `cpl`.
 Those are perfect inside one static binary and a collision waiting to happen inside
 a library loaded next to NumPy, libarrow and libpython. Everything else is now
-genuinely absent from the dynamic symbol table.
+absent from the dynamic symbol table.
 
 **Thread-local storage drops to global-dynamic in the shared build only.** This is
 a correctness fix, not a tuning choice. Initial-exec TLS is resolved out of the
 static block the loader sizes before `main()`; a dlopen'd library borrows from a
-small surplus reserve and fails *nondeterministically* — `cannot allocate memory in
-static TLS block` — depending on what else the host process imported first.
+small surplus reserve and fails *nondeterministically*, with `cannot allocate memory in
+static TLS block`, depending on what else the host process imported first.
 `./amber` keeps initial-exec and pays nothing.
 
 ### Also
@@ -655,23 +655,23 @@ static TLS block` — depending on what else the host process imported first.
 - Dotted global names (`arrow.export`, `u.pub`) are reachable through
   `amber_call` / `amber_get_global`. The global table keys a namespaced global on
   the pair (namespace, name), so interning `"arrow.export"` as one symbol matched
-  nothing — and failed with a bare `'value` and no hint as to why.
+  nothing, and failed with a bare `'value` and no hint as to why.
 - `libamber.so` records a `SONAME`, so a process that loads it twice gets **one**
   engine rather than two silently independent ones.
 
 ### Verification
 
-`tests/test_capi.c` — 78 assertions, linked against the shared library exactly as a
+`tests/test_capi.c` holds 78 assertions, linked against the shared library exactly as a
 satellite would link it: it includes `src/ext.h` and nothing else from `src/`, and
 never dereferences an `amber_value`. If it ever needs a second `-I`, the API is
 wrong.
 
 `tests/test_capi.sh` runs it twice: once at `-O2`, once under
 `-fsanitize=address,undefined` with `detect_leaks=1`. Both legs are wired into
-`tests/run_tests.sh` and into its `--asan` pass. The full suite — 163 + 35 + 79
+`tests/run_tests.sh` and into its `--asan` pass. The full suite (163 + 35 + 79
 legacy assertions, the 309-case matrix, the 94-case qSQL matrix, the sort/window
 suite, the peach verifier at 1 and 4 lanes, the C unit tests, the pty REPL suite,
-the extension-seam round trip, and ~1,000 fuzz cases — passes unchanged, and passes
+the extension-seam round trip, and ~1,000 fuzz cases) passes unchanged, and passes
 again under ASan + UBSan.
 
 ### The ecosystem this exists for
@@ -683,7 +683,7 @@ Six satellite projects, none of them mentioned anywhere in `src/`:
 heap), `vscode-amber` (highlighting and a standalone LSP), and
 `grafana-amber-datasource` and `amber-flame` (live dashboards, and a profiler).
 
-## 1.9.5 — the REPL owns the terminal: native line editing, and the end of `rlwrap`
+## 1.9.5: the REPL owns the terminal, with native line editing and the end of `rlwrap`
 
 ### The bug
 
@@ -691,7 +691,7 @@ Amber's REPL had no line editing. The documented workaround, since 1.7, was to s
 `rlwrap`, which gives any line-oriented program readline history and arrow keys by running it on
 a pty. That works only for a program that reads **whole lines in canonical mode**. As soon as a
 program takes the terminal into raw / non-canonical mode and reads single keypresses, rlwrap is
-doing nothing for it — and says so, at an unpredictable moment, across both `stdout` and
+doing nothing for it, and says so, at an unpredictable moment, across both `stdout` and
 `stderr`, most often immediately after an error report:
 
 ```text
@@ -702,10 +702,10 @@ and possibly --no-children? (cf. the rlwrap manpage)
 warnings can be silenced by the --no-warnings (-n) option
 ```
 
-Two things go wrong at once. The warning itself is interleaved into program output — it lands in
+Two things go wrong at once. The warning itself is interleaved into program output: it lands in
 the middle of a diagnostic, or between a query and its result, and it is not filterable because
 it arrives on both streams. And underneath it, two editors are driving one cursor: rlwrap's
-readline believes it owns the line, Amber's redraw believes the same, and the display garbles —
+readline believes it owns the line, Amber's redraw believes the same, and the display garbles:
 characters echoed twice, the prompt repainted at the wrong column, `Ctrl-A` doing nothing.
 
 ### The fix: own the terminal, and stop wrapping
@@ -714,7 +714,7 @@ The root cause is not rlwrap's message; it is that terminal handling was split a
 processes that could not agree. 1.9.5 removes the split by giving the REPL its own editor and
 taking the wrapper out of the picture entirely.
 
-**`src/ln.c` / `src/ln.h` — a native single-file line editor.** ~700 lines of C99 + POSIX in the
+**`src/ln.c` / `src/ln.h`: a native single-file line editor.** ~700 lines of C99 + POSIX in the
 linenoise tradition: raw `termios`, one visible line with horizontal scrolling, ANSI refresh.
 No readline, no curses, no terminfo, no third-party code, nothing allocated on the keystroke path
 beyond the line buffer. It provides character/word movement, `Ctrl-A/E/B/F/K/U/W/L`, `Home`/`End`,
@@ -722,31 +722,31 @@ beyond the line buffer. It provides character/word movement, `Ctrl-A/E/B/F/K/U/W
 the workspace's globals, table column names, `\` commands, the Amber/K vocabulary and whole lines
 already entered this session.
 
-**`src/lnk.c` — the `` `rdl`` verb**, the editor's only interpreter-facing surface. `repl.k` now
+**`src/lnk.c`: the `` `rdl`` verb**, the editor's only interpreter-facing surface. `repl.k` now
 reads its input through `` `rdl`` instead of a raw `read(2)` on fd 1, and `src/m.c`'s bare `rep()`
 loop (`./amber` with no script) does the same.
 
 **`./a` no longer invokes `rlwrap`.** The default path execs the interpreter directly, so the
 warning cannot be produced. The single remaining path that touches rlwrap is the deliberate
-`AMBER_NO_EDIT=1` fallback — a dumb terminal, an editor subshell, a screen reader — where Amber
-reads whole lines in canonical mode and rlwrap is genuinely the right tool. Even there it is
+`AMBER_NO_EDIT=1` fallback (a dumb terminal, an editor subshell, a screen reader) where Amber
+reads whole lines in canonical mode and rlwrap is the right tool. Even there it is
 invoked as `rlwrap -n -a`:
 
-* `-n` / `--no-warnings` — no rlwrap diagnostic can ever be printed, whatever it concludes;
-* `-a` / `--always-readline` — readline stays on when rlwrap cannot detect a prompt.
+* `-n` / `--no-warnings`: no rlwrap diagnostic can ever be printed, whatever it concludes;
+* `-a` / `--always-readline`: readline stays on when rlwrap cannot detect a prompt.
 
 `AMBER_NO_RLWRAP=1` opts out of even that.
 
 **And the engine stands down on its own, however it was started.** Fixing the launcher only ever
 helps the one launch route the launcher controls, and that is not how people start Amber. A shell
 alias left over from 1.9.4 (`alias amber='rlwrap amber'`), a wrapper script, a tmux or `.desktop`
-entry, or simply the `rlwrap ./amber repl.k` line the old `docs/AMBER.md` recommended — every one
+entry, or the `rlwrap ./amber repl.k` line the old `docs/AMBER.md` recommended: every one
 of those still produced the warning on the first error, because the binary had no defence of its
 own. It does now:
 
-`am_ln_under_rlwrap()` (src/ln.c) detects a parent `rlwrap` or `rlfe` by **process lineage** —
+`am_ln_under_rlwrap()` (src/ln.c) detects a parent `rlwrap` or `rlfe` by **process lineage**,
 rlwrap exports no environment variable to the program it wraps, so lineage is the only reliable
-signal — walking up to four ancestors so an intervening wrapper script that does not `exec()`
+signal, walking up to four ancestors so an intervening wrapper script that does not `exec()`
 cannot hide it. Linux reads `/proc`, macOS uses `sysctl(KERN_PROC)`, anything else falls back to
 a single `ps`. The walk runs at most **once** per process and only after stdin is already known to
 be a terminal, so a pipe, a here-doc or a CI job never pays for it; a platform whose lineage
@@ -754,7 +754,7 @@ cannot be read answers "no wrapper" and behaves exactly as before.
 
 When it fires, `am_ln_interactive()` returns 0 and Amber reads whole lines in canonical mode,
 exactly as 1.9.4 did. **Standing down is the correct answer, not a concession:** rlwrap's warning
-is legitimate — two line editors cannot share one cursor — and the user under rlwrap still gets
+is legitimate, because two line editors cannot share one cursor, and the user under rlwrap still gets
 full readline editing and history. Nothing is lost, the warning cannot be printed, and the redraw
 cannot garble. A single explanatory line goes to stderr once per session, so a user who wanted
 rlwrap learns that Amber has an editor of its own:
@@ -768,7 +768,7 @@ Two overrides, for the cases judgement should not be automatic: `AMBER_RLWRAP=1`
 stand-down for a wrapper Amber did not recognise, and `AMBER_RLWRAP=0` keeps Amber's own editor
 under rlwrap regardless (the pre-fix behaviour, warning included).
 
-**On no path — launcher, alias, wrapper, or bare `rlwrap ./amber repl.k` — can an rlwrap message
+**On no path, whether launcher, alias, wrapper, or bare `rlwrap ./amber repl.k`, can an rlwrap message
 now reach a session.** The build flags make no difference to any of this: a portable build and an
 `AMBER_NATIVE=1 ./build.sh` build behave identically, and `tests/test_repl_term.py` asserts it on
 both.
@@ -776,7 +776,7 @@ both.
 ### Terminal state is restored on every exit path
 
 Raw mode is entered per line and left on every way out: normal return, EOF, `Ctrl-C`, `Ctrl-D`,
-and an `atexit()` handler for anything else — so a crash or a signal cannot leave the user's
+and an `atexit()` handler for anything else, so a crash or a signal cannot leave the user's
 shell without an echo. `tests/test_repl_term.py` asserts this by comparing the pty's `termios`
 byte-for-byte before and after a run, on both the clean-exit and the `Ctrl-C` path.
 
@@ -787,7 +787,7 @@ When stdin/stdout are not a terminal, or `TERM` is dumb, or `AMBER_NO_EDIT` is s
 printed, consuming nothing past the newline. `echo '2+2' | ./a`, here-docs, `./amber script.k` and
 CI runs are byte-for-byte what they were in 1.9.4.
 
-### `tests/test_repl_term.py` — seventeen pty-driven regression tests
+### `tests/test_repl_term.py`: seventeen pty-driven regression tests
 
 Nothing here is mocked; every case runs the real interpreter on a real pty:
 
@@ -796,8 +796,8 @@ Nothing here is mocked; every case runs the real interpreter on a real pty:
 | `no_rlwrap_warning` | no `rlwrap:` output ever reaches a `./a` session |
 | `error_still_reported` | the diagnostic that used to be interleaved still prints |
 | `rlwrap_fallback_is_quiet` | `AMBER_NO_EDIT=1 ./a`, which *does* use rlwrap, is silent |
-| `rlwrap_direct_is_quiet` | `rlwrap ./amber repl.k` — what the old docs taught — is silent |
-| `rlwrap_launcher_is_quiet` | `rlwrap ./a` — an old shell alias — is silent |
+| `rlwrap_direct_is_quiet` | `rlwrap ./amber repl.k`, what the old docs taught, is silent |
+| `rlwrap_launcher_is_quiet` | `rlwrap ./a`, an old shell alias, is silent |
 | `rlwrap_*_repl_works` | and both still evaluate: the error prints, `2+2` is `4` |
 | `rlwrap_note_shown` | the one-time explanation appears |
 | `rlwrap_override_restores` | `AMBER_RLWRAP=0` brings the warning back, proving the detection is what silences it rather than luck |
@@ -817,7 +817,7 @@ perfectly green. All three are now fixed and guarded by the CI matrix.
 
 **1. `MAP_ANON` vanished on Darwin.** `src/m.c`, `src/a.c`, `src/arena.c` and `src/trace.c` each
 define `_POSIX_C_SOURCE` so that a strict `-std=c99` build still sees `PTHREAD_MUTEX_RECURSIVE`
-and friends. On glibc that is harmless — glibc keeps the BSD extensions visible anyway. On Darwin
+and friends. On glibc that is harmless, since glibc keeps the BSD extensions visible anyway. On Darwin
 it is not: defining `_POSIX_C_SOURCE` switches the headers into **strict POSIX mode**, which
 *hides* every BSD extension, `MAP_ANON` among them. The result was source that compiles clean on
 Linux and fails on Apple clang with `MAP_ANON undeclared here`. Every one of those four
@@ -835,11 +835,11 @@ translation units now opens with
 #endif
 ```
 
-placed above the **first** `#include` of the file — not merely above `<sys/mman.h>`, because any
+placed above the **first** `#include` of the file, not just above `<sys/mman.h>`, because any
 system header may pull in `<features.h>` first and latch the mode for the whole compilation. All
 three macros are purely additive: they only ever *unhide* declarations. (Checked rather than
 assumed: this tree calls no `strerror_r`, `basename` or `qsort_r`, the three functions whose
-semantics `_GNU_SOURCE` actually changes.)
+semantics `_GNU_SOURCE` changes.)
 
 `src/m.c` additionally normalises the spelling, since which of the two a platform exposes depends
 on those same macros:
@@ -870,15 +870,15 @@ follows a chain of symlinks. A CI job greps for any reintroduction.
 
 ### CI
 
-`.github/workflows/ci.yml` is rebuilt around the platforms that actually broke:
+`.github/workflows/ci.yml` is rebuilt around the platforms that broke:
 
 | job | what it covers |
 |---|---|
-| `toolchains` | GCC 11/12/13 + Clang on Linux; builds, then compiles **every TU under strict `-std=c99`** and links it — the mode that exposes the feature-macro class of bug |
+| `toolchains` | GCC 11/12/13 + Clang on Linux; builds, then compiles **every TU under strict `-std=c99`** and links it, the mode that exposes the feature-macro class of bug |
 | `unix` | the real matrix: `ubuntu-latest` **and** `macos-latest`, each with **both** a GCC and a Clang. On macOS `gcc` is a Clang shim, so that leg installs a genuine Homebrew GCC and resolves its versioned name at run time rather than pinning `gcc-13` and breaking when Homebrew moves on. Builds with `AMBER_NATIVE=1`, runs the full suite, and runs the pty terminal suite separately |
 | `sanitizers` | the whole suite under ASan + UBSan |
 | `windows-wsl` | unchanged: Ubuntu userland inside WSL |
-| `scripts` | shellcheck, a grep that fails the build if `readlink -f` reappears, and a check that the **executable bit is committed** — see below |
+| `scripts` | shellcheck, a grep that fails the build if `readlink -f` reappears, and a check that the **executable bit is committed**; see below |
 
 `rlwrap` is now installed on the Linux and macOS legs. It is a *test* dependency: without it the
 rlwrap regression cases in `tests/test_repl_term.py` silently SKIP, so the regression they guard
@@ -889,17 +889,17 @@ pinned 3.12, so a runner-image bump cannot quietly change what the suite runs on
 
 Rewritten as a real installer rather than a build-and-alias script:
 
-* **Toolchain detection** — no compiler produces the exact package command for *this* system
+* **Toolchain detection.** With no compiler present it prints the exact package command for *this* system
   (`apt-get` / `dnf` / `yum` / `pacman` / `apk` / `xcode-select --install`) instead of a compiler
   backtrace. It also states that `make` is *not* needed, so nobody goes looking for it.
-* **Shell detection** — writes to the rc file the user's **login** shell reads, not the one the
+* **Shell detection.** Writes to the rc file the user's **login** shell reads, not the one the
   script happens to run under. `bash install.sh` from a zsh session used to append to `~/.bashrc`,
   which zsh never sources, so the alias silently never appeared. macOS bash gets
   `~/.bash_profile` (Terminal starts login shells); zsh gets `$ZDOTDIR/.zshrc`; fish is detected
   and told what to do by hand rather than handed bash syntax.
-* **Idempotent** — the block is delimited by `# >>> amber >>>` markers and *replaced* on re-run,
+* **Idempotent.** The block is delimited by `# >>> amber >>>` markers and *replaced* on re-run,
   not appended.
-* **Permissions** — repairs the executable bit on every script in the tree first.
+* **Permissions.** Repairs the executable bit on every script in the tree first.
 
 ### The executable bit
 
@@ -921,7 +921,7 @@ fails the build if the index regresses. When committing, the fix is
 
 ### New: the extension seam (`src/ext.h`, `src/ext.c`, `ext/`)
 
-1.9.5 adds one small, neutral seam — no AI, no network, no feature flags — so that an
+1.9.5 adds one small, neutral seam, with no AI, no network and no feature flags, so that an
 out-of-tree package can add verbs, `\`-commands and editor behaviour **without patching a single
 line of `src/`**. `build.sh` compiles `ext/*.c` (empty in a stock checkout) with the same flags
 into the same binary; a package registers itself from a constructor:
@@ -930,25 +930,25 @@ into the same binary; a package registers itself from a constructor:
 |---|---|
 | `am_ext_verb("xyz", fn)` | register a backtick verb at runtime; `sym1()` consults the registry before its built-in table |
 | `am_ext_bs` | claim a `\`-command ahead of the "unknown `\cmd` runs a shell command" fallback |
-| `am_ext_hint` | supply inline ghost text in the editor — never inserted until the user accepts it |
+| `am_ext_hint` | supply inline ghost text in the editor, never inserted until the user accepts it |
 | `am_ext_complete` | add Tab candidates before the built-in lexical sources |
 | `am_ext_startup` | run once, lazily, when the REPL first reads a line |
 | `am_ext_usage` / `am_ext_banner` | append to `--help` / the banner |
 
-On the Amber side, `repl.k` loads `lib/ext.k` whole-file at startup if it exists — trapped, with
-diagnostics off — and offers the optional `ext.pre` / `ext.post` / `ext.err` / `ext.raw` /
+On the Amber side, `repl.k` loads `lib/ext.k` whole-file at startup if it exists, trapped and with
+diagnostics off, and offers the optional `ext.pre` / `ext.post` / `ext.err` / `ext.raw` /
 `ext.tag` hooks. `tests/ext_probe.c` exercises every hook and `tests/test_ext_seam.sh` installs
 it, verifies it, and uninstalls it again, asserting the engine is byte-for-byte stock afterwards.
 
 `AMBER_EXT_ABI` (currently `1`) is bumped only when an existing hook changes shape; an installer
 should check it before copying files in.
 
-### What is deliberately *not* here
+### What is *not* here
 
 This repository is the engine. It contains **no AI code, no HTTP client, no model backend and no
 outbound network calls of any kind**. The optional
-[`amber-ai`](https://github.com/bonucciandrea/amber-ai) package — local, offline,
-schema-aware completions and `\ai` diagnostics — is a separate repository that installs into an
+[`amber-ai`](https://github.com/bonucciandrea/amber-ai) package (local, offline,
+schema-aware completions and `\ai` diagnostics) is a separate repository that installs into an
 existing Amber through the seam above, and is not required by, referenced by, or linked into
 anything here.
 
@@ -957,7 +957,7 @@ anything here.
 Nothing to do beyond rebuilding.
 
 * If you have `alias amber='rlwrap amber'`, a wrapper script, or `rlwrap` in a `.desktop` /
-  systemd / tmux launcher — **remove the `rlwrap`**. Amber no longer needs it. You no longer
+  systemd / tmux launcher, **remove the `rlwrap`**. Amber no longer needs it. You no longer
   *have* to remove it (the engine detects it and stands down quietly), but you will keep getting
   rlwrap's editing rather than Amber's, and Amber says so once per session.
 * `~/.amber_history` is created on first interactive use; delete it any time.
@@ -965,7 +965,7 @@ Nothing to do beyond rebuilding.
 
 ---
 
-## 1.9.4 — one error, one report: Rust-style diagnostics across every category
+## 1.9.4: one error, one report, with Rust-style diagnostics across every category
 
 ### Errors print once
 An error used to be reported **twice**: `eS()` rendered the Rust-style report to stderr at error
@@ -973,7 +973,7 @@ An error used to be reported **twice**: `eS()` rendered the Rust-style report to
 again on the way out (`epr()` for a script, `onerr` in `repl.k` for the REPL). Every failing
 script showed the same failure in two different formats, back to back.
 
-`b[]` is deliberately **unchanged** — it is what `.[f;args;handler]` hands a trap handler and what
+`b[]` is **unchanged**: it is what `.[f;args;handler]` hands a trap handler and what
 `` `err`` returns, a documented and test-covered contract. What changed is that a new flag
 (`amdiagshown`, set by the renderer, cleared when an error starts or is consumed) tells `epr()` to
 stay quiet when a rich report has already been shown, and `repl.k`'s `onerr` to skip its
@@ -1008,7 +1008,7 @@ the parser calls it, so `E0105` looks like every other category.
 ### Underlines span tokens, and name them
 A bare offset is widened to the whole token before rendering (`etok`): identifiers expand over
 their full name, string literals over the whole literal, operators stay one character. So an
-undefined `prices` is underlined `^^^^^^`, not `^`. The token is then named — promoted into the
+undefined `prices` is underlined `^^^^^^`, not `^`. The token is then named, promoted into the
 title for undefined names (``Undefined variable `prices` ``), carried in the inline label
 otherwise.
 
@@ -1021,7 +1021,7 @@ otherwise.
   fault site can never be masked by context.
 * Palette moved to `src/ansi.h` and switched to the bright (9x/6x) variants, which stay legible on
   light terminals where plain `3x` red does not.
-* SGR codes are emitted once per **run** rather than once per glyph — a six-character underline
+* SGR codes are emitted once per **run** rather than once per glyph. A six-character underline
   was previously six colour+reset pairs, which bloated captured output and made logs unreadable.
 * `report_diagnostic_ex()` adds inline labels and a `= note:` line; `report_diagnostic()` is kept
   as a wrapper so existing callers are untouched.
@@ -1029,7 +1029,7 @@ otherwise.
 ### `` `dgn`` self-test extended
 Now checks the full layout (code, title, locator, `^^^` primary vs `~~~` secondary, inline label,
 help and note), that colour-off output contains **no** ANSI bytes at all, that every gutter bar
-lands in the same column, and the complete category → code matrix — plus that an unknown category
+lands in the same column, and the complete category → code matrix, plus that an unknown category
 reports absence rather than crashing.
 
 ### Validation
@@ -1038,11 +1038,11 @@ and everything is clean under AddressSanitizer + UndefinedBehaviorSanitizer with
 including every diagnostic path.
 
 
-## 1.9.3 — binary serializer (`-8!`/`-9!`), binary IPC for `peach`, three `peach` bugs fixed
+## 1.9.3: binary serializer (`-8!`/`-9!`), binary IPC for `peach`, three `peach` bugs fixed
 
 ### New: compact binary serialization
 `-8!x` encodes any K value into a contiguous byte vector (`tC`); `-9!y` decodes it back.
-`(-9! -8! x) ~ x` holds for every supported shape — verified over 60 cases in the new
+`(-9! -8! x) ~ x` holds for every supported shape, verified over 60 cases in the new
 `examples/peach_verify.k`.
 
 Amber's only wire format was previously TEXT: `` `k `` rendered a value and `` . `` reparsed it.
@@ -1050,7 +1050,7 @@ That could not represent everything (attributes were dropped, and nested empties
 null/infinity edge cases do not reparse to themselves), and it cost a full format-then-parse
 round trip on every transfer.
 
-Format: a 4-byte `"AMB"`+version header, then one recursive node per value —
+Format: a 4-byte `"AMB"`+version header, then one recursive node per value:
 
 | shape | encoding |
 |---|---|
@@ -1062,7 +1062,7 @@ Format: a 4-byte `"AMB"`+version header, then one recursive node per value —
 
 Because the last case copies the payload verbatim and recovers the element width from the tag via
 `Tw[t]`, bit vectors (`tB`, one bit per element) and the narrower date/time widths need no special
-case, and **nulls and infinities survive exactly** — they are just their bit patterns (`0N` is
+case, and **nulls and infinities survive exactly**, because they are just their bit patterns (`0N` is
 `1<<63`, `0w` is the f64 infinity), never routed through a decimal formatter that could round.
 
 Two details that are easy to get wrong and are covered by tests:
@@ -1080,13 +1080,13 @@ Two details that are easy to get wrong and are covered by tests:
   ref-carrying type, or `(-9!-8!())~()` would be false.
 
 `-9!` parses untrusted bytes, so every read is bounds-checked, the recursion is depth-limited, and
-a truncated, corrupt or over-long buffer yields a clean `'domain` — never a read past the end and
+a truncated, corrupt or over-long buffer yields a clean `'domain`: never a read past the end and
 never a half-built object left unfreed. Lambdas and projections (`to`/`tp`/`tq`/`tr`) are
-deliberately **not** supported and raise `'type`: serializing a closure means serializing its
+**not** supported and raise `'type`: serializing a closure means serializing its
 captured environment and bytecode, which is a much larger feature than a data wire format.
 
 `-8!`/`-9!` occupy the negative-integer `!` slots, exactly as in q. Only `-8` and `-9` on a
-genuine integer atom are intercepted; every other left argument — negative ones included — and
+genuine integer atom are intercepted; every other left argument, negative ones included, and
 every char atom still reach `mod()` unchanged, so no existing `!` behaviour moves.
 
 ### `peach` now uses the binary wire, and three bugs are fixed
@@ -1094,18 +1094,18 @@ every char atom still reach `mod()` unchanged, so no existing `!` behaviour move
 now write `-8!` bytes and the parent decodes with `-9!`. The parent's collection loop was one
 line, and it had three distinct defects:
 
-1. **A leak, and quadratic copying.** `out = cat(out, part)` — `cat` is `A2(cat,cat11(xR,y))`: it
+1. **A leak, and quadratic copying.** `out = cat(out, part)`, where `cat` is `A2(cat,cat11(xR,y))`: it
    bumps `out`'s refcount and hands that *extra* reference to `cat11`. The caller's own reference
    to the previous accumulator was never released, so every chunk past the first leaked an entire
    result vector. The surviving refcount also made `MINE(out)` false inside `aa()`, so the append
-   could not grow in place and reallocated the whole accumulator each time — O(total²) copying on
+   could not grow in place and reallocated the whole accumulator each time, so O(total²) copying on
    top of the leak. Fixed by calling `cat11` directly, which **owns both** arguments: nothing is
    left holding a stray reference and `out` stays uniquely owned, so the append extends in place.
-   (Bumping and then releasing — `cat` plus `mr(old)` — plugs the leak but keeps the refcount at 2
+   (Bumping and then releasing, `cat` plus `mr(old)`, plugs the leak but keeps the refcount at 2
    during the call, so it would still reallocate every chunk.)
 2. **Worker exit status was discarded.** `wait4(pid, 0, 0, 0)` ignored the status word, so a
-   worker that died on a signal or exited non-zero was indistinguishable from success — the parent
-   simply saw a short pipe and produced a **silently wrong result**. The status is now inspected
+   worker that died on a signal or exited non-zero was indistinguishable from success, and the parent
+   saw a short pipe and produced a **silently wrong result**. The status is now inspected
    with `WIFEXITED`/`WEXITSTATUS`/`WIFSIGNALED` and any failure becomes a clean, trappable
    `'worker error in peach`.
 3. **Unvalidated decode.** `val(rda(...))` assumed the pipe held a parseable value. `-9!` returns
@@ -1120,19 +1120,19 @@ with total reserved heap **identical** before and after three further passes (1,
 both times) and a peak RSS of **11.5 MB**. Before the fix the same loop grew without bound.
 
 ### New: `examples/peach_verify.k`
-A runnable verifier (also suitable for CI — it exits non-zero on any failure) covering the
+A runnable verifier (also suitable for CI, since it exits non-zero on any failure) covering the
 serializer round trip across every supported shape, attribute preservation, malformed-input
 rejection, `peach` result-shape equivalence against serial `'`, the 500k scaling/flat-memory
 check, and worker error propagation including that the interpreter is still usable afterwards.
 **60 tests, 0 failures.**
 
 
-## 1.9.2 — O(n+m) integer lookup, vectorised reductions, cache-line alignment
+## 1.9.2: O(n+m) integer lookup, vectorised reductions, cache-line alignment
 
 ### `?` (find) no longer scans its left argument per probe
 `x?y` on integer vectors was `fLL`/`fIL`/..., a LINEAR SCAN of `x` for every element of `y`, i.e.
-**O(#x · #y)**. The comparative suite's inner join — 1M left keys probed against 1,000 sparse
-right keys — was therefore 500M comparisons: **180.95 ms, 126x the C baseline**, Amber's worst
+**O(#x · #y)**. The comparative suite's inner join, 1M left keys probed against 1,000 sparse
+right keys, was therefore 500M comparisons: **180.95 ms, 126x the C baseline**, Amber's worst
 cell by a wide margin.
 
 `src/f.c` now builds an index over `x` once and answers each probe in O(1), in whichever of two
@@ -1143,33 +1143,33 @@ shapes fits the data:
   handled; it now covers `tH`/`tI`/`tL` too.
 - **Compact open-addressed hash** otherwise. A flat table is the wrong shape for a *sparse*
   domain: the benchmark's 1,000 keys span a ~1e6 range, so a direct table is 4 MB and every probe
-  is an L3/DRAM miss — measured at 28 ms, only 7x better than the scan. Sizing the table to the
-  key *count* instead (2·m rounded up — 24 KB here) keeps it in L1 and probes ~10x faster again.
+  is an L3/DRAM miss, measured at 28 ms, only 7x better than the scan. Sizing the table to the
+  key *count* instead (2·m rounded up, 24 KB here) keeps it in L1 and probes ~10x faster again.
 
 Both fill **backwards**, so the lowest index wins and `?`'s first-occurrence semantics are exact.
 Neither is built unless it beats the scan it replaces, and `` `s#``-sorted `x` keeps its existing
 O(log m) binary search, so this is a pure fast path. Verified against an unmodified 1.9.1 binary
 over 28,429 result lines spanning ranges above and below the LUT cap, negative and 2e9 offsets,
-nulls, self-find and atom find — byte-identical throughout.
+nulls, self-find and atom find, byte-identical throughout.
 
 ### Reductions vectorise
-`+/` over floats was a serialised `v += p[i]` chain running at ~3.5 cycles/element — the latency
+`+/` over floats was a serialised `v += p[i]` chain running at ~3.5 cycles/element, the latency
 of `addsd`. The compiler may not reassociate it, because IEEE addition is not associative. `sumF`
 in `src/3.c` now keeps **four independent partial sums**, which breaks the dependency and lets the
 vectoriser issue one wide add per group; the integer `addf*` kernels carry `omp parallel for simd
 reduction` hints (`build.sh` probes for `-fopenmp`; without it the four-way unrolling still does
 the work). Measured on 10M elements: `+/` **8.9 → 6.3 ms**, `+/x*y` **18.7 → 15.8 ms**.
 
-This changes results for **inexact** float data by 1–2 ulp — always in the direction of *more*
+This changes results for **inexact** float data by 1–2 ulp, always in the direction of *more*
 accuracy, since pairwise summation beats a left fold (`+/100000#0.1`: 10000.000000018848 →
-9999.999999995287, true value 10000.0). Exactly-representable data — including everything
-`bench/SPEC.md` specifies — is bit-identical, as are `0n`, `0w` and `-0w`. It is the same
+9999.999999995287, true value 10000.0). Exactly-representable data, including everything
+`bench/SPEC.md` specifies, is bit-identical, as are `0n`, `0w` and `-0w`. It is the same
 trade-off `simd.c`'s existing `simd_sum_f64()` already makes. All 601 tests pass unchanged.
 
 ### Array payloads are cache-line aligned
 `HD` (the array header size, and therefore the alignment of every payload pointer) was 32, which
-left every vector buffer exactly **32 bytes past** a 64-byte boundary — measured `ptr%64 == 32`
-for every allocation size — splitting a cache line on the first wide access of every array. `HD`
+left every vector buffer exactly **32 bytes past** a 64-byte boundary, with `ptr%64 == 32` measured
+for every allocation size, splitting a cache line on the first wide access of every array. `HD`
 is now 64 and `an()`'s bucket-index constant moves with it; `ARENA_ALIGN` goes 32 → 64 to match.
 All payloads are now 64-byte aligned (verified by probe). Because this touches the core buddy
 allocator it was validated under **AddressSanitizer + UndefinedBehaviorSanitizer** across every
@@ -1180,19 +1180,19 @@ suite plus the fuzzer, clean.
 sees its argument the intermediate vectors already exist; fusing `+/ (y+2.5*x) @ & x>50` into one
 pass needs a lazy or fusing evaluator, not a peephole match. A pattern-matcher narrow enough to
 fit this release would have recognised essentially the benchmark expression and little else,
-which is precisely what `bench/SPEC.md` forbids. The vector-arithmetic and group-by workloads are
+which is exactly what `bench/SPEC.md` forbids. The vector-arithmetic and group-by workloads are
 therefore **unchanged** in 1.9.2. `|/` over floats also still round-trips through the
 order-preserving `of1`/`of0` transforms (three passes and two 80 MB temporaries); collapsing that
 into one pass is the clear next win for the reductions workload.
 
 
-## 1.9.1 — qSQL runs on raw column vectors; CBQN benchmarks fixed
+## 1.9.1: qSQL runs on raw column vectors; CBQN benchmarks fixed
 
 ### `select … by … from` no longer boxes a K object per row
 `qby`, `xgroup` and `ij` all grouped and probed through `rows:{+. x}`, which flips a table's
 column dict into **one boxed K value per row**. A 10-million-row `select … by …` therefore
 allocated 10M transient objects in the refcounted heap purely so they could be hashed and thrown
-away — 7.9 s of the 8.4 s such a query took, against **87 ms** for the native vector group-by
+away: 7.9 s of the 8.4 s such a query took, against **87 ms** for the native vector group-by
 over the very same data.
 
 The query layer now hands the **raw column vectors** straight to the C kernel's vector `=`
@@ -1201,12 +1201,12 @@ The query layer now hands the **raw column vectors** straight to the C kernel's 
 - **`qgrp[t;b]`** (new, `amber.k`) returns `(key-value columns; group row-index vectors)`.
   A single-column `by` groups the column itself. A multi-column `by` is rank-encoded per column
   (`?x` distinct, `u?x` find) and mixed radix-style into one dense integer key, so distinct
-  tuples still get distinct codes — with a `2^53` cardinality guard that falls back to the old
+  tuples still get distinct codes, with a `2^53` cardinality guard that falls back to the old
   path rather than risk a collision. Key **values** are recovered by indexing the raw columns
   with each group's first row, one gather per by-column instead of a flip over every row.
 - **`ij`** rank-encodes both sides over one shared code space, so the probe is a native vector
   `?` on a flat integer vector. Single-key joins skip the encode and probe the raw key column.
-- **`qproj`/`qrefs`** (new, `qsql.k`) narrow a table to the columns an aggregate can actually
+- **`qproj`/`qrefs`** (new, `qsql.k`) narrow a table to the columns an aggregate can
   reach before `qby` materialises its per-group sub-tables. `atr` indexes *every* column it is
   handed, so on a wide table this stopped copying dozens of unread columns per group; the cost
   now scales with columns **used**, not columns **present**.
@@ -1234,12 +1234,12 @@ per-call parse-and-compile cost, not a per-row cost, and is unchanged.
 Every `bench/queries/bqn_*.bqn` file failed to compile, so **every CBQN cell in the published
 table was an error rather than a measurement**:
 
-- **Identifier roles.** BQN takes a name's role from its first letter — an initial capital is a
+- **Identifier roles.** BQN takes a name's role from its first letter: an initial capital is a
   **function**, lowercase is a **subject**. The files opened with `N ← 10000000`, binding a
   number to a function-role name, and CBQN rejected the whole file up front with *"Role of the
   two sides in assignment must match"*. All data names are now lowercase (`n`, `m`, `kn`, `gn`,
   `chk`); only genuine functions (`Kern`, `Time`, `Arg`) are capitalised.
-- **`•args` is now optional and safe.** Not every BQN environment binds `•args` — the online
+- **`•args` is now optional and safe.** Not every BQN environment binds `•args`, and the online
   REPL and `•Import`-ed scopes have no argv, and naming it directly there fails with *"Unknown
   system values: •args"* before a line runs. The reference now goes through `•BQN`, which keeps
   it out of the file's own compilation unit, wrapped in `⎊` (Catch) so "no arguments present"
@@ -1249,7 +1249,7 @@ table was an error rather than a measurement**:
   10M-element vectors are materialised *before* the clock starts. Previously CBQN had no clock,
   so the harness fell back to net-of-startup wall time and charged CBQN for data generation as
   well as for the query.
-- The join uses `⊐` (Index of) — the same lookup Amber spells `kr?kl` — instead of sorting and
+- The join uses `⊐` (Index of), the same lookup Amber spells `kr?kl`, instead of sorting and
   binary-searching with `⍋`.
 
 CBQN now passes the correctness gate on all four workloads with answers exactly equal to the C
@@ -1279,7 +1279,7 @@ source of truth.
 The data model, the four workloads, the exact-arithmetic argument and the fairness rules are now
 specified in one document that every engine implements. Every answer is an integer exactly
 representable in float64, and every sum is over such integers, so the result is **independent of
-summation order** — SIMD pairwise, Kahan and naive left-fold summation all agree bit-for-bit.
+summation order**: SIMD pairwise, Kahan and naive left-fold summation all agree bit-for-bit.
 There is therefore no floating-point excuse for a mismatch.
 
 ### `bench/run_comparative.py` rewritten
@@ -1295,7 +1295,7 @@ There is therefore no floating-point excuse for a mismatch.
   warm-up passes; engines with no in-language clock are measured as *total − startup baseline*,
   with the baseline measured per engine from a do-nothing script. The table labels which mode
   produced each cell.
-- **Amber is reported twice** — primitives (peer of K/BQN/J/Uiua) and qSQL (peer of DuckDB SQL) —
+- **Amber is reported twice**: primitives (peer of K/BQN/J/Uiua) and qSQL (peer of DuckDB SQL),
   because publishing only the faster row would be picking the flattering comparison.
 
 ### `.github/workflows/benchmarks.yml`
@@ -1303,18 +1303,18 @@ Adds Uiua (release binary, cargo fallback), Julia (`julia-actions/setup-julia`, 
 fallback), Python + NumPy, J (jconsole) and the native C baseline. Every install is
 `continue-on-error` and exports its path via `$GITHUB_ENV` (`UIUA_BIN`, `JULIA_BIN`, `PYTHON_BIN`,
 `J_BIN`, `C_BENCH_BIN`, …); a missing engine is reported as "not installed" instead of failing the
-job. The workflow's `./amber -e '1+1'` smoke test — `-e` is not an Amber flag and the call only
-survived because of a trailing `|| true` — is replaced with `./amber --version`.
+job. The workflow's `./amber -e '1+1'` smoke test (where `-e` is not an Amber flag and the call only
+survived because of a trailing `|| true`) is replaced with `./amber --version`.
 
 ### Caveat recorded honestly
 The Amber, NumPy and C implementations were executed and cross-checked during development: all
 three agree exactly on all four workloads. The ngn/k files were additionally verified by running
 them under Amber (same K dialect family). **CBQN, DuckDB, Julia, Uiua and J could not be executed
-in the authoring environment** — CI is their first real run. They are written defensively (one
+in the authoring environment**, so CI is their first real run. They are written defensively (one
 file per workload, no argument parsing, no in-language timer where it was not certain) and the
 harness reports a clear per-cell error rather than failing the job.
 
-## 1.9 — version unification, memory/UB audit, and a combinatorial test suite
+## 1.9: version unification, memory/UB audit, and a combinatorial test suite
 
 ### Version
 - **One canonical version string.** `AMBER_VERSION` now lives in `src/a.h` and is the only
@@ -1325,11 +1325,11 @@ harness reports a clear per-cell error rather than failing the job.
   `argv[1]` unconditionally as a script path, so `amber --version` tried to open a file called
   `--version` and failed with an `'io` error. `--help` also lists the full `\`-command reference.
 
-### Bugs fixed — memory safety and undefined behaviour
+### Bugs fixed: memory safety and undefined behaviour
 - **Out-of-bounds stack read in `a8()` (amend), `src/a.c`.** The `MC()` calls copied a fixed
   8-slot's worth of argument pointers (40/48/56/64 bytes) out of the caller's `a[]` regardless of
-  how many arguments were passed. `a` is not always an 8-element buffer — `run()` (`src/b.c`)
-  passes a pointer straight into its own dynamically sized stack frame — so every amend with
+  how many arguments were passed. `a` is not always an 8-element buffer, because `run()` (`src/b.c`)
+  passes a pointer straight into its own dynamically sized stack frame, so every amend with
   `n<8` read past the end of live storage. Reproduced by AddressSanitizer as
   *dynamic-stack-buffer-overflow* on `test-fin.k` and four `examples/*.k`. Each copy is now
   clamped to the real argument count.
@@ -1342,13 +1342,13 @@ harness reports a clear per-cell error rather than failing the job.
 - **Intentional integer wrap was undefined behaviour in the arithmetic kernels** (`src/2.c`,
   `src/v.c`). `aLL/aII/aHH/aGG`, `alL/aiI/ahH/agG`, the widest-width multiplies and `tilV()`'s
   packed-lane counter all rely on two's-complement wraparound, which `oZZ()`/`ozZ()` then detect
-  after the fact — but signed overflow is UB, so the optimiser is entitled to assume it never
+  after the fact, but signed overflow is UB, so the optimiser is entitled to assume it never
   happens and delete the very check that depends on it. All of them now do the arithmetic in the
   unsigned counterpart type: identical instructions, defined semantics.
 - **Use-after-reset in the `` `simd`` self-test** (`src/a.c`). `arena_reset()` was called
   immediately after `arena_alloc()` and *before* the 400 009-element reference loop that wrote
   into the block, so every store landed in scratch the allocator had already rewound.
-- **`memcpy(dst, NULL, 0)` in `run()`** (`src/b.c`) — undefined per the `nonnull` attribute on
+- **`memcpy(dst, NULL, 0)` in `run()`** (`src/b.c`): undefined per the `nonnull` attribute on
   `memcpy`; now guarded.
 - **`arena_alloc()` bounds check could wrap.** `off + bytes <= a_cap` overflows for a large
   `bytes` on a 32-bit target (wasm32), silently passing the check and returning a short block.
@@ -1359,12 +1359,12 @@ harness reports a clear per-cell error rather than failing the job.
 - **`arena_used()` under-reported.** It returned only the slab bump cursor, ignoring live
   overflow blocks; it now counts both.
 - **`ast_new()` / `ast_add_child()` dereferenced a possibly-NULL `arena_alloc()`** (`src/ast.c`).
-  `ast_new()` now degrades to a static sentinel node — returning NULL would only move the
+  `ast_new()` now degrades to a static sentinel node, because returning NULL would only move the
   segfault, since all ~30 call sites dereference the result immediately.
 - **`mmap()` failure test used a pointer-to-`char` cast** (`src/m.c`): `(L)p == (C)p`. Replaced
   with a plain `p == MAP_FAILED`.
 
-### Bugs fixed — language semantics
+### Bugs fixed: language semantics
 - **A computed float null never matched the `0n` literal.** IEEE has no single NaN bit pattern:
   `0n` is the positive quiet NaN, but every NaN the FPU *computes* (`0%0`, `0w-0w`,
   `avg 0#0`, …) is the default NaN, which on x86-64 has the sign bit set. `~` compared bytes, so
@@ -1393,11 +1393,11 @@ harness reports a clear per-cell error rather than failing the job.
   `qsplit0` handles the position-0 case and the empty projection now aggregates each non-key
   column with `last`, matching q.
 
-### New: `` `diag`` — runtime control of the stderr diagnostic
+### New: `` `diag``, runtime control of the stderr diagnostic
 Amber renders its Rust-style diagnostic at error **creation** time, so code that catches an error
 with `.[f;args;handler]` has already had the full report splashed across stderr. That is right for
-an interactive line and wrong for anything whose job is to provoke errors it then handles — a test
-suite's must-raise cases, `protect`, a retry loop — which drowned the terminal in red for errors
+an interactive line and wrong for anything whose job is to provoke errors it then handles (a test
+suite's must-raise cases, `protect`, a retry loop), which drowned the terminal in red for errors
 it dealt with perfectly. `` `diag 0`` turns the report off and returns the previous setting;
 `` `diag 1`` turns it back on. The compact caret text is untouched: it is buffered and still
 handed to the trap handler and to `` `err``, so nothing is lost. The existing `AMBER_DIAG=0`
@@ -1409,9 +1409,9 @@ environment variable still works and now just seeds the initial value.
   high-water mark (`arena_peak()` / `arena_reset_peak()`) that survives `arena_reset()`.
 - **`\trace` timings below one microsecond rendered as `0us`;** the formatter now prints
   `ns` / `us` / `ms` as appropriate.
-- **`\trace`'s report box is square again** — the bar glyph is 3 bytes but 1 column wide, and the
+- **`\trace`'s report box is square again**: the bar glyph is 3 bytes but 1 column wide, and the
   old `printf` field widths counted bytes, leaving the right-hand border ragged.
-- The `` `arn`` self-test now genuinely exercises the arena **overflow** path it advertises. It
+- The `` `arn`` self-test now exercises the arena **overflow** path it advertises. It
   asked for 1 MB against a >=16 MB slab (`arena_init(1<<16)` only rewinds an already-larger slab,
   it never shrinks it), so the overflow branch was never taken; it now requests
   `arena_capacity() + 64 KB` and also asserts that the peak survives a rewind.
@@ -1425,36 +1425,36 @@ environment variable still works and now just seeds the initial value.
   call the exported branch-free `amlb()`.
 
 ### Tests
-- **`tests/harness.k`** — shared assertion harness (`t`, `tv`, `te`, `tk`, `hexpect`, `hreport`).
+- **`tests/harness.k`**: shared assertion harness (`t`, `tv`, `te`, `tk`, `hexpect`, `hreport`).
   Every assertion is trapped, so a failing or throwing case can never abort a suite or hide the
   cases after it.
 - **Suites are self-locating.** `\l amber.k` resolves against the *current working directory*, so
-  a suite written that way only runs from the repo root — `amber /path/to/tests/test_matrix.k`
+  a suite written that way only runs from the repo root, so `amber /path/to/tests/test_matrix.k`
   died with a bare `'io`. Each suite now derives the repo root from its own script path
   (`` `argv 1``, the same trick `repl.k` uses) and runs from anywhere.
 - **Suites exit non-zero on failure**, so CI and `tests/run_tests.sh` can gate on status as well
   as on the printed report.
 - **`hexpect[n]` assertion-count guard.** In K, `f [a;b]` **with a space** is not a call: the
   parser reads `[a;b]` as a bracketed statement block and quietly builds a projection that is
-  then discarded — no error, no output, the assertion simply never runs. An earlier revision of
+  then discarded, with no error and no output, so the assertion never runs. An earlier revision of
   `tests/test_qsql.k` lost 42 of its 93 cases to exactly this **and still printed
   "ALL TESTS PASSED"**. Each suite now declares how many assertions it expects to record and
   fails if the number disagrees.
-- **`tests/test_qsql.k` is written in the bare `select … from t` syntax** users actually type,
+- **`tests/test_qsql.k` is written in the bare `select … from t` syntax** users type,
   put through the same `qrw` rewrite `repl.k`'s `line1` applies to every input line, instead of
-  the `sel"…"` wrapper — so the suite exercises the rewriter and the query engine together, on
+  the `sel"…"` wrapper, so the suite exercises the rewriter and the query engine together, on
   the user's own code path. Section 9 asserts the explicit wrapper gives an identical answer.
-- **`tests/test_matrix.k`** — 309-case combinatorial matrix: every primitive against every
+- **`tests/test_matrix.k`**: 309-case combinatorial matrix: every primitive against every
   element type (Long / Float / Boolean / Char / Symbol / nested list / dict / table) at sizes
   0, 1, 10 and 100 000+, including the 99 999 / 100 000 / 100 001 / 250 000 sizes that straddle
   `PAR_THRESHOLD`. Cases assert invariants (shape, algebraic identity, vector-kernel-vs-scalar-
   reference agreement) rather than frozen literals.
-- **`tests/test_qsql.k`** — 94-case qSQL matrix over the full clause lattice, multi-key `by`,
+- **`tests/test_qsql.k`**: 94-case qSQL matrix over the full clause lattice, multi-key `by`,
   empty / single-row / heavily-duplicated tables, the bare-qSQL rewriter, and malformed queries.
-- **`tests/fuzz.py`** — malformed-input and deep-nesting crash fuzzer (unbalanced brackets,
+- **`tests/fuzz.py`**: malformed-input and deep-nesting crash fuzzer (unbalanced brackets,
   dangling adverbs, truncated qSQL, 20 000-deep nesting, out-of-range literals). Asserts a clean
   K error, never a signal or a hang.
-- **`tests/run_tests.sh`** — one entry point for all suites plus the C unit tests; `--asan`
+- **`tests/run_tests.sh`**: one entry point for all suites plus the C unit tests; `--asan`
   rebuilds under AddressSanitizer + UBSan and re-runs everything, including the fuzzer.
 - **The suites are quiet on success.** `tests/harness.k` calls `` `diag 0`` on load and restores
   the previous setting in `hreport`, so a run that provokes ~35 deliberate errors prints its
@@ -1464,29 +1464,29 @@ environment variable still works and now just seeds the initial value.
 - CI (`.github/workflows/ci.yml`) now runs the new suites and the fuzzer on every push.
 
 ### separate, independently-tuned comparative benchmark query files
-- **`bench/queries/amber_{vecsum,vecarith,groupby}.k`** added — `bench/run_comparative.py`'s
+- **`bench/queries/amber_{vecsum,vecarith,groupby}.k`** added. `bench/run_comparative.py`'s
   Amber row previously reran the same `k_<id>.k` file used for the "K" (ngn/k) row. Amber now
   gets its own query file per workload, with a header comment on each documenting what
-  engine-level optimization was tried, what it measured, and — for the ideas that didn't pay
-  off — why not. See the README's
+  engine-level optimization was tried, what it measured, and, for the ideas that didn't pay
+  off, why not. See the README's
   [Comparative benchmark query files](docs/BENCHMARKS.md#comparative-benchmark-query-files) section
   for a summary, or the files themselves for the full detail.
 - **`check_parity()`** added to `bench/run_comparative.py`: runs `amber_<id>.k` and `k_<id>.k`
   once each before the timed runs and compares their printed output, so a claimed speed win can
   never silently also be a wrong answer. Reported on stderr and prefixed onto the generated
   Markdown table.
-- **Known engine bug found and documented** (not fixed here — see docs/MISSING.md): a `.k`
+- **Known engine bug found and documented** (not fixed here; see docs/MISSING.md): a `.k`
   comment line containing only a bare `/` with no trailing space or text silently truncates
   parsing of the rest of the file, with no error raised.
 
 ### removed the `\hl` syntax-highlight command
 - **Removed** `src/highlight.{h,c}`, the `\hl <expr>` REPL command, and `tests/test_highlight.c`.
   `\hl` only ever colorized a line you explicitly ran (`\hl select ...` echoed that one line back
-  with ANSI colour) — it never highlighted your keystrokes *as you typed them*, which is what
-  "REPL live syntax highlighting" actually means. Real live/incremental highlighting would
+  with ANSI colour). It never highlighted your keystrokes *as you typed them*, which is what
+  "REPL live syntax highlighting" means. Real live/incremental highlighting would
   require rewriting `repl.k`'s raw-keystroke input loop (a fragile, previously-regression-prone
   path in this project), which is a materially different and larger undertaking than a one-shot
-  echo command — removed rather than kept as something that doesn't do what its name promises.
+  echo command, so it was removed rather than kept as something that doesn't do what its name promises.
   See [docs/MISSING.md](docs/MISSING.md) for this as a possible future direction.
 - No other engine extension is affected: SIMD, the multithreaded vector engine, the bytecode
   disassembler, and the native CSV parser are all unchanged.
@@ -1504,7 +1504,7 @@ environment variable still works and now just seeds the initial value.
   `f[x;;z]`) render as an explicit **Projection** with a **Blank** node for the omitted slot.
 - **Bug fixed: namespaced identifiers misread.** `.ns.sub` printed as `"ns.ns"` (a duplicated
   first segment) because the old code read a Symbol Vector's elements via `_A(v)[i]` (an 8-byte
-  `A*`-stride cast) when Symbol Vectors actually store **packed 32-bit ids** -- reading through
+  `A*`-stride cast) when Symbol Vectors store **packed 32-bit ids** -- reading through
   the wrong stride silently pulled back the wrong bytes. Fixed by reading through
   `(const I*)_V(v)` everywhere a Symbol Vector's elements are touched.
 - **New: tacit-form annotations.** A 2-verb list `(f g)` is now an explicit **Hook**; a 3-verb
@@ -1528,7 +1528,7 @@ environment variable still works and now just seeds the initial value.
   `` `dgn``/`` `simd``/...) plus a new standalone `tests/test_ast.c` harness -- the latter links
   against the full interpreter (ast.c is inherently built on Amber's real parser/value
   representation, unlike `tests/test_simd.c`/`test_parallel.c`, which are
-  dependency-free by design) and checks label correctness, a broad no-placeholder regression
+  dependency-free on purpose) and checks label correctness, a broad no-placeholder regression
   sweep, ANSI colour coverage for all five required categories, and that moderately deep (but
   parser-legal) nesting does not crash.
 - **Honest scope note:** `\ast` still never compiles or runs the expression it's shown, with one
@@ -1539,38 +1539,38 @@ environment variable still works and now just seeds the initial value.
 
 ### fix `peach` worker-count default
 - **Bug:** `peach[f;y]`'s default worker count (`src/i.c`'s `peachNW()`) was a hardcoded `4`
-  whenever `AMBER_THREADS` was unset, regardless of how many CPUs the host actually had. On a
-  small box (e.g. 2 cores) this **oversubscribed** — forking 4 processes onto 2 cores made
+  whenever `AMBER_THREADS` was unset, regardless of how many CPUs the host had. On a
+  small box (e.g. 2 cores) this **oversubscribed**: forking 4 processes onto 2 cores made
   `peach` measurably *slower* than serial `` f'y `` through pure fork/context-switch overhead
   (observed: 0.55x–0.79x "speedup" running `examples/peach.k` in a 2-core sandbox). On a large
   box it left most cores idle.
 - **Fix:** `peachNW()` now defaults to the actual online CPU count via
   `sysconf(_SC_NPROCESSORS_ONLN)` (new `peachCPUs()` helper in `src/i.c`), the same approach
   `src/parallel.c`'s `par_thread_count()`/`online_cpus()` already uses for the SIMD/vector
-  engine — the two parallel primitives in Amber now agree on what "auto" means.
+  engine, so the two parallel primitives in Amber now agree on what "auto" means.
   `AMBER_THREADS=N` still overrides explicitly and is unchanged. Verified: re-running
-  `examples/peach.k` in the same 2-core sandbox went from ~0.55–0.79x ("speedup") to a genuine
+  `examples/peach.k` in the same 2-core sandbox went from ~0.55–0.79x ("speedup") to a real
   ~1.7x.
-- **Cleanup:** removed two stale duplicate source files at the project root (`i.c`, `ar.c`) —
+- **Cleanup:** removed two stale duplicate source files at the project root (`i.c`, `ar.c`),
   leftovers from before the `src/` reorganisation, byte-for-byte identical to their `src/`
   counterparts except for the fix above, never compiled by `build.sh` (which only builds
   `src/*.c`), and a source of confusion if edited by mistake.
 
 ### engine extensions (SIMD, parallel, disassembler, CSV)
-- **SIMD vector kernels.** `src/simd.{h,c}` — AVX2 (x86_64), ARM NEON (`aarch64`, incl. Apple
+- **SIMD vector kernels.** `src/simd.{h,c}`: AVX2 (x86_64), ARM NEON (`aarch64`, incl. Apple
   Silicon), and scalar C99 fallback implementations of `add`/`mul`/`sum` over `int64_t`/`double`
   arrays, selected at compile time. `src/arena.c`'s bump allocator now guarantees genuine
   32-byte alignment (`posix_memalign`, up from plain `malloc`'s 16-byte guarantee). Self-test +
   benchmark: `` `simd 0``. Build with `AMBER_NATIVE=1 ./build.sh` to activate AVX2 on x86_64
   (NEON activates unconditionally on `aarch64`).
-- **Multithreaded vector engine.** `src/parallel.{h,c}` — splits arrays above 100,000 elements
+- **Multithreaded vector engine.** `src/parallel.{h,c}` splits arrays above 100,000 elements
   across POSIX threads (`AMBER_THREADS` env var, same convention as `peach`), each chunk
   processed by the SIMD kernels above. Self-test + benchmark: `` `para 0``.
-- **Bytecode disassembler (`\disasm`).** `src/vm.{h,c}` — Amber's compiler/VM already exists in
+- **Bytecode disassembler (`\disasm`).** `src/vm.{h,c}`. Amber's compiler/VM already exists in
   `src/b.c` (AST is compiled to opcodes + a constant pool, then run on a real stack VM); this
   mirrors that opcode table byte-for-byte and decodes real compiled bytecode with a
   self-consistency check, rather than adding a second, disconnected VM. Self-test: `` `vmd 0``.
-- **Native CSV parser.** `src/csv.{h,c}` — `` `csvr "path.csv"`` parses a file straight into a
+- **Native CSV parser.** `src/csv.{h,c}`: `` `csvr "path.csv"`` parses a file straight into a
   genuine Amber table (`flp(names ! cols)`, the same shape `([]…)` produces) via the arena
   allocator, with per-column type inference (Long/Float/Symbol), quoted-field handling
   (embedded commas, `""`-escaped quotes), and null-mapped empty cells. Self-test: `` `csv0 0``.
@@ -1579,15 +1579,15 @@ environment variable still works and now just seeds the initial value.
   Amber dependency) for the SIMD and parallel modules.
 
 ### REPL diagnostics + cleanup
-- **`\v` rich workspace inspector.** `src/inspect.{h,c}` — every currently-defined global as an
+- **`\v` rich workspace inspector.** `src/inspect.{h,c}`: every currently-defined global as an
   ASCII table (Name / Type / Shape·Length / Memory), with a recursive deep-memory-footprint
   walker (`iv_deepsize`) and a structural table-vs-dict classifier (`iv_as_table`) since both
   share the `tM` heap tag in Amber.
-- **`\ast` AST visualiser.** `src/ast.{h,c}` — a parse-only, colour-coded tree view of an
+- **`\ast` AST visualiser.** `src/ast.{h,c}`: a parse-only, colour-coded tree view of an
   expression (verbs bold cyan, binary ops bold magenta, variables yellow, scalars green, vectors
   cyan, function application bold blue, list literals bold green, block separators dim gray),
   built from the same shape-dispatch `cr()` uses to compile.
-- **`\trace` execution profiler.** `src/trace.{h,c}` — 4-phase timing (parse / arena setup /
+- **`\trace` execution profiler.** `src/trace.{h,c}`: 4-phase timing (parse / arena setup /
   execute / format) via `clock_gettime(CLOCK_MONOTONIC)`, a Unicode block-bar report, and the
   arena's peak scratch usage for that one evaluation. Runs the input through the same
   `qsql.k`/`qrw` rewrite the interactive prompt uses first, so tracing a table expression or a
@@ -1603,7 +1603,7 @@ environment variable still works and now just seeds the initial value.
   tree compiles warning-clean under `-Wall -Wextra -std=c99` (aside from pre-existing sign-compare
   noise from `a.h`'s `LH`/`TU` macros) and passes the full `test.k` suite (158/158).
 
-## 1.9 — Mac integration + HFT features
+## 1.9: Mac integration + HFT features
 - **Native `aj` as-of-join kernel.** `aj`/`aj0` now compute their match indices in C
   (`src/a.c`, `ajc` + `ajlb`) instead of the per-row K `bin`. For each trade the kernel does a
   **branch-free `lower_bound`** (the comparisons lower to `cmov`, no data-dependent branches)
@@ -1613,19 +1613,19 @@ environment variable still works and now just seeds the initial value.
   the `` `aj `` builtin; the pure-K reference is retained as `ajmK`. Correct on 64-bit ns
   timestamps, single-group (time-only) joins, absent symbols and before-first-quote rows. New
   tests in `test.k` (`ajNull`, `ajNoGrp`, `ajNs`).
-- **HFT zero-allocation arena.** `src/arena.{h,c}` — a **thread-local 16 MB bump allocator**
+- **HFT zero-allocation arena.** `src/arena.{h,c}`: a **thread-local 16 MB bump allocator**
   (`arena_init` / `arena_alloc` / `arena_reset` / `arena_free`, plus `arena_used`/`arena_capacity`)
   with a leak-free overflow path. Reserved at startup (`kinit`) and rewound once per evaluation
   cycle (`evs`), so the transient buffers produced while evaluating an expression come from a
   single pointer bump instead of `malloc`/`free`, keeping their latency jitter out of the hot
   path. The native `aj` kernel uses it for its transient match vector. Self-test builtin
   `` `arn `` (exercises bump / reset / the >slab overflow path); `test.k` asserts it.
-- **Rust-style visual diagnostics.** `src/diagnostic.{h,c}` — a `Span` source-tracking struct
+- **Rust-style visual diagnostics.** `src/diagnostic.{h,c}`: a `Span` source-tracking struct
   (`src`, `start`, `end`, 1-based `line`/`col`) and a `report_diagnostic()` renderer that emits a
   Rust-compiler-style report: `error[CODE]: title`, a `-->` file:line:col locator, a gutter-aligned
   source line, per-span `^^^` underlines and a `= help:` note, ANSI-coloured when a colour terminal
-  is present. The runtime error path (`src/e.c`, `eS`) — through which all parse / type / domain
-  errors funnel — routes them through the formatter **by default**, printing the report above the
+  is present. The runtime error path (`src/e.c`, `eS`), through which all parse / type / domain
+  errors funnel, routes them through the formatter **by default**, printing the report above the
   existing compact caret line; set **`AMBER_DIAG=0`** to suppress it and get the terse one-line
   errors only. One `getenv` per error, never on success. The source noun is copied to a bounded,
   NUL-terminated buffer before rendering (Amber char vectors are length-prefixed, not
@@ -1652,7 +1652,7 @@ environment variable still works and now just seeds the initial value.
   the `^` caret under the failing operator/verb (the caret comes from the C core's `err`/`eQ`
   machinery). Implemented as a repl-local handler `onerr`/`edesc` in `repl.k`.
 - **ANSI syntax highlighting.** Grid output (tables, keyed tables, dictionaries) is coloured for
-  dark terminals with a vivid **256-colour, 14-hue per-column palette** (`PAL`) — each column a
+  dark terminals with a vivid **256-colour, 14-hue per-column palette** (`PAL`): each column a
   distinct colour, headers bold white, nulls and the size footer dimmed; dictionary values keep a
   per-type tint. Colour is applied *after* width padding (ANSI is zero visual width), and a new
   `vlen`/`vstrip` strips ANSI before every column-width and header-underline computation, so
@@ -1676,8 +1676,8 @@ environment variable still works and now just seeds the initial value.
 ## 1.7
 - **Native temporal types.** `date` (days since 2000.01.01), `time` (ms of day) and
   `timestamp` (ns since 2000.01.01) are now first-class C-level types with their own type
-  tags. Literal syntax parses directly — `2026.07.30`, `10:00:05.000`,
-  `2026.07.30D09:30:00.000000000` — and values auto-display in their own format.
+  tags. Literal syntax parses directly, so `2026.07.30`, `10:00:05.000` and
+  `2026.07.30D09:30:00.000000000` are read as written, and values auto-display in their own format.
   Type-aware arithmetic: `10:00:00.000+00:00:05.000` → `10:00:05.000`, `date-date` → days,
   `date+n` → date, plus comparisons. String casts `"D"$`/`"T"$`/`"P"$`, accessors
   `year`/`month`/`day`/`dow`/`thh`/`tmm`/`tss`, and `` `i$`` to extract the raw value.
@@ -1689,7 +1689,7 @@ environment variable still works and now just seeds the initial value.
   sweep for the standard reducers (`first last min max sum avg count`). ~2× faster in a
   throttled sandbox (more on real cores), bit-exact vs the interpreted `wjK` fallback for the
   non-floating reducers. Arbitrary aggregators fall back to `wjK`.
-- **C-kernel `ema`** — the exponential moving average was an interpreted per-element scan;
+- **C-kernel `ema`**: the exponential moving average was an interpreted per-element scan;
   now a single O(n) C sweep (`emaC`), verified identical to the K version.
 - **SIMD math.** Portable vectorization pragmas (`clang loop vectorize` / `GCC ivdep`) on the
   hot elementwise float kernels in `2.c`.
@@ -1703,7 +1703,7 @@ environment variable still works and now just seeds the initial value.
   linkage. `ArrowSchema`/`ArrowArray` structs are embedded in `a.h`; export is zero-copy
   (child `buffers[1]` alias Amber column payloads and a `release` callback `mr`s them);
   import parses format strings, applies validity bitmaps as nulls, and rebuilds a table
-  (a copy — Amber's inline object header precludes aliasing a foreign buffer). New file
+  (a copy, because Amber's inline object header precludes aliasing a foreign buffer). New file
   `ar.c`. Numeric widths, ranges and symbol (utf8) columns round-trip exactly.
 - **Cleanup.** Removed the dead duplicate `gentq`; interpreted `wj` retained as `wjK`
   (arbitrary-aggregator fallback). Test suite now **267** (153 + 35 + 79), 0 failures.
@@ -1714,18 +1714,18 @@ environment variable still works and now just seeds the initial value.
   the whole thing. The cap is applied *before* formatting, so previewing a million-row table
   is instant. Set `CROWS:n` at the prompt to change it (e.g. `CROWS:10`); small tables print
   in full. Implemented in `amtab`/`amkeyed`/`amdict` (amber.k).
-- **`examples/peach.k`** — a runnable Monte-Carlo demo that times serial `` f'y `` vs
+- **`examples/peach.k`**: a runnable Monte-Carlo demo that times serial `` f'y `` vs
   `peach[f;y]` so you can see the multi-core speedup on your own hardware
   (`AMBER_THREADS=8 ./amber examples/peach.k`).
 - **Banner shows v1.6** and advertises bare qSQL + parallel `peach`.
-- **`peach` is now genuinely parallel (multi-core), in C.** `peach[f;y]` forks
+- **`peach` is now really parallel (multi-core), in C.** `peach[f;y]` forks
   `AMBER_THREADS` worker processes (default 4), each applies `f` to a slice of `y`,
   serialises its result (`` `k ``) down a pipe, and the parent deserialises (`val`) and
   concatenates. Because `(. `k v) ~ v` holds for every value, the result is identical to
-  serial `` f'y `` — verified across vectors, symbols, tables, nested and ragged results, and
+  serial `` f'y ``, verified across vectors, symbols, tables, nested and ragged results, and
   a 200-iteration stress run; all 226 tests still pass. Set `AMBER_THREADS=N` to control the
   worker count (`=1` forces serial). Implemented as a new C primitive (`peachC` in `i.c`,
-  wired through the `sym1` system-function table) — additive, so it can't affect the serial
+  wired through the `sym1` system-function table), which is additive, so it can't affect the serial
   core. Fork-based (copy-on-write heap) so there are **no data races**: this matches how
   q gets multi-core and avoids the atomic-refcount tax that shared-memory threading would
   put on all single-threaded code. Unlike Python threads (GIL-bound), Amber's workers run on
@@ -1733,12 +1733,12 @@ environment variable still works and now just seeds the initial value.
   for when the fork/serialise overhead makes serial `'` the better choice.
 
 ## 1.5
-- **The v1.5 extended modules now actually load in the REPL.** `repl.k` previously loaded only
-  `amber.k` + `fin.k`, so `std`/`qsql`/`temporal`/`sys`/`hdb`/`ipc` — and therefore `sel`,
-  `select … by …`, the moving aggregates, temporal helpers, etc. — were silently unavailable at
+- **The v1.5 extended modules now load in the REPL.** `repl.k` previously loaded only
+  `amber.k` + `fin.k`, so `std`/`qsql`/`temporal`/`sys`/`hdb`/`ipc`, and therefore `sel`,
+  `select … by …`, the moving aggregates and the temporal helpers, were silently unavailable at
   the prompt. `repl.k` now loads all six in dependency order.
 - **Bare qSQL.** You can type `select … by … from … where …`, `exec`, `update`, and `delete`
-  directly — no `sel"…"` wrapper. A reader rewriter (`qrw` in `qsql.k`) turns such a line into
+  directly, with no `sel"…"` wrapper. A reader rewriter (`qrw` in `qsql.k`) turns such a line into
   the matching `sel/exq/upd/del "…"` call before evaluation; it also handles assignment
   (`r:select …`) and prefixes (`5#select …`, `count select …`), and leaves ordinary
   expressions and the explicit string forms untouched. Documented on the `\j` help page and in
@@ -1746,16 +1746,16 @@ environment variable still works and now just seeds the initial value.
 - **`select from t` fix.** `sel` now parses a column-less `select from t [where …]` (a leading
   `from`, all columns) correctly instead of mis-splitting the clause.
 - **Benchmarks + sanity harness.** New `BENCHMARKS.md` and `bench/` (Amber vs numpy/pandas here;
-  auto-runs growler/k, kdb+/q, DuckDB, Polars where installed — `bench/run.sh`). All aggregation
+  auto-runs growler/k, kdb+/q, DuckDB, Polars where installed, via `bench/run.sh`). All aggregation
   results cross-check exactly against numpy/pandas; Amber's `group-by` and `distinct` beat pandas.
 - **Faster as-of join.** `aj`'s matcher (`ajm`) now issues **one vectorised `bin` per group**
-  (`'` on a sorted noun) instead of a per-row scalar search — ~6× faster (≈700→115 ms at 50 k
+  (`'` on a sorted noun) instead of a per-row scalar search, which is ~6× faster (≈700→115 ms at 50 k
   rows), identical results, all 226 tests still pass. (`wj` still uses the per-row form.)
 - **`build.sh` defaults to portable `-O3 -flto`** (was `-O2`). Link-time optimisation is
   auto-detected with a safe fallback if the compiler lacks it; `filter` ~2× faster and the
   hash/group kernels ~20% faster, with no `-march` so the binary stays portable.
   `AMBER_NATIVE=1 ./a` opts into `-march=native -funroll-loops` (group-by roughly halves again).
-  PGO was tested and dropped — the gain was noisy and not worth the two-pass build. See
+  PGO was tested and dropped, because the gain was noisy and not worth the two-pass build. See
   BENCHMARKS.md.
 
 ## 1.4.1
@@ -1767,7 +1767,7 @@ environment variable still works and now just seeds the initial value.
   HFT vocabulary. Added to the main `\` menu.
 
 ## 1.4
-- **`fin.k` — a financial / HFT module** (auto-loaded after `amber.k`): a fixed `gentq[n]`
+- **`fin.k`, a financial / HFT module** (auto-loaded after `amber.k`): a fixed `gentq[n]`
   that sets global `trades`/`quotes` tables with **numeric times** and attributes on the key
   columns (`` `s`` on `time`, `` `p`` on `sym`); an O(1) grouped index (`bysym`/`symrows`);
   order-book analytics (`mid` `spread`
@@ -1778,7 +1778,7 @@ environment variable still works and now just seeds the initial value.
   `` `pa`` (parted), `` `ga`` (grouped); `` `at`` reports `s`/`u`/`p`/`g`; `meta` shows them.
   Sorted **and parted** columns get O(log n) kernel find; grouped + the group index give O(1)
   per-symbol slicing (see `bench-fin.k`: ~20,000x vs a linear scan).
-- **Join fix**: joins require **numeric** time columns — store times as ms and format only for
+- **Join fix**: joins require **numeric** time columns, so store times as ms and format only for
   display (`tsym`/`pt`). `stime` on the stored column breaks `aj` (it makes time a string).
 - New: `examples/hft.k` (full HFT walkthrough), `examples/attributes.k`,
   `examples/practice.k`, `test-fin.k` (32 tests), `bench-fin.k`. Core suite: 153 tests.
@@ -1789,7 +1789,7 @@ environment variable still works and now just seeds the initial value.
   `amdict` now handles list-valued dicts (e.g. `group`), `amcells` renders nested columns
   (e.g. `xgroup`), and `iskeyed` no longer crashes on plain vectors (it used odometer on
   non-dicts). `all`/`any` no longer rely on the unsupported `` `b$`` cast.
-- **`./a` rebuilds when the C sources are newer than the binary** — no more running a stale
+- **`./a` rebuilds when the C sources are newer than the binary**: no more running a stale
   build (this was why `([]…)` tables didn't render for some copies).
 - **New banner** with a techy subtitle; **`examples/tour.k`** shows a worked, tested example of
   every function; test suite grown to **148 assertions** covering essentially the whole library.
@@ -1798,13 +1798,13 @@ environment variable still works and now just seeds the initial value.
 
 ## 1.2
 - **`([]col:vals;…)` table literals** and **`([key:vals]col:vals)` keyed-table literals**,
-  implemented in the C parser (`p.c`) — build tables the q way, no `+…!(…)` needed.
+  implemented in the C parser (`p.c`), so you build tables the q way, with no `+…!(…)` needed.
 - **Own identity**: every reference to the upstream array core has been removed from the code,
   banner, help and docs; the language stands alone as Amber. (AGPLv3 attribution is retained in
   `NOTICE`, as the licence requires.)
-- **New banner** — a clean wordmark, no clutter.
-- **`bench.k`** — attribute speed harness (find/`in`, sorted vs unsorted, across sizes).
-- **`MISSING.md`** — an honest map of q features not yet in Amber, with a roadmap.
+- **New banner**: a clean wordmark, no clutter.
+- **`bench.k`**: attribute speed harness (find/`in`, sorted vs unsorted, across sizes).
+- **`MISSING.md`**: an honest map of q features not yet in Amber, with a roadmap.
 - **`round[d;x]`**, table-literal tests; suite now 104 assertions.
 
 
@@ -1813,7 +1813,7 @@ environment variable still works and now just seeds the initial value.
   as ms since midnight, mirroring q's `time.hh` / `time.minute` accessors), plus
   `minbar` / `bar` / `xbar` for tick.minute-style OHLC bucketing.
 - **`meta` shows attributes**: now a keyed table with `c` (column), `t` (type) and
-  `a` (attribute) — so a sorted column shows `a: s`.
+  `a` (attribute), so a sorted column shows `a: s`.
 - **Grid rendering**: `show` / auto-print renders tables, keyed tables and dicts as clean
   q-style grids; `tsym[t;c]` formats time columns as `HH:MM:SS.mmm`.
 - **Restructured help**: `\q` (scalars/agg/sets/strings), `\j` (tables/joins/qSQL),

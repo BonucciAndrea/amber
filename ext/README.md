@@ -1,4 +1,4 @@
-# `ext/` — out-of-tree extensions
+# `ext/`: out-of-tree extensions
 
 This directory is **empty in a stock checkout**, and Amber is complete without
 it. It exists so that a separate package can add verbs, REPL commands and
@@ -51,5 +51,5 @@ extension may define any of these root-namespace functions, all optional:
 
 ## Known extensions
 
-* [`amber-ai`](https://github.com/bonucciandrea/amber-ai) — a local, offline
+* [`amber-ai`](https://github.com/bonucciandrea/amber-ai): a local, offline
   AI co-pilot: schema-aware Tab suggestions, `\ai why`, `\ai profile`.

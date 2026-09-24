@@ -1,6 +1,6 @@
-# Amber — sanity checks & benchmarks
+# Amber: sanity checks & benchmarks
 
-> **2.1.0 note — a performance release, results bit-identical.** The compiler fuses the common
+> **2.1.0 note, a performance release with results bit-identical.** The compiler fuses the common
 > idioms (`+/x*y`, `+/x@&m`, `x@&m`, `a+s*b`, `x@<x`), a one-pass group aggregate (`gsum` and
 > friends, `` `gagg ``) replaces the index-list-and-each path for `select ... by`, membership
 > (`in`) and distinct are one pass, value sorts of integral-valued floats are counting sorts,
@@ -16,7 +16,7 @@
 > dataset's "float" values, not kernel speed. The §2.10 tables below were regenerated from a
 > full re-run of every engine on the 2.1.0 build.
 >
-> **1.9.5 note — batch 2: sliding windows and a cache-friendly radix sort.** The moving-window
+> **1.9.5 note, batch 2: sliding windows and a cache-friendly radix sort.** The moving-window
 > family (`msum`/`mavg`/`mvar`/`mdev`/`mmin`/`mmax`) is now a single-pass O(N) C kernel, and
 > `mmin`/`mmax` are O(N) **independent of the window width** (they were O(N·W)). `<`, `asc`,
 > `xasc` and `xdesc` run on a new key-carrying LSD radix sort that never gathers through the
@@ -28,7 +28,7 @@
 >
 > **1.9.3 note.** `peach` now ships worker results over the new binary serializer (`-8!`/`-9!`,
 > `src/ser.c`) instead of formatting and reparsing `` `k `` text, and three bugs in its parent
-> collection loop are fixed — a per-chunk refcount leak that also forced an O(total²) reallocation
+> collection loop are fixed: a per-chunk refcount leak that also forced an O(total²) reallocation
 > on every append, an ignored worker exit status that could return a silently wrong result, and an
 > unvalidated decode. Measured here: 500,000 items under `AMBER_THREADS=4` in **~23 ms**, with
 > total reserved heap **identical** before and after three further passes and a peak RSS of
@@ -36,7 +36,7 @@
 > unchanged by this release. `examples/peach_verify.k` (60 tests) covers the serializer and
 > `peach`, and passes clean under ASan+UBSan with leak detection on.
 >
-> **1.9.2 note — self-benchmark, before vs after.** Integer `?` (find) now builds an index over
+> **1.9.2 note, self-benchmark, before vs after.** Integer `?` (find) now builds an index over
 > its left argument instead of rescanning it per probe, which rewrites the inner-join cell;
 > float `+/` vectorises; array payloads are cache-line aligned. Full detail and the
 > before/after table are in [§6](#6-192-self-benchmark--before-vs-after) below.
@@ -54,10 +54,10 @@
 > the HFT arena allocator for its transient buffer so a per-tick `aj` makes no `malloc`/`free`
 > calls. The attribute/index figures below are unchanged.
 
-## Version history — speed evolution at a glance
+## Version history: speed evolution at a glance
 
 Every release's headline kernel change, consolidated from the before/after numbers already
-measured in the sections below (§6, §7, §2.10). Each figure is a real, recorded measurement —
+measured in the sections below (§6, §7, §2.10). Each figure is a real, recorded measurement, and
 this table only gathers them in one place; it introduces no new run. Median kernel ms unless
 noted; lower is better. **Numbers within a row share one machine and one dataset; rows are not
 comparable across machines**, and the live §2 tables always reflect the current build.
@@ -69,21 +69,21 @@ comparable across machines**, and the live §2 tables always reflect the current
 | | | inner join, 10M-row suite | 3,858.9 | 199.7 | **19.3×** |
 | **1.9.2** | integer `?` (find) builds an index instead of rescanning per probe | inner join (1M × 1,000 sparse keys) | 180.95 | 5.66 | **32.0×** |
 | | | `kr?kl` find micro-kernel (1M probes) | 211.4 | 2.6 | **81×** |
-| | | `+/px` — 10M float sum (vectorised) | 8.9 | 6.3 | 1.41× |
+| | | `+/px`, 10M float sum (vectorised) | 8.9 | 6.3 | 1.41× |
 | **1.9.3** | `peach` ships worker results over the `-8!`/`-9!` binary serializer | 500k items @ `AMBER_THREADS=4` | — | ~23 ms | native |
-| **1.9.5** | single-pass O(N) moving windows + key-carrying LSD radix sort | `mmin[1000;x]` — window 1000 | 1,021 | 3.73 | **273.9×** |
+| **1.9.5** | single-pass O(N) moving windows + key-carrying LSD radix sort | `mmin[1000;x]`, window 1000 | 1,021 | 3.73 | **273.9×** |
 | | | multi-column table sort (`xasc`, 1 float key) | 1,617 | 54.6 | **29.6×** |
 | | | as-of join (50k × 100k; sorts its right side) | 67.3 | 4.20 | **16.0×** |
-| **2.0.0** | table group-by keys on the interned 4-byte symbol id, not a per-character string sort | `select … by sym` — 1M rows | 587 | 34 | **17×** |
+| **2.0.0** | table group-by keys on the interned 4-byte symbol id, not a per-character string sort | `select … by sym`, 1M rows | 587 | 34 | **17×** |
 | **2.1.0** | one-pass fused group aggregate (`` `gagg ``) behind `gsum`/`select … by` | group-sum, 10M rows, 100k groups (scout) | 222 | 30 | **7.4×** |
 | | | group-sum, 10M rows, 100 groups (scout) | 110 | 21 | **5.2×** |
-| | one-pass membership (`` `memb ``) and bitmap distinct | `h in kr` — 10M vs 1,000 keys (scout) | 51 | 9.6 | **5.3×** |
-| | | `?g` — 10M values, 100k distinct (scout) | 181 | 20 | **9.0×** |
-| | direct-table slice pass in the as-of join | `aj` — 1M trades × 200k quotes (scout) | 37 | 7.8 | **4.8×** |
-| | counting sort for integral-valued floats, no grade, no gather | `x@<x` — 10M float64, 1,000 distinct (scout) | 197 | 58 | **3.4×** |
-| | compiler idiom fusion: `+/x*y`, `+/x@&m`, `x@&m`, `a+s*b` | `+/x*y` — 10M float64 (scout) | 14.1 | 6.8 | **2.1×** |
-| | | `+/(y+2.5*x)@&x>50` — 10M (scout) | 63 | 23 | **2.7×** |
-| | moving windows without the input copy / per-call mapping | `msum[16;x]` — 10M (scout) | 43 | 16 | **2.7×** |
+| | one-pass membership (`` `memb ``) and bitmap distinct | `h in kr`, 10M vs 1,000 keys (scout) | 51 | 9.6 | **5.3×** |
+| | | `?g`, 10M values, 100k distinct (scout) | 181 | 20 | **9.0×** |
+| | direct-table slice pass in the as-of join | `aj`, 1M trades × 200k quotes (scout) | 37 | 7.8 | **4.8×** |
+| | counting sort for integral-valued floats, no grade, no gather | `x@<x`, 10M float64, 1,000 distinct (scout) | 197 | 58 | **3.4×** |
+| | compiler idiom fusion: `+/x*y`, `+/x@&m`, `x@&m`, `a+s*b` | `+/x*y`, 10M float64 (scout) | 14.1 | 6.8 | **2.1×** |
+| | | `+/(y+2.5*x)@&x>50`, 10M (scout) | 63 | 23 | **2.7×** |
+| | moving windows without the input copy / per-call mapping | `msum[16;x]`, 10M (scout) | 43 | 16 | **2.7×** |
 
 Reproduce each row with the harness named in its section: the 1.9.1/1.9.2 rows via
 `bench/run_comparative.py --runs 5 --warmup 2` (it prints both columns itself); the 1.9.5
@@ -91,7 +91,7 @@ rows via `bench/suite.k` against `bench/baseline_194_suite.txt` ([§7](#7-195-ba
 the 2.0.0 row with `./amber bench/qbench/amber.k`, which reports the before/after directly;
 the 2.1.0 rows with `python3 bench/scout/scout.py --engines amber --n 10000000` on the two builds.
 The releases in between (1.9.3, 1.9.4, 1.9.6) were correctness/serializer/tooling work whose four
-comparative workloads did not move — see each release note above.
+comparative workloads did not move; see each release note above.
 
 This document records (1) **correctness cross-checks** of Amber against the mainstream
 array/columnar tools (numpy + pandas), and (2) **speed benchmarks** on the same workloads.
@@ -121,7 +121,7 @@ where two engines disagree.
 
 ---
 
-## 1. Sanity checks — Amber vs numpy/pandas  (N = 1,000,000)
+## 1. Sanity checks: Amber vs numpy/pandas  (N = 1,000,000)
 
 | check | Amber | numpy / pandas | agree |
 |-------|-------|----------------|:-----:|
@@ -138,11 +138,11 @@ is not exactly `n`; Amber's integer path returns the correct 100000, and numpy a
 it too uses the integer column. Good demonstration of why the sanity harness uses integer
 keys for `distinct`.
 
-## 2. Speed — Amber vs numpy/pandas, Polars and DuckDB (ms per operation, single core)
+## 2. Speed: Amber vs numpy/pandas, Polars and DuckDB (ms per operation, single core)
 
 > **Everything below was re-measured on one machine, in one sitting, by one harness**
 > (`bench/suite.k` + `bench/suite.py`, driven by `bench/run_suite.sh`). 40 workloads x 4
-> engines. Every workload carries the scalar answer the engine actually computed, and
+> engines. Every workload carries the scalar answer the engine computed, and
 > `bench/render.py` **refuses to print a ratio for any case where the answers disagree**.
 > This run: **40 cases, 0 answer mismatches.**
 
@@ -150,10 +150,10 @@ keys for `distinct`.
 
 | Amber is fastest here | Amber is slowest here |
 |---|---|
-| **moving windows** — 3.4–6.0 ms vs 15–26 ms (numpy/pandas), 8.6–23 ms (Polars) | **sorting values** — 55 ms vs numpy's 9.7 ms |
-| **multi-column table sort** — 42 ms vs 174 ms (pandas), 187 ms (Polars), 146 ms (DuckDB) | **very high-cardinality group-by** — 170 ms at 100k groups vs 35–53 ms |
-| **inner join on sparse keys** — 5.4 ms vs 21 ms (pandas), 14.6 ms (Polars) | **filter + count** — 1.6 ms vs numpy's 0.87 ms |
-| **group-by at low/medium cardinality** (10 and 1,000 groups), **as-of join at 50k rows** | **`distinct`** — 55 ms; beats numpy's 81 ms but 3–4x behind Polars (18 ms) and DuckDB (14 ms) |
+| **moving windows**, 3.4–6.0 ms vs 15–26 ms (numpy/pandas), 8.6–23 ms (Polars) | **sorting values**, 55 ms vs numpy's 9.7 ms |
+| **multi-column table sort**, 42 ms vs 174 ms (pandas), 187 ms (Polars), 146 ms (DuckDB) | **very high-cardinality group-by**, 170 ms at 100k groups vs 35–53 ms |
+| **inner join on sparse keys**, 5.4 ms vs 21 ms (pandas), 14.6 ms (Polars) | **filter + count**, 1.6 ms vs numpy's 0.87 ms |
+| **group-by at low/medium cardinality** (10 and 1,000 groups), **as-of join at 50k rows** | **`distinct`**, 55 ms; beats numpy's 81 ms but 3–4x behind Polars (18 ms) and DuckDB (14 ms) |
 
 ### Method
 
@@ -161,12 +161,12 @@ keys for `distinct`.
 |---|---|
 | **Timing** | 2 warm-up passes, then 5 timed batches; the reported figure is the **median of the 5 batch means**. Median because a single scheduler stall on a shared runner otherwise moves the whole number. |
 | **Threads** | Every engine pinned to **one thread** (`AMBER_THREADS=1`, `POLARS_MAX_THREADS=1`, `SET threads TO 1`, `OMP_NUM_THREADS=1`). Amber's `peach` is measured separately in [§4](#4-parallelism--peach-multi-core). |
-| **Data** | A closed formula, no RNG — every engine sees bit-identical inputs (see the block at the top of `bench/suite.k`). Every intermediate stays under 2^53, so the float path is exact. |
-| **Fairness** | Results are materialised inside the engine. DuckDB's ordered queries use `CREATE TABLE AS`, not `fetchall()` — building a million Python tuples would measure the client binding, not the engine. Join right-tables are built before the clock starts, for every engine. |
+| **Data** | A closed formula, no RNG, so every engine sees bit-identical inputs (see the block at the top of `bench/suite.k`). Every intermediate stays under 2^53, so the float path is exact. |
+| **Fairness** | Results are materialised inside the engine. DuckDB's ordered queries use `CREATE TABLE AS` rather than `fetchall()`, since building a million Python tuples would measure the client binding, not the engine. Join right-tables are built before the clock starts, for every engine. |
 | **Machine** | Intel Xeon @ 2.80 GHz, 2 cores, 8 GB, Ubuntu 24.04, gcc 13.3, Amber built with the portable `./build.sh` (`-O3 -flto`, no `-march=native`). numpy 2.4.4 / pandas 3.0.2 / Polars 1.43.2 / DuckDB 1.5.5, Python 3.11. |
-| **Reproduce** | `./bench/run_suite.sh` — skips whatever isn't installed. |
+| **Reproduce** | `./bench/run_suite.sh`, which skips whatever isn't installed. |
 
-### Headline — 1,000,000-row vectors
+### Headline: 1,000,000-row vectors
 
 Lower is better; **bold** marks the fastest engine in each row. The bar encodes the Amber
 vs numpy/pandas gap: **filled from the left = Amber faster**, filled from the right = slower,
@@ -174,8 +174,8 @@ length grows with the multiple.
 
 | workload | Amber | numpy/pandas | Polars | DuckDB | Amber vs numpy/pandas |
 |---|---:|---:|---:|---:|---|
-| `+/px` — sum | 0.345 | 0.346 | **0.308** | 2.19 | ~even ░░░░░░░░░░ |
-| `+/px>50` — filter + count | 1.58 | **0.869** | 4.63 | 9.16 | 1.8x slower ░░░░░░░███ |
+| `+/px`, sum | 0.345 | 0.346 | **0.308** | 2.19 | ~even ░░░░░░░░░░ |
+| `+/px>50`, filter + count | 1.58 | **0.869** | 4.63 | 9.16 | 1.8x slower ░░░░░░░███ |
 | group-by sum (10 groups) | 5.49 | 14.8 | 6.64 | **5.13** | **2.7x faster** ████░░░░░░ |
 | distinct (100k distinct keys) | 54.6 | 80.8 | 17.6 | **14.0** | **1.5x faster** ██░░░░░░░░ |
 | moving average (window 100) | **4.36** | 15.8 | 10.5 | — | **3.6x faster** ██████░░░░ |
@@ -184,26 +184,26 @@ length grows with the multiple.
 
 ---
 
-### 2.1 Moving windows — 1M floats
+### 2.1 Moving windows: 1M floats
 
 Rebuilt in 1.9.5 as single-pass O(N) C kernels: `msum`/`mavg`/`mvar`/`mdev` carry a running
 difference (`new = old + incoming - outgoing`), `mmin`/`mmax` use a monotonic index deque.
-Amber is the **fastest engine on every window workload measured**, and — unlike the others —
+Amber is the **fastest engine on every window workload measured**, and unlike the others
 its cost is **flat in the window width**.
 
 | workload | Amber | numpy/pandas | Polars | Amber vs numpy/pandas |
 |---|---:|---:|---:|---|
-| `msum[100;x]` — moving sum | **3.47** | 15.2 | 8.57 | **4.4x faster** ██████░░░░ |
-| `mavg[100;x]` — moving average | **3.62** | 15.6 | 9.98 | **4.3x faster** ██████░░░░ |
-| `mdev[100;x]` — moving stddev | **5.98** | 26.3 | 23.4 | **4.4x faster** ██████░░░░ |
-| `mmin[100;x]` — moving min | **3.80** | 17.6 | 11.1 | **4.6x faster** ███████░░░ |
-| `mmax[100;x]` — moving max | **3.39** | 17.5 | 10.9 | **5.2x faster** ███████░░░ |
-| `mavg[10;x]` — window 10 | **3.45** | 15.6 | 9.94 | **4.5x faster** ███████░░░ |
-| `mavg[1000;x]` — window 1000 | **4.08** | 15.4 | 10.3 | **3.8x faster** ██████░░░░ |
-| `mmin[10;x]` — window 10 | **3.84** | 17.4 | 10.7 | **4.5x faster** ███████░░░ |
-| `mmin[1000;x]` — window 1000 | **3.73** | 17.4 | 11.0 | **4.7x faster** ███████░░░ |
+| `msum[100;x]`, moving sum | **3.47** | 15.2 | 8.57 | **4.4x faster** ██████░░░░ |
+| `mavg[100;x]`, moving average | **3.62** | 15.6 | 9.98 | **4.3x faster** ██████░░░░ |
+| `mdev[100;x]`, moving stddev | **5.98** | 26.3 | 23.4 | **4.4x faster** ██████░░░░ |
+| `mmin[100;x]`, moving min | **3.80** | 17.6 | 11.1 | **4.6x faster** ███████░░░ |
+| `mmax[100;x]`, moving max | **3.39** | 17.5 | 10.9 | **5.2x faster** ███████░░░ |
+| `mavg[10;x]`, window 10 | **3.45** | 15.6 | 9.94 | **4.5x faster** ███████░░░ |
+| `mavg[1000;x]`, window 1000 | **4.08** | 15.4 | 10.3 | **3.8x faster** ██████░░░░ |
+| `mmin[10;x]`, window 10 | **3.84** | 17.4 | 10.7 | **4.5x faster** ███████░░░ |
+| `mmin[1000;x]`, window 1000 | **3.73** | 17.4 | 11.0 | **4.7x faster** ███████░░░ |
 
-Window-width sensitivity, same 1M vector (this is the point of the deque):
+Window-width sensitivity, same 1M vector, which is what the deque is for:
 
 | window | Amber `mmin` | pandas `rolling().min()` | Polars `rolling_min` |
 |---:|---:|---:|---:|
@@ -212,25 +212,25 @@ Window-width sensitivity, same 1M vector (this is the point of the deque):
 | 1,000 | **3.73** | 17.4 | 11.0 |
 
 Amber varies by 3% across a 100x change in window width. Before 1.9.5 the same three rows
-read 314 / 383 / 1021 ms — the old kernel was O(N·W).
+read 314 / 383 / 1021 ms, because the old kernel was O(N·W).
 
 ---
 
-### 2.2 Sort and grade — 1M elements
+### 2.2 Sort and grade: 1M elements
 
 | workload | Amber | numpy/pandas | Polars | DuckDB | Amber vs numpy/pandas |
 |---|---:|---:|---:|---:|---|
-| sort 1M floats — `asc x` | 55.3 | **9.70** | 27.1 | 113 | 5.7x slower ░░████████ |
-| sort 1M integers — `asc x` | 29.8 | **9.61** | 18.4 | 52.1 | 3.1x slower ░░░░░█████ |
-| grade 1M floats — `iasc x` (argsort) | **43.7** | 51.2 | 49.7 | — | **1.2x faster** █░░░░░░░░░ |
+| sort 1M floats, `asc x` | 55.3 | **9.70** | 27.1 | 113 | 5.7x slower ░░████████ |
+| sort 1M integers, `asc x` | 29.8 | **9.61** | 18.4 | 52.1 | 3.1x slower ░░░░░█████ |
+| grade 1M floats, `iasc x` (argsort) | **43.7** | 51.2 | 49.7 | — | **1.2x faster** █░░░░░░░░░ |
 | sort an ALREADY-SORTED 1M float vector | 5.15 | 10.0 | **1.53** | — | **1.9x faster** ███░░░░░░░ |
 
 Two things worth reading carefully:
 
-* **Amber's *grade* is competitive; its *sort* is not — and the gap is not the gather.**
+* **Amber's *grade* is competitive; its *sort* is not, and the gap is not the gather.**
   `iasc` (argsort) is the fastest of the three at 43.7 ms, ahead of numpy's 51.2 ms. `asc x` is
   `x@<x`, so its 55.3 ms is that grade plus ~12 ms of gather. The real gap is that **numpy's
-  value sort (9.7 ms) is 5x faster than numpy's own argsort** — sorting values directly never
+  value sort (9.7 ms) is 5x faster than numpy's own argsort**, because sorting values directly never
   builds a permutation to gather through at all, and Amber has no such path: every sort goes
   via the grade. That is the single clearest remaining win in the engine, and it is a
   `.k`/dispatch change rather than a kernel rewrite.
@@ -241,7 +241,7 @@ Two things worth reading carefully:
 
 ---
 
-### 2.3 Multi-column table sort — 1M rows x 3 columns
+### 2.3 Multi-column table sort: 1M rows x 3 columns
 
 `xasc`/`xdesc` is where Amber now beats every other engine outright. The 1.9.5 kernel is a
 stable multi-column LSD radix that reads the columns' raw C arrays; symbol columns are
@@ -250,9 +250,9 @@ pays 5,000 string comparisons rather than one boxed row comparison per row.
 
 | workload | Amber | numpy/pandas | Polars | DuckDB | Amber vs numpy/pandas |
 |---|---:|---:|---:|---:|---|
-| ``xasc[,`px;t]`` — 1 float key, 3 cols | **54.6** | 84.7 | 71.8 | 198 | **1.5x faster** ██░░░░░░░░ |
-| ``xasc[`sym`time;t]`` — 2 keys, 3 cols | **42.1** | 174 | 187 | 146 | **4.1x faster** ██████░░░░ |
-| ``xdesc[`sym`time;t]`` — 2 keys, descending | **42.4** | 183 | 191 | 149 | **4.3x faster** ██████░░░░ |
+| ``xasc[,`px;t]``, 1 float key, 3 cols | **54.6** | 84.7 | 71.8 | 198 | **1.5x faster** ██░░░░░░░░ |
+| ``xasc[`sym`time;t]``, 2 keys, 3 cols | **42.1** | 174 | 187 | 146 | **4.1x faster** ██████░░░░ |
+| ``xdesc[`sym`time;t]``, 2 keys, descending | **42.4** | 183 | 191 | 149 | **4.3x faster** ██████░░░░ |
 
 ---
 
@@ -266,7 +266,7 @@ pays 5,000 string comparisons rather than one boxed row comparison per row.
 
 The as-of workload joins **bit-identical books** on both sides: timestamps are a cumulative
 sum of small irregular gaps, so they are strictly increasing and all distinct and "last quote
-at or before t" has exactly one answer — no engine can win or lose on a tie-breaking
+at or before t" has exactly one answer, so no engine can win or lose on a tie-breaking
 convention. All four engines returned the same joined-bid checksum.
 
 Amber's `aj` runs its match step as a branch-free `lower_bound` over each group's sorted
@@ -276,7 +276,7 @@ the slowest here by a wide margin at this scale.
 
 ---
 
-### 2.5 Group-by vs cardinality — 1M rows
+### 2.5 Group-by vs cardinality: 1M rows
 
 | workload | Amber | numpy/pandas | Polars | DuckDB | Amber vs numpy/pandas |
 |---|---:|---:|---:|---:|---|
@@ -285,14 +285,14 @@ the slowest here by a wide margin at this scale.
 | 100,000 groups | 170 | 51.3 | **35.5** | 53.2 | 3.3x slower ░░░░░█████ |
 
 This is Amber's clearest weakness and it is structural, not a missing optimisation. The
-idiomatic array form is `` {+/px x}'. =g `` — group once, then **call a lambda per group**. At 10
+idiomatic array form is `` {+/px x}'. =g ``: group once, then **call a lambda per group**. At 10
 groups that is 10 calls and Amber wins; at 100,000 groups it is 100,000 interpreted calls and
 the per-call overhead dominates. A native grouped-reduce (`` `sum by ``) would fix it; the qSQL
 layer would be the natural place to put it.
 
 ---
 
-### 2.6 Scaling — Amber, 100k -> 10M rows
+### 2.6 Scaling: Amber, 100k -> 10M rows
 
 | workload | 100k | 1M | 10M | ns/row @10M | scaling 100k->10M |
 |---|---:|---:|---:|---:|---|
@@ -312,8 +312,8 @@ close to what this box can do.
 
 * **Amber wins on windows, multi-column sorts, sparse-key joins, and low/medium-cardinality
   group-by.** These are hash- and permutation-heavy kernels written as tight C loops with no
-  DataFrame object overhead — and, since 1.9.5, with the right asymptotics.
-* **Amber is at parity on streaming arithmetic** — `sum` is within ~5% of numpy at 100k, 1M
+  DataFrame object overhead, and, since 1.9.5, with the right asymptotics.
+* **Amber is at parity on streaming arithmetic.** `sum` is within ~5% of numpy at 100k, 1M
   and 10M rows. Once a kernel is memory-bound, a portable scalar C loop and an AVX2 numpy loop
   both saturate the same bus.
 * **Amber loses on `filter + count`** (1.8x), where numpy fuses compare-and-popcount into one
@@ -325,44 +325,44 @@ close to what this box can do.
   both hash into a purpose-built dictionary, while Amber's `?` sorts. Reporting only the numpy
   column here would flatter Amber; both comparisons are in the table.
 * **The moving-average row moved the most.** It was 2.9x *slower* than pandas in the previous
-  revision of this table and is now 3.6x *faster* — see [§7](#7-195-batch-2--sliding-windows--radix-sort).
+  revision of this table and is now 3.6x *faster*; see [§7](#7-195-batch-2--sliding-windows--radix-sort).
 
 ### 2.8 Still on the table
 
 | # | Change | Expected | Where |
 |---|---|---|---|
-| 1 | **Direct value sort** — when `asc x` is consumed immediately, sort values in place instead of grading then gathering | ~1.4x on `asc`, closing most of the numpy gap | `src/o.c` |
+| 1 | **Direct value sort**, when `asc x` is consumed immediately, sort values in place instead of grading then gathering | ~1.4x on `asc`, closing most of the numpy gap | `src/o.c` |
 | 2 | **Native grouped reduce** (`sum`/`avg`/`min` by key, no per-group lambda) | 3–5x on high-cardinality group-by | `src/i.c`, `qsql.k` |
 | 3 | **Parallel radix sort** on the existing `peach` pool | 4–8x on sort-heavy work | `src/v.c`, `src/peachpool.c` |
 | 4 | **Fused compare-and-count** for `+/x>c` | ~1.8x on filter, to parity | `src/3.c` |
-| 5 | **Sort-key fusion in `xasc`** — pack narrow columns into one 64-bit key | 2–3x on multi-column sorts | `src/a.c` |
-| 6 | **Parallel moving windows** — overlapping halo blocks, one per pool lane | 3–6x on windows | `src/v.c` |
+| 5 | **Sort-key fusion in `xasc`**, pack narrow columns into one 64-bit key | 2–3x on multi-column sorts | `src/a.c` |
+| 6 | **Parallel moving windows**, overlapping halo blocks, one per pool lane | 3–6x on windows | `src/v.c` |
 
-Done since the last revision of this list: **`mmin`/`mmax` monotonic deque** (was item 2 — now
-O(N), measured **82–274x** across windows 10–1000 in §7) and **C radix sort for integer/float keys** (was item 3 — shipped as the grade
+Done since the last revision of this list: **`mmin`/`mmax` monotonic deque** (was item 2, now
+O(N), measured **82–274x** across windows 10–1000 in §7) and **C radix sort for integer/float keys** (was item 3, shipped as the grade
 kernel; the remaining gap is the gather, item 1 above).
 
-## 2.10 Scout — every reachable engine, 24 operations
+## 2.10 Scout: every reachable engine, 24 operations
 
 The rest of §2 compares Amber with the four engines the CI harness can install everywhere.
 **Scout** is the widest run in the project: 24 operations against *every* array language and
-columnar engine that could be made to run on one machine — PeachQ (Rayforce), ngn/k, CBQN, J,
-NumPy, pandas, Polars, DuckDB and a hand-written C reference — plus Amber's portable, native
+columnar engine that could be made to run on one machine (PeachQ (Rayforce), ngn/k, CBQN, J,
+NumPy, pandas, Polars, DuckDB and a hand-written C reference) plus Amber's portable, native
 and qSQL configurations (every engine on one thread).
 
 The workloads, the data model and the fairness rules are specified once in
 [`bench/scout/SCOUT_SPEC.md`](../bench/scout/SCOUT_SPEC.md); every engine implements that document
 and nothing else. `bench/scout/scout.py` runs it, `bench/scout/results.json` is the raw output, and
-the tables below are generated straight from that file by `bench/scout/webgen.py --md` — so these
+the tables below are generated straight from that file by `bench/scout/webgen.py --md`, so these
 numbers and the ones on the website cannot drift apart. The narrative analysis lives in
 [`bench/SCOUT_REPORT.md`](../bench/SCOUT_REPORT.md).
 
 **Correctness gate.** Every answer is an integer exactly representable in float64, so the result is
-independent of summation order — SIMD pairwise, Kahan-compensated and naive left-fold summation all
+independent of summation order. SIMD pairwise, Kahan-compensated and naive left-fold summation all
 produce the identical bit pattern. Answers are compared **bit-exactly** against the C reference; an
 engine that disagrees gets `WRONG` instead of a time, and each engine separately checksums its own
 *input* so a divergence in the generator is caught as `BADDATA`. The single exception is
-`mavg_256`, which divides by a growing window count and is therefore genuinely order-dependent; it
+`mavg_256`, which divides by a growing window count and is therefore order-dependent; it
 is compared at a relative tolerance of 1e-9.
 
 ### Machine and versions
@@ -381,7 +381,7 @@ is compared at a relative tolerance of 1e-9.
 | **Polars / DuckDB** | 1.44.1 / 1.5.5 |
 | **Amber build** | 7e6de84 (2.2.0) |
 
-### Amber vs the C reference — all 24 operations
+### Amber vs the C reference: all 24 operations
 
 | operation | Amber (ms) | C (ms) | ratio | what it is |
 | --- | ---: | ---: | ---: | --- |
@@ -413,7 +413,7 @@ is compared at a relative tolerance of 1e-9.
 
 Amber is faster on **16 of 24** operations, slower on **8**.
 
-### The full matrix — 24 operations x 12 engines
+### The full matrix: 24 operations x 12 engines
 
 | operation | C | Amber-nat | Amber | Amber-qSQL | PeachQ | ngn/k | CBQN | J | NumPy | pandas | Polars | DuckDB |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -452,7 +452,7 @@ Amber is faster on **16 of 24** operations, slower on **8**.
 Milliseconds, lower is better. **Bold** is the fastest engine in the row (every engine runs one thread).
 `skip` means the engine cannot express the operation faithfully under `SCOUT_SPEC.md`.
 
-### Scaling — Amber (native), 100k to 10M rows
+### Scaling: Amber (native), 100k to 10M rows
 
 | operation | 100,000 | 1,000,000 | 10,000,000 | 100k->10M |
 | --- | ---: | ---: | ---: | ---: |
@@ -513,7 +513,7 @@ cd bench
 plus a PASS/FAIL sanity column comparing every engine's scalar results against Amber's.
 Point it at a growler/k binary with `K=/path/to/growler ./run.sh`.
 
-## 4. Parallelism — `peach` (multi-core)
+## 4. Parallelism: `peach` (multi-core)
 
 `peach[f;y]` runs `f` over the items of `y` across `AMBER_THREADS` worker **processes**
 (default: online CPU count) and returns exactly what serial `` f'y `` would. It forks (copy-on-write heap,
@@ -529,13 +529,13 @@ Measured on a **2-core** sandbox, heavy per-item work (`{avg x?1.0}` over 8× 80
 | `peach[f;y]`, `AMBER_THREADS=2` | 29.4 (**1.5×**) |
 
 The speedup is bounded by cores (2 here) minus the fork+serialise overhead; on an 8–16 core
-box the same pattern scales far higher. Because there is no GIL, all workers run at once —
+box the same pattern scales far higher. Because there is no GIL, all workers run at once,
 this is the one axis where Amber can be *dramatically* faster than single-threaded Python
 without resorting to Python's heavyweight `multiprocessing`.
 
-**When to use it.** `peach` wins when each item is genuinely expensive (Monte-Carlo, per-symbol
+**When to use it.** `peach` wins when each item is expensive (Monte-Carlo, per-symbol
 model fits, parallel file/partition loads) and results are modest in size. It is *slower* than
-serial `'` for fine-grained work — the fork + text-serialise round-trip per chunk is real
+serial `'` for fine-grained work, because the fork + text-serialise round-trip per chunk is real
 overhead. Rule of thumb: reach for `peach` when serial `'` already takes tens of ms or more
 per call. `AMBER_THREADS=1` forces serial. A binary (`` -8!``) serializer would cut the
 transfer cost further and is the natural follow-up (see MISSING.md).
@@ -544,27 +544,27 @@ transfer cost further and is the natural follow-up (see MISSING.md).
 
 <!-- COMPARATIVE_BENCHMARKS:START (auto-generated by bench/run_comparative.py -- do not edit by hand) -->
 
-_Median of 5 timed runs after 2 warm-up passes. Kernel time only — process startup is excluded (see below). Generated by `bench/run_comparative.py`; workloads defined in [`bench/SPEC.md`](../bench/SPEC.md)._
+_Median of 5 timed runs after 2 warm-up passes. Kernel time only; process startup is excluded (see below). Generated by `bench/run_comparative.py`; workloads defined in [`bench/SPEC.md`](../bench/SPEC.md)._
 
 > ✅ Correctness gate passed: every engine produced the identical exact answer and the identical input checksum on every workload.
 
 | Benchmark | C (-O3) | Amber | Amber qSQL | ngn/k | CBQN | J | Uiua | NumPy | Julia | DuckDB |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M | 9.30 | 23.19 | 45.68 | 303.27 | 39.38 | 141.78 | 833.87 | 36.44 | 9.22 | 28.00 |
-| Reductions — `sum + max + dot`, 10M elements | 25.53 | 12.60 | 23.97 | 285.57 | 6.04 | 125.87 | 760.71 | 10.83 | 22.79 | 37.00 |
-| Group-by aggregation — 100 groups over 10M rows | 7.03 | 67.68 | 71.15 | 321.96 | 37.80 | 180.99 | 1,769.44 | 13.46 | 6.87 | 19.00 |
-| Inner join — 1M left rows against 1,000 sparse keys | 0.97 | 4.75 | 8.29 | 417.02 | 2.56 | 114.49 | _                            ─_ | 13.54 | 11.74 | 16.00 |
+| Vector arithmetic + mask, `sum((x*2.5)+y where x>50)`, 10M | 9.30 | 23.19 | 45.68 | 303.27 | 39.38 | 141.78 | 833.87 | 36.44 | 9.22 | 28.00 |
+| Reductions, `sum + max + dot`, 10M elements | 25.53 | 12.60 | 23.97 | 285.57 | 6.04 | 125.87 | 760.71 | 10.83 | 22.79 | 37.00 |
+| Group-by aggregation, 100 groups over 10M rows | 7.03 | 67.68 | 71.15 | 321.96 | 37.80 | 180.99 | 1,769.44 | 13.46 | 6.87 | 19.00 |
+| Inner join, 1M left rows against 1,000 sparse keys | 0.97 | 4.75 | 8.29 | 417.02 | 2.56 | 114.49 | _                            ─_ | 13.54 | 11.74 | 16.00 |
 
 Relative to the C baseline (lower is better; 1.00× means it matched plain C):
 
 | Benchmark | C (-O3) | Amber | Amber qSQL | ngn/k | CBQN | J | Uiua | NumPy | Julia | DuckDB |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M | 1.00× | 2.49× | 4.91× | 32.60× | 4.23× | 15.24× | 89.64× | 3.92× | 0.99× | 3.01× |
-| Reductions — `sum + max + dot`, 10M elements | 1.00× | 0.49× | 0.94× | 11.18× | 0.24× | 4.93× | 29.79× | 0.42× | 0.89× | 1.45× |
-| Group-by aggregation — 100 groups over 10M rows | 1.00× | 9.62× | 10.12× | 45.77× | 5.37× | 25.73× | 251.57× | 1.91× | 0.98× | 2.70× |
-| Inner join — 1M left rows against 1,000 sparse keys | 1.00× | 4.88× | 8.51× | 428.06× | 2.63× | 117.52× | — | 13.90× | 12.05× | 16.42× |
+| Vector arithmetic + mask, `sum((x*2.5)+y where x>50)`, 10M | 1.00× | 2.49× | 4.91× | 32.60× | 4.23× | 15.24× | 89.64× | 3.92× | 0.99× | 3.01× |
+| Reductions, `sum + max + dot`, 10M elements | 1.00× | 0.49× | 0.94× | 11.18× | 0.24× | 4.93× | 29.79× | 0.42× | 0.89× | 1.45× |
+| Group-by aggregation, 100 groups over 10M rows | 1.00× | 9.62× | 10.12× | 45.77× | 5.37× | 25.73× | 251.57× | 1.91× | 0.98× | 2.70× |
+| Inner join, 1M left rows against 1,000 sparse keys | 1.00× | 4.88× | 8.51× | 428.06× | 2.63× | 117.52× | — | 13.90× | 12.05× | 16.42× |
 
-**Timing mode per engine** — `kernel` means the engine timed its own kernel with a monotonic clock; `net` means it has no usable in-language clock and was measured as _total process time − startup baseline_:
+**Timing mode per engine.** `kernel` means the engine timed its own kernel with a monotonic clock; `net` means it has no usable in-language clock and was measured as _total process time − startup baseline_:
 
 | Engine | Peer group | Mode | Startup baseline (ms) |
 |---|---|---|---:|
@@ -584,23 +584,23 @@ Amber appears twice on purpose: `Amber` is array-primitive code (the fair peer o
 <!-- COMPARATIVE_BENCHMARKS:END -->
 
 
-## 6. 1.9.2 self-benchmark — before vs after
+## 6. 1.9.2 self-benchmark: before vs after
 
 Both columns are `bench/run_comparative.py --runs 5 --warmup 2` on the **same machine, same
 data, same harness**, run once before the release and once after. Median kernel ms; lower
 is better. (The two raw dumps these columns were read from are no longer checked in; CI
 regenerates `bench/comparative_results.md` on every benchmark run.)
 
-### Amber — array primitives (`bench/queries/amber_bench.k`)
+### Amber: array primitives (`bench/queries/amber_bench.k`)
 
 | Workload | 1.9.1 | 1.9.2 | Change |
 |---|---:|---:|---|
-| Inner join — 1M rows against 1,000 sparse keys | 180.95 | **5.66** | **32.0x faster** |
-| Reductions — sum + max + dot, 10M | 55.50 | 51.13 | 1.09x |
+| Inner join, 1M rows against 1,000 sparse keys | 180.95 | **5.66** | **32.0x faster** |
+| Reductions, sum + max + dot, 10M | 55.50 | 51.13 | 1.09x |
 | Vector arithmetic + mask, 10M | 68.95 | 74.43 | no significant change |
-| Group-by — 100 groups over 10M rows | 204.82 | 212.91 | no significant change |
+| Group-by, 100 groups over 10M rows | 204.82 | 212.91 | no significant change |
 
-### Amber — qSQL query layer (`bench/queries/amberq_bench.k`)
+### Amber: qSQL query layer (`bench/queries/amberq_bench.k`)
 
 | Workload | 1.9.1 | 1.9.2 | Change |
 |---|---:|---:|---|
@@ -615,29 +615,29 @@ groupby 179.7, join 5.26. Only the **join** change is far outside that band and 
 speed-up from the workload table alone; the arith/reduce/groupby movements above are noise, not
 signal, and are reported as such rather than rounded into a multiplier.
 
-### Micro-kernels — where the change is actually visible
+### Micro-kernels: where the change is visible
 
 Median of 5 timed passes after 2 warm-ups, measured directly and stable across repeats:
 
 | Kernel | 1.9.1 | 1.9.2 | Change |
 |---|---:|---:|---|
-| `kr?kl` — 1M probes into 1,000 sparse keys | 211.4 | **2.6** | **81x faster** |
-| `vr kr?kl` — probe + gather | 173.9 | **4.6** | **38x faster** |
-| `+/px` — 10M float sum | 8.9 | **6.3** | 1.41x |
-| `+/px*py` — 10M dot product | 18.7 | **15.8** | 1.18x |
-| `\|/px` — 10M float max | 19.3 | 19.3 | unchanged (see below) |
+| `kr?kl`, 1M probes into 1,000 sparse keys | 211.4 | **2.6** | **81x faster** |
+| `vr kr?kl`, probe + gather | 173.9 | **4.6** | **38x faster** |
+| `+/px`, 10M float sum | 8.9 | **6.3** | 1.41x |
+| `+/px*py`, 10M dot product | 18.7 | **15.8** | 1.18x |
+| `\|/px`, 10M float max | 19.3 | 19.3 | unchanged (see below) |
 
 ### What did not change, and why
 
 - **No expression fusion.** Amber evaluates eagerly, so `+/ (y+2.5*x) @ & x>50` has already
   materialised its intermediates before `+/` runs; fusing it needs a lazy/fusing evaluator, not a
   peephole match. A matcher narrow enough to ship here would have recognised roughly the benchmark
-  expression and nothing else — exactly what §4 of [`bench/SPEC.md`](../bench/SPEC.md) forbids.
+  expression and nothing else, exactly what §4 of [`bench/SPEC.md`](../bench/SPEC.md) forbids.
   The vector-arithmetic and group-by rows are therefore unchanged.
 - **`|/` over floats still costs three passes.** It round-trips through the order-preserving
   `of1`/`of0` transforms, allocating two 80 MB temporaries, and dominates the reductions workload.
   Applying that transform inline to the raw bit patterns would give an identical result in one
-  pass with no allocation — the clear next win, deliberately not rushed into this release because
+  pass with no allocation, the clear next win, held back from this release because
   it touches float total-order and NaN semantics.
 - **64-byte alignment produced no measurable gain** on this CPU (AVX2, no AVX-512). Payloads were
   already 32-byte aligned, which is what a 256-bit load wants; the change was kept because it is
@@ -646,40 +646,40 @@ Median of 5 timed passes after 2 warm-ups, measured directly and stable across r
 The correctness gate passed 100% on every run above: every engine produced the identical exact
 answer and the identical input checksum on all four workloads.
 
-## 7. 1.9.5 batch 2 — sliding windows + radix sort
+## 7. 1.9.5 batch 2: sliding windows + radix sort
 
 Both columns are `bench/suite.k` on the **same machine, same data, same harness**, minutes
 apart: `bench/baseline_194_suite.txt` is the tree at commit `8027df8`, the right column is
-the current build. Median kernel ms; lower is better. Every workload in the suite is listed —
-including the ones that did not move — because a table that only shows the winners is not a
-benchmark, it is an advertisement.
+the current build. Median kernel ms; lower is better. Every workload in the suite is listed,
+including the ones that did not move, because a table that only shows the winners is an
+advertisement rather than a benchmark.
 
 ### What moved
 
 | workload | 8027df8 | 1.9.5 | speedup | |
 |---|---:|---:|---:|---|
-| `window` · `mmin[1000;x]` — window 1000 | 1,021 | **3.73** | **273.9x** | ██████████ |
-| `window` · `mmax[100;x]` — moving max | 372 | **3.39** | **109.7x** | ████████░░ |
-| `window` · `mmin[100;x]` — moving min | 383 | **3.80** | **101.0x** | ████████░░ |
-| `window` · `mmin[10;x]` — window 10 | 314 | **3.84** | **81.7x** | ████████░░ |
-| `tsort` · ``xasc[,`px;t]`` — 1 float key, 3 cols | 1,617 | **54.6** | **29.6x** | ██████░░░░ |
-| `tsort` · ``xdesc[`sym`time;t]`` — 2 keys, descending | 1,086 | **42.4** | **25.6x** | ██████░░░░ |
-| `tsort` · ``xasc[`sym`time;t]`` — 2 keys, 3 cols | 1,039 | **42.1** | **24.7x** | ██████░░░░ |
+| `window` · `mmin[1000;x]`, window 1000 | 1,021 | **3.73** | **273.9x** | ██████████ |
+| `window` · `mmax[100;x]`, moving max | 372 | **3.39** | **109.7x** | ████████░░ |
+| `window` · `mmin[100;x]`, moving min | 383 | **3.80** | **101.0x** | ████████░░ |
+| `window` · `mmin[10;x]`, window 10 | 314 | **3.84** | **81.7x** | ████████░░ |
+| `tsort` · ``xasc[,`px;t]``, 1 float key, 3 cols | 1,617 | **54.6** | **29.6x** | ██████░░░░ |
+| `tsort` · ``xdesc[`sym`time;t]``, 2 keys, descending | 1,086 | **42.4** | **25.6x** | ██████░░░░ |
+| `tsort` · ``xasc[`sym`time;t]``, 2 keys, 3 cols | 1,039 | **42.1** | **24.7x** | ██████░░░░ |
 | `join` · as-of join (50k trades x 100k quotes) | 67.3 | **4.20** | **16.0x** | █████░░░░░ |
-| `window` · `mdev[100;x]` — moving stddev | 94.2 | **5.98** | **15.8x** | █████░░░░░ |
-| `window` · `mavg[10;x]` — window 10 | 45.2 | **3.45** | **13.1x** | █████░░░░░ |
+| `window` · `mdev[100;x]`, moving stddev | 94.2 | **5.98** | **15.8x** | █████░░░░░ |
+| `window` · `mavg[10;x]`, window 10 | 45.2 | **3.45** | **13.1x** | █████░░░░░ |
 | `join` · as-of join (500k trades x 1M quotes) | 801 | **61.1** | **13.1x** | █████░░░░░ |
 | `scale` · moving average (100), 1M rows | 45.9 | **3.53** | **13.0x** | ████░░░░░░ |
-| `window` · `mavg[100;x]` — moving average | 45.9 | **3.62** | **12.7x** | ████░░░░░░ |
+| `window` · `mavg[100;x]`, moving average | 45.9 | **3.62** | **12.7x** | ████░░░░░░ |
 | `scale` · moving average (100), 100k rows | 4.04 | **0.336** | **12.0x** | ████░░░░░░ |
-| `window` · `msum[100;x]` — moving sum | 41.4 | **3.47** | **11.9x** | ████░░░░░░ |
-| `window` · `mavg[1000;x]` — window 1000 | 46.1 | **4.08** | **11.3x** | ████░░░░░░ |
+| `window` · `msum[100;x]`, moving sum | 41.4 | **3.47** | **11.9x** | ████░░░░░░ |
+| `window` · `mavg[1000;x]`, window 1000 | 46.1 | **4.08** | **11.3x** | ████░░░░░░ |
 | `core` · moving average (window 100) | 47.8 | **4.36** | **11.0x** | ████░░░░░░ |
 | `sort` · sort an ALREADY-SORTED 1M float vector | 51.2 | **5.15** | **9.9x** | ████░░░░░░ |
 | `scale` · moving average (100), 10M rows | 468 | **79.5** | **5.9x** | ███░░░░░░░ |
 | `scale` · sort, 10M rows | 1,163 | **650** | **1.8x** | █░░░░░░░░░ |
 | `scale` · sort, 100k rows | 3.80 | **2.98** | **1.3x** | █░░░░░░░░░ |
-| `sort` · grade 1M floats — `iasc x` (argsort) | 54.9 | **43.7** | **1.3x** | █░░░░░░░░░ |
+| `sort` · grade 1M floats, `iasc x` (argsort) | 54.9 | **43.7** | **1.3x** | █░░░░░░░░░ |
 | `core` · sort (1M floats) | 65.1 | **55.9** | **1.2x** | █░░░░░░░░░ |
 
 ### What did not move (and was not expected to)
@@ -691,10 +691,10 @@ Every row below is inside this sandbox's ±15–20% run-to-run spread on memory-
 | workload | 8027df8 | 1.9.5 | change |
 |---|---:|---:|---|
 | `scale` · sort, 1M rows | 57.6 | 51.5 | 1.12x faster |
-| `sort` · sort 1M floats — `asc x` | 59.5 | 55.3 | 1.08x faster |
-| `sort` · sort 1M integers — `asc x` | 31.1 | 29.8 | 1.05x faster |
+| `sort` · sort 1M floats, `asc x` | 59.5 | 55.3 | 1.08x faster |
+| `sort` · sort 1M integers, `asc x` | 31.1 | 29.8 | 1.05x faster |
 | `card` · 1,000 groups | 11.7 | 11.4 | unchanged |
-| `core` · `+/px` — sum | 0.338 | 0.345 | unchanged |
+| `core` · `+/px`, sum | 0.338 | 0.345 | unchanged |
 | `scale` · sum, 100k rows | 0.032 | 0.032 | unchanged |
 | `scale` · sum, 1M rows | 0.339 | 0.361 | 1.07x slower |
 | `join` · inner join (1M rows x 1,000 sparse keys) | 5.00 | 5.38 | 1.08x slower |
@@ -702,7 +702,7 @@ Every row below is inside this sandbox's ±15–20% run-to-run spread on memory-
 | `scale` · group-by sum, 10M rows | 87.9 | 95.6 | 1.09x slower |
 | `scale` · sum, 10M rows | 7.08 | 7.71 | 1.09x slower |
 | `card` · 10 groups | 4.59 | 5.00 | 1.09x slower |
-| `core` · `+/px>50` — filter + count | 1.41 | 1.58 | 1.12x slower |
+| `core` · `+/px>50`, filter + count | 1.41 | 1.58 | 1.12x slower |
 | `scale` · group-by sum, 100k rows | 0.281 | 0.313 | 1.12x slower |
 | `scale` · group-by sum, 1M rows | 4.44 | 5.07 | 1.14x slower |
 | `card` · 100,000 groups | 148 | 170 | 1.14x slower |
@@ -714,13 +714,13 @@ already a native C kernel; the sort in front of it was not, and it dominated. Th
 change.
 
 **Why `sortPre` moved 9.9x.** The radix kernel notices during its single key-extraction pass
-that the column is already non-decreasing and returns the identity permutation — no histogram,
+that the column is already non-decreasing and returns the identity permutation: no histogram,
 no permute. Real columns hit this constantly: anything carrying the `` `s `` attribute, anything
 coming out of `ajord`, any second sort on the same key.
 
 **Why the plain 1M `sort` rows barely moved.** The kernel this replaced (`ascZ`) was *already*
 a byte-wise radix, so a single flat integer or float column only gains the ~1.3x visible on the
-`iasc` row — and `asc x` then adds a fixed ~12 ms gather that this release does not touch. The
+`iasc` row, and `asc x` then adds a fixed ~12 ms gather that this release does not touch. The
 radix rewrite pays where the old kernel had no answer at all: multi-column keys (25–30x),
 already-sorted input (9.9x), and clustered 64-bit keys such as nanosecond timestamps, where
 range normalisation cuts eight passes to six. Closing the flat-column gap is §2.8 item 1, and
@@ -761,7 +761,7 @@ rows against 1,000 sparse keys).
 <summary>How fairness is enforced, not just claimed</summary>
 
 Every answer in this suite is an integer that fits in float64 exactly, and every sum is over such
-integers, so the result is independent of summation order — SIMD pairwise, Kahan-compensated and
+integers, so the result is independent of summation order. SIMD pairwise, Kahan-compensated and
 naive left-fold summation all produce the identical bit pattern. The harness therefore compares
 answers **exactly** against the C reference and prints **WRONG** in place of a time for any engine
 that disagrees. Each engine also emits a checksum of its *input* data, so a divergence in the
@@ -778,9 +778,9 @@ Two shortcuts the previous suite contained, both now removed and documented in `
   answers the join with a single gather while DuckDB still builds a hash table. Right keys are
   now sparse and unsorted, forcing a genuine key lookup everywhere.
 
-**Amber is reported twice, on purpose.** `Amber` is array-primitive code — the fair peer of
+**Amber is reported twice, on purpose.** `Amber` is array-primitive code, the fair peer of
 ngn/k, CBQN, J and Uiua. `Amber qSQL` routes the same workloads through the `select … by … from`
-layer — the fair peer of DuckDB's SQL planner. Publishing only the faster of the two would mean
+layer, the fair peer of DuckDB's SQL planner. Publishing only the faster of the two would mean
 picking whichever comparison flatters Amber; the gap between the rows *is* the query layer's
 overhead and is meant to be visible.
 
@@ -792,6 +792,6 @@ produced each cell, so the two are never silently mixed.
 
 </details>
 
-The former lexer quirk that bit these files — a `.k` comment line containing *only* a bare `/`
-silently truncating everything after it — **is fixed in 2.0.0**: an unterminated bare-`/` block
+The former lexer quirk that bit these files, where a `.k` comment line containing *only* a bare `/`
+silently truncated everything after it, **is fixed in 2.0.0**: an unterminated bare-`/` block
 comment now raises a clean parse error. See [docs/MISSING.md](docs/MISSING.md) §14.

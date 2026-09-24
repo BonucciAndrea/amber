@@ -1,4 +1,4 @@
-# Quickstart — the long version
+# Quickstart: the long version
 
 The demo, the full install recipe, a worked code tour and every command worth
 knowing. The README keeps a short version of each; this is the whole thing.
@@ -22,7 +22,7 @@ notebook.
 AMBER_NATIVE=1 ./demo.sh     # -march=native build (fastest on this machine)
 ```
 
-`demo/hft_demo.k` — a realistic multi-symbol tick session end to end:
+`demo/hft_demo.k`, a realistic multi-symbol tick session end to end:
 
 ```q
 \l amber.k
@@ -51,7 +51,7 @@ asof     704.0
 total: ~3.2 s end-to-end for 500,000 trades
 ```
 
-`demo/bench_showcase.k` — the same 10,000,000-element vector three ways, with a printed
+`demo/bench_showcase.k`, the same 10,000,000-element vector three ways, with a printed
 speedup table:
 
 ```
@@ -69,7 +69,7 @@ sum  peach    ███░   (fork/IPC overhead dominates a cheap reduction --
 </details>
 
 Prefer to explore interactively? Open `notebooks/Amber-Notebook-Studio.html` directly in a
-browser (no build step) and hit **🚀 Load HFT Demo** in the header — it generates a tick
+browser (no build step) and hit **🚀 Load HFT Demo** in the header. It generates a tick
 session, charts price & volume on a canvas, and benchmarks a naive per-symbol filter against
 the vectorised `qby` call, right there in the page.
 
@@ -79,7 +79,7 @@ the vectorised `qby` call, right there in the page.
 <a name="download--install"></a>
 ## Download & install
 
-Amber compiles from source (portable **C99**, builds clean on `gcc` and `clang`) on first run —
+Amber compiles from source (portable **C99**, builds clean on `gcc` and `clang`) on first run, and
 nothing is installed system-wide. Clone the repo:
 
 ```sh
@@ -87,7 +87,7 @@ git clone https://github.com/BonucciAndrea/amber.git
 cd amber
 ```
 
-**Linux / WSL** — needs a C compiler (`gcc` or `clang`):
+**Linux / WSL**, which needs a C compiler (`gcc` or `clang`):
 
 ```sh
 sudo apt-get update && sudo apt-get install -y build-essential   # one-time
@@ -96,7 +96,7 @@ chmod +x a build.sh install.sh                                    # restore exec
 # note: do NOT install or use rlwrap for Amber -- line editing is built in
 ```
 
-**macOS** (Intel or Apple Silicon) — needs Apple's `clang`:
+**macOS** (Intel or Apple Silicon), which needs Apple's `clang`:
 
 ```sh
 xcode-select --install        # installs the Command Line Tools (clang); one-time
@@ -104,9 +104,9 @@ chmod +x a build.sh install.sh
 ./a                           # line editing / history / Tab are built in -- no rlwrap
 ```
 
-That's it — `./a` compiles the interpreter (portable `-O3`, no `-march=native`) and drops you at
+That's it. `./a` compiles the interpreter (portable `-O3`, no `-march=native`) and drops you at
 the prompt; it recompiles automatically whenever the C sources change, so you never run a stale
-build. If `./a` prints **`Permission denied`**, the executable bit was lost in transfer — the
+build. If `./a` prints **`Permission denied`**, the executable bit was lost in transfer, and the
 `chmod +x` line above fixes it (or just run `bash a`).
 
 **Machine-tuned build.** The default build is portable C99 and always includes `-pthread` (needed
@@ -121,7 +121,7 @@ AMBER_NATIVE=1 ./build.sh      # machine-tuned; check with: `simd 0
 NEON activates unconditionally on Apple Silicon regardless of `AMBER_NATIVE`, since `aarch64`
 implies it. The tuning flag is **probed, not assumed**: `-march=native` is x86 syntax that Apple
 clang rejects on Apple Silicon, so `build.sh` falls back to `-mcpu=native` (aarch64) and, failing
-both, to a portable build — so `AMBER_NATIVE=1 ./build.sh` succeeds on every platform rather than
+both, to a portable build, so `AMBER_NATIVE=1 ./build.sh` succeeds on every platform rather than
 breaking CI on arm64 runners.
 
 **One command instead of all of the above:**
@@ -133,7 +133,7 @@ AMBER_NATIVE=1 ./install.sh  # ... with a machine-tuned build
 
 `install.sh` checks you have a C compiler (and prints the exact package command for your distro
 if you do not), repairs the executable bit on every script, builds, runs the self-test, and writes
-the shell block below into the rc file **your login shell actually reads** — `~/.zshrc` for zsh,
+the shell block below into the rc file **your login shell really reads**: `~/.zshrc` for zsh,
 `~/.bash_profile` on macOS bash, `~/.bashrc` on Linux bash, `~/.profile` otherwise. Re-running it
 replaces that block rather than appending a second copy.
 
@@ -153,12 +153,12 @@ Three notes on that block, because the obvious-looking variants do not work:
 |---|---|
 | **`$AMBER_HOME` is the checkout, not a prefix** | Amber has no `bin/`, `lib/` or `share/` split and installs nothing outside its folder. `export PATH="$AMBER_HOME/bin:$PATH"` points at a directory that does not exist. |
 | **Alias the launcher `a`, not the binary `amber`** | The bare `amber` binary is the interpreter with **no** stdlib: `amber` alone gives you a REPL where `select`, `aj` and `sum` are undefined. `./a` loads `repl.k`, which loads everything else. |
-| **`AMBER_NATIVE` is a *build*-time variable** | It is read by `build.sh`, not by the interpreter. It belongs on the `a` alias — which may rebuild — and does nothing on `amberx`. There is no `AMBER_MEM_MB`: the heap is `mmap`'d with `MAP_NORESERVE` and sized lazily by the OS, so there is nothing to tune. |
+| **`AMBER_NATIVE` is a *build*-time variable** | It is read by `build.sh`, not by the interpreter. It belongs on the `a` alias, which may rebuild, and does nothing on `amberx`. There is no `AMBER_MEM_MB`: the heap is `mmap`'d with `MAP_NORESERVE` and sized lazily by the OS, so there is nothing to tune. |
 
 The variables the engine itself reads at run time are exactly: `AMBER_THREADS` (vector-engine
 lanes), `AMBER_DIAG` (rich diagnostics on/off), `AMBER_NO_EDIT` and `AMBER_RLWRAP` (line editor),
 plus `AMBER_AI_*` once the [amber-ai](https://github.com/bonucciandrea/amber-ai) extension is
-installed. Nothing is installed system-wide — see [Isolation](#isolation).
+installed. Nothing is installed system-wide; see [Isolation](#isolation).
 
 ---
 
@@ -169,7 +169,7 @@ installed. Nothing is installed system-wide — see [Isolation](#isolation).
 > These snippets are written as you'd type them at the interactive prompt (`./a`), where a bare
 > table auto-renders as a grid and qSQL sugar (`select … by … from … where …`) works directly on
 > the input line. **Since 2.0.0 bare qSQL also works inside a `.k` script** run via `./amber
-> file.k` — the loader runs each file through the same rewriter the REPL uses — so the `sel"…"`
+> file.k`, because the loader runs each file through the same rewriter the REPL uses, so the `sel"…"`
 > wrapper is no longer required in files (it still works). For the grid view of a bare table inside
 > a script, wrap it in `show` (`show t`).
 
@@ -214,7 +214,7 @@ b:-8!+`a`b!(1 2 3;4 5 6)     / table -> compact byte vector
 peach[{avg x?1.0}; 8#1000000]                / 8 heavy tasks across AMBER_THREADS cores
 ```
 
-Big tables print Q-style — the first `CROWS` rows (default 20) then `..`; set `CROWS:10`
+Big tables print Q-style, the first `CROWS` rows (default 20) then `..`; set `CROWS:10`
 to shorten. The cap is applied before formatting, so previewing a million-row table is
 instant.
 
@@ -251,7 +251,7 @@ python3 bench/scout/webgen.py --md   # regenerate the tables in docs/BENCHMARKS.
 
 Pipe a query straight into a chart. Charts are framed and axis-labelled, take several series
 at once, and downsample a million-point series without turning it into a smear. The surface is
-**Braille** — a 2×4 dot bitmask per character cell, so a `W`×`H` box is a `2W`×`4H` raster.
+**Braille**: a 2×4 dot bitmask per character cell, so a `W`×`H` box is a `2W`×`4H` raster.
 
 ```
 chart `y`title`ylabel!(14*{sin x%7}@!74;"AAPL mid";"price")
@@ -287,7 +287,7 @@ price
 Two details do most of the work: the axis range is the data's own range **snapped outward to a
 1/2/5 boundary** (round tick values, without the wasted margin a coarse step would leave), and
 past roughly `4W` points each pixel column is drawn as its **min→max envelope** rather than by
-joining consecutive points — which keeps every spike instead of filling the box in solid.
+joining consecutive points, which keeps every spike instead of filling the box in solid.
 
 ```
 plots `bid`ask!(q`bid;q`ask)                              / two series and a legend

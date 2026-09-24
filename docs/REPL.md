@@ -9,7 +9,7 @@ page. Nothing here changed in the move.
 ---
 
 <a name="repl-line-editing"></a>
-## REPL line editing (native — do not use `rlwrap`)
+## REPL line editing (native; do not use `rlwrap`)
 
 Amber's REPL edits your line itself. `src/ln.c` is a single-file editor (~1,650 lines of C99 + POSIX
 `termios`) in the [linenoise](https://github.com/antirez/linenoise) tradition: raw `termios`, one
@@ -18,11 +18,11 @@ keystroke path beyond the line buffer. **`rlwrap` is no longer needed, and must 
 
 | key | |
 |---|---|
-| `←` `→`, `Ctrl-B` / `Ctrl-F` | move by character — a *character*, not a byte: `à`, `日` and `😀` step as one |
+| `←` `→`, `Ctrl-B` / `Ctrl-F` | move by character, and a *character* rather than a byte: `à`, `日` and `😀` step as one |
 | `Ctrl-A` / `Ctrl-E`, `Home` / `End` | start / end of line |
 | `↑` `↓`, `Ctrl-P` / `Ctrl-N` | history (persisted in `~/.amber_history`) |
 | `Backspace`, `Del`, `Ctrl-W` / `Ctrl-U` / `Ctrl-K` | delete char / word / to start / to end |
-| `Ctrl-L` | clear screen — byte-identical to `\clear` |
+| `Ctrl-L` | clear screen, byte-identical to `\clear` |
 | `Ctrl-C` · `Ctrl-D` | abandon the line (or a continuation) · exit on an empty line |
 | `PgUp` / `PgDn`, wheel | scroll the transcript while the status bar stays locked |
 | `\sb` | toggle the status bar |
@@ -32,7 +32,7 @@ syntax it was near-useless and uncomfortable to use.
 
 **Multi-line input.** A line that leaves a bracket open (`{`, `(`, `[`) is an incomplete statement,
 so the editor keeps reading on a `...>` prompt until the brackets balance, then evaluates the
-joined statement as one — and stores it in history as one entry:
+joined statement as one, then stores it in history as one entry:
 
 ```text
 amber> f:{
@@ -42,15 +42,15 @@ amber> f 41
 42
 ```
 
-There is deliberately no key for this. Shift-Enter is **indistinguishable from Enter** in a
+There is no key for this. Shift-Enter is **indistinguishable from Enter** in a
 terminal (both send CR) unless you opt into an extended keyboard protocol, so continuing on
-incomplete syntax — what python, node, ghci and q all do — is the only portable mechanism.
+incomplete syntax, which is what python, node, ghci and q all do, is the only portable mechanism.
 `Ctrl-C` abandons a continuation. A bracketed paste of a multi-line function is rejoined by the
 same string- and comment-aware rule, so a function typed by hand and one pasted produce identical
 text; a bracket inside a string (`"a{b"`) or after a comment never triggers it.
 
 **UTF-8.** The buffer holds bytes but a terminal lays out cells, and the editor now converts
-between the two: accented Latin, CJK and emoji all measure as the cells actually drawn, Backspace
+between the two: accented Latin, CJK and emoji all measure as the cells drawn, Backspace
 removes a whole character, and horizontal scrolling never cuts a sequence in half. The width table
 is built in rather than taken from `wcwidth()`, which answers per `LC_CTYPE` and would otherwise
 lay the same line out differently on macOS and WSL.
@@ -58,7 +58,7 @@ lay the same line out differently on macOS and WSL.
 **Why `rlwrap` must not be used.** rlwrap runs the wrapped program on a pty and speaks readline on
 its behalf, which only works for a program that reads whole lines in *canonical* mode. Amber puts
 the terminal into raw / non-canonical mode and reads single keypresses, so rlwrap is doing nothing
-useful — and says so, in the middle of your session, usually right after an error:
+useful. It says so, in the middle of your session, usually right after an error:
 
 ```text
 rlwrap: warning: rlwrap appears to do nothing for amber, which asks for
@@ -68,7 +68,7 @@ and possibly --no-children? (cf. the rlwrap manpage)
 
 while the two editors fight over one cursor and garble the redraw. `./a` therefore **execs the
 interpreter directly**. The one case where rlwrap still buys something is when the native editor
-is deliberately off (a dumb terminal, an editor subshell, a screen reader):
+is switched off on purpose (a dumb terminal, an editor subshell, a screen reader):
 
 ```sh
 AMBER_NO_EDIT=1 ./a          # Amber reads whole lines; ./a wraps it in: rlwrap -n -a
@@ -96,7 +96,7 @@ By default an error prints the terse core message with a `^` caret under the fai
 ```
 
 Set **`AMBER_DIAG=1`** and the same errors are additionally rendered as a **Rust-compiler-style
-report** — an `error[CODE]` line, a `-->` locator, a gutter-aligned source line, `^^^` underlines,
+report**: an `error[CODE]` line, a `-->` locator, a gutter-aligned source line, `^^^` underlines,
 and a `= help:` note (all ANSI-coloured on a colour terminal):
 
 ```sh
@@ -130,7 +130,7 @@ Turn it on for a session and leave it: it costs one `getenv` per error and never
 <summary>Turning the report off at runtime</summary>
 
 The diagnostic is rendered when the error is *created*, so code that catches an error with
-`.[f;args;handler]` still sees it on stderr. That is switchable at runtime — useful for anything
+`.[f;args;handler]` still sees it on stderr. That is switchable at runtime, which helps for anything
 that provokes errors on purpose (a test suite, `protect`, a retry loop):
 
 ```
@@ -139,7 +139,7 @@ prev:`diag 0        / suppress the report, returns the previous setting (1)
 `diag prev          / restore
 ```
 
-The compact `'type` caret line is not suppressed — it is buffered and still handed to the trap
+The compact `'type` caret line is not suppressed. It is buffered and still handed to the trap
 handler and to `` `err``, so a caught error can always be inspected. `AMBER_DIAG=0` in the
 environment still works and seeds the initial value.
 
@@ -150,10 +150,10 @@ environment still works and seeds the initial value.
 <a name="repl-diagnostics-v--ast--trace"></a>
 ## REPL diagnostics (`\v` · `\ast` · `\trace`)
 
-Three zero-dependency session commands for inspecting the workspace and the evaluator itself —
-none of them touch `eval`/`arena`/core REPL behaviour; they only read state and print a report.
+Three zero-dependency session commands for inspecting the workspace and the evaluator itself.
+None of them touch `eval`/`arena`/core REPL behaviour; they only read state and print a report.
 
-**`\v` — a rich workspace inspector.** Every currently-defined global as an ASCII table
+**`\v`, a rich workspace inspector.** Every currently-defined global as an ASCII table
 (Name / Type / Shape·Length / Memory), with a recursive deep-memory-footprint walker so table
 and nested-list sizes are real, not a shallow guess:
 
@@ -172,11 +172,11 @@ amber> \v
 ```
 
 `\v` lists *every* global in scope, which after `repl.k`'s modules load includes the library's own
-internal state (`repl.*`, `PAL`, `GB`, `OUNI`, …) alongside your own — scan for the names you
+internal state (`repl.*`, `PAL`, `GB`, `OUNI`, …) alongside your own, so scan for the names you
 defined, or `\d yourns` first to narrow the namespace.
 
 <details>
-<summary><code>\ast</code> — colour-coded parse tree (parse-only)</summary>
+<summary><code>\ast</code>: colour-coded parse tree (parse-only)</summary>
 
 ```
 amber> \ast (1+2)*3-4
@@ -192,7 +192,7 @@ Root
 
 Every leaf carries its literal type (`Int64`, `Float64`, `Symbol`, `Char`, or a
 `(TypeName Vector[len])` preview for a literal vector) instead of a generic placeholder, and
-Amber's tacit forms get explicit labels — a lambda literal shows its real source text, a 2- or
+Amber's tacit forms get explicit labels: a lambda literal shows its real source text, a 2- or
 3-verb train is an explicit **Hook**/**Fork**, and a curried/partial application (`1+`, `f[x;;z]`)
 is an explicit **Projection** with a `Blank` node standing in for the omitted argument:
 
@@ -209,7 +209,7 @@ Root
     └── Vector : 0x01 0x02 0x03 (Byte Vector[3])
 ```
 
-(A lambda shows its *source text*, never its bytecode — `pk()` itself compiles `{...}` literals
+(A lambda shows its *source text*, never its bytecode. `pk()` itself compiles `{...}` literals
 eagerly at parse time, the one exception to "nothing is executed"; disassembling what it compiled
 to is `\disasm`'s job, not `\ast`'s.) Verbs render bold cyan, adverbs bold magenta, numeric
 scalars bright green, variables and symbols yellow, tree connectors dim gray; list literals,
@@ -218,7 +218,7 @@ statement blocks, and hook/fork labels get their own restrained accent colour.
 </details>
 
 <details>
-<summary><code>\trace</code> — 4-phase execution profiler</summary>
+<summary><code>\trace</code>: 4-phase execution profiler</summary>
 
 **`\trace`** profiles parse → arena setup → execute → format, with a Unicode bar chart and the
 arena's peak scratch usage for that one evaluation. It prints the expression's normal result
@@ -238,7 +238,7 @@ amber> \trace (1+2)*3-4
 ```
 
 The timer prints `ns` / `us` / `ms` as appropriate, and **Arena peak** is a true high-water mark
-from `arena_peak()`. Only expressions that actually reach an arena-backed kernel (`aj`, `wj`,
+from `arena_peak()`. Only expressions that reach an arena-backed kernel (`aj`, `wj`,
 `` `csvr``, `\ast`) report a non-zero peak:
 
 ```
@@ -271,7 +271,7 @@ amber> \trace select from t where a>1
 <a name="grid-modes"></a>
 ## Grid modes (`\grid`)
 
-`\grid clean|rounded|sharp|heavy` sets the table frame — `clean` (default) is a minimal dashed
+`\grid clean|rounded|sharp|heavy` sets the table frame. `clean` (default) is a minimal dashed
 header rule; `rounded`/`sharp`/`heavy` draw a full box with curved / square / thick corners:
 
 ```

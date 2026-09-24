@@ -589,7 +589,7 @@ reduction loop is 3x faster than Amber's".
 ### `mavg_256` is the one non-exact op
 
 A moving average divides by a growing window count, so its summed result is
-genuinely order-dependent. It is compared at a relative tolerance of `1e-9`;
+order-dependent. It is compared at a relative tolerance of `1e-9`;
 every other op in this report is compared **bit-exactly** against the C
 reference (`SCOUT_SPEC.md` section 2).
 

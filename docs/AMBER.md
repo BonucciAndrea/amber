@@ -1,7 +1,7 @@
 # Amber
 
 **Amber** is a low-latency **array language**: a fast, compact array interpreter that provides
-the major functionality of **q** — aggregations, dictionaries, tables, keyed tables,
+the major functionality of **q**: aggregations, dictionaries, tables, keyed tables,
 the join family (left / inner / union / plus / equi / **as-of** / **window**), a qSQL‑style
 select/by, string utilities, and **column attributes** that accelerate search.
 
@@ -58,11 +58,11 @@ Start an interactive session:
 ./amber repl.k                 # the same thing, without the build-if-stale check
 ```
 
-Since **1.9.5** the REPL has its own line editor (`src/ln.c`) — history, arrow keys and
-`Ctrl-A/E/W/U/K` — so **do not wrap it in `rlwrap` or `rlfe`**. (Tab completion was removed at
+Since **1.9.5** the REPL has its own line editor (`src/ln.c`) with history, arrow keys and
+`Ctrl-A/E/W/U/K`, so **do not wrap it in `rlwrap` or `rlfe`**. (Tab completion was removed at
 2.0.0: with k's terse syntax it was near-useless and uncomfortable to use, and Tab is now a no-op.)
-The editor is UTF-8 aware — accented letters, CJK and emoji all measure as the cells the terminal
-actually draws, and Backspace removes a whole character rather than one byte. A line that leaves a
+The editor is UTF-8 aware: accented letters, CJK and emoji all measure as the cells the terminal
+draws, and Backspace removes a whole character rather than one byte. A line that leaves a
 bracket open (`{`, `(`, `[`) is treated as an incomplete statement: the editor shows a `...>`
 prompt and keeps reading until the brackets balance, then evaluates the joined statement as one.
 `Ctrl-C` abandons a continuation. A bracketed paste of a multi-line function is rejoined by the
@@ -109,13 +109,13 @@ Amber is q semantics in a terse array notation, at array-language speed.
 Amber follows a terse **array grammar**, which differs from q in a few ways you must know:
 
 * **The two-argument library dyads work infix *or* in bracket form (since 2.0.0).** The join
-  family and the set/search dyads — `in within like lj ij uj aj aj0 wj wj1 pj ej cross inter
-  union except ss sv vs xasc xdesc` — may be written `x f y` just like q, as well as
+  family and the set/search dyads (`in within like lj ij uj aj aj0 wj wj1 pj ej cross inter
+  union except ss sv vs xasc xdesc`) may be written `x f y` just like q, as well as
   `f[x;y]`: `t lj kt`, `2 3 in 1 2`, `5 within 3 9`, `` `sym xasc t``, `` "/" sv `a`b`c`` all work,
   and are identical to the bracket call. Built‑in verbs
   (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) are infix as usual. An *arbitrary* user lambda is
-  still bracket/prefix only (`{x+y}[a;b]`, not `a {x+y} b`) — see the CHANGELOG for why lambda
-  infix is deliberately excluded.
+  still bracket/prefix only (`{x+y}[a;b]`, not `a {x+y} b`); see the CHANGELOG for why lambda
+  infix is excluded.
 * **No `>=` / `<=` operators.** Use `~a<b` for `a>=b` and `~a>b` for `a<=b`.
 * **Symbols cannot contain `_`.** `` `a_b `` is a parse error; use a quoted symbol `` `"a_b" ``.
 * **Nested lambdas are not closures.** An inner `{…}` sees only its own parameters and globals,
@@ -126,7 +126,7 @@ Amber follows a terse **array grammar**, which differs from q in a few ways you 
 
 These are properties of the host, not bugs, and the library is written to respect them.
 
-### Tacit trains — hooks and forks (since 2.0.1)
+### Tacit trains: hooks and forks (since 2.0.1)
 
 A parenthesised, **semicolon-separated** list whose every element is a function
 is applied as a **train** rather than indexed. Two shapes exist:
@@ -150,8 +150,8 @@ train is an ordinary value, so it can be named, stored and passed around. Apply
 it **monadically by juxtaposition** (`t y`) or **dyadically in bracket form**
 (`t[x;y]`). Note the distinction from a **space-separated** group: `(f g)` (no
 semicolon) is plain right-to-left composition `f(g x)`, whereas `(f;g)` is a
-hook. Any list that is not exactly two or three functions — four+ verbs, or a
-list with a non-function element — still **indexes** as before. See the online
+hook. Any list that is not exactly two or three functions, whether four+ verbs or a
+list with a non-function element, still **indexes** as before. See the online
 [Tacit programming guide](https://amber-lang.org/docs/tacit.html) for a full tour.
 
 ---
@@ -216,7 +216,7 @@ cross[1 2;10 20]     / ((1;10);(1;20);(2;10);(2;20))
 ```
 
 `asc` returns a sorted vector **with the sorted attribute set**, so subsequent `?`/`in` on it
-run in O(log n) — see §9.
+run in O(log n); see §9.
 
 ---
 
@@ -294,7 +294,7 @@ meta t               / +`c`t!(`sym`px`sz;`s`i`i)
 
 ## 7. Selecting and grouping (qSQL)
 
-Amber supports the **`select … by … from … where …` template directly** — type it at the
+Amber supports the **`select … by … from … where …` template directly**. Type it at the
 prompt with no wrapper:
 
 ```k
@@ -311,7 +311,7 @@ Bare column names in the expressions become `x`col`, so `wavg[sz;px]` just works
 templates are also callable as strings (`sel"select …"`, `exq`, `upd`, `del`) and via the
 **functional form** below (handy when you build the query programmatically).
 
-### Sorted and limited selects — `select[…]`
+### Sorted and limited selects: `select[…]`
 
 ```k
 select[5] from trades                 / the first 5 rows
@@ -329,13 +329,13 @@ The clauses run in q's order: **where → by/select → sort → limit**. A brac
 end. A bare column name goes through `xasc`/`xdesc`, so the result keeps the `` `s `` attribute
 where that applies; any other expression is computed over the result and graded. On a keyed
 (by-clause) result the spec is applied to the rows and the key is put back. The bracket is
-accepted by the bare prompt form and by `sel"…"` alike — and only after `select`, since `exec`,
+accepted by the bare prompt form and by `sel"…"` alike, and only after `select`, since `exec`,
 `update` and `delete` take no bracket in q.
 
 **Interactive prompt vs. `.k` scripts.** The bare `select … from …` rewriting above is applied
 line-by-line by `repl.k` (via `qsql.k`'s `qrw`) as you type at the `amber>` prompt. A script run
 with `./amber file.k` does not go through that per-line rewrite, so bare qSQL sugar will not parse
-there — use the `sel"…"`/`exq"…"`/`upd"…"`/`del"…"` string forms, or call `qwhere`/`qselect`/`qby`
+there. Use the `sel"…"`/`exq"…"`/`upd"…"`/`del"…"` string forms, or call `qwhere`/`qselect`/`qby`
 directly, exactly as `test.k` and every script under `examples/` already do.
 
 | function             | q analogue                                     |
@@ -345,7 +345,7 @@ directly, exactly as `test.k` and every script under `examples/` already do.
 | `qby[t;b;a]`         | `select … by b` → **keyed table**              |
 | `xgroup[k;t]`        | `` `k xgroup t`` (nested value columns)         |
 | `ungroup x`          | flatten nested columns                          |
-| `fby[(f;d);g]`       | `(f;d) fby g` — `g` may be one column, a list of columns, or a table; works inside a where-clause |
+| `fby[(f;d);g]`       | `(f;d) fby g`, where `g` may be one column, a list of columns, or a table; works inside a where-clause |
 | `insert[t;r]`        | append rows                                     |
 
 `a` (the aggregate spec) is a dictionary from result‑name to a function that receives the group
@@ -391,7 +391,7 @@ Every join is a function; call it in bracket form `lj[t;kt]` or, since 2.0.0, **
 | `asof[t;d]`          | as‑of lookup        | single as‑of row for the dict `d`       |
 | `wj[w;c;t;q;aggs]`   | **window** join     | aggregate `q` over a window per `t` row |
 
-`c` is `` `key…`time`` — the last name is the ordering (time) column, the rest are exact‑match keys.
+`c` is `` `key…`time``: the last name is the ordering (time) column, the rest are exact‑match keys.
 
 ### As‑of join
 
@@ -437,7 +437,7 @@ Pass several aggregates at once: `((`mx;max;`bid);(`mn;min;`bid);(`n;count;`bid)
 ### What was added
 
 q attaches *attributes* to vectors to speed up operations. Amber implements **all four
-of them** — sorted (`` `s``), unique (`` `u``), parted (`` `p``) and grouped (`` `g``) —
+of them**, sorted (`` `s``), unique (`` `u``), parted (`` `p``) and grouped (`` `g``),
 at the **kernel level**, because that is where search lives. Five symbol‑verbs are exposed by
 the interpreter:
 
@@ -474,15 +474,15 @@ at least 2× faster on a 200k sample.
 
 ### How it is implemented (files changed)
 
-* **`a.h`** — a new header accessor `_at(x)` at the previously‑unused header byte `-13`
+* **`a.h`**: a new header accessor `_at(x)` at the previously‑unused header byte `-13`
   (`#define _at(x) (*(UC*)((x)-13))`). Attribute codes: `0` = none, `1` = sorted, `2` = unique,
   `3` = parted, `4` = grouped.
-* **`m.c`** — the allocator `an()` now zeroes `_at(x)` on every allocation, so the flag is
+* **`m.c`**: the allocator `an()` now zeroes `_at(x)` on every allocation, so the flag is
   well‑defined for every object (the free‑list path did not previously clear this byte).
-* **`a.c`** — five functions, `qsa`/`qua`/`qpa`/`qga` (set) and `qat` (get), wired into the
+* **`a.c`**: five functions, `qsa`/`qua`/`qpa`/`qga` (set) and `qat` (get), wired into the
   `sym1` symbol‑verb dispatch table as `` `sa`` `` `ua`` `` `pa`` `` `ga`` and `` `at``. Each
   setter marks a simple vector with its code; `qat` reports it as `` `s`u`p`g``.
-* **`f.c`** — four binary‑search probes `bGL/bHL/bIL/bLL`, and a one‑line change in `fnd` so the
+* **`f.c`**: four binary‑search probes `bGL/bHL/bIL/bLL`, and a one‑line change in `fnd` so the
   integer find path selects them when the vector is **sorted or parted** (and the type is
   `tH/tI/tL`, not float/symbol):
 
@@ -500,18 +500,18 @@ order for floats, and symbol order is interning order). This keeps results exact
 
 ---
 
-## 9a. Parallelism — `peach`
+## 9a. Parallelism: `peach`
 
 `peach[f;y]` is a drop-in parallel replacement for `` f'y `` (each): it forks
 `AMBER_THREADS` worker **processes** (default: the online CPU count, via `sysconf`;
-previously a hardcoded `4`, which oversubscribed small boxes and under-used large ones — see
+previously a hardcoded `4`, which oversubscribed small boxes and under-used large ones; see
 [CHANGELOG](../CHANGELOG.md)), each applies `f` to a slice of `y`,
-serialises its result with the binary serializer (`-8!`, §10b — it was `` `k `` text before
+serialises its result with the binary serializer (`-8!`, §10b, where it was `` `k `` text before
 1.9.3) and streams it back, and the parent decodes it with `-9!` and concatenates. The result is
 **identical** to serial `` f'y `` for every value (vectors, symbols, tables, nested, ragged).
 
-Since 1.9.3 a worker that fails — an error raised inside `f`, a signal, a chunk that cannot be
-encoded — is detected via the child's exit status and surfaced as a clean, trappable
+Since 1.9.3 a worker that fails, whether an error raised inside `f`, a signal, or a chunk that cannot be
+encoded, is detected via the child's exit status and surfaced as a clean, trappable
 `'worker error in peach`, instead of the parent silently returning a short result. Every child is
 still reaped, so no zombies and no orphaned pipes are left behind:
 
@@ -525,16 +525,16 @@ AMBER_THREADS=8 ./amber examples/peach.k   / a Monte-Carlo demo timing serial vs
 ```
 
 It uses `fork` (copy-on-write heap), so there are no shared-memory data races and no
-atomic-refcount tax on ordinary single-threaded code — the same reason q parallelises
+atomic-refcount tax on ordinary single-threaded code, the same reason q parallelises
 with processes rather than threading its interpreter. And with no GIL, every worker runs on
 a real core at once. Use it for **coarse-grained, compute-heavy** per-item work (Monte-Carlo,
 per-symbol fits, bootstraps, parallel loads); for fine-grained work the fork + serialise
 round-trip makes plain `'` faster. `AMBER_THREADS=1` forces serial. See BENCHMARKS.md §4.
 
-## 9b. Display — Q-style grid preview
+## 9b. Display: Q-style grid preview
 
 `show t` and a bare table / keyed table / dict at the prompt print only the first `CROWS`
-rows (default **20**), then a `..` line to show there is more — exactly like q's console. The
+rows (default **20**), then a `..` line to show there is more, exactly like q's console. The
 cap is applied *before* formatting, so previewing a million-row table is instant. Set
 `CROWS:10` (or any n) at the prompt to change the preview height; small results print in full.
 
@@ -543,7 +543,7 @@ grid (thousands-separated, e.g. `[1,000 rows x 4 cols]`); the counts are the tru
 before the `CROWS` truncation.
 
 **ANSI syntax highlighting.** Grid output (tables, keyed tables, dictionaries) is coloured for
-dark terminals with a vivid 256-colour, **14-hue per-column palette** (`PAL`) — each column gets a
+dark terminals with a vivid 256-colour, **14-hue per-column palette** (`PAL`): each column gets a
 distinct colour, headers are bold white, and nulls / the size footer are dimmed. Colour is applied
 *after* width padding, and `vlen`/`vstrip` strip the escape bytes before every column-width and
 header-underline calculation, so alignment is exact. Set `COLOR:0` to disable (e.g. when
@@ -559,13 +559,13 @@ terminal.
 
 Numeric and temporal columns are **right-aligned** (symbol / char / string columns left-aligned),
 the header underline is dimmed grey, and null sentinels (`0N` / `0n` / `0w` / a blank cell) render
-faint grey. Float precision in a grid is controlled by the **`PREC`** global — the number of
+faint grey. Float precision in a grid is controlled by the **`PREC`** global, the number of
 decimals to show (default `7`); set `PREC:0N` for full precision. `PREC` affects grid display only,
 never the stored values.
 
 =======
 >>>>>>> main:AMBER.md
-## 9b′. Error ergonomics — Rust-style diagnostics
+## 9b′. Error ergonomics: Rust-style diagnostics
 
 Every error is rendered **once**, as a single Rust-compiler-style report: a category-specific
 `error[CODE]` line, a `-->` locator, a gutter-aligned source line, an underline spanning the whole
@@ -601,9 +601,9 @@ error[E0105]: Syntax or parse error
   = help: Check for unbalanced brackets (), [], {}, unterminated strings, or invalid syntax.
 ```
 
-Before 1.9.4 the same failure printed **twice** — the report above, immediately followed by the
+Before 1.9.4 the same failure printed **twice**: the report above, immediately followed by the
 legacy ngn/k block (`'value` / source line / bare `^`). The compact form is still built (it is
-what `.[f;args;handler]` receives and what `` `err`` returns), it is simply no longer echoed to
+what `.[f;args;handler]` receives and what `` `err`` returns), it is no longer echoed to
 stderr once a rich report has been shown. Disable diagnostics and the compact form is printed
 instead, so an error is never silently swallowed.
 
@@ -644,7 +644,7 @@ AMBER_DIAG=0 ./amber    # opt out: compact one-line errors only
 ```
 
 `` `diag 0`` does the same at runtime and returns the previous setting, which is what
-`tests/harness.k` and `std.k`'s `protect` use so a suite that deliberately provokes errors it
+`tests/harness.k` and `std.k`'s `protect` use so a suite that provokes errors it
 then catches does not drown stderr in red. `` `diag`` with a non-numeric argument reads the
 setting without changing it.
 
@@ -654,18 +654,18 @@ setting without changing it.
 `report_diagnostic_ex()` (code, title, label, secondary spans, help, note, colour) and the
 back-compatible `report_diagnostic()`. The palette lives in `src/ansi.h` so other consumers can
 match it. `src/e.c` owns the category catalogue (`edtab`), the token widener (`etok`) and `eD()`,
-which every error path funnels through — the evaluator/compiler via `eS()` (`src/b.c`) and the
+which every error path funnels through: the evaluator/compiler via `eS()` (`src/b.c`) and the
 parser directly (`src/p.c`). Exercise it from Amber with the `` `dgn`` self-test builtin
 (`` `dgn 0`` → `1`), which checks the layout, the underline characters, the inline label, gutter
 alignment, ANSI suppression when colour is off, and the complete category → code matrix above.
 
 ---
 
-## 9c. Terminal charts — `chart` and its presets
+## 9c. Terminal charts: `chart` and its presets
 
 Charts are a first-class output format, not a debugging aid: framed, with a scaled and
 labelled axis, several series at a time, and a downsampler that keeps a million-point series
-readable. The drawing surface is **Braille** — a 2×4 dot bitmask per character cell, so a
+readable. The drawing surface is **Braille**: a 2×4 dot bitmask per character cell, so a
 `W`×`H` box is really a `2W`×`4H` raster.
 
 Everything funnels into **`chart`**, which takes a dictionary of options. The other verbs are
@@ -674,7 +674,7 @@ presets over it, so there is exactly one place where a default lives.
 | verb | takes | draws |
 |---|---|---|
 | `chart d` | option dictionary | anything below, fully specified |
-| `plot v` · `plot (v;W;H)` · `plot (a;b;c)` | a vector, or a list/dict of columns | one line — or one labelled line per column |
+| `plot v` · `plot (v;W;H)` · `plot (a;b;c)` | a vector, or a list/dict of columns | one line, or one labelled line per column |
 | `plots (a;b;c)` · `plots \`a\`b!(x;y)` | several vectors, or a dict | several series + legend |
 | `xyplot (xs;ys)` | two vectors | y against a **real x axis** |
 | `scatter (xs;ys)` | two vectors | points, unjoined |
@@ -690,36 +690,36 @@ presets over it, so there is exactly one place where a default lives.
 ### Temporal axes
 
 An axis whose values are a **time** is labelled as a time, not as the integer the column
-actually holds. Amber's temporal types keep numeric storage inside a column (§1), so a *vector*
-cannot carry its own unit — only an atom can. The unit is therefore either **stated** or
+holds. Amber's temporal types keep numeric storage inside a column (§1), so a *vector*
+cannot carry its own unit; only an atom can. The unit is therefore either **stated** or
 **inferred**:
 
 | `xunit` / `yunit` | the values are | labels look like |
 |---|---|---|
 | `` `num `` | plain numbers | `1000`, `2000`, … |
-| `` `time `` (`` `ms ``) | milliseconds of day — Amber's `time` columns | `09:30:00`, and `09:30:00.250` once the step is sub-second |
+| `` `time `` (`` `ms ``) | milliseconds of day, for Amber's `time` columns | `09:30:00`, and `09:30:00.250` once the step is sub-second |
 | `` `sec `` | seconds of day | `09:30:00` |
-| `` `date `` (`` `day ``) | days since `2000.01.01` — Amber's `date` columns | `2024.03.02` |
-| `` `stamp `` (`` `ns ``) | nanoseconds since `2000.01.01` — `timestamp` columns | a clock inside one day, `MM.DDDHH:MM` under a month, else a date |
-| `` `auto `` (default) | — | inferred, see below |
+| `` `date `` (`` `day ``) | days since `2000.01.01`, for Amber's `date` columns | `2024.03.02` |
+| `` `stamp `` (`` `ns ``) | nanoseconds since `2000.01.01`, for `timestamp` columns | a clock inside one day, `MM.DDDHH:MM` under a month, else a date |
+| `` `auto `` (default) | (none) | inferred, see below |
 
 Ticks land on **round clock and calendar boundaries** (`09:30`, `10:00`, a Monday, the first of
 the month) rather than on 1-2-5 counts of the underlying integer, and the number of ticks is
-chosen from how wide that unit's labels are — so a 19-character timestamp label gets fewer,
+chosen from how wide that unit's labels are, so a 19-character timestamp label gets fewer,
 well-spaced ticks instead of a row of labels that collide and get dropped. The plot area is
 unaffected: the labels live in the gutter, so the same series at the same size draws the same
 shape whatever the unit.
 
-`` `auto `` is deliberately narrow, because guessing wrong turns an ordinary count into a clock:
+`` `auto `` claims a narrow range on purpose, because guessing wrong turns an ordinary count into a clock:
 
 * whole numbers at or above `1e15` are **ns timestamps** (any instant more than eleven days past
-  the epoch — nothing anyone plots is a raw count that big);
+  the epoch, and nothing anyone plots is a raw count that big);
 * whole numbers inside one day and **at least an hour in** are **milliseconds of day**;
 * everything else is a plain number.
 
 So `xyplot (trades\`time; trades\`px)` reads as a clock for a normal session, while an index of
-a few million samples stays a number. A session that genuinely starts near midnight, or a
-`date` column (whose values overlap ordinary small counts), needs the unit stated —
+a few million samples stays a number. A session that starts near midnight, or a
+`date` column (whose values overlap ordinary small counts), needs the unit stated:
 `chart \`x\`y\`xunit!(t;v;\`time)`, or the `tplot` / `dplot` / `pplot` shorthands.
 
 `candle` passes a `time` or `date` column straight through, so OHLC bars from `bars[10;t]` are
@@ -731,7 +731,7 @@ labelled with the clock times of the bars.
 
 | key | default | meaning |
 |---|---|---|
-| `y` | — | a vector, or a list of vectors (one per series) |
+| `y` | (none) | a vector, or a list of vectors (one per series) |
 | `x` | index | matching x coordinates; one vector, or one per series |
 | `w` `h` | fit terminal | size in character cells |
 | `ylim` `xlim` | auto | `(lo;hi)` to pin an axis |
@@ -743,7 +743,7 @@ labelled with the clock times of the bars.
 | `names` | `()` | one label per series |
 | `col` | palette | one 256-colour code per series |
 | `style` | `0` | per series: `0` line, `1` scatter, `2` step, `3` area |
-| `xunit` `yunit` | `` `auto `` | how to label that axis — see **Temporal axes** above |
+| `xunit` `yunit` | `` `auto `` | how to label that axis; see **Temporal axes** above |
 
 ```q
 plot t`px                                       / one column, framed and labelled
@@ -771,11 +771,11 @@ All of these print directly via `` `0:``. The C kernels are `plotC`/`candleC` in
 `plt` kernel also still accepts the bare `(v;W;H)` form, which returns an unframed canvas.
 See [`examples/graphs.k`](../examples/graphs.k) for a 31-chart tour.
 
-## 9d. Apache Arrow C Data Interface — `arrow.export` · `arrow.import`
+## 9d. Apache Arrow C Data Interface: `arrow.export` · `arrow.import`
 
 Zero-dependency interop with PyArrow / Polars / DuckDB over the stable Arrow C ABI (no
 `libarrow`). `arrow.export t` → `(schemaAddr; arrayAddr)` (64-bit C-ABI pointers); export is
-**zero-copy** — each Arrow child `buffers[1]` aliases the Amber column payload and a `release`
+**zero-copy**: each Arrow child `buffers[1]` aliases the Amber column payload and a `release`
 callback drops the refcount when the consumer finishes. `arrow.import (schemaAddr; arrayAddr)`
 → Amber table (a copy: Amber's inline object header precludes aliasing a foreign buffer),
 translating format strings and validity bitmaps (→ `0N`/`0n`/null). Numeric widths, ranges
@@ -799,7 +799,7 @@ like[("cat";"dog";"cab");"c*"]/ 101b
 
 ---
 
-## 10b. Binary serialization — `-8!` · `-9!`
+## 10b. Binary serialization: `-8!` · `-9!`
 
 `-8!x` encodes any K value into a compact, contiguous byte vector (`tC`); `-9!y` decodes that
 vector back into the original value. The round trip is exact:
@@ -818,7 +818,7 @@ b:-8!+`a`b!(1 2 3;4 5 6)   / a table -> bytes
 **What round-trips.** Atoms (`` `i `` `` `l `` `` `f `` `` `c `` `` `s ``, date, time, timestamp),
 every vector type including bit vectors, symbol vectors, general/nested lists, dictionaries,
 tables, keyed tables, empty vectors and the empty general list, nulls (`0N`, `0n`), infinities
-(`0w`, `-0w`), and **column attributes** — a `` `s``-sorted column arrives still sorted and keeps
+(`0w`, `-0w`), and **column attributes**, so a `` `s``-sorted column arrives still sorted and keeps
 the O(log n) binary-search path in `?`.
 
 Two things worth knowing:
@@ -834,7 +834,7 @@ depth-limited throughout; a truncated, corrupt or over-long buffer raises a clea
 than reading past the end.
 
 `-8!`/`-9!` occupy the negative-integer `!` slots, as in q. Only `-8` and `-9` on an integer atom
-are intercepted — every other left argument still means `mod`.
+are intercepted; every other left argument still means `mod`.
 
 `peach` uses this as its worker wire format (§9a). See `examples/peach_verify.k` for the full
 verification suite.
@@ -932,18 +932,18 @@ arrow      arrow.export arrow.import                    (Arrow C Data Interface)
 Loaded automatically by `repl.k` after `amber.k`/`fin.k`. They add, in lightweight text‑based
 form, a large slice of q's system vocabulary:
 
-* **`std.k`** — vectorised **moving aggregates** (`mcount msum mavg mprd mvar mdev mmin mmax`,
+* **`std.k`**: vectorised **moving aggregates** (`mcount msum mavg mprd mvar mdev mmin mmax`,
   O(n) prefix sums), a little linear algebra (`dot`, `mmu`), **`parse`/`eval`/`reval`** and a
   text **`ser`/`deser`** round‑trip (portable Amber text, *not* the q binary `-8!`/`-9!`),
   `protect` (like `.Q.trp`), typed cast helpers, `peach`, and `ts` (time an expression).
-* **`sys.k`** — the `.z` clocks/handlers (`z.p z.P z.n z.d z.D z.t z.T z.z`; `z.pg z.ps z.po
+* **`sys.k`**: the `.z` clocks/handlers (`z.p z.P z.n z.d z.D z.t z.T z.z`; `z.pg z.ps z.po
   z.pc z.ts z.exit` are stubs), `.Q` utilities (`Q.f Q.fmt Q.s Q.ty Q.qt Q.id Q.dd Q.gc Q.w
   Q.fc Q.trp`), `.j` JSON (`j.j`/`j.k`), a minimal `.h` HTML renderer, and `plot`/`candle`.
-* **`hdb.k`** — on‑disk data: `dset`/`dget` (value ↔ file), `splay`/`dload` (splayed table ↔
+* **`hdb.k`**: on‑disk data: `dset`/`dget` (value ↔ file), `splay`/`dload` (splayed table ↔
   directory, one file per column with a `.d`), `partsave`/`partload`/`parts` (value‑partitioned
-  database with `par.txt`). Storage is portable Amber text read back with `eval` — human‑readable
+  database with `par.txt`). Storage is portable Amber text read back with `eval`: human‑readable
   and version‑independent, but not memory‑mapped.
-* **`ipc.k`** — raw‑socket messaging (`hopen hclose hsend hrecv hsync`, text protocol — not the
+* **`ipc.k`**: raw‑socket messaging (`hopen hclose hsend hrecv hsync`, a text protocol rather than the
   q binary wire) and an in‑process tickerplant (`u.def u.sub u.pub u.get u.end`).
 
 ## Help inside the REPL
@@ -958,17 +958,17 @@ functions, `\cd path` change directory, `\grid MODE` set the table border
 (`clean`/`rounded`/`sharp`/`heavy`), `\clear` clear the screen, `\a` print the licence, `\\` exit.
 
 **Diagnostics:** `\v` a rich workspace inspector (every global as a Name/Type/Shape/Memory
-table — see `src/inspect.{h,c}`); `\ast expr` a colour-coded parse tree, parse-only, nothing is
-executed (`src/ast.{h,c}` — every leaf is typed explicitly, `Int64`/`Float64`/`Symbol`/`Char`/a
+table; see `src/inspect.{h,c}`); `\ast expr` a colour-coded parse tree, parse-only, nothing is
+executed (`src/ast.{h,c}`, where every leaf is typed explicitly, `Int64`/`Float64`/`Symbol`/`Char`/a
 `(TypeName Vector[len])` preview, never a generic placeholder; tacit hooks `(f g)`, forks
 `(f g h)`, and curried projections `1+`/`f[x;;z]` get their own explicit labels; see
 [CHANGELOG](../CHANGELOG.md)); `\trace expr` a 4-phase timing report (parse/arena/exec/format) plus
 the arena's peak scratch usage for that evaluation, running the same qSQL rewrite the prompt uses
 so tracing a table or `select …` expression renders correctly (`src/trace.{h,c}`); `\disasm expr`
 compiles an expression and prints the real bytecode Amber's compiler/VM (`src/b.c`) produces for
-it — locals, constant pool, instruction stream — without executing it (`src/vm.{h,c}`).
+it, including locals, constant pool and instruction stream, without executing it (`src/vm.{h,c}`).
 
-**Engine extensions** (all additive, standalone modules — see the README's
+**Engine extensions** (all additive, standalone modules; see the README's
 [Engine extensions](INTERNALS.md#engine-extensions) section for full detail and benchmarks):
 SIMD vector kernels (`src/simd.{h,c}`, AVX2/NEON/scalar, self-test `` `simd 0``), a
 multithreaded vector engine for arrays over 100,000 elements (`src/parallel.{h,c}`, self-test
@@ -1004,4 +1004,4 @@ in[3 5; ids]                      / binary-searched membership
 
 ---
 
-*Amber — a low-latency array language. GNU AGPLv3.*
+*Amber: a low-latency array language. GNU AGPLv3.*

@@ -3,23 +3,23 @@
 Amber covers a large slice of q's *vocabulary* (aggregations, dicts, tables, keyed tables,
 the join family, qSQL-style select/by, strings, tick bars, native temporal types, all four
 attributes, moving aggregates, a text-based on-disk / IPC layer, and the `.z`/`.Q`/`.j`/`.h`
-namespaces). This is an honest map of what a full q implementation has that Amber does **not** yet — roughly in
+namespaces). This is an honest map of what a full q implementation has that Amber does **not** yet, roughly in
 order of how much it would change day-to-day use. "partial" means some of it exists.
 
-## 0. New in 1.9 (not q gaps — Amber-specific)
+## 0. New in 1.9 (not q gaps; Amber-specific)
 Three items here are *beyond* stock q rather than catching up to it, so they don't map to a gap
 above; they're recorded for completeness:
-- **Native `aj` kernel** — the as-of join's match step is now a C `lower_bound` (branch-free /
+- **Native `aj` kernel.** The as-of join's match step is now a C `lower_bound` (branch-free /
   `cmov`) over each group's sorted ns-timestamp slice, replacing the per-row K `bin`. In-memory
   `aj`/`aj0` are covered; **on-disk `aj` over partitions** is still missing (see §4).
-- **HFT zero-allocation arena** — a thread-local 16 MB bump allocator for the transient buffers
+- **HFT zero-allocation arena.** A thread-local 16 MB bump allocator for the transient buffers
   produced during evaluation, rewound per eval cycle to keep `malloc`/`free` jitter off the hot
   path. (q has no user-facing equivalent; it is managed internally there.)
-- **Rust-style diagnostics** — opt-in (`AMBER_DIAG=1`) `error[CODE]` reports with a `-->` locator,
+- **Rust-style diagnostics.** Opt-in (`AMBER_DIAG=1`) `error[CODE]` reports with a `-->` locator,
   a gutter-aligned source line, `^^^` underlines and a `= help:` note. This is *richer* than q's
   single-line `'error` and than Amber's own default caret line, which both remain.
 
-## 1. Temporal types — done (1.7)
+## 1. Temporal types: done (1.7)
 Native `date` / `time` / `timestamp` types with literal syntax (`2026.07.30`,
 `10:00:05.000`, `2026.07.30D09:30:00.000000000`), auto-display, type-aware arithmetic
 (`time+time`, `date-date`→days, `date+n`, comparisons), string casts `"D"$`/`"T"$`/`"P"$`,
@@ -33,16 +33,16 @@ so `xasc`/`s#` work unchanged.
 set of typed nulls/infinities (`0Nh 0Ne 0Wp 0Nd …`). Amber has long/float/char/symbol/bool
 (and int) only, with `0N`/`0n` nulls.
 
-## 3. qSQL (the template syntax) — mostly done
+## 3. qSQL (the template syntax): mostly done
 The `select … by … from … where …` template now works **bare** (no `sel"…"` wrapper), along
-with `exec`, `update`, and `delete` — see AMBER.md §7. Since **2.0.0** this bare form also works
+with `exec`, `update`, and `delete`; see AMBER.md §7. Since **2.0.0** this bare form also works
 inside a **`.k` script** loaded once the stdlib is up (the loader runs each file through the same
 `qrw` rewriter the REPL uses), so `sel"…"` is no longer needed in files either.
-- **Since 2.2:** **sorted and limited selects** are done — `select[5]`, `select[-5]`,
+- **Since 2.2:** **sorted and limited selects** are done: `select[5]`, `select[-5]`,
   `select[>px]`, `select[<sym]`, `select[5;>px]` and multi-key `select[<sym;>px]`, on plain and
   keyed results alike, with q's clause order (where → by/select → sort → limit). See AMBER.md §7.
-- **Since 2.2:** `fby` **inside a where-clause** works — `select from t where
-  px=(max;px) fby sym` — and its group spec may be one column, a *list* of columns
+- **Since 2.2:** `fby` **inside a where-clause** works, as in `select from t where
+  px=(max;px) fby sym`, and its group spec may be one column, a *list* of columns
   or a table. (The where-clause form was always implemented; this list used to say
   otherwise. The multi-column list form returned one value per column instead of
   one per row and is fixed.)
@@ -53,21 +53,21 @@ inside a **`.k` script** loaded once the stdlib is up (the loader runs each file
 - **Amber has:** bare + string `select/exec/update/delete`, plus the functional helpers
   `qwhere qselect qby fby xgroup ungroup`.
 
-## 3b. Signed zero in the collation — a known divergence from q
+## 3b. Signed zero in the collation: a known divergence from q
 
 Since 2.2 `-0.0` and `0.0` are **one value** for `=`, `~`, `in`, `=` (group), `?`
 (distinct) and find, exactly as in q.
 
 They still differ in **sort order**: Amber puts `-0.0` before `0.0` unconditionally, so
 `asc (0.0;-0.0)` is `-0.0 0.0` and `<(0.0;-0.0)` is `1 0`. q's sort is *stable* for equal
-elements and leaves them alone — `asc (0.0;-0.0)` is `0 -0f` there, `iasc` is `0 1`.
+elements and leaves them alone, so `asc (0.0;-0.0)` is `0 -0f` there and `iasc` is `0 1`.
 
 Now that the two compare equal this is a tie-break, not an ordering, and Amber's is a
 total order over the bit patterns: defensible, deterministic, and cheap (the radix key is
 a bijection, which is what makes the keys-only sort possible at all). Making it stable
 would mean carrying the original index through the sort kernels for a case no program
 should depend on, so it is disclosed rather than changed.
-## 4. On-disk data (HDB) — partial (`hdb.k`)
+## 4. On-disk data (HDB): partial (`hdb.k`)
 Amber now has a **text-serialised** on-disk layer: `dset`/`dget` (value ↔ single file),
 `splay`/`dload` (splayed table ↔ directory, one file per column plus a `.d`), and
 `partsave`/`partload`/`parts` (**value-partitioned** database, one splayed dir per partition
@@ -78,16 +78,16 @@ human-readable and version-independent.
   syms), `.Q.chk`, `.Q.ind`, `.Q.fs`/`.Q.fsn` (chunked file streaming), on-disk `aj` over
   partitions, and a binary (not text) on-disk encoding.
 
-## 5. IPC & the tick architecture — partial (`ipc.k`)
+## 5. IPC & the tick architecture: partial (`ipc.k`)
 Amber now ships `hopen`/`hclose`/`hsend`/`hrecv`/`hsync` (raw-socket messaging) and an
-**in-process tickerplant** — `u.def` (define a stream), `u.sub`/`u.pub` (subscribe / publish),
+**in-process tickerplant**: `u.def` (define a stream), `u.sub`/`u.pub` (subscribe / publish),
 `u.get`/`u.end`. `.z.pg`/`.z.ps` handlers exist as evaluate-stubs in `sys.k`.
 - **Still missing:** q's **binary wire protocol** (Amber's sockets exchange plain text
   expressions, not IPC-encoded messages), real over-the-network `.z.pg`/`.z.ps`/`.z.po`/`.z.pc`
   handler dispatch, `.z.w`, websockets, TLS, and the full multi-process tickerplant / RDB / HDB /
   gateway pattern (`tick.q`, `r.q`, `u.q`, `w.q`).
 
-## 6. Attributes — 4 of 4 (setters); find accel on 2
+## 6. Attributes: 4 of 4 (setters); find accel on 2
 All four attributes are set in C: **sorted (`` `sa``)**, **unique (`` `ua``)**,
 **parted (`` `pa``)**, **grouped (`` `ga``)**, read back with `` `at``. **Sorted and parted**
 vectors take the O(log n) binary-search find path; grouped pairs with `fin.k`'s group index
@@ -97,7 +97,7 @@ vectors take the O(log n) binary-search find path; grouped pairs with `fin.k`'s 
   takes the O(log n) path without an explicit `` `sa``.
 - **Still missing:** dedicated find/`where=` acceleration driven by the `` `u`` / `` `g``
   attribute *itself* (grouped speed currently comes from the separate group index, not the
-  attribute), and general **attribute preservation through ops** — apart from sorts, the flag
+  attribute), and general **attribute preservation through ops**. Apart from sorts, the flag
   is dropped whenever an op builds a new vector, whereas q keeps/drops attributes by defined
   per-op rules.
 
@@ -105,7 +105,7 @@ vectors take the O(log n) binary-search find path; grouped pairs with `fin.k`'s 
 `` `sym$`` enumeration domains, `.Q.en`, foreign keys (`` `t$`` and dotted `order.customer.name`
 traversal), linked columns, `.Q.fk`. None in Amber.
 
-## 8. System namespaces — partial (`sys.k`)
+## 8. System namespaces: partial (`sys.k`)
 Amber now provides the common members (as `.`-style names `z.*`/`Q.*`/`j.*`/`h.*`):
 - **`.z.*`** clocks **done**: `z.p z.P z.n z.d z.D z.t z.T z.z z.w`. Handlers `z.pg z.ps z.po
   z.pc z.ts z.exit` exist but are **evaluate/no-op stubs** (no real timer `\t` or port dispatch).
@@ -118,34 +118,34 @@ Amber now provides the common members (as `.`-style names `z.*`/`Q.*`/`j.*`/`h.*
 - **`.h.*`** markup **partial**: a minimal HTML table/row renderer (`h.ht h.hrow h.hc`).
   Missing: CSV/XML/XLS rendering and an HTTP server.
 
-## 9. Moving / window aggregates — mostly done (`std.k`, `fin.k`)
+## 9. Moving / window aggregates: mostly done (`std.k`, `fin.k`)
 The moving family is implemented: `mcount msum mavg mprd mvar mdev mmin mmax` (`std.k`, O(n)
 prefix sums; `mmin`/`mmax` are O(n·w) window scans) plus **`ema`** (C kernel, O(n) sweep).
 - **Amber also has:** `sums prds mins maxs deltas ratios differ prev next wsum wavg xprev`.
 - **Still missing:** `wj2`, `ajf`/`ajf0` (fill as-of), `ij`/`lj` fill variants, vectorised
   `ssr`, and `rank`/`xrank` *over tables*. (`mmin`/`mmax` could also move to an O(n)
-  monotonic-deque form — see BENCHMARKS.md.)
+  monotonic-deque form; see BENCHMARKS.md.)
 
-## 10. Linear algebra & math — partial (`std.k`)
+## 10. Linear algebra & math: partial (`std.k`)
 `mmu` (matrix multiply) and `dot` (vector dot product) are implemented. Amber also has
 `cor cov var dev svar sdev med` and scalar math.
 - **Still missing:** `inv` (inverse), `lsq` (least squares), `.q` solve; distributional
   `rand`/`binr`.
 
-## 11. Casting / parsing / serialization — partial (`std.k`)
+## 11. Casting / parsing / serialization: partial (`std.k`)
 `parse`/`eval`/`reval` are implemented, along with a **text** `ser`/`deser` round-trip (portable
 Amber text via `` `k``, inverted by `eval`) and `protect` (like `.Q.trp`). Amber also has
 `sv vs ss ssr like`, string casts, and `` `k`` (k-repr).
 - **Done in 1.9.3:** the **binary** serialiser `-8!`/`-9!` (`src/ser.c`). `-8!x` encodes any K
   value to a contiguous byte vector and `-9!y` decodes it back byte-exact, preserving attributes,
   nulls, infinities, nested empties and symbol *names* (not process-local ids). `peach` now uses
-  it as its worker wire format instead of `` `k `` text. Lambdas/projections are deliberately
+  it as its worker wire format instead of `` `k `` text. Lambdas and projections are
   out of scope and raise `'type`. Verified by `examples/peach_verify.k` (60 cases).
 - **Still missing:** `-18!` (compress), `-11!`
   (replay log), the full `$` cast matrix (guid, byte), typed file reader `("SIF";",")0:file`,
   `vs`/`sv` for base-N and temporal, `md5`, `.Q.btoa` (base64).
 
-## 12. Concurrency & performance ops — partial
+## 12. Concurrency & performance ops: partial
 `peach` is real **multi-core** (forks `AMBER_THREADS` worker processes, C kernel), and `ts`
 (`\ts`) times an expression.
 - **Still missing:** q-style secondary threads (`-s`), a *parallel* `.Q.fc` (Amber's is a
@@ -154,16 +154,16 @@ Amber text via `` `k``, inverted by `eval`) and `protect` (like `.Q.trp`). Amber
   serialiser (§11), which cut
   that transfer cost.
 
-## 13. Console / environment niceties — partial
+## 13. Console / environment niceties: partial
 `\ts` (via `ts`) and number formatting `.Q.f`/`.Q.fmt` are done.
 - **Still missing:** `\c` console dims, a real `\w` (workspace) report (`Q.w` is a placeholder),
   `system"…"`, `getenv`/`setenv`, `\cd`, and editor tooling / a language server.
 
-## 14. Known engine bugs — both fixed in 2.0.0
+## 14. Known engine bugs: both fixed in 2.0.0
 - ~~**Bare `/` comment line silently truncates the rest of the file.**~~ **Fixed in 2.0.0.**
   A `.k` line containing *only* `/` opens a **block comment** that runs to the next line starting
   with `\` (standard K); with no closing `\` before EOF it used to run to end of file and exit 0
-  with no diagnostic — silently dropping the rest of the file. `src/p.c`'s `pe` now raises a clean
+  with no diagnostic, silently dropping the rest of the file. `src/p.c`'s `pe` now raises a clean
   parse error (`P(!e,ep0())`) when that block comment is unterminated, converting silent data loss
   into a loud error. Properly-closed `/ … \` blocks and trailing `/ …` line comments are unchanged.
   Regression: `tests/test_comments.sh` (4 cases, wired into `run_tests.sh`).
@@ -177,7 +177,7 @@ Amber text via `` `k``, inverted by `eval`) and `protect` (like `.Q.trp`). Amber
 
 ---
 
-Already done (once gaps): **bare qSQL** `select/exec/update/delete` (1.5), **as-of join** —
+Already done (once gaps): **bare qSQL** `select/exec/update/delete` (1.5), **as-of join**,
 vectorised in 1.5, **native C kernel** in 1.9, **multi-core `peach`** (1.6, fork-based),
 **Q-style grid preview** (1.6), **Unicode `\grid` modes + diagnostics + arena** (1.9),
 **native temporal types** (1.7), **C-kernel `wj`/`ema`** (1.7), **terminal charting**
@@ -187,28 +187,28 @@ vectorised in 1.5, **native C kernel** in 1.9, **multi-core `peach`** (1.6, fork
 tickerplant** `hopen`/`u.*` (§5).
 
 ### Nice next steps (highest value first)
-1. ~~**Binary serialiser (`` -8!``/`` -9!``)**~~ — **done in 1.9.3** (`src/ser.c`). `peach` and
+1. ~~**Binary serialiser (`` -8!``/`` -9!``)**~~ is **done in 1.9.3** (`src/ser.c`). `peach` and
    the on-disk / IPC layers all currently move values as **text** (`` `k ``) and re-parse them.
    A compact binary encode/decode would cut that transfer cost, widen the range of workloads where
    `peach` beats serial `'`, and unlock a real (binary-wire) IPC and a binary on-disk format.
-2. **Grouped-attribute-driven `where sym=`** — the `` `g`` setter exists, but fast `where sym=`
+2. **Grouped-attribute-driven `where sym=`.** The `` `g`` setter exists, but fast `where sym=`
    currently comes from `fin.k`'s separate group index rather than from the attribute itself.
    Wiring the attribute into the C find path (as sorted/parted already are) would make it automatic.
-3. **Missing atom types** (§2) — `short`/`real`/`byte`/`guid` and their typed nulls/infinities.
-4. **Attribute preservation through ops** (§6) — keep/drop attributes by q's per-op rules instead
+3. **Missing atom types** (§2): `short`/`real`/`byte`/`guid` and their typed nulls/infinities.
+4. **Attribute preservation through ops** (§6): keep/drop attributes by q's per-op rules instead
    of always dropping on a new allocation.
-5. **True partitioned/mmap HDB** (§4) — a date-partitioned, memory-mapped on-disk format beyond
+5. **True partitioned/mmap HDB** (§4): a date-partitioned, memory-mapped on-disk format beyond
    the current text splay, plus `.Q.dpft`/`.Q.en`.
-6. **Live REPL syntax highlighting** — colouring tokens *as you type*, not just on a line you've
+6. **Live REPL syntax highlighting**, meaning colouring tokens *as you type*, not just on a line you've
    already run. This needs `repl.k`'s raw-keystroke input loop rewritten to re-tokenize and
    redraw the current line on every keypress (a fragile, previously-regression-prone path in
-   this project — see CHANGELOG), not a new `\command`. A prior attempt shipped as a `\hl <expr>`
+   this project; see CHANGELOG), not a new `\command`. A prior attempt shipped as a `\hl <expr>`
    one-shot echo command instead and was removed for not matching what "live" means.
 
 
 ---
 
-## Known leniencies (accepted, not bugs) — recorded 1.9
+## Known leniencies (accepted, not bugs), recorded 1.9
 
 Surfaced by the qSQL matrix (`tests/test_qsql.k`) and pinned there with `tk[...]` so a change in
 behaviour shows up as a test failure rather than a silent regression.
@@ -217,8 +217,8 @@ behaviour shows up as a test failure rather than a silent regression.
   used to group by nulls instead of rejecting the query the way q does. The old `qbc` turned
   each by-item into a symbol of its own source text, so grouping ran on a column no table has and
   `` b#+t`` yielded nulls. `qbyx` now compiles by-items with the same `qfn` machinery the
-  select-list uses, so an unknown name raises as an undefined variable and — the reason the fix
-  matters — `by time:1m xbar time` groups on the computed bucket instead of on one null key.
+  select-list uses, so an unknown name raises as an undefined variable and, the reason the fix
+  matters, `by time:1m xbar time` groups on the computed bucket instead of on one null key.
 - **A trapped error still renders a diagnostic to stderr *by default*.** `.[f;args;handler]`
   (and `protect`, documented as `.Q.trp`-like) catches the error correctly, but the Rust-style
   report is written at error-creation time, before the handler runs. Rather than defer rendering
@@ -234,7 +234,7 @@ behaviour shows up as a test failure rather than a silent regression.
   `` `s#``/`` `u#``/`` `p#``/`` `g#``.** Several doc passages still write `s#` informally when
   describing the sorted attribute; the working syntax is `` `at(`sa 1 2 3)``.
 - **`f [a;b]` with a space is not a call.** K reads `[a;b]` as a bracketed statement block, so
-  the expression silently evaluates to a discarded projection `f[b;]` — no error, no output.
+  the expression silently evaluates to a discarded projection `f[b;]`, with no error and no output.
   Bit this repo's own qSQL suite (42 of 93 cases stopped running while the suite still reported
   "ALL TESTS PASSED"); `tests/harness.k`'s `hexpect[n]` now guards against it.
 - **A bare `/` on a line of its own opens a block comment** that runs to the next line starting

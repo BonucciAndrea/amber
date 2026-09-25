@@ -525,6 +525,8 @@ A1(vmdT,x(al((L)vm_selftest())))
 // table via csv_read() (csv.{h,c}). x itself is a string, not the arena/file --
 // csv_read() re-opens the path with a plain C FILE*, so x is only consumed here.
 X1(csvrT,RC(C buf[1024];U n=MIN(xn,SZ buf-1);MC(buf,xC,n);buf[n]=0;x(csv_read(buf)))R_(et(x)))
+// `csvx "path": the new reader against the 2.2.0 reference reader, bit for bit (csv.h).
+X1(csvxT,RC(C buf[1024];U n=MIN(xn,SZ buf-1);MC(buf,xC,n);buf[n]=0;x(al((L)csv_check(buf))))R_(et(x)))
 // CSV parser self-test builtin (`csv0): writes a small known CSV (mixed long/
 // float/symbol columns, an embedded comma inside a quoted field, an escaped
 // quote, and one empty cell) to a temp file, parses it with csv_read(), and
@@ -550,7 +552,7 @@ A1(csv0T,
  // evs() returns 0 (not `au`) on a parse/compile/eval error -- check
  // truthiness of r itself, not identity against `au`, before touching it.
  A r=ok?evs(chk,0):0;ok=ok&&r&&tru(r);I(r,mr(r))
- remove(P_);x(al((L)ok)))
+ remove(P_);ok=ok&&csv_selftest();x(al((L)ok)))
 // AST visualizer self-test builtin (`astt): runs \ast (src/ast.{h,c}) over a
 // set of representative expressions with stdout captured and checks each
 // printed tree contains the expected labels -- guards against the historical
@@ -815,8 +817,8 @@ Z A1(qdiag,I(amdiag<0,amdiag=1)I v=amdiag;I(_tz(x),amdiag=!!gl_(x))x(0);ai(v))
 Z A1(qsrt,srtC(x))
 Z A1(qat,UC a=(_tP(x)||!LH(tG,_t(x),tS))?0:_at(x);x(0);a?({C b[2]={"\0supg"[a],0};sym(b);}):as(0))//amber: get attribute
 ZN AX(ext,P(n-xK,er8(a,n))V*f=(V*)(x&-1ull>>16);S(n,R(1,((A1*)f)(a[0]))R(2,((A2*)f)(a[0],a[1]))R(3,((A3*)f)(a[0],a[1],a[2]))R(4,((A4*)f)(a[0],a[1],a[2],a[3]))R_(en8(a,n)))0)
-ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4]={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg"};
- G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggC,ed)[fI((V*)s,L(s),v)](x))
+ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4]={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg"};
+ G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggC,ed)[fI((V*)s,L(s),v)](x))
 /* ---- tacit trains: hook (f g) and fork (f g h) --------------------------
  * A general list of length 2 or 3 whose every element is a function becomes a
  * TRAIN when it is applied: (f g) is a hook, (f g h) a fork (APL/J/BQN rules).

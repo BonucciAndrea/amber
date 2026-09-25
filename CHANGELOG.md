@@ -106,6 +106,13 @@ diffing: **1,085,384 and 32,185 lines, byte-identical**.
 
 ### Performance
 
+- **`` `csvr `` is 40x faster and uses a fifth of the memory.** On a 693 MB, 16.5M-row file
+  it now loads in 0.30 s instead of 12.2 s, with a 0.94 GB peak instead of 5.2 GB. The file is
+  mapped and split into one chunk per thread, and each chunk parses straight into the final
+  columns. Numbers take an exact fast path and fall back to `strtod`. The output is
+  bit-identical to the old reader, which `csv.c` keeps as a reference; `` `csv0 `` checks the
+  two against each other and `` `csvx "path" `` does the same for any file. This also fixes a
+  heap overflow in the old reader on files with lone-CR line endings.
 - **`+/(a ± s*b)@&m` is one pass.** Each piece was already fused, but chained they still wrote
   and re-read an 80 MB intermediate at 10M elements. **1.46x**; the expression now runs at
   memory bandwidth.

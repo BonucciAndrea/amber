@@ -239,7 +239,7 @@ amber> \trace (1+2)*3-4
 
 The timer prints `ns` / `us` / `ms` as appropriate, and **Arena peak** is a true high-water mark
 from `arena_peak()`. Only expressions that reach an arena-backed kernel (`aj`, `wj`,
-`` `csvr``, `\ast`) report a non-zero peak:
+`\ast`) report a non-zero peak:
 
 ```
 amber> \trace aj[`s`t;tr;qt]

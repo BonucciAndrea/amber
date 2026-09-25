@@ -9,13 +9,12 @@
  * type inference (Long, Float, or Symbol) instead of leaving every column
  * as text.
  *
- * The file's bytes and the transient per-field pointer table are read
- * through arena_alloc() (arena.h) -- one bump-allocated scratch region,
- * released with a single arena_reset() when parsing finishes -- rather
- * than a malloc() per field/row, matching how src/a.c's ajc() (the as-of
- * join kernel) uses the arena for its own transient work. Only the final
- * typed column vectors (built with aL()/aF()/aS()) and the table they are
- * assembled into are real, persistent, refcounted heap values.
+ * The file is mapped (or read into one buffer where mmap is unavailable),
+ * split at row boundaries into one chunk per thread (AMBER_THREADS, see
+ * parallel.h; files under 1 MB use one), and parsed straight into the final
+ * column vectors: no per-field table, no second pass over the cells. Peak
+ * memory is about the columns themselves; parsed input pages are handed
+ * back to the kernel as the reader goes. See csv.c for the phases.
  *
  * Parsing rules (a practical RFC 4180 subset, not a full implementation):
  *   - fields are comma-separated; rows are separated by "\n" or "\r\n"
@@ -38,5 +37,16 @@
  * table (same shape as `([]col:vals;...)`). Returns the generic null atom
  * (au) and prints a message to stderr if the file cannot be opened. */
 A csv_read(S path);
+
+/* `csvx "path.csv": reads the file with both csv_read() and the 2.2.0
+ * reference reader kept in csv.c and returns 1 iff the two agree bit for bit
+ * (names, types, lengths, every byte of every column); the first difference
+ * is printed to stderr. */
+int csv_check(S path);
+
+/* `csv0's C half: the number parsers against strtoll/strtod on random and
+ * edge-case strings (AMBER_CSV_NUMTEST=n sets how many), then csv_check()
+ * over a fixture battery and random files at 1..9 forced chunks. 1 = pass. */
+int csv_selftest(void);
 
 #endif /* AMBER_CSV_H */

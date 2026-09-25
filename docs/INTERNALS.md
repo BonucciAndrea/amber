@@ -142,9 +142,14 @@ the *real* VM surfaces that a from-scratch reimplementation would not.)
 
 **Native CSV parser** (`src/csv.{h,c}`): `` `csvr "path.csv" `` parses a CSV file directly into
 a real Amber table (the same `flp(names ! cols)` shape `([]…)` produces, verified against
-`@`, `meta`, and `qwhere`), through the arena allocator, with per-column type inference (Long /
-Float / Symbol), RFC-4180-subset quoted-field handling (embedded commas, `""`-escaped quotes),
-and empty cells mapped to that column's null (`0N`/`0n`/`` ` ``):
+`@`, `meta`, and `qwhere`), with per-column type inference (Long / Float / Symbol),
+RFC-4180-subset quoted-field handling (embedded commas, `""`-escaped quotes), and empty cells
+mapped to that column's null (`0N`/`0n`/`` ` ``). The file is mapped, split at row boundaries
+into one chunk per thread (`AMBER_THREADS`), and each chunk is parsed straight into the final
+columns with speculative typing: a column starts as Long and a chunk re-reads only that column
+when a cell promotes it to Float or Symbol. Numbers go through an exact fast path (Clinger's:
+at most 19 significant digits and a power of ten up to 10^22), and everything else goes to
+`strtoll`/`strtod`, so every value is the one libc gives:
 
 ```
 amber> t:`csvr "trades.csv"
@@ -152,8 +157,12 @@ amber> meta t
 amber> select from t where px>150
 ```
 
-Self-test: `` `csv0 0 `` (round-trips a fixture CSV through the parser and checks shape/values/
-nulls via `#`/`~`/`@`).
+Self-test: `` `csv0 0 `` round-trips a fixture CSV through the parser and checks shape, values
+and nulls via `#`/`~`/`@`. It then compares the number parsers against `strtoll`/`strtod` on
+300,000 random and edge-case strings (`AMBER_CSV_NUMTEST=n` changes the count). Finally it
+checks the reader against the 2.2.0 reader, which `csv.c` keeps as a reference, **bit for bit**
+on a fixture battery and 300 random files, splitting each file into 1 to 9 chunks.
+`` `csvx "path.csv" `` runs that comparison on any file and returns 1 when they agree.
 
 **Honest deviations, stated plainly:** (1) no `src/compiler.c` was added, because `b.c` already *is*
 the real compiler and VM, so a second one would be redundant/misleading; `vm.c` disassembles

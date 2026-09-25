@@ -46,6 +46,14 @@ void par_mul_f64(const double  *a, const double  *b, double  *out, size_t n);
 int64_t par_sum_i64(const int64_t *a, size_t n);
 double  par_sum_f64(const double  *a, size_t n);
 
+/* Runs fn(ctx, i) for every i in [0,t), each on its own thread (i == 0 on the
+ * calling thread), and returns when all are done. t is clamped to
+ * [1, PAR_MAX_THREADS]. If a thread cannot be started its call runs inline,
+ * so fn must not assume real concurrency -- on wasm, where pthread_create()
+ * runs the routine synchronously, every call is serial. Used by src/csv.c to
+ * parse one chunk of a file per thread. */
+void par_run(int t, void (*fn)(void *ctx, int i), void *ctx);
+
 #ifdef __cplusplus
 }
 #endif

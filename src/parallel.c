@@ -130,3 +130,21 @@ double par_sum_f64(const double *a, size_t n) {
     free(partial);
     return total;
 }
+
+typedef struct { void (*fn)(void *, int); void *ctx; int i; } RunJob;
+static void *run_job(void *arg) { RunJob *j = (RunJob *)arg; j->fn(j->ctx, j->i); return 0; }
+
+void par_run(int t, void (*fn)(void *ctx, int i), void *ctx) {
+    if (t < 1) t = 1;
+    if (t > PAR_MAX_THREADS) t = PAR_MAX_THREADS;
+    pthread_t th[PAR_MAX_THREADS];
+    RunJob jobs[PAR_MAX_THREADS];
+    int started[PAR_MAX_THREADS];
+    for (int i = 1; i < t; i++) {
+        jobs[i] = (RunJob){fn, ctx, i};
+        started[i] = pthread_create(&th[i], 0, run_job, &jobs[i]) == 0;
+        if (!started[i]) fn(ctx, i);
+    }
+    fn(ctx, 0);
+    for (int i = 1; i < t; i++) if (started[i]) pthread_join(th[i], 0);
+}

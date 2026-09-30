@@ -52,7 +52,7 @@ X1(str,Rilf(A y=aC(24);TY(sf)*f=xtf?sf:sl;AN(f(yC,gl(x))-yC,y))R(tdt,K1("dstr",a
 V hexC(S s,U n,C*r){Z S q="0123456789abcdef";F(n,C c=*s++;*r++=q[(UC)c>>4];*r++=q[c&15])}
 X1(hex,RmMA(e1f(hex,x))RC(A y=aC(2*xn);Mx(hexC(xV,xn,yV))y)R_(et(x)))
 ZN V unh0(C*q){MS(q,-1,256);F(10,q['0'+i]=i)F(6,q['A'+i]=q['a'+i]=10+i)}
-A unhC(S s,U n)_(P(n&1,el0())Z C q[256];I(!*q,unh0(q))C v=0;F(n,v|=q[s[i]])P(v<0,ed0())A x=aC(n>>1);F(xn,xc=q[*s]<<4|q[s[1]];s+=2)x)
+A unhC(S s,U n)_(P(n&1,el0())Z C q[256];I(!*q,unh0(q))C v=0;F(n,v|=q[(UC)s[i]])P(v<0,ed0())A x=aC(n>>1);F(xn,xc=q[*s]<<4|q[s[1]];s+=2)x)
 X1(unh,RmMA(e1f(unh,x))RC(x(unhC(xV,xn)))R_(et(x)))
 
 Z A pre(C c,A x)_(cat(ac(c),x))

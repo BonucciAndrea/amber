@@ -28,6 +28,10 @@ tv[`dotted;"a.b.c:1;a.b.c";1]
 / ---- drop an index from a bit-boolean list (upstream ngn/k 02d24691) ----
 t[`dropBits;(01B_1;0101B_2;01B_0);(,0;0 1 1;,1)]
 
-hexpect[6]
+/ ---- hex decoding rejects bytes above 127 (upstream ngn/k 387f90c0) ----
+te[`hexHigh;"`hex?`c$200 200"]
+t[`hexOk;`hex?"414a";"AJ"]
+
+hexpect[8]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

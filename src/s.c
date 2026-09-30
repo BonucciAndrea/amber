@@ -65,7 +65,7 @@ Z A kss_(A x,B r)_(                                                             
  A y=aC(n);C*s=yC;*s++='"';F(xn,C c=xc;I((UC)c<128&&e[c],*s++='\\';c=e[c])*s++=c)*s='"';x(y))
 Z A1(kss,kss_(x,0))
 Z A kp(A x,S p,S q,S s)_(C t=TS[xt];B b=strchr(p,t)?xn==1:strchr(q,t)?xn<2:!!strchr(s,t);x=N(kst(x));b?par(x):x)   //kst's error (a failing formatter) passes up
-A1(kl,kp(x,"AC","IFS","Mmqruvw"))
+A1(kl,P(xtA&&!xn,x=N(kst(x));*xC-'('?par(x):x)kp(x,"AC","IFS","Mmqruvw"))//keys: an empty generic list prints as () or 0#,.. which needs parentheses
 A1(kr,kp(x,"","","qruvw"))
 A1(kw,kp(x,"AC","IFS","Mmpqw"))
 A1(kT1,Q(xtT)Q(xN==1)pre(',',N(kr(fir(x)))))

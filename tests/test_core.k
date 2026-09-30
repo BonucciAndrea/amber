@@ -1055,7 +1055,13 @@ t[`distinctEmptiesCount;#?(();0#,1 2;();0#,1 2;0#,"ab");3]
 t[`gradeEmpties;<(0#,1 2;();0#,1 2);1 0 2]
 t[`gradeEmptiesSorted;{s:x@<x;(<s)~!#s}@(0#,1 2;();0#,1 2;();0#,"ab");1b]
 
-hexpect[674]
+/ ---- a dict whose keys are an empty generic list prints so it reads back ----
+t[`dictKeysEmptyText;`k@(0#,,1)!();"(0#,,0N)!()"]
+t[`dictKeysEmptyBack;{x~. `k@x}@(0#,,1)!();1b]
+t[`dictKeysEmptyParen;`k@()!();"()!()"]
+t[`dictKeysVec;`k@(`a`b!1 2);"`a`b!1 2"]
+
+hexpect[678]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

@@ -146,7 +146,7 @@ Z I cr(A x/*0*/,B r)_(I o=xo;                                                   
   YS(Nr(xz,1);Nr(xy,1);A z=enl(cS(drp(-1,str(ii(y,0)))));Nr(z,1);mr(z);M(ba)M(2)z=aA1(au);Nl(z,xy,r);z(0);OK)
   Nr(xz,1);Nl(x,xy,r);OK)// x[y]+:z     assignment
  P(n>3&&(y==av||y==DLR),n--;I p[n];A*a=xA;F(n&~1,Nr(*++a,1);M(i&1?bj:bz)p[i]=nb;M(0))               // :[x;y;z] cond
-  Nr(n&1?*++a:au,1);F(n&~1,I d=(i&1?nb-1:p[i+1])-p[i];I(i&1,I j=(n&~1)-1;W(i<j&&d>255,d=p[j]-1-p[i];j-=2))P(d>255,o)b[p[i]]=d)I(!r,M(bP))OK)
+  Nr(n&1?*++a:au,1);F(n&~1,I d=(i&1?nb-1:p[i+1])-p[i];I(i&1,I j=(n&~1)-1;W(i<j&&d>255,d=p[j]-2-p[i];j-=2))P(d>255,o)b[p[i]]=d)I(!r,M(bP))OK)
  I(n==2&&y==FIR,A z=xy;I(ztA&&zn==2,P(zx-REV<3u,Nr(zy,1);M(bu+zx-REV+LAS-au)I(!r,M(bP))OK)))        // *|x      recognized idioms
  {I f_=fus(x,r);P(f_!=-2,f_)}                                                                        // amber 2.1 fused idioms
  I p=0;F(n-1,A z=xA[n-1-i];I(z-GAP,Nr(z,1))E(p=1;cc(GAP,o)))I(p,Nr(xx,1);M(bp)M(n-1))               // x[y;]    projection

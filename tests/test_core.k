@@ -17,6 +17,10 @@ LOAD DIR,"/harness.k"
 t[`mulWidenNeg;(,-50)*-3;,150]
 t[`mulWidenPos;(,100)*100;,10000]
 
-hexpect[2]
+/ ---- $[..] with a branch over 255 bytes jumps right (upstream ngn/k 2c4e817b) ----
+condLong:{$[x=0;`a;x=1;x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x;x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x]}
+t[`condLong;(condLong 0;condLong 1;condLong 2);(`a;111;42)]
+
+hexpect[3]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

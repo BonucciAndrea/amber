@@ -89,7 +89,7 @@ Z A mulzZ(L a,A y,U f)_(U n=yn,w=MAX(tZ(a)-tG,yw-3);y=ct(tG+w,y);A z=an(n,yt);I 
  ov?mulzZ(a,ct(tG+w+1,z(y)),f):y(z))
 
 #define AMMOD(TY,AT) {CO TY*RES p=yV;AT mm=(AT)m;S4(zw-3,F(zn,{AT r=(AT)p[i]%mm;zg=(G)(r<0?r+mm:r);}),F(zn,{AT r=(AT)p[i]%mm;zh=(H)(r<0?r+mm:r);}),F(zn,{AT r=(AT)p[i]%mm;zi=(I)(r<0?r+mm:r);}),F(zn,{AT r=(AT)p[i]%mm;zl=(L)(r<0?r+mm:r);}))}
-Z A modzZ(L m,A y,U f)_(P(!m,y)
+Z A modzZ(L m,A y,U f)_(P(!m,ytC?cG(y):y)
  // amber 2.3: a power-of-two divisor floors with an arithmetic shift instead of a divide
  // (shifted in 64 bits: s can be up to 62, past the width of the narrow types)
  P(m<0&&m!=NL&&!(-m&(-m-1)),U s=(U)CTZ((W)-m);A z=an(yn,yt);S4(yw-3,F(zn,zg=(G)((L)yg>>s)),F(zn,zh=(H)((L)yh>>s)),F(zn,zi=(I)((L)yi>>s)),F(zn,zl=yl>>s))y(z))

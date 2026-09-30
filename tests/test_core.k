@@ -1044,7 +1044,10 @@ t[`eachEnumStr;$2147483647+!2;("2147483647";"2147483648")]
 / ---- a sparse deal from over 2^31 stays in range (upstream ngn/k ea79e42a) ----
 tv[`dealLarge;"r:-1000?5000000000;(~0>&/r;5000000000>|/r;1000=#?r)";1 1 1]
 
-hexpect[662]
+/ ---- 0! of chars gives ints, as 1! does (upstream ngn/k 60d587e0) ----
+t[`modZeroChars;(0!"ab";1!"ab";0!"a");(97 98;0 0;97)]
+
+hexpect[663]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

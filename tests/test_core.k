@@ -1056,7 +1056,15 @@ t[`divCharsOne;-1!"ab";97 98]
 t[`divCharsHigh;-2!0x8081;-64 -64]
 t[`divCharsEmpty;@-2!"";`I]
 
-hexpect[669]
+/ ---- a float prints as the shortest text that is nearest to it ----
+/ (the values are built exactly, without reading a float literal)
+t[`fltPrint2m24;`k@1%16777216.0;"5.960464477539063e-8"]
+t[`fltPrint2p89;`k@*/89#2.0;"6.189700196426902e26"]
+t[`fltPrint2p62a;`k@`f$4350140171453357568;"4.3501401714533576e18"]
+t[`fltPrint2p61;`k@`f$2305844108725321728;"2.3058441087253217e18"]
+t[`fltPrintSmall;`k@0.5 0.25 1.5 100.0;"0.5 0.25 1.5 100.0"]
+
+hexpect[674]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

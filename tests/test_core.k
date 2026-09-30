@@ -32,6 +32,11 @@ t[`dropBits;(01B_1;0101B_2;01B_0);(,0;0 1 1;,1)]
 te[`hexHigh;"`hex?`c$200 200"]
 t[`hexOk;`hex?"414a";"AJ"]
 
-hexpect[8]
+/ ---- joins over 2^32 characters are an error (upstream ngn/k 153a01cf) ----
+te[`joinLimit;"s:1048576#\"a\";#\",\"/4096#,s"]
+te[`joinLimitStr;"s:1048576#\"a\";#\"ab\"/4096#,s"]
+t[`joinSmall;","/("ab";"c");"ab,c"]
+
+hexpect[11]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

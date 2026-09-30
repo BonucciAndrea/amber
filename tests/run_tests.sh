@@ -115,6 +115,12 @@ if [ "$QUICK" = 0 ]; then
   if bash tests/test_comments.sh; then echo "  -> PASS (tests/test_comments.sh)"
   else echo "  -> FAIL (tests/test_comments.sh)"; fail=1; fi
 
+  # A program piped to ./amber: rep() reads stdin in blocks, and a line split
+  # across two reads must still run whole.
+  say "piped stdin (tests/test_stdin.sh)"
+  if bash tests/test_stdin.sh; then echo "  -> PASS (tests/test_stdin.sh)"
+  else echo "  -> FAIL (tests/test_stdin.sh)"; fail=1; fi
+
   # Bare qSQL in a loaded .k file (amber 2.0.0): the loader runs each file through
   # the qSQL rewriter, so `select .. from ..` works in a script with no sel"..."
   # wrapper; a non-qSQL script must be left untouched.

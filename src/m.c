@@ -498,7 +498,7 @@ A evs(S s,B r)_(W(*s,ArenaMark am_=arena_mark();A x=evs1(&s);P(!x,I(r,s=strchrnu
 // line editor (src/ln.c) -- editing, history and Tab completion -- and falls
 // back to the historical raw read(2) only when stdin is not a terminal.
 B rep()_(I(am_ln_interactive(),N x=0;C*p=am_repl_getline("",&x);P(!p,0)evs(p,1);free(p);1)
- Z C b[256];C*s=b,*q;
+ Z C b[256],*s=b;C*q;//s is static: an incomplete line stays in b until its newline is read
  W(1,L n=read(0,s,b-s+SZ b);P(n<=0,0)s+=n;q=memchr(s-n,10,n);
      P(q,C*p=b;W(q,*q=0;evs(p,1);p=q+1;q=memchr(p,10,s-p))MC(b,p,s-p);s+=b-p;1)
      P(b+SZ b<=s,die("LONGLINE")))1)

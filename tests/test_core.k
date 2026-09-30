@@ -1025,7 +1025,11 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[651]
+/ ---- indexing with a table gives a table (upstream ngn/k b87b7d27) ----
+t[`indexTable;1 2 3@+`c`e!(0 1;2 0);+`c`e!(1 2;3 1)]
+t[`indexDict;1 2 3@`c`e!(0 1;2 0);`c`e!(1 2;3 1)]
+
+hexpect[653]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

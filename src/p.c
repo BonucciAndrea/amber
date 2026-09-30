@@ -139,14 +139,14 @@ Z A pt(C*v)_(C c=*s;                                                            
  // alone, and `{[r;ss] 1_ss}` or a top-level `ss:5` silently turned a drop into
  // a projection. `*s!=':'` still keeps the name an ordinary lvalue while it is
  // being defined or amended.
- P(id0(c),S p=s;A x=pP();I(s-p==1&&c-'y'<2u,k=MAX(k,c-'w'))
+ P(id0(c),S p=s;A x=N(pP());I(s-p==1&&c-'y'<2u,k=MAX(k,c-'w'))
   I((infixkw(p,s-p)||am_infix_dyad(p,s-p))&&*s!=':'&&!isparm(p,s-p)&&!am_name_nonfn(p,s-p),*v=1)AO(p-s0,x))
  P(C09(c)&&s[1]==':',B u=s[2]==':';s+=2+u;U i=20+c-'0';P(i>25,ep0())*v=1;Lt(tv-u)|i)
  P(c=='0'&&s[1]=='x',s+=2;p1(p0x()))
  P(num(s)&&(c-'-'||s==s0||(!id1(s[-1])&&!strchr(")]}\"",s[-1]))),
   A tlit=pTmp();P(tlit,tlit)
   B d=0;S p=s;c=*p;W(1,p=pw(p);B(!num(p))p+=*p=='-';c=*p;B(!CA9(c))W(CA9(c)||c=='.'||c==':',d|=!!strchr(".nwef",c);c=*++p))p1(d?pF():pZ()))
- P(c>>7,S p=s;A x=pP();*v=1;AO(p-s0,x))
+ P(c>>7,S p=s;A x=N(pP());*v=1;AO(p-s0,x))
  U i=si("'/\\",c);P(i<3,c=*++s;B h=c==':';s+=h;*v=1;aw+i+3*h)i=si(vc,c);P(i>19,GAP)
  B u=*++s==':';s+=u;*v=1;Lt(tv-u)|i)
 Z X1(pm,                                                                                            //monadify

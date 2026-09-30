@@ -21,6 +21,10 @@ t[`mulWidenPos;(,100)*100;,10000]
 condLong:{$[x=0;`a;x=1;x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x;x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x]}
 t[`condLong;(condLong 0;condLong 1;condLong 2);(`a;111;42)]
 
-hexpect[3]
+/ ---- a dotted name of more than 8 parts is an error (upstream ngn/k aaa99ad7) ----
+te[`dottedLimit;"a.b.c.d.e.f.g.h.i"]
+tv[`dotted;"a.b.c:1;a.b.c";1]
+
+hexpect[5]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

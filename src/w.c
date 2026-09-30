@@ -42,8 +42,8 @@ Z A nf(A x,L m,A y/*0m1*/)_(F(m,y=N(x1(y)))y)
 Z A3(ws,/*001*/A u=enl(zR);W(1,A w=y1(zR);B(!w,u=u(0))B(!tru(w))z=x1(z);P(!z,u(0))PSH(u,zR))z(u))
 Z A3(wf,/*001*/W(1,A w=y1(zR);B(!w,z=z(0))B(!tru(w))z=x1(z);P(!z,0))z)
 Z A nS(A x,L m,CO A*a,U n/*0m1n*/)_(P(n==1,ns(x,m,*a))P(m<0,mrn(n,a);ed0())P(m<n,mrn(n-m-1,a+m+1);sqz(aV(tA,m+1,a)))
- A z=aA(m+n),*b=zA;zn=n;MC(zA,a,64);F(m+1-n,mRn(n,b);b[n]=Nz(x8(b,n));zn++;b++)sqz(z))
-Z A wS(A x,A y,CO A*a,U n/*001n*/)_(P(n==1,ws(x,y,*a))Ab8;MC(b,a,64);mRn(n,b);A z=sqz(aV(tA,n,b));
+ P((W)m-(U)m,el8(a,n))A z=aA(m+n),*b=zA;zn=n;MC(zA,a,n<<3);F(m+1-n,mRn(n,b);b[n]=Nz(x8(b,n));zn++;b++)sqz(z))
+Z A wS(A x,A y,CO A*a,U n/*001n*/)_(P(n==1,ws(x,y,*a))Ab8;MC(b,a,n<<3);mRn(n,b);A z=sqz(aV(tA,n,b));
  W(1,A u=y1(ii(z,zn-1));B(!u,z=z(0))B(!tru(u))mRn(n-1,b+1);u=x8(b,n);B(!u,*b=au;z=z(0))memmove(b,b+1,n-1<<3);b[n-1]=u;PSH(z,uR))mrn(n,b);z)
 Z A nF(A x,L m,CO A*a,U n/*0m1n*/)_(P(n==1,nf(x,m,*a))las(N(nS(x,m,a,n))))
 Z A wF(A x,A y,CO A*a,U n/*001n*/)_(P(n==1,wf(x,y,*a))las(N(wS(x,y,a,n))))

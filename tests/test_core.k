@@ -41,6 +41,10 @@ t[`joinSmall;","/("ab";"c");"ab,c"]
 te[`longNameUnset;"фффффффффффффффффффффффффффффф 1"]
 tv[`longName;"фффффффффффффффффффффффффффффф:3;фффффффффффффффффффффффффффффф+1";4]
 
-hexpect[13]
+/ ---- an n-ary scan with a count of 2^32 or more is an error (upstream ngn/k cde0b34c) ----
+te[`scanCountLimit;"{x+y}\\[4294967296;1;2]"]
+t[`scanCount;{x+y}\[3;1;2];1 2 3 5]
+
+hexpect[15]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

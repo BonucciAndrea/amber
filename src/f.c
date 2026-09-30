@@ -74,6 +74,17 @@ V free(V*);
 I posix_memalign(V**,N,N);
 Z V*amal(N b)_(V*p=0;P(posix_memalign(&p,64,b),(V*)0)p)
 #define RD(w,p,i) ((w)==0?(L)((CO G*)(p))[i]:(w)==1?(L)((CO H*)(p))[i]:(w)==2?(L)((CO I*)(p))[i]:((CO L*)(p))[i])
+// amber 2.3: the probe loops are specialised per (probe width, result width),
+// so no width is re-tested per element, and the result is written at the
+// narrowest width that holds an index into x -- 2 bytes for a 1000-key table,
+// where it used to be 8. A miss is written as the sentinel -1 (no index is
+// negative); only if one occurred is the result rewritten at 64 bits with 0N
+// there, which is exactly the vector the old code built. With no miss the
+// values are identical and only the storage width differs, as everywhere else
+// Amber narrows integers.
+#define FNDP(PT,RT,LOOK) {CO PT*RES pb=(CO PT*)b;RT*RES rr=(RT*)zV;for(U i=0;i<n;i++){L v=(L)pb[i];L k;LOOK;rr[i]=(RT)k;miss|=k<0;}}
+#define FNDW(LOOK) S4(wy,S4(wz,FNDP(G,G,LOOK),FNDP(G,H,LOOK),FNDP(G,I,LOOK),FNDP(G,L,LOOK)),S4(wz,FNDP(H,G,LOOK),FNDP(H,H,LOOK),FNDP(H,I,LOOK),FNDP(H,L,LOOK)), \
+                                S4(wz,FNDP(I,G,LOOK),FNDP(I,H,LOOK),FNDP(I,I,LOOK),FNDP(I,L,LOOK)),S4(wz,FNDP(L,G,LOOK),FNDP(L,H,LOOK),FNDP(L,I,LOOK),FNDP(L,L,LOOK)))
 Z A fndL(A x,A y,B srt)_(
  P(srt,0)
  P(!(xtH||xtI||xtL||xtS),0)   // amber 2.1: symbol vectors too (interned 32-bit ids, compared by value)
@@ -84,15 +95,17 @@ Z A fndL(A x,A y,B srt)_(
  F(m,L v=RD(wx,a,i);I(v<lo,lo=v)I(v>hi,hi=v))
  P(hi<lo,0)
  W rg=(W)hi-(W)lo+1,nn=(W)n,mm=(W)m,scan=nn*mm;
- B useL=rg<=LUTDOM&&scan>rg+2*(nn+mm);   /* flat table worth its memset?     */
+ // rg==0: the keys span the whole 64-bit line and hi-lo+1 wrapped (amber 2.3: this
+ // used to pass as a zero-slot LUT and write past it). Sparse, so hash, as unqL does.
+ B useL=rg&&rg<=LUTDOM&&scan>rg+2*(nn+mm);   /* flat table worth its memset?     */
  B useH=!useL&&scan>8*(nn+mm);           /* else: hash worth its build?      */
  P(!useL&&!useH,0)
- A z=aL(n);L*RES r=zV;
+ C tz=tZ((L)m-1);U wz=tz-tG;A z=an(n,tz);I miss=0;  // tZ(m-1): the width every index fits
  I(useL,
    I*lut=amal((N)rg*SZ(I));P(!lut,mr(z);0)
    MS(lut,0xff,(N)rg*SZ(I));
    for(U i=m;i--;)lut[(W)RD(wx,a,i)-(W)lo]=(I)i;
-   My(F(n,W d=(W)RD(wy,b,i)-(W)lo;I k=d<rg?lut[d]:-1;r[i]=k<0?NL:k))
+   FNDW(W d=(W)v-(W)lo;k=d<rg?lut[d]:-1)
    free(lut);)
  E(W cap=16,need=2*mm;U lg;W(cap<need,cap<<=1;)
    {W c=cap;lg=0;W(c>1,c>>=1;lg++)}
@@ -102,11 +115,15 @@ Z A fndL(A x,A y,B srt)_(
    MS(hv,0xff,(N)cap*SZ(I));
    for(U i=m;i--;){L v=RD(wx,a,i);W j=((W)v*GOLD)>>sh;
      W(1,B(hv[j]<0,hk[j]=v;hv[j]=(I)i)B(hk[j]==v,hv[j]=(I)i)j=(j+1)&msk)}
-   My(F(n,L v=RD(wy,b,i);
-     W j=((W)v*GOLD)>>sh;L k=NL;
-     W(1,B(hv[j]<0,)B(hk[j]==v,k=hv[j])j=(j+1)&msk)r[i]=k))
+   FNDW(W j=((W)v*GOLD)>>sh;k=-1;W(1,B(hv[j]<0,)B(hk[j]==v,k=hv[j])j=(j+1)&msk))
    free(hk);free(hv);)
- z)
+ y(0);
+ P(!miss,z)
+ // a miss: the 64-bit vector with 0N where -1 was written
+ A u=aL(n);L*RES r=uV;S4(wz,F(n,G k=_G(z)[i];r[i]=k<0?NL:k),F(n,H k=_H(z)[i];r[i]=k<0?NL:k),F(n,I k=_I(z)[i];r[i]=k<0?NL:k),F(n,L k=_L(z)[i];r[i]=k<0?NL:k))
+ mr(z);u)
+#undef FNDW
+#undef FNDP
 
 // ---- amber: O(n) integer `?x` (distinct) -----------------------------------
 // unq's tH/tI/tL arm in src/o.c fell out of C into the K expression
@@ -127,16 +144,25 @@ Z A fndL(A x,A y,B srt)_(
 // type, a degenerate length, or an allocation failure. Never dies.
 #define UNQW(z,i,v,w) S4(w,((G*)(z))[i]=(G)(v),((H*)(z))[i]=(H)(v),((I*)(z))[i]=(I)(v),((L*)(z))[i]=(L)(v))
 
+// amber 2.3: SATURATION. Once as many distinct values have been seen as the
+// range [lo,hi] can hold, no later element can be new, and the scan stops -- a
+// test on the rare "new value" branch only, free on the hot path. An id or
+// category column that uses its whole range (every code 0..999 present) is
+// then answered after the first occurrence of its last value instead of after
+// all n elements. The loop is also specialised per width (RD re-tested it for
+// every element).
+#define UNQLP(T) {CO T*RES p=(CO T*)a;T*RES q=(T*)r;for(U i=0;i<n;i++){T v=p[i];W s=(W)(L)v-(W)lo; \
+  if(!seen[s]){seen[s]=1;q[m++]=v;if((W)m==rg)break;}}}
 Z A unqLUT(A x,L lo,W rg,U wx){
  U n=xn;CO V*a=xV;
  UC*seen=amal((N)rg);
  if(!seen)return 0;
  MS(seen,0,(N)rg);
  A z=an(n,xt);V*r=zV;U m=0;
- for(U i=0;i<n;i++){L v=RD(wx,a,i);W s=(W)v-(W)lo;
-  if(!seen[s]){seen[s]=1;UNQW(r,m,v,wx);m++;}}
+ S4(wx,UNQLP(G),UNQLP(H),UNQLP(I),UNQLP(L))
  free(seen);
  return AN(m,z);}
+#undef UNQLP
 
 // amber 2.1: a BITMAP over the key range whenever it fits in 8 MB (2^26 keys),
 // which covers every id/category column in practice: one bit test per element
@@ -152,7 +178,7 @@ Z A unqBM(A x,L lo,W rg,U wx){
  MS(bm,0,nb*SZ(W));
  A z=an(n,xt);V*r=zV;U m=0;
  for(U i=0;i<n;i++){L v=RD(wx,a,i);W s=(W)v-(W)lo;W b=1ull<<(s&63);W*w=bm+(s>>6);
-  if(!(*w&b)){*w|=b;UNQW(r,m,v,wx);m++;}}
+  if(!(*w&b)){*w|=b;UNQW(r,m,v,wx);m++;if((W)m==rg)break;}}   // saturated: see unqLUT
  free(bm);
  return AN(m,z);}
 Z A unqHASH(A x,U wx){
@@ -212,7 +238,7 @@ Z NI A unqLUTF(A x,L lo,W rg){
  MS(seen,0,(N)rg);
  A z=an(n,xt);F*RES r=(F*)zV;U m=0;
  for(U i=0;i<n;i++){W s=(W)(L)a[i]-(W)lo;
-  if(!seen[s]){seen[s]=1;r[m++]=a[i];}}
+  if(!seen[s]){seen[s]=1;r[m++]=a[i];if((W)m==rg)break;}}   // saturated: see unqLUT
  free(seen);
  return AN(m,z);}
 
@@ -328,7 +354,10 @@ X2(fnd,
   YmMA(r2f(fnd,x,y))
   YE(fnd(x,gZ(y)))
   P(xt==TT[yt]||xtZ&&ytzZ,
-   B srt=!_tP(x)&&xt!=tF&&xt!=tS&&(_at(x)==1||_at(x)==3);TY(fGL)*f=xt==tF?fFL:(srt?G(&bGL,bHL,bIL,bLL):G(&fGL,fHL,fIL,fLL))[xw-3];V*a=xV;U m=xn;
+   // amber 2.3: SORTED only. `p (parted) was also sent here, but parted means
+   // equal values are contiguous, not that they are ordered: `pa 3 3 1 1 2 found
+   // 1 at 0N. A parted vector takes the ordinary hash/LUT path.
+   B srt=!_tP(x)&&xt!=tF&&xt!=tS&&_at(x)==1;TY(fGL)*f=xt==tF?fFL:(srt?G(&bGL,bHL,bIL,bLL):G(&fGL,fHL,fIL,fLL))[xw-3];V*a=xV;U m=xn;
    Yt(az(f(a,m,gl(y))))
    A zl_=fndL(x,y,srt);P(zl_,zl_)
    U n=yn;A z=aL(n);My(S4(yw-3,F(n,zl=f(a,m,yg)),F(n,zl=f(a,m,yh)),F(n,zl=f(a,m,yi)),F(n,zl=f(a,m,yl))))z)

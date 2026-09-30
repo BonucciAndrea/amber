@@ -169,18 +169,32 @@ enum{MWSUM,MWAVG,MWVAR,MWDEV,MWMIN,MWMAX};
 #define MWVARQ ({F m_=c?s/(F)c:NF,q_=c?ss/(F)c-m_*m_:NF;q_<0?0.0:q_;})
 // `ss` is only touched by the variance/deviation instantiations; NEEDSS is a
 // literal 0/1 so the multiply-accumulate vanishes from the sum/avg bodies.
+// amber 2.3: same arithmetic in the same order, restructured. The resync above
+// RECOMPUTES the window at every i that is a multiple of MW_RESYNC (i>=w), which
+// erases all history: from that element on, a block of MW_RESYNC results
+// depends only on the data. So block 0 runs from an empty window, and every
+// later block starts from its own recomputed window -- four of them interleaved,
+// so four independent add chains overlap instead of one serialised chain -- and
+// the per-element `i%per` (an integer division on every element) is gone.
+// Every result is bit-identical to the sequential loop.
+#define MWSTEP(NEEDSS) {F v=p[i];if(v==v){s+=v;if(NEEDSS)ss+=v*v;c++;}            \
+  if(i>=w){F o=p[i-w];if(o==o){s-=o;if(NEEDSS)ss-=o*o;c--;}}}
+#define MWRECOMP(NEEDSS) {F a_=0,q_=0;N k_=0;                                     \
+  for(N j=i+1-w;j<=i;j++){F u=p[j];if(u==u){a_+=u;if(NEEDSS)q_+=u*u;k_++;}}s=a_;ss=q_;c=k_;}
 #define MWRUN(NM,NEEDSS,EMIT)                                                  \
 Z V NM(CO F*RES p,F*RES r,N n,N w){                                            \
-  F s=0,ss=0;N c=0,per=(w<=(N)MW_RESYNC)?(N)MW_RESYNC:0;                       \
-  for(N i=0;i<n;i++){                                                          \
-    F v=p[i];                                                                  \
-    if(v==v){s+=v;if(NEEDSS)ss+=v*v;c++;}                                      \
-    if(i>=w){F o=p[i-w];if(o==o){s-=o;if(NEEDSS)ss-=o*o;c--;}}                 \
-    if(per&&i>=w&&!(i%per)){                                                   \
-      F a_=0,q_=0;N k_=0;                                                      \
-      for(N j=i+1-w;j<=i;j++){F u=p[j];if(u==u){a_+=u;if(NEEDSS)q_+=u*u;k_++;}}\
-      s=a_;ss=q_;c=k_;}                                                        \
-    r[i]=(EMIT);}}
+  CO N B=(N)MW_RESYNC;                                                          \
+  if(w>B){F s=0,ss=0;N c=0;for(N i=0;i<n;i++){MWSTEP(NEEDSS)r[i]=(EMIT);}return;}\
+  {F s=0,ss=0;N c=0;N e=n<B?n:B;for(N i=0;i<e;i++){MWSTEP(NEEDSS)r[i]=(EMIT);}} \
+  N nb=(n+B-1)/B,k=1;                                                          \
+  for(;k+4<=nb&&(k+4)*B<=n;k+=4){                                              \
+    F S_[4],Q_[4];N C_[4];                                                     \
+    for(U b=0;b<4;b++){N i=(k+b)*B;F s,ss;N c;MWRECOMP(NEEDSS)r[i]=(EMIT);S_[b]=s;Q_[b]=ss;C_[b]=c;}\
+    for(N j=1;j<B;j++)for(U b=0;b<4;b++){N i=(k+b)*B+j;F s=S_[b],ss=Q_[b];N c=C_[b];\
+      MWSTEP(NEEDSS)r[i]=(EMIT);S_[b]=s;Q_[b]=ss;C_[b]=c;}}                     \
+  for(;k<nb;k++){N i0=k*B,e=n<i0+B?n:i0+B;F s,ss;N c;                            \
+    {N i=i0;MWRECOMP(NEEDSS)r[i]=(EMIT);}                                       \
+    for(N i=i0+1;i<e;i++){MWSTEP(NEEDSS)r[i]=(EMIT);}}}
 MWRUN(mwsum,0,s)
 MWRUN(mwavg,0,c?s/(F)c:NF)
 MWRUN(mwvar,1,MWVARQ)
@@ -206,6 +220,28 @@ Z V NM(CO T*RES p,T*RES r,N n,N w,U*RES dq,N mk){                               
     r[i]=t>h?p[dq[h&mk]]:v;}}   /* t==h only when the whole window was null */
 #define MWDQ(T,SFX,ISNUL) MWDQ1(mwmin##SFX,T,ISNUL,<) MWDQ1(mwmax##SFX,T,ISNUL,>)
 MWDQ(G,G,0) MWDQ(H,H,0) MWDQ(I,I,0) MWDQ(L,L,0) MWDQ(F,F,v!=v)
+
+// amber 2.3: van Herk / Gil-Werman. Cut the vector into blocks of w. The window
+// ending at block position j is (the suffix of the PREVIOUS block from j+1) plus
+// (the prefix of THIS block up to j), so with the previous block's suffix
+// extremes in a w-entry buffer, each result is one running extreme and one
+// combine: three compares per element, no data-dependent branch, whatever w is.
+// The deque above does an unpredictable pop loop per element instead.
+// Bit-identical to the deque, ties included: the deque keeps the NEWEST of equal
+// extremes (a push pops every back entry that does not strictly beat it), and
+// every combine here keeps its newer operand on a tie -- which is what decides
+// 0.0 against -0.0. NaN is the one case it does not model (the deque skips it
+// as absent): a float column with a NaN is reported and redone by the deque.
+#define MWVH(NM,T,GT,IDV,CHK)                                                  \
+Z I NM(CO T*RES p,T*RES r,N n,N w,T*RES suf){                                  \
+  N m=w<n?w:n;I bad=0;for(N j=0;j<=m;j++)suf[j]=IDV;                           \
+  for(N b=0;b<n;b+=w){N ln=n-b<w?n-b:w;T run=IDV;CO T*RES q=p+b;T*RES o=r+b;   \
+    for(N j=0;j<ln;j++){T v=q[j];CHK;run=(run GT v)?run:v;T u=suf[j+1];o[j]=(u GT run)?u:run;}\
+    if(ln==w&&b+w<n){T s=IDV;for(N j=w;j-->0;){T v=q[j];s=(v GT s)?v:s;suf[j]=s;}}}\
+  return bad;}
+#define MWVH2(T,SFX,LO,HI,CHK) MWVH(mvmax##SFX,T,>,LO,CHK) MWVH(mvmin##SFX,T,<,HI,CHK)
+MWVH2(G,G,(G)-128,(G)127,) MWVH2(H,H,(H)-32768,(H)32767,) MWVH2(I,I,(I)(-2147483647-1),(I)2147483647,)
+MWVH2(L,L,(L)NL,(L)WL,) MWVH2(F,F,-WF,WF,bad|=v!=v)
 
 // Widen any supported numeric vector to double, mapping the integer nulls onto
 // 0n so the sum kernels see one uniform "absent" marker.
@@ -249,18 +285,24 @@ A mwC(A x){
      default:    mwdev(d,r,n,(N)w);break;}
    if(tmp)mr(tmp);
  }else{
-   // plain n-entry scratch from the bucket allocator (recycled after the first
-   // call): measured faster than a masked ring for the deque's access pattern.
-   N mk=(N)-1;
-   A dqa=an((U)n,tI);U*RES dq=(U*)_V(dqa);
+   // amber 2.3: van Herk / Gil-Werman (MWVH above), with the deque kept for
+   // the one input it does not model -- a float column holding a NaN.
    y=an((U)n,t);V*r=_V(y);CO V*p=_V(c);int mx=code==MWMAX;
+   N m=(N)w<n?(N)w:n;A sa=an((U)m+1,t);V*sf=_V(sa);I bad=0;
    switch(t){
-     case tG: mx?mwmaxG(p,r,n,(N)w,dq,mk):mwminG(p,r,n,(N)w,dq,mk);break;
-     case tH: mx?mwmaxH(p,r,n,(N)w,dq,mk):mwminH(p,r,n,(N)w,dq,mk);break;
-     case tI: mx?mwmaxI(p,r,n,(N)w,dq,mk):mwminI(p,r,n,(N)w,dq,mk);break;
-     case tL: mx?mwmaxL(p,r,n,(N)w,dq,mk):mwminL(p,r,n,(N)w,dq,mk);break;
-     default: mx?mwmaxF(p,r,n,(N)w,dq,mk):mwminF(p,r,n,(N)w,dq,mk);break;}
-   mr(dqa);
+     case tG: bad=mx?mvmaxG(p,r,n,(N)w,sf):mvminG(p,r,n,(N)w,sf);break;
+     case tH: bad=mx?mvmaxH(p,r,n,(N)w,sf):mvminH(p,r,n,(N)w,sf);break;
+     case tI: bad=mx?mvmaxI(p,r,n,(N)w,sf):mvminI(p,r,n,(N)w,sf);break;
+     case tL: bad=mx?mvmaxL(p,r,n,(N)w,sf):mvminL(p,r,n,(N)w,sf);break;
+     default: bad=mx?mvmaxF(p,r,n,(N)w,sf):mvminF(p,r,n,(N)w,sf);break;}
+   mr(sa);
+   if(bad){
+     // plain n-entry scratch from the bucket allocator (recycled after the first
+     // call): measured faster than a masked ring for the deque's access pattern.
+     N mk=(N)-1;
+     A dqa=an((U)n,tI);U*RES dq=(U*)_V(dqa);
+     mx?mwmaxF(p,r,n,(N)w,dq,mk):mwminF(p,r,n,(N)w,dq,mk);
+     mr(dqa);}
  }
  return x(y);}
 
@@ -391,9 +433,15 @@ A rdxg(A x){
   case tL: RDXK(W,L,AMKL(p[i])) break;
   default: RDXK(W,F,amkF(p[i])) break;}
  if(srt){for(N i=0;i<n;i++)o[i]=(I)i;arena_release(mk);return y;}
- nb=nb<=4?amnorm4((U*)kA,n,nb):amnorm8((W*)kA,n,nb);
+ nb=kw==4?amnorm4((U*)kA,n,nb):amnorm8((W*)kA,n,nb);
  if(!nb){for(N i=0;i<n;i++)o[i]=(I)i;arena_release(mk);return y;}  // all equal
- I*r=nb<=4?amrdx4((U*)kA,iA,(U*)kB,iB,n,nb)
+ // The kernel follows the KEY WIDTH (kw), never the normalised byte count:
+ // amnorm8 can return 4 or less for 8-byte keys (an int64 or float column whose
+ // span fits in 32 bits once translated), and amrdx4 would then read those
+ // 8-byte keys as twice as many 4-byte ones -- a valid permutation, unsorted,
+ // which silently broke `<x`, and `=x` through its sort fallback, on int64
+ // columns holding both signs and on tightly clustered floats.
+ I*r=kw==4?amrdx4((U*)kA,iA,(U*)kB,iB,n,nb)
           :amrdx8((W*)kA,iA,(W*)kB,iB,n,nb);
  MC(o,r,n*SZ(I));
  arena_release(mk);
@@ -493,8 +541,19 @@ Z NI I cntrangeF(A x,L*lo,L*hi){
  // before the integrality pass rather than after it. cntok() re-checks the
  // same thing on the integers; this is only an early-out, never the decision.
  if(!((mx-mn)+1.0<=(F)CNTMAX))return 0;
- if(!simd_fintegral_f64((CO F*)_V(x),n))return 0;
+ // amber 2.3: no separate integrality pass. The span is small and finite here,
+ // so (L)x[i] is defined for every element, and the histogram pass the caller
+ // runs next converts each one anyway: it checks (F)(L)x[i]==x[i] as it counts
+ // (cntint below) and abandons the counters for the radix on the first miss.
+ // One fewer full read of the vector (80 MB at 10M) on every integral column.
  *lo=(L)mn;*hi=(L)mx;return 1;}
+// Histogram of a float vector already known to lie in [lo,hi] (cntrangeF==1):
+// returns 0 when some element is not integral -- the caller then releases the
+// counters and falls through to the radix, exactly as the old integrality
+// pre-pass made it do. |x|<2^53 is implied by the small span around (L)mn.
+Z B cntint(CO F*RES f,N n,L lo,N*RES c){I bad=0;
+ for(N i=0;i<n;i++){L k=(L)f[i];bad|=(F)k!=f[i];c[(W)k-(W)lo]++;}
+ return !bad;}
 
 // Guard shared by both kernels: the histogram must be cheaper than ordering the
 // elements (rg/2 < n), and must fit the cache budget. rg==0 means the span
@@ -527,7 +586,7 @@ A cntgrd(A x){
  if(!c){arena_release(mk);return 0;}
  MS(c,0,(N)rg*SZ(N));
  CO V*p=_V(x);CO F*RES f=(CO F*)p;
- if(isf){for(N i=0;i<n;i++)c[(W)(L)f[i]-(W)lo]++;}
+ if(isf){if(!cntint(f,n,lo,c)){arena_release(mk);return 0;}}  // integral check rides along (2.3)
  else   {for(N i=0;i<n;i++)c[(W)RD4(w,p,i)-(W)lo]++;}
  {N s=0;for(W b=0;b<rg;b++){N k=c[b];c[b]=s;s+=k;}}
  A y=aI((U)n);I*RES o=(I*)_V(y);
@@ -558,7 +617,7 @@ A cntsrt(A x){
  if(!c){arena_release(mk);return 0;}
  MS(c,0,(N)rg*SZ(N));
  CO V*p=_V(x);CO F*RES f=(CO F*)p;
- if(isf){for(N i=0;i<n;i++)c[(W)(L)f[i]-(W)lo]++;}
+ if(isf){if(!cntint(f,n,lo,c)){arena_release(mk);return 0;}}  // integral check rides along (2.3)
  else   {for(N i=0;i<n;i++)c[(W)RD4(w,p,i)-(W)lo]++;}
  A z=an((U)n,t);V*q=_V(z);
  N o=0;
@@ -692,7 +751,11 @@ A rdxsrt(A x){
 // Both are total: any x that is not a flat vector takes exactly the generic
 // grade-then-index route in C (never a K expression, which would compile back
 // into this very idiom).
+// amber 2.3: an `s vector IS its own ascending sort. The attribute can be
+// trusted now that setting it checks the data and every in-place write drops it
+// (m.c mut/aa, 2.c), so this is q's rule: sorting sorted data costs nothing.
 A1(srtC,UC t=_t(x);
+ I(!_tP(x)&&LH(tG,t,tS)&&_at(x)==1,return x)
  I(!_tP(x)&&LH(tG,t,tS),A c=cntsrt(x);I(c,return x(c))
                         c=rdxsrt(x);I(c,return x(c)))
  A g=asc(xR);P(!g,x(0))A r=i1(x,g);x(0);P(!r,0)I(!_tP(r)&&LH(tG,_t(r),tC),_at(r)=1)r)
@@ -709,4 +772,5 @@ A2(cmprC,/*01*/UC t=xt;
   S4(xw-3,k=simd_compress_8(xV,yV,zV,n,&bad),k=simd_compress_16(xV,yV,zV,n,&bad),k=simd_compress_32(xV,yV,zV,n,&bad),k=simd_compress_64(xV,yV,zV,n,&bad))
   I(!bad,y(0);return AN((U)k,z))
   mr(z);})
- i1(x,whr(y)))
+ A w=whr(y);P(!w,0)   // amber 2.3: & can fail (negative counts, a float mask); i1(x,0) crashed
+ i1(x,w))

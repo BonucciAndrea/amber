@@ -19,6 +19,12 @@
 #if !defined(_DARWIN_C_SOURCE)
 #define _DARWIN_C_SOURCE 1
 #endif
+/* Cygwin's newlib only declares setitimer() (the spinner's timer) with the XSI
+ * or misc extensions on; _POSIX_C_SOURCE alone hides it and GCC 14 then refuses
+ * the implicit declaration. glibc and macOS declare it either way. */
+#if defined(__CYGWIN__) && !defined(_DEFAULT_SOURCE)
+#define _DEFAULT_SOURCE 1
+#endif
 
 #include "ln.h"
 #include "ext.h"

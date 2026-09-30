@@ -403,6 +403,50 @@ t[`litCursorOverflow;   1e309 1.5;               0w 1.5]
 t[`litRoundTrip;        . `k 5e-324;             5e-324]
 t[`litRoundTripVec;     . `k (5e-324;1e-320;1.5);(5e-324;1e-320;1.5)]
 
+/ ---- 2.3: grade of 8-byte keys whose span fits in 32 bits ----
+/ the radix picked its 4-byte kernel from the normalised byte count, so an int64
+/ column holding both signs (or crossing 2^31), or tightly clustered floats,
+/ graded to an unsorted permutation -- and = (group) fell back onto that grade.
+srtd:{[x]g:<x;&/~(1_x g)<-1_x g}
+t[`gradeI64Mixed;   srtd (2147483748;-100),400001!7*!300000;        1b]
+t[`gradeI64Cross;   srtd 2147283648+400001!7*!300000;               1b]
+t[`gradeF64Cluster; srtd 100.0+1e-12*400001!7*!300000;              1b]
+t[`groupI64Mixed;   {#!=x}[(2147483748;-100),400001!7*!300000];    #?(2147483748;-100),400001!7*!300000]
+/ small n takes the other kernel: 7 int64s straddling 2^31 graded to 1 3 5 6 0 2 4 in 2.2.0
+t[`gradeI64Small;   <2147483458 2147483929 2147483995 2147483362 2147483030 2147483293 2147483857; 4 5 3 0 6 1 2]
+/ ---- 2.3: symbols beyond the old 64 KB table, interned by hash ----
+t[`symCapacity;     {#?`$x}[{"symbol_",$x}'!20000];                 20000]
+t[`symRoundTrip;    {x~$`$x}[{"symbol_",$x}'!20000];                1b]
+/ ---- 2.3: peach -- globals are read-only in workers; dicts map values ----
+PG:0
+t[`peachNoupdate;   .[{`pe({PG::x;x};!50)};,0;{`noupdate}];          `noupdate]
+t[`peachGlobalKept; PG;                                              0]
+t[`peachDict;       `pe({x+1};`a`b!1 2);                             `a`b!2 3]
+t[`peachSmallN;     `pe({x*x};!7);                                   {x*x}'!7]
+/ workers used to parse over each other (file-static parser state): 'parse, then a segfault
+t[`peachEval;       `pe({. "1+",$x};!3000);                         1+!3000]
+t[`peachEvalLambda; `pe({. "{x*y}[",($x),";2]"};!2000);             2*!2000]
+/ ---- 2.3: float each-prior through the vector kernels ----
+t[`eachPriorFsub;   -':1.5 4.0 2.5;                                  1.5 2.5 -1.5]
+t[`eachPriorFeq;    =':1.0 1.0 2.0 0n 0n;                            0 1 0 0 1]
+t[`eachPriorFmax;   |':3.0 1.0 4.0;                                  3.0 3.0 4.0]
+/ a seed at the top of the storage width (127 on bytes; 0N for &', which mnmp flips to
+/ the int64 max) came back as seed,seed,..
+t[`eachPriorMinNull; &':0N 3 1 2 5 4;                                0N 0N 1 1 2 4]
+t[`eachPriorSeedMin; 0N&':3 1 2 5 4;                                 0N 1 1 2 4]
+t[`eachPriorSeedTop; 127|':3 1 2 5 4;                                127 3 2 5 5]
+t[`eachPriorSeedWide;1000|':3 1 2 5 4;                               1000 3 2 5 5]
+/ ---- 2.3: fused (1_x) OP ((-1)_x), +/ of it, and +/(a+s*b)@&(c OP k) ----
+SH:3 1 4 1 5 9 2 6;SF:3.5 1.0 4.0 4.0 -2.0
+t[`shiftLt;         (1_SH)<(-1)_SH;                                  1 0 1 0 0 1 0]
+t[`shiftSum;        +/(1_SF)<(-1)_SF;                                2]
+t[`shiftFlip;       ((-1)_SH)-(1_SH);                                2 -3 3 -4 -4 7 -4]
+t[`shiftF;          (1_SF)-(-1)_SF;                                  -2.5 3.0 0.0 -6.0]
+FX:0.0+!10;FY:10.0+!10
+t[`fmsCmp;          +/(FY+2.5*FX)@&FX>5;                             {+/x@&y}[FY+2.5*FX;FX>5]]
+t[`fmsCmpLitLeft;   +/(FY-2*FX)@&5<FX;                               {+/x@&y}[FY-2*FX;FX>5]]
+t[`maskSumCmp;      +/FY@&FX<3;                                      33.0]
+
 / ---- report ----
 fails:r@&{"FAIL"~4#x}'r[;1]
 `0:""

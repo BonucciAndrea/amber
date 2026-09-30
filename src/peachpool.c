@@ -17,6 +17,7 @@ typedef struct {
     U n, grain;
     U cursor;            /* next morsel start; grabbed via __atomic_fetch_add */
     volatile int err;    /* set by the first worker whose f() raised          */
+    char msg[40];        /* that worker's error category, for the re-raise    */
 } Job;
 
 typedef struct {
@@ -48,7 +49,18 @@ static void run_morsels(Job *j) {
             if (j->err) break;                 /* another slice already failed */
             A item = ii(j->dat, i);
             A v = _1(j->f, item);
-            if (!v) { j->err = 1; break; }
+            if (!v) {
+                /* The first worker to fail records its error category (the
+                 * text is in its OWN thread-local buffer, gone once it returns)
+                 * so the dispatcher can re-raise that error, not a generic one. */
+                if (!__atomic_exchange_n(&j->err, 1, __ATOMIC_ACQ_REL)) {
+                    const char *t = errtext(); size_t k = 0;
+                    if (*t == '\'') t++;
+                    while (t[k] && t[k] != '\n' && k < sizeof j->msg - 1) { j->msg[k] = t[k]; k++; }
+                    j->msg[k] = 0;
+                }
+                break;
+            }
             j->out[i] = v;
         }
     }
@@ -140,7 +152,15 @@ A peach_pool(A f, A dat, U n, I nw) {
 
     pthread_mutex_lock(&P.mx);
     P.job.f = f; P.job.dat = dat; P.job.out = out;
-    P.job.n = n; P.job.grain = TASK_GRAIN; P.job.cursor = 0; P.job.err = 0;
+    /* amber 2.3: the morsel shrinks with the input. A fixed 1,024-item grain
+     * handed the WHOLE of any job under 1,025 items to whichever thread took
+     * the first ticket, so `f peach x` over a few hundred heavy items (a
+     * search per config, a simulation per seed) ran on one core. Now each
+     * lane gets ~4 morsels (so uneven items still balance), never more than
+     * TASK_GRAIN items per morsel and never fewer than 1. */
+    { U g = n / (U)(nw * 4); if (g < 1) g = 1; if (g > TASK_GRAIN) g = TASK_GRAIN;
+      P.job.grain = g; }
+    P.job.n = n; P.job.cursor = 0; P.job.err = 0; P.job.msg[0] = 0;
     P.active = P.nth;                             /* each worker decrements once */
     P.gen++;
     pthread_cond_broadcast(&P.cv_work);
@@ -167,5 +187,8 @@ A peach_pool(A f, A dat, U n, I nw) {
     AN(n, r); free(out);
     return sqz(r);
 }
+
+/* The error category the failing worker of the LAST dispatch raised, or "". */
+const char *peach_errmsg(void) { return P.job.msg; }
 
 #endif /* !wasm */

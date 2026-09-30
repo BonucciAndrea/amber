@@ -386,6 +386,17 @@ AMB_MV int64_t simd_sum_i32(const int32_t *a, size_t n) {
  * operand makes the compare false, so the running value is kept, which is what
  * the scalar code did too); NaN presence is accumulated in parallel so the
  * caller can fall back to the total-order path when it matters. */
+/* amber 2.3: the 16 lanes are now four explicit vectors. Written as 16 scalar
+ * lanes with an int NaN flag beside each, GCC never vectorised this loop: the
+ * native build ran 16 scalar vmaxsd chains, and `|/x` on 10M doubles took 5.3 ms
+ * where `+/x` over the same 80 MB took 3.5. Lane k still sees exactly the
+ * elements i+k it saw before and the final combine is unchanged, so the result
+ * is the same double, ties between 0.0 and -0.0 included. */
+/* 2.3: two versions of the same reduction, picked per build on measurements (10M
+ * doubles, one thread): the explicit-vector one is ~10% faster in the portable build
+ * (target_clones avx2), but under -march=native -funroll-loops GCC turns the plain
+ * 16-lane loop into straight vmaxpd and the explicit one came out ~15% slower. */
+#if defined(AMBER_BUILD_NATIVE)
 #define AMB_MMF(FN, CMP)                                                       \
     AMB_MV double FN(const double *a, size_t n, int *sawnan) {                 \
         enum { LN = 16 };                                                      \
@@ -401,6 +412,28 @@ AMB_MV int64_t simd_sum_i32(const int32_t *a, size_t n) {
           for (; i < n; i++) { double x = a[i]; nn |= (x != x); r = x CMP r ? x : r; } \
           *sawnan = nn; return r; }                                            \
     }
+#else
+#define AMB_MMF(FN, CMP)                                                       \
+    AMB_MV double FN(const double *a, size_t n, int *sawnan) {                 \
+        enum { LN = 16, VL = VBYTES / 8, NV = LN / VL };                       \
+        double m[LN]; size_t i = 0, k; vf64 v[NV]; vi64 q[NV];                 \
+        for (k = 0; k < NV; k++) { size_t j; for (j = 0; j < VL; j++) v[k][j] = a[0]; \
+                                   q[k] = (vi64){0}; }                          \
+        for (; i + LN <= n; i += LN)                                           \
+            for (k = 0; k < NV; k++) {                                         \
+                vf64 x; __builtin_memcpy(&x, a + i + k * VL, VBYTES);          \
+                q[k] |= (vi64)(x != x);                                        \
+                vi64 c = (vi64)(x CMP v[k]);                                   \
+                v[k] = (vf64)((c & (vi64)x) | (~c & (vi64)v[k])); }            \
+        for (k = 0; k < NV; k++) __builtin_memcpy(m + k * VL, &v[k], VBYTES);  \
+        { double r = m[0]; int nn = 0; vi64 qq = q[0];                          \
+          for (k = 1; k < NV; k++) qq |= q[k];                                 \
+          for (k = 0; k < (size_t)VL; k++) nn |= qq[k] != 0;                   \
+          for (k = 0; k < LN; k++) r = m[k] CMP r ? m[k] : r;                  \
+          for (; i < n; i++) { double x = a[i]; nn |= (x != x); r = x CMP r ? x : r; } \
+          *sawnan = nn; return r; }                                            \
+    }
+#endif
 AMB_MMF(simd_max_f64, >)
 AMB_MMF(simd_min_f64, <)
 
@@ -985,6 +1018,62 @@ AMB_MV AMB_NOFMA double simd_masksum_fma_f64(const double *a, double s, const do
           r += mi ? (a[i] + sv * b[i]) : 0.0; }
       *bad = o > 1; return r; }
 }
+
+/* ==== amber 2.3: the comparison fused too ===================================
+ * +/(a +- s*b)@&(c OP k) and +/x@&(c OP k) used to materialise the 0/1 mask of
+ * `c OP k` (one byte written and re-read per element) before the masked sum
+ * above consumed it -- the "F12" item of the 2.2 audit. Here the mask bit is
+ * computed in the loop. OP: 0 `<`, 1 `>`, 2 `=`; k is a scalar, or a vector of
+ * c's length. The accumulation tree is EXACTLY the one simd_masksum_f64 and
+ * simd_masksum_fma_f64 use (16 lanes, then the tail added to the reduced sum),
+ * so the double equals the unfused chain's bit for bit.
+ * Float c: *bad = 1 when c or k holds a NaN or a -0.0 -- the two classes where
+ * the engine's float collation is not IEEE -- and the caller discards the answer
+ * and runs the unfused chain (the same guard simd_cmps_f64 applies). Integer c
+ * compares exactly and never sets *bad. */
+#define AMB_FMSL(TERM, COND, BAD)                                              \
+    for (; i + 16 <= n; i += 16)                                               \
+        for (k = 0; k < 16; k++) { size_t j = i + k; BAD;                      \
+            acc[k] += (COND) ? (TERM) : 0.0; }                                 \
+    { r = 0; for (k = 0; k < 16; k++) r += acc[k];                             \
+      for (; i < n; i++) { size_t j = i; BAD; r += (COND) ? (TERM) : 0.0; } }
+#define AMB_FMSOPS(TERM, CV, KV, BAD)                                          \
+    if (op == 0)      { AMB_FMSL(TERM, (CV) <  (KV), BAD) }                   \
+    else if (op == 1) { AMB_FMSL(TERM, (CV) >  (KV), BAD) }                   \
+    else              { AMB_FMSL(TERM, (CV) == (KV), BAD) }
+/* ct: 0 = double c (kd scalar, or kf vector when non-null), 1/2/3/4 = int8/16/
+ * 32/64 c against the int64 scalar kl. fma: 0 -> sum a[j]; 1 -> a[j] + sv*b[j]. */
+#define AMB_FMSBODY(TERM)                                                      \
+    switch (ct) {                                                              \
+    case 0: { const double *cc = (const double *)c;                            \
+        if (kf) { AMB_FMSOPS(TERM, cc[j], kf[j],                               \
+                  bb |= AMB_BADBITS(amb_bits(cc[j])) | AMB_BADBITS(amb_bits(kf[j]))) } \
+        else { bb |= AMB_BADBITS(amb_bits(kd)) ? 1 : 0;                        \
+               AMB_FMSOPS(TERM, cc[j], kd, bb |= AMB_BADBITS(amb_bits(cc[j]))) } } break; \
+    case 1: { const int8_t  *cc = (const int8_t  *)c; AMB_FMSOPS(TERM, (int64_t)cc[j], kl, (void)0) } break; \
+    case 2: { const int16_t *cc = (const int16_t *)c; AMB_FMSOPS(TERM, (int64_t)cc[j], kl, (void)0) } break; \
+    case 3: { const int32_t *cc = (const int32_t *)c; AMB_FMSOPS(TERM, (int64_t)cc[j], kl, (void)0) } break; \
+    default:{ const int64_t *cc = (const int64_t *)c; AMB_FMSOPS(TERM, cc[j], kl, (void)0) } break; }
+AMB_MV AMB_NOFMA double simd_cmpmasksum_fma_f64(const double *a, double s, const double *b, int sub,
+                                                const void *c, int ct, double kd, const double *kf,
+                                                int64_t kl, size_t n, int op, int *bad) {
+    double acc[16], r = 0; size_t i = 0, k; int64_t bb = 0;
+    const double sv = sub ? -s : s;
+    for (k = 0; k < 16; k++) acc[k] = 0;
+    AMB_FMSBODY(a[j] + sv * b[j])
+    *bad = bb != 0; return r;
+}
+AMB_MV AMB_NOFMA double simd_cmpmasksum_f64(const double *a,
+                                            const void *c, int ct, double kd, const double *kf,
+                                            int64_t kl, size_t n, int op, int *bad) {
+    double acc[16], r = 0; size_t i = 0, k; int64_t bb = 0;
+    for (k = 0; k < 16; k++) acc[k] = 0;
+    AMB_FMSBODY(a[j])
+    *bad = bb != 0; return r;
+}
+#undef AMB_FMSBODY
+#undef AMB_FMSOPS
+#undef AMB_FMSL
 
 /* sum and OR of a byte mask in one pass (sizing + validity for `&`). */
 AMB_MV int64_t simd_masksum_u8(const unsigned char *m, size_t n, unsigned *orv) {

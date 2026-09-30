@@ -62,8 +62,11 @@ Z A2(s1,/*01*/Yt(y)P(!yN,y)Ym(A z=kv(&y);am(y,Ny(s1(x,z))))P(x==CAT,y(s2(x,emp(t
  A z=ii(y,0),u=enl(zR);F(yN-1,z=z(x2(z,ii(y,i+1)));P(!z,y(u(0)))PSH(u,zR))z(y(u)))
 Z AX(s8,/*01..1*/A y=*a;P(n==1,s1(x,y))P(n==2,A z=a[1];z(s2(x,y,z)))L m=cfm(a+1,n-1);P(m==-2,el8(a,n))I(m<0,m=1)a++;n--;
  A z=aA0(m);Ab8;F(m,*b=y;Fj(n,b[j+1]=ii(a[j],i))y=x8(b,n+1);P(!y,mrn(n,a);z(0))PSH(z,yR))mrn(n,a);y(z))
-Z A3(p2,/*010*/Zt(er(y))Zm(y=N(p2(x,y,zy));am(_R(zx),y))P(!zN,y(zR))P(xtv&&xv<11&&ytzc&&ztZC,arp(x,y,z))A u=aA0(zN);F(zN,A v=ii(z,i),r=x2(v,y);y=v;B(!r,u=u(0))PSH(u,r))y(u))
-Z A2(p1,/*01*/y(p2(x,ie(x,y),y)))
+Z A3(p2,/*010*/Zt(er(y))Zm(y=N(p2(x,y,zy));am(_R(zx),y))P(!zN,y(zR))P(xtv&&xv<11&&ytzc&&ztZC,arp(x,y,z))
+ P(xtv&&(LH(1,xv,4)||LH(6,xv,10))&&(ytf||ytz)&&ztF,arpF(x,y,z))A u=aA0(zN);F(zN,A v=ii(z,i),r=x2(v,y);y=v;B(!r,u=u(0))PSH(u,r))y(u))
+// amber 2.3: unseeded |': and &': seed with the first element, so element 0 is x[0] itself
+// (an identity seed of -0w/-0W is not below NaN/0N, and `|':0n 1.0` began -0w)
+Z A2(p1,/*01*/y(p2(x,(x==MXM||x==MNM)&&!_tP(y)&&_t(y)<tM&&_N(y)?fir(yR):ie(x,y),y)))
 Z A stn(A x,L n,A y/*0n0*/)_(P(n<0||n-(I)n,ed0())P(!ytT,et0())YE(y=gZ(yR);y(stn(x,n,y)))L m=MAX(0,yn-n+1);A z=aA0(m);P(!m,mr(zx);zx=mkn(rsz(n,fir(yR)));z)F(m,PSH(z,Nz(x1(slc(y,i,i+n)))))z)
 Z A3(ste,/*010*/Yz(stn(x,gl(y),z))et(y))
 Z A win(L n,A x)_(x(stn(au,n,x)))

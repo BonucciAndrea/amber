@@ -1,0 +1,95 @@
+⍝ bench/scout/engines/dyalog.apls - Dyalog APL side of the scout matrix (core tier).
+⍝ Run:  dyalogscript bench/scout/engines/dyalog.apls <op> <N> <runs> <warmup>
+⍝ Protocol and data model: bench/scout/SCOUT_SPEC.md
+⍝
+⍝ ⎕IO←0 so indices are 0-based like every other engine.  Core tier only (no
+⍝ table layer).  Dyalog squeezes every integral array to its narrowest type,
+⍝ so x and y are STORED as int16 however they are built (the CBQN note applies);
+⍝ values past 2^31 become float64, so every sum below stays exact.
+⍝ Idioms: {⍵[⍋⍵]} sort, dyadic ⍳ / ∊ / monadic ∪ (hashed), X+.×Y dot product,
+⍝ the key operator ⌸ for group-by (keys in first-appearance order), and n-wise
+⍝ reduction for the moving windows (16+/ over a vector padded with the identity
+⍝ of + so the first windows are partial; 64⌈/ padded with ⌈/⍬ likewise).
+⍝ Timing: 10⎕DT'Z' is the current time in nanoseconds (exact, decimal float).
+⍝ Output: in script mode ⎕← ends its lines with a bare CR (a line-oriented
+⍝ reader does not split on it) and ⍞← goes to stderr, so the protocol lines are
+⍝ appended to /dev/stdout through a native tie, each ended by an explicit LF.
+⍝ The workspace cap (MAXWS) is raised by the dyalogscript wrapper, not here.
+
+⎕IO←0
+⎕PP←17
+NL←⎕UCS 10
+⍝ single thread: 1111⌶ is the thread count Dyalog may use to run scalar
+⍝ functions on large arrays in parallel (it defaults to the number of cores)
+PREV_THREADS←1111⌶1
+
+ARGS←¯4↑2⎕NQ#'GetCommandLineArgs'
+OP←0⊃ARGS
+N←⍎1⊃ARGS
+RUNS←⍎2⊃ARGS
+WARM←⍎3⊃ARGS
+
+I←⍳N
+H←⌊1048573|262147×I
+A←1000|H
+B←997|H
+X←A+0.0
+Y←B+0.0
+CHK←(+/A)+3×+/B
+
+KR←1048573|7919×⍳1000
+VR←2×⍳1000
+MJ←1000000
+
+SFA←{m←≢⍵ ⋄ (+/⍵[0,(⌊m÷4),(⌊m÷2),(⌊3×m÷4),m-1])+1E9×+/(1↓⍵)<¯1↓⍵}
+DSUM←{(1E6×≢⍵)++/⍵}
+GRP←{r←⍺{⍺,+/⍵}⌸⍵ ⋄ +/(1+251|r[;0])×r[;1]}
+
+OPS←'sum_f' 'max_f' 'scan_f' 'dot' 'sum_i' 'arith_mask'
+OPS,←'sort_f' 'sort_presorted' 'grade_i' 'find' 'member'
+OPS,←'distinct' 'distinct_100k' 'group_10' 'group_100' 'group_10k' 'group_100k'
+OPS,←'join_inner' 'msum_16' 'mavg_256' 'mmax_64'
+
+SETUPS←'NOP←0' 'NOP←0' 'NOP←0' 'NOP←0' 'NOP←0' 'NOP←0'
+SETUPS,←'NOP←0' 'P←X[⍋X]' 'GK←1000⌊N' 'PR←KR[1000|H]' 'NOP←0'
+SETUPS,←'NOP←0' 'G5←100000|H' 'G←10|H' 'G←100|H' 'G←10000|H' 'G←100000|H'
+SETUPS,←⊂'HJ←⌊1048573|262147×⍳MJ ⋄ KL←KR[1000|HJ] ⋄ VL←1000|HJ'
+SETUPS,←'NOP←0' 'NOP←0' 'NOP←0'
+
+KERNS←'{+/X}' '{⌈/X}' '{S←+\X ⋄ S[0]+S[⌊N÷2]+S[N-1]}' '{X+.×Y}' '{+/A}' '{+/(X>50)/Y+2.5×X}'
+KERNS,←'{SFA X[⍋X]}' '{SFA P[⍋P]}' '{+/GK↑⍋A}' '{+/KR⍳PR}' '{+/H∊KR}'
+KERNS,←'{DSUM ∪A}' '{DSUM ∪G5}' '{G GRP X}' '{G GRP X}' '{G GRP X}' '{G GRP X}'
+KERNS,←'{+/VL×VR[KR⍳KL]}' '{+/16+/(15⍴0),X}' '{+/(256+/(255⍴0),X)÷256⌊1+⍳N}' '{+/64⌈/(63⍴⌈/⍬),X}'
+
+∇ OUT LINE;T
+  T←'/dev/stdout'⎕NTIE 0
+  (LINE,NL)⎕NAPPEND T 80
+  ⎕NUNTIE T
+∇
+
+∇ MAIN;J;TS;ANS;T0;R
+  J←OPS⍳⊂OP
+  :If J=≢OPS
+      OUT'SKIP ',OP
+      :Return
+  :EndIf
+  ⍎J⊃SETUPS
+  ⍎'KF←',J⊃KERNS
+  ANS←0
+  :For R :In ⍳WARM
+      ANS←KF 0
+  :EndFor
+  TS←⍬
+  :For R :In ⍳RUNS
+      T0←10⎕DT'Z'
+      ANS←KF 0
+      TS,←((10⎕DT'Z')-T0)÷1000000
+  :EndFor
+  OUT'BENCH   ',OP
+  OUT'CHECK   ',⍕CHK
+  OUT'ANSWER  ',⍕ANS
+  OUT'TIME_MS ',⍕(TS[⍋TS])[⌊RUNS÷2]
+∇
+
+MAIN
+⎕OFF

@@ -92,7 +92,7 @@ NI A1(inv,x=mut(x);L*p=xL;F(((W)xn<<xw)+255>>8<<2,*p++^=-1)x)
 
 Z A3(___f,/*010*/U i=!y;I(i,y=io(z,0))U n=zn;W(i<n,y=y(x2(y,ii(z,i++)));B(!y))y)
 Z A3(dexf,/*010*/A u=las(zR);I(y,y(0))u)
-  L addfB(CO V*a,U n)_(CO W*p=a;U r=0;F(n>>6,r+=PC(*p++))n&=63;n?r+PC(*p&~(-1ll<<n)):r)
+  L addfB(CO V*a,U n)_(CO W*p=a;U r=0;F(n>>6,r+=PC(*p++))n&=63;n?r+PC(*p&~(~0ull<<n)):r)
 Z L addfG(CO V*a,U n)_(simd_sum_i8(a,n))
 Z L addfH(CO V*a,U n)_(simd_sum_i16(a,n))
 Z L addfI(CO V*a,U n)_(simd_sum_i32(a,n))
@@ -133,7 +133,9 @@ Z A3(mmmf,/*010*/B i=xv==7;
  I(ztF&&!y&&zn,{int nan_=0;CO F*RES q=zV;U nm_=zn;
    F v_=i?simd_max_f64(q,nm_,&nan_):simd_min_f64(q,nm_,&nan_);
    if(!nan_)return af(v_);})
- P((y&&ytf)||ztF,y=of1(y?cF(y):aV(tf,1,A((L)((W)i<<63)|WFL)));z=of1(cF(zR));of0(N(z(mmmf(x,y,z)))))L v=y?gl(y):i?-WL:WL;az(zn?(i?maxfZ:minfZ)(v,z):v))
+ P((y&&ytf)||ztF,y=y?of1(cF(y)):zn?al(i?NL:WL):of1(aV(tf,1,A((L)((W)i<<63)|WFL)));z=of1(cF(zR));of0(N(z(mmmf(x,y,z)))))
+ // |/ of a non-empty int vector starts at 0N, so |/0N 0N is 0N (it was -0W, not an element)
+ L v=y?gl(y):i?(zn?NL:-WL):WL;az(zn?(i?maxfZ:minfZ)(v,z):v))
 A3(arf,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzfc)Q(ztZFC)
  ZE(P(ztE&&x==ADD&&!y,L i=*zL,j=zL[1];az((j-i)*(j+i-1)/2))z=gZ(zR);z(arf(x,y,z)))
  ZB(z=cG(zR);z(arf(x,y,z)))
@@ -145,7 +147,7 @@ Z A3(adms,/*010*/L w=y?gl(y):x==MUL;U n=zn;I b=1;L v=w;C t=tG+zw-3;A u=an(n,t);
  I(x==ADD,F4(zw-3,n,ug=v+=zg;B(v-(G)v,b=0),uh=v+=zh;B(v-(H)v,b=0),ui=v+=zi;B(v-(I)v,b=0),ul=v+=zl))
  E(       F4(zw-3,n,ug=v*=zg;B(v-(G)v,b=0),uh=v*=zh;B(v-(H)v,b=0),ui=v*=zi;B(v-(I)v,b=0),ul=v*=zl))P(b,u)z=ct(t+1,u(zR));z(adms(x,az(w),z)))
 Z A3(subs,/*010*/y=neg(y?y:mul(ai(2),ii(z,0)));neg(adms(ADD,y,z)))
-Z A3(mxms,/*010*/P((!y||ytz)&&ztZ,L v=y?gl(y):-WL,l=(L)(~0ull<<((1<<zw)-1)),h=~l;U n=zn;I(v<=l||h<=v,P(v>=0,rsz(n,az(v)))v=v<0?l:h)
+Z A3(mxms,/*010*/P((!y||ytz)&&ztZ,L v=y?gl(y):NL,l=(L)(~0ull<<((1<<zw)-1)),h=~l;U n=zn;I(v<=l||h<=v,P(v>=0,rsz(n,az(v)))v=v<0?l:h)
                                   A u=an(n,zt);F4(zw-3,n,ug=v=MAX(v,zg),uh=v=MAX(v,zh),ui=v=MAX(v,zi),ul=v=MAX(v,zl))u)___s(x,y,z))
 Z A3(mnms,/*010*/P((!y||ytz)&&ztZ,z=inv(zR);z(inv(mxms(MXM,y?az(~gl(y)):0,z))))___s(x,y,z))
 // ---- amber: float scans ---------------------------------------------------
@@ -164,7 +166,9 @@ Z A3(admsf,/*010*/B i=xv==3;U n=zn;A u=an(n,tF);F*RES r=uF;
 // integer scan runs there, of0() folds back -- two extra linear passes, still
 // ~15x the boxed path it replaces.
 Z A3(mmmsf,/*010*/B i=xv==7;
- y=of1(y?cF(y):aV(tf,1,A((L)((W)i<<63)|WFL)));
+ // amber 2.3: unseeded, start from the extreme KEY, not from -0w/0w: NaN sorts
+ // below -0w here, so `| n 1.0` used to begin -0w instead of 0n.
+ y=y?of1(cF(y)):al(i?NL:WL);
  z=of1(cF(zR));
  of0(N(z((i?mxms:mnms)(x,y,z)))))
 Z A3(eqls,/*010*/U n=zn,i=!y;L v=gl(y?y:io(z,0)),a=v;A u=aG(n);S4(zw-3,W(i<n,ug=v=v==zg;i++),W(i<n,ug=v=v==zh;i++),W(i<n,ug=v=v==zi;i++),W(i<n,ug=v=v==zl;i++))y||!n?u:a4(u,ai(0),av,az(a)))
@@ -178,8 +182,16 @@ A3(ars,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzfc)Q(ztZFC)
 Z A3(dexp,/*010*/zn?cat11(y?y:_R(cn[zt]),drp(-1,zR)):y(zR))
 Z A3(___p,/*010*/v2[xv](z,dexp(av,y,z)))
 Z A3(modp,/*010*/e2f(mod,z,dexp(av,y,z)))
-Z A3(mxmp,/*010*/U w=zw-3;L v=gl(y),l=-1ll<<(8<<w)-1,h=~l;v=MAX(v,l);N n=zn;P(v>=h,rsz(n,az(v)))y=an(zn,tG+zw-3);S4(w,zG[-1]=v,zH[-1]=v,zI[-1]=v,zL[-1]=v)N j=n-1;
- F4(w,n,yG[j]=MAX(zG[j],zG[j-1]);j--,yH[j]=MAX(zH[j],zH[j-1]);j--,yI[j]=MAX(zI[j],zI[j-1]);j--,yL[j]=MAX(zL[j],zL[j-1]);j--)zn=n;y)
+// amber 2.3: the seed used to be written to z[-1] so the loop could run down to
+// j=0 -- i.e. INTO THE HEADER of the input (for int64 storage that is the
+// refcount and the length, and only the length was put back): `|':x` on an
+// int64 vector corrupted x and crashed later. Element 0 is now done on its own.
+// A seed at or past the top of z's width used to answer seed,seed,..: right for |\, not
+// for |': (only element 0 sees the seed), so 0W|':3 1 2 and 0N&':x (via mnmp's ~) were
+// all seed. Now a seed that fits is just element 0, and one that doesn't widens z.
+Z A3(mxmp,/*010*/U w=zw-3;L v=gl(y),l=(L)(~0ull<<(8<<w)-1),h=~l;v=MAX(v,l);N n=zn;P(v>h,A u=cL(zR);u(mxmp(x,az(v),u)))y=an(zn,tG+zw-3);N j=n-1;
+ F4(w,n-1,yG[j]=MAX(zG[j],zG[j-1]);j--,yH[j]=MAX(zH[j],zH[j-1]);j--,yI[j]=MAX(zI[j],zI[j-1]);j--,yL[j]=MAX(zL[j],zL[j-1]);j--)
+ S4(w,*yG=MAX(*zG,(G)v),*yH=MAX(*zH,(H)v),*yI=MAX(*zI,(I)v),*yL=MAX(*zL,v))y)
 Z A3(mnmp,/*010*/y=az(~gl(y));z=inv(zR);z(inv(mxmp(MXM,y,z))))
 Z A3(cmpp,/*010*/I o=x-LTN,w=zw-3;U n=zn;A u=aG(n);L v=gl(y),p=iw(z,w,0);*uG=!o?p<v:o==1?p>v:p==v;L m=n-1,j=m;
  S4(o,F4(w,m,uG[j]=zG[j]< zG[j-1];j--,uG[j]=zH[j]< zH[j-1];j--,uG[j]=zI[j]< zI[j-1];j--,uG[j]=zL[j]< zL[j-1];j--),
@@ -189,6 +201,15 @@ A3(arp,/*010*/Q(xtv)Q(xv<11)Q(ytzc)Q(ztZC)
  ZE(z=gZ(zR);z(arp(x,y,z)))
  ZB(z=cG(zR);z(arp(x,y,z)))
  G(&dexp,___p,___p,___p,___p,modp,mnmp,mxmp,cmpp,cmpp,cmpp)[xv](x,y,z))
+// amber 2.3: each-prior over a FLOAT vector, for + - * % & | < > = (not : or !,
+// whose element-wise results are not one uniform vector). arp above only takes
+// integer/char data, so every float f': fell into p2's boxed loop -- an atom
+// allocated and a generic dyad dispatched per element: ~350 ms for =': on 16.6M
+// floats against ~10 ms on longs. This is ___p's plan applied to floats: the
+// dyad's own vector kernel on (z; seed,-1_z), so the per-pair semantics are
+// exactly the atom dyad's (float collation, NaN, -0.0 included). An integer
+// seed is converted as the generic path's mixed float/int dyad would.
+A3(arpF,/*010*/Q(xtv)Q(ztF)A s=dexp(av,cF(y),z);P(!s,0)v2[xv](z,s))
 
 Z C tZx(A x)_(C t=TX[xt];t?t:tZ(gl_(x)))
 C sup(A*p,A*q)_(A x=*p,y=*q;C t=MAX(tZx(x),tZx(y));*p=x=Ny(ct(t,x));*q=y=Nx(ct(t,y));t)
@@ -237,7 +258,7 @@ A wsmC(A x){
  A*a=_A(x);A p=a[0],q=a[1];U n=_n(p);
  if(_n(q)!=n) return et(x);
  if(_t(p)==tF&&_t(q)==tF){F r=simd_dot_f64((CO F*)_V(p),(CO F*)_V(q),n);mr(x);return af(r);}
- if(_t(p)==tL&&_t(q)==tL){L r=simd_dot_i64((CO L*)_V(p),(CO L*)_V(q),n);mr(x);return al(r);}
+ if(_t(p)==tL&&_t(q)==tL){L r=simd_dot_i64((CO int64_t*)_V(p),(CO int64_t*)_V(q),n);mr(x);return al(r);}
  return et(x);}
 
 // ---- amber 2.1: fused reduction over a dyad -- +/x*y, +/x=y, +/x<y, +/x>y ----
@@ -284,7 +305,112 @@ Z A cmpcmpC(L op,A s,A x,A y){UC ts=_t(s),tx=_t(x),ty=_t(y);I opc=op==8?0:op==9?
    S4(Tw[ts]-3,k=simd_compresscmp_8(_V(s),xV,(G)v,opc,n,zV),k=simd_compresscmp_16(_V(s),xV,(G)v,opc,n,zV),k=simd_compresscmp_32(_V(s),xV,(G)v,opc,n,zV),k=simd_compresscmp_64(_V(s),xV,(G)v,opc,n,zV))
    return AN((U)k,z);))
  A m=v2[op](x,_R(y));P(!m,0)return cmprC(s,m);}
-AA(fredC,/*10..0*/P(n!=3,en(*a))L d=gl(*a);A x=a[1],y=a[2];
+// ---- amber 2.3: the shift idiom (1_x) OP ((-1)_x) --------------------------
+// Neighbour-wise comparison and differencing -- `(1_x)<(-1)_x` (descents: the
+// sortedness check), `(1_x)=(-1)_x` (runs), `(1_x)-(-1)_x` (deltas) -- dropped
+// the vector twice, i.e. copied it twice, before the dyad read both copies: at
+// 10M float64, 160 MB written and re-read so that 10 MB of flags could come out.
+// The compiler (src/b.c fus()) now emits fredC code 200+op+16*flip (+100 under
+// +/) for these shapes and x is read once, in place:
+//   flip 0:  r[i] = x[i+1] OP x[i]     (1_x) OP ((-1)_x)
+//   flip 1:  r[i] = x[i] OP x[i+1]     ((-1)_x) OP (1_x)
+// Result types are exactly the unfused dyad's: comparisons give a byte vector;
+// + - * on integers widen past the input width only as far as the results need
+// (the unfused kernels detect overflow and redo one width wider, which lands on
+// the same width); int64 wraps as simd_add_i64 does; & | keep the input width;
+// floats are plain IEEE per element, as the vector kernels are. A float compare
+// that meets a NaN or a -0.0 -- where the engine's collation is not IEEE -- and
+// every shape not listed here run the unfused program itself (shslow).
+Z A shslow(L op,B fl,B s,A x)_(A b=drp(fl?1:-1,_R(x));P(!b,0)A a=drp(fl?-1:1,_R(x));P(!a,mr(b);0)
+ A t=v2[op](a,b);mr(a);P(!t||!s,t)A dv=_1(aw+1,ADD);A r=_1(dv,t);mr(dv);r)
+#define SHNEG0(v) ({W b_;MC(&b_,&(v),8);b_==0x8000000000000000ull;})
+#define SHCMP(T,OPR) {CO T*RES p=xV;I(s,N c=0;I(fl,for(N i=0;i<m;i++)c+=p[i] OPR p[i+1];)E(for(N i=0;i<m;i++)c+=p[i+1] OPR p[i];)return az((L)c);) \
+  A z=aG((U)m);G*RES r=zV;I(fl,for(N i=0;i<m;i++)r[i]=p[i] OPR p[i+1];)E(for(N i=0;i<m;i++)r[i]=p[i+1] OPR p[i];)return z;}
+#define SHARI(T,OPR,RT) {CO T*RES p=xV;A z=an((U)m,RT);RT##_*RES r=zV;I(fl,for(N i=0;i<m;i++)r[i]=p[i] OPR p[i+1];)E(for(N i=0;i<m;i++)r[i]=p[i+1] OPR p[i];)return z;}
+TD F tF_;TD L tL_;
+// symbols: interned, so equal ids ARE equal symbols and only a change of id needs
+// the string compare that orders symbols (qA's strcmp). A sorted column with a
+// few distinct values -- what `sa checks inside xasc -- costs a handful of them.
+Z I shsym(U a,U b)_(a==b?0:strcmp(su(a),su(b)))
+Z A shiftS(L op,B fl,B s,A x){N n=_n(x),m=n-1;CO U*RES p=(CO U*)xV;N c=0;A z=s?0:aG((U)m);
+ for(N i=0;i<m;i++){I d=fl?shsym(p[i],p[i+1]):shsym(p[i+1],p[i]);G r=op==8?d<0:op==9?d>0:d==0;I(s,c+=r)E(zG[i]=r)}
+ return s?az((L)c):z;}
+Z A shiftC(L code,A x){B s=code>=300;code-=s?300:200;B fl=code>=16;L op=code&15;UC t=_t(x);
+ P(!_tP(x)&&t==tS&&op>=8&&_n(x)>=2,shiftS(op,fl,s,x))
+ P(_tP(x)||!(t==tG||t==tH||t==tI||t==tL||t==tF||t==tC)||_n(x)<2,shslow(op,fl,s,x))
+ N n=_n(x),m=n-1;
+ I(op>=8,                                                 // < > =
+  I(t==tF,{CO F*RES p=xV;int bad=0;F(n,F v=p[i];bad|=(v!=v)|SHNEG0(v))I(bad,return shslow(op,fl,s,x))})
+  S(op*16+t,
+   C(8*16+tG,SHCMP(G,<))C(8*16+tH,SHCMP(H,<))C(8*16+tI,SHCMP(I,<))C(8*16+tL,SHCMP(L,<))C(8*16+tF,SHCMP(F,<))C(8*16+tC,SHCMP(G,<))
+   C(9*16+tG,SHCMP(G,>))C(9*16+tH,SHCMP(H,>))C(9*16+tI,SHCMP(I,>))C(9*16+tL,SHCMP(L,>))C(9*16+tF,SHCMP(F,>))C(9*16+tC,SHCMP(G,>))
+   C(10*16+tG,SHCMP(G,==))C(10*16+tH,SHCMP(H,==))C(10*16+tI,SHCMP(I,==))C(10*16+tL,SHCMP(L,==))C(10*16+tF,SHCMP(F,==))C(10*16+tC,SHCMP(G,==)))
+  return shslow(op,fl,s,x);)
+ P(s||t==tC,shslow(op,fl,s,x))                           // +/ of arithmetic, char arithmetic: unfused
+ I(t==tF,S(op,C(1,SHARI(F,+,tF))C(2,SHARI(F,-,tF))C(3,SHARI(F,*,tF))C(4,SHARI(F,/,tF)))return shslow(op,fl,s,x);)
+ P(op==4||op>7||op==5||op==0,shslow(op,fl,s,x))          // integer % and anything else: unfused
+ // integers: + - * & |.  Exact in 64 bits (wrapping for int64 as the vector
+ // kernels do), then stored at the width the unfused dyad would have chosen.
+ U w=Tw[t]-3;CO V*p=xV;
+ #define SHGET(i) (w==0?(L)((CO G*)p)[i]:w==1?(L)((CO H*)p)[i]:w==2?(L)((CO I*)p)[i]:((CO L*)p)[i])
+ #define SHOP(a,b) (op==1?(L)((W)(a)+(W)(b)):op==2?(L)((W)(a)-(W)(b)):op==3?(L)((W)(a)*(W)(b)):op==6?MIN(a,b):MAX(a,b))
+ U wr=w;
+ I(w<3&&op<=3,L mn=0,mx=0;F(m,L a=SHGET(fl?i:i+1),b=SHGET(fl?i+1:i);L v=SHOP(a,b);I(!i||v<mn,mn=v)I(!i||v>mx,mx=v))
+  U wn=MAX(tZ(mn),tZ(mx))-tG;wr=MAX(w,wn);)
+ A z=an((U)m,tG+wr);V*q=zV;
+ S4(wr,F(m,((G*)q)[i]=(G)SHOP(SHGET(fl?i:i+1),SHGET(fl?i+1:i))),F(m,((H*)q)[i]=(H)SHOP(SHGET(fl?i:i+1),SHGET(fl?i+1:i))),
+       F(m,((I*)q)[i]=(I)SHOP(SHGET(fl?i:i+1),SHGET(fl?i+1:i))),F(m,((L*)q)[i]=SHOP(SHGET(fl?i:i+1),SHGET(fl?i+1:i))))
+ #undef SHGET
+ #undef SHOP
+ return z;}
+// ---- amber 2.3: masks that are comparisons, fused (F12) --------------------
+// cmkind: can c OP k feed simd_cmpmasksum_*? Fills the kernel's (ct,kd,kf,kl).
+// float c against a float/int atom or a same-length float vector; integer c
+// (any width) against an int atom. Anything else -- including an int null atom
+// against floats -- is 0, i.e. "run the unfused comparison".
+Z B cmkind(A c,A k,U n,I*ct,F*kd,CO F**kf,L*kl)_(P(_tP(c)||_n(c)!=n,0)UC t=_t(c);*kf=0;
+ I(t==tF,*ct=0;I(_tf(k),*kd=*_F(k);return 1;)I(_tz(k),L v=gl_(k);P(v==NL,0)*kd=(F)v;return 1;)
+  I(!_tP(k)&&_t(k)==tF&&_n(k)==n,*kf=_F(k);return 1;)return 0;)
+ I((t==tG||t==tH||t==tI||t==tL)&&_tz(k),*ct=t-tG+1;*kl=gl_(k);return 1;)
+ 0)
+// +/x@&(c OP k): code 28+op, four arguments (code;x;c;k)
+Z A fredcmp(I op,A x,A c,A k){I ct;F kd=0;CO F*kf=0;L kl=0;
+ I(!_tP(x)&&xtF&&cmkind(c,k,xn,&ct,&kd,&kf,&kl),int bad=0;F r=simd_cmpmasksum_f64(xV,_V(c),ct,kd,kf,kl,xn,op,&bad);I(!bad,return af(r)))
+ A m=v2[8+op](c,_R(k));P(!m,0)A fa[3];fa[0]=az(18);fa[1]=x;fa[2]=m;A r=fredC(fa,3);mr(m);return r;}
+// ---- amber 2.3: _x%y on integers -- floor division in one integer pass ------
+// `_x%y` is how k spells integer division, and it used to be three passes and
+// two temporaries: x widened to doubles, divided, floored back to int64. For an
+// integer vector x and an integer atom y it is now one pass (a shift when y is a
+// positive power of two), and it is EXACTLY the old answer: when |x|<2^53 and
+// 0<|y|<2^53 both convert to doubles exactly, and the rounded quotient can never
+// step across an integer (that would need |x|>=2^53), so floor(fl(x)/fl(y)) is
+// the true floor quotient. Any element outside that range, or equal to its
+// width's minimum (the value integer-to-float conversion treats as null), and
+// every other shape, runs the unfused program. The result is int64, as before.
+// One width-specialised pass: check the range guard and write the quotient;
+// returns 0 (nothing to keep) when the guard fails.
+#define FDIV(T,MN) Z B fdiv##T(CO T*RES p,U n,L v,L*RES r){CO L lim=(L)1<<53;I bad=0;          \
+  if(v>0&&!(v&(v-1))){U s=(U)CTZ((W)v);                                                  \
+    for(U i=0;i<n;i++){L e=(L)p[i];bad|=(e==(L)(MN))|(e>=lim)|(e<=-lim);r[i]=e>>s;}}    \
+  else for(U i=0;i<n;i++){L e=(L)p[i];I b=(e==(L)(MN))|(e>=lim)|(e<=-lim);bad|=b;        \
+    e=b?0:e;  /* never divide a guarded element: INT64_MIN/-1 traps (SIGFPE) */           \
+    L q=e/v;r[i]=q-((e%v!=0)&((e<0)!=(v<0)));}                                           \
+  return !bad;}
+FDIV(G,-128) FDIV(H,-32768) FDIV(I,-2147483648LL) FDIV(L,NL)
+#undef FDIV
+Z A fdivC(A x,A y){UC t=_t(x);
+ if(!_tP(x)&&(t==tG||t==tH||t==tI||t==tL)&&_tz(y)){
+  L v=gl_(y);CO L lim=(L)1<<53;
+  if(v&&v!=NL&&v<lim&&v>-lim){U n=xn;A z=aL(n);B ok;
+   switch(t){case tG:ok=fdivG(xV,n,v,zL);break;case tH:ok=fdivH(xV,n,v,zL);break;
+             case tI:ok=fdivI(xV,n,v,zL);break;default:ok=fdivL(xV,n,v,zL);break;}
+   if(ok)return z;
+   mr(z);}}
+ A u=v2[4](x,_R(y));P(!u,0)return flr(u);}
+AA(fredC,/*10..0*/P(n!=3&&n!=4,en(*a))L d=gl(*a);A x=a[1],y=a[2];
+ I(n==4,P(d<28||d>30,en0())return fredcmp((I)d-28,x,y,a[3]))
+ I(d==40,return fdivC(x,y))
+ I(d>=200&&d<400,return shiftC(d,x))
  I(d==19,return fcntC(x))
  I(d>=108&&d<=110,return whrcmpC(d-100,x,y))
  I(d==18,I(!_tP(y)&&ytG&&yn&&yn<=xn,int bad=0;
@@ -340,7 +466,18 @@ Z A fmsslow(L sb,A x,A sc,A b,A m){
  A u=fmaC(fa,4);if(!u)return 0;
  A fr[3];fr[0]=az(18);fr[1]=u;fr[2]=m;
  A r=fredC(fr,3);mr(u);return r;}
-AA(fmsC,/*10..0*/P(n!=5,en(*a))L sb=gl(*a);A x=a[1],sc=a[2],b=a[3],m=a[4];
+// amber 2.3: six arguments (code;a;s;b;c;k), code = sub + 2*op: the mask is
+// c OP k, computed inside the summing loop. Shapes the kernel does not take run
+// the comparison unfused and then the proven five-argument path below.
+Z A fmscmp(L code,A x,A sc,A b,A c,A k){I sub=(I)(code&1),op=(I)(code>>1);I ct;F kd=0;CO F*kf=0;L kl=0;
+ I(_tF(x)&&_tF(b)&&xn==_n(b)&&(_tf(sc)||_tz(sc))&&cmkind(c,k,xn,&ct,&kd,&kf,&kl),
+  F sv=_tf(sc)?*_F(sc):(F)gl_(sc);int bad=0;
+  F r=simd_cmpmasksum_fma_f64(xV,sv,_V(b),sub,_V(c),ct,kd,kf,kl,xn,op,&bad);
+  I(!bad,return af(r)))
+ A m=v2[8+op](c,_R(k));P(!m,0)
+ A fa[5];fa[0]=az(sub);fa[1]=x;fa[2]=sc;fa[3]=b;fa[4]=m;A r=fmsC(fa,5);mr(m);return r;}
+AA(fmsC,/*10..0*/P(n!=5&&n!=6,en(*a))L sb=gl(*a);A x=a[1],sc=a[2],b=a[3],m=a[4];
+ I(n==6,return fmscmp(sb,x,sc,b,m,a[5]))
  I(_tF(x)&&_tF(b)&&xn==_n(b)&&(_tf(sc)||_tz(sc))&&!_tP(m)&&_t(m)==tG&&_n(m)&&_n(m)<=xn,
   F sv=_tf(sc)?*_F(sc):(F)gl_(sc);int bad=0;
   F r=simd_masksum_fma_f64(xV,sv,_V(b),_V(m),_n(m),(int)sb,&bad);

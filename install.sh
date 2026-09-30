@@ -75,6 +75,7 @@ case "$(uname -r 2>/dev/null)" in *[Mm]icrosoft*|*WSL*) IS_WSL=1 ;; esac
 case "$UNAME" in
   Darwin) PLATFORM="macOS" ;;
   Linux)  PLATFORM=$([ "$IS_WSL" = 1 ] && echo "WSL2" || echo "Linux") ;;
+  CYGWIN*) PLATFORM="Cygwin" ;;
   *)      PLATFORM="$UNAME" ;;
 esac
 ok "platform: $PLATFORM ($(uname -m 2>/dev/null || echo '?'))"
@@ -130,6 +131,14 @@ Then re-run:  ./install.sh"
       else
         die "no C compiler found. Install gcc or clang with your package manager, then re-run ./install.sh"
       fi ;;
+    Cygwin)
+      die "no C compiler found.
+
+Run Cygwin's setup again (from Windows, not this shell) and add the compiler:
+
+    setup-x86_64.exe -q -P gcc-core,make
+
+Then re-run:  ./install.sh" ;;
     *)
       die "no C compiler found. Install gcc or clang, then re-run ./install.sh" ;;
   esac

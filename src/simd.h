@@ -132,6 +132,15 @@ int64_t simd_masksum_i64(const int64_t *a, const unsigned char *m, size_t n, int
  * arithmetic. Bit-identical to simd_fma_f64 followed by simd_masksum_f64
  * (product rounded before the add, same 16-lane accumulation order).
  * sub=0 for a+s*b, sub=1 for a-s*b. *bad=1 when a mask byte exceeds 1. */
+/* amber 2.3: the same two sums with the mask computed in the loop from c OP k
+ * (op 0 <, 1 >, 2 =); ct 0 = double c against kd (or the vector kf when
+ * non-null), 1..4 = int8/16/32/64 c against the int64 kl. Bit-identical to the
+ * mask-then-masksum chain; *bad = 1 on a NaN or -0.0 in float c or k. */
+double  simd_cmpmasksum_fma_f64(const double *a, double s, const double *b, int sub,
+                                const void *c, int ct, double kd, const double *kf,
+                                int64_t kl, size_t n, int op, int *bad);
+double  simd_cmpmasksum_f64(const double *a, const void *c, int ct, double kd, const double *kf,
+                            int64_t kl, size_t n, int op, int *bad);
 double  simd_masksum_fma_f64(const double *a, double s, const double *b,
                              const unsigned char *m, size_t n, int sub, int *bad);
 /* Float range scan: 1 if all finite, integral, |x|<=2^53 and no -0.0; then

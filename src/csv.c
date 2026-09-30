@@ -865,7 +865,11 @@ out:
 
 A csv_read(S path) {
     A names, cols;
-    if (!csv_cols(path, &names, &cols)) return au;
+    /* amber 2.3: a file that cannot be read is an 'io ERROR (trappable, and it
+     * stops a script), not the generic null `::` -- a script that loaded a
+     * missing file used to carry on with a null table. The stderr line saying
+     * why (not found, a directory, out of memory) is kept. */
+    if (!csv_cols(path, &names, &cols)) return eo0();
     A dict = exc(names, cols);   /* names ! cols  -- the real `!` dyad (a.h) */
     return flp(dict);            /* +dict          -- the real flip verb (a.h) */
 }

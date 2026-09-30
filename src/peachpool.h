@@ -21,9 +21,11 @@
 #ifndef AMBER_PEACHPOOL_H
 #define AMBER_PEACHPOOL_H
 
-/* Elements per morsel. Large enough that per-morsel ticket + dispatch overhead
- * is negligible against the work, small enough that load stays balanced across
- * workers even when per-element cost is uneven. */
+/* Largest morsel, in elements. Large enough that per-morsel ticket + dispatch
+ * overhead is negligible against the work, small enough that load stays
+ * balanced across workers even when per-element cost is uneven. Smaller jobs
+ * get proportionally smaller morsels (peach_pool: n / (4 * lanes), at least 1),
+ * so a job of a few hundred heavy items still spreads over every lane. */
 #define TASK_GRAIN 1024
 
 #endif /* AMBER_PEACHPOOL_H */

@@ -32,7 +32,7 @@ A2(mtc,/*01*/y(ai(mtc_(x,y))))
 Z CO W o=(-1ull>>12)-1;Z L t(L v)_(v^(W)(v>>63)>>1);Z A of_(A,I);
 Z L o0(L v)_(t(v-o))Z V of0LL(CO L*a,L*r,N n){F(n+3&~3,r[i]=o0(a[i]))}A1(of0,Q(xtlL);of_(x,0))
 Z L o1(L v)_(t(v)+o)Z V of1LL(CO L*a,L*r,N n){F(n+3&~3,r[i]=o1(a[i]))}A1(of1,Q(xtfF);of_(x,1))
-Z A of_(A x,I f)_(N n=xn;C t=xt+(tf-tl)*(1-2*f);A y=MINE(x)?AT(t,xR):an(n,t);Mx((f?of1LL:of0LL)(xV,yV,n))y)
+Z A of_(A x,I f)_(N n=xn;C t=xt+(tf-tl)*(1-2*f);A y=MINE(x)?AT(t,xR):an(n,t);_at(y)=0;Mx((f?of1LL:of0LL)(xV,yV,n))y)
 Z I ql(L i,L j)_(i<j?-1:i>j)
 I qf(F u,F v)_(ql(o1(*(L*)&u),o1(*(L*)&v)))
 I qA(A x,A y/*00*/)_(I v=TS[xt]-TS[yt];P(v,v)
@@ -63,7 +63,11 @@ X1(asc,Rt(opn(x))Rm(grdm(x,asc))RM(K1("{(!#x){x@<y x}/|.+x}",x))RS(asc(str(x)))R
  // key-carrying LSD radix in src/v.c -- one sequential pass per SIGNIFICANT key
  // byte, constant byte columns skipped, already-ordered input recognised in the
  // single extraction pass and answered with the identity permutation.
- R4(tH,tI,tL,tF,P(xn-(I)xn,ez(x))N n=xn;A y=cntgrd(x);I(!y,y=rdxg(x))P(!y,ascB(x))x(ct(tZ(n-1),y)))
+ // amber 2.3: an `s vector grades to the identity (the grade is stable), so it
+ // is written directly instead of being rediscovered by the key pass.
+ R4(tH,tI,tL,tF,P(xn-(I)xn,ez(x))N n=xn;
+  I(_at(x)==1,A y=aI((U)n);I*RES o=yI;for(N i=0;i<n;i++)o[i]=(I)i;return x(ct(tZ(n-1),y));)
+  A y=cntgrd(x);I(!y,y=rdxg(x))P(!y,ascB(x))x(ct(tZ(n-1),y)))
  R_(P(xn-(I)xn,ez(x))ascB(x)))
 X1(dsc,RMT(x=rev(asc(rev(x)));sub(ai(xN-1),x))Rm(grdm(x,dsc))Ril(cls(gl(x)))R_(et(x)))
 // amber: O(n) direct-indexed group for a 32-bit int vector.  This is the hot
@@ -110,6 +114,10 @@ Z A grpI(A x){
  arena_release(mk);
  return am(ky,z);
 }
+// amber 2.3: float KEYS for = and ?: -0.0 folded onto 0.0 (one value, as for find
+// and ~), every other double -- NaNs included -- kept bit for bit (as find keeps
+// them). A copy; the caller still emits the original doubles.
+Z A fcanon(A x)_(U n=xn;A y=aF(n);CO W*RES p=(CO W*)xV;W*RES q=(W*)yV;F(n,W v=p[i];q[i]=v==0x8000000000000000ull?0:v)y)
 Z A cSI(A);// amber 2.0.0: symbol<->int-id reinterpret (defined just below), used by grp's tS fast path
 X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x))
  // amber 2.0.0: group a SYMBOL vector by its interned 4-byte id (tS is stored as
@@ -133,13 +141,23 @@ X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x
  RI(P(!xn,K1("{x!0#,!0}",x))
   {A g_=grpI(x);P(g_,x(g_))}   /* O(n) counting group; 0 = range too wide, sort instead */
   K1("{$[x;x[*'g]!g@:<g:(&~(~*s)=':s:x i)_i:<x;x!0#,!0]}",x))
- R5(tA,tE,tL,tF,tM,K1("{$[#x;x[*'g]!g@:<g:(&~x~':x i)_i:<x;x!0#,!0]}",x)))
-Z A1(cSI,Q(xtS||xtI)C t=tS^tI^xt;MINE(x)?AT(t,x):x(aV(t,xn,xV)))
+ // amber 2.3: floats group on canonical keys (fcanon below) so that -0.0/0.0 and
+ // equal NaNs tie in the stable grade: each group then lists its indices in
+ // order and is keyed by its FIRST spelling. Grading x itself put -0.0 before 0.0,
+ // so their shared group came out as `2 1` and was keyed by the second one.
+ RF(P(!xn,K1("{x!0#,!0}",x))K2("{x[*'g]!g@:<g:(&1,~(1_s)=(-1)_s:y i)_i:<y}",x,fcanon(x)))
+ R4(tA,tE,tL,tM,K1("{$[#x;x[*'g]!g@:<g:(&~x~':x i)_i:<x;x!0#,!0]}",x)))
+Z A1(cSI,Q(xtS||xtI)C t=tS^tI^xt;MINE(x)?(_at(x)=0,AT(t,x)):x(aV(t,xn,xV)))
 X1(unq,RM(en(x))Rm(unq(val(x)))RE(x)RS(cSI(unq(cSI(x))))Ril(rndF(gl(x)))R_(et(x))RB(unq(cG(x)))
  RGC(C a[256]={},r[256],t=xt;U n=0;Mx(F(xn,UC v=xg;I(!a[v],a[v]=1;r[n++]=v)))aV(t,n,r))
  R5(tA,tH,tI,tL,tF,P(xn<2,x)
   {A u_=unqL(x);P(u_,x(u_))}                 /*amber: C hash/LUT distinct, 0 = not handled*/
-  P(xn<<xw-3<pg&&!xtA,K1("{x@&(x?x)=!#x}",x))K1("{x@i@<i@:&@[;0;:;1]@~~':x@i:<x}",x)))
+  P(xn<<xw-3<pg&&!xtA,K1("{x@&(x?x)=!#x}",x))
+  // amber 2.3: a long float vector used ~': here, which merges two NaN spellings
+  // that find (the short path just above) keeps apart, so #? changed with the
+  // LENGTH. Same canonical keys as grp: now the long path agrees with find.
+  P(xtF,K2("{x@i@<i@:&@[;0;:;1]@~=':y@i:<y}",x,fcanon(x)))
+  K1("{x@i@<i@:&@[;0;:;1]@~~':x@i:<x}",x)))
 
 // ---- amber 2.1: `gagg (op;k;v[;m]) -- fused group aggregate -----------------
 // One pass: acc[group(k[i])] op= v[i]. op is a symbol (`sum `count `min `max
@@ -159,6 +177,10 @@ enum{GA_SUM,GA_CNT,GA_MIN,GA_MAX,GA_AVG,GA_FST,GA_LST};
 #define GARD(w,p,i) ((w)==0?(L)((CO G*)(p))[i]:(w)==1?(L)((CO H*)(p))[i]:(w)==2?(L)((CO I*)(p))[i]:((CO L*)(p))[i])
 #define GA_GROW() I(ng==cap,U nc=cap*2;gk=realloc(gk,(N)nc*SZ(L));gf=realloc(gf,(N)nc*SZ(I));af=realloc(af,(N)nc*SZ(F));al_=realloc(al_,(N)nc*SZ(L));gc=realloc(gc,(N)nc*SZ(L));cap=nc;)
 #define GA_ADD(g,i) {af[g]=0;al_[g]=0;gc[g]=0;gf[g]=(I)(i);I(code==GA_MIN,af[g]=WF;al_[g]=WL)I(code==GA_MAX,af[g]=-WF;al_[g]=NL)}
+// amber 2.3: float min/max compare o1() keys, the order &/ and |/ use (NaN lowest, -0.0
+// below 0.0), and give back the winner's own bits. The plain < and > skipped NaNs, so a
+// group min ignored the NaN &/ returns, and an all-NaN group came out as 0w/-0w.
+#define GA_OF(i) o1(((CO L*)vp)[i])
 A1(gaggC,P(_t(x)-tA||(_n(x)-3&&_n(x)-4),et(x))A*e=_A(x);A op=e[0],k=e[1],v=e[2],m=_n(x)==4?e[3]:0;
  I code=-1;
  I(_ts(op),S nm=su(_v(op));code=!strcmp(nm,"sum")?GA_SUM:!strcmp(nm,"count")?GA_CNT:!strcmp(nm,"min")?GA_MIN:!strcmp(nm,"max")?GA_MAX:!strcmp(nm,"avg")?GA_AVG:!strcmp(nm,"first")?GA_FST:!strcmp(nm,"last")?GA_LST:-1)
@@ -196,8 +218,8 @@ A1(gaggC,P(_t(x)-tA||(_n(x)-3&&_n(x)-4),et(x))A*e=_A(x);A op=e[0],k=e[1],v=e[2],
   S(code,
    C(GA_SUM,I(vf,af[g]+=((CO F*)vp)[i])E(al_[g]+=GARD(wv,vp,i)))
    C(GA_AVG,I(vf,af[g]+=((CO F*)vp)[i])E(af[g]+=(F)GARD(wv,vp,i)))
-   C(GA_MIN,I(vf,F t=((CO F*)vp)[i];I(t<af[g],af[g]=t))E(L t=GARD(wv,vp,i);I(t<al_[g],al_[g]=t)))
-   C(GA_MAX,I(vf,F t=((CO F*)vp)[i];I(t>af[g],af[g]=t))E(L t=GARD(wv,vp,i);I(t>al_[g],al_[g]=t)))
+   C(GA_MIN,L t=vf?GA_OF(i):GARD(wv,vp,i);I(t<al_[g],al_[g]=t))
+   C(GA_MAX,L t=vf?GA_OF(i):GARD(wv,vp,i);I(t>al_[g],al_[g]=t))
    C(GA_LST,gf[g]=(I)i)
    D())}
  P(fail,free(gk);free(gf);free(af);free(al_);free(gc);free(slot);free(ht);I(mb_,mr(mb_))x(emp(tA)))
@@ -207,8 +229,8 @@ A1(gaggC,P(_t(x)-tA||(_n(x)-3&&_n(x)-4),et(x))A*e=_A(x);A op=e[0],k=e[1],v=e[2],
  S(code,
   C(GA_SUM,I(vf,vl=aV(tF,ng,af))E(vl=aV(tL,ng,al_)))
   C(GA_AVG,vl=an(ng,tF);F(ng,_F(vl)[i]=af[i]/(F)gc[i]))
-  C(GA_MIN,I(vf,vl=aV(tF,ng,af))E(vl=aV(tL,ng,al_)))
-  C(GA_MAX,I(vf,vl=aV(tF,ng,af))E(vl=aV(tL,ng,al_)))
+  C(GA_MIN,I(vf,F(ng,al_[i]=o0(al_[i]))vl=aV(tF,ng,al_))E(vl=aV(tL,ng,al_)))
+  C(GA_MAX,I(vf,F(ng,al_[i]=o0(al_[i]))vl=aV(tF,ng,al_))E(vl=aV(tL,ng,al_)))
   C(GA_CNT,vl=aV(tL,ng,gc))
   D(vl=i1(v,_R(fr))))
  free(gk);free(gf);free(af);free(al_);free(gc);free(slot);free(ht);I(mb_,mr(mb_))
@@ -216,3 +238,4 @@ A1(gaggC,P(_t(x)-tA||(_n(x)-3&&_n(x)-4),et(x))A*e=_A(x);A op=e[0],k=e[1],v=e[2],
  x(aV(tA,3,A(ky,vl,fr))))
 #undef GA_GROW
 #undef GA_ADD
+#undef GA_OF

@@ -12,7 +12,7 @@
 **A low-latency array language: columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-2.2.0-orange)
+![version](https://img.shields.io/badge/version-2.3.0-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
 ![tests](https://img.shields.io/badge/tests-873%20K--suite%20cases-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
@@ -39,31 +39,34 @@ qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                        / vwap by symbo
 ```
 
 <a name="whats-new"></a>
+<a name="whats-new-230"></a>
+## What's new in 2.3.0
+
+Mostly a bug hunt. I pointed a property/differential sweep at the fast paths (NumPy
+oracles, the old binary against the new one, byte for byte, ~139k cases per build) and it
+turned up more silent wrong answers than I'd like. None of these raised an error:
+
+- `<x` on int64s either side of 2^31 could come back unsorted, and `=x` grouped off it;
+- a sorted vector kept its `` `s`` after an in-place write, so find binary-searched data
+  that wasn't sorted any more (`` `sa``, `` `pa`` and `` `ua`` actually check the data now);
+- `avg` on int64 wrapped, `|\` started from `-0w`, grouped min/max of an all-NaN group
+  gave `0w`, and `0N&':x` came back all `0N`;
+- the compiler folded the `-0.0` and `0.0` literals into one constant.
+
+Plus a handful of crashes (`peach` over anything that parses was the nasty one), no more
+64K cap on symbols, and it builds on Cygwin and with GCC 14.
+
+Some speed too, A/B against 2.2.0 on one machine: `distinct` is 1.9–3.9× faster, sorting an
+already-sorted float column 2.6×, moving max 2.3×, moving sums 1.35–1.5×, find 1.4×. In
+effbiae's benchmarks game collatz got 1.3× faster; the rest is within a few percent either way.
+
+The full list, and how each one was found: [`CHANGELOG.md`](CHANGELOG.md).
+
 <a name="whats-new-220"></a>
-## What's new in 2.2.0
-
-**A correctness and performance release.** Five defects that returned a **wrong value
-rather than an error** are fixed. None of them raised, so none was visible:
-
-- a lambda **parameter** named `ss`, `in` or any other infix verb parsed as the verb;
-- `1 2 3 in 2` answered `1 1`, because an atom fell onto k's **random deal**;
-- float literals below `1e-308` did not parse at all;
-- `(max;px) fby (sym;ex)` answered once per **column** instead of once per row;
-- `?` (distinct) was **not a function of its input**: `#?(-0.0 0.0)` was 2 while
-  `#?(300#-0.0 0.0)` was 1, the same values at a different length.
-
-And, measured A/B against 2.1.0 on one machine with every answer bit-identical: an
-already-sorted float column sorts **5.8×** faster, a non-integral one (which is what a
-real price series is) **2.6×**, float `distinct` **2.0×**, `grade` **1.4×**, and
-`select from t` **8–19×** depending on table width. `select[n;>col]` and temporal chart
-axes are new. One row moved the wrong way and is published rather than dropped.
-
-Every number, and the mechanism behind each: [`CHANGELOG.md`](CHANGELOG.md) and
-[`docs/BENCHMARKS.md`](docs/BENCHMARKS.md).
 <a name="whats-new-older"></a>
 ## Earlier releases
 
-2.1.0, 2.0.1, 2.0.0 and everything before them are in
+2.2.0, 2.1.0, 2.0.1, 2.0.0 and everything before them are in
 [`CHANGELOG.md`](CHANGELOG.md), which is the single place release notes live.
 
 <a name="quickstart"></a>
@@ -79,6 +82,19 @@ AMBER_NATIVE=1 ./a           # -march=native build
 ./demo.sh                    # the full Mega Demo
 ./amber --help               # options and the \-command reference
 ```
+
+**Windows.** WSL works as is, and so does plain [Cygwin](https://cygwin.com) since 2.3.
+Install it with a compiler, make and git (python3 only if you'll run the test suite),
+either by ticking them in the installer or in one go:
+
+```sh
+setup-x86_64.exe -q -s https://mirrors.kernel.org/sourceware/cygwin/ -P gcc-core,make,git,python3
+```
+
+then open a Cygwin terminal and run the commands above. Clone with Cygwin's git (or set
+`git config --global core.autocrlf false` first) so the scripts keep their LF endings.
+The interpreter, the REPL and the test suite all run there; `libamber.so` is Linux and
+macOS only.
 
 Typed at the prompt, where a bare table renders as a grid and qSQL works directly:
 

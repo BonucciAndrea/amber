@@ -114,11 +114,18 @@ __attribute((weak, visibility("default"))) V kinit();
 // predictable branch outside a peach scope, so serial execution pays nothing.
 #if !defined(wasm)
 #include<pthread.h>
-Z pthread_mutex_t g_alloc_mx;
-Z V alloc_lock_init(){pthread_mutexattr_t a;pthread_mutexattr_init(&a);pthread_mutexattr_settype(&a,PTHREAD_MUTEX_RECURSIVE);pthread_mutex_init(&g_alloc_mx,&a);pthread_mutexattr_destroy(&a);}
+Z pthread_mutex_t g_alloc_mx,g_parse_mx;
+Z V alloc_lock_init(){pthread_mutexattr_t a;pthread_mutexattr_init(&a);pthread_mutexattr_settype(&a,PTHREAD_MUTEX_RECURSIVE);pthread_mutex_init(&g_alloc_mx,&a);pthread_mutex_init(&g_parse_mx,&a);pthread_mutexattr_destroy(&a);}
 #define ALK() do{if(ray_rc_sync)pthread_mutex_lock(&g_alloc_mx);}while(0)
 #define AUL() do{if(ray_rc_sync)pthread_mutex_unlock(&g_alloc_mx);}while(0)
+// amber 2.3: the parser (p.c: s0/s/k) and the compiler (b.c: u/b/m/l/nb/nl) keep
+// their state in file statics, so two peach workers doing . "..." at once parsed
+// over each other: bogus 'parse, then a segfault (2.2 too). pk() and cpl() take
+// this lock inside a peach scope, so parses queue up while the compiled code still
+// runs in parallel. Recursive because pk() compiles lambda literals itself.
+V plk(B on){if(ray_rc_sync)(on?pthread_mutex_lock:pthread_mutex_unlock)(&g_parse_mx);}
 #else
+V plk(B on){(V)on;}
 #define alloc_lock_init() ((void)0)
 #define ALK() ((void)0)
 #define AUL() ((void)0)
@@ -136,7 +143,15 @@ Z V*mm(W n,U f){ALK();V*p=mmap(0,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVAT
  I(n>=(W)1<<21,madvise(p,n,MADV_HUGEPAGE);)
 #endif
 I(nreg==L(reg),mc();I(nreg==L(reg),die("MMAP")))reg[nreg++]=(TY(*reg)){p,n,f};AUL();return p;}
-A mf(U f,U i,U n)_(V*p=mm(pg+n,1);P(!p,eo0())P(mmap(p+pg,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_FIXED,f,i)!=p+pg,mu(p);eo0())A x=AP(p+pg);xb=0;xr=REFB;xT=tC;xn=n;x)
+// amber 2.3: Cygwin can't lay a file view over part of an anonymous mapping
+// (Windows sections don't nest), so the MAP_FIXED below always failed there and
+// every 0:, 1: and \l read came back 'io. When it fails, read into a plain vector.
+#if !defined(wasm)
+Z A mfr(U f,U i,U n)_(A x=an(n,tC);U o=0;W(o<n,L r=pread(f,(C*)_V(x)+o,n-o,(off_t)i+o);P(r<=0,mr(x);eo0())o+=(U)r)x)
+#else
+Z A mfr(U f,U i,U n)_(eo0())
+#endif
+A mf(U f,U i,U n)_(V*p=mm(pg+n,1);P(!p,eo0())P(mmap(p+pg,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_FIXED,f,i)!=p+pg,mu(p);mfr(f,i,n))A x=AP(p+pg);xb=0;xr=REFB;xT=tC;xn=n;x)
 
 // Per-thread size-class free lists: each peach worker recycles chunks on its
 // OWN lists with zero locking. Thread-local storage is initial-exec here (no
@@ -163,7 +178,9 @@ A1(mRa,mRn(xn,xA);x)
 
 NI A an(U n,C t)_(Q(!lck)Q(tA<=t)Q(t<tn)Q(!TP(t))U i=58-CLZ(HD|HD-1+(((W)n<<Tw[t])+7>>3));A x=mb(i);xb=i;xr=REFB;xT=t;xn=n;_at(x)=0;x)
 A aV(C t,U n,CO V*v)_(A x=an(n,t);MC(xV,v,((W)n<<Tw[t])+7>>3);x)
-A aa(U n,A x/*1*/)_(P(MINE(x)&&((W)n<<xw)+7>>3<=cap(x),AN(n,x))A y=an(n,xt);MC(yV,xV,((W)xn<<Tw[xt])+7>>3);I(ytR,I(MINE(x),AZ(x))E(mRn(xn,xA)))x(y))//realloc
+// realloc. Grown in place for its sole owner, who then writes the new tail --
+// so no attribute survives it (amber 2.3: `s,:v kept `s on unsorted data).
+A aa(U n,A x/*1*/)_(P(MINE(x)&&((W)n<<xw)+7>>3<=cap(x),_at(x)=0;AN(n,x))A y=an(n,xt);MC(yV,xV,((W)xn<<Tw[xt])+7>>3);I(ytR,I(MINE(x),AZ(x))E(mRn(xn,xA)))x(y))
 A aA0(U n)_(A x=AN(0,aA(n));xx=emp(tC);x)
 A1(aA1,aV(tA,1,&x))
 A2(aA2,/*11*/aV(tA,2,A(x,y)))
@@ -190,7 +207,12 @@ A az(L n)_(n!=(L)(I)n?al(n):ai(n))
 A al(L v)_(aV(tl,1,&v))
 A af(F v)_(aV(tf,1,&v))
 A aE(L i,L j)_(Q(i<=j)P(i==j,emp(tG))A x=an(tE,2);*xL=i;xL[1]=j;x)
-A1(mut,XP(x)P(MINE(x),x)x=x(aV(xt,xn,xV));XR(mRa(x))x)
+// amber 2.3: mut() hands back a vector the caller is about to write into; when
+// that is the object itself (sole owner), its attribute must go -- `s[0]:9000`
+// on a sorted vector used to keep `s#, and find then binary-searched data that
+// was no longer sorted (a silent 0N). Every in-place write is preceded by mut()
+// or clears the byte itself (2.c, 1.c, o.c).
+A1(mut,XP(x)P(MINE(x),_at(x)=0;x)x=x(aV(xt,xn,xV));XR(mRa(x))x)
 C tZ(L v)_(G(tL,tL,tL,tL,tI,tI,tH,tG)[CLZ(v^v>>63|1)-1>>3])
 A kv(A*p)_(A x=*p;Q(xn==2);P(!MINE(x),--xr;*p=_R(xx);_R(xy))*p=xx;AZ(x);x(xy))
 L gl_(A x)_(XP(xv)*xL)
@@ -203,21 +225,63 @@ A AO(UC o,A x)_(Xs(x&~(0xffll<<32)|(W)o<<32)_O(x)=o;x)
 A AN(U n,A x)_(xn=n;x)
 A1(AZ,xT=tG;x)
 
-Z C s0[1<<16],*s1=s0+1;
-S su(U u)_(P(u&1u<<31,s0-(I)u)Z W r;r=u;(V*)&r)
+// ---- symbol table -----------------------------------------------------------
+// Symbols longer than 4 bytes live in one append-only byte region, and a
+// symbol's id is its NEGATED offset there (high bit set; su() undoes it). Ids
+// must never move, so the region cannot be realloc'd.
+//
+// amber 2.3: the region used to be a fixed 64 KB static array, and interning
+// was a linear strcmp scan over all of it. Loading a few thousand long names
+// (a day of vessel names, a CSV symbol column, IPC keys) died with 'SYMS, and
+// every intern cost O(bytes interned so far) -- O(m^2) for m symbols, paid on
+// every `$ over a string vector and every identifier the parser meets.
+// Now: a large address-space RESERVATION (MAP_NORESERVE, so only the pages
+// actually written are ever committed) plus an open-addressed hash index of the
+// ids. Ids are byte-for-byte what the old table assigned for the same intern
+// order, so nothing that stores or compares ids changes.
+#if defined(wasm)
+Z C s0a[1<<20];Z C*s0=s0a,*s1=s0a+1,*sE=s0a+SZ s0a;
+#define SYMRESERVE() 1
+#else
+Z C*s0,*s1,*sE;
+Z B symreserve(){P(s0,1)
+ // 1 GB of address space, halving on failure (a strict-overcommit host may
+ // refuse a large reservation); never below the old 64 KB.
+ for(W z=(W)1<<30;z>=(W)1<<16;z>>=1){
+  V*p=mmap(0,z,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_ANON,-1,0);
+  I(p!=MAP_FAILED,s0=(C*)p;s1=s0+1;sE=s0+z;return 1;)}
+ return 0;}
+#define SYMRESERVE() symreserve()
+#endif
+Z U*sh,shc,shn;//hash index: slot -> id (0 = empty), shc slots, shn used
+Z U shh(S s)_(U h=2166136261u;W(*s,h=(h^(UC)*s++)*16777619u)h^h>>15)//FNV-1a, folded
+Z B shgrow()_(U c=shc?shc*2:1024;U*t=calloc(c,SZ(U));P(!t,0)
+ F(shc,U v=sh[i];I(v,U j=shh(s0-(I)v)&(c-1);W(t[j],j=(j+1)&(c-1))t[j]=v))
+ free(sh);sh=t;shc=c;1)
+// su(): for a packed id (<=4 bytes) the bytes ARE the id, so they are copied
+// into a scratch word and a pointer to that returned. That scratch used to be
+// ONE static word, so two su() results in the same expression aliased each other
+// (`"%s.%s",su(ns),su(sy)` printed one name twice) and peach workers raced on
+// it. Eight rotating thread-local words fix both.
+S su(U u)_(P(u&1u<<31,s0-(I)u)Z AM_TLS W r[8];Z AM_TLS U ri;W*p=r+(ri++&7);*p=u;(V*)p)
 // Symbol intern. Short symbols (<=4 bytes without the high bit) are packed into
 // the id itself and never touch the shared table, so they need no lock. The
-// table-append path (scan for an existing name, else copy the bytes and bump
-// s1) mutates s0/s1 shared across peach workers -- serialized by the allocator
-// lock, engaged only in a ray_rc_sync scope.
+// table path mutates s0/s1/sh shared across peach workers -- serialized by the
+// allocator lock, engaged only in a ray_rc_sync scope.
 U us(S s){U n=SL(s);I(n<4||(n==4&&!(s[3]&128)),U v=0;MC(&v,s,n);return v;)
- ALK();S p=s0+1;W(p<s1,I(!strcmp(p,s),U r=(U)(s0-p);AUL();return r;)p+=SL(p)+1)
- n++;I(s1+n>s0+SZ s0,AUL();die("SYMS");)MC(s1,s,n);s1+=n;U r=(U)(s0-s1+n);AUL();return r;}
+ ALK();I(!SYMRESERVE()||(!shc&&!shgrow()),AUL();die("SYMS");)
+ U h=shh(s),j=h&(shc-1);
+ W(sh[j],I(!strcmp(s0-(I)sh[j],s),U r=sh[j];AUL();return r;)j=(j+1)&(shc-1))
+ n++;I((W)(sE-s1)<n,AUL();die("SYMS");)MC(s1,s,n);s1+=n;U r=(U)(s0-s1+n);
+ sh[j]=r;I(++shn*2>=shc,I(!shgrow(),AUL();die("SYMS");))AUL();return r;}
 A sym(S s)_(as(us(s)))
 
 Z U gd,gn;Z W gk[4096];A gv[4096];
 Z W gkk(A x/*0*/)_(Xs((U)xv)Q(xtS)xn?(W)_v(jS(drp(-1,xR)))<<32|(U)_v(ii(x,xn-1)):0)
-U gi(A x/*0*/)_(W k=gkk(x);I(!(k>>32)&&id0(*su(k)),k|=(W)gd<<32)U i=fL(gk,gn,k);P(i<gn,i)P(gn>=L(gv),die("GLOBALS"))gk[gn]=k;gv[gn]=0;gn++)
+// gi() appends a new name when it has not been seen; a lambda compiled inside a
+// peach worker (`value`, a projection built at run time) reaches it concurrently,
+// so the lookup+append runs under the allocator lock (a no-op outside peach).
+U gi(A x/*0*/)_(W k=gkk(x);I(!(k>>32)&&id0(*su(k)),k|=(W)gd<<32)ALK();U i=fL(gk,gn,k);P(i<gn,AUL();i)P(gn>=L(gv),AUL();die("GLOBALS"))gk[gn]=k;gv[gn]=0;gn++;AUL();i)
 A gg(A x/*1*/)_(//get value of global
  P(xtS&&!xn,x(0);A x=emp(tS),y=emp(tA);F(gn,I(gv[i],L k=gk[i];PSH(x,k-(U)k?jS(aV(tS,2,A((I)(k>>32),k))):as(k));PSH(y,_R(gv[i]))))am(x,y))//special case for 0#`
  W k=gkk(x);x(0);U i=fL(gk,gn,k);i<gn&&gv[i]?_R(gv[i]):ev0())
@@ -441,7 +505,15 @@ V kinit(){Z B l;P(l)l=1;alloc_lock_init();pg=sysconf(_SC_PAGESIZE);A b[32],*c=b;
  F(tS-tA+1,*c++=ce[tA+i]=an(0,tA+i))*c++=ce[tm]=am(emp(tS),emp(tA));_x(ce[tA])=_R(ce[tC]);ce[tM]=ce[tA];F(tn-ti,Q(!ce[i+ti]);ce[i+ti]=ce[tA])//empties
  cn[tA]=ce[tC];*c++=cn[ti]=cn[tl]=al(NL);F(tL-tE+1,cn[tE+i]=cn[ti])*c++=cn[tF]=cn[tf]=af(NF);cn[tC]=cn[tc]=ac(32);cn[tS]=cn[ts]=as(0);F(tn-to,cn[to+i]=au)//nulls
  Q(c-b<=32);cns=aV(tA,c-b,b);arena_init(0);}//arena_init: reserve the 16MB HFT scratchpad
-V kargs(I n,S*a){argv=(S*)a;env=(S*)a+n+1;n=MAX(0,n-2);A x=n?aA(n):emp(tA);F(n,xa=aCz(a[2+i]))gk[gn]='x';gv[gn++]=x;}
+// amber 2.3: envp sits right after argv's NULL on Linux and macOS, not on Cygwin
+// (its DLL builds argv on the heap), where env walked garbage and `pe crashed.
+#if defined(__CYGWIN__)
+extern char**environ;
+#define AM_ENVP(a,n) ((S*)environ)
+#else
+#define AM_ENVP(a,n) ((S*)(a)+(n)+1)
+#endif
+V kargs(I n,S*a){argv=(S*)a;env=AM_ENVP(a,n);n=MAX(0,n-2);A x=n?aA(n):emp(tA);F(n,xa=aCz(a[2+i]))gk[gn]='x';gv[gn++]=x;}
 A emp(U t)_(_R(ce[t]))
 
 ZN U ow(S s,U n)_(write(1,s,n))

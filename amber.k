@@ -44,7 +44,7 @@ sum:{$[0=#x;$[`F=@x;0.0;0];+/x]}       / empty: keep the float type (+/ already 
 prd:{$[0=#x;$[`F=@x;1.0;1];*/x]}       / empty: keep the float type
 min:{&/x}
 max:{|/x}
-avg:{(+/x)%#x}
+avg:{$[`F=@x;(+/x)%#x;(+/0.0+x)%#x]}   / ints summed as floats, like q: an int64 +/ can wrap (2.3)
 / fused dot (`wsm) when both sides are float vectors: no product vector is
 / built, so the 80MB temporary `+/x*y` writes and re-reads never exists.
 wsum:{$[(`F=@x)&`F=@y;`wsm(x;y);+/x*y]}

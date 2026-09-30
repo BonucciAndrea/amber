@@ -38,7 +38,7 @@ A2(cat10,
  XE(cat10(gZ(x),y))
  YE(y=gZ(yR);y(cat10(x,y)))
  P(xtB&&ytB,U m=xn,n=yn,d=m&63;x=aa(m+n,x);P(!d,MC(xV+(m>>3),yV,n+63>>6<<3);x)
-  L*a=xL+(m>>6),*b=yL,v=*a&~(-1ll<<d);F(n+63>>6,v|=*b<<d;*a++=v;v=(W)*b++>>64-d;)*a=v;x)
+  L*a=xL+(m>>6),*b=yL,v=*a&~(~0ull<<d);F(n+63>>6,v|=(W)*b<<d;*a++=v;v=(W)*b++>>64-d;)*a=v;x)
  P(xtT&&ytT,P(!yn,x)P(!xn,x(yR))P(xt-yt,P(xtZ&&ytZ,yR;N(sup(&x,&y));cat11(x,y))cat11(blw(x),blw(yR)))P(xtB||ytB,en(x))
   U m=xn,n=yn,w=xw-3;x=aa(m+n,x);
   MC(xV+((W)m<<w),yV,(W)n<<w);I(ytA,mRa(y))x)

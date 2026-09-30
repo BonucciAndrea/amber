@@ -118,7 +118,57 @@ def build_engines(threads):
         Engine("pandas", "pandas", py("pandas"), ALL_OPS, "hash group-by, block manager"),
         Engine("polars", "Polars", py("polars"), ALL_OPS, "Arrow + vectorised kernels"),
         Engine("duckdb", "DuckDB", py("duckdb"), ALL_OPS, "vectorised push execution"),
+        # 2.3: more engines. Installed under ~/opt (no system packages); each adapter's
+        # header says how it is timed and how it is held to one thread.
+        Engine("uiua", "Uiua 0.19", [os.path.join(OPTBIN, "uiua"), "run", "--no-format", os.path.join(ENG, "uiua.ua")],
+               CORE_OPS, "stack-based array language, f64 only; classify+group"),
+        Engine("gnuapl", "GNU APL 2.0", [os.path.join(OPTBIN, "gnu-apl"), "--script", "-f", os.path.join(ENG, "gnuapl.apl"), "--"],
+               CORE_OPS, "tree-walking APL2 interpreter; sort-based group-by; member is O(n*k)"),
+        Engine("dyalog", "Dyalog APL 20.0", [os.path.join(OPTBIN, "dyalogscript"), os.path.join(ENG, "dyalog.apls")],
+               CORE_OPS, "key operator group-by, n-wise windows; narrow int storage"),
+        Engine("julia", "Julia 1.13", [os.path.join(OPTBIN, "julia"), "-t", "1", "--startup-file=no", os.path.join(ENG, "julia.jl")],
+               ALL_OPS, "Base Julia, JIT-compiled closures; Dict group-by and hash join"),
+        Engine("r", "R 4.6 (base)", [os.path.join(OPTBIN, "R"), "--vanilla", "--no-echo", "-f", os.path.join(ENG, "r_engines.R"), "--args", "base"],
+               ALL_OPS, "base-R vectors; rowsum/match hashing, radix sort"),
+        Engine("rdt", "R data.table 1.18", [os.path.join(OPTBIN, "R"), "--vanilla", "--no-echo", "-f", os.path.join(ENG, "r_engines.R"), "--args", "datatable"],
+               ["distinct", "distinct_100k", "group_10", "group_100", "group_10k", "group_100k",
+                "join_inner", "msum_16", "mavg_256", "mmax_64"] + TABLE_OPS,
+               "GForce by, X[i] and rolling joins, froll*; setDTthreads(1)"),
+        Engine("clickhouse", "ClickHouse 26.9 (local)", [VENV, os.path.join(ENG, "clickhouse_engine.py")],
+               ALL_OPS, "clickhouse-local, Memory tables, max_threads=1; query_log timing"),
+        Engine("octave", "GNU Octave 10.3", [os.path.join(OPTBIN, "octave-cli"), "--norc", "--no-history", "--quiet", os.path.join(ENG, "octave.m")],
+               CORE_OPS, "vectorised; unique+accumarray group-by, ismember"),
+        Engine("numba", "Numba 0.67", [VENV, os.path.join(ENG, "numba_engine.py")],
+               ALL_OPS, "@njit loops (compiled NumPy), typed Dict/set; one thread"),
+        Engine("april", "April 1.0 (APL on SBCL)", [os.path.join(OPTBIN, "april-sbcl"), os.path.join(ENG, "april.lisp")],
+               ["sum_f", "max_f", "dot", "sum_i", "scan_f", "sort_f", "sort_presorted", "grade_i",
+                "distinct", "group_10", "group_100", "join_inner", "msum_16", "mmax_64"],
+               "APL compiled to Common Lisp; 1 worker; O(n*k) ops left out"),
+        Engine("growler", "growler/k", [os.path.join(OPTBIN, "growler"), os.path.join(ENG, "growler.k")],
+               CORE_OPS, "maintained ngn/k fork"),
+        Engine("goal", "Goal 1.8 (-tags full)", [os.path.join(OPTBIN, "goal"), os.path.join(ENG, "goal.goal")],
+               CORE_OPS, "K-like, Go; math.mmax; rt.time clock"),
+        Engine("kona", "Kona (K3)", [os.path.join(OPTBIN, "kona"), os.path.join(ENG, "kona.k")],
+               CORE_OPS, "open-source K3; wall-clock _T timer"),
+        Engine("klong", "Klong 20221212", [os.path.join(OPTBIN, "kg"), "-u", os.path.join(ENG, "klong.kg")],
+               CORE_OPS, "decimal reals, CPU-time clock; N<=1e6"),
+        Engine("ktye", "ktye/k", ["sh", os.path.join(ENG, "ktye_run.sh"), os.path.join(OPTBIN, "ktye-scout"),
+               os.path.join(ENG, "ktye.k")], CORE_OPS, "32-bit ints; now[] native clock"),
+        Engine("kap", "Kap (JVM 25)", [os.path.join(OPTBIN, "kap-jvm-text"), "--no-repl", "--no-init",
+               "--load=" + os.path.join(ENG, "kap.kap")], CORE_OPS, "lazy APL on JVM; nanoTime",
+               env={"JAVA_OPTS": "-Xmx4g"}),
+        Engine("ok", "oK (node)", ["node", os.path.join(ENG, "ok_driver.js"), os.path.join(ENG, "ok.k")],
+               CORE_OPS, "k in JavaScript; N<=1e6"),
+        Engine("l", "l 20260929 (AVX2 eval build)", [os.path.join(OPTBIN, "l_l64"), QREL],
+               ALL_OPS, "independent q implementation; runs q.q"),
     ]
+    # before/after in one run: point SCOUT_AMBER_BASE at an older amber binary and it
+    # gets its own row, run on the same data between the same engines.
+    base = os.environ.get("SCOUT_AMBER_BASE")
+    if base:
+        engines.insert(3, Engine("amber-base", "Amber (baseline binary)",
+                                 [base, os.path.join(ENG, "amber.k")], ALL_OPS,
+                                 "whatever SCOUT_AMBER_BASE points at"))
     # amber 2.1: the "amber-mt" row is gone. It measured the reductions' OpenMP
     # `parallel for`, which was removed (a thread team per reduction was a net
     # loss); OMP_NUM_THREADS no longer changes anything. peach is the multi-core

@@ -450,9 +450,13 @@ the interpreter:
 ```
 
 `asc` and `xasc` apply `` `sa`` for you, so idiomatic sorted data is attributed automatically;
-`fin.k`'s `gentq` sets `` `s`` on `time` and `` `p`` on `sym`. **Sorted *and* parted** vectors
-take the O(log n) binary‑search find path; grouped pairs with `fin.k`'s group index for O(1)
-per‑symbol slicing.
+`fin.k`'s `gentq` puts `` `p`` on `sym`. Only **sorted** vectors get the binary-search find.
+Parted just means equal values sit together, not that they're in order, so it stays on the
+hash path. Grouped pairs with `fin.k`'s group index for O(1) per-symbol slicing.
+
+Since 2.3 an attribute gets checked when you set it, like q: `` `sa`` on unsorted data is
+`'s-fail` (same idea for `'u-fail`, `'p-fail`). Writing into the vector in place drops it.
+Before that, `s[0]:9000` on a sorted `s` kept `` `s``, and `s?9000` said `0N`.
 
 ### Why it makes search faster
 
@@ -483,11 +487,11 @@ at least 2× faster on a 200k sample.
   `sym1` symbol‑verb dispatch table as `` `sa`` `` `ua`` `` `pa`` `` `ga`` and `` `at``. Each
   setter marks a simple vector with its code; `qat` reports it as `` `s`u`p`g``.
 * **`f.c`**: four binary‑search probes `bGL/bHL/bIL/bLL`, and a one‑line change in `fnd` so the
-  integer find path selects them when the vector is **sorted or parted** (and the type is
+  integer find path selects them when the vector is **sorted** (and the type is
   `tH/tI/tL`, not float/symbol):
 
   ```c
-  B srt = !_tP(x) && xt!=tF && xt!=tS && (_at(x)==1 || _at(x)==3);
+  B srt = !_tP(x) && xt!=tF && xt!=tS && _at(x)==1;
   TY(fGL)*f = (srt ? G(&bGL,bHL,bIL,bLL) : G(&fGL,fHL,fIL,fLL))[xw-3];
   ```
 

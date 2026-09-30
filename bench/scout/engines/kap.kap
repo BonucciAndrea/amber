@@ -1,0 +1,86 @@
+⍝ bench/scout/engines/kap.kap - Kap side of the scout matrix (core tier).
+⍝ Run:  kap-jvm-text --no-repl --no-init --load=bench/scout/engines/kap.kap <op> <N> <runs> <warmup>
+⍝ Protocol and data model: bench/scout/SCOUT_SPEC.md
+⍝
+⍝ Kap (kapdemo.dhsdevelopments.com, JVM text client) is an APL-family language
+⍝ with lazy evaluation: an array expression returns a deferred computation
+⍝ that is only materialised when it is needed or ASSIGNED, so every timed pass
+⍝ assigns the kernel's result (ans ← ...), which forces it inside the timed
+⍝ region.  Integers are arbitrary-precision, 1.0-style literals are doubles,
+⍝ ÷ on integers gives exact rationals (so ⌊n÷4 is exact).  ⎕IO is 0.
+⍝ Kernel times use java.lang.System.nanoTime (monotonic) through Kap's own jvm:
+⍝ interop, because the documented time:timeMillis has 1 ms resolution.
+⍝ Formulations: ∧ sort-up, ⍋ grade (stable), ⍳ index-of, ∊ membership,
+⍝ ∪ unique, key ⌸ for the group-sums ((+/)⌸ returns key,sum rows), +\ for
+⍝ the prefix-sum-difference moving sums, and a van Herk/Gil-Werman block
+⍝ moving max (⌈\ along the rows of the (m÷w) w reshape, forwards and
+⍝ backwards; O(n)).  No table layer is used, so the table ops report SKIP.
+
+args ← ⎕argv
+op ← ⊃args[0]
+nn ← ⍎⊃args[1]
+runs ← ⍎⊃args[2]
+warm ← ⍎⊃args[3]
+
+nanoM ← jvm:findMethod⟦jvm:findClass "java.lang.System"; "nanoTime"⟧
+now ⇐ { jvm:fromJvm jvm:callMethod⟦nanoM; null⟧ }
+
+ii ← ⍳nn
+hh ← 1048573 | 262147 × ii
+aa ← 1000 | hh
+bb ← 997 | hh
+xx ← 0.0 + aa
+yy ← 0.0 + bb
+chk ← (+/aa) + 3 × +/bb
+
+sfa ⇐ { s←⍵ ⋄ m←≢s ⋄ (s[0]+s[⌊m÷4]+s[⌊m÷2]+s[⌊3×m÷4]+s[m-1]) + 1000000000 × +/(1↓s)<¯1↓s }
+grp ⇐ { r ← ⍺ (+/)⌸ ⍵ ⋄ +/(1+251|r[;0])×r[;1] }
+msumw ⇐ { s←+\⍵ ⋄ s-(⍺⍴0.0),(-⍺)↓s }
+mavgw ⇐ { (⍺ msumw ⍵) ÷ ⍺⌊1+⍳≢⍵ }
+mmaxw ⇐ { w←⍺ ⋄ n←≢⍵ ⋄ z←((w-1)⍴↑⍵),⍵ ⋄ m←w×⌈(≢z)÷w ⋄ mat←((m÷w),w)⍴m↑z ⋄ p←,⌈\mat ⋄ q←,⌽⌈\⌽mat ⋄ (n↑q)⌈n↑(w-1)↓p }
+
+mj ← 1000000
+F ← 0
+have ← 0
+if (op≡"sum_f") { have ← 1 ⋄ F ← λ{+/xx} }
+if (op≡"max_f") { have ← 1 ⋄ F ← λ{⌈/xx} }
+if (op≡"scan_f") { have ← 1 ⋄ F ← λ{s←+\xx ⋄ s[0]+s[⌊nn÷2]+s[nn-1]} }
+if (op≡"dot") { have ← 1 ⋄ F ← λ{+/xx×yy} }
+if (op≡"sum_i") { have ← 1 ⋄ F ← λ{+/aa} }
+if (op≡"arith_mask") { have ← 1 ⋄ F ← λ{+/(xx>50)/yy+2.5×xx} }
+if (op≡"sort_f") { have ← 1 ⋄ F ← λ{sfa ∧xx} }
+if (op≡"sort_presorted") { have ← 1 ⋄ pp ← ∧xx ⋄ F ← λ{sfa ∧pp} }
+if (op≡"grade_i") { have ← 1 ⋄ gk ← 1000⌊nn ⋄ F ← λ{+/gk↑⍋aa} }
+if (op≡"find") { have ← 1 ⋄ kr ← 1048573|7919×⍳1000 ⋄ pr ← kr[1000|hh] ⋄ F ← λ{+/kr⍳pr} }
+if (op≡"member") { have ← 1 ⋄ kr ← 1048573|7919×⍳1000 ⋄ F ← λ{+/hh∊kr} }
+if (op≡"distinct") { have ← 1 ⋄ F ← λ{d←∪aa ⋄ (1000000×≢d)++/d} }
+if (op≡"distinct_100k") { have ← 1 ⋄ g5 ← 100000|hh ⋄ F ← λ{d←∪g5 ⋄ (1000000×≢d)++/d} }
+if (op≡"group_10") { have ← 1 ⋄ gg ← 10|hh ⋄ F ← λ{gg grp xx} }
+if (op≡"group_100") { have ← 1 ⋄ gg ← 100|hh ⋄ F ← λ{gg grp xx} }
+if (op≡"group_10k") { have ← 1 ⋄ gg ← 10000|hh ⋄ F ← λ{gg grp xx} }
+if (op≡"group_100k") { have ← 1 ⋄ gg ← 100000|hh ⋄ F ← λ{gg grp xx} }
+if (op≡"join_inner") { have ← 1 ⋄ kr ← 1048573|7919×⍳1000 ⋄ vr ← 2.0×⍳1000 ⋄ hj ← 1048573|262147×⍳mj ⋄ kl ← kr[1000|hj] ⋄ vl ← 0.0+1000|hj ⋄ F ← λ{+/vl×vr[kr⍳kl]} }
+if (op≡"msum_16") { have ← 1 ⋄ F ← λ{+/16 msumw xx} }
+if (op≡"mavg_256") { have ← 1 ⋄ F ← λ{+/256 mavgw xx} }
+if (op≡"mmax_64") { have ← 1 ⋄ F ← λ{+/64 mmaxw xx} }
+
+if (have=0) {
+  io:println "SKIP ",op
+} else {
+  ans ← 0
+  k ← 0
+  while (k < warm) { ans ← ⍞F 0 ⋄ k ← k+1 }
+  ts ← ⍬
+  k ← 0
+  while (k < runs) {
+    t0 ← now 0
+    ans ← ⍞F 0
+    t1 ← now 0
+    ts ← ts , (t1-t0)÷1000000.0
+    k ← k+1
+  }
+  io:println "BENCH   ",op
+  io:println "CHECK   ",⍕chk
+  io:println "ANSWER  ",⍕ans
+  io:println "TIME_MS ",⍕(∧ts)[⌊runs÷2]
+}

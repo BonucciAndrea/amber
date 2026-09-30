@@ -105,7 +105,7 @@ static inline const void*amb_alchk(const void*p_,const char*f_,int l_){
 // and the components can no longer drift apart (they did: the banner said
 // v1.7 while README.md already advertised 1.9).
 #define AMBER_VERSION_MAJOR 2
-#define AMBER_VERSION_MINOR 2
+#define AMBER_VERSION_MINOR 3
 #define AMBER_VERSION_PATCH 0
 #define AMBER_VERSION M2(AMBER_VERSION_MAJOR) "." M2(AMBER_VERSION_MINOR) "." M2(AMBER_VERSION_PATCH)
 #define REFB  1
@@ -170,7 +170,7 @@ TD unsigned long long W,A,A0(),A1(A),A2(A,A),A3(A,A,A),A4(A,A,A,A),AA(CO A*,U),A
 A1 _R,aA1,asc,AZ,blw,cB,cG,cC,cF,cH,cI,cL,cS,dsc,emaC,enl,epr,err,fir,flp,flr,frk,gZ,gg,grp,hex,imx,imn,inv,jS,js0,js1,kcos,kexp,klog,ksin,kst,las,len,m0,m1,mkn,mRa,mr,mut,
  neg,not,nul,of0,of1,opn,out,peachC,prng,qkmp,qpri,qte,raz,rev,rs0,spl,sqr,sqz,sqzZ,str,str0,til,typ,u0c,u1c,u2c,unh,unq,val,whr,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,mwC,xsC,rdlC,sbbC,sbtC,wsmC,srtC,srtdC,gaggC,membC;
 A2 _1,aA2,aM,add,am,psh,ari,bin,ct,cat,cat10,cat11,dlr,dex,dot,dvd,eql,exc,crt,fil,fnd,gtn,hsh,ie,i1,ltn,mod,mnm,mtc,mul,mxm,que,sub,und,v0c,v1c,v2c,cmprC,no2;
-A3 _2,aA3,arf,arp,ars,cpl,e2,r2,try;
+A3 _2,aA3,arf,arp,arpF,ars,cpl,e2,r2,try;
 A4 ara,a4,d4;
 AX _8,e8,f8,prj,run;
 AA a8,d8,ins,no8,fredC,fmaC,fmsC;
@@ -185,6 +185,9 @@ V cyc(V*,U,U),eS(A,U),eQ(S,U,U),exit(I),hexC(S,U,C*),kargs(I,S*),kinit(),*memmem
 B id0(UC),mtc_(A,A),tru(A);
 V par_prng_perturb(W);//decorrelate a peach worker's thread-local prng stream (r.c)
 A peach_pool(A,A,U,I);//persistent thread-pool morsel-driven peach (src/peachpool.c)
+CO C*peach_errmsg(V);//error category raised by the failing worker of the last peach dispatch
+CO C*errtext(V);//the calling thread's current error text (e.c)
+V plk(B);//take (1) / drop (0) the parse+compile lock inside a peach scope (m.c)
 C*sf(C*,L),*sl(C*,L),sup(A*,A*),tZ(L),*strchrnul(S,I);
 U gi(A);
 B am_infix_dyad(S,U);//p.c: is a name a defined rank-2 global fn? -> infix

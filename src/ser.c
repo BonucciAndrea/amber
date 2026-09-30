@@ -86,7 +86,7 @@ Z V enc(WB*b,A x,I d){
  I(b->bad,return)
  I(d>SERDEPTH,b->bad=2;return)
  C t=_t(x);
- I(t==to||t==tp||t==tq||t==tr,b->bad=2;return)   /* functions: unsupported */
+ I(t==to||t==tp||t==tq||t==tr||t==tx,b->bad=2;return)   /* functions (and C function pointers): unsupported */
  wu8(b,(UC)t);
  I(t==ts,wsym(b,(U)_v(x));return)
  I(TP(t),wu32(b,(U)_v(x));return)
@@ -116,7 +116,11 @@ Z A dec(RB*b,I d){
  I(t<tA||t>=tn,b->bad=1;return 0)
  I(t==to||t==tp||t==tq||t==tr,b->bad=1;return 0)
  I(t==ts,U id=rsym(b);I(b->bad,return 0)return as(id))
- I(TP(t),U v=ru32(b);I(b->bad,return 0)return Lt(t)|(U)(I)v)
+ /* packed atoms: a verb/adverb index must be inside its table, and a tx (a C
+  * function pointer) never comes from bytes -- both were taken as-is (2.3) */
+ I(TP(t),U v=ru32(b);I(b->bad,return 0)
+   I(t==tx||((t==tu||t==tv)&&v>=32)||(t==tw&&v>=6),b->bad=1;return 0)
+   return Lt(t)|(U)(I)v)
  UC at=ru8(b);W n=ru64(b);I(b->bad,return 0)
  /* a count that cannot fit the remaining bytes is corrupt: reject BEFORE
   * allocating, so a hostile length field cannot drive a huge allocation. */
@@ -125,7 +129,9 @@ Z A dec(RB*b,I d){
    W m=n|!n;                                      /* slot 0 witness, see enc */
    I(m>(W)(b->n-b->i),b->bad=1;return 0)          /* >=1 byte per child */
    A x=an((U)m,t);A*e=(A*)_V(x);W k=0;
-   W(k<m,A c=dec(b,d+1);I(!c,mrn((U)k,e);AN(0,x);mr(x);b->bad=1;return 0)e[k++]=c)
+   /* on a failed child: release the k built ones, then free the list as plain
+    * bytes (AZ) -- freeing it as a list released slot 0 a second time (2.3) */
+   W(k<m,A c=dec(b,d+1);I(!c,mrn((U)k,e);AZ(x);mr(x);b->bad=1;return 0)e[k++]=c)
    AN((U)n,x);_at(x)=at;return x)
  I(t==tS,
    I(n>(W)(b->n-b->i),b->bad=1;return 0)          /* >=4 bytes per symbol */

@@ -1,0 +1,68 @@
+/ bench/scout/engines/goal.goal - Goal side of the scout matrix (core tier).
+/ Run:  goal bench/scout/engines/goal.goal <op> <N> <runs> <warmup>
+/ Protocol and data model: bench/scout/SCOUT_SPEC.md
+/ .
+/ Goal (codeberg.org/anaseto/goal) is a K-like language implemented in Go.  It
+/ needs the `-tags full` build for the math extension: mmax_64 uses the native
+/ math.mmax moving maximum (O(n)), which is "|\ for the first i items" and so has
+/ exactly the spec's shrinking-start semantics.  The moving sums use the
+/ prefix-sum-difference idiom; group-sums use Goal's documented index-grouping
+/ idiom =(!#c)!c over the classify codes c:%g (keys ?g in the same first-seen
+/ order).  No table layer is used (lib/table.goal is a library, not a kernel),
+/ so the table ops report SKIP.  Kernel times come from rt.time (Go's monotonic
+/ clock), one call per timed pass; the kernel stores its result in ANS.
+/ Uppercase names are data (globals); x/y/z are lambda arguments.
+
+OP:ARGS 1
+NN:"i"$ARGS 2
+RUNS:"i"$ARGS 3
+WARM:"i"$ARGS 4
+
+I:!NN
+H:1048573!262147*I
+A:1000!H
+B:997!H
+X:0.0+A
+Y:0.0+B
+CHK:(+/A)+3*+/B
+
+sfa:{[s]n:#s;((s 0)+(s@-4!n)+(s@-2!n)+(s@-4!3*n)+(s@n-1))+1e9*+/(1_s)<-1_s}
+grp:{[g;v]c:%g;(+/(1+251!?g)*+/'v@=(!#c)!c)}
+msumw:{[w;v]s:+\0.0+v;s-(w#0.0),(-w)_s}
+mavgw:{[w;v]msumw[w;v]%w&1+!#v}
+
+MJ:1000000
+
+F:0
+F:?[OP~"sum_f";          {+/X};F]
+F:?[OP~"max_f";          {|/X};F]
+F:?[OP~"scan_f";         {s:+\X;(s 0)+(s@-2!NN)+(s@NN-1)};F]
+F:?[OP~"dot";            {+/X*Y};F]
+F:?[OP~"sum_i";          {+/A};F]
+F:?[OP~"arith_mask";     {+/(Y+2.5*X)@&X>50};F]
+F:?[OP~"sort_f";         {sfa[^X]};F]
+F:?[OP~"sort_presorted"; [P:^X;{sfa[^P]}];F]
+F:?[OP~"grade_i";        [GK:1000&NN;{+/GK#<A}];F]
+F:?[OP~"find";           [KR:1048573!7919*!1000;PR:KR@1000!H;{+/KR?PR}];F]
+F:?[OP~"member";         [KR:1048573!7919*!1000;{+/H in KR}];F]
+F:?[OP~"distinct";       {d:?A;(1e6*#d)++/d};F]
+F:?[OP~"distinct_100k";  [G5:100000!H;{d:?G5;(1e6*#d)++/d}];F]
+F:?[OP~"group_10";       [G:10!H;{grp[G;X]}];F]
+F:?[OP~"group_100";      [G:100!H;{grp[G;X]}];F]
+F:?[OP~"group_10k";      [G:10000!H;{grp[G;X]}];F]
+F:?[OP~"group_100k";     [G:100000!H;{grp[G;X]}];F]
+F:?[OP~"join_inner";     [KR:1048573!7919*!1000;VR:2.0*!1000;HJ:1048573!262147*!MJ
+                          KL:KR@1000!HJ;VL:0.0+1000!HJ;{+/VL*VR@KR?KL}];F]
+F:?[OP~"msum_16";        {+/msumw[16;X]};F]
+F:?[OP~"mavg_256";       {+/mavgw[256;X]};F]
+F:?[OP~"mmax_64";        {+/math.mmax[64;X]};F]
+
+ANS:0.0
+bench:{[f]
+ {[f;j]ANS::f 0}[f]'!WARM
+ ts:{[f;j]rt.time[{[f;u]ANS::f u}[f];,0;1]}[f]'!RUNS
+ say"BENCH   "+OP
+ say"CHECK   "+$CHK
+ say"ANSWER  "+"%.17g"$0.0+ANS
+ say"TIME_MS "+"%.6f"$1e-6*(^ts)@-2!RUNS}
+?[0~F;say"SKIP "+OP;bench F]

@@ -60,7 +60,18 @@ Z CO EDIAG edtab[]={
  {"compile","E0111","Expression could not be compiled","could not be compiled",
   "The expression parses but cannot be compiled; check argument counts, reserved names and assignment targets."},
  {"nyi","E0112","Operation not implemented for these types","unsupported for these types",
-  "This primitive has no implementation for the given operand types yet -- see docs/MISSING.md."}};
+  "This primitive has no implementation for the given operand types yet -- see docs/MISSING.md."},
+ {"noupdate","E0113","Global assignment inside a parallel worker","cannot set a global here",
+  "peach workers run in parallel: they may read globals but not assign them. Return the values instead, or use ' (each)."},
+ {"s-fail","E0114","The data is not sorted","`sa needs ascending data",
+  "The sorted attribute makes find binary-search, so it is only set on data that is in ascending order. Sort first (x@<x), which sets it for you."},
+ {"u-fail","E0114","The data is not unique","`ua needs distinct values",
+  "The unique attribute is only set on a vector with no repeated value; ?x removes repeats."},
+ {"p-fail","E0114","The data is not parted","`pa needs each value in one contiguous run",
+  "The parted attribute promises that equal values sit together. Sort or group the data first."}};
+// The calling thread's current error text ("'category\n..."), so a peach
+// dispatcher can re-raise the error a worker hit rather than a generic one.
+CO C*errtext(V)_(r?b:"")
 // Exposed for the `dgn self-test so it can assert the whole category->code
 // matrix without having to capture stderr.  which: 0=code 1=title 2=label 3=help.
 CO C*edinfo(CO C*nm,I which);

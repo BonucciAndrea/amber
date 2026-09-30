@@ -489,11 +489,12 @@ BARS  (tick.minute-style bucketing)
 ATTRIBUTES  (implemented in C ; speed up search ; meta shows them in `a`)
   `sa x  set sorted   (`s)   sorted asc     -> binary-search find   O(log n)
   `ua x  set unique   (`u)   distinct keys  -> hash-like membership
-  `pa x  set parted   (`p)   grouped runs   -> binary-search find   O(log n)
+  `pa x  set parted   (`p)   equal values in one run -> aj trusts the runs
   `ga x  set grouped  (`g)   any order      -> group index          O(1) slice
   `at x  read the attribute of x   ->  `s / `u / `p / `g  (or ` if none)
+  `sa/`ua/`pa check the data first ('s-fail 'u-fail 'p-fail) ; writing into x drops it
   asc / xasc set `s for you.  fin.k: sortcol[c;t] partcol[c;t] groupcol[c;t]
-  set an attribute on a table column ; gentq marks time `s and sym `p.
+  set an attribute on a table column ; gentq marks sym `p (time is sorted within sym only).
   bench.k  ~1000-2000x find speedup ;  bench-fin.k  O(1) per-symbol slicing
 
 DISPLAY

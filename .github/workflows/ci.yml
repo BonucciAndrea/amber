@@ -381,6 +381,51 @@ jobs:
             fi
           done
 
+  # ------------------------------------------------------------------ Windows (Cygwin)
+  # Native Cygwin, not a Linux VM: PE binaries, newlib, a 64 KB page size and
+  # Cygwin's own pthreads. It also brings GCC 14, which turned a pointer-type
+  # mismatch the older compilers only warned about into an error. The whole
+  # harness runs; tests/run_tests.sh skips the two legs Cygwin can't do (no
+  # libamber.so, and the status bar's paste-folding checks) and says so.
+  cygwin:
+    name: windows (cygwin)
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: C:\cygwin\bin\bash.exe --noprofile --norc -eo pipefail -o igncr '{0}'
+    steps:
+      - name: Keep LF line endings
+        shell: pwsh
+        run: git config --global core.autocrlf false
+
+      - uses: actions/checkout@v4
+
+      - name: Install Cygwin + build tools
+        uses: cygwin/cygwin-install-action@v4
+        with:
+          packages: gcc-core make python3 which
+
+      - name: Build + full test suite
+        run: |
+          # Cygwin's /usr/bin first: the runner's PATH also carries MinGW and
+          # Strawberry Perl compilers, and `cc` must not resolve to either.
+          export PATH=/usr/local/bin:/usr/bin:$PATH
+          cc --version | head -1
+          # bash, not ./: a Windows checkout carries no exec bits (the script
+          # chmods what it runs itself)
+          bash tests/run_tests.sh
+
+      - name: Smoke examples
+        run: |
+          export PATH=/usr/local/bin:/usr/bin:$PATH
+          for f in basics tick graphs; do
+            if [ -f "examples/$f.k" ]; then
+              echo "run examples/$f.k"
+              ./amber "examples/$f.k" > /dev/null
+            fi
+          done
+
   # ------------------------------------------------------------------ Script hygiene
   # The launcher and the installers run on machines we will never see, so they
   # are linted like source. Also asserts the executable bit is actually set in

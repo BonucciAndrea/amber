@@ -524,7 +524,7 @@ A1(vmdT,x(al((L)vm_selftest())))
 // CSV loader builtin (`csvr): x is a char vector (file path); returns a typed
 // table via csv_read() (csv.{h,c}). x itself is a string, not the arena/file --
 // csv_read() re-opens the path with a plain C FILE*, so x is only consumed here.
-X1(csvrT,RC(C buf[1024];U n=MIN(xn,SZ buf-1);MC(buf,xC,n);buf[n]=0;x(csv_read(buf)))R_(et(x)))
+X1(csvrT,RC(C buf[4096];P(xn>=SZ buf,x(ez0()))U n=xn;MC(buf,xC,n);buf[n]=0;x(csv_read(buf)))R_(et(x)))//a longer path used to be truncated silently
 // `csvx "path": the new reader against the 2.2.0 reference reader, bit for bit (csv.h).
 X1(csvxT,RC(C buf[1024];U n=MIN(xn,SZ buf-1);MC(buf,xC,n);buf[n]=0;x(al((L)csv_check(buf))))R_(et(x)))
 // CSV parser self-test builtin (`csv0): writes a small known CSV (mixed long/
@@ -801,9 +801,17 @@ Z X1(qjs,RC(C b[4096];U n=js_eval(xC,xn,b,SZ b);x(0);aCn(b,n))RA(e1f(qjs,x))R_(e
 Z X1(qp,RC(x=str0(x);S s=xC;x(pk(&s,0)))R_(et(x)))
 Z A1(qt,x(al(now())))
 Z A1(qfb,P(!xtC,et(x))P(xn-8,el(x))x=rev(x);x(aV(tf,1,xV)))//float from bits
-Z A1(qsa,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=1;x)//amber: `s sorted
-Z A1(qua,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=2;x)//amber: `u unique
-Z A1(qpa,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=3;x)//amber: `p parted
+// amber 2.3: an attribute is a promise the engine acts on -- find binary-searches
+// an `s vector, aj trusts the runs of an `s/`p column -- so it is only set when
+// the data keeps it, as q does: `sa 3 1 2 is 's-fail, not a vector whose `?`
+// quietly misses. The checks use the engine's own comparisons (the fused
+// neighbour counts: 308 = descents, 310 = equal neighbours), so the collation is
+// exactly the one sort and find use. An `s vector the engine sorted is trusted.
+Z L atcnt(A x,L code)_(A fa[3];fa[0]=az(code);fa[1]=x;fa[2]=au;A c=fredC(fa,3);P(!c,-1)gl(c))
+Z A1(qsa,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)P(_at(x)==1,x)L d=atcnt(x,308);P(d<0,x(0))P(d,x(err0("s-fail")))x=mut(x);_at(x)=1;x)//amber: `s sorted
+Z A1(qua,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)P(_at(x)==2,x)A u=unq(_R(x));P(!u,x(0))U k=_N(u);mr(u);P(k!=xn,x(err0("u-fail")))x=mut(x);_at(x)=2;x)//amber: `u unique
+Z A1(qpa,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)P(_at(x)==3,x)L e=atcnt(x,310);P(e<0,x(0))A u=unq(_R(x));P(!u,x(0))U k=_N(u);mr(u);
+ P(xn&&(L)xn-e!=(L)k,x(err0("p-fail")))x=mut(x);_at(x)=3;x)//amber: `p parted: #runs = #distinct
 Z A1(qga,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=4;x)//amber: `g grouped
 // amber: `diag 0 / `diag 1 -- turn the Rust-style stderr diagnostic off/on at
 // runtime, returning the PREVIOUS setting so a caller can restore it. Needed by
@@ -881,7 +889,7 @@ Z A3(d3,/*100*/U m=yN;P(y==au||!m,z1(x))P(m==1,y=fir(yR);y(a3(x,y,z)))A u=prj(DO
 A4(d4,/*1000*/U m=yN;P(y==au||!m,x(z2(x,uR)))P(m==1,y=fir(yR);y(a4(x,y,z,u)))A v=prj(DOT,(A[]){GAP,drp(1,yR)},2);y=fir(yR);A r=y(a5(x,y,v,z,u));mr(v);r)
 Z AA(d8_,/*10..0*/A x=*a,y=a[1],z=a[2];P(n==4,d4(x,y,z,a[3]))P(n==3,d3(x,y,z))en(x))
 AA(d8,/*10..0*/A x=*a;
- X(RsS(A*p=gp(x);I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,56);*p=au;*p=_R(N(d8_(b,n))))
+ X(RsS(P(ray_rc_sync,mrn(n,a);err0("noupdate"))A*p=gp(x);I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,56);*p=au;*p=_R(N(d8_(b,n))))// amend-by-name of a global: not from a peach worker (b.c bS)
    RU(n==3?try(x,a[1],a[2]):er(x))
    R_(d8_(a,n)))0)
 ZN A ki(A*p,S s)_(*p=evs(s,0);I(!*p,die(s))PSH(cns,*p))

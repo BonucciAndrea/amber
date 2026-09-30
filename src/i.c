@@ -113,7 +113,12 @@ Z A eachR(A f,A y,U lo,U hi){U m=hi-lo;A u=aA0(m|!m);for(U i=0;i<m;i++){A v=_1(f
 // via ray_rc_sync), or the target has no pthreads (-Dwasm).  (-8!/-9! itself
 // still lives in src/ser.c: it remains the `!`-verb serializer and is exercised
 // directly by examples/peach_verify.k -- only peach's use of it is gone.)
-A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);U n=_N(dat);I nw=peachNW();if(nw>64)nw=64;
+A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);
+ // amber 2.3: f'd over a dict maps its VALUES and keeps its keys; peach indexed
+ // the dict by position instead (ii(d,i) is a KEY lookup), so it disagreed with
+ // each on every dict. Same rule as each now.
+ I(_t(dat)==tm,A v=kv(&dat);A r=peachC(aA2(fn,v));P(!r,mr(dat);x(0))return x(am(dat,r));)
+ U n=_N(dat);I nw=peachNW();if(nw>64)nw=64;
 #if defined(wasm)
  {A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}                 // no threads in the wasm sandbox
 #else
@@ -124,7 +129,10 @@ A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);U n=_N(dat);I n
  {C wb[64];L wd;F wv=1.5;MC(&wd,&wv,8);sf(wb,wd);S ws="1.5";pf(&ws);}
  A r=peach_pool(fn,dat,n,nw);
  mr(fn);mr(dat);
- P(!r,x(err0("worker error in peach")))
+ // re-raise the error the failing worker hit ('noupdate, 'type, ...), which is
+ // what the same f'x would have raised serially; a generic message only when
+ // the worker left none.
+ P(!r,CO C*m=peach_errmsg();x(err0(*m?m:"worker error in peach")))
  return x(r);
 #endif
 }

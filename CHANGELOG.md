@@ -1,5 +1,72 @@
 # Changelog
 
+## 2.3.0
+
+Mostly a bug hunt. Ran a property/differential sweep over the fast paths and it turned up more
+wrong answers than I'd like, plus a few crashes. All fixed, each with a regression test. Then a
+round of kernel work.
+
+### Wrong answers (all silent in 2.2.0)
+
+- `<x` on 8-byte data (int64, floats) whose values fit within 2^32 of each other picked the
+  4-byte radix kernel for 8-byte keys: a valid permutation, just not sorted. `=x` sits on that
+  grade, so groups came out duplicated. Any CSV int64 column with both signs was enough.
+- a sorted vector kept `` `s`` after an in-place write, so `s[0]:9000` then `s?9000` said `0N`.
+  Every in-place write drops the attribute now.
+- find also binary-searched `` `p`` vectors, which aren't sorted. And `` `sa`` `` `pa`` `` `ua``
+  never looked at the data; now they check it (`'s-fail` `'p-fail` `'u-fail`, like q). `gentq`
+  and `genopt` were marking within-sym-sorted columns `` `s``, stopped that.
+- the compiler folded `-0.0` and `0.0` literals into one constant, so `{1%(0.0;-0.0;x)}[1.0]`
+  gave `-0w -0w 1.0`.
+- `=` and `?` on floats holding both zero spellings (or two NaN spellings) depended on order
+  and length. Now `-0.0` is `0.0` and each group keeps its first spelling, same as find.
+- `avg` on int64 wrapped. Sums as floats now, like q.
+- `|\`, `|/` and `|':` started from `-0w`/`-0W`, which isn't below NaN/`0N` in Amber's order,
+  so `|\0n 1.0` began with `-0w`. They start from the first element now.
+- grouped min/max of an all-NaN group gave `0w`/`-0w` instead of `0n`, and grouped min
+  (`gmin`, `` `gagg``) skipped NaNs that `&/` returns. Both use `&/`'s order now, NaN lowest.
+- `|':`/`&':` with a seed at the top of the storage width (`127|':` on bytes, `0N&':`)
+  answered seed, seed, seed... which is right for a scan, not for each-prior.
+
+### Faster
+
+A/B against 2.2.0, same machine, same run, native builds, 10M rows (the scout matrix). Nothing
+got slower beyond run-to-run noise.
+
+- `?x` (distinct) on ints: 1.9×, and 3.9× when there are ~100k distinct values.
+- sorting a float column that holds whole numbers skips a pass: 2.6× if it's already sorted,
+  1.1× if not.
+- `mmax`/`mmin` are van Herk/Gil-Werman now, the same cost whatever the window: 2.3× at 64.
+- `msum`/`mavg` run blocked running sums: 1.5× at a window of 16, 1.35× at 256.
+- find on int64 keys: 1.4×. Inner join 1.2×.
+- `_x%y` on ints is one exact integer pass (that's the benchmarks game's collatz, 1.3×), and
+  `(1_x) OP ((-1)_x)` reads `x` once.
+
+### Crashes
+
+- `|':` on int64 wrote its seed into the vector's header (refcount) and fell over later
+  (inherited from ngn/k).
+- `x?y` with int64 keys spanning the whole range built a zero-slot table and wrote past it.
+- `x@&y` segfaulted when `&y` failed (negative counts, a float mask).
+- `-9!` double-freed on truncated input and called through an unchecked verb index.
+- `peach` workers assigning a global raced on it. That's `'noupdate` now, like q.
+- `peach` over anything that parses (`. "1+",$x`, ``. `k x``) had the workers parsing over
+  each other: bogus `'parse`, then a segfault. Parse and compile take a lock inside `peach`
+  now; the work itself still runs in parallel.
+
+### Other fixes
+
+- the symbol table isn't capped at 64 KB any more (`'SYMS`), and interning is a hash, not a
+  linear `strcmp` scan over everything interned so far.
+- `peach` runs in parallel under 1025 items (the morsel was a fixed 1024), maps a dict's values
+  like `'` does, and re-raises the worker's own error.
+- `csvr` on a missing file raises `'io` instead of returning `::`.
+- native and portable builds give the same floats (`-ffp-contract=off`).
+- builds on Cygwin and passes every K suite there (there's a CI job for it now): file reads
+  fall back to `pread` where the mmap trick isn't allowed, and `env` comes from `environ`
+  (walking past argv crashed `peach`). No `libamber.so` on Cygwin.
+- builds with GCC 14, which turned a pointer-type mismatch in `wsm` into an error.
+
 ## 2.2.0
 
 A correctness and performance release. Five defects that returned a **wrong value rather

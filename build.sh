@@ -58,7 +58,9 @@ done
 # Portable -O3 (+ LTO where supported) by default. Set AMBER_NATIVE=1 for a faster
 # machine-specific build (adds -march=native -funroll-loops; the binary then only runs
 # on this CPU family).
-F="-Isrc -fsigned-char -fno-math-errno -fno-signed-zeros -fno-stack-protector -fomit-frame-pointer -w -O3 -pthread"
+# -ffp-contract=off (2.3): with -march=native GCC fused a*b+c into one FMA, so ema/mvar/
+# mdev gave different last bits from the portable build. Same answers on both now.
+F="-Isrc -fsigned-char -fno-math-errno -fno-signed-zeros -ffp-contract=off -fno-stack-protector -fomit-frame-pointer -w -O3 -pthread"
 LTOTAG=""
 if printf 'int main(){return 0;}' | "$CC" -flto -x c - -o .ltocheck 2>/dev/null; then F="$F -flto"; LTOTAG=" -flto"; fi
 rm -f .ltocheck

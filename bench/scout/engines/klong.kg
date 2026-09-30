@@ -1,0 +1,83 @@
+:"bench/scout/engines/klong.kg - Klong side of the scout matrix (core tier)."
+:"Run:  kg -u bench/scout/engines/klong.kg <op> <N> <runs> <warmup>"
+:"(-u lifts kg's default memory limit; join_inner's 1e6-row side needs it)"
+:"Protocol and data model: bench/scout/SCOUT_SPEC.md"
+.comment("*****")
+Klong (t3x.org/klong, Nils M Holm) differs from K where it matters here:
+ - a!b is a mod b (modulus on the RIGHT), a:%b is integer division;
+ - reals are s9core DECIMAL floats (18 significant digits), not IEEE
+   doubles; every answer except mavg_256 is an integer below 2^53 and is
+   exact either way, and mavg_256 is a tolerance op;
+ - a?b returns EVERY position of b in list a, but on a dictionary it is a
+   hash lookup, so find/member/join use a key->index dictionary built
+   with :{},/tuples (the qdict.kg idiom); a missing key is :undefined;
+ - =a groups indices in first-appearance order, the same order as ?a
+   (its cost grows with N x groups: group_10k/100k are slow);
+ - <a is NOT stable at scale, so grade_i grades the (a;index) pairs
+   a,'!#a, which is the stable grade the spec requires;
+ - the only clock is .pc(), the PROCESS clock (clock(3), CPU seconds; the
+   Klong time library's time() uses it), so TIME_MS is CPU time;
+ - there is no infinity, so mmax_64's van Herk/Gil-Werman left padding
+   repeats x[0] (a window [0..i] contains x[0] anyway) - O(n), any data.
+Globals are UPPERCASE; x/y/z are function arguments, locals are declared
+with {[...]; ...} and are dynamically scoped.
+*****
+
+OP::.a@0
+NN::0:$.a@1
+RUNS::0:$.a@2
+WARM::0:$.a@3
+
+I::!NN
+H::(262147*I)!1048573
+A::H!1000
+B::H!997
+X::0.0+A
+Y::0.0+B
+CHK::(+/A)+3*+/B
+
+sfa::{[n];n::#x;((x@0)+(x@n:%4)+(x@n:%2)+(x@(3*n):%4)+(x@n-1))+1000000000*+/(1_x)<(-1)_x}
+med::{[s];s::x@<x;s@(#x):%2}
+grp::{[d v];d::=x;v::y;+/(1+(x@*'d)!251)*{+/v@x}'d}
+msumw::{[s];s::+\0.0+y;s-((x#,0.0),(-x)_s)}
+mavgw::{msumw(x;y)%x&1+!#y}
+mmaxw::{[n c m p q z];n::#y;z::((x-1)#,0.0+y@0),0.0+y;m::x*((#z)+x-1):%x;z::z,(m-#z)#,0.0+y@0;c::+((m:%x),x):^z;p::,/+|\c;q::,/+|(|\|c);(n#q)|n#(x-1)_p}
+mkd::{:{},/x,'!#x}
+
+MJ::1000000
+KEYS::(OP~"find")|(OP~"member")|(OP~"join_inner")
+KR:::[KEYS;(7919*!1000)!1048573;0]
+D:::[KEYS;mkd(KR);0]
+PR:::[OP~"find";KR@H!1000;0]
+P:::[OP~"sort_presorted";X@<X;0]
+GK::1000&NN
+G5:::[OP~"distinct_100k";H!100000;0]
+GC:::[OP~"group_10";10:|OP~"group_100";100:|OP~"group_10k";10000:|OP~"group_100k";100000;0]
+G:::[GC;H!GC;0]
+VR:::[OP~"join_inner";2.0*!1000;0]
+HJ:::[OP~"join_inner";(262147*!MJ)!1048573;0]
+KL:::[OP~"join_inner";KR@HJ!1000;0]
+VL:::[OP~"join_inner";0.0+HJ!1000;0]
+
+F::0
+F:::[OP~"sum_f";{+/X};F]
+F:::[OP~"max_f";{|/X};F]
+F:::[OP~"scan_f";{[s];s::+\X;(s@0)+(s@NN:%2)+(s@NN-1)};F]
+F:::[OP~"dot";{+/X*Y};F]
+F:::[OP~"sum_i";{+/A};F]
+F:::[OP~"arith_mask";{+/(Y+2.5*X)@&X>50};F]
+F:::[OP~"sort_f";{sfa(X@<X)};F]
+F:::[OP~"sort_presorted";{sfa(P@<P)};F]
+F:::[OP~"grade_i";{+/GK#<A,'!#A};F]
+F:::[OP~"find";{+/{D?x}'PR};F]
+F:::[OP~"member";{+/{~:_D?x}'H};F]
+F:::[OP~"distinct";{[d];d::?A;(1000000*#d)++/d};F]
+F:::[OP~"distinct_100k";{[d];d::?G5;(1000000*#d)++/d};F]
+F:::[GC;{grp(G;X)};F]
+F:::[OP~"join_inner";{+/VL*VR@{D?x}'KL};F]
+F:::[OP~"msum_16";{+/msumw(16;X)};F]
+F:::[OP~"mavg_256";{+/mavgw(256;X)};F]
+F:::[OP~"mmax_64";{+/mmaxw(64;X)};F]
+
+bench::{[a ts t0];a::0;ts::[];{a::F();x}'!WARM;{t0::.pc();a::F();ts::ts,.pc()-t0;x}'!RUNS;.p("BENCH   ",OP);.p("CHECK   ",$CHK);.p("ANSWER  ",$a);.p("TIME_MS ",$1000*med(ts))}
+:[F~0;.p("SKIP ",OP);bench()]

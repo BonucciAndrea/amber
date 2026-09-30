@@ -25,6 +25,9 @@ t[`condLong;(condLong 0;condLong 1;condLong 2);(`a;111;42)]
 te[`dottedLimit;"a.b.c.d.e.f.g.h.i"]
 tv[`dotted;"a.b.c:1;a.b.c";1]
 
-hexpect[5]
+/ ---- drop an index from a bit-boolean list (upstream ngn/k 02d24691) ----
+t[`dropBits;(01B_1;0101B_2;01B_0);(,0;0 1 1;,1)]
+
+hexpect[6]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

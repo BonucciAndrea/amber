@@ -1032,7 +1032,12 @@ t[`rangeSumThree;+/9223372036854775800+!3;9223372036854775787]
 t[`rangeSumSmall;+/-5+!1005;499485]
 t[`rangeSumTil;+/!10;45]
 
-hexpect[656]
+/ ---- x!y for a large modulus x (the atom path added x to the remainder and overflowed) ----
+t[`modLarge;(9223372036854775807!1;9223372036854775807!-1;5000000000000000000!4000000000000000000);1 9223372036854775806 4000000000000000000]
+t[`modAgreesVec;(9223372036854775807!1 -1)~(9223372036854775807!1),9223372036854775807!-1;1b]
+t[`modSmall;(7!2;7!-2;2!-7;-2!7;-2!-7;0!5);2 5 1 3 -4 5]
+
+hexpect[659]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

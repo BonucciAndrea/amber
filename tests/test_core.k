@@ -37,6 +37,10 @@ te[`joinLimit;"s:1048576#\"a\";#\",\"/4096#,s"]
 te[`joinLimitStr;"s:1048576#\"a\";#\"ab\"/4096#,s"]
 t[`joinSmall;","/("ab";"c");"ab,c"]
 
-hexpect[11]
+/ ---- a long non-ASCII name fits its buffer (upstream ngn/k 60864276) ----
+te[`longNameUnset;"фффффффффффффффффффффффффффффф 1"]
+tv[`longName;"фффффффффффффффффффффффффффффф:3;фффффффффффффффффффффффффффффф+1";4]
+
+hexpect[13]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

@@ -152,7 +152,7 @@ Z A pt(C*v)_(C c=*s;                                                            
 Z X1(pm,                                                                                            //monadify
  Rv(x^au^av)
  RA(I(xx==aw,x=mut(x);xA[xn-1]=pm(xA[xn-1]))x)
- Rs(S s=su(xv);U n;P(*s>>7&&s[(n=SL(s))-1]-':',C b[8];MC(b,s,n);b[n]=':';b[n+1]=0;sym(b))x)
+ Rs(S s=su(xv);U n;P(*s>>7&&s[(n=SL(s))-1]-':',C b[n+2];MC(b,s,n);b[n]=':';b[n+1]=0;sym(b))x)
  RS(xn==1?enl(pm(fir(x))):x)
  R_(x))
 Z A pT(C*v)_(A x=N(pt(v));                                                                          //parse term and the adverbs or square brackets after it (v:verb?)

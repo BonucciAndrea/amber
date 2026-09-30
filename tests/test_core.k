@@ -153,6 +153,12 @@ t[`dictAssignMany;{x[AN+!AN]:AN#2.0;x}(!AN)!AN#1;(!2*AN)!(AN#1),AN#2.0]
 t[`dictCountMany;#@[(!0)!!0;(2*AN)#!AN;+;1];AN]
 te[`dictAmendLength;"@[`a`b!1 2;`c`d;:;1 2 3]"]
 
-hexpect[78]
+/ ---- JSON: floats outside the int range, infinities, NaN ----
+t[`jsonBigFloat;(`j@1e20;`j@-1e20;`j@1e22;`j@1.5;`j@3.0;`j@-2.0);("1e20";"-1e20";"1e22";"1.5";,"3";"-2")]
+t[`jsonInfNan;(`j@0w;`j@-0w;`j@0n;`j@1.0 0w -0w 0n);("null";"null";"null";"[1,null,null,null]")]
+t[`jsonLiterals;`j?"[1,null,2]";(1.0;0n;2.0)]
+t[`jsonRoundTrip;`j?`j@1e20 -1.5 2.0;1e20 -1.5 2.0]
+
+hexpect[82]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

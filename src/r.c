@@ -38,7 +38,7 @@ Z A ded(U n,U m)_(A x=an(m,tZ(m));tilV(xV,0,m,xw-3);S4(xw-3,F(n,U j=ri(m-i)+i;SW
 Z A des(U n,W m)_(A x=aL(n);L*a=xL;F(n,a[i]=i)W t=1ll<<(66-CLZ(n));A y=aL(t);L*h=yL;L*v=h+1;MS(h,0,t<<3);//sparse
  W b=t-2;My(F(n,W j=rw(m-i)+i;
   I(j<(W)n,SW(a[i],a[j]))
-  E(W p=2*j;I s=j;W(1,I hp=h[p&=b];B(!hp,h[p]=j)B((W)hp==j,s=v[p])p+=2)v[p]=a[i];a[i]=s)))ct(tZ(m),x))//linear probe
+  E(W p=2*j;W s=j;W(1,W hp=h[p&=b];B(!hp,h[p]=j)B(hp==j,s=v[p])p+=2)v[p]=a[i];a[i]=s)))ct(tZ(m),x))//linear probe
 Z A de(U n,W m)_(n>m?el0():!(m>>31)&&n+64>m>>4?ded(n,m):des(n,m))//deal
 Z A rd(L n,L m)_(m<0?(n<0?ed0():n-(I)n?ez0():rt(n,tZ(m))):n==NL?rd(-m,m):n-(I)n?ez0():n<0?de(-n,m):ro(n,m))//roll or deal
 A rndF(L n)_(P(n<0,ed0())P(n>>32,ez0())A x=aF(n);F(n,xf=rf())x)//random floats 0..1

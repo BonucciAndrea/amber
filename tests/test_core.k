@@ -1041,7 +1041,10 @@ t[`modSmall;(7!2;7!-2;2!-7;-2!7;-2!-7;0!5);2 5 1 3 -4 5]
 t[`eachEnum;{x}'2147483646+!4;2147483646 2147483647 2147483648 2147483649]
 t[`eachEnumStr;$2147483647+!2;("2147483647";"2147483648")]
 
-hexpect[661]
+/ ---- a sparse deal from over 2^31 stays in range (upstream ngn/k ea79e42a) ----
+tv[`dealLarge;"r:-1000?5000000000;(~0>&/r;5000000000>|/r;1000=#?r)";1 1 1]
+
+hexpect[662]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

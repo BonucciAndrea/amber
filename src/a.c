@@ -813,6 +813,10 @@ Z A1(qsa,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)P(_at(x)==1,x)L d=atcnt(x,308);P(d<
 Z A1(qua,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)P(_at(x)==2,x)A u=unq(_R(x));P(!u,x(0))U k=_N(u);mr(u);P(k!=xn,x(err0("u-fail")))x=mut(x);_at(x)=2;x)//amber: `u unique
 Z A1(qpa,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)P(_at(x)==3,x)L e=atcnt(x,310);P(e<0,x(0))A u=unq(_R(x));P(!u,x(0))U k=_N(u);mr(u);
  P(xn&&(L)xn-e!=(L)k,x(err0("p-fail")))x=mut(x);_at(x)=3;x)//amber: `p parted: #runs = #distinct
+// whether x keeps the promise of attribute a (1 `s, 2 `u, 3 `p; 4 `g promises nothing), by the
+// checks `sa `ua `pa make, without an error: -9! (ser.c) keeps an attribute byte it reads only then
+UC atok(A x,UC a)_(P(a<1||a>3||_tP(x)||!LH(tG,_t(x),tS),a==4)P(a==1,atcnt(x,308)==0)
+ A u=unq(_R(x));P(!u,0)U k=_N(u);mr(u);P(a==2,k==_n(x))L e=atcnt(x,310);e>=0&&(L)_n(x)-e==(L)k)
 Z A1(qga,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=4;x)//amber: `g grouped
 // amber: `diag 0 / `diag 1 -- turn the Rust-style stderr diagnostic off/on at
 // runtime, returning the PREVIOUS setting so a caller can restore it. Needed by

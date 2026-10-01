@@ -196,7 +196,7 @@ A unqL(A);//amber: O(n) integer distinct (f.c), 0 = not handled
 A cntgrd(A),cntsrt(A);//amber: counting/bucket grade + counting sort (v.c), 0 = not handled
 A rdxsrt(A);//amber 2.2: keys-only radix SORT, no index vector and no gather (v.c), 0 = not handled
 U amlb(CO L*RES,U,U,L);//branch-free lower_bound over a sorted long slice (a.c)
-U amub(CO L*RES,U,U,L);//branch-free upper_bound (first >key) -- no key+1 overflow (a.c)
+U amub(CO L*RES,U,U,L);UC atok(A,UC);//branch-free upper_bound (first >key) -- no key+1 overflow (a.c)
 // AMGALLOP: how far a time-series join's merge cursor walks forward linearly
 // before it gives up and binary-searches the remainder of the group slice.
 // Inside a monotone run the TOTAL forward walk is bounded by the slice width

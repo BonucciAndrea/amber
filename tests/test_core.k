@@ -1025,7 +1025,14 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[651]
+/ ---- +/ of a range is the sum of its items, wrapped as int addition is ----
+t[`rangeSumOne;+/9223372036854775803+!1;9223372036854775803]
+t[`rangeSumWrap;+/4611686018427387904+!2;-9223372036854775807]
+t[`rangeSumThree;+/9223372036854775800+!3;9223372036854775787]
+t[`rangeSumSmall;+/-5+!1005;499485]
+t[`rangeSumTil;+/!10;45]
+
+hexpect[656]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

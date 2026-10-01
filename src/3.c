@@ -143,7 +143,7 @@ Z A3(mmmf,/*010*/B i=xv==7;
  // |/ of a non-empty int vector starts at 0N, so |/0N 0N is 0N (it was -0W, not an element)
  L v=y?gl(y):i?(zn?NL:-WL):WL;az(zn?(i?maxfZ:minfZ)(v,z):v))
 A3(arf,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzfc)Q(ztZFC)
- ZE(P(ztE&&x==ADD&&!y,L i=*zL,j=zL[1];az((j-i)*(j+i-1)/2))z=gZ(zR);z(arf(x,y,z)))
+ ZE(P(ztE&&x==ADD&&!y,L i=*zL,j=zL[1];W n=(W)j-(W)i;az((L)(n&1?n*((W)i+(n-1)/2):n/2*((W)i+(W)j-1))))z=gZ(zR);z(arf(x,y,z)))   //range sum: halve the even factor first ((j+i-1)*n/2 overflowed); wraps as +/ of the items
  ZB(z=cG(zR);z(arf(x,y,z)))
  G(&dexf,admf,subf,admf,___f,___f,mmmf,mmmf,___f,___f,___f)[xv](x,y,z))
 

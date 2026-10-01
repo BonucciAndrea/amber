@@ -115,6 +115,9 @@ t[`pjNewCol;(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`b!(1 3;100 300)]])`b;100 0 3
 t[`pjNulls;((+pj[+`k`a!(1 2 3;0N 20 30);xkey[`k;+`k`a!(1 3;1 2)]])`a;(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`a!(1 3;0N 2)]])`a);(0N 20 32;10 20 32)]
 t[`pjNewColFloat;(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`b!(1 3;1.5 2.5)]])`b;1.5 0.0 2.5]
 t[`ej;#ej[`s;+`s`p!(`a`b`a;1 2 3);+`s`x!(`a`b`d;10 20 30)];3]
+t[`ejAllMatches;ej[`s;+`s`n!(`a`b;1 2);+`s`v!(`a`a`b;10 11 20)];+`s`n`v!(`a`a`b;1 1 2;10 11 20)]
+t[`ejNone;ej[`s;+`s`n!(`a`b;1 2);+`s`v!(,`c;,9)];+`s`n`v!(0#`;!0;!0)]
+t[`ejTwoKeys;ej[`s`k;+`s`k`n!(`a`a;1 2;5 6);+`s`k`v!(`a`a`a;2 2 1;7 8 9)];+`s`k`n`v!(`a`a`a;1 2 2;5 6 6;9 7 8)]
 
 / ---- asof / window joins ----
 trade:+`sym`time`px!(`a`b`a;3 4 9;100 200 300)

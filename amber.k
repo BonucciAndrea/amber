@@ -167,7 +167,7 @@ ij:{[t;kt]kc:keys kt;kd:+!kt;td:+t;yc:kd kc;xc:td kc;p:$[1=#kc;(*yc;*xc);qcard[y
 gc:{[t;n;ot;c]$[in[c;cols t];(+t)c;n#0#(+ot)c]}
 uj:{[x;y]c:distinct cols[x],cols y;+c!{[x;y;c]gc[x;#x;y;c],gc[y;#y;x;c]}[x;y]'c}
 pj:{[t;kt]p:jprobe[keys kt;+!kt;+t];i:(#p 0)^(p 0)?p 1;vt:value kt;vc:cols vt;+(+t),vc!{[i;t;vt;c]z:$[`F~@vt c;0.0;0];a:$[c in !+t;(+t)c;z];r:a+z^((vt c),z)@i;$[|/^a;@[r;&^a;:;*0#r];r]}[i;t;vt]'vc}
-ej:{[c;x;y]ij[x;xkey[c;y]]}
+ej:{[c;x;y]c:c,();g:=+(+y)c;p:(!g)?+(+x)c;l:{$[^x;!0;y x]}[;. g]'p;+(+x@&#'l),c_+y@,/l}   / every matching row of y, in order
 
 / ---- asof join (aj/aj0) : y must contain matching + time cols -----------------
 / ajm: as-of match indices.  Native path: the C `aj kernel does a branch-free

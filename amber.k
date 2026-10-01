@@ -92,8 +92,9 @@ next:{$[isat x;x;1_x,,x@#x]}
 rank:{<<x}
 iasc:{<x}
 idesc:{>x}
-asc:{`srt x}
-desc:{x@>x}
+dsrt:{k:!x;v:. x;i:$[y;>v;<v];(k i)!v i}         / a dict sorted by value: its keys go with their values (x@<x would look each key up again)
+asc:{$[`m~@x;dsrt[x;0];`srt x]}
+desc:{$[`m~@x;dsrt[x;1];x@>x]}
 xrank:{_y*x%#y:<<y}
 xprev:{y[(!#y)-x]}
 rotate:{$[0=#y;y;0=n:(#y)!x;y;(n_y),n#y]}   / A multiple of the count: y as is

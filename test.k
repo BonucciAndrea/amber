@@ -445,6 +445,13 @@ t[`whrEmptyGenCount;#&();0]
 t[`whrEmptyMatchesRange;(&())~&!0;1b]
 t[`whrGroupedStillWorks;&(0 1 0;1 0 1);(0 1 1;1 0 2)]
 
+/ ---- asc / desc of a dict: the keys go with their values ----
+t[`ascDict;        asc `c`a`b!3 1 2;                 `a`b`c!1 2 3]
+t[`descDict;       desc `c`a`b!3 1 2;                `c`b`a!3 2 1]
+t[`ascDictRepeat;  asc `a`a`b!3 1 2;                 `a`b`a!1 2 3]
+t[`descDictTies;   desc `a`b`c`d!1 2 1 2;            `b`d`a`c!2 2 1 1]
+t[`ascKeyed;       asc ([k:`x`y`z]v:3 1 2);          ([k:`y`z`x]v:1 2 3)]
+
 / ---- infix notation for two-arg library dyads (amber 2.0.0) ----
 / `x f y` now applies the named dyad f infix, identical to the bracket form
 / f[x;y].  The bracket form still works, and definitions (in:{...}) still assign.

@@ -153,6 +153,17 @@ t[`dictAssignMany;{x[AN+!AN]:AN#2.0;x}(!AN)!AN#1;(!2*AN)!(AN#1),AN#2.0]
 t[`dictCountMany;#@[(!0)!!0;(2*AN)#!AN;+;1];AN]
 te[`dictAmendLength;"@[`a`b!1 2;`c`d;:;1 2 3]"]
 
-hexpect[78]
+/ ---- a function just over the bytecode limit is 'limit ----
+/ The last of cpl's limit checks marked the error before making it, and
+/ segfaulted on a function of exactly 510 bytecode bytes, even trapped.
+FN:{"{",("+"/x#,"x"),"}"}
+/ first, before any other error (an earlier error hid it)
+t[`fnBytes510Msg;6#.[.:;,FN 255;{x}];"'limit"]
+t[`fnBytes509;#$. FN 254;509]
+te[`fnBytes510;". FN 255"]
+t[`fnBytes510Trap;.[.:;,FN 255;{`t}];`t]
+te[`fnBytes512;". FN 256"]
+
+hexpect[83]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

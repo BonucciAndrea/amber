@@ -755,7 +755,16 @@ tcLoop:{tcCarry (tcP 18!y)*(-18!y){tcCarry x*tcP 18}/x}
 t[`tailPowMatchesLoop;(tcPow[,1;500];tcPow[,1;500];tcPow[,1;100000]);(tcLoop[,1;500];tcLoop[,1;500];tcLoop[,1;100000])]
 t[`tailAfterwards;(tcCnt 3;tcName[3;0];tcCarry 5 7);(0;3;5 7 0)]
 
-hexpect[460]
+/ ---- nesting deeper than the parser's limit is 'limit, not a crash ----
+t[`nestParens300;. (300#"("),"1",300#")";1]
+te[`nestParensDeep;(20000#"("),"1",20000#")"]
+te[`nestLambdasDeep;(20000#"{"),20000#"}"]
+te[`nestIndexDeep;"a",(20000#"["),20000#"]"]
+te[`nestChainDeep;(,/20000#,"1+"),"1"]
+te[`nestAdverbsDeep;"1",,/20000#,"+/"]
+te[`stringBackslashEnd;"\"a\\"]
+
+hexpect[467]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

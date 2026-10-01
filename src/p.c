@@ -166,11 +166,19 @@ Z X1(pm,                                                                        
  Rs(S s=su(xv);U n;P(*s>>7&&s[(n=SL(s))-1]-':',C b[n+2];MC(b,s,n);b[n]=':';b[n+1]=0;sym(b))x)
  RS(xn==1?enl(pm(fir(x))):x)
  R_(x))
-Z A pT(C*v)_(A x=N(pt(v));                                                                          //parse term and the adverbs or square brackets after it (v:verb?)
- W(1,C c=*s;U i=si("'/\\[",c);P(i>3,x)s++;
+// Nesting depth: pe() recurses for each bracket, lambda and verb of a chain, and pT() deepens the
+// tree once for each adverb or index applied to a term; the folding and compiling after the parse
+// recurse as deep as the tree. Without a limit, deep input ran the C stack out (20000 parentheses,
+// or 6000 terms of 1+1+...). 512 levels (a chain takes two for each verb) run in a 512 KB stack,
+// and the bytecode buffer refuses chains long enough to reach them anyway.
+#define PD 512
+Z I pd;                                                                                             //depth of pe() calls in progress
+Z A pT(C*v)_(A x=N(pt(v));U n=0;                                                                    //parse term and the adverbs or square brackets after it (v:verb?)
+ W(1,C c=*s;U i=si("'/\\[",c);P(i>3,x)P(pd+ ++n>PD,x(ez0()))s++;
   I(i>2,x=AO(s-1-s0,N(pb(x,']')));I(xn==2,I(xy==GAP,xy=au)E(xx=pm(xx)))*v=0)
   E(I c=*s==':';s+=c;x=aA2(aw+i+3*c,x);*v=1))x)
-Z A pe(A x,C*v)_(s=pw(s);C c=*s;                                                                    //parse expression
+Z A pe(A,C*);
+Z A pe_(A x,C*v)_(s=pw(s);C c=*s;                                                                    //parse expression
  I(c=='/'&&(s==s0||s[-1]==32||s[-1]==10),
   I(s[1]==10,C*e=strstr(s+1,"\n\\\n");P(!e,ep0())s=e+2)
   E(W((c=*++s)&&c-10)))
@@ -179,6 +187,7 @@ Z A pe(A x,C*v)_(s=pw(s);C c=*s;                                                
  P(!b,A z=pe(y,v);P(!x,z)Nx(z);*v?aA3(aw,x,z):AO(o,aA2(pm(x),z)))
  A z=pe(0,v);P(!z,y(x?x(0):0))P(z==GAP,*v=1;P(!x,y)Yu(ep(x))AO(o,aA3(y,x,z)))
  *v&=y!=av;I(!x,y=pm(y))*v?aA3(aw,x?AO(o,aA3(y,x,GAP)):y,z):AO(o,x?aA3(y,x,z):aA2(pm(y),z)))
+Z A pe(A x,C*v)_(P(pd>=PD,x?x(ez0()):ez0())pd++;A r=pe_(x,v);pd--;r)                         //pe_, at most PD deep: 'limit beyond
 Z A pb(A x,C c)_(x=x?aA1(x):emp(tA);                                                                //parse body (sequence of ;-separated expressions)
  W(1,C v=0;A y=Nx(pe(0,&v));PSH(x,c-']'&&y==GAP?au:y);P(y==GAP&&c==')',ep(x))B(*s-';'&&*s-10)B(c==10&&*s==10)s++)
  P(c==10&&!*s,x)P(*s-c,ep(x))s++;x)

@@ -856,8 +856,10 @@ X1(val,RA(P(!xn,x)P(xn==1,fir(x))P(xn>9,ez(x))x=mut(x);A y=_8(xx,&xy,xn-1);AN(1,
  Ropq(AT(tA,mut(x)))Rr(cat10(AT(tA,mut(x)),aw+xE))Ruvw(ai(xv))R_(x))
 A2(dot,/*01*/Ym(et(y))U n=yN;P(!n,y(xR))P(n>8,ez(y))y=mRa(N(blw(y)));y(x8(yA,n)))
 Z U knd(A x/*0*/)_(X(Ril(ti)REBGHIL(tI)R_(xt))0)
+Z AM_TLS_IE I nsq;   //>0: inside amend's per-index fold, which squeezes once at the end (a squeeze per item made it quadratic)
+#define USQ(e) ({I k_=nsq;nsq=0;A r_=(e);nsq=k_;r_;}) //run code the amend calls out to (verbs, lambdas) with squeezing back on
 Z A set(A x,L i,A y/*1i1*/)_(Q(MINE(x));
- X(RA(A z=xa;xa=z(y);ytt&&!ytU?sqz(x):x)
+ X(RA(A z=xa;xa=z(y);ytt&&!ytU&&!nsq?sqz(x):x)
    RM(A z=kv(&x);z=mut(z);Q(ztA);I(ytT&&yN-zn,x(y(el(z))))I j=i;F(zn,za=set(mut(za),j,ii(y,i));P(!za,za=au;x(y(z(0)))))y(aM(x,z)))
    RB(set(cG(x),i,y))
    R_(P(knd(x)-knd(y)-tC+tc,set(blw(x),i,y))I(xtZ,N(sup(&x,&y)))C w=xw-3;!w?xg=yv:w==1?xh=yv:w==2?xi=yv:(xl=gl(y));x))0)
@@ -872,15 +874,25 @@ Z A set(A x,L i,A y/*1i1*/)_(Q(MINE(x));
 // stack-probing/tagged-memory target it faults. AC() clamps each copy to the
 // number of arguments that actually exist.
 #define AC(d,s,c) {I c_=(I)(c);I(c_>0,MC(d,s,8u*(U)c_))}
+//amend a dict at a list of keys whose places z come from one find, not a find per key, which made it quadratic.
+//With every key present that is one amend of the values. Otherwise the keys go in order, as the fold over them did:
+//a key not yet in the dict is added at its first use, with the value ie gives from the values at that point
+Z A dam(A x,A y,A z,CO A*a,U n/*10100*/)_(x=mut(x);U m=0;F(zn,m+=zL[i]==NL)
+ P(!m,Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);xy=au;xy=Nx(z(a8(b,n)));x)
+ A w=aL(m);m=0;F(zn,I(zL[i]==NL,_L(w)[m++]=i))A k=i1(y,_R(w)),p=k?fnd(k,_R(k)):0;I(k,mr(k))I(p,p=cL(p))P(!p,mr(w);z(x(0)))
+ L c=_N(xx);z=mut(z);F(m,L q=_L(p)[i];_L(p)[i]=q==i?c++:_L(p)[q];zL[_L(w)[i]]=_L(p)[i])mr(p);mr(w);B t=n==4&&!_tt(a[3]);nsq++;
+ F(zn,L j=zL[i];I(j==_N(xx),PSH(xx,ii(y,i));PSH(xy,ie(a[2],xy)))Ab8;*b=xy;b[1]=az(j);b[2]=a[2];I(n==4,b[3]=t?ii(a[3],i):a[3])
+  xy=au;A v=a8(b,n);mr(b[1]);I(t,mr(b[3]))P(!v,nsq--;z(x(0)))xy=v)
+ nsq--;xy=sqz(xy);z(x))
 AA(a8,/*10..0*/A x=*a,y=a[1];
  X(RE(Ab8;*b=gZ(x);AC(b+1,a+1,n-1);a8(b,n))
-   RT_E(P(y==au,mRn(n-2,a+2);Ab8;*b=a[2];b[1]=x;AC(b+2,a+3,n-3);e8(AP1,b,n-1))
-    Yzc(L i=gl_(y);P(i>=(W)xn,ei(x))x=mut(x);Ab8;*b=ii(x,i);AC(b+1,a+3,n-3);mRn(n-3,b+1);A z=a[2];set(x,i,Nx(z8(b,n-2))))
-    I(ytZC&&n==4,A z=a[2],u=a[3];P(xtZ&&ztv&&utzZ&&(0xcf&1<<zv),ara(x,y,z,u))P(xtC&&z==av&&utcC,cC(N(ara(x,y,z,u)))))Yt(et(x))mRn(n-1,a+1);f8(AP1,a,n))
-   Rm(A z=Nx(fnd(xx,yR));ZT(z(0);mRn(n-1,a+1);f8(AP1,a,n))x=mut(x);I(ztl,z=mut(z);F(zN,I(zl==NL,zl=xN;PSH(xx,ztt?yR:ii(y,i));PSH(xy,ie(a[2],xy)))))
+   RT_E(P(y==au,mRn(n-2,a+2);Ab8;*b=a[2];b[1]=x;AC(b+2,a+3,n-3);USQ(e8(AP1,b,n-1)))
+    Yzc(L i=gl_(y);P(i>=(W)xn,ei(x))x=mut(x);Ab8;*b=ii(x,i);AC(b+1,a+3,n-3);mRn(n-3,b+1);A z=a[2];set(x,i,Nx(USQ(z8(b,n-2)))))
+    I(ytZC&&n==4,A z=a[2],u=a[3];P(xtZ&&ztv&&utzZ&&(0xcf&1<<zv),ara(x,y,z,u))P(xtC&&z==av&&utcC,cC(N(ara(x,y,z,u)))))Yt(et(x))mRn(n-1,a+1);nsq++;A r_=f8(AP1,a,n);nsq--;r_?sqz(r_):0)
+   Rm(A z=Nx(fnd(xx,yR));ZT(P(LH(tG,zt,tL)&&(n==3||n==4&&(_tt(a[3])||_tT(a[3])&&_N(a[3])==zn)),dam(x,y,cL(z),a,n))z(0);mRn(n-1,a+1);f8(AP1,a,n))x=mut(x);I(ztl,z=mut(z);F(zN,I(zl==NL,zl=xN;PSH(xx,ztt?yR:ii(y,i));PSH(xy,ie(a[2],xy)))))
     Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);xy=au;xy=Nx(z(a8(b,n)));x)
    RM(Ab8;AC(b,a,n);YsS(*b=flp(x);flp(N(a8(b,n))))*b=blw(x);sqz(N(a8(b,n))))
-   RU(mRn(n-1,a+1);x(x8(a+1,n-1)))
+   RU(mRn(n-1,a+1);x(USQ(x8(a+1,n-1))))
    R_(et(x)))0)
 Z A3(a3,/*100*/a8(A8(x,y,z),3))
 A4(a4,/*1000*/a8(A8(x,y,z,u),4))

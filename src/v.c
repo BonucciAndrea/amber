@@ -180,11 +180,10 @@ X1(imn,RC(imn(ucb(x)))RF(imn(of1(x)))RE(Lij x(0);az(NL*(i==j)))R_(fir(N(asc(x)))
 //     mavg -> sum / count-of-non-nulls, or 0n when the window is all null
 //     mmin/mmax -> the extreme of the non-null members, 0n when there are none
 // which is what q does and what the prefix-sum version could not do (one 0n
-// anywhere made every later element 0n). Integer nulls (0Ni/0N) are recognised
+// anywhere made every later element 0n). The int null 0N is recognised
 // on the sum path and mapped to 0n. On null-free input every result is
 // identical to the K definitions it replaces.
 enum{MWSUM,MWAVG,MWVAR,MWDEV,MWMIN,MWMAX};
-#define MWNI ((I)(-2147483647-1))          // 0Ni
 // Numerical hygiene for the running difference. Adding and later subtracting
 // the same double is not exactly reversible, so over millions of elements the
 // running sum drifts away from the true window sum -- and the drift is
@@ -276,7 +275,7 @@ MWVH2(L,L,(L)NL,(L)WL,) MWVH2(F,F,-WF,WF,bad|=v!=v)
 Z V mwld(A c,F*RES d,N n){CO V*q=_V(c);switch(_t(c)){
   case tG:{CO G*RES p=q;for(N i=0;i<n;i++)d[i]=(F)p[i];}break;
   case tH:{CO H*RES p=q;for(N i=0;i<n;i++)d[i]=(F)p[i];}break;
-  case tI:{CO I*RES p=q;for(N i=0;i<n;i++)d[i]=p[i]==MWNI?NF:(F)p[i];}break;
+  case tI:{CO I*RES p=q;for(N i=0;i<n;i++)d[i]=(F)p[i];}break;   //Amber has no int32 null: a 32-bit column only stores ints, and 0N never fits it
   case tL:{CO L*RES p=q;for(N i=0;i<n;i++)d[i]=p[i]==NL?NF:(F)p[i];}break;
   default:{CO F*RES p=q;for(N i=0;i<n;i++)d[i]=p[i];}break;}}
 

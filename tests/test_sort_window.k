@@ -211,6 +211,10 @@ t[`distNaN;           #?(0n;0n;1.0);        2]
 t[`ascNZ;             asc(0.0;-0.0);        -0.0 0.0]
 t[`groupNZ;           #=(0.0;-0.0);         1]
 
-hexpect[317]
+/ the int32 minimum stored in a 32-bit column is an ordinary int (Amber has no int32 null)
+t[`msumI32Min;  msum[2;-2147483648 70000 1];  -2147483648 -2147413648 70001.0]
+t[`mavgI32Min;  mavg[2;-2147483648 70000 1];  (msum[2;-2147483648 70000 1])%1 2 2.0]
+
+hexpect[319]
 hreport"AMBER SORT / WINDOW DIFFERENTIAL"
 $[FAILN;`exit 1;]

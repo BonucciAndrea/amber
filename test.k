@@ -473,9 +473,10 @@ t[`serLeftKept9;{m:(-9 5000000000)0;m!-8!1 2;m}[];-9]
 t[`deserAttrKept;  (`at@-9!-8!`sa 1000 2000 3000;`at@-9!-8!`pa 3 3 1 1 2;`at@-9!-8!`ua 1 2 3);(`s;`p;`u)]
 t[`deserAttrBad;   {c:-8!`sa 1000 2000 3000;c[14 15 18 19]:(-8!3000 2000 1000)14 15 18 19;x:-9!c;(`at@x;<x;x?1000)}[];(`;2 1 0;2)]
 
-/ int folds and scans wrap (computed in unsigned arithmetic: a signed overflow in C is undefined)
+/ int folds, scans and amends wrap (computed in unsigned arithmetic: a signed overflow in C is undefined)
 t[`scanWrap;       (*\0N 0N;+\9223372036854775807 1;*\4294967296 4294967296;9223372036854775806+\1 1);(0N 0;9223372036854775807 0N;4294967296 0;9223372036854775807 0N)]
 t[`foldSeedWrap;   (9223372036854775807+/1 2;0N*/0N 3);(-9223372036854775806;0)]
+t[`amendWrap;      ({x[0 1]*:-9223372036854775807;x}3#-1099511627776;@[2#9223372036854775807;0 0;+;1];{x[0 1]+:1;x}2#9223372036854775807);(3#-1099511627776;-9223372036854775807 9223372036854775807;0N 0N)]
 
 / ---- amber 2.2: float literals below 1e-308 (subnormals) ------------------
 / pfu (src/p.c) clamped an out-of-range exponent and returned EARLY, before it

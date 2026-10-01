@@ -236,8 +236,10 @@ Z A4(dexa,/*1000*/uR;Ny(sup(&x,&u));x=mut(x);U n=yn;I wx=xw-3,wy=yw-3,wu=utt?-1:
   Mu(I(utt,F4(wx,n,xG[iw(y,wy,i)]=v ,xH[iw(y,wy,i)]=v ,xI[iw(y,wy,i)]=v ,xL[iw(y,wy,i)]=v ))
      E(    F4(wx,n,xG[iw(y,wy,i)]=ug,xH[iw(y,wy,i)]=uh,xI[iw(y,wy,i)]=ui,xL[iw(y,wy,i)]=ul)))x)
 Z A4(adma,/*1000*/yR;uR;x=cL(x);u=cL(u);x=mut(x);I(!ytL,y=cI(y))U n=yn;
- I(utt,L v=gl(u);My(I(zv==1,I(ytL,F(n,xL[yl]+=v ))E(F(n,xL[yi]+=v )))E(I(ytL,F(n,xL[yl]*=v ))E(F(n,xL[yi]*=v )))))
- E(Mu(           My(I(zv==1,I(ytL,F(n,xL[yl]+=ul))E(F(n,xL[yi]+=ul)))E(I(ytL,F(n,xL[yl]*=ul))E(F(n,xL[yi]*=ul))))))x)
+ #define AWR(i,o,v) xL[i]=(L)((W)xL[i] o (W)(v))   //wrapping, in W: an overflow in L is undefined behaviour
+ I(utt,L v=gl(u);My(I(zv==1,I(ytL,F(n,AWR(yl,+,v)))E(F(n,AWR(yi,+,v))))E(I(ytL,F(n,AWR(yl,*,v)))E(F(n,AWR(yi,*,v))))))
+ E(Mu(           My(I(zv==1,I(ytL,F(n,AWR(yl,+,ul)))E(F(n,AWR(yi,+,ul))))E(I(ytL,F(n,AWR(yl,*,ul)))E(F(n,AWR(yi,*,ul)))))))x)
+ #undef AWR
 Z A4(mmma,/*1000*/yR;uR;B d=utT;I(!d,u=enl(u))Ny(sup(&x,&u));x=mut(x);I(!ytL,y=cI(y))U n=yn;
  My(Mu(I(zv==6,I(ytL,F4(xw-3,n,xG[yl]=MIN(xG[yl],uG[d*i]),xH[yl]=MIN(xH[yl],uH[d*i]),xI[yl]=MIN(xI[yl],uI[d*i]),xL[yl]=MIN(xL[yl],uL[d*i])))
                E(    F4(xw-3,n,xG[yi]=MIN(xG[yi],uG[d*i]),xH[yi]=MIN(xH[yi],uH[d*i]),xI[yi]=MIN(xI[yi],uI[d*i]),xL[yi]=MIN(xL[yi],uL[d*i]))))

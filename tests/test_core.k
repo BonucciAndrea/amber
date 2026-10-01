@@ -153,6 +153,11 @@ t[`dictAssignMany;{x[AN+!AN]:AN#2.0;x}(!AN)!AN#1;(!2*AN)!(AN#1),AN#2.0]
 t[`dictCountMany;#@[(!0)!!0;(2*AN)#!AN;+;1];AN]
 te[`dictAmendLength;"@[`a`b!1 2;`c`d;:;1 2 3]"]
 
-hexpect[78]
+/ ---- an impossible size is 'limit, one error for all of them (issue #10) ----
+ER:{.[.:;,x;{(x?"\n")#x}]}
+t[`joinLimitError;ER"s:1048576#\"a\";#\",\"/4096#,s";"'limit"]
+t[`scanCountLimitError;ER"{x+y}\\[4294967296;1;2]";"'limit"]
+
+hexpect[80]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

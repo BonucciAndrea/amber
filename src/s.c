@@ -64,7 +64,7 @@ Z A kss_(A x,B r)_(                                                             
  U n=xn+2;F(xn,C c=xc;P(!r&&(c>126u||(c<32&&!e[c])),cat11(aCz("0x"),hex(x)))n+=(UC)c<128&&e[c])
  A y=aC(n);C*s=yC;*s++='"';F(xn,C c=xc;I((UC)c<128&&e[c],*s++='\\';c=e[c])*s++=c)*s='"';x(y))
 Z A1(kss,kss_(x,0))
-Z A kp(A x,S p,S q,S s)_(C t=TS[xt];B b=strchr(p,t)?xn==1:strchr(q,t)?xn<2:!!strchr(s,t);x=N(kst(x));b?par(x):x)   //kst's error (a failing formatter) passes up
+Z A kp(A x,S p,S q,S s)_(C t=TS[xt];U n=_N(x);B b=strchr(p,t)?n==1:strchr(q,t)?n<2:!!strchr(s,t);x=N(kst(x));b?par(x):x)   //kst's error (a failing formatter) passes up; n: the count (a range holds its two ends)
 A1(kl,P(xtA&&!xn,x=N(kst(x));*xC-'('?par(x):x)kp(x,"AC","IFS","Mmqruvw"))//keys: an empty generic list prints as () or 0#,.. which needs parentheses
 A1(kr,kp(x,"","","qruvw"))
 A1(kw,kp(x,"AC","IFS","Mmpqw"))

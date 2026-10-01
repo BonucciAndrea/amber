@@ -1061,7 +1061,13 @@ t[`dictKeysEmptyBack;{x~. `k@x}@(0#,,1)!();1b]
 t[`dictKeysEmptyParen;`k@()!();"()!()"]
 t[`dictKeysVec;`k@(`a`b!1 2);"`a`b!1 2"]
 
-hexpect[678]
+/ ---- a one-item range as dict keys prints in parentheses, so it reads back ----
+t[`rangeKeyPrint;`k@(!1)!,2;"(,0)!,2"]
+t[`rangeKeyPrint5;`k@(5+!1)!,2;"(,5)!,2"]
+t[`rangeKeyRoundTrip;(. `k@(!1)!,2)~(!1)!,2;1]
+t[`rangeKeyTwo;`k@(!2)!3 4;"0 1!3 4"]
+
+hexpect[682]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

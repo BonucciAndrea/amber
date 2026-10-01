@@ -97,6 +97,14 @@ t[`compressList;10 20 30@&1 0 1;10 30]
 t[`compressFnSum;+/f@&1 0 1;4]
 t[`compressFnCmp;f@&(1 2 3)>1;2 3]
 
-hexpect[41]
+
+/ ---- a function past 256 bytes of bytecode: last-use positions and the stack size kept in one byte ----
+tv[`bcUses130;"f:. \"{\",(\"+\"/130#,\"x\"),\"}\";f 1";130]
+tv[`bcTwoUses;"g:1;f:. \"{x+\",(,/63#,\"g+\"),\"1+x}\";f 1";66]
+tv[`bcUnusedArg;"f:. \"{[x;y]x+1+\",(\"+\"/127#,\"x\"),\"+-x}\";f[1;0]";128]
+tv[`bcCondUses;"A:\"+\"/64#,\"x\";f:. \"{$[x=0;\",A,\";x=1;\",A,\";1]}\";f 0";0]
+te[`bcStackLimit;"I:{\";\"/(\"a\"),(x-1)#\"1\"};g:. \"{[a]((\",(I 96),\");\",(I 160),\")}\""]
+
+hexpect[46]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

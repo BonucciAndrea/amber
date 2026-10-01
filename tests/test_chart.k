@@ -167,6 +167,11 @@ t["P$ ns";    `i$"P"$"2026.07.30D09:30:00.123456789";   `i$2026.07.30D09:30:00.1
 t["P$ ms";    `i$"P"$"2026.07.30D09:30:00.5";           `i$2026.07.30D09:30:00.5]
 t["P$ whole"; `i$"P"$"2026.07.30D09:30:00";             `i$2026.07.30D09:30:00.0]
 
-hexpect[72]
+/ ---- sys.k's j.j writes JSON that reads back: strings escaped, nulls as null ----
+t["jj escape";   `j?j.j "a\"b\nc";             "a\"b\nc"]
+t["jj null";     j.j (1;0N;0n);                "[1,null,null]"]
+t["jj keys";     j.j 1 2!("x";"y\"");          "{\"1\":\"x\",\"2\":\"y\\\"\"}"]
+
+hexpect[75]
 hreport"AMBER CHART / TEMPORAL AXIS"
 $[FAILN;`exit 1;]

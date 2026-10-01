@@ -589,7 +589,7 @@ A1(parT,
    sms=(F)((t2.tv_sec-t1.tv_sec)*1000000000ll+(t2.tv_nsec-t1.tv_nsec))/1e6;
  fprintf(stderr,"par: threads=%d n=%u par_add=%.3fms serial_simd_add=%.3fms ok=%d\n",par_thread_count(n),n,pms,sms,ok);
  x(al((L)ok)))
-Z A1(sam,x)V_;T_;U _K(A x/*0*/)_(X(R2(tu,tw,1)Rv(2)Rx(x>>48&15)Ropqr(xk))0)
+Z A1(sam,x)V_;T_;U _K(A x/*0*/)_(X(R2(tu,tw,1)Rv(2)Rx(x>>48&15)Ropqr(xk)RA(I v=rnk(x);v>0?v:0))0)
 X1(mkn,RmMA(e1f(mkn,x))Rt(x(_R(cn[xt])))R_(x(rsz(xN,_R(cn[xt])))))
 A1(iei,/*0*/0x2332211004>>(xv*(xtv&&xv<10u)<<2)&15)
 Y2(iex,/*01*/RmMA(r2f(iex,x,y))RT_A(rsz(yN,iex(x,fir(y))))Rs(as(0))Rc(ac("\0\1\x7f\x80 "[iei(x)]))Rf(y(af(A(0.,1.,WF,-WF,NF)[iei(x)])))R_(y(az(G(0ll,1,WL,-WL,NL)[iei(x)]))))

@@ -155,15 +155,23 @@ te[`dictAmendLength;"@[`a`b!1 2;`c`d;:;1 2 3]"]
 
 / ---- a function just over the bytecode limit is 'limit ----
 / The last of cpl's limit checks marked the error before making it, and
-/ segfaulted on a function of exactly 510 bytecode bytes, even trapped.
-FN:{"{",("+"/x#,"x"),"}"}
+/ segfaulted on a function two bytes short of filling the buffer, even
+/ trapped (510 bytes when the buffer was 512; 2046 at 2048).
+/ (statements, not one long chain of verbs, which the parser's nesting limit refuses first)
+FN:{"{",(";"/x#,"x"),"}"}
 / first, before any other error (an earlier error hid it)
-t[`fnBytes510Msg;6#.[.:;,FN 255;{x}];"'limit"]
-t[`fnBytes509;#$. FN 254;509]
-te[`fnBytes510;". FN 255"]
-t[`fnBytes510Trap;.[.:;,FN 255;{`t}];`t]
-te[`fnBytes512;". FN 256"]
+t[`fnBytes2046Msg;6#.[.:;,FN 1023;{x}];"'limit"]
+t[`fnUnderLimit;#$. FN 1022;2045]   / 1022 statements (2044 bytes) compile; 2045 is the length of its text
+te[`fnBytes2046;". FN 1023"]
+t[`fnBytes2046Trap;.[.:;,FN 1023;{`t}];`t]
+te[`fnBytes2048;". FN 1024"]
 
-hexpect[83]
+/ ---- a list expression of up to 255 globals compiles (the 512-byte bytecode buffer stopped near 165) ----
+G:5;L:{";"/x#,y}
+t[`listGlobals255;#. "(",(L[255;"G"]),")";255]
+t[`listGlobalsSum254;#. "(",(L[254;"G+1"]),")";254]
+t[`listGlobalsLambda254;#(. "{(",(L[254;"G+x"]),")}")1;254]
+
+hexpect[86]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

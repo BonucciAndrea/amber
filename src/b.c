@@ -48,7 +48,7 @@ AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,es8(a,n))/*d: per-thread VM recursion de
 #define Nr(a...) {I r_=cr(a);P(r_-OK,r_);}                                                          //compile rvalue; return on error
 #define Nl(a...) {I r_=cl(a);P(r_-OK,r_);}                                                          //compile lvalue; return on error
 #define OK -1                                                                                       //returned by cl() and cr() on success
-#define MB 512                                                                                      //max bytecode size
+#define MB 2048                                                                                     //max bytecode size
 #define M(a) {b[nb]=a;m[nb]=o;nb+=nb<MB-1;}                                                         //append byte
 #define MG(a) {U ig_=(a);M(ig_&255)M(ig_>>8)}                                                       //append a 2-byte little-endian global/var index
 Z A u;Z UC b[MB],m[MB];Z I lu[16],nb,nl,l[16],cr(A,B);                                              //u:lambda(src;b:bytes;m:map;l:locals;consts..)  lu:last usages

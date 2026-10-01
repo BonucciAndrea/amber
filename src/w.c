@@ -11,7 +11,7 @@ A jC(S s,U m,A x)_(XC(jC(s,m,flp(flp(x))))L n=jN(m,x);P(n<-1,el(x))P(n<0,et(x))A
 Z A1(re0,x?rs0(enl(x)):0) Z A o1f(A1 f,A x/*f1*/)_(re0(f==whr?x(aI(0)):f(fir(x)))) Z A2(o1,/*01*/ xtu?o1f(v1[xv],y):y(emp(tA)))
                           Z A o2f(A2 f,A x,A y/*f01*/)_(re0(f(x,y)))               Z A3(o2,/*001*/xtv?o2f(v2[xv],y,z):z(emp(tA)))
 Z AX(em,/*01..1*/A z=0;U k=0;F(n,A y=a[i];I(ytm,k++;y=yx;I(z,P(TS[yt]-TS[zt],ed8(a,n));z=cat10(z,y))E(z=yR)))z=unq(z);
- Ab8;MC(b,a,64);F(n,A y=b[i];I(ytm,A u=kv(&y);PSH(u,ie(x,u));b[i]=u(u1(y(fil(ai(yn),fnd(y,zR)))))))AX e8;am(z,Nz(e8(x,b,n))))
+ Ab8;MC(b,a,n*SZ(A));F(n,A y=b[i];I(ytm,A u=kv(&y);PSH(u,ie(x,u));b[i]=u(u1(y(fil(ai(yn),fnd(y,zR)))))))AX e8;am(z,Nz(e8(x,b,n))))
 A e1f(A1 f,A x){X(Rt(f(x))Rm(A y=kv(&x);am(x,Nx(e1f(f,y))))RA(U n=xn;P(!n,o1f(f,x))x=mut(x);F(n,P(!(xa=f(xa)),xa=au;x(0)))sqz(x))
  RE(Lij x(0);L n=j-i,i0=i;P(!n,o1f(f,x))A y=aA(n);F(n,P(!(ya=f(ai(i0+i))),mrn(i,yA);0))sqz(y))
  RGHIL(U n=xn;P(!n,o1f(f,x))A y=aA(n);
@@ -23,7 +23,7 @@ A l2f(A2 f,A x,A y/*f01*/){X(Rt(f(x,y))Rm(A z=N(l2f(f,xy,y));       am(_R(xx),z)
 A r2f(A2 f,A x,A y/*f01*/){Y(Rt(f(x,y))Rm(A z=Ny(r2f(f,x,_R(yy)));y(am(_R(yx),z)))R_(U n=yN;P(!n,        o2f(f,x,fir(y)))A u=aA0(n);F(n,A v=f(x,ii(y,i));            B(!v,u=u(0))PSH(u,v))y(u)))}
 Z A3(l2,/*001*/Xv(l2f(v2[xv],y,z))Yt(x2(y,z))Ym(x=prj(x,A8((A)GAP,z),2);x(e1(x,yR)))  U n=yN;P(!n,y=fir(yR); y(o2(x,y,z)))A u=aA0(n);F(n,A w=ii(y,i),v=x2(w,zR);mr(w);B(!v,u=u(0))PSH(u,v))z(u))
   A3(r2,/*001*/Xv(r2f(v2[xv],y,z))Zt(x2(y,z))Zm(x=prj(x,A8(yR,GAP),2);x(e1(x,z)))     U n=zN;P(!n,         o2(x,y,fir(z)))A u=aA0(n);F(n,A v=x2(y,ii(z,i));           B(!v,u=u(0))PSH(u,v))z(u))
-Z AX(l8,/*01..1*/Ab8;MC(b,a,64);*b=GAP;x=prj(x,b,n);x(e1(x,*a)))
+Z AX(l8,/*01..1*/Ab8;MC(b,a,n*SZ(A));*b=GAP;x=prj(x,b,n);x(e1(x,*a)))
   A3(e2,/*001*/Xv(e2f(v2[xv],y,z))Yt(r2(x,y,z))Zt(l2(x,y,z))P(ytm||ztm,em(x,A8(yR,z),2))U m=yN;P(m-zN,el(z))P(!m,z(xtv&&xv<11?yR:emp(tA)))A u=0;C t=ztA&&MINE(z);
    F(m,A w=ii(y,i),v=x2(w,t?za:ii(z,i));mr(w);B(!v,I(u,u=u(0))I(t,mrn(m-i-1,zA+i+1)))I(!u,u=!v?0:LH(ti,_t(v),ts)?AN(0,an(m,TT[_t(v)])):aA0(m))PSH(u,v))mr(t?AZ(z):z);u)
 A e2f(A2 f,A x,A y/*f01*/)_(U k=xtt<<1|ytt;P(k==3,f(x,y))

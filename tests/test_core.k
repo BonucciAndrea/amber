@@ -17,6 +17,7 @@ LOAD DIR,"/harness.k"
 t[`mulWidenNeg;(,-50)*-3;,150]
 t[`mulWidenPos;(,100)*100;,10000]
 
+
 / ---- $[..] with a branch over 255 bytes jumps right (upstream ngn/k 2c4e817b) ----
 condLong:{$[x=0;`a;x=1;x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x;x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x+x]}
 t[`condLong;(condLong 0;condLong 1;condLong 2);(`a;111;42)]
@@ -51,6 +52,42 @@ tv[`modIntFloat;"n!2.5;n!2.5;n";1000000000000]
 tv[`modIntFloatBig;"m:4611686018427387904;m!2.5;m!2.5;m!2.5;m";4611686018427387904]
 t[`modIntFloatValue;1000000000000!2.5;2.5]
 
-hexpect[18]
+
+/ ---- a projection given more arguments than it takes is an error, not a buffer overflow ----
+te[`projRank;"{[a;b;c;d;e;f;g;h]h}[1;;3][2;4;5;6;7;8;9;10]"]
+t[`projFill;({[a;b;c;d;e;f;g;h]h}[1;;3][2;4;5;6;7;8];{x+y+z}[1;;3][2]);8 6]
+
+/ ---- projections that fill every slot: 7- and 8-ary with two gaps (the copy check alone bounds them) ----
+t[`proj7gaps;{[a;b;c;d;e;f;g]a+b+c+d+e+f+g}[;;3;4;5;6;7][1;2];28]
+t[`proj7dot;{[a;b;c;d;e;f;g]a+b+c+d+e+f+g}[;;3;4;5;6;7] . 1 2;28]
+t[`proj8gaps;{[a;b;c;d;e;f;g;h](a;b;c;d;e;f;g;h)}[;;3;4;5;6;7;8][1;2];1 2 3 4 5 6 7 8]
+t[`proj8of7slots;{[a;b;c;d;e;f;g;h](a;b;c;d;e;f;g;h)}[1;;3;4;5;6;7][2;8];1 2 3 4 5 6 7 8]
+te[`proj7over;"{[a;b;c;d;e;f;g]a+b+c+d+e+f+g}[;;3;4;5;6;7][1;2;3]"]
+/ more arguments than 8 slots hold: 'rank, and the arguments are released once
+P8:{[a;b;c;d;e;f;g;h]a}[1;;3;4;5;6;7;8]
+PX:!4
+te[`proj8over;"P8[PX;0]"]
+/ the same call again: it would fail if the first had released the arguments
+te[`proj8overAgain;"P8[PX;0]"]
+t[`proj8overArgs;PX;!4]
+P3:{[a;b;c](a;b;c)}[;(,1);(,2)]
+PA:,"abc";PB:,"def"
+t[`proj3over;.[P3;(PA;PB;PA;PB;PA;PB;PA);{`e}];`e]
+t[`proj3overAgain;.[P3;(PA;PB;PA;PB;PA;PB;PA);{`e}];`e]
+/ a new allocation, which reuses any memory released twice above
+PZ:"hello"
+t[`proj3overArgs;(PA;PB);(,"abc";,"def")]
+
+/ ---- a projection with 8 slots called with one argument too many ----
+/ The dyadic call copied the extra argument past its 8-slot buffer (ASan:
+/ stack-buffer-overflow); it is 'rank, as the n-argument call is.
+P1:{[a;b;c;d;e;f;g;h]a}[;2;3;4;5;6;7;8]
+te[`proj8each;"1 2 P1'3 4"]
+te[`proj8eachLeft;"1 P1\\:2 3"]
+te[`proj8eachRight;"1 P1/:2 3"]
+te[`proj8dot;"(P1;P1). 1 2"]
+t[`proj8one;P1 9;9]
+
+hexpect[36]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

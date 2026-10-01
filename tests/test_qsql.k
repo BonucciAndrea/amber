@@ -277,9 +277,17 @@ t[`fbyUpdate;     (upd"update f:(max;px) fby sym from ft")`f;        50 40 50 40
 / and on SEVERAL group columns, which used to return one value per column
 t[`fbyWhereCols;  (sel"select px from ft where px=(max;px) fby (sym;ex)")`px; 20 30 40 50.0]
 
+/ ---- sum avg min max (and mins maxs) are q's names, so they skip nulls, as q's do (issue #14) ----
+t[`qaggSum;     (sum 0N 1;sum 0n 1.0;sum 0N 0N);                      (1;1.0;0)]
+t[`qaggAvg;     (avg 0N 1;avg 0n 1.0;avg 0N 0N);                      1.0 1.0 0n]
+t[`qaggMinMax;  (min 0N 5;min 0n 1.0;max 0n 1.0;max 0N 0N;min 0N 0N); (5;1.0;1.0;-9223372036854775807;9223372036854775807)]
+t[`qaggScans;   (mins 0n 1.0 0.5;maxs 0N 5 3);                        (0w 1.0 0.5;-9223372036854775807 5 5)]
+QW:([]g:`a`b`a`b;f:1.5 0n -2.0 3.0;v:5 0N -7 0N)
+t[`qaggGrouped; value sel"select mxf:max f, mnf:min f, af:avg f, sf:sum f, s:sum v, a:avg v, mn:min v, mx:max v by g from QW";+`mxf`mnf`af`sf`s`a`mn`mx!(1.5 3.0;-2.0 3.0;-0.25 3.0;-0.5 3.0;-2 0;-1.0 0n;-7 9223372036854775807;5 -9223372036854775807)]
+
 / Guard against a silently skipped block (see tests/harness.k): this is the
 / exact number of assertions this file is expected to record. Bump it when
 / you add or remove cases -- if it ever disagrees, some of them stopped running.
-hexpect[155]
+hexpect[160]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

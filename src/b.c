@@ -20,7 +20,7 @@ ks[]={                            [ba]=-1,-1, 0, 0, 0, 0, 0, 0, 0, 0,-1, 1, 0, 0
 // touching it: for a list, each int index in range, level by level, and for one level of int
 // indices, a list value of the same count. 0: go ahead (d4 decides the rest); 1: 'index; 2: 'length.
 Z L ixe(A q,U j){UC t=_t(q);CO V*d=_V(q);return t==tL?((CO L*)d)[j]:t==tI?((CO I*)d)[j]:t==tH?((CO H*)d)[j]:t==tG?((CO G*)d)[j]:t==tE?*(CO L*)d+(L)j:((CO UC*)d)[j>>3]>>(j&7)&1;}//item j of an int list, without boxing it
-Z NI I ixck(A x,A y,U k,A z){I r=0;if(!x||k>=_N(y)||_tP(x)||!_tT(x))return 0;U n=_N(x);B one=_N(y)==1;
+NI I ixck(A x,A y,U k,A z){I r=0;if(!x||k>=_N(y)||_tP(x)||!_tT(x))return 0;U n=_N(x);B one=_N(y)==1;
  if(!_tP(y)&&LH(tE,_t(y),tL)){L v=ixe(y,k);if(v<0||v>=(L)n)return 1;if(one)return 0;A w=ii(x,(U)v);r=ixck(w,y,k+1,z);mr(w);return r;}   //y an int list: an int index per level
  A q=_tA(y)?_R(_A(y)[k]):ii(y,k);
  if(q==au){if(!one)for(U j=0;j<n&&!r;j++){A v=ii(x,j);r=ixck(v,y,k+1,z);mr(v);}}

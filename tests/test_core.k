@@ -163,7 +163,9 @@ t[`amendKeepSome;IA["A5:1 2 3";"A5[0 5]:9"];(`err;1 2 3)]
 t[`amendKeepDeep;IA["A6:(1 2;3 4)";"A6[0;5]:9"];(`err;(1 2;3 4))]
 t[`amendKeepElided;IA["A7:(1 2;3 4)";"A7[;5]:9"];(`err;(1 2;3 4))]
 t[`amendStillWorks;(IA["A8:1 2 3";"A8[0 1]+:1"];IA["A9:(1 2;3 4)";"A9[;1]:9"]);((::;2 3 3);(::;(1 9;3 9)))]
+t[`amendByNameKeep;(IA["B1:1 2 3";".[`B1;,5;:;9]"];IA["B2:1 2 3";".[`B2;,0 1;:;7 8 9]"];IA["B3:(1 2;3 4)";".[`B3;0 5;:;9]"]);((`err;1 2 3);(`err;1 2 3);(`err;(1 2;3 4)))]
+t[`amendByNameWorks;{.[`B4;,1;:;9];.[`B4;,0;+;10];B4}B4:1 2 3;11 9 3]
 
-hexpect[86]
+hexpect[88]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

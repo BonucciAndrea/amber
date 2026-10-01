@@ -376,6 +376,8 @@ t[`fnListMatchIdx; ((#;+/)[" "~" "]) 1 2 3;    6]
 t[`fnListIdxType;  @(#;+/)[0];                 `v]
 t[`nonFnListIdx;   @(&/;1;|/)[1];              `i]
 t[`fourVerbIdx;    @(+;-;*;%)[2];              `v]
+/ a JSON surrogate pair is one character: four bytes of UTF-8
+t[`jsonSurrogate;  (`i$`j?"\"\\ud83d\\ude00\"";#`j?"\"a\\ud83d\\ude00\\u00e9\"");(-16 -97 -104 -128;7)]
 
 / ---- amber 2.2: float literals below 1e-308 (subnormals) ------------------
 / pfu (src/p.c) clamped an out-of-range exponent and returned EARLY, before it

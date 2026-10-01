@@ -211,7 +211,7 @@ U amub(CO L*RES,U,U,L);//branch-free upper_bound (first >key) -- no key+1 overfl
 #define AMKH(v) ((U)(UH)(v)^0x8000u)
 #define AMKI(v) ((U)(v)^0x80000000u)
 #define AMKL(v) ((W)(v)^0x8000000000000000ull)
-W amkF(F);
+W amkF(F),amkFc(F);
 // Stable LSD radix over `nb` key bytes. Keys and row indices travel together;
 // returns whichever index buffer holds the result.
 I*amrdx8(W*RES,I*RES,W*RES,I*RES,N,U);

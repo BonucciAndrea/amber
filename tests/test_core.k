@@ -153,6 +153,17 @@ t[`dictAssignMany;{x[AN+!AN]:AN#2.0;x}(!AN)!AN#1;(!2*AN)!(AN#1),AN#2.0]
 t[`dictCountMany;#@[(!0)!!0;(2*AN)#!AN;+;1];AN]
 te[`dictAmendLength;"@[`a`b!1 2;`c`d;:;1 2 3]"]
 
-hexpect[78]
+/ ---- floats order by value: the two zeros are one value, and so are the NaNs (issue #15, option A) ----
+FZ:-0.0 0.0;FN:0n -0n
+t[`floatLessZeros;(FZ[0]<FZ[1];FZ[1]>FZ[0];FN[0]<FN[1];FN[1]>FN[0]);0 0 0 0]
+t[`floatGradeZeros;(<-0.0 0.0;<0.0 -0.0;>-0.0 0.0;<-0n 0n;<0n -0n);(0 1;0 1;0 1;0 1;0 1)]
+t[`floatGradeMixed;<3 0.0 1 -0.0 -1 -0n 0n;5 6 4 1 3 2 0]
+t[`floatBinSearch;(0.0 0.0'-0.0;0.0 1.0'-0.0;-0.0 0.0'0.0);1 0 1]
+t[`floatFusedCount;(+/(1.0 -0.0 2.0)<0;+/(1.0 -0.0 2.0)>0);0 2]
+t[`floatSortMatchesGrade;{(x@<x)~x g:<x}0.0 -0.0 0n -0n 1.5 -0.0;1]
+t[`floatGradeTable;<+`a`b!(0.0 -0.0 0.0 -0.0;4 3 2 1);3 2 1 0]
+t[`floatSortedAttr;.[{`sa x};,0.0 -0.0 1.0;{`err}];0.0 -0.0 1.0]
+
+hexpect[86]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

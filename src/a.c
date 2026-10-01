@@ -738,7 +738,7 @@ Z B xskey(A c,CO I*RES ix,W*RES k,N n,U*nbo,int desc){
    simd_frange0_f64(p,n,&mn,&mx,&so,&spf);
    if(!spf&&(mx-mn)<4294967296.0&&simd_fintegral_f64(p,n)){L lo=(L)mn;W sp=(W)((L)mx-lo);
      for(N i=0;i<n;i++)k[i]=(W)((L)p[ix[i]]-lo);*nbo=sp<256u?1:sp<65536u?2:sp<16777216u?3:4;}
-   else{for(N i=0;i<n;i++)k[i]=amkF(p[ix[i]]);*nbo=8;}}break;
+   else{for(N i=0;i<n;i++)k[i]=amkFc(p[ix[i]]);*nbo=8;}}break;
   case tS: P(!xssym(c,ix,k,n,nbo),0) break;
   default: return 0;}
  // Complementing every key inverts the value order while the sort stays

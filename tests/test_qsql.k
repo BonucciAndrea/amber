@@ -222,6 +222,9 @@ t[`selectBySymGroup; sel"select s:sum v by k from ([]k:`c`a`b`a`c; v:1 2 3 4 5)"
 st:([]sym:`c`a`b`a`c`b; px:3.0 1 2 4 6 5; sz:30 10 20 40 60 50)
 t[`selLimit;      sel"select[3] from st";        3#st]
 t[`selLimitNeg;   sel"select[-2] from st";       -2#st]
+sh:2#st
+t[`selLimitPast;  sel"select[5] from sh";        sh]
+t[`selLimitPastNeg; sel"select[-3] from sh";     sh]
 t[`selLimitCols;  sel"select[3] sym,px from st"; 3#sel"select sym,px from st"]
 t[`selLimitZero;  sel"select[0] from st";        0#st]
 t[`selSortDesc;   sel"select[>px] from st";      st@>st`px]
@@ -313,6 +316,6 @@ tq[`whereLocalAnd;    "select from trades where sym=`a, px>25";       ([]sym:`a`
 tq[`execNegLead;      "exec -1+sz from trades";                       0 1 2 3 4 5];
 tqa[`updNegLead;      "update d:-1+sz from trades"; {(+x)`d};         0 1 2 3 4 5];
 
-hexpect[176]
+hexpect[178]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

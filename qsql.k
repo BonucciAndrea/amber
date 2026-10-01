@@ -152,7 +152,7 @@ qsapp:{[r;sk]$[0=#sk;r;qsone[qsapp[r;1_sk];*sk]]}                   / first list
 / the bracket spec is SEMICOLON-separated (q: select[5;>px]), not comma-separated
 / like a select list, so it needs its own depth-aware splitter.
 qscut:{[s]d:sums(s="[")-s="]";b:0,&(s=";")&d=0;trim'{$[#x;$[";"=*x;1_x;x];x]}'b _ s}
-qlim1:{[r;sp]it:qscut sp;ds:qsdir'it;sk:ds@&{0<#x}'ds;nn:it@&{0=#x}'ds;r:qsapp[r;sk];$[0=#nn;r;(. *nn)#r]}
+qlim1:{[r;sp]it:qscut sp;ds:qsdir'it;sk:ds@&{0<#x}'ds;nn:it@&{0=#x}'ds;r:qsapp[r;sk];$[0=#nn;r;((-#r)|(#r)&. *nn)#r]}   / the first (last) n rows, at most all of them, as q
 qlim:{[r;sp]$[0=#sp;r;iskeyed r;[k:keys r;xkey[k;qlim1[unkey r;sp]]];qlim1[r;sp]]}
 
 / ---- select ---------------------------------------------------------------

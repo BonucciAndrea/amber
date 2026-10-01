@@ -53,6 +53,24 @@ inside a **`.k` script** loaded once the stdlib is up (the loader runs each file
 - **Amber has:** bare + string `select/exec/update/delete`, plus the functional helpers
   `qwhere qselect qby fby xgroup ungroup`.
 
+## 3a. Nulls: the q-named functions follow q, the k primitives stay k
+
+`sum`, `avg`, `min`, `max`, `mins` and `maxs` (amber.k, and qSQL's grouped aggregates) skip
+nulls as q's do: `sum 0N 1` is `1`, `avg 0N 1` is `1.0`, `min 0N 5` is `5`, `mins 0n 1.0` is
+`0w 1.0`, and an all-null list gives the identity (`min 0N 0N` is the largest int, q's `0W`).
+The primitives keep k's treatment, where the int null is just the smallest int:
+
+| Expression | Amber | q |
+|---|---|---|
+| `0N+1`, `0N-1`, `0N*2` | wrap: `-9223372036854775807`, `9223372036854775807`, `0` | `0N` |
+| `+/0N 1` | `-9223372036854775807` | (no `+/` in q; `sum` gives `1`) |
+| `&/0N 5` | `0N` (the null is the smallest) | `min` gives `5` |
+| `0^1.5 0n` | `(1.5;0)`: a fill of another type makes a generic list | `1.5 0f` |
+
+Not yet changed: on a dict, `sum` and `min` still count the null (`sum `a`b!0N 1` is
+`-9223372036854775807`; q gives `1`), and the other q-named functions, such as `sums`, `avgs`,
+`prd`, `wavg` and `med`, still treat nulls as the primitives do.
+
 ## 3b. Signed zero in the collation: a known divergence from q
 
 Since 2.2 `-0.0` and `0.0` are **one value** for `=`, `~`, `in`, `=` (group), `?`

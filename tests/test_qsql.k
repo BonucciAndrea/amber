@@ -277,9 +277,17 @@ t[`fbyUpdate;     (upd"update f:(max;px) fby sym from ft")`f;        50 40 50 40
 / and on SEVERAL group columns, which used to return one value per column
 t[`fbyWhereCols;  (sel"select px from ft where px=(max;px) fby (sym;ex)")`px; 20 30 40 50.0]
 
+/ ---- distinct of a table: its distinct rows, first seen first, as q (issue #19) ----
+t[`tableDistinct;   ?([]a:1 1 2 1;b:`x`x`y`x);               ([]a:1 2;b:`x`y)]
+t[`tableDistinctNa; ?([]a:2 1 2 1;b:1.5 0n 1.5 0n);       ([]a:2 1;b:1.5 0n)]
+/ (compared as text: ~ cannot tell 0.0 from -0.0, and the first row seen, 0.0, is the one kept)
+t[`tableDistinctZero; `k@?([]a:0.0 -0.0 0n 0n);           `k@([]a:0.0 0n)]
+t[`tableDistinctEmpty; ?0#([]a:1 2;b:`x`y);              0#([]a:1 2;b:`x`y)]
+t[`tableUnion;      union[([]a:1 2);([]a:2 3)];             ([]a:1 2 3)]
+
 / Guard against a silently skipped block (see tests/harness.k): this is the
 / exact number of assertions this file is expected to record. Bump it when
 / you add or remove cases -- if it ever disagrees, some of them stopped running.
-hexpect[155]
+hexpect[160]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

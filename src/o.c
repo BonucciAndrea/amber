@@ -148,7 +148,7 @@ X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x
  RF(P(!xn,K1("{x!0#,!0}",x))K2("{x[*'g]!g@:<g:(&1,~(1_s)=(-1)_s:y i)_i:<y}",x,fcanon(x)))
  R4(tA,tE,tL,tM,K1("{$[#x;x[*'g]!g@:<g:(&~x~':x i)_i:<x;x!0#,!0]}",x)))
 Z A1(cSI,Q(xtS||xtI)C t=tS^tI^xt;MINE(x)?(_at(x)=0,AT(t,x)):x(aV(t,xn,xV)))
-X1(unq,RM(en(x))Rm(unq(val(x)))RE(x)RS(cSI(unq(cSI(x))))Ril(rndF(gl(x)))R_(et(x))RB(unq(cG(x)))
+X1(unq,RM(K1("{$[#x;x@i@<i:&/'.=+.+x;x]}",x))   /*a table: its distinct rows, first seen first (issue #19); as q*/Rm(unq(val(x)))RE(x)RS(cSI(unq(cSI(x))))Ril(rndF(gl(x)))R_(et(x))RB(unq(cG(x)))
  RGC(C a[256]={},r[256],t=xt;U n=0;Mx(F(xn,UC v=xg;I(!a[v],a[v]=1;r[n++]=v)))aV(t,n,r))
  R5(tA,tH,tI,tL,tF,P(xn<2,x)
   {A u_=unqL(x);P(u_,x(u_))}                 /*amber: C hash/LUT distinct, 0 = not handled*/

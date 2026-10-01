@@ -171,7 +171,8 @@ t["P$ whole"; `i$"P"$"2026.07.30D09:30:00";             `i$2026.07.30D09:30:00.0
 t["jj escape";   `j?j.j "a\"b\nc";             "a\"b\nc"]
 t["jj null";     j.j (1;0N;0n);                "[1,null,null]"]
 t["jj keys";     j.j 1 2!("x";"y\"");          "{\"1\":\"x\",\"2\":\"y\\\"\"}"]
+t["jj string keys"; j.j ("ab";"cd")!1 2;  "{\"ab\":1,\"cd\":2}"]
 
-hexpect[75]
+hexpect[76]
 hreport"AMBER CHART / TEMPORAL AXIS"
 $[FAILN;`exit 1;]

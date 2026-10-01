@@ -45,6 +45,12 @@ tv[`longName;"фффффффффффффффффффффффффффффф:3;ф�
 te[`scanCountLimit;"{x+y}\\[4294967296;1;2]"]
 t[`scanCount;{x+y}\[3;1;2];1 2 3 5]
 
-hexpect[15]
+/ ---- int!float keeps the int (upstream ngn/k a0f39bc0) ----
+n:1000000000000
+tv[`modIntFloat;"n!2.5;n!2.5;n";1000000000000]
+tv[`modIntFloatBig;"m:4611686018427387904;m!2.5;m!2.5;m!2.5;m";4611686018427387904]
+t[`modIntFloatValue;1000000000000!2.5;2.5]
+
+hexpect[18]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

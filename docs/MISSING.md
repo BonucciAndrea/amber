@@ -30,8 +30,8 @@ so `xasc`/`s#` work unchanged.
 
 ## 2. Missing atom types
 `short` (`h`), `real`/float32 (`e`), `byte` (`x`, `0x…`), `guid` (`g`, `0Ng`), plus the full
-set of typed nulls/infinities (`0Nh 0Ne 0Wp 0Nd …`). Amber has long/float/char/symbol/bool
-(and int) only, with `0N`/`0n` nulls.
+set of typed nulls/infinities (`0Nh 0Ne 0Wp 0Nd …`). Amber has int (64-bit), float, char and symbol
+only, with `0N`/`0n` nulls; a `b` literal such as `101b` is an int vector.
 
 ## 3. qSQL (the template syntax): mostly done
 The `select … by … from … where …` template now works **bare** (no `sel"…"` wrapper), along

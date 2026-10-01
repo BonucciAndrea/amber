@@ -25,8 +25,8 @@ X2(dlr,Rs(I v=xv;P(v-(C)v,ed(y))G(&csti,cF,cC,cS,prsI,prsF,ed)[si("ifcsIF",v|'s'
  Rc(C ch=xv;P(ch=='D'||ch=='d',K1("{`mkd pdate x}",y))P(ch=='T'||ch=='t',K1("{`mkt ptime x}",y))P(ch=='P'||ch=='p',K1("{`mkp ptstamp x}",y))et(y))R_(et(y)))
 X1(sqzZ,R_(x)/*RG(F(xn,P(xg&-2,x))cB(x))*/
  RH(F(xn,P(xh-(G)xh,x))cG(x))
- RI(F(xn,P(xi-(H)xi,x))sqzZ(cH(x)))
- RL(F(xn,P(xl-(I)xl,x))sqzZ(cI(x))))
+ RI(F(xn,P(xi!=(H)xi,x))sqzZ(cH(x)))
+ RL(F(xn,P(xl!=(I)xl,x))sqzZ(cI(x))))
 Z A sqzA(A x,C t)_(U n=xn,w=Tw[t];Q(w-3<4u)P(w==6,A y=an(n,t);cLA(yV,xV,n);x(y))A y=an(n,w==5?t:tI);cIL(yV,xV,n);x(0);ct(t,y))
 A1(sqz,P(!xtA,x)U n=xn;A y=xx;C t=yt;
  Y(Ril(B l=0;F(n,A y=xa;I(ytl,l=1)E(P(!yti,x)))

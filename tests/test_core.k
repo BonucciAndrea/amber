@@ -153,6 +153,10 @@ t[`dictAssignMany;{x[AN+!AN]:AN#2.0;x}(!AN)!AN#1;(!2*AN)!(AN#1),AN#2.0]
 t[`dictCountMany;#@[(!0)!!0;(2*AN)#!AN;+;1];AN]
 te[`dictAmendLength;"@[`a`b!1 2;`c`d;:;1 2 3]"]
 
-hexpect[78]
+/ ---- squeezing an int vector at the top of int and long (UBSan reported a signed overflow) ----
+t[`sqzTopLong;9223372036854775807 1;9223372036854775807 1]
+t[`sqzTopInt;@2147483647 1;`I]
+
+hexpect[80]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

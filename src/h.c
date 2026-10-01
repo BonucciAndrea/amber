@@ -49,6 +49,7 @@ A2(cat10,
 A2(cat11,y(cat10(x,y)))
 A2(cat,/*01*/cat11(xR,y))
 A2(psh,/*11*/Q(xtMT);U n=xN;P(!n,enl(x(y)))
+ P(xtE,psh(gZ(x),y))   //a range has no room to push into: its items do (sup below keeps it a range, so it looped)
  P(xtG&&yti&&yv==(G)yv||xtC&&ytc,apc(x,yv))
  P(xtH&&yti&&yv==(H)yv ,x=aa(n+1,x);xH[n]=yv;x)
  P(xtI&&yti||xtS&&yts  ,x=aa(n+1,x);xI[n]=yv;x)

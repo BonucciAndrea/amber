@@ -105,6 +105,14 @@ tv[`bcUnusedArg;"f:. \"{[x;y]x+1+\",(\"+\"/127#,\"x\"),\"+-x}\";f[1;0]";128]
 tv[`bcCondUses;"A:\"+\"/64#,\"x\";f:. \"{$[x=0;\",A,\";x=1;\",A,\";1]}\";f 0";0]
 te[`bcStackLimit;"I:{\";\"/(\"a\"),(x-1)#\"1\"};g:. \"{[a]((\",(I 96),\");\",(I 160),\")}\""]
 
-hexpect[46]
+
+/ ---- adding a key to a dict whose values or keys are a range ----
+/ Pushing onto a range (!n, a+!n) looped forever.
+t[`pushRangeVals;{x[`c]:5;x}`a`b!!2;`a`b`c!0 1 5]
+t[`pushRangeJoin;(`a`b!3+!2),`c!5;`a`b`c!3 4 5]
+t[`pushRangeKeys;{x[1]:`z;x}(7+!3)!!3;7 8 9 1!(0;1;2;`z)]
+t[`pushRangeLambda;@[(-!2)!!2;,1;{x,1}];0 -1 1!(0;1;0N 1)]
+
+hexpect[50]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

@@ -189,7 +189,7 @@ CO C*peach_errmsg(V);//error category raised by the failing worker of the last p
 CO C*errtext(V);//the calling thread's current error text (e.c)
 V plk(B);//take (1) / drop (0) the parse+compile lock inside a peach scope (m.c)
 C*sf(C*,L),*sl(C*,L),sup(A*,A*),tZ(L),*strchrnul(S,I);
-U gi(A);
+U gi(A);EX B gfull;
 B am_infix_dyad(S,U);//p.c: is a name a defined rank-2 global fn? -> infix
 B am_name_nonfn(S,U);//p.c: is a name BOUND to something that is not a rank-2 fn? -> not infix
 A unqL(A);//amber: O(n) integer distinct (f.c), 0 = not handled
@@ -230,7 +230,7 @@ EX I amdiag;//stderr-diagnostic switch (e.c); see `diag
 CO C*edinfo(CO C*,I);//error-catalogue accessor for the `dgn self-test (e.c)
 V eD(CO C*,U,U);//render a rich diagnostic from raw source bytes (e.c)
 EX I amdiagshown;//set when a rich diagnostic was already rendered for the current error (e.c)
-EX A1*v1[];EX A2*v2[];EX AA*v8[];EX A gv[4096],cns,cn[],ci[2][5];EX I pg;EX TY(CO C[])vc,TS,Tw,TR,TT,TX,Tk;EX S*argv,*env;
+EX A1*v1[];EX A2*v2[];EX AA*v8[];EX A gv[65536],cns,cn[],ci[2][5];EX I pg;EX TY(CO C[])vc,TS,Tw,TR,TT,TX,Tk;EX S*argv,*env;
 
 //                    0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25
 //                      () !i ,1 ,i ,i ,i ,i ,f "" ,` +m X!  5  6 .6 "c" ` {} 1+ ++ +/ +:  +  / 2:

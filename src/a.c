@@ -901,7 +901,7 @@ Z A3(d3,/*100*/U m=yN;P(y==au||!m,z1(x))P(m==1,y=fir(yR);y(a3(x,y,z)))A u=prj(DO
 A4(d4,/*1000*/U m=yN;P(y==au||!m,x(z2(x,uR)))P(m==1,y=fir(yR);y(a4(x,y,z,u)))A v=prj(DOT,(A[]){GAP,drp(1,yR)},2);y=fir(yR);A r=y(a5(x,y,v,z,u));mr(v);r)
 Z AA(d8_,/*10..0*/A x=*a,y=a[1],z=a[2];P(n==4,d4(x,y,z,a[3]))P(n==3,d3(x,y,z))en(x))
 AA(d8,/*10..0*/A x=*a;
- X(RsS(P(ray_rc_sync,mrn(n,a);err0("noupdate"))A*p=gp(x);I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,56);*p=au;*p=_R(N(d8_(b,n))))// amend-by-name of a global: not from a peach worker (b.c bS)
+ X(RsS(P(ray_rc_sync,mrn(n,a);err0("noupdate"))A*p=gp(x);P(!p,mr(*a);0)I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,56);*p=au;*p=_R(N(d8_(b,n))))// amend-by-name of a global: not from a peach worker (b.c bS)
    RU(n==3?try(x,a[1],a[2]):er(x))
    R_(d8_(a,n)))0)
 ZN A ki(A*p,S s)_(*p=evs(s,0);I(!*p,die(s))PSH(cns,*p))

@@ -849,7 +849,7 @@ A3(_2,/*001*/{I tn=istrain(x);if(tn)return trn2(x,y,z,tn);}P(!xtt,i2(x,y,z))A a[
  X(Ro(yR;run(x,a,2))Rp(P(k>6,er(z))yR;I m=xn-1,j=0;Ab8;F(m,b[i]=xA[i+1]==GAP&&j<2?a[j++]:_R(xA[i+1]))I l=MAX(0,2-j);MC(b+m,a+j,8*l);_8(xx,b,m+l))
   Rq(_1(xx,N(_2(xy,y,z))))Rr(z(w2(xE,xx,yR,z)))Rv(v2[xv](y,z))Rw(P(!xv,com(y,z))x=Nz(x1(yR));x(x1(z)))Rx(ext(x,A8(yR,z),2))R_(et(z)))0)
 AX(_8,/*01..1*/Q(n)P(n==1,x1(*a))P(n==2&&!xtp,A y=*a;y(x2(y,a[1])))P(!xtt,i8(x,a,n))U k=xK;P(n<k,prj(x,a,n))
- X(Ro(run(x,a,n))Rp(P(xn-k+n>8,er8(a,n))I m=xn-1,j=0;Ab8;F(m,b[i]=xA[i+1]==GAP&&j<n?a[j++]:_R(xA[i+1]))I l=MAX(0,n-j);MC(b+m,a+j,8*l);_8(xx,b,m+l))
+ X(Ro(run(x,a,n))Rp(I m=xn-1,j=0;Ab8;F(m,b[i]=xA[i+1]==GAP&&j<n?a[j++]:_R(xA[i+1]))I l=MAX(0,n-j);P(l+m>8,mrn(m,b);er8(a+j,n-j))MC(b+m,a+j,8*l);_8(xx,b,m+l))
    Rq(_1(xx,N(_8(xy,a,n))))Rr(w8(xE,xx,a,n))Rv(x=v8[xv](a,n);mrn(n-1,a+1);x)Rx(ext(x,a,n))R_(et8(a,n)))0)
 A1(jS,cS(jc('.',str(x))))//join symbols with "."
 X1(val,RA(P(!xn,x)P(xn==1,fir(x))P(xn>9,ez(x))x=mut(x);A y=_8(xx,&xy,xn-1);AN(1,x);x(y))RmM(x(_R(xy)))RE(gZ(x))RC(x=str0(x);x(evs(xV,0)))Rc(val(enl(x)))RsS(gg(x))

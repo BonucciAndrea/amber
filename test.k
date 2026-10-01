@@ -203,6 +203,9 @@ t[`xbarFloatNull;xbar[0.5;1.7 0n];1.5 0n]
 t[`divFloatNullDivisor;`k@(17.5 div 0N;17.5 2.5 div 2 0N;xbar[0N;17.5]);"(0n;8.0 0n;0n)"]   / a null divisor gives a null for a float dividend too, as in q
 t[`divVecExact;(9223372036854775807 -9223372036854775807 0N 7 -7 1700000000123456789 div 1 1 2 0N 2 60000000000);9223372036854775807 -9223372036854775807 0N 0N -4 28333333]   / an int vector divisor with nulls or values past 2^53, exactly
 t[`divFloatBelow;(-17.5 div 0;-1e300 div 3;-1e300 1e300 div 3);(0n;0n;0n 9.223372036854776e18)]   / below the int range the floor is null, as in q, atom or list
+
+t[`ajKeepsOwn;+aj[,`time;+`sym`time`px!(`a`b`c;0 5 9;1 2 3);+`sym`time`bid!(`x`y;3 7;10 20)];`sym`time`px`bid!(`a`x`y;0 5 9;1 2 3;0N 10 20)]
+t[`aj0KeepsOwn;+aj0[`sym`time;+`sym`time`px!(`a`a;0 5;1 2);+`sym`time`bid!(,`a;,3;,10)];`sym`time`px`bid!(`a`a;0 3;1 2;0N 10)]
 / 64-bit nanosecond timestamps (values exceed 2^31 -> proves long/ns path)
 t[`ajNs;(+aj[`sym`time;+`sym`time`px!(,`a;,1500000000000;,1);+`sym`time`bid!(`a`a;1000000000000 2000000000000;10 20)])`bid;,10]
 / float times compare as floats (the kernels used to truncate them to ints, so 0.5 and 0.7 tied)

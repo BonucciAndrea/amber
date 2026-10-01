@@ -153,6 +153,17 @@ t[`dictAssignMany;{x[AN+!AN]:AN#2.0;x}(!AN)!AN#1;(!2*AN)!(AN#1),AN#2.0]
 t[`dictCountMany;#@[(!0)!!0;(2*AN)#!AN;+;1];AN]
 te[`dictAmendLength;"@[`a`b!1 2;`c`d;:;1 2 3]"]
 
-hexpect[78]
+/ ---- a failed indexed assignment leaves the variable as it was ----
+IA:{[set;e]. set;r:.[.:;,e;{`err}];(r;. *":"\set)}
+t[`amendKeepIndex;IA["A1:,0";"A1[1]:0"];(`err;,0)]
+t[`amendKeepModify;IA["A2:1 2 3";"A2[5]+:1"];(`err;1 2 3)]
+t[`amendKeepNegative;IA["A3:1 2 3";"A3[-1]:9"];(`err;1 2 3)]
+t[`amendKeepLength;IA["A4:1 2 3";"A4[0 1]:7 8 9"];(`err;1 2 3)]
+t[`amendKeepSome;IA["A5:1 2 3";"A5[0 5]:9"];(`err;1 2 3)]
+t[`amendKeepDeep;IA["A6:(1 2;3 4)";"A6[0;5]:9"];(`err;(1 2;3 4))]
+t[`amendKeepElided;IA["A7:(1 2;3 4)";"A7[;5]:9"];(`err;(1 2;3 4))]
+t[`amendStillWorks;(IA["A8:1 2 3";"A8[0 1]+:1"];IA["A9:(1 2;3 4)";"A9[;1]:9"]);((::;2 3 3);(::;(1 9;3 9)))]
+
+hexpect[86]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

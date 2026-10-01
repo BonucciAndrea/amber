@@ -42,6 +42,16 @@ t[`proj3overAgain;.[P3;(PA;PB;PA;PB;PA;PB;PA);{`e}];`e]
 PZ:"hello"
 t[`proj3overArgs;(PA;PB);(,"abc";,"def")]
 
-hexpect[15]
+/ ---- a projection with 8 slots called with one argument too many ----
+/ The dyadic call copied the extra argument past its 8-slot buffer (ASan:
+/ stack-buffer-overflow); it is 'rank, as the n-argument call is.
+P1:{[a;b;c;d;e;f;g;h]a}[;2;3;4;5;6;7;8]
+te[`proj8each;"1 2 P1'3 4"]
+te[`proj8eachLeft;"1 P1\\:2 3"]
+te[`proj8eachRight;"1 P1/:2 3"]
+te[`proj8dot;"(P1;P1). 1 2"]
+t[`proj8one;P1 9;9]
+
+hexpect[20]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

@@ -17,6 +17,14 @@ LOAD DIR,"/harness.k"
 t[`mulWidenNeg;(,-50)*-3;,150]
 t[`mulWidenPos;(,100)*100;,10000]
 
-hexpect[2]
+/ ---- the fused x@&m applies a function, as @ does ----
+f:{x+1}
+t[`compressFn;f@&1 0 1;1 3]
+t[`compressSym;`k@&1 0 1;"0 2"]
+t[`compressList;10 20 30@&1 0 1;10 30]
+t[`compressFnSum;+/f@&1 0 1;4]
+t[`compressFnCmp;f@&(1 2 3)>1;2 3]
+
+hexpect[7]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

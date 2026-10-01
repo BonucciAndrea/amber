@@ -773,4 +773,4 @@ A2(cmprC,/*01*/UC t=xt;
   I(!bad,y(0);return AN((U)k,z))
   mr(z);})
  A w=whr(y);P(!w,0)   // amber 2.3: & can fail (negative counts, a float mask); i1(x,0) crashed
- i1(x,w))
+ _1(x,w))  //the unfused x@&y: @ applies a function (i1 only indexed, so f@&m gave f back)

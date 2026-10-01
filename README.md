@@ -260,8 +260,8 @@ notional` (trades), `ret logret rvol movavg movsum movmax movmin ema rollstd` (r
 Walkthrough: `./amber examples/hft.k`.
 
 **Attributes.** Amber has all four q-style attributes in C: `` `sa`` sorted, `` `ua`` unique,
-`` `pa`` parted, `` `ga`` grouped (`` `at`` reads them, `meta` shows them). Sorted/parted give
-O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
+`` `pa`` parted, `` `ga`` grouped (`` `at`` reads them, `meta` shows them). Sorted int vectors stored 16 bits or wider
+give O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 
 <a name="documentation"></a>
 ## Documentation

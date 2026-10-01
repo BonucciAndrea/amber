@@ -105,14 +105,17 @@ Amber now ships `hopen`/`hclose`/`hsend`/`hrecv`/`hsync` (raw-socket messaging) 
   handler dispatch, `.z.w`, websockets, TLS, and the full multi-process tickerplant / RDB / HDB /
   gateway pattern (`tick.q`, `r.q`, `u.q`, `w.q`).
 
-## 6. Attributes: 4 of 4 (setters); find accel on 2
+## 6. Attributes: 4 of 4 (setters); find accel on 1 (sorted)
 All four attributes are set in C: **sorted (`` `sa``)**, **unique (`` `ua``)**,
-**parted (`` `pa``)**, **grouped (`` `ga``)**, read back with `` `at``. **Sorted and parted**
-vectors take the O(log n) binary-search find path; grouped pairs with `fin.k`'s group index
+**parted (`` `pa``)**, **grouped (`` `ga``)**, read back with `` `at``. **Sorted** int vectors
+stored 16 bits or wider take the O(log n) binary-search find path; sorted floats and
+symbols, byte-wide ints and parted vectors (which need not be in order) take the ordinary
+find, as an unflagged vector does;
+grouped pairs with `fin.k`'s group index
 (`bysym`/`symrows`) for O(1) per-symbol slicing.
 - **Since 2.1.0:** every ascending value sort (`asc`, `x@<x`, `` `srt``, `xasc` on a flat
-  numeric column) returns its result flagged `` `s``, so a later `?`, `in`, `bin` or `aj` on it
-  takes the O(log n) path without an explicit `` `sa``.
+  numeric column) returns its result flagged `` `s``, so a later `?` on it, when it is an int
+  vector stored 16 bits or wider, takes the O(log n) path without an explicit `` `sa``.
 - **Still missing:** dedicated find/`where=` acceleration driven by the `` `u`` / `` `g``
   attribute *itself* (grouped speed currently comes from the separate group index, not the
   attribute), and general **attribute preservation through ops**. Apart from sorts, the flag
@@ -210,7 +213,7 @@ tickerplant** `hopen`/`u.*` (§5).
    `peach` beats serial `'`, and unlock a real (binary-wire) IPC and a binary on-disk format.
 2. **Grouped-attribute-driven `where sym=`.** The `` `g`` setter exists, but fast `where sym=`
    currently comes from `fin.k`'s separate group index rather than from the attribute itself.
-   Wiring the attribute into the C find path (as sorted/parted already are) would make it automatic.
+   Wiring the attribute into the C find path (as sorted already is) would make it automatic.
 3. **Missing atom types** (§2): `short`/`real`/`byte`/`guid` and their typed nulls/infinities.
 4. **Attribute preservation through ops** (§6): keep/drop attributes by q's per-op rules instead
    of always dropping on a new allocation.

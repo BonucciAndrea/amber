@@ -216,8 +216,8 @@ sublist[3;1 2 3 4 5] / 1 2 3          (capped, unlike k's cyclic #)
 cross[1 2;10 20]     / ((1;10);(1;20);(2;10);(2;20))
 ```
 
-`asc` returns a sorted vector **with the sorted attribute set**, so subsequent `?`/`in` on it
-run in O(log n); see §9.
+`asc` returns a sorted vector **with the sorted attribute set**, so a subsequent `?` on it (an int
+vector stored 16 bits or wider) runs in O(log n); see §9.
 
 ---
 
@@ -258,8 +258,8 @@ f:{[a;b;c]+/(a*b)-c%2.0}    / one pass, no a*b or c%2.0 vectors
 ```
 
 Every ascending value sort (`asc x`, `x@<x`, `` `srt x``, a single-column `xasc`) returns its
-result flagged `` `s``, so `?`, `in`, `bin` and `aj` on it take the O(log n) path without an
-explicit `` `sa``.
+result flagged `` `s``, so `?` on it, when it is an int vector stored 16 bits or wider, takes the O(log
+n) path without an explicit `` `sa``.
 
 ## 6. Dictionaries, tables and keyed tables
 
@@ -470,7 +470,7 @@ the interpreter:
 ```
 
 `asc` and `xasc` apply `` `sa`` for you, so idiomatic sorted data is attributed automatically;
-`fin.k`'s `gentq` puts `` `p`` on `sym`. Only **sorted** vectors get the binary-search find.
+`fin.k`'s `gentq` puts `` `p`` on `sym`. Only **sorted** int vectors stored 16 bits or wider get the binary-search find.
 Parted just means equal values sit together, not that they're in order, so it stays on the
 hash path. Grouped pairs with `fin.k`'s group index for O(1) per-symbol slicing.
 
@@ -507,9 +507,9 @@ Some table and dict rules:
 
 ### Why it makes search faster
 
-Amber’s find (`?`) and membership (`in`) on integer vectors are an **O(n) linear scan**
-(`f.c: fGL/fHL/fIL/fLL`). Binary search (`bin`, the `x'y` form) already exists but you have to
-ask for it. The sorted attribute lets `?`/`in` *decide for themselves*: when the left vector is
+Without the attribute, Amber’s find (`?`) of one item in an integer vector stored 16 bits or wider is an
+**O(n) linear scan** (`f.c: fGL/fHL/fIL/fLL`). Binary search (`bin`, the `x'y` form) already exists but you have to
+ask for it. The sorted attribute lets `?` *decide for itself*: when the left vector is
 attributed sorted, find dispatches to a new **O(log n) binary search** instead of the scan.
 
 Measured (2,000,000‑row sorted int vector, 5,000 look‑ups, identical results):
@@ -915,7 +915,7 @@ b:-8!+`a`b!(1 2 3;4 5 6)   / a table -> bytes
 every vector type including bit vectors, symbol vectors, general/nested lists, dictionaries,
 tables, keyed tables, empty vectors and the empty general list, nulls (`0N`, `0n`), infinities
 (`0w`, `-0w`), and **column attributes**, so a `` `s``-sorted column arrives still sorted and keeps
-the O(log n) binary-search path in `?`.
+the O(log n) binary-search path in `?` (an int column stored 16 bits or wider).
 
 Two things worth knowing:
 
@@ -1098,9 +1098,9 @@ quote:+`sym`time`bid!(`ibm`ibm`msft`msft; 1 4 1 3; 99 100 49 50)
 aj[`sym`time; trade; quote]
 
 / fast repeated lookups: attribute a sorted integer key
-ids: asc distinct trade`time      / `s-attributed integer vector
-`at ids                           / `s   -> `?/`in on ids run in O(log n)
-in[3 5; ids]                      / binary-searched membership
+ids: asc 1000*distinct trade`time / `s-attributed integer vector, past a byte wide
+`at ids                           / `s   -> ? on ids runs in O(log n)
+ids?3000 5000                     / binary-searched find
 ```
 
 ---

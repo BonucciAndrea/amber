@@ -12,9 +12,9 @@
 **A low-latency array language: columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-2.3.0-orange)
+![version](https://img.shields.io/badge/version-2.3.1-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
-![tests](https://img.shields.io/badge/tests-873%20K--suite%20cases-brightgreen)
+![tests](https://img.shields.io/badge/tests-972%20K--suite%20cases-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
 
 </div>
@@ -39,6 +39,14 @@ qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                        / vwap by symbo
 ```
 
 <a name="whats-new"></a>
+<a name="whats-new-231"></a>
+## What's new in 2.3.1
+
+A fix round: crashes and memory errors (eight of them ported from ngn/k), a projection with one
+argument too many writing past its buffer, `f@&m` not applying `f`, long functions quietly giving
+wrong answers, a dict over a range hanging when it grew, and amends at many indices or keys going
+from quadratic to linear. Plus a new core suite, `tests/test_core.k`. Details in the [changelog](CHANGELOG.md).
+
 <a name="whats-new-230"></a>
 ## What's new in 2.3.0
 

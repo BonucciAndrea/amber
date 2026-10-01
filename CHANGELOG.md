@@ -1,5 +1,25 @@
 # Changelog
 
+## 2.3.1
+
+Crashes, a few quiet wrong answers, and amends that went quadratic. Every fix has its own cases in a
+new core suite (`tests/test_core.k`, 78 of them, runs with the rest).
+
+- eight crash and memory fixes ported from ngn/k: a long `$[..]` branch jumped one byte short,
+  dotted names past 8 parts, dropping from bit booleans, `` `hex?`` on bytes over 127, join and
+  n-ary scan counts of 2^32 and up, long non-ASCII names, scans reading 64 bytes past their
+  arguments, and `n!2.5` freeing a big `n` it still used, plus two leaks (a million of them
+  peaked at 269 MB, 38 MB now).
+- a projection called with one argument too many wrote past its 8 slots. `'rank` now. And an
+  8-ary projection with two gaps, both filled, works (it said `'rank`).
+- `f@&m` handed back `f` instead of applying it.
+- in a function over 255 bytes of bytecode a local's last use wrapped around, so the function
+  quietly gave wrong answers. More than 255 stack slots is `'limit`.
+- adding a key to a dict whose keys or values are a range (`!n`) looped forever.
+- amending many indices with a change of type, or a dict at many keys, was quadratic: 50k
+  indices took 1.9 s, about 1 ms now. It squeezes once at the end too, so `x[0 1]:(d;e)` with
+  same-keyed dicts gives a table, same as `(d;e)` does.
+
 ## 2.3.0
 
 Mostly a bug hunt. Ran a property/differential sweep over the fast paths and it turned up more

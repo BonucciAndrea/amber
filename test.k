@@ -621,6 +621,8 @@ t[`sortBigFloats;  {(<x;>x;x@<x)}1e19 1.0000000000000004e19 1e19 1.0000000000000
 t[`gradeBigNeg;    <-1e19 -1.0000000000000004e19 -1e19;1 0 2]
 / raze of dicts joins them into a dict, as , and {x,y}/ do
 t[`razeDicts;      (,/(`a`b!1 2;`c`d!3 4);,/(1 2!3 4;5 6!7 8));(`a`b`c`d!1 2 3 4;1 2 5 6!3 4 7 8)]
+/ :: in a dict amend is every key, as when indexing
+t[`amendDictAll;   (.[`a`b!(1 2;3 4);(::;0);:;9];@[`a`b!1 2;::;+;9];.[`x`y!(`p`q!1 2;`p`q!3 4);(::;`q);*;10]);(`a`b!(9 2;9 4);`a`b!10 11;`x`y!(`p`q!1 20;`p`q!3 40))]
 
 / ---- amber 2.2: float literals below 1e-308 (subnormals) ------------------
 / pfu (src/p.c) clamped an out-of-range exponent and returned EARLY, before it

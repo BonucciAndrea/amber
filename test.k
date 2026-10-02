@@ -113,6 +113,8 @@ t[`ajNull;(+aj[`sym`time;tradeN;quote])`bid;0N 0N]
 t[`ajNoGrp;(+aj[`time;+`time`x!(0 4 8;0 0 0);+`time`v!(1 3 5 7;10 20 30 40)])`v;0N 20 40]
 / 64-bit nanosecond timestamps (values exceed 2^31 -> proves long/ns path)
 t[`ajNs;(+aj[`sym`time;+`sym`time`px!(,`a;,1500000000000;,1);+`sym`time`bid!(`a`a;1000000000000 2000000000000;10 20)])`bid;,10]
+/ the sortedness check given an atom where a column belongs: "not known sorted", not a crash
+t[`ajsAtom;(`ajs(();5;0b);`ajs((5;1 2);1 2;0b);`ajs((1 2;5);1 2;0b);`ajs(();3 2 1;0b));0 0 0 0]
 
 / ---- `ajs / ajsorted (src/a.c): is a table already in as-of order? ----
 / A WRONG 1b here silently corrupts every join that trusts it, so the predicate

@@ -234,6 +234,7 @@ A ajsC(A x){
  B trust=_n(x)==3&&_t(e[2])!=tA&&_v(e[2])!=0;
  U ng=_t(gcs)==tA?_n(gcs):0;
  A*gc=ng?(A*)_V(gcs):0;
+ P(_tP(tcol)||_t(tcol)>=tM,x(al(0)))                // an atom or a dict: not a column, so not known sorted
  U n=_n(tcol);
  P(n<2,x(al(1)))                                  // 0 or 1 row is trivially ordered
  // ---- pass 1: run boundaries -------------------------------------------
@@ -244,7 +245,7 @@ A ajsC(A x){
  MS(chg,0,(N)n);
  #define AJS_NE(T) {CO T*RES p=_V(c);for(U r=1;r<n;r++)chg[r]|=(UC)(p[r]!=p[r-1]);}
  F(ng,A c=gc[i];
-   P(_n(c)-n,x(al(0)))                            // ragged column: don't guess
+   P(_tP(c)||_t(c)>=tM||_n(c)-n,x(al(0)))                            // ragged column: don't guess
    switch(_t(c)){
     case tG: case tC: AJS_NE(G) break;
     case tH: AJS_NE(H) break;

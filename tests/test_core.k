@@ -175,6 +175,12 @@ te[`binTemporalGeneric;"(1 2 3)'(2026.07.30;1)"]
 / a temporal atom on the left of fill is 'type too (it was 'nyi), not a fill
 t[`fillTemporalLeft;{.[{x^y};(x;y);{(x?"\n")#x}]}[2026.07.30;0N 1];"'type"]
 
-hexpect[92]
+/ ---- a missing or failing temporal formatter is an error, not the end of the process or a crash ----
+te[`fmtMissing;"$2026.07.30"]
+te[`fmtMissingK;"`k@2026.07.30"]
+tv[`fmtFails;"dstr::{x+`a};.[{$x};,2026.07.30;{`caught}]";`caught]
+te[`fmtFailsList;"dstr::{x+`a};`k@(2026.07.30;1)"]
+
+hexpect[96]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

@@ -904,9 +904,9 @@ AA(d8,/*10..0*/A x=*a;
  X(RsS(P(ray_rc_sync,mrn(n,a);err0("noupdate"))A*p=gp(x);I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,56);*p=au;*p=_R(N(d8_(b,n))))// amend-by-name of a global: not from a peach worker (b.c bS)
    RU(n==3?try(x,a[1],a[2]):er(x))
    R_(d8_(a,n)))0)
-ZN A ki(A*p,S s)_(*p=evs(s,0);I(!*p,die(s))PSH(cns,*p))
-A k1(A*p,S s,A x)_(I(!*p,ki(p,s))_1(*p,x))
-A k2(A*p,S s,A x,A y)_(I(!*p,ki(p,s))_2(*p,x,y))
-A k8(A*p,S s,CO A*a,U n)_(I(!*p,ki(p,s))n?_8(*p,a,n):*p)
+ZN A ki(A*p,S s)_(*p=evs(s,0);P(!*p,0)PSH(cns,*p))   //a name that does not evaluate (a missing formatter): its error, not die
+A k1(A*p,S s,A x)_(I(!*p,ki(p,s))P(!*p,x(0))_1(*p,x))
+A k2(A*p,S s,A x,A y)_(I(!*p,ki(p,s))P(!*p,mr(y);x(0))_2(*p,x,y))
+A k8(A*p,S s,CO A*a,U n)_(I(!*p,ki(p,s))P(!*p,mrn(n,(A*)a);0)n?_8(*p,a,n):*p)
 AA(no8,/*10..0*/en(*a))
 A2(no2,/*01*/y(en0()))//amber 2.1: unused fused-verb dyad slots

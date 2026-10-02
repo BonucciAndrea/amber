@@ -48,7 +48,7 @@ Z A0(pZ,S p=s;W(*p-'0'<2u,p++)                                                  
  sqzZ(N(pV(tL,plN))))
 Z A0(pF,pV(tF,pf))                                                                                  //parse floats
 Z A0(pC,C a[1<<9];U n=0;C c=*++s;A x=0;                                                      //parse "string" (in chunks of 512)
- W(c&&c-'"',I(n==L(a),A c_=aV(tC,n,a);x=x?cat11(x,c_):c_;n=0)I(c=='\\',c=*++s;U i=fG("tnr0",4,c);I(i<4,c="\t\n\r"[i]))a[n++]=c;c=*++s)
+ W(c&&c-'"',I(n==L(a),A c_=aV(tC,n,a);x=x?cat11(x,c_):c_;n=0)I(c=='\\',c=*++s;B(!c)U i=fG("tnr0",4,c);I(i<4,c="\t\n\r"[i]))a[n++]=c;c=*++s)
  P(!c,x?x(ep0()):ep0())s++;A c_=aV(tC,n,a);x?cat11(x,c_):c_)
 Z A0(p0x,S p=s;W(CA9(*p),p++)A x=N(unhC(s,p-s));s=p;x)                                              //parse 0x string
 Z A0(ps,S p=s;C c=*s;I(id0(c),s=pID(s))J(c>>7,W(*++s<-64)s+=*s==':')aCm(p,s))                       //parse symbol

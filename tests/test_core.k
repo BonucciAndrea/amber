@@ -191,6 +191,10 @@ t[`limitLocals;*"\n"\.[.:;,("{",(";"/(,'"abcdefghijklmnopq"),\:":1"),"}");{x}];"
 t[`limitsInside;({$[x;1;0]}1;(a;b):1 2;{x+y}[1;2];{a:1;b:2;a+b}[]);(1;1 2;3;3)]
 t[`compileUnderLimit;. "a:1;#(",(";"/100#,"a"),")";100]
 
-hexpect[104]
+
+/ ---- a string that ends in a backslash is 'parse (the read past the text shows only under ASan, with piped input as in #22) ----
+t[`strTrailingBackslash;.[.:;,"\"a\\";{(x?"\n")#x}];"'parse"]
+
+hexpect[105]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

@@ -7,7 +7,10 @@
 / (Civil<->days uses Howard Hinnant's algorithm, epoch-shifted to 2000.)
 / ============================================================================
 
-fdiv:{_(x%y)}                                               / integer floor-division
+/ integer floor-division, exact: (-y)!x (a float x%y rounds above 2^53, and a timestamp is ns
+/ since 2000, so 2026.07.30D23:59:59.999999999 printed as the next day). -8! and -9! are the
+/ serialise verbs, so 8 and 9 go in two steps: floor(floor(x/a)/b) is floor(x/(a*b)).
+fdiv:{$[~(`i~@y)&y>0;_(x%y);^`i`I?@x;_(x%y);[r:$[y=8;(-4)!(-2)!x;y=9;(-3)!(-3)!x;(-y)!x];$[`i~@x;$[^x;0N;r];@[r;&^x;:;0N]]]]}  / exact for ints over a positive int (-8! and -9! are other verbs); else as before
 
 / ---- date : days since 2000.01.01 ----------------------------------------
 ymd2d:{[y;m;d]yy:y-m<3;era:fdiv[yy;400];yoe:yy-era*400;mp:m+$[m>2;-3;9];doy:(fdiv[2+153*mp;5])+d-1;+/((146097*era);365*yoe;fdiv[yoe;4];doy;neg fdiv[yoe;100];-730425)}

@@ -245,6 +245,15 @@ t[`tlitKeyCols;keys([sym:`a`b]px:1 2);,`sym]
 t[`tlitRows;#([]a:1 2 3 4);4]
 
 / ---- temporal ----
+\l temporal.k
+t[`tsLastNs;pstr 2026.07.30D23:59:59.999999999;"2026.07.30D23:59:59.999"]
+t[`tsMsFloor;pstr 2140.01.01D00:01:24.374999297;"2140.01.01D00:01:24.374"]
+t[`tsBefore2000;pstr 1999.12.31D23:59:59.999999999;"1999.12.31D23:59:59.999"]
+t[`fdivExact;(fdiv[4417977684374999297;1000000];fdiv[-5;10];fdiv[17;8];fdiv[-17;8];fdiv[80;9]);(4417977684374;-1;2;-3;8)]
+t[`fdivNegative;fdiv[17;-3];-6]
+t[`fdivNull;fdiv[17 0N -17;8];2 0N -3]
+t[`fdivFloat;fdiv[17.5;2];8]
+t[`fdivVector;fdiv[17;5 6];3 2]
 t[`hms;hms[9;30;15];34215000]
 t[`hh;hh hms[9;30;15];9]
 t[`mm;mm hms[9;30;15];30]

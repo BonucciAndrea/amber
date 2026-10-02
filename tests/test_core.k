@@ -153,6 +153,13 @@ t[`dictAssignMany;{x[AN+!AN]:AN#2.0;x}(!AN)!AN#1;(!2*AN)!(AN#1),AN#2.0]
 t[`dictCountMany;#@[(!0)!!0;(2*AN)#!AN;+;1];AN]
 te[`dictAmendLength;"@[`a`b!1 2;`c`d;:;1 2 3]"]
 
-hexpect[78]
+/ ---- a symbol that is not an identifier prints quoted, with its bytes as they are ----
+t[`symDigitFirst;`k@`$"1a";"`\"1a\""]
+t[`symUtf8;`k@`$`c$195 169;"`\"",(`c$195 169),"\""]
+t[`symIdent;`k@`abc;"`abc"]
+t[`symList;`k@`$("1a";"b");"`\"1a\"`b"]
+tv[`symBack;"{x~. `k@x}@`$(\"1a\";\"a b\";\"\";\"a\";((`c$1),\"x\");(\"a\",`c$233))";1b]
+
+hexpect[83]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

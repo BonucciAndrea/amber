@@ -33,9 +33,12 @@ where:{&x}
 flip:{+x}
 count:{#x}
 mod:{y!x}
-idiv:{$[(`I~@y)&~^`i`I?@x;$[#y;idiv'[x;y];_x%y];~`i~@y;_x%y;^`i`I?@x;_x%y;(y=0)|^y;_x%y;y<0;idiv[-x;-y];[r:$[y=8;(-4)!(-2)!x;y=9;(-3)!(-3)!x;(-y)!x];$[`i~@x;$[^x;0N;r];@[r;&^x;:;0N]]]]}   / floor division, exact for ints over an int or ints (-8! -9! are other verbs); else through the float quotient
-div:{idiv[x;y]}
-xbar:{r:x*idiv[y;x];m:(^x)|^y;$[~|/m;r;(@r)in`i`f;$[`i~@r;0N;0n];@[r;&m;:;$[`I~@r;0N;0n]]]}   / a null width or value gives a null (0N*0N wraps to 0)
+idivv:{[x;y]x:$[`i~@x;(#y)#x;x];n:(^x)|^y;x0:0^x;y0:1^y;z:&y0=0;s:y0<0;x1:x0*1-2*s;y1:1|y0*1-2*s;q:_x1%y1;r:x1-q*y1;d:_r%y1;q:q+d;r:r-d*y1;q:q-r<0;r:x1-q*y1;q:q+~r<y1;q:@[q;z;:;_(x0 z)%0];@[q;&n;:;0N]}   / ints by an int vector, exactly: the float quotient, corrected by the exact (wrapped) remainder
+idiv:{$[(`I~@y)&~^`i`I?@x;$[#y;$[&/~^x,y;$[&/9007199254740992>{x|-x}x,y;_x%y;idivv[x;y]];idivv[x;y]];_x%y];~`i~@y;_x%y;^`i`I?@x;_x%y;^y;$[`i~@x;0N;(#x)#0N];y=0;_x%y;y<0;idiv[-x;-y];[r:$[y=8;(-4)!(-2)!x;y=9;(-3)!(-3)!x;(-y)!x];$[`i~@x;$[^x;0N;r];@[r;&^x;:;0N]]]]}   / floor division, exact for ints over an int or ints (-8! -9! are other verbs); else through the float quotient
+div:{$[(@x)in`f`F;fdiv0[x;$[`i~@y;$[^y;0n;y];`I~@y;@[`f$y;&^y;:;0n];y]];(@y)in`f`F;idiv[x;rnd0 y];idiv[x;y]]}   / as q: an int by a float divisor rounds it; a float dividend floors as a float
+rnd0:{r:{s:(x>0)-x<0;s*_0.5+x*s};$[`f~@x;$[^x;0N;r x];@[r@[x;&^x;:;0.0];&^x;:;0N]]}   / round half away from zero, as q's `long$ of a float
+fdiv0:{q:x%y;r:`f$_q;$[`f~@q;$[(^q)|^_q;0n;r];@[r;&^q;:;0n]]}   / floor of a float quotient through an int, kept a float, as q does
+xbar:{r:x*idiv[y;x];m:(^x)|^y;$[~|/m;r;(@r)in`i`f;$[(`f~@r)|(`f~@x)|`f~@y;0n;0N];@[r;&m;:;$[`I~@r;0N;0n]]]}   / a null width or value gives a null (0N*0N wraps to 0)
 xlog:{(`ln y)%`ln x}
 xexp:{[x;y]$[~y=_y;`exp y*`ln x;[e:$[y<0;-y;y];r:*{0<x[2]}{(x[0]*$[2!x[2];x[1];1.0];x[1]*x[1];_x[2]%2)}/(1.0;1.0*x;e);r:$[y<0;1%r;r];$[(x=_x)&(~y<0)&(r=_r)&9007199254740992.0>$[r<0;0-r;r];_r;r]]]} / x xexp y = x^y; fast squaring for integer y, exp/ln for fractional. An integer base to a non-negative integer power comes back as an INTEGER while the squaring is still exact (below 2^53); past that, or for a fractional/negative exponent, it stays a float. Load euler.k to get the exact bignum answer beyond 2^53.
 round:{[d;x]p:*/d#10;(_0.5+x*p)%p}

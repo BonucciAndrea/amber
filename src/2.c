@@ -123,6 +123,15 @@ Z A arizz(L a,L b,U f)_(P(f==4,af((F)a/b))
 Z A arizZ(L v,A y,U f)_(A(&addzZ,subzZ,mulzZ,dvdzZ,modzZ,mmmzZ,mmmzZ,cmpzZ,cmpzZ,cmpzZ)[f-1](v,y,f))
 Z A ariZZ(A x,A y,U f)_(P(xn-yn,el(y))A(&addZZ,subZZ,mulZZ,dvdZZ,0,mmmZZ,mmmZZ,cmpZZ,cmpZZ,cmpZZ)[f-1](x,y,f))
 ZN A ariz(A x,A y,U f){S(xtT<<1|ytT,R(0,arizz(gl_(x),gl(y),f))R(1,arizZ(gl_(x),y,f))R(2,P(f==4,ari(x,cF(y)))P(f==2,arizZ((L)(0-(W)gl(y)),xR,1))arizZ(gl(y),xR,f-8<2u?f^8^9:f))R_(ariZZ(x,y,f)))}
+// = on floats compares values: -0.0 is 0.0 and every NaN is 0n (as ~ does), while the comparison
+// below it is on bit patterns. fzn gives that form, copying only when x has a -0.0 or a NaN.
+Z A fzn(A x/*1*/)_(P(!xtf&&!xtF,x)U n=xtf?1:xn;CO F*p=xtf?xF:xF;U i=0;W(i<n&&p[i]==p[i]&&(p[i]!=0||*(CO L*)(p+i)>=0),i++)P(i==n,x)
+ P(xtf,x(af(p[0]==p[0]?0.0:NF)))x=mut(x);F*q=xF;F(n,I(q[i]!=q[i],q[i]=NF)J(q[i]==0,q[i]=0.0))x)
+// = of float vectors in one pass: IEEE == already takes -0.0 for 0.0, and the second term
+// makes every NaN equal; 0 (nothing consumed) for shapes it does not handle.
+#define EQV(u,v) ((u)==(v)|((u)!=(u))&((v)!=(v)))
+Z A eqFF(A x,A y/*00*/)_(B a=xtf,b=ytf;P(a&&b||!a&&!b&&xn-yn,0)U n=a?yn:xn;A z=an(n,tG);G*RES r=zV;CO F*RES p=xF,*RES q=yF;
+ P(a,F u=*p;F(n,r[i]=EQV(u,q[i]))z)P(b,F v=*q;F(n,r[i]=EQV(p[i],v))z)F(n,r[i]=EQV(p[i],q[i]))z)
 ZN A arif(A x,A y,U f)_(C t=xt,u=yt;
  P(f==5,xtz?modzf(gl_(x),y,f):et(y))
  P(t-tf&&t-tF,x=Ny(cF(xR));x(ari(x,y)))
@@ -132,7 +141,8 @@ ZN A arif(A x,A y,U f)_(C t=xt,u=yt;
   R(1,f<4?admfF(*xF,y,f):dvdfF(*xF,y,f))
   R(2,f==2?admfF(-gf(y),xR,1):f<4?admfF(gf(y),xR,f):dvdFf(x,gf(y),f))
   R_(amdFF(x,y,f)))0)
- P(f==10,ariz(x,y,f))
+ A e=f==10&&(t==tF||u==tF)?eqFF(x,y):0;P(e,y(e))
+ P(f==10,A u=fzn(xR);u(ariz(u,fzn(y),f)))
  // amber item 4: direct IEEE comparison instead of the of1() integer-domain
  // round trip. Bails (and falls through to the unchanged path below) the
  // moment any operand is a NaN or a negative zero -- the only two classes

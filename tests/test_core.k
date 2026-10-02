@@ -188,6 +188,14 @@ t[`eqScanFloat;=\1.0 1.0 1.0;(1.0;1;1)]
 t[`eqScanFloatSeed;1.0=\1 1 2;1 1 0]
 t[`eqScanFloatAsLambda;(=\0.5 0.5 1.5)~{x=y}\0.5 0.5 1.5;1]
 
-hexpect[103]
+/ ---- = on floats compares values: -0.0 equals 0.0, and a NaN equals any NaN ----
+t[`eqZeros;{a:-1*0.0;(a=0.0;0.0=a;a=0;0=a)}[];1 1 1 1]
+t[`eqZerosVec;{a:(-1*0.0),1;(a=0.0 1;0.0=a;(,*a)=,0.0)}[];(1 1;1 0;,1)]
+t[`eqNans;{(x=-x;(0%0)=x;x=x;x=0.0)}0n;1 1 1 0]
+t[`eqPlain;(1.5=1.5;1.5=2.5;1 2.5=1.0 2.5;1=1.0);(1;0;1 1;1)]
+t[`eqAgreesMatch;{(x=y)~x~y}[-0.0;0.0];1b]
+t[`paZerosOneValue;.[{`at(`pa x)};,0.0 -0.0 0.0;{`err}];`p]   / `pa: both zeros are one value, so the run is one
+
+hexpect[109]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

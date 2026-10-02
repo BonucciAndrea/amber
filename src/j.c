@@ -4,7 +4,7 @@ Z CO C je[]="\"\\/\b\f\n\r\t",ej[]="\"\\/bfnrt";Z C*s;
 Z A0 jx;Z C jw()_(W(*s&&*s<=32u,s++)*s)
 Z A0(jd,I m=*s=='-';s+=m;C c=*s++;P(!C09(c),0)F v=c-'0';W(C09(*s),v*=10;v+=*s++-'0')I(*s=='.',s++;F t=1;W(C09(*s),t/=10;v+=t*(*s++-'0')))
  I((*s|32)=='e',s++;s+=*s=='+';L e=pl((V*)&s);F t=10;I(e<0,e=-e;t=.1)P(e>308,0)F(e,v*=t))af(m?-v:v))
-Z I ju(S s)_(I v=0;F(4,UC c=*s++,d=c-'0';v<<=4;v|=d<10?d:(d=(c|32)-'a')<6?d+10:-1)v)
+Z I ju(S s)_(I v=0;F(4,UC c=s[i],d=c-'0';I(d>9,d=(c|32)-'a';P(d>5,-1)d+=10)v=v<<4|d)v)   //-1 at the first byte that is not a hex digit, so never past the text's end
 Z A0(js,UC c;C*p=++s;U n=0;W((c=*p)-'"',P(c<32,s=p;0)p++;I(c=='\\',c=*p++;P(c<32,s=p;0)n++;I(c=='u',L v=ju(p);P(v<0,s=p;0)p+=4;I(v>>10==54&&*p=='\\'&&p[1]=='u'&&ju(p+2)>>10==55,p+=6;n+=7;continue)n+=4-(v>127)-(v>2047))))A x=aC(p-s-n);p=s;C*r=xC;
  W((c=*p++)-'"',I(c=='\\',c=*p++;I(c-'u',U j=si(ej,c);P(j>=L(ej),s=p-1;x(0))c=je[j])E(I v=ju(p);p+=4;I(v>>10==54&&*p=='\\'&&p[1]=='u'&&ju(p+2)>>10==55,I u=0x10000+(v-0xD800<<10)+ju(p+2)-0xDC00;p+=6;*r++=240|u>>18;*r++=128|63&u>>12;*r++=128|63&u>>6;c=128|63&u)   //a surrogate pair is one character, four bytes
   J(v<128,c=v)J(v<2048,*r++=192|v>>6;c=128|63&v)E(*r++=224|v>>12;*r++=128|63&v>>6;c=128|63&v)))*r++=c)s=p;x)

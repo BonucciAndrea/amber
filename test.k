@@ -480,6 +480,12 @@ t[`gradeStamps;    (<(2026.07.31D09:00:00.000;2026.07.30D10:00:00.000;2026.07.30
 GTS:(2026.07.30D10:00:00.000;2026.07.30D10:00:00.000+1;2026.07.30D10:00:00.000+0;2026.07.30D10:00:00.000+1)
 t[`groupStamps;   (#?GTS;#=GTS);  2 2]   / equal timestamps are one value
 
+/ aj and wj on columns of dates, times or timestamps compare their values
+AJT:+`ts`v!((2026.07.30D10:00:00.000;2026.07.30D11:00:00.000;2026.07.31D09:00:00.000);1 2 3)
+AJQ:+`ts`q!((2026.07.30D08:00:00.000;2026.07.30D10:30:00.000);6 5)
+t[`ajStamps;       (+aj[`ts;AJT;AJQ])`q;  6 5 5]
+t[`ajDates;        (+aj[`d;+`d`v!((2026.07.30;2026.07.31);1 2);+`d`q!((2026.07.29;2026.07.31);6 5)])`q;  6 5]
+
 / ---- amber 2.2: float literals below 1e-308 (subnormals) ------------------
 / pfu (src/p.c) clamped an out-of-range exponent and returned EARLY, before it
 / advanced the parse cursor -- so `1e-309` left "e-309" in the input and the

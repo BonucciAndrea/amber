@@ -280,6 +280,10 @@ t[`fbyWhereCols;  (sel"select px from ft where px=(max;px) fby (sym;ex)")`px; 20
 / Guard against a silently skipped block (see tests/harness.k): this is the
 / exact number of assertions this file is expected to record. Bump it when
 / you add or remove cases -- if it ever disagrees, some of them stopped running.
-hexpect[155]
+/ ---- an empty grouped select keeps each column's type (from its aggregate, as q) ----
+t[`byEmptySum;  @(.(sel"select sum px by sym from ft where px>1000"))`px; `F]
+t[`byEmptyLast; @(.(sel"select by sym from ft where px>1000"))`px; `F]
+
+hexpect[157]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

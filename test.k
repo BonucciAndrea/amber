@@ -111,6 +111,15 @@ tradeN:+`sym`time`px!(`a`c;0 5;1 2)
 t[`ajNull;(+aj[`sym`time;tradeN;quote])`bid;0N 0N]
 / single-group (time-only) as-of: most recent quote on-or-before each trade time
 t[`ajNoGrp;(+aj[`time;+`time`x!(0 4 8;0 0 0);+`time`v!(1 3 5 7;10 20 30 40)])`v;0N 20 40]
+t[`ajNaNHidesUnsorted;(+aj[`sym`time;+`sym`time!(`a`a`a;0.5 1.5 3.5);+`sym`time`bid!(`a`a`a;3.0 0n 1.0;10 20 30)])`bid;20 30 10]
+t[`ajZeroGroups;ajsorted[`g`time;+`g`time`bid!(0.0 1.0 -0.0;1 2 3;10 20 30)];0b]
+/ the row is the one aj gives on the sorted quotes (which zero comes first is issue #15's order)
+ajZT:+`g`time!(0.0 -0.0 1.0;5 5 5);ajZQ:+`g`time`bid!(0.0 1.0 -0.0;1 2 3;10 20 30)
+t[`ajZeroGroupsRow;(+aj[`g`time;ajZT;ajZQ])`bid;(+aj[`g`time;ajZT;xasc[`g`time;ajZQ]])`bid]
+t[`ajSortedZeros;{n:-1*x;(ajsorted[`s`t;+`s`t!(`a`a;n,x)];ajsorted[`s`t;+`s`t!(`a`a;x,n)])}0.0;11b]
+/ a NaN time sorts first, as one value: quotes 0.0 1.0 -0n are unsorted, and a trade at -0.0 takes the 0.0 quote, as in q
+t[`ajNanQuoteLast;(+aj[`sym`time;+`sym`time!(,`a;,-0.0);+`sym`time`bid!(`a`a`a;0.0 1.0 -0n;10 20 30)])`bid;,10]
+t[`ajCharTimes;(+aj[`sym`time;+`sym`time!(`a`a`a;`c$66 201 64);+`sym`time`bid!(`a`a;`c$65 200;10 20)])`bid;(+aj[`sym`time;+`sym`time!(`a`a`a;`c$66 201 64);xasc[`sym`time;+`sym`time`bid!(`a`a;`c$65 200;10 20)]])`bid]
 / 64-bit nanosecond timestamps (values exceed 2^31 -> proves long/ns path)
 t[`ajNs;(+aj[`sym`time;+`sym`time`px!(,`a;,1500000000000;,1);+`sym`time`bid!(`a`a;1000000000000 2000000000000;10 20)])`bid;,10]
 / float times compare as floats (the kernels used to truncate them to ints, so 0.5 and 0.7 tied)

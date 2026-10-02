@@ -10,7 +10,7 @@ A rsz(L n,A x/*1*/)_(
    RE(Lij P(n>j-i||n<i-j,rsz(n,gZ(x)))x(0);n>=0?aE(i,i+n):aE(j+n,j))
    RB(en(x))
    R_(P(n==NL,x)P(!xn,rsz(n,enl(fir(x))))
-      I r=n<0;n*=1-2*r;A y=an(n,xt);N w=xw-3,m=xn<<w,k=n%xn<<w,l=n<<w;
+      I r=n<0;n*=1-2*r;P((W)n-(U)n,ez(x))A y=an(n,xt);N w=xw-3,m=xn<<w,k=n%xn<<w,l=n<<w;
       I(!r,MC(yV,xV,MIN(m,l)))J(l<=m,MC(yV,xV+m-l,l))E(MC(yV,xV+m-k,k);MC(yV+k,xV,m-k))
       cyc(yV,m,l);I(!n&&ytA,yx=mkn(_R(xx)))x(ytA?sqz(mRa(y)):y)))0)
 A slc(A x/*0*/,U i,U j)_(Q(xtT&&i<=j&&i<=xN)N n=j-i;XE(I v=*xL;aE(v+i,v+j))A y=an(n,xt);U w=xw-3;MC(yV,xV+((W)i<<w),(W)n<<w);XA(P(!n,yx=mkn(_R(xx));y)sqz(mRa(y)))y)

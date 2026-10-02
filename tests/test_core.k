@@ -157,6 +157,13 @@ te[`dictAmendLength;"@[`a`b!1 2;`c`d;:;1 2 3]"]
 t[`sqzTopLong;9223372036854775807 1;9223372036854775807 1]
 t[`sqzTopInt;@2147483647 1;`I]
 
-hexpect[80]
+/ ---- take: a count of 2^32 or more is 'limit (it was cut to 32 bits) ----
+t[`takeLimit;.[.:;,"4294967297#!3";{(x?"\n")#x}];"'limit"]
+t[`takeLimitNeg;.[.:;,"-4294967297#!3";{(x?"\n")#x}];"'limit"]
+t[`takeLimitCount;.[.:;,"#4294967297#!100";{(x?"\n")#x}];"'limit"]
+t[`takeBig;#100000#!3;100000]
+t[`takeCycle;5#1 2;1 2 1 2 1]
+
+hexpect[85]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

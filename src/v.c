@@ -399,6 +399,11 @@ W amkF(F f){W b;MC(&b,&f,SZ(F));
  u+=(W)((-1ull>>12)-1);
  return u^0x8000000000000000ull;}
 
+// The key a GRADE orders by (issue #15, option A): both zeros are one value, and so are all NaNs
+// (keyed as 0n, first), so equal values keep their order. amkF stays a bijection for the keys-only
+// SORT below, which rebuilds the values from their keys; there, equal values come out in bit order.
+W amkFc(F f){W b;MC(&b,&f,SZ(F));b=b<<1==0?0:b<<1>0xffe0000000000000ull?(W)NFL:b;F g;MC(&g,&b,SZ(F));return amkF(g);}
+
 // Extract keys and the identity permutation in one sequential pass, and notice
 // en route whether the column is ALREADY non-decreasing -- the common case for
 // a time column, a `s-attributed column, or a table coming out of ajord(). An
@@ -431,7 +436,7 @@ A rdxg(A x){
   case tH: RDXK(U,H,AMKH(p[i])) break;
   case tI: RDXK(U,I,AMKI(p[i])) break;
   case tL: RDXK(W,L,AMKL(p[i])) break;
-  default: RDXK(W,F,amkF(p[i])) break;}
+  default: RDXK(W,F,amkFc(p[i])) break;}
  if(srt){for(N i=0;i<n;i++)o[i]=(I)i;arena_release(mk);return y;}
  nb=kw==4?amnorm4((U*)kA,n,nb):amnorm8((W*)kA,n,nb);
  if(!nb){for(N i=0;i<n;i++)o[i]=(I)i;arena_release(mk);return y;}  // all equal

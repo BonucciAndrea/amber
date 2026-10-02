@@ -213,7 +213,16 @@ t[`floatSortedAttr;.[{`sa x};,0.0 -0.0 1.0;{`err}];0.0 -0.0 1.0]
 t[`sqzTopLong;9223372036854775807 1;9223372036854775807 1]
 t[`sqzTopInt;@2147483647 1;`I]
 
-hexpect[112]
+/ ---- date and time literals with fields out of range are 'parse, as q refuses them (issue #18) ----
+TL:{.[{`i$. x};,x;{`$(x?"\n")#x}]}
+t[`litDateBad;TL'("2026.02.29";"1900.02.29";"2026.13.01";"2026.00.10";"2026.04.31");5#`$"'parse"]
+t[`litTimeBad;TL'("10:61:00.000";"10:00:60.000";"2026.07.30D10:60:00");3#`$"'parse"]
+t[`litStampDateBad;TL"2026.02.30D10:00:00";`$"'parse"]
+t[`litStampHour24;TL"2026.07.30D24:00:00.000";`i$2026.07.31D00:00:00.000]
+t[`litStampHour99;TL"2026.07.30D99:00:00.000";`i$2026.08.03D03:00:00.000]
+t[`litTemporalGood;TL'("2024.02.29";"2000.02.29";"2026.04.30";"24:00:00.000";"99:00:00.000");8825 59 9616 86400000 356400000]
+
+hexpect[118]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

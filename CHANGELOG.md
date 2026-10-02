@@ -9,6 +9,8 @@
 - **faster**: reverse is one copy (bytes 8 at a time, ~8x quicker on a byte vector), `0 :':x` is one
   pass instead of two, and so is `m!x` for a power of two on a shared vector. The bignum collatz
   loop at 2^18 went from ~300 to ~255 ms.
+- **benchmarks**: every current table in `docs/BENCHMARKS.md` re-measured on 2.4.1, and
+  `bench/run_suite.sh` (the suite behind §2) is in the repo again.
 
 ## 2.4.0
 

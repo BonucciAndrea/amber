@@ -171,14 +171,16 @@ The engine gained **one build flag, one export map and one section of `ext.h`** 
 <a name="why-attributes-matter"></a>
 ## Why attributes matter
 
-`bench.k` measures `?` (find) on identical data, sorted-attributed vs not:
+`bench.k` times 5,000 lookups with `?` (find) on identical data, sorted-attributed vs not
+(2.4.1). Without the attribute find hashes the whole column every call; with it, it's a binary
+search per lookup:
 
-| rows | linear scan | binary (`` `s``) | speedup |
-|-----:|------------:|-----------------:|--------:|
-| 100 k | 87 ms | 0.6 ms | **141×** |
-| 500 k | 417 ms | 0.9 ms | **470×** |
-| 2 M | 1.73 s | 1.4 ms | **1244×** |
-| 5 M | 4.23 s | 1.9 ms | **2261×** |
+| rows | plain | sorted (`` `s``) | speedup |
+|-----:|------:|-----------------:|--------:|
+| 100 k | 3.2 ms | 0.41 ms | **7×** |
+| 500 k | 16.8 ms | 0.94 ms | **17×** |
+| 2 M | 184 ms | 2.0 ms | **93×** |
+| 5 M | 827 ms | 2.9 ms | **288×** |
 
 Results are identical; only the time differs. `asc` / `xasc` set the attribute for you, and
 `meta` shows it in the `a` column.

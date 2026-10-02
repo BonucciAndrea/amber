@@ -157,7 +157,7 @@ lj:{[t;kt]p:jprobe[keys kt;+!kt;+t];i:(p 0)?p 1;vc:cols value kt;+(+t),vc!{y@x}[
 ij:{[t;kt]kc:keys kt;kd:+!kt;td:+t;yc:kd kc;xc:td kc;p:$[1=#kc;(*yc;*xc);qcard[yc,'xc]<qEXACT;[e:qenc yc,'xc;n:#*yc;(n#e;n _ e)];(rows[!kt];+. kc#td)];i:(p 0)?p 1;j:&~^i;+(+atr[t;j]),(cols value kt)!{y@x}[i@j]'value value kt}
 gc:{[t;n;ot;c]$[in[c;cols t];(+t)c;n#0#(+ot)c]}
 uj:{[x;y]c:distinct cols[x],cols y;+c!{[x;y;c]gc[x;#x;y;c],gc[y;#y;x;c]}[x;y]'c}
-pj:{[t;kt]p:jprobe[keys kt;+!kt;+t];i:(#p 0)^(p 0)?p 1;vt:value kt;vc:cols vt;+(+t),vc!{[i;t;vt;c]((+t)c)+((vt c),0)@i}[i;t;vt]'vc}
+pj:{[t;kt]p:jprobe[keys kt;+!kt;+t];i:(#p 0)^(p 0)?p 1;vt:value kt;vc:cols vt;+(+t),vc!{[i;t;vt;c]z:$[`F~@vt c;0.0;0];a:$[c in !+t;(+t)c;z];r:a+z^((vt c),z)@i;$[|/^a;@[r;&^a;:;*0#r];r]}[i;t;vt]'vc}
 ej:{[c;x;y]ij[x;xkey[c;y]]}
 
 / ---- asof join (aj/aj0) : y must contain matching + time cols -----------------

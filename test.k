@@ -95,6 +95,9 @@ t[`lj;(+lj[lt;kv])`x;100 200 0N 100]
 t[`ijRows;#ij[lt;kv];3]
 t[`uj;(+uj[+`a`b!(1 2;3 4);+`b`c!(5 6;7 8)])`c;0N 0N 7 8]
 t[`pj;(+pj[+`s`p!(`a`b`c;1 1 1);xkey[`s;+`s`p!(`a`b;10 20)]])`p;11 21 1]
+t[`pjNewCol;(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`b!(1 3;100 300)]])`b;100 0 300]
+t[`pjNulls;((+pj[+`k`a!(1 2 3;0N 20 30);xkey[`k;+`k`a!(1 3;1 2)]])`a;(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`a!(1 3;0N 2)]])`a);(0N 20 32;10 20 32)]
+t[`pjNewColFloat;(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`b!(1 3;1.5 2.5)]])`b;1.5 0.0 2.5]
 t[`ej;#ej[`s;+`s`p!(`a`b`a;1 2 3);+`s`x!(`a`b`d;10 20 30)];3]
 
 / ---- asof / window joins ----

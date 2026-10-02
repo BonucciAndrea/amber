@@ -196,6 +196,16 @@ t[`eqPlain;(1.5=1.5;1.5=2.5;1 2.5=1.0 2.5;1=1.0);(1;0;1 1;1)]
 t[`eqAgreesMatch;{(x=y)~x~y}[-0.0;0.0];1b]
 t[`paZerosOneValue;.[{`at(`pa x)};,0.0 -0.0 0.0;{`err}];`p]   / `pa: both zeros are one value, so the run is one
 
-hexpect[109]
+/ ---- find and distinct on floats: every NaN is one value, as for ~ and = ----
+/ n is 0n and -n the NaN with the sign bit, the spelling x86-64 computes (0%0)
+t[`findNan;{(x,1.0)?-x}0n;0]
+t[`findNanNeg;{((-x),1.0)?x}0n;0]
+t[`findNanEach;{(1.0,x)?(-x),x}0n;1 1]
+t[`findNanMiss;{1.0 2.0?-x}0n;0N]
+t[`distinctNan;{(#?x,(-x),1.0;#?x,1.0,-x)}0n;2 2]
+t[`distinctNanLength;{#?3000#x,(-x),1.0}0n;2]
+t[`findZeroStill;1.0 -0.0?0.0;1]
+
+hexpect[116]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

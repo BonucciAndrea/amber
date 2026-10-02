@@ -114,10 +114,10 @@ Z A grpI(A x){
  arena_release(mk);
  return am(ky,z);
 }
-// amber 2.3: float KEYS for = and ?: -0.0 folded onto 0.0 (one value, as for find
-// and ~), every other double -- NaNs included -- kept bit for bit (as find keeps
-// them). A copy; the caller still emits the original doubles.
-Z A fcanon(A x)_(U n=xn;A y=aF(n);CO W*RES p=(CO W*)xV;W*RES q=(W*)yV;F(n,W v=p[i];q[i]=v==0x8000000000000000ull?0:v)y)
+// amber 2.3: float KEYS for = and ?: -0.0 folded onto 0.0 and every NaN onto one key
+// (one value each, as find and ~ take them); every other double kept bit for bit.
+// A copy; the caller still emits the original doubles.
+Z A fcanon(A x)_(U n=xn;A y=aF(n);CO W*RES p=(CO W*)xV;W*RES q=(W*)yV;F(n,W v=p[i];q[i]=v==0x8000000000000000ull?0:v<<1>0xffe0000000000000ull?0x7ff8000000000000ull:v)y)   //one key for both zeros, and one for every NaN, as find matches them
 Z A cSI(A);// amber 2.0.0: symbol<->int-id reinterpret (defined just below), used by grp's tS fast path
 X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x))
  // amber 2.0.0: group a SYMBOL vector by its interned 4-byte id (tS is stored as

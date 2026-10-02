@@ -205,7 +205,9 @@ t[`findNanMiss;{1.0 2.0?-x}0n;0N]
 t[`distinctNan;{(#?x,(-x),1.0;#?x,1.0,-x)}0n;2 2]
 t[`distinctNanLength;{#?3000#x,(-x),1.0}0n;2]
 t[`findZeroStill;1.0 -0.0?0.0;1]
+t[`paNansOneValue;*"\n"\.[{`at(`pa x)};,0n 1.0 -0n;{x}];"'p-fail"]   / `pa: every NaN is one value, in two runs here
 
-hexpect[116]
+
+hexpect[117]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

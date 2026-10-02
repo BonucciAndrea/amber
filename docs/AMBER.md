@@ -160,15 +160,16 @@ list with a non-function element, still **indexes** as before. See the online
 
 | k type | list / atom | example            | null   |
 |--------|-------------|--------------------|--------|
-| int    | `` `I``/`` `i`` | `0 1 2`, `!5`   | `0N`   |
+| int    | `` `I``/`` `i`` | `0 1 2`, `!5`, `101b` | `0N` |
 | float  | `` `F``/`` `f`` | `1.5 2.5`       | `0n`   |
 | char   | `` `C``/`` `c`` | `"abc"`, `"x"`  | `" "`  |
 | symbol | `` `S``/`` `s`` | `` `a`b`c``     | `` ` `` |
-| bool   | `` `B``      | `101b`             |        |
 | dict   | `` `m``      | `` `a`b!1 2``      |        |
 | table  | `` `M``      | `` +`a`b!(1 2;3 4)`` |      |
 
 `@x` returns the type symbol. `!n` gives `0..n-1` (a compact range whose `@` reads `` `I``).
+There is no separate bool type: a `b` literal such as `101b` is an int vector (`@101b` is `` `I``),
+and comparisons give ints 0 and 1.
 
 ---
 

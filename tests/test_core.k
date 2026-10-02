@@ -166,6 +166,10 @@ t[`jsonDocExample;`j?"{\"a\":1,\"b\":[true,\"c\"]}";`a`b!(1.0;(1;,"c"))]
 / :: is written as null, as in q, so writing and reading agree (issue #20, row 24)
 t[`jsonNullOut;(`j@(::);`j@(1;::);`j@`a`b!(1;::));("null";"[1,null]";"{\"a\":1,\"b\":null}")]
 
-hexpect[85]
+
+/ ---- JSON escapes of control characters ----
+t[`jsonCtl;(`j@`c$1;`j@`c$65 1;`j@`c$1 65;`j@`c$31 127);("\"\\u0001\"";"\"A\\u0001\"";"\"\\u0001A\"";"\"\\u001f\\u007f\"")]
+
+hexpect[86]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

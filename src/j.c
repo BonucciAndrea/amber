@@ -17,7 +17,9 @@ X1(js0,RC(U n=xn;x=aa(n+4,x);MS(xC+n,0,4);s=xV;A y=jx();C c=jw();I(y&&c,y=y(0))I
 
 Z V JX(A);Z U nX(A);Z UC t[256];ZN V it(){MS(t,5,32);t[127]=5;F(L(je),t[je[i]]=1)}
 Z U nC(S p,U n)_(U m=2+n;F(n,m+=t[(UC)p[i]])m)
-Z V JC(S p,U n){*s++='"';UC c;F(n,S(t[c=*p++],C(0,*s++=c)C(1,*s++='\\';*s++=ej[si(je,c)])D(MC(s,"\\u00",4);s+=4;hexC(p-1,2,s);s+=2)))*s++='"';}
+//a control character is \u00 and its two hex digits: hexC of ONE byte (it was 2, which read the
+//next byte, past the end for the last character, and wrote one digit past the end of the output)
+Z V JC(S p,U n){*s++='"';UC c;F(n,S(t[c=*p++],C(0,*s++=c)C(1,*s++='\\';*s++=ej[si(je,c)])D(MC(s,"\\u00",4);s+=4;hexC(p-1,1,s);s+=2)))*s++='"';}
 //JI: v is integral and inside L, so (L)v is defined. v==(L)v alone converted NaN, infinities
 // and floats beyond 2^63 to L (undefined): the optimiser read it as "integral" and the cast
 // saturated, so `j@1e20 and `j@0w wrote 9223372036854775807, and `j@-0w wrote 0N and two

@@ -178,9 +178,20 @@ t[`fillTemporalLeft;{.[{x^y};(x;y);{(x?"\n")#x}]}[2026.07.30;0N 1];"'type"]
 / ---- a missing or failing temporal formatter is an error, not the end of the process or a crash ----
 te[`fmtMissing;"$2026.07.30"]
 te[`fmtMissingK;"`k@2026.07.30"]
+/ a projection, composition or derived verb holding a date, and JSON, pass the error up too
+te[`fmtMissingProj;"`k@{x+y}[2026.07.30]"]
+te[`fmtMissingDerived;"`k@(2026.07.30+)"]
+te[`fmtMissingString;"$({x+y}[2026.07.30])"]
+te[`fmtMissingJson;"`j@2026.07.30"]
+te[`fmtMissingJsonList;"`j@(1;2026.07.30)"]
+t[`fmtMissingGrade;<({x+y}[2026.07.30];{x+y}[2026.07.31]);0 1]
 tv[`fmtFails;"dstr::{x+`a};.[{$x};,2026.07.30;{`caught}]";`caught]
 te[`fmtFailsList;"dstr::{x+`a};`k@(2026.07.30;1)"]
 
-hexpect[96]
+
+te[`fmtFailsProj;"dstr::{x+`a};`k@{x+y}[2026.07.30]"]
+te[`fmtFailsJson;"dstr::{x+`a};`j@`a`b!(1;2026.07.30)"]
+
+hexpect[104]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

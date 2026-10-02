@@ -388,7 +388,7 @@ AMBIN(ambinL,L)
 Z Y2(binZ,
  R_(et(y))
  RF(x=cF(xR);x(binF(x,y)))
- Rt(YU(ed(y))fir(N(binZ(x,enl(y)))))
+ Rt(P(yt>=tdt,et(y))YU(ed(y))fir(N(binZ(x,enl(y)))))   //a temporal atom: 'type (enl of it is a generic list, which recursed)
  RmMA(r2f(binZ,x,y))
  RE(binZ(x,gZ(y)))
  RB(binZ(x,cG(y)))
@@ -410,7 +410,7 @@ Z Y2(binZ,
   F(yn,L v;S4(wy,v=yg,v=yh,v=yi,v=yl)*k=-1;k[1]=xn;S4(wx,,W(*k+1<k[1],I i=*k+k[1]>>1;k[v<xh]=i),W(*k+1<k[1],I i=*k+k[1]>>1;k[v<xi]=i),W(*k+1<k[1],I i=*k+k[1]>>1;k[v<xl]=i))
        S4(wz,zg=*k,zh=*k,zi=*k,zl=*k))y(z)))
 
-Z Y2(binF,RF(x=of1(xR);x(binZ(x,of1(y))))REBGHILC(binF(x,N(cF(y))))Rt(YU(ed(y))fir(N(binF(x,enl(y)))))RmMA(r2f(binF,x,y))R_(ed(y)))
+Z Y2(binF,RF(x=of1(xR);x(binZ(x,of1(y))))REBGHILC(binF(x,N(cF(y))))Rt(P(yt>=tdt,et(y))YU(ed(y))fir(N(binF(x,enl(y)))))RmMA(r2f(binF,x,y))R_(ed(y)))
 X2(bin,REBGHILC(binZ(x,y))RF(binF(x,y))Rm(_1(xx,N(bin(xy,y))))R_(et(y)))
 
 //amber: exponential moving average kernel.  y is a float vector (caller-owned);

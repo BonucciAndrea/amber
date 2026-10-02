@@ -153,6 +153,28 @@ t[`dictAssignMany;{x[AN+!AN]:AN#2.0;x}(!AN)!AN#1;(!2*AN)!(AN#1),AN#2.0]
 t[`dictCountMany;#@[(!0)!!0;(2*AN)#!AN;+;1];AN]
 te[`dictAmendLength;"@[`a`b!1 2;`c`d;:;1 2 3]"]
 
-hexpect[78]
+/ ---- temporal atoms: list verbs treat them as atoms; with a list, arithmetic goes item by item ----
+/ (the bare interpreter cannot print a date, so `i$ shows the day counts)
+t[`dateTake;(`i$3#2026.07.30;`i$1#2026.07.30;`i$-2#10:00:05.000;`i$2#2026.07.30D09:30:00.000000001);(9707 9707 9707;,9707;36005000 36005000;838719000000000001 838719000000000001)]
+t[`dateAtomVerbs;(`i$|2026.07.30;`i$*2026.07.30;#2026.07.30);9707 9707 1]
+t[`dateGrade;*"\n"\.[.:;,"<2026.07.30";{x}];"'type"]   / open of a temporal atom (monadic <) crashed
+t[`dateDrop;*"\n"\.[.:;,"2_2026.07.30";{x}];"'rank"]   / drop from an atom crashed; 'rank as for an int atom
+t[`dateIndexOut;((2026.07.30;2026.07.31)5;(`a`b!(2026.07.30;2026.07.31))`c)~(::;::);1]   / out of range: the null of an atom, :: (it was ,::)
+t[`datePlusList;(`i$2026.07.30+!3;`i$(!3)+2026.07.30;`i$10:00:05.000+0 1 2;`i$2026.07.30-0 1);(9707 9708 9709;9707 9708 9709;36005000 36005001 36005002;9707 9706)]
+t[`datePlusAtom;(`i$2026.07.30+1;2026.07.31-2026.07.30);9708 1]
+
+
+/ ---- fill and binary search with a temporal atom on the right are 'type, not a crash ----
+te[`fillTemporal;"0N^2026.07.30"]
+te[`fillTemporalSym;"`a^10:00:05.000"]
+te[`fillTemporalList;"0N^(2026.07.30;1)"]
+te[`binTemporal;"(1 2 3)'2026.07.30"]
+te[`binTemporalFloat;"1.0 2.0'2026.07.30"]
+te[`binTemporalGeneric;"(1 2 3)'(2026.07.30;1)"]
+
+/ a temporal atom on the left of fill is 'type too (it was 'nyi), not a fill
+t[`fillTemporalLeft;{.[{x^y};(x;y);{(x?"\n")#x}]}[2026.07.30;0N 1];"'type"]
+
+hexpect[92]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

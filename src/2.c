@@ -173,7 +173,7 @@ Z A tari(A x,A y,U op)_(UC ka=_t(x),kb=_t(y);B qa=ka>=tdt,qb=kb>=tdt;L va=tval(x
  UC rk=(qa&&qb)?(op==2?0:ka):(qa?ka:kb);
  tmk(rk,vv))
 A2(ari,C t=xt,u=yt;U v=1<<t|1<<u;
- P(t>=tdt||u>=tdt,tari(x,y,f))
+ P(t>=tdt||u>=tdt,P(xtt&&ytt,tari(x,y,f))e2(av+f,x,y))  //a temporal atom with a list: item by item (tari read the list as one int)
  P(!(v&~(1<<tG|1<<tH|1<<tI|1<<tL|1<<tC|1<<ti|1<<tl|1<<tc)),ariz(x,y,f))
  P(v&(1<<tm|1<<tM|1<<tA),e2(av+f,x,y))
  P(t==tB,x=cG(xR);x(ari(x,y)))

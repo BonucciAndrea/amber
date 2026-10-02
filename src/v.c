@@ -63,8 +63,8 @@ X1(rev,Rm(A y=kv(&x);am(rev(x),rev(y)))RM(A y=kv(&x);aM(x,e1f(rev,y)))Rt(x)RE(re
 A1(typ,x(as(TS[xt])))
 A1(len,x(az(xN)))
 U _N(A x/*0*/){X(RE(Lij j-i)RT_E(xn)Rm(_N(xy))RM(_N(_x(xy)))R_(1))}
-Y2(fil,RmMA(e2f(fil,x,y))Rt(YU(y-au?y:xR)fir(fil(x,enl(y))))R_(K2("{@[y;&^y;:;x]}",x,y)))
-X2(crt,Rt(fil(x,y))R_(en(y))
+Y2(fil,RmMA(e2f(fil,x,y))Rt(P(yt>=tdt,et(y))YU(y-au?y:xR)fir(fil(x,enl(y))))R_(K2("{@[y;&^y;:;x]}",x,y)))
+X2(crt,Rt(P(LH(tdt,xt,tnp),et(y))fil(x,y))R_(en(y))
  RT(I v=rnk(y);P(!v,crt(x,enl(y)))
   P(v>0&&rnk(x)==v,I(xtE&&ytE,Lij L k=*yL,l=yL[1];P(k<=i,y(0);aE(MAX(i,l),MAX(j,l)))P(j<=l,y(0);aE(i,MIN(j,k))))K2("{x@&^y?x}",x,y))
   K2("{x@&~(!0),x~\\:y}/",x,y)))

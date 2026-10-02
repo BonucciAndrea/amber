@@ -171,7 +171,17 @@ te[`boolDot;"{b:7;1 1b.5}[]"]
 te[`boolDotAlone;"{b:7;01b.1}[]"]
 t[`boolStrandStill;1 01b;1 0 1]
 
+/ ---- scans with a float seed, or of floats with -, are float scans ----
+t[`scanSeedAdd;1.5+\1 2;2.5 4.5]
+t[`scanSeedMul;1.5*\1 2;1.5 3.0]
+t[`scanSeedSub;1.5-\1 2;0.5 -1.5]
+t[`scanSeedChars;1.5+\"ab";98.5 196.5]
+t[`scanSeedZero;0.0+\1 2;1.0 3.0]
+t[`scanSubFloat;-\1.5 2.5;1.5 -1.0]
+t[`scanSubFloatSeed;1.5-\1.5 2.5;0.0 -2.5]
+t[`scanSeedLong;((1.5+\!100000)~{x+y}\[1.5;!100000];(-\0.5+!100000)~{x-y}\0.5+!100000);11b]
+t[`scanOthersOk;(1.5&\1 2;1.5|\1 2;1+\1.5 2;+\1 2 3;-\1 2 3);(1.0 1.0;1.5 2.0;2.5 4.5;1 3 6;1 -1 -4)]
 
-hexpect[91]
+hexpect[100]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

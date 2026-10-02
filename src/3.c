@@ -171,10 +171,15 @@ Z A3(mmmsf,/*010*/B i=xv==7;
  y=y?of1(cF(y)):al(i?NL:WL);
  z=of1(cF(zR));
  of0(N(z((i?mxms:mnms)(x,y,z)))))
+// float -\: x0, x0-x1, (x0-x1)-x2, ...: in order, as {x-y}\ does (a seed y starts it: y-x0, ...)
+Z A3(subsf,/*010*/U n=zn;A u=an(n,tF);F*RES r=uF;F v=y?gf(cF(y)):0;z=cF(zR);CO F*RES q=zV;
+ Mz(F(n,r[i]=v=i||y?v-q[i]:q[i]))u)
 Z A3(eqls,/*010*/U n=zn,i=!y;L v=gl(y?y:io(z,0)),a=v;A u=aG(n);S4(zw-3,W(i<n,ug=v=v==zg;i++),W(i<n,ug=v=v==zh;i++),W(i<n,ug=v=v==zi;i++),W(i<n,ug=v=v==zl;i++))y||!n?u:a4(u,ai(0),av,az(a)))
 A3(ars,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzfc)Q(ztZFC)
  ZE(z=gZ(zR);z(ars(x,y,z)))
  ZB(z=cG(zR);z(ars(x,y,z)))
+ P(y&&ytf&&!ztF&&(xv==1||xv==2||xv==3||xv==6||xv==7),z=cF(zR);z(ars(x,y,z)))                     //a float seed: a scan of floats
+ P(ztF&&xv==2,subsf(x,y,z))                                                                       //float -\: in order (subs is for ints)
  P(ztF&&(xv==1||xv==3),admsf(x,y,z))
  P(ztF&&(xv==6||xv==7),mmmsf(x,y,z))
  G(&dexs,adms,subs,adms,___s,___s,mnms,mxms,___s,___s,eqls)[xv](x,y,z))

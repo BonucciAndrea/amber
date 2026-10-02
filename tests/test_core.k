@@ -163,14 +163,20 @@ t[`floatLitStrand;`k@1.0 18446744073709551616;"1.0 1.8446744073709552e19"]
 
 
 / ---- float literals past the power table ----
-/ The exponent from the digits themselves (more than 327 integer digits, or a
-/ long fraction) indexed the table of powers of ten past its end.
+/ A long fraction indexed the table of powers of ten past its end; integer digits,
+/ which now count in the exponent, would too past 327 of them.
 t[`floatDigits328;`F$(328#"1"),".0";0w]
 t[`floatDigits330Neg;`F$"-",(330#"1");-0w]
 t[`floatLongFraction;`F$"0.",(308#"0"),"1";1e-309]
 t[`floatLongFraction2;`F$"0.",(400#"0"),"1";0.0]
 t[`floatDigitsLiteral;. (331#"1"),".0";0w]
+/ a zero with a large exponent is zero
+t[`floatZeroBigExp;0e400;0.0]
+t[`floatZeroBigExpF;`F$"0.0e400";0.0]
+t[`floatZeroBigExpNeg;`k@-0e400;"-0.0"]
+t[`floatOneBigExp;1e400;0w]
 
-hexpect[89]
+
+hexpect[93]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

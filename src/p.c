@@ -34,8 +34,8 @@ Z L pfu(S*p)_(S s=*p;W u=0;I e=0;W(C09(*s),I(!e&&(u<922337203685477580ull||u==92
  Z F t[309];I(!*t,*t=1;F(308,t[i+1]=10*t[i]))
  I(c=='.',c=*++s;W(C09(c),I((W)v<(1ull<<63)/10,v=(L)(10*(W)v+(W)(c-'0'));e--)c=*++s))
  I(c=='e',s++;L d=pl(&s);I(d==NL,d=0)d+=e;e=(I)MAX(-700ll,MIN(400ll,d)))
- *p=s;   //the range checks hold for e from the digits too: past 327 integer digits, or a long fraction, t[e] was read past its end
- I(e>308,return WFL;)
+ *p=s;   //the range checks hold for e from the digits too: a long fraction read t[e] past its end, and so would more than 327 integer digits now that they count in e
+ I(e>308,return v?WFL:0;)   //0e400 is 0.0, as in q (ngn/k: 'value)
  I(e<-308,I(e<-616,return 0;)F r_=((F)v/t[308])/t[-e-308];return *(L*)&r_;)
  *(L*)A(e<0?v/t[-e]:v*t[e]))
 L pf(S*p)_(B m=**p=='-';(*p)+=m;L v=(L)((W)m<<63)|pfu(p);(*p)+=**p=='f';v)                               //parse float

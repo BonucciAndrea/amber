@@ -555,7 +555,6 @@ header-underline calculation, so alignment is exact. Set `COLOR:0` to disable (e
 redirecting output to a file); the per-column cycle lives in `PAL` and the type/attribute tints in
 the `CT` dictionary.
 
-<<<<<<< HEAD:docs/AMBER.md
 **Table borders.** `\grid clean|rounded|sharp|heavy` picks the frame style: `clean` (default,
 minimal dashed rule), `rounded` (`╭─┬─╮`), `sharp` (`┌─┬─┐`) or `heavy` (`┏━┳━┓`). Column widths
 are measured with `vlen` (ANSI stripped) so the box lines up exactly around coloured cells; borders
@@ -568,8 +567,6 @@ faint grey. Float precision in a grid is controlled by the **`PREC`** global, th
 decimals to show (default `7`); set `PREC:0N` for full precision. `PREC` affects grid display only,
 never the stored values.
 
-=======
->>>>>>> main:AMBER.md
 ## 9b′. Error ergonomics: Rust-style diagnostics
 
 Every error is rendered **once**, as a single Rust-compiler-style report: a category-specific

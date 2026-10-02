@@ -189,6 +189,16 @@ t[`rollCharsSmall;#5?" ";5]
 
 t[`rollNullChars;0N?" ";""]
 
-hexpect[100]
+/ ---- where of counts that overflow or pass 2^32 is 'limit (as upstream ngn/k 4b1dd07e, d5099539 check; issue #10) ----
+te[`whereOverflow;"#&9223372036854775807 9223372036854775807 2"]
+t[`whereLimitSum;.[.:;,"#&4294967297 0";{(x?"\n")#x}];"'limit"]
+te[`whereLimitOne;"#&,4294967297"]
+t[`whereLimitError;.[.:;,"#&,4294967297";{(x?"\n")#x}];"'limit"]
+t[`whereOverflowLimit;.[.:;,"#&9223372036854775807 9223372036854775807 2";{(x?"\n")#x}];"'limit"]
+t[`whereNegative;.[.:;,"&1 -1";{(x?"\n")#x}];"'domain"]
+t[`whereSmall;(&1 0 2;&0#0);(0 2 2;!0)]
+t[`whereWrapNegative;*"\n"\.[.:;,"&9223372036854775807 1";{x}];"'limit"]   / a total that wraps negative was 'domain
+
+hexpect[108]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

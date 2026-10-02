@@ -54,7 +54,7 @@ X1(whr,Ril(whr(enl(x)))RA(P(!xn,x(an(0,tI)))K1("{$[`A~@x;(,&#'*'x),,'/x@\\:!0|/#
     I(t_==tG,{G*r_=_V(y_);CO UC*mm_=xV;unsigned char acc_=0;F(xn,acc_|=mm_[i];r_[k_]=(G)i;k_+=mm_[i]!=0)bad_=acc_>1;})
     J(t_==tH,k_=simd_where_i16(xV,_V(y_),xn,&bad_))E(k_=simd_where_i32(xV,_V(y_),xn,&bad_))
     I(!bad_,return x(AN((U)k_,y_));)mr(y_);})
-  L m=xn,n=addfZ(0,x);P(n<0||minfZ(0,x)<0,ed(x))C t=tZ(m-!!m);P(t>tI,ez(x))A y=an(n,t);
+  L m=xn,n=addfZ(0,x);P(minfZ(0,x)<0,ed(x))P(n<maxfZ(0,x)||(W)n-(U)n,ez(x))C t=tZ(m-!!m);P(t>tI,ez(x))A y=an(n,t);
   Mx(S4(t-tG,{G*r=yV;S4(w,F(m,Fj(xg,*r++=i)),F(m,Fj(xh,*r++=i)),F(m,Fj(xi,*r++=i)),F(m,Fj(xl,*r++=i)))},
              {H*r=yV;S4(w,F(m,Fj(xg,*r++=i)),F(m,Fj(xh,*r++=i)),F(m,Fj(xi,*r++=i)),F(m,Fj(xl,*r++=i)))},
              {I*r=yV;S4(w,F(m,Fj(xg,*r++=i)),F(m,Fj(xh,*r++=i)),F(m,Fj(xi,*r++=i)),F(m,Fj(xl,*r++=i)))},))y))

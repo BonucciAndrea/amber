@@ -900,7 +900,22 @@ t[`amendEmptyElided;`k@'(@[0#+`a`b!(1 2;3 4);::;{x,`c!9}];@[0#+`a`b!(1 2;3 4);::
 / an @ amend of an empty table at rows and then columns is 'type, as in ngn/k (2.4.1 gave the table)
 t[`amendEmptyMixed;5#.[.:;,"@[0#+`a`b!(1 2;3 4);(!0;`a);{x}]";{x}];"'type"]
 
-hexpect[557]
+/ ---- take of keys from a dict whose keys are lists or a table (upstream ngn/k 5f50f8e3, d3b72007) ----
+t[`takeListKey;4#.[.:;,"(1 2)#(1 2;3 4)!5 6";{x}];"'nyi"]   / one list key, not a list of them (it gave 1 2!5, two keys and one value)
+t[`takeListKeys;(1 2;3 4)#(1 2;3 4)!5 6;(1 2;3 4)!5 6]
+t[`takeSymKeys;`a`c#`a`b`c!1 2 3;`a`c!1 3]
+t[`takeEmptyDict;`k@'(`a`b#()!();1 2#()!();(,`a)#()!();(0#`)#()!());("`a`b!\"\"";"1 2!\"\"";"(,`a)!\"\"";"(0#`)!\"\"")]   / the empty dict ()!() takes any keys, as on 2.4.1 (ngn/k: 'nyi)
+/ a keyed table's keys are a table: reshape or a key list one rank down is 'nyi (they crashed)
+t[`reshapeKeyed;4#.[.:;,"2 2#((+(,`k)!,1 2)!+(,`v)!,3 4)";{x}];"'nyi"]
+t[`reshapeKeyedNull;4#.[.:;,"0N 2#((+(,`k)!,1 2)!+(,`v)!,3 4)";{x}];"'nyi"]
+t[`reshapeKeyedEmpty;4#.[.:;,"2 0#=0#,`a`b!1 2";{x}];"'nyi"]
+t[`takeKeyedSyms;4#.[.:;,"(,`x)#((+(,`k)!,1 2)!+(,`v)!,3 4)";{x}];"'nyi"]
+/ keys of the other kind (chars against numbers): the lookup is 'type, as find is since 2.4.0, and the take passes it up (it crashed, even under a trap)
+t[`takeKeysCharsNums;(5#.[{"ab"#x};,1 2!3 4;{x}];5#.[{1 2#x};,"xy"!3 4;{x}]);("'type";"'type")]
+/ a failed lookup releases only the dict: the key list belongs to the caller (shared here, used again)
+t[`takeKeysFailShared;{k:"ab",();k2:1 2,!0;r:{5#.[#;(x;y);{x}]}[k]'4#,1 2!3 4;r2:{5#.[#;(x;y);{x}]}[k2]'4#,((1 2;3 4);(5 6;7 8))!9 10;(r;r2;k;k2)}[];(4#,"'type";4#,"'rank";"ab";1 2)]
+
+hexpect[567]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

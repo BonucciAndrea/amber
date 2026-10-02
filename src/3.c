@@ -197,7 +197,9 @@ Z A3(cmpp,/*010*/I o=x-LTN,w=zw-3;U n=zn;A u=aG(n);L v=gl(y),p=iw(z,w,0);*uG=!o?
  S4(o,F4(w,m,uG[j]=zG[j]< zG[j-1];j--,uG[j]=zH[j]< zH[j-1];j--,uG[j]=zI[j]< zI[j-1];j--,uG[j]=zL[j]< zL[j-1];j--),
       F4(w,m,uG[j]=zG[j]> zG[j-1];j--,uG[j]=zH[j]> zH[j-1];j--,uG[j]=zI[j]> zI[j-1];j--,uG[j]=zL[j]> zL[j-1];j--),
       F4(w,m,uG[j]=zG[j]==zG[j-1];j--,uG[j]=zH[j]==zH[j-1];j--,uG[j]=zI[j]==zI[j-1];j--,uG[j]=zL[j]==zL[j-1];j--),)u)
+A ucb(A);
 A3(arp,/*010*/Q(xtv)Q(xv<11)Q(ytzc)Q(ztZC)
+ P(ztC&&ytc&&xv-8<2u,z=ucb(zR);z(arp(x,ucb(y),z)))                                               //< >: chars as unsigned bytes
  ZE(z=gZ(zR);z(arp(x,y,z)))
  ZB(z=cG(zR);z(arp(x,y,z)))
  G(&dexp,___p,___p,___p,___p,modp,mnmp,mxmp,cmpp,cmpp,cmpp)[xv](x,y,z))
@@ -292,7 +294,7 @@ Z A fcntC(A x){UC tx=_t(x);
 // unfused pair (the comparison, then `&`).
 Z A whrcmpC(L op,A x,A y){UC tx=_t(x),ty=_t(y);I opc=op==8?0:op==9?1:2;
  I((_tz(x)||tx==tc)&&!_tP(y)&&(ty==tG||ty==tC),return whrcmpC(op==8?9:op==9?8:op,y,x))
- I(!_tP(x)&&(tx==tG||tx==tC)&&(_tz(y)||ty==tc),L v=ty==tc?(L)(C)_v(y):gl_(y);
+ I(!_tP(x)&&(tx==tG||tx==tC)&&(_tz(y)||ty==tc)&&!(tx==tC&&ty==tc),L v=ty==tc?(L)(C)_v(y):gl_(y);   //char with char: unsigned, so the unfused path
   I(tZ(v)<=tG,U n=xn;C t_=tZ((L)n-1);A z=an(n,t_);N k=0;
    I(t_==tG,{G*r=zV;CO G*p=xV;G w=(G)v;F(n,r[k]=(G)i;k+=opc==2?p[i]==w:opc==1?p[i]>w:p[i]<w)})
    J(t_==tH,k=simd_wherecmp_i8_16(xV,(G)v,opc,n,zV))E(k=simd_wherecmp_i8_32(xV,(G)v,opc,n,zV))
@@ -300,7 +302,7 @@ Z A whrcmpC(L op,A x,A y){UC tx=_t(x),ty=_t(y);I opc=op==8?0:op==9?1:2;
  A t=v2[op](x,_R(y));P(!t,0)return whr(t);}
 Z A cmpcmpC(L op,A s,A x,A y){UC ts=_t(s),tx=_t(x),ty=_t(y);I opc=op==8?0:op==9?1:2;
  I((_tz(x)||tx==tc)&&!_tP(y)&&(ty==tG||ty==tC),return cmpcmpC(op==8?9:op==9?8:op,s,y,x))
- I(!_tP(s)&&LH(tG,ts,tS)&&!_tP(x)&&(tx==tG||tx==tC)&&xn==_n(s)&&(_tz(y)||ty==tc),L v=ty==tc?(L)(C)_v(y):gl_(y);
+ I(!_tP(s)&&LH(tG,ts,tS)&&!_tP(x)&&(tx==tG||tx==tC)&&xn==_n(s)&&(_tz(y)||ty==tc)&&!(tx==tC&&ty==tc),L v=ty==tc?(L)(C)_v(y):gl_(y);
   I(tZ(v)<=tG,U n=xn;A z=an(n,ts);N k=0;
    S4(Tw[ts]-3,k=simd_compresscmp_8(_V(s),xV,(G)v,opc,n,zV),k=simd_compresscmp_16(_V(s),xV,(G)v,opc,n,zV),k=simd_compresscmp_32(_V(s),xV,(G)v,opc,n,zV),k=simd_compresscmp_64(_V(s),xV,(G)v,opc,n,zV))
    return AN((U)k,z);))
@@ -342,8 +344,8 @@ Z A shiftC(L code,A x){B s=code>=300;code-=s?300:200;B fl=code>=16;L op=code&15;
  I(op>=8,                                                 // < > =
   I(t==tF,{CO F*RES p=xV;int bad=0;F(n,F v=p[i];bad|=(v!=v)|SHNEG0(v))I(bad,return shslow(op,fl,s,x))})
   S(op*16+t,
-   C(8*16+tG,SHCMP(G,<))C(8*16+tH,SHCMP(H,<))C(8*16+tI,SHCMP(I,<))C(8*16+tL,SHCMP(L,<))C(8*16+tF,SHCMP(F,<))C(8*16+tC,SHCMP(G,<))
-   C(9*16+tG,SHCMP(G,>))C(9*16+tH,SHCMP(H,>))C(9*16+tI,SHCMP(I,>))C(9*16+tL,SHCMP(L,>))C(9*16+tF,SHCMP(F,>))C(9*16+tC,SHCMP(G,>))
+   C(8*16+tG,SHCMP(G,<))C(8*16+tH,SHCMP(H,<))C(8*16+tI,SHCMP(I,<))C(8*16+tL,SHCMP(L,<))C(8*16+tF,SHCMP(F,<))C(8*16+tC,SHCMP(UC,<))
+   C(9*16+tG,SHCMP(G,>))C(9*16+tH,SHCMP(H,>))C(9*16+tI,SHCMP(I,>))C(9*16+tL,SHCMP(L,>))C(9*16+tF,SHCMP(F,>))C(9*16+tC,SHCMP(UC,>))
    C(10*16+tG,SHCMP(G,==))C(10*16+tH,SHCMP(H,==))C(10*16+tI,SHCMP(I,==))C(10*16+tL,SHCMP(L,==))C(10*16+tF,SHCMP(F,==))C(10*16+tC,SHCMP(G,==)))
   return shslow(op,fl,s,x);)
  P(s||t==tC,shslow(op,fl,s,x))                           // +/ of arithmetic, char arithmetic: unfused
@@ -428,7 +430,7 @@ AA(fredC,/*10..0*/P(n!=3&&n!=4,en(*a))L d=gl(*a);A x=a[1],y=a[2];
  // their width, or against a vector of the same width, count in one pass.
  I(d>=8&&d<=10,I op=d==8?0:d==9?1:2,fl=d==8?1:d==9?0:2;UC tx=_t(x),ty=_t(y);
   B vx=!_tP(x)&&(tx==tG||tx==tH||tx==tI||tx==tC),vy=!_tP(y)&&(ty==tG||ty==tH||ty==tI||ty==tC);
-  U wx=vx?Tw[tx]-3:0,wy=vy?Tw[ty]-3:0;
+  U wx=vx?Tw[tx]-3:0,wy=vy?Tw[ty]-3:0;I((tx==tC||tx==tc)&&(ty==tC||ty==tc),vx=vy=0);   //chars with chars compare unsigned: the unfused path
   I(vx&&vy&&wx==wy&&xn==yn,return az(wx==0?simd_cntcmpv_i8(xV,yV,xn,op):wx==1?simd_cntcmpv_i16(xV,yV,xn,op):simd_cntcmpv_i32(xV,yV,xn,op)))
   I(vx&&(_tz(y)||ty==tc),L v=ty==tc?(L)(C)_v(y):gl_(y);I(tZ(v)<=tG+wx,return az(wx==0?simd_cntcmps_i8(xV,(G)v,xn,op):wx==1?simd_cntcmps_i16(xV,(H)v,xn,op):simd_cntcmps_i32(xV,(I)v,xn,op))))
   I(vy&&(_tz(x)||tx==tc),L v=tx==tc?(L)(C)_v(x):gl_(x);I(tZ(v)<=tG+wy,return az(wy==0?simd_cntcmps_i8(yV,(G)v,yn,fl):wy==1?simd_cntcmps_i16(yV,(H)v,yn,fl):simd_cntcmps_i32(yV,(I)v,yn,fl)))))

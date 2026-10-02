@@ -270,12 +270,13 @@ Z V wjrLF(CO L*RES p,CO U*RES LO,CO U*RES HI,U nt,F*RES o){
    o[i]=b>a?r/(F)(b-a):NF;}}
 // Pass 2, count: source-independent, it is just the window width.
 Z V wjrCNT(CO U*RES LO,CO U*RES HI,U nt,L*RES o){F(nt,o[i]=(L)(HI[i]-LO[i]))}
+A ucb(A);
 A wjc(A x){
  P(_t(x)-tA||_n(x)-7,et(x))
  A*e=(A*)_V(x);
  P(!_n(e[1]),x(emp(tA)))
  // normalise all integer inputs to 64-bit long (columns/times/bounds may be squeezed to G/H/I widths)
- A QT=N(cL(_R(e[0]))),CD=N(cL(_R(e[2]))),W0A=N(cL(_R(e[3]))),W1A=N(cL(_R(e[4]))),GBA=N(cL(_R(e[5]))),GEA=N(cL(_R(e[6])));
+ B c_=_t(e[0])==tC;A QT=N(cL(ucb(_R(e[0])))),CD=N(cL(_R(e[2]))),W0A=N(cL(c_?ucb(_R(e[3])):_R(e[3]))),W1A=N(cL(c_?ucb(_R(e[4])):_R(e[4]))),GBA=N(cL(_R(e[5]))),GEA=N(cL(_R(e[6]))); //char times as unsigned bytes, as xasc sorts them
  // Raw contiguous primitive column pointers, extracted ONCE before any loop.
  CO L*RES T=_V(QT),*RES W0=_V(W0A),*RES W1=_V(W1A),*RES GB=_V(GBA),*RES GE=_V(GEA),*RES cod=_V(CD);
  U nt=_n(W0A),na=_n(e[1]),nq=_n(QT);

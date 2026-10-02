@@ -153,6 +153,41 @@ t[`dictAssignMany;{x[AN+!AN]:AN#2.0;x}(!AN)!AN#1;(!2*AN)!(AN#1),AN#2.0]
 t[`dictCountMany;#@[(!0)!!0;(2*AN)#!AN;+;1];AN]
 te[`dictAmendLength;"@[`a`b!1 2;`c`d;:;1 2 3]"]
 
-hexpect[78]
+/ ---- chars order as unsigned bytes, the same in <, >, grade and generic lists ----
+t[`charGradeUp;<0x008061;0 2 1]
+t[`charGradeDown;>0x008061;1 2 0]
+t[`charLess;(0x80<"a";"a"<0x80;0x80>"a");0 1 1]
+t[`charLessVec;("b",(`c$200),"a")<"b";0 0 1]
+t[`charAgreesGeneric;(<0x8061)~2#<(0x80;"a";`b);1b]
+/ the fused neighbour compare, which `sa checks sortedness with, orders chars as < does
+t[`charShiftCmp;{((1_x)<-1_x;+/(1_x)<-1_x)}0x806100;(1 1;2)]
+t[`charSortedAttr;(@`sa "ab",0x80;.[{`sa x};,0x80ff0061;{`fail}]);(`C;`fail)]
+t[`charBinNumber;("abc"'-5 0 98 300;0x006180'-1 100 200 128 127);(-1 -1 1 2;-1 1 2 2 1)]   / a number against chars: as a byte 0 to 255, below them if negative
+t[`charBinNarrow;0x006180'(100 1;01b;100.0);(1 0;0 0;1)]   / byte-width ints, bools and floats too
+t[`charFirstGrade;(*<0x8061;*>0x80ff00ff;{*<x}"b",0x80,"a");1 1 2]   / *< and *> (the fused first of a grade) order chars as < does
+t[`charLessInt;((`c$200)<300;(`c$200)>199;(`c$200)<0;(`c$200)=-56);1 0 1 1]
+t[`charEachPrior;(<':0x00800061;>':0x00800061;0x80<':0x0061);(0 0 1 0;0 1 0 1;1 0)]
+t[`charSortFused;{(x@<x;x@>x)}0x800061;(0x006180;0x806100)]
+t[`charSortAgrees;{(x@<x)~x@(<x)@!#x}0x80ff00617a;1b]
+t[`charBin;(0x006180'0x70;0x006180'0x90;0x006180'"a";0x006180'0x00);1 2 1 0]
+t[`charBinVec;0x006180'0x7090;1 2]
+t[`intLessUnchanged;(1 2<2 1;-1<1;<2 1 3);(1 0;1b;1 0 2)]
+
+
+/ ---- binary search on a char list compares chars as unsigned bytes, inside a list too ----
+t[`binCharInList;(," ")'(0x80;"");(0;!0)]
+t[`binCharInList2;(" ",0x80)'(0xff;"");(1;!0)]
+t[`binIntInList;1 3 5'(2;4 6);(0;1 2)]
+
+
+/ ---- the fused compare idioms order chars as the unfused ones do (unsigned among chars) ----
+t[`fusedCharCount;+/0x806162>"a";2]
+t[`fusedCharWhere;&0x806162>"a";0 2]
+t[`fusedCharVec;+/0x8061<"ab";1]
+t[`fusedCharVecVec;{c:0x806162;d:0x618081;(+/c<d;+/b:c<d)}[];2 2]
+t[`fusedCharCompress;{s:1 2;x:0x8061;s@&x<"b"}[];,2]
+t[`fusedCharInt;+/0x806162<100;3]
+
+hexpect[104]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

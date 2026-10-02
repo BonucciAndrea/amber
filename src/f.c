@@ -389,7 +389,7 @@ Z Y2(binZ,
  R_(et(y))
  RF(x=cF(xR);x(binF(x,y)))
  Rt(YU(ed(y))fir(N(binZ(x,enl(y)))))
- RmMA(r2f(binZ,x,y))
+ RmMA(r2f(bin,x,y))   //each item through bin, so a char item of a char list is compared unsigned
  RE(binZ(x,gZ(y)))
  RB(binZ(x,cG(y)))
  RGHILC(
@@ -411,7 +411,8 @@ Z Y2(binZ,
        S4(wz,zg=*k,zh=*k,zi=*k,zl=*k))y(z)))
 
 Z Y2(binF,RF(x=of1(xR);x(binZ(x,of1(y))))REBGHILC(binF(x,N(cF(y))))Rt(YU(ed(y))fir(N(binF(x,enl(y)))))RmMA(r2f(binF,x,y))R_(ed(y)))
-X2(bin,REBGHILC(binZ(x,y))RF(binF(x,y))Rm(_1(xx,N(bin(xy,y))))R_(et(y)))
+A ucb(A);
+X2(bin,RC(P(ytA||ytm,binZ(x,y))A u=ucb(xR);u(binZ(u,ytc||ytC?ucb(y):y)))REBGHIL(binZ(x,y))RF(binF(x,y))Rm(_1(xx,N(bin(xy,y))))R_(et(y)))
 
 //amber: exponential moving average kernel.  y is a float vector (caller-owned);
 //returns fresh float vector  z[0]=y[0]; z[i]=a*y[i]+(1-a)*z[i-1].  O(n) single sweep.

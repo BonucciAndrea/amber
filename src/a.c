@@ -99,10 +99,11 @@ U amub(CO L*RES a,U lo,U hi,L key){
 //    arena_mark()/arena_release(), so the kernel is arena-neutral to its
 //    caller in the sense that matters: its peak is one generation, and it
 //    gives back everything it took before it returns.
+A ucb(A);
 A ajc(A x){
  P(_t(x)-tA||_n(x)-4,et(x))
  A*e=(A*)_V(x);
- A QT=N(cL(_R(e[0]))),TT=N(cL(_R(e[1]))),GB=N(cL(_R(e[2]))),GE=N(cL(_R(e[3])));
+ B c_=_t(e[0])==tC;A QT=N(cL(ucb(_R(e[0])))),TT=N(cL(c_?ucb(_R(e[1])):_R(e[1]))),GB=N(cL(_R(e[2]))),GE=N(cL(_R(e[3])));   //char times as unsigned bytes, as xasc sorts them
  CO L*RES qt=_V(QT),*RES tt=_V(TT),*RES gb=_V(GB),*RES ge=_V(GE);
  U nt=_n(TT),nq=_n(QT);
  // On a 32-bit target (wasm32) size_t is 32 bits, so nt*sizeof(L) can wrap.
@@ -257,7 +258,8 @@ A ajsC(A x){
  // ---- pass 2: ordering column non-decreasing inside each run ------------
  #define AJS_ORD(T) {CO T*RES p=_V(tcol);for(U r=1;r<n;r++)if(!chg[r]&&p[r]<p[r-1])return x(al(0));}
  switch(_t(tcol)){
-  case tG: case tC: AJS_ORD(G) break;
+  case tG: AJS_ORD(G) break;
+  case tC: AJS_ORD(UC) break;   // chars: unsigned, as xasc sorts them
   case tH: AJS_ORD(H) break;
   case tI: AJS_ORD(I) break;
   case tL: AJS_ORD(L) break;
@@ -592,7 +594,7 @@ A1(parT,
 Z A1(sam,x)V_;T_;U _K(A x/*0*/)_(X(R2(tu,tw,1)Rv(2)Rx(x>>48&15)Ropqr(xk))0)
 X1(mkn,RmMA(e1f(mkn,x))Rt(x(_R(cn[xt])))R_(x(rsz(xN,_R(cn[xt])))))
 A1(iei,/*0*/0x2332211004>>(xv*(xtv&&xv<10u)<<2)&15)
-Y2(iex,/*01*/RmMA(r2f(iex,x,y))RT_A(rsz(yN,iex(x,fir(y))))Rs(as(0))Rc(ac("\0\1\x7f\x80 "[iei(x)]))Rf(y(af(A(0.,1.,WF,-WF,NF)[iei(x)])))R_(y(az(G(0ll,1,WL,-WL,NL)[iei(x)]))))
+Y2(iex,/*01*/RmMA(r2f(iex,x,y))RT_A(rsz(yN,iex(x,fir(y))))Rs(as(0))Rc(ac(xtv&&xv-8<2u?-(xv==9):"\0\1\x7f\x80 "[iei(x)]))Rf(y(af(A(0.,1.,WF,-WF,NF)[iei(x)])))R_(y(az(G(0ll,1,WL,-WL,NL)[iei(x)]))))
 A2(ie,/*00*/x==CAT?emp(yt):iex(x,fir(yR)))
 AX(prj,XmMA(x8(a,n))U k=MAX(n,xK);F(n,k-=a[i]!=GAP)x=(xtp?val:aA1)(xR);I i=0,j=1;W(i<n&&j<xn,I(xA[j]==GAP,xA[j]=a[i++])j++)W(i<n,PSH(x,a[i++]))P(xn>9,ez(x))AT(tp,AK(k,x)))
 A2(com,/*01*/AK(yK,AT(tq,aA2(xR,y))))
@@ -722,7 +724,8 @@ Z B xssym(A c,CO I*RES ix,W*RES k,N n,U*nbo){
 Z B xskey(A c,CO I*RES ix,W*RES k,N n,U*nbo,int desc){
  CO V*q=_V(c);UC t=_t(c);
  switch(t){
-  case tG: case tC:{CO G*RES p=q;for(N i=0;i<n;i++)k[i]=(W)AMKG(p[ix[i]]);*nbo=1;}break;
+  case tG:{CO G*RES p=q;for(N i=0;i<n;i++)k[i]=(W)AMKG(p[ix[i]]);*nbo=1;}break;
+  case tC:{CO UC*RES p=q;for(N i=0;i<n;i++)k[i]=(W)p[ix[i]];*nbo=1;}break;   //chars order as unsigned bytes (issue #17)
   case tH:{CO H*RES p=q;for(N i=0;i<n;i++)k[i]=(W)AMKH(p[ix[i]]);*nbo=2;}break;
   case tI:{CO I*RES p=q;for(N i=0;i<n;i++)k[i]=(W)AMKI(p[ix[i]]);*nbo=4;}break;
   case tL:{CO L*RES p=q;for(N i=0;i<n;i++)k[i]=AMKL(p[ix[i]]);*nbo=8;}break;

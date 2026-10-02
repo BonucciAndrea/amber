@@ -170,6 +170,10 @@ t[`jsonNullOut;(`j@(::);`j@(1;::);`j@`a`b!(1;::));("null";"[1,null]";"{\"a\":1,\
 / ---- JSON escapes of control characters ----
 t[`jsonCtl;(`j@`c$1;`j@`c$65 1;`j@`c$1 65;`j@`c$31 127);("\"\\u0001\"";"\"A\\u0001\"";"\"\\u0001A\"";"\"\\u001f\\u007f\"")]
 
-hexpect[86]
+
+/ ---- JSON writes NUL as \u0000 ----
+t[`jsonNul;(`j@"a\0b";`j@"\0");("\"a\\u0000b\"";"\"\\u0000\"")]
+
+hexpect[87]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

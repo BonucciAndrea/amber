@@ -214,6 +214,12 @@ t[`distinctFirstNeg;`k@?(0;-1*0.0;1.0-1.0);"(0;-0.0)"]
 t[`distinctFirstNan;?(1;0n;-0n;0n);(1;0n)]
 t[`distinctGenPlain;?(1;"a";1;`b;"a");(1;"a";`b)]
 
-hexpect[121]
+/ ---- group of floats: -0.0 and 0.0 (and NaNs) are one key, indices ascending, first key seen ----
+t[`groupZeros;(=0.0 -0.0;=-0.0 0.0 1.5 0.0);((,0.0)!,0 1;-0.0 1.5!(0 1 3;,2))]
+t[`groupNans;=0n 1.0 -0n;0n 1.0!(0 2;,1)]
+t[`groupFloatPlain;=1.5 2.5 1.5;1.5 2.5!(0 2;,1)]
+t[`groupGenericZeros;`k@=(0;0.0;-1*0.0);"(0;0.0)!(,0;1 2)"]
+
+hexpect[125]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

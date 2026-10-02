@@ -9,7 +9,9 @@ Z A1(p1,x&&xn==1?fir(x):x)                                                      
 S pID(S s)_(W(id1(*s),s+=0xe555>>((UC)*s>>4&-2)&3)s)                                                //parse identifier
 W pu(S*p)_(S s=*p;W v=0;C c=*s;W(C09(c),v=10*v+c-'0';c=*++s)*p-s?*p=s,v:NL)                         //parse unsigned long
 L pl(S*p)_(B m=**p=='-';*p+=m;(L)((W)(1-2*m)*pu(p)))                                                        //parse long
-Z L plN(S*p)_(L v=pl(p);!v&&**p=='N'?(*p)++,NL:v)                                                   //parse long (with support for nulls)
+Z B ovf;                                                                                            //set by plN: an integer literal of 2^63 or more in magnitude
+Z L plN(S*p)_(S t=*p+(**p=='-');L v=pl(p);W(*t=='0'&&C09(t[1]),t++)I n=*p-t;I(n>19||n==19&&strncmp(t,"9223372036854775807",19)>0,ovf=1)
+ !v&&**p=='N'?(*p)++,NL:v)                                                                          //parse long (with support for nulls)
 // amber: pu() signals "no digits consumed" by returning NL, and pl() then
 // propagates that as a full-range long. Feeding it straight into the int
 // exponent accumulator (`e+=pl(&s)`) is signed overflow -- undefined
@@ -42,7 +44,7 @@ Z A pV(C t,TY(pl)*f)_(L a[1<<9];U n=0;                                          
 Z A0(pZ,S p=s;W(*p-'0'<2u,p++)                                                                      //parse ints
  P(*p=='B',S t=s;s=p+1;cB(aV(tG,p-t,t)))//todo
  P(*p=='b',S t=s;s=p+1;cG(cB(aV(tG,p-t,t))))
- sqzZ(N(pV(tL,plN))))
+ A x=pV(tL,plN);B o=ovf;ovf=0;P(!x,0)P(o,x(ez0()))sqzZ(x))   //the flag is cleared whatever pV returns, so a failed literal cannot fail the next one
 Z A0(pF,pV(tF,pf))                                                                                  //parse floats
 Z A0(pC,C a[1<<9];U n=0;C c=*++s;                                                                   //parse "string"
  W(c&&c-'"'&&n<L(a),I(c=='\\',c=*++s;U i=fG("tnr0",4,c);I(i<4,c="\t\n\r"[i]))a[n++]=c;c=*++s)

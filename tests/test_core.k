@@ -195,6 +195,19 @@ t[`findIntInt;1 2 97?97 1;2 0]
 t[`findGeneric;((1;"a")?"a";(1;"a")?97);1 0N]
 t[`findNeedleKept;{n:98 99;.[{"abc"?x};,n;{x}];n}[];98 99]
 
-hexpect[108]
+/ ---- integer literals: from 2^63 in magnitude 'limit, as q refuses them (issue #20, row 7) ----
+tv[`litIntMax;"9223372036854775807 -9223372036854775807 000000000000000000001";9223372036854775807 -9223372036854775807 1]
+te[`litInt2p63;"9223372036854775808"]
+te[`litInt2p63Neg;"-9223372036854775808"]
+te[`litIntWrap;"18446744073709551615"]
+te[`litIntLimit;"18446744073709551616"]
+/ a literal that fails for another reason (here, too many numbers, a cap the literal-limits fix removes; with it the case
+/ checks the ordinary path) leaves nothing behind for the next
+t[`litIntAfterFail;{.[.:;,"99999999999999999999 ",(" "/600#,"1");{`e}];. "1+1"}[];2]
+te[`litIntLimitNeg;"-18446744073709551616"]
+te[`litIntLimitVec;"1 18446744073709551617"]
+te[`litIntLimitBig;"99999999999999999999"]
+
+hexpect[117]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

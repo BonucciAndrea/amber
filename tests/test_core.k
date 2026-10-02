@@ -153,6 +153,15 @@ t[`dictAssignMany;{x[AN+!AN]:AN#2.0;x}(!AN)!AN#1;(!2*AN)!(AN#1),AN#2.0]
 t[`dictCountMany;#@[(!0)!!0;(2*AN)#!AN;+;1];AN]
 te[`dictAmendLength;"@[`a`b!1 2;`c`d;:;1 2 3]"]
 
-hexpect[78]
+/ ---- fold / slash with generic list operand (closes #13) ----
+/ a generic list takes as many arguments as its nesting levels, folding and indexing at depth.
+/ empty fold gives 0N as in ngn/k (note: q gives ())
+t[`genericListFold;(1 2;3 4)/0 1;2]
+t[`genericListFoldEmpty;(,(1;2))/!0;0N]
+t[`mixedRankFold;(1;2 3)/0;0]
+t[`simpleVectorDecode;2 2 2/1 0 1;5]
+
+hexpect[82]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
+

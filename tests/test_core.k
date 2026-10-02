@@ -153,6 +153,25 @@ t[`dictAssignMany;{x[AN+!AN]:AN#2.0;x}(!AN)!AN#1;(!2*AN)!(AN#1),AN#2.0]
 t[`dictCountMany;#@[(!0)!!0;(2*AN)#!AN;+;1];AN]
 te[`dictAmendLength;"@[`a`b!1 2;`c`d;:;1 2 3]"]
 
-hexpect[78]
+/ ---- numeric literals: 0N among floats, and boolean tokens among numbers ----
+tv[`litNullFloat;"0N 1.5";0n 1.5]
+tv[`litFloatNull;"1.5 0N";1.5 0n]
+tv[`litNegNullFloat;"-0N 1.5";0n 1.5]
+t[`litNegNullBits;(-8!-0N 1.5)~-8!0n 1.5;1]   / the same bits as 0n (-0n has the sign bit)
+tv[`litIntBool;"1 0b";1 0]
+tv[`litIntBools;"1 01b";1 0 1]
+tv[`litNullBools;"0N 1b 01b";0N 1 0 1]
+tv[`litFloatBool;"1.5 1b";1.5 1.0]
+tv[`litFloatBools;"1.5 01b 2";1.5 0.0 1.0 2.0]
+tv[`litPlain;"(1 2;1.5 2;0N 1;0n 1.5)";(1 2;1.5 2.0;0N 1;0n 1.5)]
+
+
+/ ---- a bool token must end the token: 1b.5 is not 1b then .5 ----
+te[`boolDot;"{b:7;1 1b.5}[]"]
+te[`boolDotAlone;"{b:7;01b.1}[]"]
+t[`boolStrandStill;1 01b;1 0 1]
+
+
+hexpect[91]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

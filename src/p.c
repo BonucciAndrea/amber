@@ -29,16 +29,19 @@ Z L plN(S*p)_(L v=pl(p);!v&&**p=='N'?(*p)++,NL:v)                               
 // Both returns now advance the cursor, and the small-exponent case scales in
 // two steps (v/1e308 then /1e(-e-308)) instead of answering 0, so a subnormal
 // parses to its actual value. Below about 1e-616 the result genuinely is 0.
-Z L pfu(S*p)_(L v=pu(p);I(v==NL,v=0)S s=*p;C c=*s;P(c=='w',(*p)++;WFL)P(c=='n',(*p)++;v^NFL)I e=0;  //parse float unsigned
+Z L pfu(S*p)_(L v=pu(p);I(v==NL,v=0)S s=*p;C c=*s;P(c=='w',(*p)++;WFL)P(c=='n',(*p)++;v^NFL)P(c=='N'&&!v,(*p)++;NFL)I e=0;  //parse float unsigned
  Z F t[309];I(!*t,*t=1;F(308,t[i+1]=10*t[i]))
  I(c=='.',c=*++s;W(C09(c),I((W)v<(1ull<<63)/10,v=(L)(10*(W)v+(W)(c-'0'));e--)c=*++s))
  I(c=='e',s++;L d=pl(&s);I(d==NL,d=0)d+=e;e=(I)MAX(-700ll,MIN(400ll,d));
   I(e>308,*p=s;return WFL;)
   I(e<-308,*p=s;I(e<-616,return 0;)F r_=((F)v/t[308])/t[-e-308];return *(L*)&r_;))
  *p=s;*(L*)A(e<0?v/t[-e]:v*t[e]))
-L pf(S*p)_(B m=**p=='-';(*p)+=m;L v=(L)((W)m<<63)|pfu(p);(*p)+=**p=='f';v)                               //parse float
+L pf(S*p)_(B m=**p=='-';(*p)+=m;L u=pfu(p),v=(*p)[-1]=='N'?u:(L)((W)m<<63)|u;(*p)+=**p=='f';v)  //parse float (the null 0N has no sign: -0N is 0n, as in ngn/k)
 Z A pV(C t,TY(pl)*f)_(L a[1<<9];U n=0;                                                              //parse ints or floats
- W(1,L v=f(&s);P(n>=L(a),ez0())a[n++]=v;S p=pw(s);B(p==s||!num(p))s=p)aV(t,n,a))
+ W(1,S q=s;W(*q-'0'<2u,q++)                                                                     //a boolean token (01b) in the strand: its bits
+   I(q>s&&*q=='b'&&!CA9(q[1])&&q[1]-'.',P(n+(q-s)>L(a),ez0())F(q-s,F b=s[i]-'0';a[n++]=t==tF?*(L*)&b:s[i]-'0')s=q+1)
+   E(L v=f(&s);P(n>=L(a),ez0())a[n++]=v)
+   S p=pw(s);B(p==s||!num(p))s=p)aV(t,n,a))
 Z A0(pZ,S p=s;W(*p-'0'<2u,p++)                                                                      //parse ints
  P(*p=='B',S t=s;s=p+1;cB(aV(tG,p-t,t)))//todo
  P(*p=='b',S t=s;s=p+1;cG(cB(aV(tG,p-t,t))))

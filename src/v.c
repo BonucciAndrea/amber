@@ -69,7 +69,8 @@ X2(crt,Rt(P(LH(tdt,xt,tnp),et(y))fil(x,y))R_(en(y))
   P(v>0&&rnk(x)==v,I(xtE&&ytE,Lij L k=*yL,l=yL[1];P(k<=i,y(0);aE(MAX(i,l),MAX(j,l)))P(j<=l,y(0);aE(i,MIN(j,k))))K2("{x@&^y?x}",x,y))
   K2("{x@&~(!0),x~\\:y}/",x,y)))
 B tru(A x/*1*/)_(B v=xtU?x!=au:xtt?!!gl_(x):!!xN;x(0);v)
-X1(imx,RGHILC(imn(inv(x)))RF(imx(of1(x)))RE(Lij x(0);az(j-i?j-i-1:NL))R_(fir(N(dsc(x)))))
+A ucb(A);//chars as unsigned bytes (2.c)
+X1(imx,RC(imx(ucb(x)))RGHIL(imn(inv(x)))RF(imx(of1(x)))RE(Lij x(0);az(j-i?j-i-1:NL))R_(fir(N(dsc(x)))))
  // amber 1.9.5: argmin as two vectorisable passes instead of one branchy scan.
  // The old body was `if(p[i]<v){v=p[i];j=i;}` -- a loop-carried dependency on
  // BOTH the running minimum and the running index, plus a data-dependent branch,
@@ -105,8 +106,8 @@ X1(imx,RGHILC(imn(inv(x)))RF(imx(of1(x)))RE(Lij x(0);az(j-i?j-i-1:NL))R_(fir(N(d
   return 0;}
 VIMN_FN(G,vimnG) VIMN_FN(H,vimnH) VIMN_FN(I,vimnI) VIMN_FN(L,vimnL)
 #undef VIMN_FN
-X1(imn,RF(imn(of1(x)))RE(Lij x(0);az(NL*(i==j)))R_(fir(N(asc(x))))
- RGHILC(N n=xn;L j;S4(xw-3,j=vimnG(xV,n),j=vimnH(xV,n),j=vimnI(xV,n),j=vimnL(xV,n))x(az(j))))
+X1(imn,RC(imn(ucb(x)))RF(imn(of1(x)))RE(Lij x(0);az(NL*(i==j)))R_(fir(N(asc(x))))
+ RGHIL(N n=xn;L j;S4(xw-3,j=vimnG(xV,n),j=vimnH(xV,n),j=vimnI(xV,n),j=vimnL(xV,n))x(az(j))))
 
 // ============================================================================
 // BATCH 2 -- (1) single-pass O(n) moving-window aggregates
@@ -759,13 +760,16 @@ A rdxsrt(A x){
 // amber 2.3: an `s vector IS its own ascending sort. The attribute can be
 // trusted now that setting it checks the data and every in-place write drops it
 // (m.c mut/aa, 2.c), so this is q's rule: sorting sorted data costs nothing.
+Z A srtUC(A x,B d){U n=xn,c[256]={0};CO UC*p=xV;F(n,c[p[i]]++)A z=an(n,tC);UC*r=zV;F(256,U k=d?255-i:i;MS(r,k,c[k]);r+=c[k])_at(z)=!d;return x(z);}//chars: a counting sort as unsigned bytes
 A1(srtC,UC t=_t(x);
  I(!_tP(x)&&LH(tG,t,tS)&&_at(x)==1,return x)
- I(!_tP(x)&&LH(tG,t,tS),A c=cntsrt(x);I(c,return x(c))
+ I(!_tP(x)&&t==tC,return srtUC(x,0))
+ I(!_tP(x)&&LH(tG,t,tS)&&t-tC,A c=cntsrt(x);I(c,return x(c))
                         c=rdxsrt(x);I(c,return x(c)))
  A g=asc(xR);P(!g,x(0))A r=i1(x,g);x(0);P(!r,0)I(!_tP(r)&&LH(tG,_t(r),tC),_at(r)=1)r)
 A1(srtdC,UC t=_t(x);
- I(!_tP(x)&&LH(tG,t,tS),A c=cntsrt(x);I(c,A r=rev(x(c));P(!r,0)I(!_tP(r),_at(r)=0)return r;)
+ I(!_tP(x)&&t==tC,return srtUC(x,1))
+ I(!_tP(x)&&LH(tG,t,tS)&&t-tC,A c=cntsrt(x);I(c,A r=rev(x(c));P(!r,0)I(!_tP(r),_at(r)=0)return r;)
                         c=rdxsrt(x);I(c,A r=rev(x(c));P(!r,0)I(!_tP(r),_at(r)=0)return r;))
  A g=dsc(xR);P(!g,x(0))A r=i1(x,g);x(0);r)
 // x@&y with y a 0/1 byte mask: one branch-free pass, no index vector. Any

@@ -62,7 +62,7 @@ A1(ascA,N n=xn;A z=aI(n);I*p=zI;tilV(p,0,n,2);P(n<17,cis(x,p,n,p);x(z))N m=n/2;A
 Z A1(ascB,P(xtF,asc(of1(x)))
  x=N(K1("{x-&/x}",x));N n=xn;A y=aC(n),z=aI(n),u=aI(n);Mx(My(u=ascZ(xV,yV,zV,uV,n,(1ll<<xw)+7>>3)==zV?u(z):z(u)))u)
 X1(asc,Rt(opn(x))Rm(grdm(x,asc))RM(K1("{(!#x){x@<y x}/|.+x}",x))RS(asc(str(x)))RA(P(xn-(I)xn,ez(x))ascA(x))RE(Lij x(0);aE(0,j-i))
- RGC(P(xn-(I)xn,ez(x))N n=xn;I c[257]={},*c129=c+129;F(n,c129[xg]++)F(256,c[i+1]+=c[i])A y=aI(n);I*c128=c+128;Mx(F(n,yI[c128[xg]++]=i))ct(tZ(n-1),y))
+ RGC(P(xn-(I)xn,ez(x))N n=xn;I c[257]={};B u=xtC;I*b=c+(u?1:129),*d=c+(u?0:128);F(n,b[u?(UC)xg:xg]++)F(256,c[i+1]+=c[i])A y=aI(n);Mx(F(n,yI[d[u?(UC)xg:xg]++]=i))ct(tZ(n-1),y))//chars sort as unsigned bytes
  // amber batch 2: 16/32/64-bit integers and IEEE-754 doubles go through the
  // key-carrying LSD radix in src/v.c -- one sequential pass per SIGNIFICANT key
  // byte, constant byte columns skipped, already-ordered input recognised in the

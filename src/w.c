@@ -56,17 +56,26 @@ Z A3(lf2,/*010*/Y(Ril(nf(x,gl(y),zR))RU(y(wf(x,y,zR)))R_(et(y)))0)
 Z AX(ls8,/*01..1*/A y=*a;P(n==2,A z=a[1];z(ls2(x,y,z)))Y(Ril(nS(x,gl(y),a+1,n-1))RU(y(wS(x,y,a+1,n-1))))et8(a,n))
 Z AX(lf8,/*01..1*/A y=*a;P(n==2,A z=a[1];z(lf2(x,y,z)))Y(Ril(nF(x,gl(y),a+1,n-1))RU(y(wF(x,y,a+1,n-1))))et8(a,n))
 X1(raz,RA(U n=0;F(xn,n+=_N(xa))A y=xx;y=ytT&&!ytA?AN(0,an(n,ytE?tG:yt)):aA0(n);F(xn,y=Nx(cat10(y,xa)))x(y))Rm(raz(val(x)))R_(x))
-Z A2(f1,/*01*/Yt(y)P(xtv&&xv<11&&ytZFC,y(arf(x,0,y)))P(x==CAT,raz(y))P(!yN,y(ie(x,y)))A z=ii(y,0);F(yN-1,z=z(x2(z,ii(y,i+1)));B(!z))y(z))
-Z A3(f2,/*010*/Zt(y(x2(y,zR)))P(xtv&&xv<11&&ytzfc&&ztZFC,arf(x,y,z))P(x==CAT,raz(N(cat10(enl(y),z))))P(xto||xtp,F(zN,y=N(x8(A8(y,ii(z,i)),2)))y)F(zN,y=y(x2(y,ii(z,i)));B(!y))y)
+A ucb(A),cub(A);
+#define MMC (xtv&&xv-6<2u)                   //& |: of chars only, unsigned, a char back, as the verb does with two chars (issue #17)
+#define CA (xtv&&xv<11&&xv&&xv-5&&xv-8>1u)  //+ - * % & | =: f/ f\ read chars as ints, as the verb does with a number
+#define CI(y) (CA&&y##tC)
+#define CF(y) (CI(y)&&(yN<2||xv==4||xv==10))  //unseeded: arf already folds 2 or more chars as ints for + - *, so only % = and short lists convert first (& | of chars go by MMC)
+#define LGC(c) (xtv&&xv-8<2u&&(c))          //< > with chars and a seed go item by item through the verb (char with char unsigned, with a number signed: issue #17), so y f/z is {x f y}/[y;z] and the last of y f\z; unseeded (and the seed of an empty fold), the chars are read as unsigned ints first
+Z A2(f1,/*01*/Yt(y)P(MMC&&ytC,P(!yN,y(ac(xv==6?-1:0)))cub(f1(x,ucb(y))))P(CF(y)||LGC(ytC),f1(x,xv-8<2u?ucb(y):cG(y)))P(xtv&&xv<11&&ytZFC&&!LGC(ytC),y(arf(x,0,y)))P(x==CAT,raz(y))P(!yN,y(ie(x,y)))A z=ii(y,0);F(yN-1,z=z(x2(z,ii(y,i+1)));B(!z))y(z))
+Z A3(f2,/*010*/P(MMC&&(ytc||ytC)&&ztC,A w=ucb(zR);A r=f2(x,ucb(y),w);mr(w);cub(r))P(CA&&ztC&&!(MMC&&(ytm||ytA)),A w=cG(zR);A r=f2(x,y,w);mr(w);r)   //the items too, as the seed
+ P(!MMC&&(CI(y)||CA&&ytc),f2(x,ytc?ai((C)yv):cG(y),z))P(LGC(ytc||ytC)&&!zN,f2(x,ucb(y),z))Zt(y(x2(y,zR)))P(xtv&&xv<11&&ytzfc&&ztZFC&&!LGC(ytc||ztC)&&!(MMC&&ytc),arf(x,y,z))P(x==CAT,raz(N(cat10(enl(y),z))))P(xto||xtp,F(zN,y=N(x8(A8(y,ii(z,i)),2)))y)F(zN,y=y(x2(y,ii(z,i)));B(!y))y)
 L cfm(CO A*a/*0*/,I n)_(L m=-1;F(n,A x=a[i];I(!xtt,U v=xN;P(m>=0&&m-v,-2)m=v))m)
 AX(f8,/*01..1*/P(n==1,f1(x,*a))P(n==2,A y=*a,z=a[1];z(f2(x,y,z)))n--;A y=*a++,z=*a;L m=cfm(a,n);P(m==-1,y?x8(a-1,n+1):z)P(m<0,I(y,y(0))el8(a,n))P(!m&&!y,x=ie(x,z);mrn(n,a);x)
  L i=!y;I(i,y=ii(z,0))Ab8;W(i<m,*b=y;Fj(n,b[j+1]=ii(a[j],i))y=x8(b,n+1);B(!y)i++)mrn(n-1,a+1);z(y))
-Z A3(s2,/*010*/Zt(y(x2(y,zR)))Zm(A u=N(s2(x,y,zy));am(_R(zx),u))P(!zN,y(zR))P(xtv&&xv<11&&ytzfc&&ztZFC,ars(x,y,z))A u=aA0(zN);F(zN,y=y(x2(y,ii(z,i)));P(!y,u(0))PSH(u,yR))y(u))
-Z A2(s1,/*01*/Yt(y)P(!yN,y)Ym(A z=kv(&y);am(y,Ny(s1(x,z))))P(x==CAT,y(s2(x,emp(tA),y)))P(xtv&&xv<11&&ytZFC,y(ars(x,0,y)))
+Z A3(s2,/*010*/P(MMC&&(ytc||ytC)&&ztC&&zn,A w=ucb(zR);A r=s2(x,ucb(y),w);mr(w);cub(r))P(CA&&ztC&&zn&&!(MMC&&(ytm||ytA)),A w=cG(zR);A r=s2(x,y,w);mr(w);r)P(!MMC&&(CI(y)||CA&&ytc)&&zN,s2(x,ytc?ai((C)yv):cG(y),z))   //chars as ints, as the fold (an empty scan is the items as they are)
+ Zt(y(x2(y,zR)))Zm(A u=N(s2(x,y,zy));am(_R(zx),u))P(!zN,y(zR))P(xtv&&xv<11&&ytzfc&&ztZFC&&!LGC(ytc||ztC),ars(x,y,z))A u=aA0(zN);F(zN,y=y(x2(y,ii(z,i)));P(!y,u(0))PSH(u,yR))y(u))
+Z A2(s1,/*01*/Yt(y)P(MMC&&ytC,P(!yN,y)cub(s1(x,ucb(y))))P(CI(y)||LGC(ytC),s1(x,xv-8<2u?ucb(y):cG(y)))P(!yN,y)Ym(A z=kv(&y);am(y,Ny(s1(x,z))))P(x==CAT,y(s2(x,emp(tA),y)))P(xtv&&xv<11&&ytZFC&&!LGC(ytC),y(ars(x,0,y)))
  A z=ii(y,0),u=enl(zR);F(yN-1,z=z(x2(z,ii(y,i+1)));P(!z,y(u(0)))PSH(u,zR))z(y(u)))
 Z AX(s8,/*01..1*/A y=*a;P(n==1,s1(x,y))P(n==2,A z=a[1];z(s2(x,y,z)))L m=cfm(a+1,n-1);P(m==-2,el8(a,n))I(m<0,m=1)a++;n--;
  A z=aA0(m);Ab8;F(m,*b=y;Fj(n,b[j+1]=ii(a[j],i))y=x8(b,n+1);P(!y,mrn(n,a);z(0))PSH(z,yR))mrn(n,a);y(z))
-Z A3(p2,/*010*/Zt(er(y))Zm(y=N(p2(x,y,zy));am(_R(zx),y))P(!zN,y(zR))P(xtv&&xv<11&&ytzc&&ztZC,arp(x,y,z))
+Z A3(p2,/*010*/Zt(er(y))Zm(y=N(p2(x,y,zy));am(_R(zx),y))P(!zN,y(zR))P(MMC&&ytc&&ztC,A w=ucb(zR);A r=p2(x,ucb(y),w);mr(w);cub(r))P(xtv&&xv-6<4u&&ztC&&zn>1&&(ytz||ytf),K("{[f;y;z]@[f':[*z;z];0;:;*f':[y;1#z]]}",_R(x),y,_R(z)))   //& | < > of chars with a number seed: the chars among themselves, the first item through the verb
+ P(xtv&&xv<11&&ytzc&&ztZC&&!(xv-6<4u&&ztC&&!ytc),arp(x,y,z))
  P(xtv&&(LH(1,xv,4)||LH(6,xv,10))&&(ytf||ytz)&&ztF,arpF(x,y,z))A u=aA0(zN);F(zN,A v=ii(z,i),r=x2(v,y);y=v;B(!r,u=u(0))PSH(u,r))y(u))
 // amber 2.3: unseeded |': and &': seed with the first element, so element 0 is x[0] itself
 // (an identity seed of -0w/-0W is not below NaN/0N, and `|':0n 1.0` began -0w)

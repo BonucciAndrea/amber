@@ -199,6 +199,12 @@ A2(ari,C t=xt,u=yt;U v=1<<t|1<<u;
 #define M(s,i) A2(s,U o=f;f=i;x=ari(x,y);f=o;x)
  M(add,1)M(mul,3)M(dvd,4)M(mod,5)M(mnm,6)M(mxm,7)M(ltn,8)M(gtn,9)M(eql,10)
 #undef M
+A ucb(A x/*1*/)_(P(xtc,ai((UC)xv))P(xtC,A y=an(xn,tH);F(xn,yh=(UC)xc)x(y))x)                        //chars as unsigned bytes
+A2(ltu,P((xtc||xtC)&&(ytc||ytC),A u=ucb(xR);u(ltn(u,ucb(y))))ltn(x,y))                           //the verb <: chars order among themselves as unsigned bytes (with numbers, and ltn: numeric)
+A2(gtu,P((xtc||xtC)&&(ytc||ytC),A u=ucb(xR);u(gtn(u,ucb(y))))gtn(x,y))
+A cub(A x/*1*/)_(P(!x,0)P(xti,ac((C)xv))P(LH(tG,xt,tL),A y=an(xn,tC);S4(xw-3,F(xn,yc=(C)xg),F(xn,yc=(C)xh),F(xn,yc=(C)xi),F(xn,yc=(C)xl))x(y))K1("{`c$x}",x))                                                            //unsigned bytes (as ucb gives) back to chars
+A2(mnu,P((xtc||xtC)&&(ytc||ytC),A u=ucb(xR);cub(u(mnm(u,ucb(y)))))mnm(x,y))                     //the verb &: of two chars, the lesser as unsigned bytes, a char (with a number: numeric, as ever)
+A2(mxu,P((xtc||xtC)&&(ytc||ytC),A u=ucb(xR);cub(u(mxm(u,ucb(y)))))mxm(x,y))                     //the verb |
 A2(dex,y)A2(sub,U o=f;f=2;x=ari(x,y);f=o;x)X2(exc,RMT(ytm||rnk(x)<0?ed(y):ytt?exc(x,rsz(xN,y)):xN-yN?el(y):am(xR,y))Rs(x=rsz(yN,x);x(exc(x,y)))Rilc(/* amber 1.9.3: `!` with a negative integer left argument is the
  * q-family system-verb slot -- -8!x serialises to a byte vector and -9!y
  * deserialises it (src/ser.c). Only -8 and -9, and only on a genuine

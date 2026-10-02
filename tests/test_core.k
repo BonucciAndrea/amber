@@ -175,6 +175,16 @@ te[`binTemporalGeneric;"(1 2 3)'(2026.07.30;1)"]
 / a temporal atom on the left of fill is 'type too (it was 'nyi), not a fill
 t[`fillTemporalLeft;{.[{x^y};(x;y);{(x?"\n")#x}]}[2026.07.30;0N 1];"'type"]
 
-hexpect[92]
+/ ---- the int null converts to the float null (0n), never to a number ----
+t[`nullToFloatAdd;(0N+1.5;1.5+0N;1.5-0N;0N*2.0);4#0n]
+t[`nullToFloatDiv;(0N%2;2%0N);0n 0n]
+t[`nullToFloatDivVec;(0N%2 3;2 3%0N);(0n 0n;0n 0n)]
+t[`nullToFloatCast;`f$0N;0n]
+t[`nullToFloatEq;0N=0n;1b]
+t[`nullToFloatMin;(0N&1.5;0N|1.5);(0n;1.5)]
+t[`nullToFloatSum;+/(0N;1.5);0n]
+t[`nullToFloatVecOk;0N 1+1.5;0n 2.5]
+
+hexpect[100]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

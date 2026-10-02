@@ -174,7 +174,26 @@ t[`amendStillWorks;(IA["A8:1 2 3";"A8[0 1]+:1"];IA["A9:(1 2;3 4)";"A9[;1]:9"]);(
 t[`amendByNameKeep;(IA["B1:1 2 3";".[`B1;,5;:;9]"];IA["B2:1 2 3";".[`B2;,0 1;:;7 8 9]"];IA["B3:(1 2;3 4)";".[`B3;0 5;:;9]"]);((`err;1 2 3);(`err;1 2 3);(`err;(1 2;3 4)))]
 t[`amendByNameWorks;{.[`B4;,1;:;9];.[`B4;,0;+;10];B4}B4:1 2 3;11 9 3]
 
-hexpect[92]
+/ ---- a function just over the bytecode limit is 'limit ----
+/ The last of cpl's limit checks marked the error before making it, and
+/ segfaulted on a function two bytes short of filling the buffer, even
+/ trapped (510 bytes when the buffer was 512; 2046 at 2048).
+/ (statements, not one long chain of verbs, which the parser's nesting limit refuses first)
+FN:{"{",(";"/x#,"x"),"}"}
+/ first, before any other error (an earlier error hid it)
+t[`fnBytes2046Msg;6#.[.:;,FN 1023;{x}];"'limit"]
+t[`fnUnderLimit;#$. FN 1022;2045]   / 1022 statements (2044 bytes) compile; 2045 is the length of its text
+te[`fnBytes2046;". FN 1023"]
+t[`fnBytes2046Trap;.[.:;,FN 1023;{`t}];`t]
+te[`fnBytes2048;". FN 1024"]
+
+/ ---- a list expression of up to 255 globals compiles (the 512-byte bytecode buffer stopped near 165) ----
+G:5;L:{";"/x#,y}
+t[`listGlobals255;#. "(",(L[255;"G"]),")";255]
+t[`listGlobalsSum254;#. "(",(L[254;"G+1"]),")";254]
+t[`listGlobalsLambda254;#(. "{(",(L[254;"G+x"]),")}")1;254]
+
+hexpect[100]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

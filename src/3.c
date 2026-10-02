@@ -120,7 +120,12 @@ Z L maxfZ(L v,A x/*0*/)_(MAX(v,G(&maxfG,maxfH,maxfI,maxfL)[xw-3](xV,xn)))
 // split, so no benchmark answer moves.
 Z F sumF(CO F*RES p,U n)_(simd_sum_f64(p,n))
 Z A3(admf,/*010*/B i=xv==3;U n=zn;P((y&&ytf)||ztF,F v=y?gf(cF(y)):i;z=cF(zR);CO F*RES q=zV;Mz(I(i,F(n,v*=q[i]))E(v+=sumF(q,n)))af(v))L v=y?gl(y):i;az((i?mulfZ:addfZ)(v,z)))
-Z A3(subf,/*010*/y=y?neg(y):zn?mul(ai(-2),ii(z,0)):ai(0);neg(admf(ADD,y,z)))
+// -/ reuses the sum: x0-x1-.. is -((-2*x0)+(+/x)), exact for ints (they wrap). Not for
+// floats: -2*x0 overflows above 2^1023 and turns an infinite x0 into inf-inf, so `-/0w 1.0`
+// was 0n and `-/1e308 1.0` was 0w; and the seed of an empty fold came back negated, as did
+// the 0.0 of an empty list. Floats subtract in order instead, as {x-y}/ does.
+Z A3(subf,/*010*/P(ztF||y&&ytf,z=cF(zR);CO F*RES q=zV;U i=!y;F v=y?gf(cF(y)):zn?*q:0.0;Mz(W(i<zn,v-=q[i++]))af(v))
+ y=y?neg(y):zn?mul(ai(-2),ii(z,0)):ai(0);neg(admf(ADD,y,z)))
 // amber item 3: direct float min/max. The general path below folds the whole
 // float vector into an order-preserving integer domain with of1(), reduces
 // there, and folds back with of0() -- two materialised copies of the vector.

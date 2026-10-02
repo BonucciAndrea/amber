@@ -172,6 +172,13 @@ t[`maskSumIntAtom;*"\n"\.[.:;,"+/0@&0 1";{x}];"'type"]
 t[`maskFmaIntAtom;*"\n"\.[.:;,"+/(1+2*3)@&0 1";{x}];"'type"]
 t[`maskCmpIntAtom;*"\n"\.[.:;,"+/0@&(0 1)>0";{x}];"'type"]
 
-hexpect[88]
+/ ---- -/ of floats is the left fold x0-x1-.. ----
+t[`minusFoldInf;(-/0w 1.0;-/-0w 5.0;{x-y}/0w 1.0);0w -0w 0w]
+t[`minusFoldBig;-/1e308 1.0;1e308]
+t[`minusFoldSeeded;(0w-/1.0 2.0;1.5-/0.5 0.25;2-/0.5 0.25);0w 0.75 1.25]
+t[`minusFoldZero;`k@(-/,0.0;-/0.0 0.0;0.0-/!0;-/0#0.0);"0.0 0.0 0.0 0.0"]
+t[`minusFoldInts;(-/1 2 3;-/,5;10-/1 2;-/!0);(-4;5;7;0)]
+
+hexpect[93]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

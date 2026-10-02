@@ -473,6 +473,13 @@ t[`serLeftKept9;{m:(-9 5000000000)0;m!-8!1 2;m}[];-9]
 t[`deserAttrKept;  (`at@-9!-8!`sa 1000 2000 3000;`at@-9!-8!`pa 3 3 1 1 2;`at@-9!-8!`ua 1 2 3);(`s;`p;`u)]
 t[`deserAttrBad;   {c:-8!`sa 1000 2000 3000;c[14 15 18 19]:(-8!3000 2000 1000)14 15 18 19;x:-9!c;(`at@x;<x;x?1000)}[];(`;2 1 0;2)]
 
+/ dates, times and timestamps grade by their values (not their words, nor a timestamp's address)
+t[`gradeDates;     (<(1999.12.31;2000.01.01);<(2000.01.01;1999.12.31;2026.07.30);>(1999.12.31;2000.01.01));(0 1;1 0 2;1 0)]
+t[`gradeTimes;     <(00:00:00.000-1;00:00:00.000);0 1]
+t[`gradeStamps;    (<(2026.07.31D09:00:00.000;2026.07.30D10:00:00.000;2026.07.30D11:00:00.000);{<(x;x+0)}2026.07.30D10:00:00.000;<2026.07.30D10:00:00.000+|!5);(1 2 0;0 1;4 3 2 1 0)]
+GTS:(2026.07.30D10:00:00.000;2026.07.30D10:00:00.000+1;2026.07.30D10:00:00.000+0;2026.07.30D10:00:00.000+1)
+t[`groupStamps;   (#?GTS;#=GTS);  2 2]   / equal timestamps are one value
+
 / ---- amber 2.2: float literals below 1e-308 (subnormals) ------------------
 / pfu (src/p.c) clamped an out-of-range exponent and returned EARLY, before it
 / advanced the parse cursor -- so `1e-309` left "e-309" in the input and the

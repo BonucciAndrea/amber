@@ -209,7 +209,11 @@ t[`floatSortMatchesGrade;{(x@<x)~x g:<x}0.0 -0.0 0n -0n 1.5 -0.0;1]
 t[`floatGradeTable;<+`a`b!(0.0 -0.0 0.0 -0.0;4 3 2 1);3 2 1 0]
 t[`floatSortedAttr;.[{`sa x};,0.0 -0.0 1.0;{`err}];0.0 -0.0 1.0]
 
-hexpect[110]
+/ ---- squeezing an int vector at the top of int and long (UBSan reported a signed overflow) ----
+t[`sqzTopLong;9223372036854775807 1;9223372036854775807 1]
+t[`sqzTopInt;@2147483647 1;`I]
+
+hexpect[112]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

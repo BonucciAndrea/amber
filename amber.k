@@ -40,11 +40,14 @@ xexp:{[x;y]$[~y=_y;`exp y*`ln x;[e:$[y<0;-y;y];r:*{0<x[2]}{(x[0]*$[2!x[2];x[1];1
 round:{[d;x]p:*/d#10;(_0.5+x*p)%p}
 
 / ---- aggregations ----------------------------------------------------------
-sum:{$[0=#x;$[`F=@x;0.0;0];+/x]}       / empty: keep the float type (+/ already does)
+/ issue #14: the q-named aggregates skip nulls, as q's do (the k primitives +/ &/ |/ keep k's nulls):
+/ on an int or float list a null takes the verb's identity, so it changes nothing (avg leaves it out)
+nid:{[x;i;f]$[`I=@x;i^x;`F=@x;f^x;x]}                       / x with its nulls filled by i (ints) or f (floats)
+sum:{$[0=#x;$[`F=@x;0.0;0];+/nid[x;0;0.0]]}                 / sum 0N 1 is 1; empty: keep the float type
 prd:{$[0=#x;$[`F=@x;1.0;1];*/x]}       / empty: keep the float type
-min:{&/x}
-max:{|/x}
-avg:{$[`F=@x;(+/x)%#x;(+/0.0+x)%#x]}   / ints summed as floats, like q: an int64 +/ can wrap (2.3)
+min:{&/nid[x;9223372036854775807;0w]}                                        / min 0N 5 is 5; all nulls: the largest int (q 0W)
+max:{|/nid[x;-9223372036854775807;-0w]}
+avg:{$[(@x)in`I`F;[v:x@&~^x;$[#v;(+/0.0+v)%#v;0n]];`F=@x;(+/x)%#x;(+/0.0+x)%#x]}   / the non-null items, summed as floats, like q (an int64 +/ can wrap); none: 0n
 / fused dot (`wsm) when both sides are float vectors: no product vector is
 / built, so the 80MB temporary `+/x*y` writes and re-reads never exists.
 wsum:{$[(`F=@x)&`F=@y;`wsm(x;y);+/x*y]}
@@ -61,8 +64,8 @@ all:{~|/x=0}
 any:{~&/x=0}
 sums:{+\x}
 prds:{*\x}
-mins:{&\x}
-maxs:{|\x}
+mins:{&\nid[x;9223372036854775807;0w]}                                       / mins 0n 1.0 is 0w 1.0, as q
+maxs:{|\nid[x;-9223372036854775807;-0w]}
 deltas:{$[#x;x-0,-1_x;x]}
 ratios:{$[#x;x%1,-1_x;x]}
 differ:{~~':x}

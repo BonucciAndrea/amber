@@ -180,7 +180,7 @@ V free(V*);V*malloc(N);V*realloc(V*,N);
 enum{GA_SUM,GA_CNT,GA_MIN,GA_MAX,GA_AVG,GA_FST,GA_LST};
 #define GARD(w,p,i) ((w)==0?(L)((CO G*)(p))[i]:(w)==1?(L)((CO H*)(p))[i]:(w)==2?(L)((CO I*)(p))[i]:((CO L*)(p))[i])
 #define GA_GROW() I(ng==cap,U nc=cap*2;gk=realloc(gk,(N)nc*SZ(L));gf=realloc(gf,(N)nc*SZ(I));af=realloc(af,(N)nc*SZ(F));al_=realloc(al_,(N)nc*SZ(L));gc=realloc(gc,(N)nc*SZ(L));cap=nc;)
-#define GA_ADD(g,i) {af[g]=0;al_[g]=0;gc[g]=0;gf[g]=(I)(i);I(code==GA_MIN,af[g]=WF;al_[g]=WL)I(code==GA_MAX,af[g]=-WF;al_[g]=NL)}
+#define GA_ADD(g,i) {af[g]=0;al_[g]=0;gc[g]=0;gf[g]=(I)(i);I(code==GA_MIN,af[g]=WF;al_[g]=vf?gmn:WL)I(code==GA_MAX,af[g]=-WF;al_[g]=vf?gmx:NL+1)}
 // amber 2.3: float min/max compare o1() keys, the order &/ and |/ use (NaN lowest, -0.0
 // below 0.0), and give back the winner's own bits. The plain < and > skipped NaNs, so a
 // group min ignored the NaN &/ returns, and an all-NaN group came out as 0w/-0w.
@@ -192,7 +192,7 @@ A1(gaggC,P(_t(x)-tA||(_n(x)-3&&_n(x)-4),et(x))A*e=_A(x);A op=e[0],k=e[1],v=e[2],
  P(code<0||code>GA_LST,x(emp(tA)))
  UC kt=_t(k);P(_tP(k)||!(kt==tG||kt==tH||kt==tI||kt==tL||kt==tS),x(emp(tA)))
  N n=_n(k);U wk=kt==tG?0:kt==tH?1:(kt==tI||kt==tS)?2:3;
- UC vt=code==GA_CNT?tL:_t(v);B vf=vt==tF;U wv=vt==tG?0:vt==tH?1:vt==tI?2:3;
+ UC vt=code==GA_CNT?tL:_t(v);B vf=vt==tF;L gmn,gmx;{F w=WF;L b;MC(&b,&w,SZ b);gmn=o1(b);w=-WF;MC(&b,&w,SZ b);gmx=o1(b);}/*min and max start from the keys of 0w and -0w (or 0W and -0W): an all-null group gives them, as q*/U wv=vt==tG?0:vt==tH?1:vt==tI?2:3;
  I(code!=GA_CNT&&code!=GA_FST&&code!=GA_LST,P(_tP(v)||!(vt==tG||vt==tH||vt==tI||vt==tL||vt==tF)||_n(v)!=n,x(emp(tA))))
  I(code==GA_FST||code==GA_LST,P(_tP(v)||_N(v)!=n,x(emp(tA))))
  A mb_=0;I(m&&!_tP(m)&&_t(m)==tB,mb_=m=cG(_R(m)))   // a bit mask is widened to bytes
@@ -220,10 +220,11 @@ A1(gaggC,P(_t(x)-tA||(_n(x)-3&&_n(x)-4),et(x))A*e=_A(x);A op=e[0],k=e[1],v=e[2],
     I(ht[j],g=(I)(ht[j]-1))E(GA_GROW();g=(I)ng++;ht[j]=(W)g+1;gk[g]=key;GA_ADD(g,i)))
   gc[g]++;
   S(code,
-   C(GA_SUM,I(vf,af[g]+=((CO F*)vp)[i])E(al_[g]+=GARD(wv,vp,i)))
-   C(GA_AVG,I(vf,af[g]+=((CO F*)vp)[i])E(af[g]+=(F)GARD(wv,vp,i)))
-   C(GA_MIN,L t=vf?GA_OF(i):GARD(wv,vp,i);I(t<al_[g],al_[g]=t))
-   C(GA_MAX,L t=vf?GA_OF(i):GARD(wv,vp,i);I(t>al_[g],al_[g]=t))
+   // issue #14: sum avg min max are q-named, so they skip nulls, as q's do (avg counts the rest in al_)
+   C(GA_SUM,I(vf,F d=((CO F*)vp)[i];I(d==d,af[g]+=d))E(L d=GARD(wv,vp,i);I(d!=NL,al_[g]+=d)))
+   C(GA_AVG,I(vf,F d=((CO F*)vp)[i];I(d==d,af[g]+=d;al_[g]++))E(L d=GARD(wv,vp,i);I(d!=NL,af[g]+=(F)d;al_[g]++)))
+   C(GA_MIN,I(vf,F d=((CO F*)vp)[i];I(d==d,L t=GA_OF(i);I(t<al_[g],al_[g]=t)))E(L t=GARD(wv,vp,i);I(t!=NL&&t<al_[g],al_[g]=t)))
+   C(GA_MAX,I(vf,F d=((CO F*)vp)[i];I(d==d,L t=GA_OF(i);I(t>al_[g],al_[g]=t)))E(L t=GARD(wv,vp,i);I(t!=NL&&t>al_[g],al_[g]=t)))
    C(GA_LST,gf[g]=(I)i)
    D())}
  P(fail,free(gk);free(gf);free(af);free(al_);free(gc);free(slot);free(ht);I(mb_,mr(mb_))x(emp(tA)))
@@ -232,7 +233,7 @@ A1(gaggC,P(_t(x)-tA||(_n(x)-3&&_n(x)-4),et(x))A*e=_A(x);A op=e[0],k=e[1],v=e[2],
  A fr=aV(tI,ng,gf);A vl;
  S(code,
   C(GA_SUM,I(vf,vl=aV(tF,ng,af))E(vl=aV(tL,ng,al_)))
-  C(GA_AVG,vl=an(ng,tF);F(ng,_F(vl)[i]=af[i]/(F)gc[i]))
+  C(GA_AVG,vl=an(ng,tF);F(ng,_F(vl)[i]=af[i]/(F)al_[i]))   //over the non-null items; none: 0n
   C(GA_MIN,I(vf,F(ng,al_[i]=o0(al_[i]))vl=aV(tF,ng,al_))E(vl=aV(tL,ng,al_)))
   C(GA_MAX,I(vf,F(ng,al_[i]=o0(al_[i]))vl=aV(tF,ng,al_))E(vl=aV(tL,ng,al_)))
   C(GA_CNT,vl=aV(tL,ng,gc))

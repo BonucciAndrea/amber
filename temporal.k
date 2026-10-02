@@ -30,7 +30,8 @@ ddiff:{x-y}                                                 / days between two d
 tstamp:{[d;ms]1000000*ms+86400000*d}                        / (date;ms-of-day) -> timestamp
 tsdate:{fdiv[x;86400000000000]}                             / timestamp -> date
 tsms:{(fdiv[x;1000000])-86400000*fdiv[x;86400000000000]}    / timestamp -> ms-of-day
-pstr:{$[^`i$x;"0N";(dstr tsdate `i$x),"D",stime tsms `i$x]}               / timestamp -> "YYYY.MM.DDDHH:MM:SS.mmm"
+tsus:{x-1000000*fdiv[x;1000000]}                            / timestamp -> its nanoseconds below the millisecond
+pstr:{$[^`i$x;"0N";(dstr tsdate `i$x),"D",(stime tsms `i$x),-6$"00000",$tsus `i$x]}   / timestamp -> "YYYY.MM.DDDHH:MM:SS.nnnnnnnnn", every digit (issue #18)
 ptstamp:{d:pdate(x?"D")#x;ms:ptime 1_(x?"D")_x;tstamp[d;ms]} / "YYYY.MM.DDD HH:MM:SS.mmm" -> ns   (for "P"$)
 
 / ---- native-type accessors on time atoms (extract raw ms, then decompose) ----

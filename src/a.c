@@ -99,10 +99,16 @@ U amub(CO L*RES a,U lo,U hi,L key){
 //    arena_mark()/arena_release(), so the kernel is arena-neutral to its
 //    caller in the sense that matters: its peak is one generation, and it
 //    gives back everything it took before it returns.
+// A time column as 64-bit keys for the time joins. Ints and temporals are themselves (cL); floats
+// (f set when any time column is float) become keys in value order -- every NaN one key, first,
+// then by value with -0.0 the same as 0.0 (issue #15) -- where cL used to truncate them (0.5 and
+// 0.7 both 0). The zero is mapped by its bits: the build's -fno-signed-zeros lets a compare ignore it.
+A tkey(A x,B f)_(P(!f,cL(x))x=cF(x);P(!x,0)U n=_n(x);A y=aL(n);CO W*RES s=_V(x);L*RES d=_V(y);
+ F(n,W b=s[i];b=b==1ull<<63?0:b;d[i]=b<<1>0xffe0000000000000ull?NL+1:(L)(b>>63?b^0x7fffffffffffffffull:b))x(y))
 A ajc(A x){
  P(_t(x)-tA||_n(x)-4,et(x))
- A*e=(A*)_V(x);
- A QT=N(cL(_R(e[0]))),TT=N(cL(_R(e[1]))),GB=N(cL(_R(e[2]))),GE=N(cL(_R(e[3])));
+ A*e=(A*)_V(x);B f=_t(e[0])==tF||_t(e[1])==tF;
+ A QT=N(tkey(_R(e[0]),f)),TT=N(tkey(_R(e[1]),f)),GB=N(cL(_R(e[2]))),GE=N(cL(_R(e[3])));
  CO L*RES qt=_V(QT),*RES tt=_V(TT),*RES gb=_V(GB),*RES ge=_V(GE);
  U nt=_n(TT),nq=_n(QT);
  // On a 32-bit target (wasm32) size_t is 32 bits, so nt*sizeof(L) can wrap.

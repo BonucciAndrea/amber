@@ -113,6 +113,17 @@ t[`ajNull;(+aj[`sym`time;tradeN;quote])`bid;0N 0N]
 t[`ajNoGrp;(+aj[`time;+`time`x!(0 4 8;0 0 0);+`time`v!(1 3 5 7;10 20 30 40)])`v;0N 20 40]
 / 64-bit nanosecond timestamps (values exceed 2^31 -> proves long/ns path)
 t[`ajNs;(+aj[`sym`time;+`sym`time`px!(,`a;,1500000000000;,1);+`sym`time`bid!(`a`a;1000000000000 2000000000000;10 20)])`bid;,10]
+/ float times compare as floats (the kernels used to truncate them to ints, so 0.5 and 0.7 tied)
+qtF:+`sym`time`bid!(`a`a;0.5 0.7;10 20)
+trF:+`sym`time!(`a`a`a;0.6 0.4 1.0)
+t[`ajFloat;(+aj[`sym`time;trF;qtF])`bid;10 0N 20]
+t[`aj0Float;(+aj0[`sym`time;+`sym`time!(`a`a;0.6 1.0);qtF])`time;0.5 0.7]
+t[`ajFloatInt;(+aj[`time;+(,`time)!,0.5 2.5;+`time`v!(1 2;10 20)])`v;0N 20]
+/ -0.0 and 0.0 are one time, as in q: a trade at -0.0 takes the last quote at either zero
+t[`ajZeroTimes;(+aj[`sym`time;+`sym`time!(`a`a`a`a;-0.0 0.0 0.5 1.0);+`sym`time`bid!(`a`a`a;-0.0 0.0 1.0;10 20 30)])`bid;20 20 20 30]
+qwF:+`sym`time`bid!(`a`a`a;0.5 0.7 0.9;10 20 30)
+twF:0.6 1.0
+t[`wjFloat;(+wj[(twF-0.15;twF+0.15);`sym`time;+`sym`time!(`a`a;twF);qwF;,(`c;count;`bid)])`c;2 1]
 
 / ---- `ajs / ajsorted (src/a.c): is a table already in as-of order? ----
 / A WRONG 1b here silently corrupts every join that trusts it, so the predicate

@@ -81,6 +81,7 @@ Z V encv(WB*b,A x,I d){
   * type, which is exactly the count mtc_ will look at. */
  I(t==tA||t==tM||t==tm,CO A*e=_A(x);U m=n|!n;F(m,enc(b,e[i],d+1))return)
  I(t==tS,CO I*e=(CO I*)_V(x);F(n,wsym(b,(U)e[i]))return)
+ I(t==tB&&n&7,N k=(N)(n>>3);wput(b,_V(x),k);wu8(b,((CO UC*)_V(x))[k]&(UC)((1u<<(n&7))-1));return)   //bits after the last item are not part of the value: equal lists, equal bytes
  wput(b,_V(x),(N)((((W)n<<Tw[(I)t])+7)>>3));}
 Z V enc(WB*b,A x,I d){
  I(b->bad,return)

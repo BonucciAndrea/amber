@@ -153,6 +153,43 @@ t[`dictAssignMany;{x[AN+!AN]:AN#2.0;x}(!AN)!AN#1;(!2*AN)!(AN#1),AN#2.0]
 t[`dictCountMany;#@[(!0)!!0;(2*AN)#!AN;+;1];AN]
 te[`dictAmendLength;"@[`a`b!1 2;`c`d;:;1 2 3]"]
 
-hexpect[78]
+/ ---- take, drop, cut and reshape on bit-boolean lists (01B), as upstream ngn/k ----
+t[`bitTake;(0#01B;1#01B;-1#01B;5#01B);(!0;,0;,1;0 1 0 1 0)]
+t[`bitTakeNeg;-5#0110B;0 0 1 1 0]
+t[`bitDrop;(1_01B;0_01B;-1_01B);(,1;!2;,0)]
+t[`bitCut;0 1_0110B;(,0;1 1 0)]
+t[`bitReshape;3 0N#0110B;(,0;,1;1 0)]
+t[`bitLong;+/70#0110B;35]
+t[`bitLongDrop;`k@65_70#0110B;"1 1 0 0 1"]
+
+
+/ ---- bit lists from take and drop match their values ----
+/ Take, drop, cut and reshape leave the bits after the last item as they were;
+/ match (and so find, distinct, group and dict keys) and -8! ignore them.
+t[`bitTakeMatch;(2#1111B)~11B;1]
+t[`bitDropMatch;(-2_1111B)~11B;1]
+t[`bitCutMatch;(*0 2_1111B)~11B;1]
+t[`bitReshapeMatch;(3 0N#111111B)~(11B;11B;11B);1]
+t[`bitFind;(,11B)?2#1111B;0]
+t[`bitDistinct;#?(11B;2#1111B);1]
+t[`bitGroup;#=(11B;2#1111B);1]
+t[`bitDictKey;((11B;00B)!1 2)2#1111B;1]
+t[`bitSer;(-8!2#1111B)~-8!11B;1]
+t[`bitSerRound;(-9!-8!2#1111B)~11B;1]
+t[`bitNotMatch;(2#1011B)~11B;0]
+
+/ appending one bit clears it first: take and drop leave stale bits after the last item
+t[`bitAppend;((2#1111B),0B;{r:2#1111B;r,:0B;r,:0B;r}[];`k@(2#1111B),0);(1 1 0;1 1 0 0;"1 1 0")]
+
+/ where reads only the list's own bits (take, drop and ~ leave others after the last item; each
+/ was written past the result, which a release build does not show in the values)
+t[`bitWhereDrop;&-4_0000111100001111B;4 5 6 7]
+t[`bitWhereNot;&~01B;!1]
+/ ~ flips whole words, so on 2.3.1 match read its stale bits too
+t[`bitNotMatch2;(~01B)~10B;1]
+/ indexing by a range crashed
+t[`bitRange;(1111B@!2;0110B@1+!2);(1 1;1 1)]
+
+hexpect[101]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

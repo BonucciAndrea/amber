@@ -167,6 +167,12 @@ tv[`pidEnd;"$.(\"`\",(`c$208),(`c$0),\";42\")";,`c$208]
 tv[`pidCyrillic;"$.(\"`\",`c$208 184 208 176)";`c$208 184 208 176]
 tv[`pidLoneBack;"{x~. `k@x}@`$((\"a\",`c$208);(\"b\",(`c$208),\"`\");(`c$208 208);(`c$208 184))";1b]
 
-hexpect[86]
+/ ---- `s$ of a char is the one-char symbol, for every byte ----
+t[`charToSym80;(`s$0x80)~`$,0x80;1b]
+t[`charToSymFF;(`s$0xff)~`$,0xff;1b]
+t[`charToSymAll;(`s$'`c$!256)~`$,'`c$!256;1b]
+t[`charToSymA;`s$"a";`a]
+
+hexpect[90]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

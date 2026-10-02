@@ -166,6 +166,13 @@ t[`jsonDocExample;`j?"{\"a\":1,\"b\":[true,\"c\"]}";`a`b!(1.0;(1;,"c"))]
 / :: is written as null, as in q, so writing and reading agree (issue #20, row 24)
 t[`jsonNullOut;(`j@(::);`j@(1;::);`j@`a`b!(1;::));("null";"[1,null]";"{\"a\":1,\"b\":null}")]
 
-hexpect[85]
+/ ---- encoding with no digits is empty, and checks y as one digit does (issue #20, row 9) ----
+t[`encodeEmpty;((!0)\5;(!0)\6 7;(!0)\(3 4;5);10 10\123);(!0;0#,0N 0N;0#,(0N 0N;0N);2 3)]
+t[`encodeEmptyFloat;@(!0)\5.5;`F]
+t[`encodeEmptyChar;*"\n"\.[.:;,"(!0)\\\"a\"";{x}];"'type"]
+t[`encodeOneDigitChar;(,10)\"a";,7]
+t[`encodeEmptySym;*"\n"\.[.:;,"(!0)\\`a";{x}];"'type"]
+
+hexpect[90]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

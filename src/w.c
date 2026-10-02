@@ -1,6 +1,6 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 Z A2(dec,/*01*/yN?K2("0{z+x*y}/",x,y):K1("0^*:",y))
-Z X2(enc,/*01*/Ril(K2("{$[&/~*x:(x|-x)!|$[x>0;(-x)!;-x!]\\y;1_x;@[x;0;-:0<]]}",x,y))REBGHIL(K2("{(x|-x)!'|(,y),y{$[y<0;-y!;(-y)!]x}\\-1_|x}",x,y))R_(en(y)))
+Z X2(enc,/*01*/Ril(K2("{$[&/~*x:(x|-x)!|$[x>0;(-x)!;-x!]\\y;1_x;@[x;0;-:0<]]}",x,y))REBGHIL(K2("{$[x;(x|-x)!'|(,y),y{$[y<0;-y!;(-y)!]x}\\-1_|x;~^`c`C?@y;`err\"type\";0#(,10)\\y]}",x,y))R_(en(y)))
 Z A scC(C c    ,C*p,U n)_(           A x=emp(tA);C*q;W((q=memchr(p,c,n  )),PSH(x,aCm(p,q));n-=q-p+1;p=q+1)I(n||c-10&&xn,PSH(x,aCn(p,n)))x)
 Z A sCC(C*s,L m,C*p,U n)_(P(!m,el0())A x=emp(tA);C*q;W((q=memmem(p,n,s,m)),PSH(x,aCm(p,q));n-=q+m-p;p=q+m)I(n||      xn,PSH(x,aCn(p,n)))x)
 Z A sc(C c    ,A x)_(XC(x(scC(c,  xV,xn)))et(x))A1(spl,sc(10,x))

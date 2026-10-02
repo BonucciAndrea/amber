@@ -34,11 +34,12 @@ flip:{+x}
 count:{#x}
 mod:{y!x}
 idivv:{[x;y]x:$[`i~@x;(#y)#x;x];n:(^x)|^y;x0:0^x;y0:1^y;z:&y0=0;s:y0<0;x1:x0*1-2*s;y1:1|y0*1-2*s;q:_x1%y1;r:x1-q*y1;d:_r%y1;q:q+d;r:r-d*y1;q:q-r<0;r:x1-q*y1;q:q+~r<y1;q:@[q;z;:;_(x0 z)%0];@[q;&n;:;0N]}   / ints by an int vector, exactly: the float quotient, corrected by the exact (wrapped) remainder
-idiv:{$[(`I~@y)&~^`i`I?@x;$[#y;$[&/~^x,y;$[&/9007199254740992>{x|-x}x,y;_x%y;idivv[x;y]];idivv[x;y]];_x%y];~`i~@y;_x%y;^`i`I?@x;_x%y;^y;$[`i~@x;0N;(#x)#0N];y=0;_x%y;y<0;idiv[-x;-y];[r:$[y=8;(-4)!(-2)!x;y=9;(-3)!(-3)!x;(-y)!x];$[`i~@x;$[^x;0N;r];@[r;&^x;:;0N]]]]}   / floor division, exact for ints over an int or ints (-8! -9! are other verbs); else through the float quotient
+idiv:{$[(`I~@y)&~^`i`I?@x;$[#y;$[&/~^x,y;$[&/9007199254740992>{x|-x}x,y;_x%y;idivv[x;y]];idivv[x;y]];_x%y];~`i~@y;_x%y;^`i`I?@x;_x%y;^y;$[`i~@x;0N;(#x)#0N];y=0;_x%y;y<0;idiv[-x;-y];[r:$[y=8;(-4)!(-2)!x;y=9;(-3)!(-3)!x;(-y)!x];$[`i~@x;$[^x;0N;r];0N=&/x;@[r;&^x;:;0N];r]]]}   / floor division, exact for ints over an int or ints (-8! -9! are other verbs); else through the float quotient
 div:{$[(@x)in`f`F;fdiv0[x;$[`i~@y;$[^y;0n;y];`I~@y;@[`f$y;&^y;:;0n];y]];(@y)in`f`F;idiv[x;rnd0 y];idiv[x;y]]}   / as q: an int by a float divisor rounds it; a float dividend floors as a float
 rnd0:{r:{s:(x>0)-x<0;s*_0.5+x*s};$[`f~@x;$[^x;0N;r x];@[r@[x;&^x;:;0.0];&^x;:;0N]]}   / round half away from zero, as q's `long$ of a float
 fdiv0:{q:x%y;r:`f$_q;$[`f~@q;$[(^q)|^_q;0n;r];@[r;&^q;:;0n]]}   / floor of a float quotient through an int, kept a float, as q does
-xbar:{r:x*idiv[y;x];m:(^x)|^y;$[~|/m;r;(@r)in`i`f;$[(`f~@r)|(`f~@x)|`f~@y;0n;0N];@[r;&m;:;$[`I~@r;0N;0n]]]}   / a null width or value gives a null (0N*0N wraps to 0)
+xbar:{r:x*idiv[y;x];$[`i~@x;$[`I~@y;$[^x;xbn[x;y;r];0N=&/y;xbn[x;y;r];r];xbn[x;y;r]];xbn[x;y;r]]}   / a null width or value gives a null (0N*0N wraps to 0); ints with no null: just the product
+xbn:{[x;y;r]m:(^x)|^y;$[~|/m;r;(@r)in`i`f;$[(`f~@r)|(`f~@x)|`f~@y;0n;0N];@[r;&m;:;$[`I~@r;0N;0n]]]}
 xlog:{(`ln y)%`ln x}
 xexp:{[x;y]$[~y=_y;`exp y*`ln x;[e:$[y<0;-y;y];r:*{0<x[2]}{(x[0]*$[2!x[2];x[1];1.0];x[1]*x[1];_x[2]%2)}/(1.0;1.0*x;e);r:$[y<0;1%r;r];$[(x=_x)&(~y<0)&(r=_r)&9007199254740992.0>$[r<0;0-r;r];_r;r]]]} / x xexp y = x^y; fast squaring for integer y, exp/ln for fractional. An integer base to a non-negative integer power comes back as an INTEGER while the squaring is still exact (below 2^53); past that, or for a fractional/negative exponent, it stays a float. Load euler.k to get the exact bignum answer beyond 2^53.
 round:{[d;x]p:*/d#10;(_0.5+x*p)%p}
@@ -46,12 +47,13 @@ round:{[d;x]p:*/d#10;(_0.5+x*p)%p}
 / ---- aggregations ----------------------------------------------------------
 / issue #14: the q-named aggregates skip nulls, as q's do (the k primitives +/ &/ |/ keep k's nulls):
 / on an int or float list a null takes the verb's identity, so it changes nothing (avg leaves it out)
-nid:{[x;i;f]$[`I=@x;i^x;`F=@x;f^x;x]}                       / x with its nulls filled by i (ints) or f (floats)
-sum:{$[0=#x;$[`F=@x;0.0;0];+/nid[x;0;0.0]]}                 / sum 0N 1 is 1; empty: keep the float type
+nid:{[x;i;f]$[`I=@x;$[0N=&/x;i^x;x];`F=@x;$[^&/x;f^x;x];x]}           / x with its nulls filled by i (ints) or f (floats); one &/ finds whether there are any (0N is the least int, and &/ takes NaN as the least float)
+sum:{$[0=#x;$[`F=@x;0.0;0];`F=@x;$[^s:+/x;+/0.0^x;s];`I=@x;`sumn x;+/nid[x;0;0.0]]}   / sum 0N 1 is 1; a float sum is NaN only when a NaN is in it; empty: keep the float type
 prd:{$[0=#x;$[`F=@x;1.0;1];*/x]}       / empty: keep the float type
-min:{&/nid[x;9223372036854775807;0w]}                                        / min 0N 5 is 5; all nulls: the largest int (q 0W)
-max:{|/nid[x;-9223372036854775807;-0w]}
-avg:{$[(@x)in`I`F;[v:x@&~^x;$[#v;(+/0.0+v)%#v;0n]];`F=@x;(+/x)%#x;(+/0.0+x)%#x]}   / the non-null items, summed as floats, like q (an int64 +/ can wrap); none: 0n
+min:{$[`I=@x;$[0N=m:&/x;&/9223372036854775807^x;m];`F=@x;$[^m:&/x;&/0w^x;m];&/x]}   / min 0N 5 is 5; all nulls: the largest int (q 0W); no nulls: just &/
+max:{$[`I=@x;$[0N=m:|/x;-9223372036854775807;m];`F=@x;$[^m:|/x;-0w;m];|/x]}   / a null is the least, so |/ skips it unless all are null (then -0W, -0w)
+avg:{$[`I=@x;$[0N=&/x;avgn x;(+/0.0+x)%#x];`F=@x;$[^s:+/x;avgn x;s%#x];(+/0.0+x)%#x]}   / the non-null items, summed as floats, like q (an int64 +/ can wrap); none: 0n
+avgn:{v:x@&~^x;$[#v;(+/0.0+v)%#v;0n]}
 / fused dot (`wsm) when both sides are float vectors: no product vector is
 / built, so the 80MB temporary `+/x*y` writes and re-reads never exists.
 wsum:{$[(`F=@x)&`F=@y;`wsm(x;y);+/x*y]}

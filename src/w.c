@@ -31,10 +31,9 @@ Z AX(l8,/*01..1*/Ab8;MC(b,a,n*SZ(A));*b=GAP;x=prj(x,b,n);x(e1(x,*a)))
 U urnk(A);
 A e2f(A2 f,A x,A y/*f01*/)_(U k=xtt<<1|ytt;P(k==3,f(x,y))
  P(xtm||ytm,P(xtm>ytm,A z=N(e2f(f,xy,y));am(_R(xx),z))P(xtm<ytm,A z=Ny(e2f(f,x,_R(yy)));y(am(_R(yx),z)))
-  P(_tM(xx)||_tM(yx),y(en0()))                                                                    //keyed tables: not yet (issue #19; the key union below crashed)
-  P(_n(xx)&&_n(yx)&&urnk(xx)-urnk(yx),ed(y))A z=cat(xx,_R(yx));P(!z,y(0))z=unq(z);P(!z,y(0))B o=(f==add||f==sub||f==mul||f==dvd||f==mnm)&&(_n(xx)||_t(xx)-tA)&&(_n(yx)||_t(yx)-tA)&&!mtc_(xx,yx);A mx=o?fnd(xx,zR):0,my=o?fnd(yx,zR):0;x=x1(zR);P(!x,I(mx,mr(mx))I(my,mr(my))z(y(0)))y=y(y1(zR));P(!y,I(mx,mr(mx))I(my,mr(my))z(x(0)))   //mx my: 0N where a key is missing on that side (none is when the keys match)
+  P(_n(xx)&&_n(yx)&&urnk(xx)-urnk(yx),ed(y))A z=cat(xx,_R(yx));P(!z,y(0))P(_tM(xx)||_tM(yx),mr(z);y(en0()))   /*keyed tables: not yet (issue #19); keys that do not join were 'domain above*/z=unq(z);P(!z,y(0))B o=(f==add||f==sub||f==mul||f==dvd||f==mnm||f==mnu)&&(_n(xx)||_t(xx)-tA)&&(_n(yx)||_t(yx)-tA)&&!mtc_(xx,yx);A mx=o?fnd(xx,zR):0,my=o?fnd(yx,zR):0;x=x1(zR);P(!x,I(mx,mr(mx))I(my,mr(my))z(y(0)))y=y(y1(zR));P(!y,I(mx,mr(mx))I(my,mr(my))z(x(0)))   //mx my: 0N where a key is missing on that side (none is when the keys match)
   I(o,                                                         //a missing key takes the verb's identity (only a missing one: a null value stays)
-   A u=f==mnm?(xtF||ytF?af(WF):az(WL)):ai(f==mul||f==dvd);x=K("{$[|/^z;@[x;&^z;:;y];x]}",x,_R(u),mx);P(!x,mr(u);mr(my);z(y(0)))y=K("{$[|/^z;@[x;&^z;:;y];x]}",y,u,my);P(!y,z(x(0))))   //the identity atom at the missing positions only
+   A u=f==mnm||f==mnu?(xtF||ytF?af(WF):az(WL)):ai(f==mul||f==dvd);x=K("{$[|/^z;@[x;&^z;:;y];x]}",x,_R(u),mx);P(!x,mr(u);mr(my);z(y(0)))y=K("{$[|/^z;@[x;&^z;:;y];x]}",y,u,my);P(!y,z(x(0))))   //the identity atom at the missing positions only
   am(z,Nz(x(e2f(f,x,y)))))
  P(!k&&xN-yN,el(y))U n=k<2?xN:yN;P(!n,x=fir(xR);x(o2f(f,x,fir(y))))A z=emp(tA);F(n,A v=ii(x,i);A u=f(v,ii(y,i));mr(v);B(!u,z=z(0))PSH(z,u))y(z))
 AX(e8,/*01..1*/P(n==1,e1(x,*a))P(n==2,A y=*a;y(e2(x,y,a[1])))Ab8;C t[8];L m=-1;F(n,A y=b[i]=a[i];Ym(em(x,a,n))t[i]=ytP?0:ytt?1:ytA?2+!MINE(y):4;I(t[i]>1,L l=yN;P(m>=0&&m-l,el8(a,n))m=l))
@@ -65,7 +64,7 @@ A ucb(A),cub(A);
 #define CI(y) (CA&&y##tC)
 #define CF(y) (CI(y)&&(yN<2||xv==4||xv==10))  //unseeded: arf already folds 2 or more chars as ints for + - *, so only % = and short lists convert first (& | of chars go by MMC)
 #define LGC(c) (xtv&&xv-8<2u&&(c))          //< > with chars and a seed go item by item through the verb (char with char unsigned, with a number signed: issue #17), so y f/z is {x f y}/[y;z] and the last of y f\z; unseeded (and the seed of an empty fold), the chars are read as unsigned ints first
-Z A2(f1,/*01*/Yt(y)P(MMC&&ytC,P(!yN,y(ac(xv==6?-1:0)))cub(f1(x,ucb(y))))P(CF(y)||LGC(ytC),f1(x,xv-8<2u?ucb(y):cG(y)))P(xtv&&xv<11&&ytZFC&&!LGC(ytC),y(arf(x,0,y)))P(x==CAT,raz(y))P(!yN,y(ie(x,y)))A z=ii(y,0);F(yN-1,z=z(x2(z,ii(y,i+1)));B(!z))y(z))
+Z A2(f1,/*01*/Yt(y)P(MMC&&ytC,P(!yN,y(ac(xv==6?-1:0)))CO UC*q_=(CO UC*)yV;UC m_=*q_;I(xv==6,F(yn,m_=q_[i]<m_?q_[i]:m_))E(F(yn,m_=q_[i]>m_?q_[i]:m_))y(ac((C)m_)))   /*& | of chars: unsigned, a char back, in one pass*/P(CF(y)||LGC(ytC),f1(x,xv-8<2u?ucb(y):cG(y)))P(xtv&&xv<11&&ytZFC&&!LGC(ytC),y(arf(x,0,y)))P(x==CAT,raz(y))P(!yN,y(ie(x,y)))A z=ii(y,0);F(yN-1,z=z(x2(z,ii(y,i+1)));B(!z))y(z))
 Z A3(f2,/*010*/P(MMC&&(ytc||ytC)&&ztC,A w=ucb(zR);A r=f2(x,ucb(y),w);mr(w);cub(r))P(CA&&ztC&&!(MMC&&(ytm||ytA)),A w=cG(zR);A r=f2(x,y,w);mr(w);r)   //the items too, as the seed
  P(!MMC&&(CI(y)||CA&&ytc),f2(x,ytc?ai((C)yv):cG(y),z))P(LGC(ytc||ytC)&&!zN,f2(x,ucb(y),z))Zt(y(x2(y,zR)))P(xtv&&xv<11&&ytzfc&&ztZFC&&!LGC(ytc||ztC)&&!(MMC&&ytc),arf(x,y,z))P(x==CAT,raz(N(cat10(enl(y),z))))P(xto||xtp,F(zN,y=N(x8(A8(y,ii(z,i)),2)))y)F(zN,y=y(x2(y,ii(z,i)));B(!y))y)
 L cfm(CO A*a/*0*/,I n)_(L m=-1;F(n,A x=a[i];I(!xtt,U v=xN;P(m>=0&&m-v,-2)m=v))m)

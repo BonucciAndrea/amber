@@ -622,7 +622,7 @@ instead, so an error is never silently swallowed.
 | `E0107` | `rank` | Function rank mismatch | Wrong number of arguments for the function's rank |
 | `E0108` | `limit` | Resource or allocation limit exceeded | Vector size, recursion depth or memory limit hit |
 | `E0109` | `io` | Input/output failure | File or socket open/read/write failed |
-| `E0110` | `stack` | Call stack depth exceeded | Recursion deeper than the interpreter stack allows |
+| `E0110` | `stack` | Call stack depth exceeded | Recursion deeper than the interpreter stack allows (2048 calls; a tail call, one whose result is the function's result, reuses the frame and does not count) |
 | `E0111` | `compile` | Expression could not be compiled | Parses, but cannot be compiled |
 | `E0112` | `nyi` | Operation not implemented for these types | Primitive has no implementation for these operands yet |
 

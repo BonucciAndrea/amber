@@ -125,8 +125,9 @@ Z A ariZZ(A x,A y,U f)_(P(xn-yn,el(y))A(&addZZ,subZZ,mulZZ,dvdZZ,0,mmmZZ,mmmZZ,c
 ZN A ariz(A x,A y,U f){S(xtT<<1|ytT,R(0,arizz(gl_(x),gl(y),f))R(1,arizZ(gl_(x),y,f))R(2,P(f==4,ari(x,cF(y)))P(f==2,arizZ((L)(0-(W)gl(y)),xR,1))arizZ(gl(y),xR,f-8<2u?f^8^9:f))R_(ariZZ(x,y,f)))}
 // = on floats compares values: -0.0 is 0.0 and every NaN is 0n (as ~ does), while the comparison
 // below it is on bit patterns. fzn gives that form, copying only when x has a -0.0 or a NaN.
-Z A fzn(A x/*1*/)_(P(!xtf&&!xtF,x)U n=xtf?1:xn;CO F*p=xtf?xF:xF;U i=0;W(i<n&&p[i]==p[i]&&(p[i]!=0||*(CO L*)(p+i)>=0),i++)P(i==n,x)
- P(xtf,x(af(p[0]==p[0]?0.0:NF)))x=mut(x);F*q=xF;F(n,I(q[i]!=q[i],q[i]=NF)J(q[i]==0,q[i]=0.0))x)
+Z A fzn(A x/*1*/)_(P(!xtf&&!xtF,x)U n=xtf?1:xn;CO F*p=xF;U i=0;W b_=0;   //bits through memcpy: under -fno-signed-zeros (and strict aliasing) GCC folded a -0.0 test on the double away
+ W(i<n&&(MC(&b_,p+i,8),b_<<1<=0xffe0000000000000ull&&b_!=1ull<<63),i++)P(i==n,x)
+ P(xtf,x(af(b_<<1>0xffe0000000000000ull?NF:0.0)))x=mut(x);W*q=(W*)xF;F(n,W c_;MC(&c_,q+i,8);I(c_<<1>0xffe0000000000000ull,F z_=NF;MC(q+i,&z_,8))J(c_==1ull<<63,c_=0;MC(q+i,&c_,8)))x)
 // = of float vectors in one pass: IEEE == already takes -0.0 for 0.0, and the second term
 // makes every NaN equal; 0 (nothing consumed) for shapes it does not handle.
 #define EQV(u,v) ((u)==(v)|((u)!=(u))&((v)!=(v)))

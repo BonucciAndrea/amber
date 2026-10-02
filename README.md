@@ -12,9 +12,9 @@
 **A low-latency array language: columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-2.3.1-orange)
+![version](https://img.shields.io/badge/version-2.4.0-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
-![tests](https://img.shields.io/badge/tests-972%20K--suite%20cases-brightgreen)
+![tests](https://img.shields.io/badge/tests-1383%20K--suite%20cases-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
 
 </div>
@@ -39,42 +39,20 @@ qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                        / vwap by symbo
 ```
 
 <a name="whats-new"></a>
-<a name="whats-new-231"></a>
-## What's new in 2.3.1
+<a name="whats-new-240"></a>
+## What's new in 2.4.0
 
-A fix round: crashes and memory errors (eight of them ported from ngn/k), a projection with one
-argument too many writing past its buffer, `f@&m` not applying `f`, long functions quietly giving
-wrong answers, a dict over a range hanging when it grew, and amends at many indices or keys going
-from quadratic to linear. Plus a new core suite, `tests/test_core.k`. Details in the [changelog](CHANGELOG.md).
-
-<a name="whats-new-230"></a>
-## What's new in 2.3.0
-
-Mostly a bug hunt. I pointed a property/differential sweep at the fast paths (NumPy
-oracles, the old binary against the new one, byte for byte, ~139k cases per build) and it
-turned up more silent wrong answers than I'd like. None of these raised an error:
-
-- `<x` on int64s either side of 2^31 could come back unsorted, and `=x` grouped off it;
-- a sorted vector kept its `` `s`` after an in-place write, so find binary-searched data
-  that wasn't sorted any more (`` `sa``, `` `pa`` and `` `ua`` actually check the data now);
-- `avg` on int64 wrapped, `|\` started from `-0w`, grouped min/max of an all-NaN group
-  gave `0w`, and `0N&':x` came back all `0N`;
-- the compiler folded the `-0.0` and `0.0` literals into one constant.
-
-Plus a handful of crashes (`peach` over anything that parses was the nasty one), no more
-64K cap on symbols, and it builds on Cygwin and with GCC 14.
-
-Some speed too, A/B against 2.2.0 on one machine: `distinct` is 1.9–3.9× faster, sorting an
-already-sorted float column 2.6×, moving max 2.3×, moving sums 1.35–1.5×, find 1.4×. In
-effbiae's benchmarks game collatz got 1.3× faster; the rest is within a few percent either way.
-
-The full list, and how each one was found: [`CHANGELOG.md`](CHANGELOG.md).
+Tail calls: a function can call itself (or another one) as its last step as deep as it likes,
+`{$[x;o x-1;0]}1000000` just works now. And a big round of fixes from pull requests: `sum avg min
+max` skip nulls the q way, `-0.0` is `0.0` and NaNs are one value wherever floats are compared or
+sorted, chars compare unsigned, `div`/`xbar`/JSON/`asof`/`lj` behave like q, 65536 globals, literals
+of any length, and a long list of crashes gone. Details in the [changelog](CHANGELOG.md).
 
 <a name="whats-new-220"></a>
 <a name="whats-new-older"></a>
 ## Earlier releases
 
-2.2.0, 2.1.0, 2.0.1, 2.0.0 and everything before them are in
+2.3.1, 2.3.0, 2.2.0, 2.1.0 and everything before them are in
 [`CHANGELOG.md`](CHANGELOG.md), which is the single place release notes live.
 
 <a name="quickstart"></a>
@@ -88,7 +66,16 @@ git clone https://github.com/BonucciAndrea/amber && cd amber
 ./a                          # build if needed, then the REPL
 AMBER_NATIVE=1 ./a           # -march=native build
 ./demo.sh                    # the full Mega Demo
+./amber script.k             # run a script
 ./amber --help               # options and the \-command reference
+```
+
+A script gets the bare interpreter: put `\l amber.k` on its first line to load the standard
+library (`sum`, `avg`, `xbar`, the joins, qSQL's helpers). The REPL (`./a`) loads it for you.
+
+```q
+\l amber.k
+`0:$sum 1 2 3      / 6
 ```
 
 **Windows.** WSL works as is, and so does plain [Cygwin](https://cygwin.com) since 2.3.

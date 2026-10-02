@@ -722,7 +722,40 @@ t[`bitNotMatch2;(~01B)~10B;1]
 / indexing by a range crashed
 t[`bitRange;(1111B@!2;0110B@1+!2);(1 1;1 1)]
 
-hexpect[447]
+/ ---- tail calls reuse the frame: no depth limit, and nothing freed twice ----
+/ A call whose result is the function's result runs in the caller's frame, so
+/ tail recursion of any depth works (it stopped at 2048 with 'stack).
+tcCnt:{$[x;o x-1;0]}
+t[`tailSelf;tcCnt 1000000;0]
+tcName:{$[x=0;y;tcName[x-1;y+1]]}
+t[`tailByName;tcName[100000;0];100000]
+tcThen:{$[x>0;o x-1;`done]}
+t[`tailThenBranch;tcThen 50000;`done]
+tcBlk:{[x]y:x-1;$[y<0;`blk;[z:y;o z]]}
+t[`tailInBlock;tcBlk 50000;`blk]
+tcEv:{$[x;tcOd x-1;1b]};tcOd:{$[x;tcEv x-1;0b]}
+t[`tailMutual;(tcEv 100000;tcEv 99999);10b]
+tcAcc:{[n;s]$[n;o[n-1;s,n];s]}
+t[`tailAccum;+/tcAcc[5000;!0];12502500]
+tcBig:{[a;b;c;d;e;f;g;h]$[a;o[a-1;b;c;d;e;f;g;h+1];h]}
+t[`tailEightArgs;tcBig[100000;0;0;0;0;0;0;0];100000]
+/ a tail call to a function that needs a bigger frame, a projection, a wrong count
+tcFac:{$[x<2;1;x*o x-1]}
+t[`nonTailStillWorks;tcFac 20;2432902008176640000]
+te[`nonTailStillLimited;"tcFac 5000"]
+tcPr:{x+y};tcPj:{$[x;o x-1;tcPr 1]}
+t[`tailToProjection;(tcPj 10)2;3]
+tcRk:{$[x;o[x-1;2];0]}
+te[`tailWrongArity;"tcRk 5"]
+/ the shape that found a double free: repeated calls through a tail call, then others
+tcD:-tcB:*/32#2;tcP:18(3*)\1
+tcCarry:{(tcB!x)+0 :':tcD!x,:0}
+tcPow:{$[18>y;tcCarry x*tcP y;o[tcCarry x*tcP 18;y-18]]}
+tcLoop:{tcCarry (tcP 18!y)*(-18!y){tcCarry x*tcP 18}/x}
+t[`tailPowMatchesLoop;(tcPow[,1;500];tcPow[,1;500];tcPow[,1;100000]);(tcLoop[,1;500];tcLoop[,1;500];tcLoop[,1;100000])]
+t[`tailAfterwards;(tcCnt 3;tcName[3;0];tcCarry 5 7);(0;3;5 7 0)]
+
+hexpect[460]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

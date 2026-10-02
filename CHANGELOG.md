@@ -1,5 +1,32 @@
 # Changelog
 
+## 2.4.0
+
+Tail calls, and a big round of fixes that came in as pull requests: nulls the q way for the q-named
+aggregates, floats compared and ordered by value, unsigned chars, and a long list of crashes and
+limits gone. The core suite is 460 cases now.
+
+- **tail calls.** A call whose result is the function's result reuses the frame, so tail recursion
+  has no depth limit: `{$[x;o x-1;0]}1000000` is fine, mutual recursion too. It used to stop at
+  2048 with `'stack`. Code written for other k's runs as is, e.g. the recursive collatz entry.
+- **nulls, q style, for the q names.** `sum avg min max mins maxs` skip nulls as q's do (`sum 0N 1`
+  is `1`); `+/ &/ |/` stay k. The int null converts to `0n`, dict arithmetic fills only missing
+  keys, `pj` fills with 0. No nulls, no extra pass: they cost what they did.
+- **floats by value.** `-0.0` and `0.0` are one value and so is every NaN, for `=`, find,
+  distinct, group, sorting, and the times in `aj`/`wj` (compared as floats now, not truncated).
+- **chars are unsigned among themselves**: sorting, `< >`, and `& |` of two chars give a char.
+- **q compatibility**: `div` and `xbar` as q, JSON (true/false, nulls, surrogate pairs, two
+  buffer overruns), `asof`, `lj`, casts, float literals with more digits than fit, date and time
+  literals check their fields, `?` of a table gives its distinct rows.
+- **limits**: 65536 globals then a trappable `'limit` (it ended the process), 1024 mapped
+  regions, a 2048-byte bytecode buffer, literals of any length, impossible sizes are `'limit`, and
+  a failed `a[i]:v` keeps `a`.
+- **crashes and memory errors**: symbol printing, the lexer, `` `s$ ``, `ajs`, peach `'noupdate`,
+  `-8!`/`-9!`, dict keys, bit-boolean take/drop/cut, keyed tables in arithmetic, and a generic
+  list on the left of `/` no longer loops forever.
+- **faster**: masked float sums, `+/x@&x>50` on 10M floats 49 ms to 10 ms, `+/((x*2.5)+y)@&x>50`
+  56 to 26 ms, and they equal the unfused expression bit for bit now. Float find is ~2x faster too.
+
 ## 2.3.1
 
 Crashes, a few quiet wrong answers, and amends that went quadratic. Every fix has its own cases in a

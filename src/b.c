@@ -12,6 +12,10 @@ Z CO C di[]={                     [ba]= 1, 1, 3, 3, 3, 3, 3, 3, 2, 2, 1, 1, 1, 1
 ds[]={[bv]=n1,n1,n1,   p1,   p1,  [ba]= 1, 1,-1,-1,-1,-1,-1,-1, 1,-1, 1, 0,-1, 0, 1,-1, 0, 1},      //stack size delta
 ks[]={                            [ba]=-1,-1, 0, 0, 0, 0, 0, 0, 0, 0,-1, 1, 0, 0, 0, 0, 0, 0};      //stack size delta (coefficient for the next byte)
 #define BG (b+=2,b[-2]|(U)b[-1]<<8)                                                                 //read a 2-byte little-endian global/var index
+// amber 2.4: tail calls. A call whose result is the function's result (the next opcode is the
+// end, maybe after jumps out of a $[..]) to a lambda that takes exactly that many arguments and
+// fits in the current frame reuses the frame: no C recursion, no depth. {$[x;o x-1;0]}1000000.
+Z B tlc(CO UC*b)_(W(*b==bj,b+=2+b[1])!*b)                                                           //is the code at b just the way out?
 // amber 2.3: the 'noupdate raise for the global-store opcodes below, kept out of line
 // and cold: inlined into run() it cost ~8% on a loop of small vector ops (register
 // allocation for the whole dispatch loop), though the check itself never fires.
@@ -26,18 +30,23 @@ NI I ixck(A x,A y,U k,A z){I r=0;if(!x||k>=_N(y)||_tP(x)||!_tT(x))return 0;U n=_
  if(q==au){if(!one)for(U j=0;j<n&&!r;j++){A v=ii(x,j);r=ixck(v,y,k+1,z);mr(v);}}
  else if(_tz(q)){L v=gl(q);if(v<0||v>=(L)n)r=1;else if(!one){A w=ii(x,(U)v);r=ixck(w,y,k+1,z);mr(w);}}
  else if(!_tP(q)&&LH(tE,_t(q),tL)){U m=_N(q);
-  for(U j=0;j<m&&!r;j++){L v=ixe(q,j);if(v<0||v>=(L)n)r=1;else if(!one){A w=ii(x,(U)v);r=ixck(w,y,k+1,z);mr(w);}}
+  if(one&&m&&_t(q)!=tB){L lo=_t(q)==tE?ixe(q,0):minfZ(WL,q),hi=_t(q)==tE?ixe(q,m-1):maxfZ(NL,q);if(lo<0||hi>=(L)n)r=1;}   //one level: the vector min/max, not a type switch per item
+  else for(U j=0;j<m&&!r;j++){L v=ixe(q,j);if(v<0||v>=(L)n)r=1;else if(!one){A w=ii(x,(U)v);r=ixck(w,y,k+1,z);mr(w);}}
   if(!r&&one&&!_tP(z)&&_tT(z)&&_N(z)!=m)r=2;}
  mr(q);return r;}
 Z NI __attribute__((cold)) V noupd(A*s){mr(*s);*s=err0("noupdate");}
-AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,es8(a,n))/*d: per-thread VM recursion depth (peach workers run the VM concurrently)*/P(n-xk,er8(a,n))UC*b=_V(xy),c,nl=_n(xA[3]);A l[nl+*b++],*s=l+L(l);MS(l,0,SZ l);I(n,MC(l,a,8*n))//virtual machine
+AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,es8(a,n))/*d: per-thread VM recursion depth (peach workers run the VM concurrently)*/P(n-xk,er8(a,n))UC*b=_V(xy),c,nl=_n(xA[3]);A own=0,l[nl+*b++],*s=l+L(l);MS(l,0,SZ l);I(n,MC(l,a,8*n))//virtual machine
  W((c=*b++),S(c,                                                                                    //          |BYTES |          STACK        |         EFFECT
   C32(bu,U(*s=v1[c-bu](*s)))                                                                        //monad     |bu+m  |.. x -> monads[m][x]   |
   C32(bv,A x=*s++;U(*s=x(v2[c-bv](x,*s))))                                                          //dyad      |bv+d  |.. y x -> dyads[d][x;y]|
   C16(bs,A*p=l+c%16;I(*p,mr(*p))*p=*s++)                                                            //set local |bs+i  |.. x -> ..             |locals[i]:x
   C16(bg,A*p=l+c%16,x=*p;U(*--s=x)xR)                                                               //get local |bg+i  |.. -> .. locals[i]     |
   C16(bd,A*p=l+c%16,x=*p;U(*--s=x)*p=0)                                                             //del local |bd+i  |.. -> .. locals[i]     |locals[i]:NULL (freed)
-  C2(ba,bp,UC n=*b++;A x=*s;s+=n;U(*s=x((c==ba?_8:prj)(x,s-n+1,n))))                                //apply|proj|ba,n  |.. z y x -> .. x[y;z]  |
+  C2(ba,bp,UC m=*b;A f=*s;                                                                          //apply|proj|ba,n  |.. z y x -> .. x[y;z]  |
+   I(c==ba&&tlc(b+1)&&s+m+1==l+L(l)&&_t(f)==to&&_k(f)==m&&_n(_A(f)[3])+*(UC*)_V(_A(f)[1])<=L(l),        //tail call: the frame becomes f's
+    A t[8];MC(t,s+1,8*m);*s=0;MS(s+1,0,8*m);F(nl,A y=l[i];I(y,mr(y)))MS(l,0,SZ l);I(own,mr(own))
+    own=x=f;nl=_n(xA[3]);b=(UC*)_V(xy)+1;MC(l,t,8*m);s=l+L(l))
+   E(b++;UC n=m;A x=f;s+=n;U(*s=x((c==ba?_8:prj)(x,s-n+1,n)))))
   C6(bm,bM,bx,bX,by,bY,A*p=(c&1?gv:l)+BG,x=*p;I(__builtin_expect(c&1&&ray_rc_sync,0),noupd(s);goto l)  //          |      |                       |
    U(x,*s=ev(*s))A y=*s++;                                                                           //          |      |                       |
    I(c==bm||c==bM,y=v2[*b++](x,y);U(y,*--s=0)*p=x(y))                                               //mod asgn  |bm,i,d|.. x -> ..             |vars[i]:dyads[d][vars[i];x]
@@ -57,7 +66,7 @@ AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,es8(a,n))/*d: per-thread VM recursion de
   C(bP,mr(*s++))                                                                                    //pop       |bP    |.. x -> ..             |
   C(bV,UC i=*b++;U(*s=v2[*b++](xA[i+OFF],*s)))                                                      //const dyad|bV,i,d|.. x -> .. r           |r:dyads[d][consts[i];x]
   D(*--s=_R(xA[c-bc+OFF]))))                                                                        //const     |bc+i  |.. -> .. consts[i]     |
- l:d--;A u=*s;MS(l+nl,0,s-l-nl+1<<3);F(L(l),A x=l[i];I(x,mr(x)))I(!u,eS(xx,(UC)_C(xz)[(C*)b-1-_C(xy)]))u)
+ l:d--;A u=*s;MS(l+nl,0,s-l-nl+1<<3);F(L(l),A x=l[i];I(x,mr(x)))I(!u,eS(xx,(UC)_C(xz)[(C*)b-1-_C(xy)]))I(own,mr(own))u)
 
 #define Nr(a...) {I r_=cr(a);P(r_-OK,r_);}                                                          //compile rvalue; return on error
 #define Nl(a...) {I r_=cl(a);P(r_-OK,r_);}                                                          //compile lvalue; return on error

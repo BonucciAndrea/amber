@@ -297,7 +297,74 @@ t[`whereNegative;.[.:;,"&1 -1";{(x?"\n")#x}];"'domain"]
 t[`whereSmall;(&1 0 2;&0#0);(0 2 2;!0)]
 t[`whereWrapNegative;*"\n"\.[.:;,"&9223372036854775807 1";{x}];"'limit"]   / a total that wraps negative was 'domain
 
-hexpect[169]
+/ ---- numeric literals: 0N among floats, and boolean tokens among numbers ----
+tv[`litNullFloat;"0N 1.5";0n 1.5]
+tv[`litFloatNull;"1.5 0N";1.5 0n]
+tv[`litNegNullFloat;"-0N 1.5";0n 1.5]
+t[`litNegNullBits;(-8!-0N 1.5)~-8!0n 1.5;1]   / the same bits as 0n (-0n has the sign bit)
+tv[`litIntBool;"1 0b";1 0]
+tv[`litIntBools;"1 01b";1 0 1]
+tv[`litNullBools;"0N 1b 01b";0N 1 0 1]
+tv[`litFloatBool;"1.5 1b";1.5 1.0]
+tv[`litFloatBools;"1.5 01b 2";1.5 0.0 1.0 2.0]
+tv[`litPlain;"(1 2;1.5 2;0N 1;0n 1.5)";(1 2;1.5 2.0;0N 1;0n 1.5)]
+
+
+/ ---- a bool token must end the token: 1b.5 is not 1b then .5 ----
+te[`boolDot;"{b:7;1 1b.5}[]"]
+te[`boolDotAlone;"{b:7;01b.1}[]"]
+t[`boolStrandStill;1 01b;1 0 1]
+
+/ ---- scans with a float seed, or of floats with -, are float scans ----
+t[`scanSeedAdd;1.5+\1 2;2.5 4.5]
+t[`scanSeedMul;1.5*\1 2;1.5 3.0]
+t[`scanSeedSub;1.5-\1 2;0.5 -1.5]
+t[`scanSeedChars;1.5+\"ab";98.5 196.5]
+t[`scanSeedZero;0.0+\1 2;1.0 3.0]
+t[`scanSubFloat;-\1.5 2.5;1.5 -1.0]
+t[`scanSubFloatSeed;1.5-\1.5 2.5;0.0 -2.5]
+t[`scanSeedLong;((1.5+\!100000)~{x+y}\[1.5;!100000];(-\0.5+!100000)~{x-y}\0.5+!100000);11b]
+t[`scanOthersOk;(1.5&\1 2;1.5|\1 2;1+\1.5 2;+\1 2 3;-\1 2 3);(1.0 1.0;1.5 2.0;2.5 4.5;1 3 6;1 -1 -4)]
+
+
+/ ---- =\ of floats compares values, as {x=y}\ does (it read the bits as ints) ----
+t[`eqScanFloat;=\1.0 1.0 1.0;(1.0;1;1)]
+t[`eqScanFloatSeed;1.0=\1 1 2;1 1 0]
+t[`eqScanFloatAsLambda;(=\0.5 0.5 1.5)~{x=y}\0.5 0.5 1.5;1]
+
+/ ---- = on floats compares values: -0.0 equals 0.0, and a NaN equals any NaN ----
+t[`eqZeros;{a:-1*0.0;(a=0.0;0.0=a;a=0;0=a)}[];1 1 1 1]
+t[`eqZerosVec;{a:(-1*0.0),1;(a=0.0 1;0.0=a;(,*a)=,0.0)}[];(1 1;1 0;,1)]
+t[`eqNans;{(x=-x;(0%0)=x;x=x;x=0.0)}0n;1 1 1 0]
+t[`eqPlain;(1.5=1.5;1.5=2.5;1 2.5=1.0 2.5;1=1.0);(1;0;1 1;1)]
+t[`eqAgreesMatch;{(x=y)~x~y}[-0.0;0.0];1b]
+t[`paZerosOneValue;.[{`at(`pa x)};,0.0 -0.0 0.0;{`err}];`p]   / `pa: both zeros are one value, so the run is one
+
+/ ---- find and distinct on floats: every NaN is one value, as for ~ and = ----
+/ n is 0n and -n the NaN with the sign bit, the spelling x86-64 computes (0%0)
+t[`findNan;{(x,1.0)?-x}0n;0]
+t[`findNanNeg;{((-x),1.0)?x}0n;0]
+t[`findNanEach;{(1.0,x)?(-x),x}0n;1 1]
+t[`findNanMiss;{1.0 2.0?-x}0n;0N]
+t[`distinctNan;{(#?x,(-x),1.0;#?x,1.0,-x)}0n;2 2]
+t[`distinctNanLength;{#?3000#x,(-x),1.0}0n;2]
+t[`findZeroStill;1.0 -0.0?0.0;1]
+t[`paNansOneValue;*"\n"\.[{`at(`pa x)};,0n 1.0 -0n;{x}];"'p-fail"]   / `pa: every NaN is one value, in two runs here
+
+/ ---- distinct of a generic list keeps the first of matching items ----
+/ (compared as text, since ~ takes -0.0 for 0.0)
+t[`distinctFirstPos;`k@?(0;0.0;-1*0.0);"(0;0.0)"]
+t[`distinctFirstNeg;`k@?(0;-1*0.0;1.0-1.0);"(0;-0.0)"]
+t[`distinctFirstNan;?(1;0n;-0n;0n);(1;0n)]
+t[`distinctGenPlain;?(1;"a";1;`b;"a");(1;"a";`b)]
+
+/ ---- group of floats: -0.0 and 0.0 (and NaNs) are one key, indices ascending, first key seen ----
+t[`groupZeros;(=0.0 -0.0;=-0.0 0.0 1.5 0.0);((,0.0)!,0 1;-0.0 1.5!(0 1 3;,2))]
+t[`groupNans;=0n 1.0 -0n;0n 1.0!(0 2;,1)]
+t[`groupFloatPlain;=1.5 2.5 1.5;1.5 2.5!(0 2;,1)]
+t[`groupGenericZeros;`k@=(0;0.0;-1*0.0);"(0;0.0)!(,0;1 2)"]
+
+hexpect[216]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

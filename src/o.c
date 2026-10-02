@@ -118,10 +118,10 @@ Z A grpI(A x){
  arena_release(mk);
  return am(ky,z);
 }
-// amber 2.3: float KEYS for = and ?: -0.0 folded onto 0.0 (one value, as for find
-// and ~), every other double -- NaNs included -- kept bit for bit (as find keeps
-// them). A copy; the caller still emits the original doubles.
-Z A fcanon(A x)_(U n=xn;A y=aF(n);CO W*RES p=(CO W*)xV;W*RES q=(W*)yV;F(n,W v=p[i];q[i]=v==0x8000000000000000ull?0:v)y)
+// amber 2.3: float KEYS for = and ?: -0.0 folded onto 0.0 and every NaN onto one key
+// (one value each, as find and ~ take them); every other double kept bit for bit.
+// A copy; the caller still emits the original doubles.
+Z A fcanon(A x)_(U n=xn;A y=aF(n);CO W*RES p=(CO W*)xV;W*RES q=(W*)yV;F(n,W v=p[i];q[i]=v==0x8000000000000000ull?0:v<<1>0xffe0000000000000ull?0x7ff8000000000000ull:v)y)   //one key for both zeros, and one for every NaN, as find matches them
 Z A cSI(A);// amber 2.0.0: symbol<->int-id reinterpret (defined just below), used by grp's tS fast path
 X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x))
  // amber 2.0.0: group a SYMBOL vector by its interned 4-byte id (tS is stored as
@@ -145,23 +145,17 @@ X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x
  RI(P(!xn,K1("{x!0#,!0}",x))
   {A g_=grpI(x);P(g_,x(g_))}   /* O(n) counting group; 0 = range too wide, sort instead */
   K1("{$[x;x[*'g]!g@:<g:(&~(~*s)=':s:x i)_i:<x;x!0#,!0]}",x))
- // amber 2.3: floats group on canonical keys (fcanon below) so that -0.0/0.0 and
- // equal NaNs tie in the stable grade: each group then lists its indices in
- // order and is keyed by its FIRST spelling. Grading x itself put -0.0 before 0.0,
- // so their shared group came out as `2 1` and was keyed by the second one.
- RF(P(!xn,K1("{x!0#,!0}",x))K2("{x[*'g]!g@:<g:(&1,~(1_s)=(-1)_s:y i)_i:<y}",x,fcanon(x)))
- R4(tA,tE,tL,tM,K1("{$[#x;x[*'g]!g@:<g:(&~x~':x i)_i:<x;x!0#,!0]}",x)))
+ RF(P(!xn,K1("{x!0#,!0}",x))K2("{x[*'g]!g@:<g:(&1,~(1_s)=(-1)_s:y i)_i:<y}",x,fcanon(x)))   //floats: 2.3.0's canonical keys (first spelling, indices in order)
+ R(tA,K1("{$[#x;{b:~x~':x i:<x;i:i@<i+(#x)*-1++\\b;g:(&b)_i;g:g@<g;x[*'g]!g}x;x!0#,!0]}",x))   //generic lists (which may hold floats): ~ joins -0.0 with 0.0 (and NaNs), which grade keeps apart, so the indices are sorted within each run of matching items (one grade, by run then index)
+ R3(tE,tL,tM,K1("{$[#x;x[*'g]!g@:<g:(&~x~':x i)_i:<x;x!0#,!0]}",x)))
 Z A1(cSI,Q(xtS||xtI)C t=tS^tI^xt;MINE(x)?(_at(x)=0,AT(t,x)):x(aV(t,xn,xV)))
 X1(unq,RM(K1("{$[#x;x@i@<i:&/'.=+.+x;x]}",x))   /*a table: its distinct rows, first seen first (issue #19); as q*/Rm(unq(val(x)))RE(x)RS(cSI(unq(cSI(x))))Ril(rndF(gl(x)))R_(et(x))RB(unq(cG(x)))
  RGC(C a[256]={},r[256],t=xt;U n=0;Mx(F(xn,UC v=xg;I(!a[v],a[v]=1;r[n++]=v)))aV(t,n,r))
  R5(tA,tH,tI,tL,tF,P(xn<2,x)
   {A u_=unqL(x);P(u_,x(u_))}                 /*amber: C hash/LUT distinct, 0 = not handled*/
   P(xn<<xw-3<pg&&!xtA,K1("{x@&(x?x)=!#x}",x))
-  // amber 2.3: a long float vector used ~': here, which merges two NaN spellings
-  // that find (the short path just above) keeps apart, so #? changed with the
-  // LENGTH. Same canonical keys as grp: now the long path agrees with find.
-  P(xtF,K2("{x@i@<i@:&@[;0;:;1]@~=':y@i:<y}",x,fcanon(x)))
-  K1("{x@i@<i@:&@[;0;:;1]@~~':x@i:<x}",x)))
+  P(xtF,K2("{x@i@<i@:&@[;0;:;1]@~=':y@i:<y}",x,fcanon(x)))   //long float vectors: 2.3.0's canonical keys, which keep the first spelling
+  K1("{b:@[;0;:;1]@~~':x@i:<x;o:(#x)*-1++\\b;j:(|&\\|i+o)[w]-o w:&b;x@j@<j}",x)))   //each run of matching items keeps its least index (not the first in grade order: -0.0 and 0.0 match); a min-scan from the right, each run offset by n times its number
 
 // ---- amber 2.1: `gagg (op;k;v[;m]) -- fused group aggregate -----------------
 // One pass: acc[group(k[i])] op= v[i]. op is a symbol (`sum `count `min `max

@@ -21,14 +21,24 @@ Z L fLL(CO V*a,U n,L v)_(             U i=fL(a,n,v);i<n?i:NL)
 // short vectors and `~':` (match, which calls them equal) for long ones, so
 // `#?(-0.0 0.0)` was 2 while `#?(300#-0.0 0.0)` was 1 -- the same values, a
 // different answer. Normalising the one double that has two spellings fixes
-// both, and costs a compare and a cmov per element. NaN still compares by
-// word, which is what q does too (`(0n;1.0)?0n` is 0, not a miss).
+// both, and costs a compare and a cmov per element.
 // The sign-bit-only word, compared UNSIGNED: converting 0x8000..ull to a signed
 // L is implementation-defined, and this file is meant to build warning-clean
 // on any conforming compiler, not just the two that make it LLONG_MIN.
 #define AMNZ(w) ((W)(w)==0x8000000000000000ull?(L)0:(w))
-Z U fFs(CO L*a,U n,L v)_(U i=0;W(i<n&&AMNZ(a[i])!=v,i++)i)
-Z L fFL(CO V*a,U n,L v)_(             U i=fFs(a,n,AMNZ(v));i<n?i:NL)
+// NaN has many spellings too, and comparing them by word was the same bug:
+// `0n` is the positive quiet NaN while a computed NaN is the FPU's default NaN,
+// which on x86-64 has the sign bit set, so `0n 1.0?0%0` missed there, and
+// `?(0n;0%0)` kept both (a short vector through find; a long one through fcanon's keys,
+// fixed in the next commit). `~`, `=` and
+// group call every NaN one value, and so does q (`(0n;1f)?neg 0n` is 0), so
+// each NaN word is mapped to 0n's: shifting out the sign, a NaN is above inf.
+#define AMNF(w) (((W)(w)<<1)>0xffe0000000000000ull?(L)0x7ff8000000000000ll:AMNZ(w))
+// Only zero and NaN have more than one spelling, so an ordinary needle is found by its word
+// (fL, as before); a zero or NaN needle scans for any of its spellings.
+#define AMNW(w) (((W)(w)<<1)>0xffe0000000000000ull)
+Z U fFs(CO L*a,U n,L v)_(U i=0;P(!v,W(i<n&&AMNZ(a[i]),i++)i)P(AMNW(v),W(i<n&&!AMNW(a[i]),i++)i)fL(a,n,v))
+Z L fFL(CO V*a,U n,L v)_(             U i=fFs(a,n,AMNF(v));i<n?i:NL)
 
 //amber: binary search on a sorted(`s#) vector -> O(log n) find; returns index or NL
 Z L bGL(CO V*a,U n,L v)_(P(v!=(G)v,NL)CO G*p=a;U lo=0,hi=n;W(lo<hi,U m=lo+hi>>1;I(p[m]<(G)v,lo=m+1)E(hi=m))lo<n&&p[lo]==(G)v?(L)lo:NL)

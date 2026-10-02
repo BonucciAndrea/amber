@@ -423,6 +423,10 @@ t[`symRoundTrip;    {x~$`$x}[{"symbol_",$x}'!20000];                1b]
 PG:0
 t[`peachNoupdate;   .[{`pe({PG::x;x};!50)};,0;{`noupdate}];          `noupdate]
 t[`peachGlobalKept; PG;                                              0]
+/ the 'noupdate of a global amend in a worker releases only what it owns: the value survives
+PV:100 200 300;PH:0
+PW:{.[{`pe({.[`PH;();:;PV]};x)};,!8;{x}]}
+t[`peachAmendKept;  {PW[];PW[];PW[];b:{x,x}'!100;PV}[];  100 200 300]
 t[`peachDict;       `pe({x+1};`a`b!1 2);                             `a`b!2 3]
 t[`peachSmallN;     `pe({x*x};!7);                                   {x*x}'!7]
 / workers used to parse over each other (file-static parser state): 'parse, then a segfault

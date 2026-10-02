@@ -195,5 +195,5 @@ A2(dex,y)A2(sub,U o=f;f=2;x=ari(x,y);f=o;x)X2(exc,RMT(ytm||rnk(x)<0?ed(y):ytt?ex
  * integer atom, are intercepted; every other left argument (negative ones
  * included) and every char atom still reach mod() exactly as before, so no
  * existing `!` behaviour moves. */
- I(_t(x)-tc,L sv_=gl_(x);I(sv_==-8||sv_==-9,mr(x);return sv_==-8?ser8(y):des9(y)))
+ I(_t(x)-tc,L sv_=gl_(x);I(sv_==-8||sv_==-9,return sv_==-8?ser8(y):des9(y)))
  mod(x,y))R_(et(y)))

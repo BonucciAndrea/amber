@@ -378,6 +378,9 @@ t[`fnListMatchIdx; ((#;+/)[" "~" "]) 1 2 3;    6]
 t[`fnListIdxType;  @(#;+/)[0];                 `v]
 t[`nonFnListIdx;   @(&/;1;|/)[1];              `i]
 t[`fourVerbIdx;    @(+;-;*;%)[2];              `v]
+/ -8!/-9! leave a boxed int on the left alone (it used to be released, freeing a variable's value)
+t[`serLeftKept;    {m:(-8 5000000000)0;m!1 2;m!3 4;m}[];  -8]
+t[`serLeftKept9;{m:(-9 5000000000)0;m!-8!1 2;m}[];-9]
 
 / ---- amber 2.2: float literals below 1e-308 (subnormals) ------------------
 / pfu (src/p.c) clamped an out-of-range exponent and returned EARLY, before it

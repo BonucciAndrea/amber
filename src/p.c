@@ -29,13 +29,15 @@ Z L plN(S*p)_(L v=pl(p);!v&&**p=='N'?(*p)++,NL:v)                               
 // Both returns now advance the cursor, and the small-exponent case scales in
 // two steps (v/1e308 then /1e(-e-308)) instead of answering 0, so a subnormal
 // parses to its actual value. Below about 1e-616 the result genuinely is 0.
-Z L pfu(S*p)_(L v=pu(p);I(v==NL,v=0)S s=*p;C c=*s;P(c=='w',(*p)++;WFL)P(c=='n',(*p)++;v^NFL)I e=0;  //parse float unsigned
+Z L pfu(S*p)_(S s=*p;W u=0;I e=0;W(C09(*s),I(!e&&(u<922337203685477580ull||u==922337203685477580ull&&*s<'8'),u=10*u+(W)(*s-'0'))E(e++)s++)*p=s;L v=(L)u;C c=*s;P(c=='w',(*p)++;WFL)P(c=='n',(*p)++;v^NFL)   //integer digits past the mantissa count in the exponent (pu wrapped them)
+  //parse float unsigned
  Z F t[309];I(!*t,*t=1;F(308,t[i+1]=10*t[i]))
  I(c=='.',c=*++s;W(C09(c),I((W)v<(1ull<<63)/10,v=(L)(10*(W)v+(W)(c-'0'));e--)c=*++s))
- I(c=='e',s++;L d=pl(&s);I(d==NL,d=0)d+=e;e=(I)MAX(-700ll,MIN(400ll,d));
-  I(e>308,*p=s;return WFL;)
-  I(e<-308,*p=s;I(e<-616,return 0;)F r_=((F)v/t[308])/t[-e-308];return *(L*)&r_;))
- *p=s;*(L*)A(e<0?v/t[-e]:v*t[e]))
+ I(c=='e',s++;L d=pl(&s);I(d==NL,d=0)d+=e;e=(I)MAX(-700ll,MIN(400ll,d)))
+ *p=s;   //the range checks hold for e from the digits too: past 327 integer digits, or a long fraction, t[e] was read past its end
+ I(e>308,return WFL;)
+ I(e<-308,I(e<-616,return 0;)F r_=((F)v/t[308])/t[-e-308];return *(L*)&r_;)
+ *(L*)A(e<0?v/t[-e]:v*t[e]))
 L pf(S*p)_(B m=**p=='-';(*p)+=m;L v=(L)((W)m<<63)|pfu(p);(*p)+=**p=='f';v)                               //parse float
 Z A pV(C t,TY(pl)*f)_(L a[1<<9];U n=0;                                                              //parse ints or floats
  W(1,L v=f(&s);P(n>=L(a),ez0())a[n++]=v;S p=pw(s);B(p==s||!num(p))s=p)aV(t,n,a))

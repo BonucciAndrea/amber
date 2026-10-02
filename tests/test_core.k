@@ -153,6 +153,24 @@ t[`dictAssignMany;{x[AN+!AN]:AN#2.0;x}(!AN)!AN#1;(!2*AN)!(AN#1),AN#2.0]
 t[`dictCountMany;#@[(!0)!!0;(2*AN)#!AN;+;1];AN]
 te[`dictAmendLength;"@[`a`b!1 2;`c`d;:;1 2 3]"]
 
-hexpect[78]
+/ ---- float literals past 2^63: the integer digits no longer wrap ----
+t[`floatLitBig;`k@12345678901234567890.0;"1.2345678901234567e19"]
+t[`floatLit2e64;`k@18446744073709551616.0;"1.8446744073709552e19"]
+t[`floatLit2e63;`k@'(9223372036854775808.0;-9223372036854775808.0);("9.223372036854776e18";"-9.223372036854776e18")]
+t[`floatLitExp;`k@99999999999999999999e0;"1e20"]
+t[`floatLitCast;`k@`F$"12345678901234567890";"1.2345678901234567e19"]
+t[`floatLitStrand;`k@1.0 18446744073709551616;"1.0 1.8446744073709552e19"]
+
+
+/ ---- float literals past the power table ----
+/ The exponent from the digits themselves (more than 327 integer digits, or a
+/ long fraction) indexed the table of powers of ten past its end.
+t[`floatDigits328;`F$(328#"1"),".0";0w]
+t[`floatDigits330Neg;`F$"-",(330#"1");-0w]
+t[`floatLongFraction;`F$"0.",(308#"0"),"1";1e-309]
+t[`floatLongFraction2;`F$"0.",(400#"0"),"1";0.0]
+t[`floatDigitsLiteral;. (331#"1"),".0";0w]
+
+hexpect[89]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

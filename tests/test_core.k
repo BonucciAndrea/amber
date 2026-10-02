@@ -222,7 +222,30 @@ t[`litStampHour24;TL"2026.07.30D24:00:00.000";`i$2026.07.31D00:00:00.000]
 t[`litStampHour99;TL"2026.07.30D99:00:00.000";`i$2026.08.03D03:00:00.000]
 t[`litTemporalGood;TL'("2024.02.29";"2000.02.29";"2026.04.30";"24:00:00.000";"99:00:00.000");8825 59 9616 86400000 356400000]
 
-hexpect[118]
+/ ---- float literals past 2^63: the integer digits no longer wrap ----
+t[`floatLitBig;`k@12345678901234567890.0;"1.2345678901234567e19"]
+t[`floatLit2e64;`k@18446744073709551616.0;"1.8446744073709552e19"]
+t[`floatLit2e63;`k@'(9223372036854775808.0;-9223372036854775808.0);("9.223372036854776e18";"-9.223372036854776e18")]
+t[`floatLitExp;`k@99999999999999999999e0;"1e20"]
+t[`floatLitCast;`k@`F$"12345678901234567890";"1.2345678901234567e19"]
+t[`floatLitStrand;`k@1.0 18446744073709551616;"1.0 1.8446744073709552e19"]
+
+
+/ ---- float literals past the power table ----
+/ A long fraction indexed the table of powers of ten past its end; integer digits,
+/ which now count in the exponent, would too past 327 of them.
+t[`floatDigits328;`F$(328#"1"),".0";0w]
+t[`floatDigits330Neg;`F$"-",(330#"1");-0w]
+t[`floatLongFraction;`F$"0.",(308#"0"),"1";1e-309]
+t[`floatLongFraction2;`F$"0.",(400#"0"),"1";0.0]
+t[`floatDigitsLiteral;. (331#"1"),".0";0w]
+/ a zero with a large exponent is zero
+t[`floatZeroBigExp;0e400;0.0]
+t[`floatZeroBigExpF;`F$"0.0e400";0.0]
+t[`floatZeroBigExpNeg;`k@-0e400;"-0.0"]
+t[`floatOneBigExp;1e400;0w]
+
+hexpect[133]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

@@ -47,6 +47,7 @@ t[`iasc;iasc 30 10 20;1 2 0]
 t[`rank;rank 30 10 20;2 0 1]
 t[`distinct;distinct 1 1 2 3 3;1 2 3]
 t[`inMem;in[3 5;1 2 3 4];10b]
+t[`inCharInt;*"\n"\.[in;(97;"abc");{x}];"'type"]   / a char and a number are 'type, as in q (issue #20, row 12)
 t[`except;except[1 2 3 4;2 4];1 3]
 t[`inter;inter[1 2 3 4;2 4 6];2 4]
 t[`union;union[1 2 3;3 4 5];1 2 3 4 5]

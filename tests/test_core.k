@@ -182,6 +182,19 @@ t[`castVec;`i$0n 0w -0w 2.9 -2.9;0N 9223372036854775807 -9223372036854775807 2 -
 t[`castFloat;(`i$1e19;`i$-1e19);9223372036854775807 -9223372036854775807]
 t[`floorPlain;_2.5 -2.5 0.0;2 -3 0]
 
-hexpect[97]
+/ ---- find between chars and numbers is 'type, as in q (issue #20, row 12) ----
+t[`findCharHayIntAtom;*"\n"\.[.:;,"\"abc\"?97";{x}];"'type"]
+t[`findCharHayIntVec;*"\n"\.[.:;,"\"abc\"?98 99";{x}];"'type"]
+t[`findCharHayFloat;*"\n"\.[.:;,"\"abc\"?97.0";{x}];"'type"]
+t[`findIntHayCharAtom;*"\n"\.[.:;,"1 2 97?\"a\"";{x}];"'type"]
+t[`findIntHayCharVec;*"\n"\.[.:;,"1 2 97?\"ab\"";{x}];"'type"]
+t[`findWideHayChar;*"\n"\.[.:;,"1000 2000 97?\"a\"";{x}];"'type"]
+t[`findMixedNeedles;*"\n"\.[.:;,"\"abc\"?(97;\"b\")";{x}];"'type"]
+t[`findCharChar;"abc"?"cb";2 1]
+t[`findIntInt;1 2 97?97 1;2 0]
+t[`findGeneric;((1;"a")?"a";(1;"a")?97);1 0N]
+t[`findNeedleKept;{n:98 99;.[{"abc"?x};,n;{x}];n}[];98 99]
+
+hexpect[108]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

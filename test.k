@@ -485,6 +485,11 @@ AJT:+`ts`v!((2026.07.30D10:00:00.000;2026.07.30D11:00:00.000;2026.07.31D09:00:00
 AJQ:+`ts`q!((2026.07.30D08:00:00.000;2026.07.30D10:30:00.000);6 5)
 t[`ajStamps;       (+aj[`ts;AJT;AJQ])`q;  6 5 5]
 t[`ajDates;        (+aj[`d;+`d`v!((2026.07.30;2026.07.31);1 2);+`d`q!((2026.07.29;2026.07.31);6 5)])`q;  6 5]
+t[`ajStampsEmpty;  ((+aj[`ts;AJT;0#AJQ])`q;#aj[`ts;0#AJT;AJQ]);  (0N 0N 0N;0)]
+AJW:((2026.07.30D09:00:00.000;2026.07.30D10:30:00.000);(2026.07.30D10:20:00.000;2026.07.30D11:10:00.000))
+AJWT:+`ts`v!((2026.07.30D10:00:00.000;2026.07.30D11:00:00.000);1 2)
+AJWQ:+`ts`q!((2026.07.30D09:30:00.000;2026.07.30D10:15:00.000;2026.07.30D10:50:00.000);6 5 4)
+t[`wjStamps;       ((+wj[AJW;`ts;AJWT;AJWQ;,(`c;count;`q)])`c;(+wj[AJW;`ts;AJWT;AJWQ;,(`s;{+/x};`q)])`s);  (2 1;11 4)]   / {+/x}: wj's pure-K fallback
 
 / ---- amber 2.2: float literals below 1e-308 (subnormals) ------------------
 / pfu (src/p.c) clamped an out-of-range exponent and returned EARLY, before it

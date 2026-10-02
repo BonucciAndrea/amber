@@ -869,7 +869,15 @@ t[`amendKeepHeapIndexWide;{f:{L8[4294967296;`a]:7};L8::(1 2;3 4);r:{.[x;,0;{`err
 G1:1 2 3;N1.v:4 5 6
 t[`amendByNameListRefused;{r:{.[x;,0;{`err}]}'20#({.[,`G1;,5;:;9]};{.[`N1`v;,0 1;:;7 8 9]});(?r;G1;N1.v;. "1+1")}[];(,`err;1 2 3;4 5 6;2)]   / the name was released twice
 
-hexpect[535]
+/ ---- flip: an atom value is enlisted; bit lists; empty lists of tables (upstream ngn/k 7bf994cd) ----
+t[`flipAtom;`k@+(,`a)!,{x};"+(,`a)!,,{x}"]
+t[`flipCols;`k@+`a`b!(1 2;3 4);"+`a`b!(1 2;3 4)"]
+t[`flipEmptyTable;(`k@([]);#!+([]);#. +([]));("+(0#`)!0#,::";0;0)]   / ([]) stays as it was (ngn/k enlists the empty values here)
+t[`flipEmptyTables;(`k@+0#,(+`a`b!(1 2;3 4));`k@+0#,,`a`b!1 2);("(+`a`b!(!0;!0);+`a`b!(!0;!0))";",+`a`b!(!0;!0)")]   / empty lists of tables: the prototype was read before it was set
+t[`flipBits;(+(01B;01B);+(101B;010B));((0 0;1 1);(1 0;0 1;1 0))]   / lists of bit booleans, read as bits
+t[`flipBits8;*+8#,11B;8#1]   / each column was read as 8-byte words of the lists
+
+hexpect[541]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

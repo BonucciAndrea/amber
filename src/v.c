@@ -15,10 +15,12 @@
  #define VSIMD
  #define VSIMDR(...)
 #endif
+Z NI A flB(A x,A y,U m,L n)_(Fj(n|!n,A z=yA[j]=an(m,tG);U k=j>>3,b=j&7;F(m,zg=_G(xa)[k]>>b&1))x(0);I(!n,yx=mkn(yx))y)   //flip of bit lists: bit j of each list, into bytes (out of line: inlined in flp, it slowed the other flips)
 X1(flp,Rt(enl(enl(x)))R_(enl(x))RM(A y=kv(&x);am(x,y))RB(flp(cG(x)))
- Rm(A y=kv(&x);Y(RA(I(yn>1,L n=cfm(yA,yn);P(n<0,x(el(y)))F(yn,A z=ya;I(ztt,y=mut(y);ya=rsz(n,z))))aM(x,y))RT_A(aM(x,e1f(enl,y)))R_(x(en(y))))0)
+ Rm(A y=kv(&x);Y(RA(I(yn>1,L n=cfm(yA,yn);P(n<0,x(el(y)))F(yn,A z=ya;I(ztt,y=mut(y);ya=rsz(n,z))))aM(x,yn&&_tt(yx)?enl(y):y))RT_A(aM(x,e1f(enl,y)))R_(x(en(y))))0)
  RA(U m=xn;L n=cfm(xA,m|!m);P(n==-1,enl(x))P(n<0,el(x))C t=_t(xx);I(t<tM&&t-tE,F(m,A y=xa;B(yt-t,t=0)))E(t=0)A y=aA(n);
-  P(!t,F(n|!n,A z=aA(m);Fj(m,zA[j]=ii(xA[j],i))I(!zn,zx=mkn(zx))ya=sqz(z))x(0);I(!yn,yx=mkn(yx))y)
+  P(!t,F(n|!n,A z=aA(m);Fj(m|!m,zA[j]=ii(xA[j],i))I(!zn,zx=mkn(zx))ya=sqz(z))x(0);I(!yn,yx=mkn(yx))y)
+  P(t==tB,flB(x,y,m,n))
   U w=Tw[t]-3;Fj(n|!n,A z=yA[j]=an(m,t);S4(w,F(m,zg=_G(xa)[j]),F(m,zh=_H(xa)[j]),F(m,zi=_I(xa)[j]),F(m|!m,zl=_L(xa)[j])I(TR(t),I(!m,zx=mkn(_R(zx)))yA[j]=sqz(mRa(z)))))
   x(0);I(!n,yx=mkn(yx))y))
 // amber: this fills a packed multi-lane counter (w selects 1/2/4/8-byte lanes),

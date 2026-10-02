@@ -153,11 +153,8 @@ X1(unq,RM(en(x))Rm(unq(val(x)))RE(x)RS(cSI(unq(cSI(x))))Ril(rndF(gl(x)))R_(et(x)
  R5(tA,tH,tI,tL,tF,P(xn<2,x)
   {A u_=unqL(x);P(u_,x(u_))}                 /*amber: C hash/LUT distinct, 0 = not handled*/
   P(xn<<xw-3<pg&&!xtA,K1("{x@&(x?x)=!#x}",x))
-  // amber 2.3: a long float vector used ~': here, which merges two NaN spellings
-  // that find (the short path just above) keeps apart, so #? changed with the
-  // LENGTH. Same canonical keys as grp: now the long path agrees with find.
-  P(xtF,K2("{x@i@<i@:&@[;0;:;1]@~=':y@i:<y}",x,fcanon(x)))
-  K1("{x@i@<i@:&@[;0;:;1]@~~':x@i:<x}",x)))
+  P(xtF,K2("{x@i@<i@:&@[;0;:;1]@~=':y@i:<y}",x,fcanon(x)))   //long float vectors: 2.3.0's canonical keys, which keep the first spelling
+  K1("{b:@[;0;:;1]@~~':x@i:<x;o:(#x)*-1++\\b;j:(|&\\|i+o)[w]-o w:&b;x@j@<j}",x)))   //each run of matching items keeps its least index (not the first in grade order: -0.0 and 0.0 match); a min-scan from the right, each run offset by n times its number
 
 // ---- amber 2.1: `gagg (op;k;v[;m]) -- fused group aggregate -----------------
 // One pass: acc[group(k[i])] op= v[i]. op is a symbol (`sum `count `min `max

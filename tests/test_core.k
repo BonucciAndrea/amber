@@ -207,7 +207,13 @@ t[`distinctNanLength;{#?3000#x,(-x),1.0}0n;2]
 t[`findZeroStill;1.0 -0.0?0.0;1]
 t[`paNansOneValue;*"\n"\.[{`at(`pa x)};,0n 1.0 -0n;{x}];"'p-fail"]   / `pa: every NaN is one value, in two runs here
 
+/ ---- distinct of a generic list keeps the first of matching items ----
+/ (compared as text, since ~ takes -0.0 for 0.0)
+t[`distinctFirstPos;`k@?(0;0.0;-1*0.0);"(0;0.0)"]
+t[`distinctFirstNeg;`k@?(0;-1*0.0;1.0-1.0);"(0;-0.0)"]
+t[`distinctFirstNan;?(1;0n;-0n;0n);(1;0n)]
+t[`distinctGenPlain;?(1;"a";1;`b;"a");(1;"a";`b)]
 
-hexpect[117]
+hexpect[121]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

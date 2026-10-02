@@ -111,6 +111,7 @@ tradeN:+`sym`time`px!(`a`c;0 5;1 2)
 t[`ajNull;(+aj[`sym`time;tradeN;quote])`bid;0N 0N]
 / single-group (time-only) as-of: most recent quote on-or-before each trade time
 t[`ajNoGrp;(+aj[`time;+`time`x!(0 4 8;0 0 0);+`time`v!(1 3 5 7;10 20 30 40)])`v;0N 20 40]
+t[`asofLatest;asof[+`sym`time`bid!(`a`a`a`a;0 1 1 0;10 20 30 40);`sym`time!(`a;1)];(,`bid)!,30]
 / 64-bit nanosecond timestamps (values exceed 2^31 -> proves long/ns path)
 t[`ajNs;(+aj[`sym`time;+`sym`time`px!(,`a;,1500000000000;,1);+`sym`time`bid!(`a`a;1000000000000 2000000000000;10 20)])`bid;,10]
 

@@ -159,6 +159,13 @@ t[`jsonInfNan;(`j@0w;`j@-0w;`j@0n;`j@1.0 0w -0w 0n);("null";"null";"null";"[1,nu
 t[`jsonLiterals;`j?"[1,null,2]";(1.0;0n;2.0)]
 t[`jsonRoundTrip;`j?`j@1e20 -1.5 2.0;1e20 -1.5 2.0]
 
-hexpect[82]
+
+/ ---- JSON true and false read as 1 and 0 ----
+t[`jsonBools;`j?"[true,false,null]";(1;0;0n)]
+t[`jsonDocExample;`j?"{\"a\":1,\"b\":[true,\"c\"]}";`a`b!(1.0;(1;,"c"))]
+/ :: is written as null, as in q, so writing and reading agree (issue #20, row 24)
+t[`jsonNullOut;(`j@(::);`j@(1;::);`j@`a`b!(1;::));("null";"[1,null]";"{\"a\":1,\"b\":null}")]
+
+hexpect[85]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

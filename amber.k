@@ -303,7 +303,7 @@ minute:{_((tnum0 x)%60000)}                        / minutes since midnight (q t
 second:{_((tnum0 x)%1000)}                         / seconds since midnight (q time.second)
 z2:{-2$"0",$x}
 z3:{-3$"00",$x}
-stime1:{(z2 hh x),":",(z2 mm x),":",(z2 sec x),".",z3 milli x}
+stime1:{$[^x;"0N";(z2 hh x),":",(z2 mm x),":",(z2 sec x),".",z3 milli x]}
 stime:{x:tnum0 x;$[|/(@x)=`i`j;stime1 x;stime1'x]} / time -> "HH:MM:SS.mmm"
 ptime:{p:"."\x;t:`I$":"\*p;m:$[1<#p;`I$3#(p 1),"000";0];(3600000*t 0)+(60000*t 1)+(1000*t 2)+m}
 bar:{[w;u;t]s:w*u;s*_(t%s)}                        / w u-unit bars: bar[5;60000;t] = 5-min bars(ms)

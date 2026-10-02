@@ -411,6 +411,7 @@ t[`litCursorAdvanced;   1e-309 1.5;              1e-309 1.5]
 t[`litCursorOverflow;   1e309 1.5;               0w 1.5]
 t[`litRoundTrip;        . `k 5e-324;             5e-324]
 t[`litRoundTripVec;     . `k (5e-324;1e-320;1.5);(5e-324;1e-320;1.5)]
+t[`temporalNullPrint;(pstr 0N;dstr 0N;stime 0N;`k@1707.09.22D00:12:43.145224192);("0N";"0N";"0N";"0N")]
 
 / ---- 2.3: grade of 8-byte keys whose span fits in 32 bits ----
 / the radix picked its 4-byte kernel from the normalised byte count, so an int64

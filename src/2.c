@@ -105,7 +105,7 @@ Z A subfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;simd_subs_f64(v,yV,zV,yn);
 Z A admfF(F v,A y,U f)_((f==3?mulfF:f==2?subfF:addfF)(v,y,f))
 Z A dvdfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;U n=zn+3&-4;SIMD F(n,zf=v/yf)y-z?y(z):z)
 Z A dvdFf(A x,F v,U f)_(A z=aF(xn);SIMD F(xn,zf=xf/v)z)
-Z A dvdzZ(L v,A y,U f)_(dvdfF(v,cF(y),f))
+Z A dvdzZ(L v,A y,U f)_(dvdfF(v==NL?NF:v,cF(y),f))
 Z A dvdZZ(A x,A y,U f)_(x=cF(xR);x(amdFF(x,cF(y),f)))
 // amber: scalar-scalar fallback arithmetic. Every step that can involve the
 // long null (0N == LLONG_MIN) is done in the unsigned counterpart type:
@@ -114,7 +114,7 @@ Z A dvdZZ(A x,A y,U f)_(x=cF(xR);x(amdFF(x,cF(y),f)))
 // is undefined behaviour. Same bits, defined semantics -- Amber's integer
 // arithmetic has always been documented as wrapping, not trapping.
 #define NEGW(v) ((L)(0-(W)(v)))
-Z A arizz(L a,L b,U f)_(P(f==4,af((F)a/b))
+Z A arizz(L a,L b,U f)_(P(f==4,af((a==NL?NF:(F)a)/(b==NL?NF:(F)b)))
  az(f==1?(L)((W)a+(W)b)
    :f==2?(L)((W)a-(W)b)
    :f==3?(L)((W)a*(W)b)

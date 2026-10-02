@@ -434,7 +434,38 @@ t[`eachDateValue;2026.07.30=*|(1;0)+(2;2026.07.30);1]
 t[`eachStampType;@'(5000000000;1)+(2;2026.07.30D00:00:00.0);`i`n]
 t[`joinIntsStay;@1 2,3;`I]
 
-hexpect[262]
+/ ---- the int null converts to the float null (0n), never to a number ----
+t[`nullToFloatAdd;(0N+1.5;1.5+0N;1.5-0N;0N*2.0);4#0n]
+t[`nullToFloatDiv;(0N%2;2%0N);0n 0n]
+t[`nullToFloatDivVec;(0N%2 3;2 3%0N);(0n 0n;0n 0n)]
+t[`nullToFloatCast;`f$0N;0n]
+t[`nullToFloatEq;0N=0n;1b]
+t[`nullToFloatMin;(0N&1.5;0N|1.5);(0n;1.5)]
+t[`nullToFloatSum;+/(0N;1.5);0n]
+t[`nullToFloatVecOk;0N 1+1.5;0n 2.5]
+
+/ ---- dict arithmetic: a null value is a value; only a missing key takes the identity ----
+t[`dictNullKept;((`a!0N)+`a!5;(`a!0n)+`a!5.0;(`a!0n)%`a!2.0);((,`a)!,-9223372036854775803;(,`a)!,0n;(,`a)!,0n)]
+t[`dictNullKeptMixed;(`a`b!0N 1)+`b`c!5 6;`a`b`c!0N 6 6]
+t[`dictMissing;((`a!1)+`b!2;(`a!1)-`b!2;(`a!1)*`b!2);(`a`b!1 2;`a`b!1 -2;`a`b!1 2)]
+t[`dictMissingMinMax;((`a!1)&`b!2;(`a!1)|`b!2;(`a!1.5)&`b!2.5);(`a`b!1 2;`a`b!1 2;`a`b!1.5 2.5)]
+t[`dictCommon;(`a`b!1 2)+`b`c!10 20;`a`b`c!1 12 20]
+
+
+/ ---- a key on one side only takes the identity atom; the other values are left as they are ----
+t[`dictMissListVal;(`a`b!1 2)+`c!,1 2;`a`b`c!(1;2;1 2)]
+t[`dictMissOrder;((`a`b!(1 2;3))+`c!5;(`a`b!(3;1 2))+`c!5);(`a`b`c!(1 2;3;5);`a`b`c!(3;1 2;5))]
+t[`dictMissLonger;(`a`b!(1 2 3;3))+`a`c!(5;6 7);`a`b`c!(6 7 8;3;6 7)]
+/ a temporal value: no crash; types only, as no formatter is loaded
+t[`dictDateAdd;@'.((,`a)!,2026.07.30)+(,`a)!,1;,`d]
+t[`dictDateAddValue;2026.07.31=*.((,`a)!,2026.07.30)+(,`a)!,1;1]
+t[`dictTyped;((`a!1.5)+`b!2.5;(`a`b!1 2)-`b`c!10 20);(`a`b!1.5 2.5;`a`b`c!1 -8 -20)]
+/ a dict with untyped empty keys fills nothing ('length, as 2.3.1); typed empty keys fill, as in q
+t[`dictEmptyUntyped;*"\n"\.[.:;,"(`a`b!1 2)+()!()";{x}];"'length"]
+t[`dictEmptyTyped;(`a`b!1 2)+(0#`)!!0;`a`b!1 2]
+t[`dictEmptyVals;(((0#`)!())-`a`b!1 2;(`a`b!1 2)+(0#`)!());(`a`b!-1 -2;`a`b!1 2)]   / empty values () filled nothing: `a`b!(!0;!0)
+
+hexpect[284]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

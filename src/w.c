@@ -29,7 +29,10 @@ Z AX(l8,/*01..1*/Ab8;MC(b,a,n*SZ(A));*b=GAP;x=prj(x,b,n);x(e1(x,*a)))
 A e2f(A2 f,A x,A y/*f01*/)_(U k=xtt<<1|ytt;P(k==3,f(x,y))
  P(xtm||ytm,P(xtm>ytm,A z=N(e2f(f,xy,y));am(_R(xx),z))P(xtm<ytm,A z=Ny(e2f(f,x,_R(yy)));y(am(_R(yx),z)))
   P(_tM(xx)||_tM(yx),y(en0()))                                                                    //keyed tables: not yet (issue #19; the key union below crashed)
-  A z=unq(cat(xx,_R(yx)));x=x1(zR);y=y(y1(zR));I(f==add||f==sub||f==mul||f==dvd,A u=ai(f==mul||f==dvd);x=fil(u,x);y=fil(u,y))am(z,Nz(x(e2f(f,x,y)))))
+  A z=unq(cat(xx,_R(yx)));B o=(f==add||f==sub||f==mul||f==dvd||f==mnm)&&(_n(xx)||_t(xx)-tA)&&(_n(yx)||_t(yx)-tA)&&!mtc_(xx,yx);A mx=o?fnd(xx,zR):0,my=o?fnd(yx,zR):0;x=x1(zR);y=y(y1(zR));   //mx my: 0N where a key is missing on that side (none is when the keys match)
+  I(o,                                                         //a missing key takes the verb's identity (only a missing one: a null value stays)
+   A u=f==mnm?(xtF||ytF?af(WF):az(WL)):ai(f==mul||f==dvd);x=K("{$[|/^z;@[x;&^z;:;y];x]}",x,_R(u),mx);P(!x,mr(u);mr(my);z(y(0)))y=K("{$[|/^z;@[x;&^z;:;y];x]}",y,u,my);P(!y,z(x(0))))   //the identity atom at the missing positions only
+  am(z,Nz(x(e2f(f,x,y)))))
  P(!k&&xN-yN,el(y))U n=k<2?xN:yN;P(!n,x=fir(xR);x(o2f(f,x,fir(y))))A z=emp(tA);F(n,A v=ii(x,i);A u=f(v,ii(y,i));mr(v);B(!u,z=z(0))PSH(z,u))y(z))
 AX(e8,/*01..1*/P(n==1,e1(x,*a))P(n==2,A y=*a;y(e2(x,y,a[1])))Ab8;C t[8];L m=-1;F(n,A y=b[i]=a[i];Ym(em(x,a,n))t[i]=ytP?0:ytt?1:ytA?2+!MINE(y):4;I(t[i]>1,L l=yN;P(m>=0&&m-l,el8(a,n))m=l))
  P(m<0,x8(a,n))F(n,I(t[i]==1,_r(a[i])+=m))A u=0;I(!m,u=x==LEN?emp(tG):n==2&&xtv&&xv<11?_R(a[!_N(a[1])]):emp(tA))//t[i] 0:pkdatm,1:refatm,2:tA(r=1),3:tA,4:other

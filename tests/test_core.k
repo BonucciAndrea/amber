@@ -869,7 +869,47 @@ t[`amendKeepHeapIndexWide;{f:{L8[4294967296;`a]:7};L8::(1 2;3 4);r:{.[x;,0;{`err
 G1:1 2 3;N1.v:4 5 6
 t[`amendByNameListRefused;{r:{.[x;,0;{`err}]}'20#({.[,`G1;,5;:;9]};{.[`N1`v;,0 1;:;7 8 9]});(?r;G1;N1.v;. "1+1")}[];(,`err;1 2 3;4 5 6;2)]   / the name was released twice
 
-hexpect[535]
+/ ---- a failed assignment below a dict key, to a table, or into an atom leaves the variable ----
+t[`amendKeepDictIndex;(IA["D1:`a`b!(1 2;3 4)";"D1[`a;7]:9"];IA["D2:`a`b!(1 2;3 4)";"D2[`a`b;5]:9"];IA["D3:`a`b!(1 2;3 4)";"D3[`a;7]+:9"]);3#,(`err;`a`b!(1 2;3 4))]
+t[`amendKeepDictElided;IA["D4:`a`b!(1 2;3 4)";"D4[;5]:9"];(`err;`a`b!(1 2;3 4))]
+t[`amendKeepDictLength;(IA["D5:`a`b!(1 2;3 4)";"D5[`a`b]:1 2 3"];IA["D6:`a`b!(1 2;3 4)";"D6[`a;0 1]:7 8 9"]);2#,(`err;`a`b!(1 2;3 4))]
+t[`amendKeepSymbolIndex;IA["D7:`a`b!(1 2;3 4)";"D7[`a;`x]:9"];(`err;`a`b!(1 2;3 4))]   / a symbol indexes no list: 'type
+t[`amendKeepTableLength;(IA["T1:+`a`b!(1 2;3 4)";"T1[`a]:5 6 7"];IA["T2:+`a`b!(1 2;3 4)";"T2[`c]:5 6 7"]);2#,(`err;+`a`b!(1 2;3 4))]
+t[`amendKeepTableIndex;(IA["T3:+`a`b!(1 2;3 4)";"T3[5]:`a`b!9 9"];IA["T4:+`a`b!(1 2;3 4)";"T4[`a;5]:9"];IA["T5:+`a`b!(1 2;3 4)";"T5[5;`a]:9"]);3#,(`err;+`a`b!(1 2;3 4))]
+t[`amendKeepAtom;(IA["V1:5";"V1[0]:9"];IA["V2:`a`b!(1;2)";"V2[`a;0]:9"]);((`err;5);(`err;`a`b!1 2))]   / an index into an atom: 'type
+t[`amendKeepTemporalAtom;(IA["V6:2020.01.01";"V6[0]:9"];IA["D22:`a`b!(2020.01.01;2)";"D22[`a;0]:9"]);((`err;2020.01.01);(`err;`a`b!(2020.01.01;2)))]
+t[`amendKeepListDeepLength;IA["L1:(1 2;3 4)";"L1[0;0 1]:7 8 9"];(`err;(1 2;3 4))]
+t[`amendDictStillWorks;(IA["D8:`a`b!(1 2;3 4)";"D8[`z;0]:9"];IA["D9:`a`b!(1 2;3 4)";"D9[`c]:5 6 7"];IA["D0:`a`b!(1 2;3 4)";"D0[`a;0]:9"]);((::;`a`b`z!(1 2;3 4;9 0N));(::;`a`b`c!(1 2;3 4;5 6 7));(::;`a`b!(9 2;3 4)))]
+t[`amendTableStillWorks;(IA["T6:+`a`b!(1 2;3 4)";"T6[`a]:9"];IA["T7:+`a`b!(1 2;3 4)";"T7[0;`a]:9"];IA["T8:+`a`b!(1 2;3 4)";"T8[`z;0]:9"]);((::;+`a`b!(9 9;3 4));(::;+`a`b!(9 2;3 4));(::;+`a`b`z!(1 2;3 4;9 0N)))]
+t[`amendTablesBelowList;(IA["L2:(+`a`b!(1 2;3 4);+`a`b!(1 2;3 4))";"L2[0 1;`c]:(5 6;7 8)"];IA["T10:+`a!,1 2 3";"T10[`a]:7 8"]);((::;(+`a`b`c!(1 2;3 4;5 6);+`a`b`c!(1 2;3 4;7 8)));(::;+(,`a)!,7 8))]   / a column below a list index; the only column may take another count
+t[`amendByNameKeepDict;(IA["D11:`a`b!(1 2;3 4)";".[`D11;(`a;7);:;9]"];IA["T9:+`a`b!(1 2;3 4)";".[`T9;,`a;:;7 8 9]"];IA["V3:5";".[`V3;,0;:;9]"]);((`err;`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;5))]   / by name too
+t[`amendByNameWhole;(IA["V4:5";".[`V4;::;:;9]"];IA["V5:5";".[`V5;::;+;1]"]);((9;9);(6;6))]   / :: as the index replaces the whole value
+t[`amendTableOtherVerbs;(IA["T11:+`a`b!(1 2;3 4)";"T11[`a]~:5 6 7"];IA["T12:+`a`b!(1 2;3 4)";".[`T12;,`a;{y@x};10 20 30]"];IA["T13:+`a`b!(1 2;3 4)";".[`T13;,`c;{2#y};5 6 7]"];IA["D12:`x!,+`a`b!(1 2;3 4)";"D12[`x;`a]~:5 6 7"]);((::;+`a`b!(0 0;3 4));2#,+`a`b!(20 30;3 4);2#,+`a`b`c!(1 2;3 4;5 6);(::;(,`x)!,+`a`b!(0 0;3 4)))]   / a verb other than : gets the whole column, so only its result needs the row count
+t[`amendEmptySymbolIndex;(IA["L3:1 2 3";"L3[0#`]:9"];IA["D13:`a`b!(1 2;3 4)";"D13[`a;0#`]:9"]);((::;1 2 3);(::;`a`b!(1 2;3 4)))]   / no symbols, nothing to assign
+t[`amendDictElidedFirst;(IA["D14:`a`b!(1 2;,3)";"D14[;1]:9"];IA["D15:`a`b!(1 2;`x)";"D15[;0]:9"];IA["D16:`x`y!(`a`b!(1 2;,3);0)";"D16[`x;;1]:9"]);((::;(`a;`b;::)!(1 2;,3;0N 9));(::;(`a;`b;::)!(1 2;`x;9 0N));(::;`x`y!((`a;`b;::)!(1 2;,3;0N 9);0)))]   / an elided level adds the key :: with the first value nulled, as in ngn/k: only the first value's shape counts
+t[`amendDictMissingKey;(IA["D19:`a`b!(1 2 3;4 5)";"D19[`z;2]:9"];IA["D20:`a`b!(1 2 3;4 5)";"D20[`z;5]:9"];IA["D21:`a`b!(4 5;1 2 3)";"D21[`z`b;2]:9"]);((::;`a`b`z!(1 2 3;4 5;0N 0N 9));(`err;`a`b!(1 2 3;4 5));(`err;`a`b!(4 5;1 2 3)))]   / a missing key is added with the first value nulled, and that is what is indexed
+XS:1 2 3
+t[`amendThroughSymbol;{r:IA["D18:`a`b!(1 2;`XS)";"D18[`b;0]:9"];(r;XS)}[];((::;`a`b!(1 2;9 2 3));9 2 3)]   / a symbol atom at a level names a global, which the assignment amends (as in ngn/k), so it is not refused
+
+/ ---- an assignment along one index per level is checked and made in one walk: the same values as before ----
+t[`amendWalkNested;(IA["W1:`a`b!(1 2;`x`y!(3 4;5 6))";"W1[`b;`y;1]:9"];IA["W2:`a`b!(1 2;`x`y!(3 4;5 6))";"W2[`b;`x;0]+:10"];IA["W3:(1 2;(3;4 5))";"W3[1;1;0]:9"];IA["W12:`a`b!(1 2;`x`y!(3 4;5 6))";".[`W12;(`b;`x;0);-:]"]);((::;`a`b!(1 2;`x`y!(3 4;5 9)));(::;`a`b!(1 2;`x`y!(13 4;5 6)));(::;(1 2;(3;9 5)));2#,`a`b!(1 2;`x`y!(-3 4;5 6)))]
+t[`amendWalkNewKey;(IA["W4:`a`b!(1 2;3 4)";"W4[`z]+:1"];IA["W5:`a`b!(1 2;3 4)";"W5[`z],:`q"];IA["W6:+`a`b!(1 2;3 4)";"W6[`z]+:1"];IA["W7:`a`b!(1 2;3 4)";".[`W7;`z;+;1]"];IA["W11:(`a`b!(1 2;3 4);5)";"W11[0;`z;1]:9"]);((::;`a`b`z!(1 2;3 4;1 1));(::;`a`b`z!(1 2;3 4;,`q));(::;+`a`b`z!(1 2;3 4;1 1));2#,`a`b`z!(1 2;3 4;1 1);(::;(`a`b`z!(1 2;3 4;0N 9);5)))]   / a key that is not there is added, with the first value nulled
+t[`amendWalkTable;(IA["W8:+`a`b!(1 2;3 4)";"W8[`a;1]+:1.5"];IA["W9:+`a`b!(1 2;3 4)";"W9[1;`a]:9"];IA["W10:`a`b!(`x`y!1 2;`x`y!3 4)";"W10[`a;`x]:9"];IA["W13:+`a`b!(1 2;3 4)";"W13[0;`b]:5 6 7"]);((::;+`a`b!((1;3.5);3 4));(::;+`a`b!(1 9;3 4));(::;`a`b!+`x`y!(9 3;2 4));(::;+`a`b!(1 2;(5 6 7;4))))]   / a dict whose values are dicts of the same keys holds them as a table; a row then a column amends that column
+t[`amendWalkShared;{p:(1 2;3 4);q:p 1;p[1;0]:9;d:`a`b!(1 2;3 4);e:d`a;d[`a;0]:9;s:+`a`b!(1 2;3 4);u:s`a;s[`a;0]:9;(p;q;d;e;s;u)}[];((1 2;9 4);3 4;`a`b!(9 2;3 4);1 2;+`a`b!(9 2;3 4);1 2)]   / an item amended in place is not one held elsewhere
+t[`amendWalkResult;{p:(1 2;3 4);r:p[1;0]+:5;(r;p)}[];(8;(1 2;8 4))]
+
+/ ---- where the walk stops short below a key, or meets a list of keys above the last level, the assignment goes on from there: the same values as before, and where it fails (X6, Y8, Y9) the same error, with the variable now kept ----
+t[`amendWalkStopShort;(IA["X1:`a`b`c!(1 2 3;4 5 6;7 8 9)";"X1[`c;0 1]:5 6"];IA["X2:`a`b`c!(1 2 3;4 5 6;7 8 9)";"X2[`c;]:5"];IA["X3:+`a`b!(1 2 3;4 5 6)";"X3[`b;0 1]:7 8"];IA["X5:`a`b`c!(1 2 3;4 5 6;7 8 9)";".[`X5;(`c;0 1);:;5 6]"];IA["X6:`a`b`c!(1 2 3;4 5 6;7 8 9)";"X6[`c;0 1 5]:5"]);((::;`a`b`c!(1 2 3;4 5 6;5 6 9));(::;`a`b`c!(1 2 3;4 5 6;5 5 5));(::;+`a`b!(1 2 3;7 8 6));2#,`a`b`c!(1 2 3;4 5 6;5 6 9);(`err;`a`b`c!(1 2 3;4 5 6;7 8 9)))]
+XH:1 2 3
+t[`amendWalkStopSymbol;{r:IA["X4:`a`b!(1 2;`XH)";"X4[`b;0 1]:7 8"];(r;XH)}[];((::;`a`b!(1 2;7 8 3));7 8 3)]   / below a key, a symbol names a global, which is amended by name
+t[`amendWalkKeyList;(IA["Y1:`a`b`c!(1 2 3;4 5 6;7 8 9)";"Y1[`b`c;0]:7 8"];IA["Y2:`a`b`c!(1 2 3;4 5 6;7 8 9)";"Y2[`b`b;0]+:1"];IA["Y3:`a`b`c!(1 2 3;4 5 6;7 8 9)";"Y3[`b`z;0]:7"];IA["Y4:+`a`b!(!5;!5)";"Y4[`a`b;0]:7"];IA["Y5:`a`b!(`x`y!(1 2;3 4);`x`y!(5 6;7 8))";"Y5[`a;`x`y;0]:9"];IA["Y6:`a`b`c!(1 2 3;4 5 6;7 8 9)";".[`Y6;(`b`c;0);-:]"];IA["Y7:`x`y!(`a`b!(1 2;3 4);`a`b!(5 6;7 8))";"Y7[`x`y;`b]:(7 8;9 9)"];IA["Y8:`a`b`c!(1 2 3;4 5 6;7 8 9)";"Y8[`b`c;0 9]:7"];IA["Y9:`a`b!(`x`y!(1 2;3 4);`x`y!(5 6;7 8))";"Y9[`a;`x`y;5]:9"]);((::;`a`b`c!(1 2 3;7 5 6;8 8 9));(::;`a`b`c!(1 2 3;6 5 6;7 8 9));(::;`a`b`c`z!(1 2 3;7 5 6;7 8 9;7 0N 0N));(::;+`a`b!(7 1 2 3 4;7 1 2 3 4));(::;`a`b!+`x`y!((9 2;5 6);(9 4;7 8)));2#,`a`b`c!(1 2 3;-4 5 6;-7 8 9);(::;`x`y!+`a`b!((1 2;5 6);(7 8;9 9)));(`err;`a`b`c!(1 2 3;4 5 6;7 8 9));(`err;`a`b!+`x`y!((1 2;5 6);(3 4;7 8))))]   / found once, at the places the check found; a key not there is added, as before
+t[`amendFunctionInVariable;({r:IA["F1:(1;(2;{FR::F1[1;0];x>1}))";"F1[1;1]#:1 2 3"];(r;FR)}[];{r:IA["F3:(1;(2;{FR::F3[1;0];x>1}))";"F3[1;1]_:1 2 3"];(r;FR)}[];IA["F2:(0;(1;(2;{F2[1;0]:5;x>1})))";"F2[1;1;1]#:1 2 3"]);(((::;(1;(2;2 3)));2);((::;(1;(2;,1)));2);(::;(0;(1;(2;2 3)))))]   / f#y and f_y call f, here an item of the variable, which sees the variable whole, and may amend it
+XW:`a`b!(1 2;3 4)
+t[`amendSelfByName;{r:{.[.:;,x;{`err}]}'("SV1:`a`b!(`SV1;1 2);SV1[`a;`b]:9";"SV2:`a`b!(`SV2;1 2);SV2[`a;`a]:9";"SG:`a`b!(`SV3;5 6);SV3:`a`b!(`SG;1 2);SV3[`a;`a;`b]:9";"SV4:`a`b!(`SV4;1 2);SV4[`a;`z]:9");XW[`a;0]:9;(r;{.[.:;,x;{`lost}]}'("SV1";"SV2";"SV3";"SG";"SV4");XW;+/!1000)}[];(4#`err;(`lost;`lost;`lost;::;`lost);`a`b!(9 2;3 4);499500)]   / a symbol below a key names a global, amended by name, that names the variable again, which the assignment has half amended: 'type and the variable lost, as on main (which then freed it twice; the missing key it added, to a dict it could not print)
+
+t[`amendSelfBelowStop;{r:{.[.:;,x;{`err}]}'("SD1:(0;((`SD1;0);(`SD1;1)));SD1[1;0 1;0;1]:9";"SD2:(0;`a`b!(`SD2;`SD2));SD2[1;`a`b;1]:9";"SD3:(0;+`a`b!(`SD3`SD3;1 2));SD3[1;0;`a;1]:9";"SD4:(0;((`SD4;0);(`SD4;1)));SD4[1;;0;1]:9";"SD5:(1;(2;`SD5));SD5[1;1;1;0]@:{x}");XW[`a;0]:8;(r;{.[.:;,x;{`lost}]}'("SD1";"SD2";"SD3";"SD4";"SD5");XW;+/!1000)}[];(5#`err;5#`lost;`a`b!(8 2;3 4);499500)]   / an amend by name below where the walk stopped (a list of indices, an elided level, a list of keys, a row) that names the variable, which the assignment has items out of: 'type before it is touched, and the variable lost; on main it read freed memory or crashed. With @: (assigned as before), as on main
+
+hexpect[565]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

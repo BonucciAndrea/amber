@@ -172,6 +172,25 @@ te[`boolDotAlone;"{b:7;01b.1}[]"]
 t[`boolStrandStill;1 01b;1 0 1]
 
 
-hexpect[91]
+
+/ ---- literals of any length (they were cut at 512 numbers or chars, 256 symbols) ----
+t[`litLongInts;#. " "/600#,"1";600]
+t[`litLongFloats;+/. " "/600#,"1.5";900.0]
+t[`litLongBools;. " "/(600#,"1"),,"0101b";(600#1),0 1 0 1]
+t[`litLongString;#. "\"",(1300#"ab\\n"),"\"";975]
+t[`litLongSyms;#?. ,/"`s",/:$!700;700]
+t[`litLongSymsOrder;. ,/"`s",/:$!300;`$"s",/:$!300]
+/ ---- a list expression of 256 or more items is 'limit, not 'compile ----
+t[`compileLimit;*"\n"\.[.:;,"a:1;(",(";"/256#,"a"),")";{x}];"'limit"]
+/ the other limits of the bytecode are 'limit too: a $[..] branch over 255 bytes, more than 8 names
+/ assigned at once, 9 or more arguments, 16 or more locals (14 and 15 were 'limit already; 13 compile)
+t[`limitCondJump;*"\n"\.[.:;,"{$[x;",("+"/130#,"x"),";0]}";{x}];"'limit"]
+t[`limitAssignNames;*"\n"\.[.:;,"(a;b;c;d;e;f;g;h;i):!9";{x}];"'limit"]
+t[`limitArgs;*"\n"\.[.:;,"{x}[1;2;3;4;5;6;7;8;9]";{x}];"'limit"]
+t[`limitLocals;*"\n"\.[.:;,("{",(";"/(,'"abcdefghijklmnopq"),\:":1"),"}");{x}];"'limit"]
+t[`limitsInside;({$[x;1;0]}1;(a;b):1 2;{x+y}[1;2];{a:1;b:2;a+b}[]);(1;1 2;3;3)]
+t[`compileUnderLimit;. "a:1;#(",(";"/100#,"a"),")";100]
+
+hexpect[104]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

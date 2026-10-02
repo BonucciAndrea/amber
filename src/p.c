@@ -37,19 +37,19 @@ Z L pfu(S*p)_(L v=pu(p);I(v==NL,v=0)S s=*p;C c=*s;P(c=='w',(*p)++;WFL)P(c=='n',(
   I(e<-308,*p=s;I(e<-616,return 0;)F r_=((F)v/t[308])/t[-e-308];return *(L*)&r_;))
  *p=s;*(L*)A(e<0?v/t[-e]:v*t[e]))
 L pf(S*p)_(B m=**p=='-';(*p)+=m;L u=pfu(p),v=(*p)[-1]=='N'?u:(L)((W)m<<63)|u;(*p)+=**p=='f';v)  //parse float (the null 0N has no sign: -0N is 0n, as in ngn/k)
-Z A pV(C t,TY(pl)*f)_(L a[1<<9];U n=0;                                                              //parse ints or floats
+Z A pV(C t,TY(pl)*f)_(L a[1<<9];U n=0;A x=0;                                                  //parse ints or floats (in chunks of 512)
  W(1,S q=s;W(*q-'0'<2u,q++)                                                                     //a boolean token (01b) in the strand: its bits
-   I(q>s&&*q=='b'&&!CA9(q[1])&&q[1]-'.',P(n+(q-s)>L(a),ez0())F(q-s,F b=s[i]-'0';a[n++]=t==tF?*(L*)&b:s[i]-'0')s=q+1)
-   E(L v=f(&s);P(n>=L(a),ez0())a[n++]=v)
-   S p=pw(s);B(p==s||!num(p))s=p)aV(t,n,a))
+   I(q>s&&*q=='b'&&!CA9(q[1])&&q[1]-'.',F(q-s,I(n==L(a),A c_=aV(t,n,a);x=x?cat11(x,c_):c_;n=0)F b=s[i]-'0';a[n++]=t==tF?*(L*)&b:s[i]-'0')s=q+1)
+   E(L v=f(&s);I(n==L(a),A c_=aV(t,n,a);x=x?cat11(x,c_):c_;n=0)a[n++]=v)
+   S p=pw(s);B(p==s||!num(p))s=p)A c_=aV(t,n,a);x?cat11(x,c_):c_)
 Z A0(pZ,S p=s;W(*p-'0'<2u,p++)                                                                      //parse ints
  P(*p=='B',S t=s;s=p+1;cB(aV(tG,p-t,t)))//todo
  P(*p=='b',S t=s;s=p+1;cG(cB(aV(tG,p-t,t))))
  sqzZ(N(pV(tL,plN))))
 Z A0(pF,pV(tF,pf))                                                                                  //parse floats
-Z A0(pC,C a[1<<9];U n=0;C c=*++s;                                                                   //parse "string"
- W(c&&c-'"'&&n<L(a),I(c=='\\',c=*++s;U i=fG("tnr0",4,c);I(i<4,c="\t\n\r"[i]))a[n++]=c;c=*++s)
- P(!c,ep0())P(n>=L(a),ez0())s++;aV(tC,n,a))
+Z A0(pC,C a[1<<9];U n=0;C c=*++s;A x=0;                                                      //parse "string" (in chunks of 512)
+ W(c&&c-'"',I(n==L(a),A c_=aV(tC,n,a);x=x?cat11(x,c_):c_;n=0)I(c=='\\',c=*++s;U i=fG("tnr0",4,c);I(i<4,c="\t\n\r"[i]))a[n++]=c;c=*++s)
+ P(!c,x?x(ep0()):ep0())s++;A c_=aV(tC,n,a);x?cat11(x,c_):c_)
 Z A0(p0x,S p=s;W(CA9(*p),p++)A x=N(unhC(s,p-s));s=p;x)                                              //parse 0x string
 Z A0(ps,S p=s;C c=*s;I(id0(c),s=pID(s))J(c>>7,W(*++s<-64)s+=*s==':')aCm(p,s))                       //parse symbol
 // amber 2.2: `w` says whether whitespace may PRECEDE an item.
@@ -60,9 +60,9 @@ Z A0(ps,S p=s;C c=*s;I(id0(c),s=pID(s))J(c>>7,W(*++s<-64)s+=*s==':')aCm(p,s))   
 // skipping the space there would silently fuse them into one two-item vector.
 // Trailing space before the closing bracket is handled by pp() below, because
 // the loop breaks without consuming it.
-Z A pSw(C c,B w)_(I a[256];U n=0;                                                                   //parse symbols
- W(1,P(n>=L(a),ez0())s++;I(w,s=pw(s))A y=*s-'"'?ps():N(pC());y=str0(y);a[n++]=us(yC);y(0);S p=pw(s);B(*p-c)s=p)
- aV(tS,n,a))
+Z A pSw(C c,B w)_(I a[256];U n=0;A x=0;                                                     //parse symbols (in chunks of 256)
+ W(1,I(n==L(a),A c_=aV(tS,n,a);x=x?cat11(x,c_):c_;n=0)s++;I(w,s=pw(s))A y=*s-'"'?ps():N(pC(),I(x,mr(x)));y=str0(y);a[n++]=us(yC);y(0);S p=pw(s);B(*p-c)s=p)
+ A c_=aV(tS,n,a);x?cat11(x,c_):c_)
 Z A pS(C c)_(pSw(c,0))
 Z A0(pP,I a[8];U n=0;                                                                               //parse dot-separated path of identifiers
  W(1,P(n>=L(a),ez0())A y=str0(ps());a[n++]=us(yV);y(0);B(*s-'.'||!id0(s[1]))++s)

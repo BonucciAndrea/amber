@@ -255,7 +255,49 @@ t[`rangePlusPastMax;9223372036854775806+!3;9223372036854775806 92233720368547758
 t[`rangeMinusPastMin;(-9223372036854775807+!3)-1;0N -9223372036854775807 -9223372036854775806]
 t[`rangePlusPastMaxDrop;(1_9223372036854775806+!3;-1_9223372036854775806+!3);(9223372036854775807 0N;9223372036854775806 9223372036854775807)]
 
-hexpect[141]
+/ ---- take: a count of 2^32 or more is 'limit (it was cut to 32 bits) ----
+t[`takeLimit;.[.:;,"4294967297#!3";{(x?"\n")#x}];"'limit"]
+t[`takeLimitNeg;.[.:;,"-4294967297#!3";{(x?"\n")#x}];"'limit"]
+t[`takeLimitCount;.[.:;,"#4294967297#!100";{(x?"\n")#x}];"'limit"]
+t[`takeBig;#100000#!3;100000]
+t[`takeCycle;5#1 2;1 2 1 2 1]
+
+
+/ ---- counts: a list has at most 2^32-1 items; beyond is 'limit, never a wrapped count ----
+t[`tilBig;(#!3000000000;*|!3000000000;#!-3000000000;*!-3000000000);3000000000 2999999999 3000000000 -3000000000]
+t[`tilLimit;.[.:;,"#!1000000000000000";{(x?"\n")#x}];"'limit"]
+t[`tilLimitNeg;.[.:;,"#!-4294967296";{(x?"\n")#x}];"'limit"]
+t[`reshapeLimit;.[.:;,"2 4294967297#0";{(x?"\n")#x}];"'limit"]
+t[`rollLimit;.[.:;,"#4294967297?1.0";{(x?"\n")#x}];"'limit"]
+t[`tilDropBig;#3000000000_!3000000001;1]
+t[`windowsSmall;3':!5;(0 1 2;1 2 3;2 3 4)]
+
+/ reshape: a shape whose product passes 2^32, even by wrapping past 2^64, is 'limit; 0N with a long count keeps it
+t[`reshapeWrapLimit;*"\n"\.[.:;,"3 6148914691236517206#!5";{x}];"'limit"]
+t[`reshapeHugeLimit;*"\n"\.[.:;,"65536 65536 65536 65536#0";{x}];"'limit"]
+t[`reshapeNullLongCount;(0N 4294967297#!3;0N 4294967296#!3);(,0 1 2;,0 1 2)]
+
+
+/ ---- rolls of chars and of full-range ints check their count too ----
+t[`rollCharsLimit;.[.:;,"#4294967298?0x00";{(x?"\n")#x}];"'limit"]
+t[`rollFullLimit;.[.:;,"#4294967298?-1";{(x?"\n")#x}];"'limit"]
+t[`rollCharsNeg;.[.:;,"#-4294967294?\" \"";{(x?"\n")#x}];"'domain"]
+t[`rollCharsSmall;#5?" ";5]
+
+
+t[`rollNullChars;0N?" ";""]
+
+/ ---- where of counts that overflow or pass 2^32 is 'limit (as upstream ngn/k 4b1dd07e, d5099539 check; issue #10) ----
+te[`whereOverflow;"#&9223372036854775807 9223372036854775807 2"]
+t[`whereLimitSum;.[.:;,"#&4294967297 0";{(x?"\n")#x}];"'limit"]
+te[`whereLimitOne;"#&,4294967297"]
+t[`whereLimitError;.[.:;,"#&,4294967297";{(x?"\n")#x}];"'limit"]
+t[`whereOverflowLimit;.[.:;,"#&9223372036854775807 9223372036854775807 2";{(x?"\n")#x}];"'limit"]
+t[`whereNegative;.[.:;,"&1 -1";{(x?"\n")#x}];"'domain"]
+t[`whereSmall;(&1 0 2;&0#0);(0 2 2;!0)]
+t[`whereWrapNegative;*"\n"\.[.:;,"&9223372036854775807 1";{x}];"'limit"]   / a total that wraps negative was 'domain
+
+hexpect[169]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

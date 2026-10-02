@@ -41,7 +41,7 @@ V tilV(V*p,L v,L n,U w){L*RES a=p;W k=(W)G(0x101010101010101ll,0x1000100010001ll
  // reason).
  L m=(n-1>>3-w)+4&-4;
  VSIMD for(L i=0;i<m;i++)a[i]=(L)(q+(W)i*d);}
-X1(til,RA(K1("{x@'!#'x}",x))Ril(L n=gl(x);I(n==NL,n=0)aE(MIN(0,n),MAX(0,n)))REBGHIL(K1("{(*a)#'&'x#'1_a:|*\\|x,1}",x))RmM(x(_R(xx)))Ro(val(x))RS(gns(_v(jS(x))))Rs(gns(xv))R_(et(x)))
+X1(til,RA(K1("{x@'!#'x}",x))Ril(L n=gl(x);I(n==NL,n=0)P((n<0?-n:n)>>32,ez0())aE(MIN(0ll,n),MAX(0ll,n)))REBGHIL(K1("{(*a)#'&'x#'1_a:|*\\|x,1}",x))RmM(x(_R(xx)))Ro(val(x))RS(gns(_v(jS(x))))Rs(gns(xv))R_(et(x)))
 X1(whr,Ril(whr(enl(x)))RA(P(!xn,x(an(0,tI)))K1("{$[`A~@x;(,&#'*'x),,'/x@\\:!0|/#'x:o'x;,&x]}",x))Rm(A y=kv(&x);x(x1(Nx(whr(y)))))RE(whr(gZ(x)))R_(et(x))
  RB(U m=xn,n=addfB(xV,m);A y=aI(n);I*r=yV;Mx(F(m+7>>3,C v=xg;W(v,U j=CTZ(v);v&=~(1<<j);*r++=i<<3|j)))Q(r-yI==n);y)
  RGHIL(I w=xw-3;
@@ -54,7 +54,7 @@ X1(whr,Ril(whr(enl(x)))RA(P(!xn,x(an(0,tI)))K1("{$[`A~@x;(,&#'*'x),,'/x@\\:!0|/#
     I(t_==tG,{G*r_=_V(y_);CO UC*mm_=xV;unsigned char acc_=0;F(xn,acc_|=mm_[i];r_[k_]=(G)i;k_+=mm_[i]!=0)bad_=acc_>1;})
     J(t_==tH,k_=simd_where_i16(xV,_V(y_),xn,&bad_))E(k_=simd_where_i32(xV,_V(y_),xn,&bad_))
     I(!bad_,return x(AN((U)k_,y_));)mr(y_);})
-  L m=xn,n=addfZ(0,x);P(n<0||minfZ(0,x)<0,ed(x))C t=tZ(m-!!m);P(t>tI,ez(x))A y=an(n,t);
+  L m=xn,n=addfZ(0,x);P(minfZ(0,x)<0,ed(x))P(n<maxfZ(0,x)||(W)n-(U)n,ez(x))C t=tZ(m-!!m);P(t>tI,ez(x))A y=an(n,t);
   Mx(S4(t-tG,{G*r=yV;S4(w,F(m,Fj(xg,*r++=i)),F(m,Fj(xh,*r++=i)),F(m,Fj(xi,*r++=i)),F(m,Fj(xl,*r++=i)))},
              {H*r=yV;S4(w,F(m,Fj(xg,*r++=i)),F(m,Fj(xh,*r++=i)),F(m,Fj(xi,*r++=i)),F(m,Fj(xl,*r++=i)))},
              {I*r=yV;S4(w,F(m,Fj(xg,*r++=i)),F(m,Fj(xh,*r++=i)),F(m,Fj(xi,*r++=i)),F(m,Fj(xl,*r++=i)))},))y))

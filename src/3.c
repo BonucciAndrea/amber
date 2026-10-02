@@ -112,7 +112,7 @@ Z L maxfL(CO V*a,U n)_(n?MAX((L)(1ull<<63),simd_max_i64(a,n)):(L)(1ull<<63))
   L addfZ(L v,A x/*0*/)_(v+    G(&addfG,addfH,addfI,addfL)[xw-3](xV,xn) )
 Z L mulfZ(L v,A x/*0*/)_(v*    G(&mulfG,mulfH,mulfI,mulfL)[xw-3](xV,xn) )
   L minfZ(L v,A x/*0*/)_(MIN(v,G(&minfG,minfH,minfI,minfL)[xw-3](xV,xn)))
-Z L maxfZ(L v,A x/*0*/)_(MAX(v,G(&maxfG,maxfH,maxfI,maxfL)[xw-3](xV,xn)))
+  L maxfZ(L v,A x/*0*/)_(MAX(v,G(&maxfG,maxfH,maxfI,maxfL)[xw-3](xV,xn)))
 // sumF: four-way partial float sum (see the header note above).
 // amber item 3: the four-way scalar partials are now src/simd.c's kernel, which
 // is the same summation order (four independent accumulators) widened to the

@@ -222,7 +222,7 @@ A rdxg(A);   //ascending grade of a flat numeric vector, or 0 -> caller falls ba
 #define AMGALLOP 64u
 I qA(A,A),qf(F,F),rnk(A);
 U _K(A),si(S,C),_N(A),js_eval(C*,U,C*,U),fG(CO G*,U,G),fI(CO I*,U,I),fL(CO L*,U,L),us(S);
-L cfm(CO A*,I),gl_(A),gl(A),iw(A,U,L),now(),pl(S*),minfZ(L,A),addfB(CO V*,U),addfZ(L,A),pf(S*);
+L cfm(CO A*,I),gl_(A),gl(A),iw(A,U,L),now(),pl(S*),maxfZ(L,A),minfZ(L,A),addfB(CO V*,U),addfZ(L,A),pf(S*);
 S su(U),pID(S);
 W pu(S*);
 F gf(A);

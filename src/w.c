@@ -68,7 +68,7 @@ Z A3(p2,/*010*/Zt(er(y))Zm(y=N(p2(x,y,zy));am(_R(zx),y))P(!zN,y(zR))P(xtv&&xv<11
 // amber 2.3: unseeded |': and &': seed with the first element, so element 0 is x[0] itself
 // (an identity seed of -0w/-0W is not below NaN/0N, and `|':0n 1.0` began -0w)
 Z A2(p1,/*01*/y(p2(x,(x==MXM||x==MNM)&&!_tP(y)&&_t(y)<tM&&_N(y)?fir(yR):ie(x,y),y)))
-Z A stn(A x,L n,A y/*0n0*/)_(P(n<0||n-(I)n,ed0())P(!ytT,et0())YE(y=gZ(yR);y(stn(x,n,y)))L m=MAX(0,yn-n+1);A z=aA0(m);P(!m,mr(zx);zx=mkn(rsz(n,fir(yR)));z)F(m,PSH(z,Nz(x1(slc(y,i,i+n)))))z)
+Z A stn(A x,L n,A y/*0n0*/)_(P(n<0||n-(I)n,ed0())P(!ytT,et0())YE(y=gZ(yR);y(stn(x,n,y)))L m=MAX(0ll,yn-n+1);A z=aA0(m);P(!m,mr(zx);zx=mkn(rsz(n,fir(yR)));z)F(m,PSH(z,Nz(x1(slc(y,i,i+n)))))z)
 Z A3(ste,/*010*/Yz(stn(x,gl(y),z))et(y))
 Z A win(L n,A x)_(x(stn(au,n,x)))
 Z AX(cas,/*01..1*/Q(xtZ)K2("{(++y)[x]@'!#x}",x,aV(tA,n,a)))

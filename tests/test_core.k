@@ -208,6 +208,14 @@ te[`litIntLimitNeg;"-18446744073709551616"]
 te[`litIntLimitVec;"1 18446744073709551617"]
 te[`litIntLimitBig;"99999999999999999999"]
 
-hexpect[117]
+/ ---- `I$ of digits beyond int64 is 0N, like any text that is not an int ----
+t[`parseIntBig;`I$"99999999999999999999";0N]
+t[`parseIntMaxPlus1;`I$"9223372036854775808";0N]
+t[`parseIntMax;`I$"9223372036854775807";9223372036854775807]
+t[`parseIntMin;`I$"-9223372036854775807";-9223372036854775807]
+t[`parseIntZeros;`I$"0000000000000000000000012";12]
+t[`parseIntVec;`I$("12";"99999999999999999999";"x");12 0N 0N]
+
+hexpect[123]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

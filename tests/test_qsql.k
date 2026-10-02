@@ -277,9 +277,14 @@ t[`fbyUpdate;     (upd"update f:(max;px) fby sym from ft")`f;        50 40 50 40
 / and on SEVERAL group columns, which used to return one value per column
 t[`fbyWhereCols;  (sel"select px from ft where px=(max;px) fby (sym;ex)")`px; 20 30 40 50.0]
 
+/ ---- two keyed tables in arithmetic or comparison: 'nyi (they crashed); a keyed table with an atom works ----
+KA:(+(,`a)!,1 2 3)!4 5 6;KB:(+(,`a)!,2 3 4)!10 20 30;KE:{.[x;y;{(x?"\n")#x}]}
+t[`keyedNyi;    {KE[x;(KA;KB)]}'(+;-;*;%;&;|;<;>;=);  9#,"'nyi"]
+t[`keyedAtom;   KA+1;                                       (+(,`a)!,1 2 3)!5 6 7]
+
 / Guard against a silently skipped block (see tests/harness.k): this is the
 / exact number of assertions this file is expected to record. Bump it when
 / you add or remove cases -- if it ever disagrees, some of them stopped running.
-hexpect[155]
+hexpect[157]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

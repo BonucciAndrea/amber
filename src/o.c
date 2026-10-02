@@ -23,6 +23,7 @@ NI B mtc_(A x,A y/*00*/)_(
  YE(mtc_(y,x))
  P(xtZ&&ytZ&&xt-yt&&xn==yn,C t=MAX(xt,yt);x=ct(t,xR);y=ct(t,yR);x(y(!memcmp(xV,yV,((W)xn<<xw)+7>>3))))
  P(xt-yt||xtP||(xtr&&xE-yE)||xn-yn,0)
+ XB(U n=((W)xn<<Tw[xt])>>3;B r=!memcmp(xV,yV,n);P(xn&7,UC m=(UC)((1u<<(xn&7))-1);r&&(xG[n]&m)==(yG[n]&m))r)   //bits after the last item are not part of the value (upstream ngn/k): take and drop leave them as they were
  P(!xtR||(LH(tB,xt,tS)&&xt==yt&&xn==yn),
    B e=!memcmp(xV,yV,((W)xn<<Tw[xt])+7>>3);
    e||!(xtf||xtF)?e:mtcF(xV,yV,xtf?1u:xn))

@@ -3,17 +3,24 @@ A1(rs0,rsz(0,x))
 ZN A flt(A x,A y,B b/*01b*/)_(P(xK-1,er(y))Ym(K("{(!y)[i]!(.y)i:&z~/:x@.y}",xR,y,ai(b)))
  x=Ny(x1(yR));x=xN?Ny(cL(x)):x(emp(tG));P(!xtt&&xN-yN,el(x(y)))A z=rs0(yR);F(yN,L n=gl(ii(x,i));B(b&&n-(U)n,z=ed(z))Fj(b?n:!n,PSH(z,ii(y,i))))x(y(z)))
 V cyc(V*a,U m,U n){Q(m);W(2*m<=n,MC(a+m,a,m);m*=2)I(n>m,MC(a+m,a,n-m))}
+Z V cpyB(W*x,U j,CO W*y,U k,U n) {P(!n)x+=j>>6;y+=k>>6;j&=63;k&=63; // x[j..j+n] = y[k..k+n] (bits; from upstream ngn/k fe213831..78383dd3)
+ I(j,W a=*y>>k;I(k&&n>64-k,a|=y[1]<<64-k);*x=(*x&(1ULL<<j)-1)|a<<j;P(n<=64-j)++x;k+=64-j;y+=k>>6;k&=63;n-=64-j) // align x
+ I(!k,MC(x,y,n+7>>3))E(W a=*y++>>k,b;F(n>>6,b=*y++;*x++=a|b<<64-k;a=b>>k);I(n&63,b=(n&63)>64-k?*y:0;*x++=a|b<<64-k))}
+Z V cycB(W*x,CO W*y,U k,U m,U n){ // cycle n bits from y[0..m] starting at k
+ cpyB(x,0  ,y,k,MIN(m-k,n));P(n<=m-k);n-=m-k;
+ cpyB(x,m-k,y,0,MIN(k  ,n));P(n<=k  );n-=k;
+ W(n>m,cpyB(x,m,x,0,m);n-=m;m*=2)cpyB(x,m,x,0,n);}
 A rsz(L n,A x/*1*/)_(
  X(Rt(rsz(n,enl(x)))
    RM(A y=kv(&x),z=az(n);aM(x,Nx(z(r2(RSH,z,y)))))
    Rm(A y=kv(&x);x=Ny(rsz(n,x));y=Nx(rsz(n,y));am(x,y))
    RE(Lij P(n>j-i||n<i-j,rsz(n,gZ(x)))x(0);n>=0?aE(i,i+n):aE(j+n,j))
-   RB(en(x))
    R_(P(n==NL,x)P(!xn,rsz(n,enl(fir(x))))
-      I r=n<0;n*=1-2*r;P((W)n-(U)n,ez(x))A y=an(n,xt);N w=xw-3,m=xn<<w,k=n%xn<<w,l=n<<w;
+      I r=n<0;n*=1-2*r;P((W)n-(U)n,ez(x))A y=an(n,xt);N w=MAX(0,xw-3),m=xn<<w,k=n%xn<<w,l=n<<w;
+      XB(cycB(yV,xV,r?m-k:0,m,l);x(y))                                        //bits: cycled bit by bit (it was 'nyi)
       I(!r,MC(yV,xV,MIN(m,l)))J(l<=m,MC(yV,xV+m-l,l))E(MC(yV,xV+m-k,k);MC(yV+k,xV,m-k))
       cyc(yV,m,l);I(!n&&ytA,yx=mkn(_R(xx)))x(ytA?sqz(mRa(y)):y)))0)
-A slc(A x/*0*/,U i,U j)_(Q(xtT&&i<=j&&i<=xN)N n=j-i;XE(I v=*xL;aE(v+i,v+j))A y=an(n,xt);U w=xw-3;MC(yV,xV+((W)i<<w),(W)n<<w);XA(P(!n,yx=mkn(_R(xx));y)sqz(mRa(y)))y)
+A slc(A x/*0*/,U i,U j)_(Q(xtT&&i<=j&&j<=xN)N n=j-i;XB(A y=an(j-i,tB);cpyB(yV,0,xV,i,j-i);y)XE(I v=*xL;aE(v+i,v+j))A y=an(n,xt);U w=xw-3;MC(yV,xV+((W)i<<w),(W)n<<w);XA(P(!n,yx=mkn(_R(xx));y)sqz(mRa(y)))y)
 Z A chp(L n,A x/*1*/)_(P(n<0,ed(x))L m=(xn+n-1)/n;A y=aA(m);F(m|!m,ya=slc(x,n*i,MIN((L)xn,n*i+n)))x(0);I(!m,yx=mkn(yx))y)
 Z A2(rsh,/*01*/XE(x=gZ(xR);x(rsh(x,y)))YE(rsh(x,gZ(y)))YmM(en(y))Yt(rsh(x,enl(y)))Q(xtZ);N r=xn;P(!r,fir(y))P(r>256,ez(y))x=Ny(cL(xR));L s[r];MC(s,xV,r<<3);x(0);
  I(r==2,P(*s==NL,chp(s[1],y))P(s[1]==NL,A u=az(*s);u(K2("{$[(0<x)&~x!#y;(x;(-x)!#y)#y;((-x)!(#y)*!x)_y]}",u,y))))P(r==1&&*s==NL,y)I(!yn,y=enl(fir(y)))
@@ -55,7 +62,7 @@ A2(psh,/*11*/Q(xtMT);U n=xN;P(!n,enl(x(y)))
  P(xtI&&yti||xtS&&yts  ,x=aa(n+1,x);xI[n]=yv;x)
  P(xtL&&yti            ,x=aa(n+1,x);xL[n]=yv;x)
  P(xtL&&ytl||xtF&&ytf  ,x=aa(n+1,x);xL[n]=gl(y);x)
- P(xtB&&yti&&yv==(1&yv),x=aa(n+1,x);xG[n>>3]|=yv<<(n&7);x)
+ P(xtB&&yti&&yv==(1&yv),x=aa(n+1,x);xG[n>>3]=(UC)(xG[n>>3]&~(1<<(n&7))|yv<<(n&7));x)   //the bit may hold a stale 1 (take and drop leave the bits after the last item)
  P(xtZ&&ytz,N(sup(&x,&y));psh(x,y))
  XM(P(!ytm||!mtc_(xx,yx),psh(Ny(blw(x)),y))x=mut(x);A z=xy=mut(xy);F(zn|!zn,PSH(za,ii(yy,i)))I(!zn,zx=mkn(zx))y(x))
  P(!xtA&&(!ytt||xt-TT[yt]||yt>=tdt),psh(Ny(blw(x)),y))   //a temporal atom keeps its type: there is no temporal vector (TT maps it to its int width)

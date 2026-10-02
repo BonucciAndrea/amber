@@ -152,7 +152,7 @@ insert:{[t;r]t,r}
 / to box EVERY left row (rows[...]) purely to feed `?`, which cost 1.76 s on a 1M x 500
 / left join that q answers in 4 ms.
 jprobe:{[kc;kd;td]yc:kd kc;xc:td kc;$[1=#kc;(*yc;*xc);qcard[yc,'xc]<qEXACT;[e:qenc yc,'xc;n:#*yc;(n#e;n _ e)];(rows[+kd];+. kc#td)]}
-lj:{[t;kt]p:jprobe[keys kt;+!kt;+t];i:(p 0)?p 1;vc:cols value kt;+(+t),vc!{y@x}[i]'value value kt}
+lj:{[t;kt]p:jprobe[keys kt;+!kt;+t];i:(p 0)?p 1;vt:value kt;vc:cols vt;j:$[|/vc in !+t;$[&/m:~^i;`all;(!#i)+(#i)*m];0];+(+t),vc!{[i;j;t;vt;c]r:(vt c)@i;$[~c in !+t;r;(`A~@vt c)&0=#vt c;(+t)c;~(`A~@(+t)c)|(@(+t)c)~@vt c;`err"type";`all~j;$[`A~@(+t)c;(((+t)c),r)(#i)+!#i;r];(((+t)c),r)j]}[i;j;t;vt]'vc}  / a column t has keeps its values where nothing matches; one of another type is 'type, as in q
 / ij: the probe used to box every left row AND every right key row (rows[...])
 / purely to feed `?`.  Both sides are now rank-encoded column-wise -- jointly,
 / over one shared code space -- so the lookup is a native vector `?` on a flat

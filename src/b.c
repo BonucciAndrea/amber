@@ -21,19 +21,43 @@ Z B tlc(CO UC*b)_(W(*b==bj,b+=2+b[1])!*b)                                       
 // allocation for the whole dispatch loop), though the check itself never fires.
 // A failed indexed assignment (a[i]:v, a[i]+:v) used to lose the variable: d4 amends it in place
 // and its result, 0 on an error, was stored back. So check first what can be checked without
-// touching it: for a list, each int index in range, level by level, and for one level of int
-// indices, a list value of the same count. 0: go ahead (d4 decides the rest); 1: 'index; 2: 'length.
+// touching it: for a list, each int index in range, level by level, and where every level above
+// the last is a single index, a list value of the last level's count. 0: go ahead (d4 decides the rest); 1: 'index; 2: 'length;
+// 3: 'type. Dicts and tables with symbol keys are checked by ixkd, a level at a time like a list.
 Z L ixe(A q,U j){UC t=_t(q);CO V*d=_V(q);return t==tL?((CO L*)d)[j]:t==tI?((CO I*)d)[j]:t==tH?((CO H*)d)[j]:t==tG?((CO G*)d)[j]:t==tE?*(CO L*)d+(L)j:((CO UC*)d)[j>>3]>>(j&7)&1;}//item j of an int list, without boxing it
-NI I ixck(A x,A y,U k,A z){I r=0;if(!x||k>=_N(y)||_tP(x)||!_tT(x))return 0;U n=_N(x);B one=_N(y)==1;
- if(!_tP(y)&&LH(tE,_t(y),tL)){L v=ixe(y,k);if(v<0||v>=(L)n)return 1;if(one)return 0;A w=ii(x,(U)v);r=ixck(w,y,k+1,z);mr(w);return r;}   //y an int list: an int index per level
+Z I ixkd(A x,A y,U k,A z,B asg);
+Z B ixone(A y,U k){if(!_tA(y))return 1;F(k,A q=_A(y)[i];if(q==au||!_tt(q))return 0)return 1;}   //levels 0..k-1 each a single index, so the value at level k is z itself
+NI I ixck(A x,A y,U k,A z,B asg){I r=0;if(x&&k<_N(y)&&!_tP(x)&&(_t(x)==tm||_t(x)==tM))return ixkd(x,y,k,z,asg);
+ if(x&&y!=au&&k<_N(y)&&(_t(x)!=ts&&LH(ti,_t(x),ts)||LH(tdt,_t(x),tnp)))return 3;   //an index into a number, char or temporal atom (:: as the index is the whole value); a symbol atom names a global, which the assignment amends
+ if(!x||k>=_N(y)||_tP(x)||!_tT(x))return 0;U n=_N(x);B one=_N(y)==1;
+ if(!_tP(y)&&LH(tE,_t(y),tL)){L v=ixe(y,k);if(v<0||v>=(L)n)return 1;if(one)return 0;A w=ii(x,(U)v);r=ixck(w,y,k+1,z,asg);mr(w);return r;}   //y an int list: an int index per level
  A q=_tA(y)?_R(_A(y)[k]):ii(y,k);
- if(q==au){if(!one)for(U j=0;j<n&&!r;j++){A v=ii(x,j);r=ixck(v,y,k+1,z);mr(v);}}
- else if(_tz(q)){L v=gl(q);if(v<0||v>=(L)n)r=1;else if(!one){A w=ii(x,(U)v);r=ixck(w,y,k+1,z);mr(w);}}
+ if(q==au){if(!one)for(U j=0;j<n&&!r;j++){A v=ii(x,j);r=ixck(v,y,k+1,z,asg);mr(v);}}
+ else if(_tz(q)){L v=gl_(q);if(v<0||v>=(L)n)r=1;else if(!one){A w=ii(x,(U)v);r=ixck(w,y,k+1,z,asg);mr(w);}}
  else if(!_tP(q)&&LH(tE,_t(q),tL)){U m=_N(q);
   if(one&&m&&_t(q)!=tB){L lo=_t(q)==tE?ixe(q,0):minfZ(WL,q),hi=_t(q)==tE?ixe(q,m-1):maxfZ(NL,q);if(lo<0||hi>=(L)n)r=1;}   //one level: the vector min/max, not a type switch per item
-  else for(U j=0;j<m&&!r;j++){L v=ixe(q,j);if(v<0||v>=(L)n)r=1;else if(!one){A w=ii(x,(U)v);r=ixck(w,y,k+1,z);mr(w);}}
-  if(!r&&one&&!_tP(z)&&_tT(z)&&_N(z)!=m)r=2;}
+  else for(U j=0;j<m&&!r;j++){L v=ixe(q,j);if(v<0||v>=(L)n)r=1;else if(!one){A w=ii(x,(U)v);r=ixck(w,y,k+1,z,asg);mr(w);}}
+  if(!r&&(one||k+1==_N(y)&&ixone(y,k))&&!_tP(z)&&_tT(z)&&_N(z)!=m)r=2;}
+ else if(_t(q)==ts||_t(q)==tS&&_N(q))r=3;   //a symbol indexes no list
  mr(q);return r;}
+//a dict or table (x) at level k: a key that is missing is added by the assignment, so only at the last
+//level is it fine; a key that is there goes a level down; at the last level a list of keys needs a
+//list value of its count, and a table's column, assigned with : (asg), one of its row count (any other verb
+//gets the whole column, so only its result has to fit); a table's row is an int in range
+Z I ixkd(A x,A y,U k,A z,B asg){A ks=_x(x),vs=_y(x);B last=k+1>=_N(y),tb=_t(x)==tM,own=!_tA(y);I r=0;L rows=0;
+ if(_t(ks)!=tS||tb&&!_N(vs))return 0;   //symbol keys only (every table's), and a table with columns
+ A q=own?ii(y,k):_A(y)[k];B zlist=!_tP(z)&&_tT(z);   //q: borrowed from y, or made from a typed y
+ if(last&&!tb){if(_t(q)==tS&&zlist&&_N(z)!=_N(q)&&ixone(y,k))r=2;I(own,mr(q))return r;}   //a dict's last level: any key may be set; a list of keys needs a value of its count
+ if(tb)rows=_N(_A(vs)[0]);
+ if(q==au){if(!last&&!tb&&_N(vs)){A v=ii(vs,0);r=ixck(v,y,k+1,z,asg);mr(v);}}   //an elided level adds the key :: with the first value nulled (as ngn/k), and indexes that: so only the first value's shape counts
+ else if(_t(q)==ts){
+  if(last){if(tb&&asg&&zlist&&_N(z)!=(U)rows&&ixone(y,k)){r=2;if(_N(ks)==1){A f=fnd(ks,_R(q));I(!gl_(f),r=0)mr(f);}}}   //a table's column needs the row count (for :), unless it is the only column, which may take another
+  else{A f=fnd(ks,_R(q));L j=gl_(f);mr(f);B kin=j>=0&&j<(L)_N(ks);if(kin||!tb&&_N(vs)){A w=ii(vs,kin?(U)j:0);r=ixck(w,y,k+1,z,asg);mr(w);}}}   //a missing key is added with the first value nulled (as ngn/k), so that is what is indexed
+ else if(_t(q)==tS){U m=_N(q);
+  if(!last){A f=fnd(ks,_R(q));for(U i=0;i<m&&!r;i++){L j=ixe(f,i);B kin=j>=0&&j<(L)_N(ks);if(kin||!tb&&_N(vs)){A w=ii(vs,kin?(U)j:0);r=ixck(w,y,k+1,z,asg);mr(w);}}mr(f);}}   //a table's list of columns at the last level is not checked
+ else if(tb&&_tz(q)){L v=gl_(q);if(v<0||v>=rows)r=1;else if(!last&&!(k+2==_N(y)&&_tA(y)&&_t(_A(y)[k+1])==ts)){A w=ii(x,(U)v);r=ixck(w,y,k+1,z,asg);mr(w);}}   //a row then one column name: nothing to check, so the row is not built
+ else if(tb&&!_tP(q)&&LH(tE,_t(q),tL)){U m=_N(q);B dn=!last&&!(k+2==_N(y)&&_tA(y)&&_t(_A(y)[k+1])==ts);for(U i=0;i<m&&!r;i++){L v=ixe(q,i);if(v<0||v>=rows)r=1;else if(dn){A w=ii(x,(U)v);r=ixck(w,y,k+1,z,asg);mr(w);}}}   //rows then one column name: only the rows are checked, so no row is built
+ I(own,mr(q))return r;}
 Z NI __attribute__((cold)) V noupd(A*s){mr(*s);*s=err0("noupdate");}
 AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,es8(a,n))/*d: per-thread VM recursion depth (peach workers run the VM concurrently)*/P(n-xk,er8(a,n))UC*b=_V(xy),c,nl=_n(xA[3]);A own=0,l[nl+*b++],*s=l+L(l);MS(l,0,SZ l);I(n,MC(l,a,8*n))//virtual machine
  W((c=*b++),S(c,                                                                                    //          |BYTES |          STACK        |         EFFECT
@@ -50,7 +74,7 @@ AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,es8(a,n))/*d: per-thread VM recursion de
   C6(bm,bM,bx,bX,by,bY,A*p=(c&1?gv:l)+BG,x=*p;I(__builtin_expect(c&1&&ray_rc_sync,0),noupd(s);goto l)  //          |      |                       |
    U(x,*s=ev(*s))A y=*s++;                                                                           //          |      |                       |
    I(c==bm||c==bM,y=v2[*b++](x,y);U(y,*--s=0)*p=x(y))                                               //mod asgn  |bm,i,d|.. x -> ..             |vars[i]:dyads[d][vars[i];x]
-   E(UC d_=*b++;I e_=ixck(x,y,0,*s);x=e_?e_==1?ei0():el0():(*p=d4(x,y,av+d_,*s));mr(*s);I(c==bx||c==bX,mr(y);U(x,*s=0)s++)                              //ind asgn  |bx,i,d|.. z y -> ..           |vars[i]:  .[vars[i];y;dyads[d];z]
+   E(UC d_=*b++;I e_=ixck(x,y,0,*s,!d_);x=e_?e_==1?ei0():e_==2?el0():et0():(*p=d4(x,y,av+d_,*s));mr(*s);I(c==bx||c==bX,mr(y);U(x,*s=0)s++)                              //ind asgn  |bx,i,d|.. z y -> ..           |vars[i]:  .[vars[i];y;dyads[d];z]
                                     E(U(x,*s=y(0))U(*s=dot(x,y)))))                                 //ind asgn  |by,i,d|.. z y -> .. r         |vars[i]:r:.[vars[i];y;dyads[d];z]
   C(bG,A x=*--s=gv[BG];U(x,ev0())xR)                                                                //get global|bG,i,i|.. -> .. globals[i]    |
   // amber 2.3: a peach dispatch runs this VM on several threads at once, and a

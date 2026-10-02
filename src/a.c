@@ -919,8 +919,8 @@ Z A3(d3,/*100*/U m=yN;P(y==au||!m,z1(x))P(m==1,y=fir(yR);y(a3(x,y,z)))A u=prj(DO
 A4(d4,/*1000*/U m=yN;P(y==au||!m,x(z2(x,uR)))P(m==1,y=fir(yR);y(a4(x,y,z,u)))A v=prj(DOT,(A[]){GAP,drp(1,yR)},2);y=fir(yR);A r=y(a5(x,y,v,z,u));mr(v);r)
 Z AA(d8_,/*10..0*/A x=*a,y=a[1],z=a[2];P(n==4,d4(x,y,z,a[3]))P(n==3,d3(x,y,z))en(x))
 AA(d8,/*10..0*/A x=*a;
-I ixck(A,A,U,A);   //b.c: is .[`v;i;f;y] sure to fail on its index or count? (then v is not touched)
- X(RsS(P(ray_rc_sync,mr(*a);err0("noupdate"))A*p=gp(x);P(!p,mr(*a);0){I e_=n==4?ixck(*p,a[1],0,a[3]):0;P(e_,mr(*a);e_==1?ei0():el0())}I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;*p=_R(N(d8_(b,n))))// amend-by-name of a global: not from a peach worker (b.c bS)
+I ixck(A,A,U,A,B);   //b.c: is .[`v;i;f;y] sure to fail on its index, count or type? (then v is not touched)
+ X(RsS(P(ray_rc_sync,mr(*a);err0("noupdate"))A*p=gp(x);P(!p,mr(*a);0){I e_=n==4?ixck(*p,a[1],0,a[3],a[2]==av):0;P(e_,mr(*a);e_==1?ei0():e_==2?el0():et0())}I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;*p=_R(N(d8_(b,n))))// amend-by-name of a global: not from a peach worker (b.c bS)
    RU(n==3?try(x,a[1],a[2]):er(x))
    R_(d8_(a,n)))0)
 ZN A ki(A*p,S s)_(*p=evs(s,0);P(!*p,0)PSH(cns,*p))   //a name that does not evaluate (a missing formatter): its error, not die

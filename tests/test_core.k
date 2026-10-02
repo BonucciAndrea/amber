@@ -771,7 +771,31 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- a failed assignment below a dict key, to a table, or into an atom leaves the variable ----
+t[`amendKeepDictIndex;(IA["D1:`a`b!(1 2;3 4)";"D1[`a;7]:9"];IA["D2:`a`b!(1 2;3 4)";"D2[`a`b;5]:9"];IA["D3:`a`b!(1 2;3 4)";"D3[`a;7]+:9"]);3#,(`err;`a`b!(1 2;3 4))]
+t[`amendKeepDictElided;IA["D4:`a`b!(1 2;3 4)";"D4[;5]:9"];(`err;`a`b!(1 2;3 4))]
+t[`amendKeepDictLength;(IA["D5:`a`b!(1 2;3 4)";"D5[`a`b]:1 2 3"];IA["D6:`a`b!(1 2;3 4)";"D6[`a;0 1]:7 8 9"]);2#,(`err;`a`b!(1 2;3 4))]
+t[`amendKeepSymbolIndex;IA["D7:`a`b!(1 2;3 4)";"D7[`a;`x]:9"];(`err;`a`b!(1 2;3 4))]   / a symbol indexes no list: 'type
+t[`amendKeepTableLength;(IA["T1:+`a`b!(1 2;3 4)";"T1[`a]:5 6 7"];IA["T2:+`a`b!(1 2;3 4)";"T2[`c]:5 6 7"]);2#,(`err;+`a`b!(1 2;3 4))]
+t[`amendKeepTableIndex;(IA["T3:+`a`b!(1 2;3 4)";"T3[5]:`a`b!9 9"];IA["T4:+`a`b!(1 2;3 4)";"T4[`a;5]:9"];IA["T5:+`a`b!(1 2;3 4)";"T5[5;`a]:9"]);3#,(`err;+`a`b!(1 2;3 4))]
+t[`amendKeepAtom;(IA["V1:5";"V1[0]:9"];IA["V2:`a`b!(1;2)";"V2[`a;0]:9"]);((`err;5);(`err;`a`b!1 2))]   / an index into an atom: 'type
+t[`amendKeepTemporalAtom;(IA["V6:2020.01.01";"V6[0]:9"];IA["D22:`a`b!(2020.01.01;2)";"D22[`a;0]:9"]);((`err;2020.01.01);(`err;`a`b!(2020.01.01;2)))]
+t[`amendKeepHeapIndex;{f:{L5[0N;`a]:7};L5::(1 2;3 4);r:{.[x;,0;{`err}]}'20#f;(?r;.[.:;,"L5";{`gone}])}[];(,`err;(1 2;3 4))]   / a 0N in the index, from the same function again and again: it was released one time too many
+t[`amendKeepHeapIndexByName;{V7::1 2 3;f:{.[`V7;0N;+;(1 2;3 4)]};r:{.[x;,0;{`err}]}'20#f;(?r;V7)}[];(,`err;1 2 3)]
+t[`amendKeepListDeepLength;IA["L1:(1 2;3 4)";"L1[0;0 1]:7 8 9"];(`err;(1 2;3 4))]
+t[`amendDictStillWorks;(IA["D8:`a`b!(1 2;3 4)";"D8[`z;0]:9"];IA["D9:`a`b!(1 2;3 4)";"D9[`c]:5 6 7"];IA["D0:`a`b!(1 2;3 4)";"D0[`a;0]:9"]);((::;`a`b`z!(1 2;3 4;9 0N));(::;`a`b`c!(1 2;3 4;5 6 7));(::;`a`b!(9 2;3 4)))]
+t[`amendTableStillWorks;(IA["T6:+`a`b!(1 2;3 4)";"T6[`a]:9"];IA["T7:+`a`b!(1 2;3 4)";"T7[0;`a]:9"];IA["T8:+`a`b!(1 2;3 4)";"T8[`z;0]:9"]);((::;+`a`b!(9 9;3 4));(::;+`a`b!(9 2;3 4));(::;+`a`b`z!(1 2;3 4;9 0N)))]
+t[`amendTablesBelowList;(IA["L2:(+`a`b!(1 2;3 4);+`a`b!(1 2;3 4))";"L2[0 1;`c]:(5 6;7 8)"];IA["T10:+`a!,1 2 3";"T10[`a]:7 8"]);((::;(+`a`b`c!(1 2;3 4;5 6);+`a`b`c!(1 2;3 4;7 8)));(::;+(,`a)!,7 8))]   / a column below a list index; the only column may take another count
+t[`amendByNameKeepDict;(IA["D11:`a`b!(1 2;3 4)";".[`D11;(`a;7);:;9]"];IA["T9:+`a`b!(1 2;3 4)";".[`T9;,`a;:;7 8 9]"];IA["V3:5";".[`V3;,0;:;9]"]);((`err;`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;5))]   / by name too
+t[`amendByNameWhole;(IA["V4:5";".[`V4;::;:;9]"];IA["V5:5";".[`V5;::;+;1]"]);((9;9);(6;6))]   / :: as the index replaces the whole value
+t[`amendTableOtherVerbs;(IA["T11:+`a`b!(1 2;3 4)";"T11[`a]~:5 6 7"];IA["T12:+`a`b!(1 2;3 4)";".[`T12;,`a;{y@x};10 20 30]"];IA["T13:+`a`b!(1 2;3 4)";".[`T13;,`c;{2#y};5 6 7]"];IA["D12:`x!,+`a`b!(1 2;3 4)";"D12[`x;`a]~:5 6 7"]);((::;+`a`b!(0 0;3 4));2#,+`a`b!(20 30;3 4);2#,+`a`b`c!(1 2;3 4;5 6);(::;(,`x)!,+`a`b!(0 0;3 4)))]   / a verb other than : gets the whole column, so only its result needs the row count
+t[`amendEmptySymbolIndex;(IA["L3:1 2 3";"L3[0#`]:9"];IA["D13:`a`b!(1 2;3 4)";"D13[`a;0#`]:9"]);((::;1 2 3);(::;`a`b!(1 2;3 4)))]   / no symbols, nothing to assign
+t[`amendDictElidedFirst;(IA["D14:`a`b!(1 2;,3)";"D14[;1]:9"];IA["D15:`a`b!(1 2;`x)";"D15[;0]:9"];IA["D16:`x`y!(`a`b!(1 2;,3);0)";"D16[`x;;1]:9"]);((::;(`a;`b;::)!(1 2;,3;0N 9));(::;(`a;`b;::)!(1 2;`x;9 0N));(::;`x`y!((`a;`b;::)!(1 2;,3;0N 9);0)))]   / an elided level adds the key :: with the first value nulled, as in ngn/k: only the first value's shape counts
+t[`amendDictMissingKey;(IA["D19:`a`b!(1 2 3;4 5)";"D19[`z;2]:9"];IA["D20:`a`b!(1 2 3;4 5)";"D20[`z;5]:9"];IA["D21:`a`b!(4 5;1 2 3)";"D21[`z`b;2]:9"]);((::;`a`b`z!(1 2 3;4 5;0N 0N 9));(`err;`a`b!(1 2 3;4 5));(`err;`a`b!(4 5;1 2 3)))]   / a missing key is added with the first value nulled, and that is what is indexed
+XS:1 2 3
+t[`amendThroughSymbol;{r:IA["D18:`a`b!(1 2;`XS)";"D18[`b;0]:9"];(r;XS)}[];((::;`a`b!(1 2;9 2 3));9 2 3)]   / a symbol atom at a level names a global, which the assignment amends (as in ngn/k), so it is not refused
+
+hexpect[493]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

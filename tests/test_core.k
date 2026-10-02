@@ -174,6 +174,14 @@ t[`jsonCtl;(`j@`c$1;`j@`c$65 1;`j@`c$1 65;`j@`c$31 127);("\"\\u0001\"";"\"A\\u00
 / ---- JSON writes NUL as \u0000 ----
 t[`jsonNul;(`j@"a\0b";`j@"\0");("\"a\\u0000b\"";"\"\\u0000\"")]
 
-hexpect[87]
+
+/ ---- JSON output is sized right (upstream ngn/k fdf2ec5f) ----
+t[`jsonLongNeg;(`j@-3908768282852987948;`j@(-3908768282852987948;1));("-3908768282852987948";"[-3908768282852987948,1]")]
+t[`jsonCharDict;(`j@`a`b!"xy";`j@(`a!,"x";1));("{\"a\":\"x\",\"b\":\"y\"}";"[{\"a\":\"x\"},1]")]
+
+/ a large int: Jl compared it with the null by subtracting, which overflowed (UBSan)
+t[`jsonLongInt;(`j@3000000000;`j@(3000000000;1));("3000000000";"[3000000000,1]")]
+
+hexpect[90]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

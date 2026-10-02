@@ -26,10 +26,14 @@ Z V JC(S p,U n){*s++='"';UC c;F(n,S(t[c=*p++],C(0,*s++=c)C(1,*s++='\\';*s++=ej[s
 // unwritten bytes. NaN and infinities are written as null (JSON has neither; JSON.stringify
 // does the same); other floats beyond L as floats (1e20).
 #define JI(v) (-0x1p63<(v)&&(v)<0x1p63&&(v)==(L)(v))
-Z U nl(L v)_(P(v==NL,4)U n=v<0?(v=-v),2:1;W m=10;W(m<=v&&n<19,n++;m*=10)n)
-Z V Jl(L v){s=v-NL?sl(s,v):MC(s,"null",4)+4;}
-Z U nx(A x/*0*/){X(Ri(nl(xv))Rl(nl(*xL))Rc(C c=xv;nC(&c,1))Rf(F v=*xF;P(JI(v),nl((L)v))P(v-v!=0,4)C b[32];sf(b,*(L*)&v)-b)Rm(nx(xx)+nx(xy)-1-!_N(xx))Ru(4)RC(nC(xC,xn))
- RMT_C(U n=xN,m=1+n+!n;F(n,m+=nX(ii(x,i)))m)R_(nX(str(xR))))}
+Z U nl(L v)_(P(v==NL,4)U n=v<0?(v=-v),2:1;W m=10;W(m<=v&&n<20,n++;m*=10)n)
+Z V Jl(L v){s=v!=NL?sl(s,v):MC(s,"null",4)+4;}  //v-NL overflowed for v>=0
+//(from upstream ngn/k fdf2ec5f, "json character count") the size of a list, item by item: a dict's
+//keys and values are sized as lists (nx sized a char vector as one string, where each char is
+//written as a string of its own), and nl counts up to 20 characters (a negative 19-digit int).
+Z U nxe(A x/*0*/)_(U n=xN,m=1+n+!n;F(n,m+=nX(ii(x,i)))m)
+Z U nx(A x/*0*/){X(Ri(nl(xv))Rl(nl(*xL))Rc(C c=xv;nC(&c,1))Rf(F v=*xF;P(JI(v),nl((L)v))P(v-v!=0,4)C b[32];sf(b,*(L*)&v)-b)Rm(nxe(xx)+nxe(xy)-1-!_N(xx))Ru(4)RC(nC(xC,xn))
+ RMT_C(nxe(x))R_(nX(str(xR))))}
 Z A Jx(A x/*0*/){X(Rm(*s++='{';F(xN,*s=',';s+=!!i;JX(ii(xx,i));*s++=':';JX(ii(xy,i)))*s++='}';x)Rf(F v=*xF;s=JI(v)?sl(s,(L)v):v-v!=0?MC(s,"null",4)+4:sf(s,*(L*)&v);x)Ri(s=sl(s,xv);x)
  Rl(Jl(*xL);x)Rc(C c=xv;JC(&c,1);x)RC(JC(xC,xn);x)Ru(P(!xv,s=MC(s,"null",4)+4;x)U n=4+!xv;MC(s,xv?"true":"false",n);s+=n;x)R_(I(xtMT,*s++='[';F(xN,I(i,*s++=',')JX(ii(x,i)))*s++=']')E(JX(str(xR)))x))}
 Z U nX(A x/*1*/)_(U n=nx(x);x(0);n)

@@ -771,7 +771,17 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- a number before `-` and a float literal (no space) is not read as a float: the strand ends at the `-` ----
+t[`strandMinusFloat;`k@'(0-0.5<1;1 2-0.0<0;0-0.0~0;{0-0.0<0}[]);("-1";"1 2";,"0";,"0")]   / 2.4.1: -1.0, 1.0 2.0, 0.0, 0.0
+t[`strandMinusFloatParse;`k@`p"0-0.5<1";"(-;0;(<;0.5;1))"]
+t[`strandSpaceFloat;`k@'(1 -0.5;1 2.5;1 -0.5<1);("1.0 -0.5";"1.0 2.5";"0 1")]   / with a space it is one strand, floats if any item is
+t[`strandMinusKinds;`k@'(1 -2-0.5<1;01b-0.5<1);("0 -3";"-1 0")]   / a spaced strand or a boolean before the - (2.4.1: floats)
+tv[`strandMinusUses;"(\"abc\"@2-0.5<1;!3-0.5<1)";("b";0 1)]   / as an index and a count (2.4.1: 'type)
+t[`strandMinusIntKinds;`k@'(0N-0.5<1;1-0xef;0-1 0.5<1);("9223372036854775807";"18";"0 -1")]   / an int null wraps, hex is an int, a spaced strand after the - (2.4.1: floats)
+t[`strandMinusBigInt;ER"99999999999999999999-0.5";"'limit"]   / an int literal past 64 bits is 'limit, as on its own (2.4.1 read it as a float here)
+t[`strandMinusDate;((1-2024.01.01)~1976.01.02;(`i$1-12:00:00.000)~-43199999);11b]   / an int minus a date or a time (2.4.1: the int read as a float and its bits used, 1976.01.01 and -12:00:00.000, -43200000 ms)
+
+hexpect[480]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

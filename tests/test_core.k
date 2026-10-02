@@ -158,9 +158,10 @@ te[`dictAmendLength;"@[`a`b!1 2;`c`d;:;1 2 3]"]
 / empty fold gives 0N as in ngn/k (note: q gives ())
 t[`genericListFold;(1 2;3 4)/0 1;2]
 t[`genericListFoldEmpty;(,(1;2))/!0;0N]
+t[`mixedRankFold;(1;2 3)/0;0]
 t[`simpleVectorDecode;2 2 2/1 0 1;5]
 
-hexpect[81]
+hexpect[82]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

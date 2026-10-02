@@ -58,7 +58,7 @@ A2(psh,/*11*/Q(xtMT);U n=xN;P(!n,enl(x(y)))
  P(xtB&&yti&&yv==(1&yv),x=aa(n+1,x);xG[n>>3]|=yv<<(n&7);x)
  P(xtZ&&ytz,N(sup(&x,&y));psh(x,y))
  XM(P(!ytm||!mtc_(xx,yx),psh(Ny(blw(x)),y))x=mut(x);A z=xy=mut(xy);F(zn|!zn,PSH(za,ii(yy,i)))I(!zn,zx=mkn(zx))y(x))
- P(!xtA&&(!ytt||xt-TT[yt]),psh(Ny(blw(x)),y))
+ P(!xtA&&(!ytt||xt-TT[yt]||yt>=tdt),psh(Ny(blw(x)),y))   //a temporal atom keeps its type: there is no temporal vector (TT maps it to its int width)
  L v=xtA?(L)y:gl(y);
  x=aa(n+1,x);U w=xw-3;MC(xV+((W)n<<w),&v,1<<w);x)
 A apc(A x/*1*/,C c    )_(Q(xtC||xtG);U n=xn;x=aa(n+1,x);xC[n]=c;x)

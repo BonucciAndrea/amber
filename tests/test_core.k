@@ -192,6 +192,15 @@ te[`fmtFailsList;"dstr::{x+`a};`k@(2026.07.30;1)"]
 te[`fmtFailsProj;"dstr::{x+`a};`k@{x+y}[2026.07.30]"]
 te[`fmtFailsJson;"dstr::{x+`a};`j@`a`b!(1;2026.07.30)"]
 
-hexpect[104]
+/ ---- a temporal item keeps its type in a list ----
+/ There is no temporal vector: pushing a date onto an int list made it an int.
+t[`joinDateType;@'1,2026.07.30;`i`d]
+t[`joinTimeType;@'100000 2,12:00:00.000;`i`i`t]
+t[`eachDateType;@'(1;0)+(2;2026.07.30);`i`d]
+t[`eachDateValue;2026.07.30=*|(1;0)+(2;2026.07.30);1]
+t[`eachStampType;@'(5000000000;1)+(2;2026.07.30D00:00:00.0);`i`n]
+t[`joinIntsStay;@1 2,3;`I]
+
+hexpect[110]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

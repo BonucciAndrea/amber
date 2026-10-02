@@ -131,7 +131,7 @@ V plk(B on){(V)on;}
 #define AUL() ((void)0)
 #endif
 
-Z ST{V*p;W n;B f;}reg[128];Z U nreg;Z UC pnd[128];Z U npnd;
+Z ST{V*p;W n;B f;}reg[1024];Z U nreg;Z U pnd[1024];Z U npnd;   //mapped regions: 1024 (was 128, issue #9)
 Z V mc(){ALK();I(npnd,F(npnd,U j=pnd[i];munmap(reg[j].p,reg[j].n);reg[j].p=0)npnd=0;U j=0;F(nreg,I(reg[i].p,MC(reg+j,reg+i,SZ*reg);j++))nreg=j)AUL();}
 Z A mu(V*p){ALK();F(nreg,I(reg[i].p==p,pnd[npnd++]=i;AUL();return 0;))AUL();return die("UNMAP");}
 // amber 2.2: every region of 2MB or more asks for transparent huge pages. A
@@ -276,17 +276,21 @@ U us(S s){U n=SL(s);I(n<4||(n==4&&!(s[3]&128)),U v=0;MC(&v,s,n);return v;)
  sh[j]=r;I(++shn*2>=shc,I(!shgrow(),AUL();die("SYMS");))AUL();return r;}
 A sym(S s)_(as(us(s)))
 
-Z U gd,gn;Z W gk[4096];A gv[4096];
+// The globals: 65536 slots, the most a compiled reference's two-byte index can name (issue #9; it
+// was 4096, and the next one ended the process). Static, so a slot never moves while a peach worker
+// reads it; untouched pages cost nothing. Past the last, gi() returns slot 0 and sets gfull, which
+// the compiler and gp() turn into a trappable 'limit.
+Z U gd,gn;Z W gk[65536];A gv[65536];B gfull;
 Z W gkk(A x/*0*/)_(Xs((U)xv)Q(xtS)xn?(W)_v(jS(drp(-1,xR)))<<32|(U)_v(ii(x,xn-1)):0)
 // gi() appends a new name when it has not been seen; a lambda compiled inside a
 // peach worker (`value`, a projection built at run time) reaches it concurrently,
 // so the lookup+append runs under the allocator lock (a no-op outside peach).
-U gi(A x/*0*/)_(W k=gkk(x);I(!(k>>32)&&id0(*su(k)),k|=(W)gd<<32)ALK();U i=fL(gk,gn,k);P(i<gn,AUL();i)P(gn>=L(gv),AUL();die("GLOBALS"))gk[gn]=k;gv[gn]=0;gn++;AUL();i)
+U gi(A x/*0*/)_(W k=gkk(x);I(!(k>>32)&&id0(*su(k)),k|=(W)gd<<32)ALK();U i=fL(gk,gn,k);P(i<gn,AUL();i)P(gn>=L(gv),AUL();gfull=1;0)gk[gn]=k;gv[gn]=0;gn++;AUL();i)
 A gg(A x/*1*/)_(//get value of global
  P(xtS&&!xn,x(0);A x=emp(tS),y=emp(tA);F(gn,I(gv[i],L k=gk[i];PSH(x,k-(U)k?jS(aV(tS,2,A((I)(k>>32),k))):as(k));PSH(y,_R(gv[i]))))am(x,y))//special case for 0#`
  W k=gkk(x);x(0);U i=fL(gk,gn,k);i<gn&&gv[i]?_R(gv[i]):ev0())
-A*gp(A x/*1*/)_(U i=gi(x);x(0);gv+i)//get pointer to global
-A gns(U k)_(I a[L(gk)];U n=0;F(gn,I(gk[i]>>32==k,a[n++]=gk[i]))aV(tS,n,a))//list namespace
+A*gp(A x/*1*/)_(U i=gi(x);x(0);P(gfull,gfull=0;ez0();(A*)0)gv+i)//get pointer to global; 0 (and 'limit) when the table is full
+A gns(U k)_(U n=0;F(gn,n+=gk[i]>>32==k)A y=an(n,tS);n=0;F(gn,I(gk[i]>>32==k,_I(y)[n++]=(I)gk[i]))y)//list namespace (built on the heap: the table no longer fits a stack array)
 // amber 2.0.0: is `p[0..n)` the name of an already-defined rank-2 (dyadic) global
 // function?  The parser (p.c) uses this to make ANY binary library verb infix --
 // `` `a xkey t `` -> xkey[`a;t] -- uniformly, instead of a hard-coded name list.

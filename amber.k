@@ -35,7 +35,7 @@ count:{#x}
 mod:{y!x}
 idiv:{$[(`I~@y)&~^`i`I?@x;$[#y;idiv'[x;y];_x%y];~`i~@y;_x%y;^`i`I?@x;_x%y;(y=0)|^y;_x%y;y<0;idiv[-x;-y];[r:$[y=8;(-4)!(-2)!x;y=9;(-3)!(-3)!x;(-y)!x];$[`i~@x;$[^x;0N;r];@[r;&^x;:;0N]]]]}   / floor division, exact for ints over an int or ints (-8! -9! are other verbs); else through the float quotient
 div:{idiv[x;y]}
-xbar:{x*idiv[y;x]}
+xbar:{r:x*idiv[y;x];m:(^x)|^y;$[~|/m;r;(@r)in`i`f;$[`i~@r;0N;0n];@[r;&m;:;$[`I~@r;0N;0n]]]}   / a null width or value gives a null (0N*0N wraps to 0)
 xlog:{(`ln y)%`ln x}
 xexp:{[x;y]$[~y=_y;`exp y*`ln x;[e:$[y<0;-y;y];r:*{0<x[2]}{(x[0]*$[2!x[2];x[1];1.0];x[1]*x[1];_x[2]%2)}/(1.0;1.0*x;e);r:$[y<0;1%r;r];$[(x=_x)&(~y<0)&(r=_r)&9007199254740992.0>$[r<0;0-r;r];_r;r]]]} / x xexp y = x^y; fast squaring for integer y, exp/ln for fractional. An integer base to a non-negative integer power comes back as an INTEGER while the squaring is still exact (below 2^53); past that, or for a fractional/negative exponent, it stays a float. Load euler.k to get the exact bignum answer beyond 2^53.
 round:{[d;x]p:*/d#10;(_0.5+x*p)%p}
@@ -307,7 +307,7 @@ z3:{-3$"00",$x}
 stime1:{(z2 hh x),":",(z2 mm x),":",(z2 sec x),".",z3 milli x}
 stime:{x:tnum0 x;$[|/(@x)=`i`j;stime1 x;stime1'x]} / time -> "HH:MM:SS.mmm"
 ptime:{p:"."\x;t:`I$":"\*p;m:$[1<#p;`I$3#(p 1),"000";0];(3600000*t 0)+(60000*t 1)+(1000*t 2)+m}
-bar:{[w;u;t]s:w*u;s*idiv[t;s]}                        / w u-unit bars: bar[5;60000;t] = 5-min bars(ms)
+bar:{[w;u;t]xbar[$[(^w)|^u;0N;w*u];t]}                        / w u-unit bars: bar[5;60000;t] = 5-min bars(ms)
 minbar:{[w;t]60000*xbar[w;minute t]}               / w-minute bar as a time (ms)
 tsym:{[t;c]+@[+t;c,();stime]}                      / render time cols c of table t as HH:MM:SS strings
 / gentq (trade/quote generator) lives in fin.k, which loads after amber.k.

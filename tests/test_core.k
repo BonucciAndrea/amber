@@ -873,7 +873,7 @@ t[`amendByNameListRefused;{r:{.[x;,0;{`err}]}'20#({.[,`G1;,5;:;9]};{.[`N1`v;,0 1
 t[`flipAtom;`k@+(,`a)!,{x};"+(,`a)!,,{x}"]
 t[`flipCols;`k@+`a`b!(1 2;3 4);"+`a`b!(1 2;3 4)"]
 t[`flipEmptyTable;(`k@([]);#!+([]);#. +([]));("+(0#`)!0#,::";0;0)]   / ([]) stays as it was (ngn/k enlists the empty values here)
-t[`flipEmptyTables;(`k@+0#,(+`a`b!(1 2;3 4));`k@+0#,,`a`b!1 2);("(+`a`b!(!0;!0);+`a`b!(!0;!0))";",+`a`b!(!0;!0)")]   / empty lists of tables: the prototype was read before it was set
+t[`flipEmptyTables;(`k@+0#,(+`a`b!(1 2;3 4));`k@+0#,,`a`b!1 2);("(0#,`a`b!0N 0N;0#,`a`b!0N 0N)";",0#,`a`b!0N 0N")]   / empty lists of tables: the prototype was read before it was set; empty lists of dicts, as in ngn/k
 t[`flipBits;(+(01B;01B);+(101B;010B));((0 0;1 1);(1 0;0 1;1 0))]   / lists of bit booleans, read as bits
 t[`flipBits8;*+8#,11B;8#1]   / each column was read as 8-byte words of the lists
 
@@ -884,7 +884,23 @@ t[`tilDictLast;!(,1;,2;,3;,4;5 6;`a`b!7 8);(1 1 1 1;2 2 2 2;3 3 3 3;4 4 4 4;5 5 
 t[`tilAtomDict;.[!:;,(1;`a`b!3 4);{`e}];`e]   / an atom item still fails, with a dict beside it
 t[`tilKeyed;`k@!((+(,`k)!,1 2)!+(,`v)!,3 4;1 2);"(+(,`v)!,3 3 4 4;1 2 1 2)"]   / a keyed table uses its value table
 
-hexpect[546]
+/ ---- an empty general list whose prototype is a dict stays a list, not a table (upstream ngn/k d99849c6) ----
+t[`takeEmptyDictFirst;`k@'(0#((,`a)!,0;0);0#(1 2!3 4;0);0#(`a`b!1 2;`c`d!3 4));("0#,(,`a)!,0N";"0#,1 2!0N 0N";"0#,`a`b!0N 0N")]   / these were empty tables, the second with int columns
+t[`takeEmptyDictShape;*0#(`a`b!(0;0 0);0N);`a`b!(0N;0N 0N)]
+t[`takeEmptyTable;`k@'(0#(`a`b!1 2;`a`b!3 4);0#,`a`b!1 2);("+`a`b!(!0;!0)";"+`a`b!(!0;!0)")]
+t[`dropEmptyDictFirst;`k@2_((,`a)!,0;1 2);"0#,(,`a)!,0N"]
+/ reshaping such a list is 'nyi, as reshaping a table is (it read a table as rows of a list: crashes, heap addresses, a loop)
+t[`reshapeEmptyDicts;4#.[.:;,"2 0#0#(`a`b!1 2;0)";{x}];"'nyi"]
+t[`reshapeDroppedDicts;4#.[.:;,"2 0N#2_(`a`b!1 2;3)";{x}];"'nyi"]
+t[`reshapeAmendedDicts;4#.[.:;,"2 2#@[(`a`b!1 2;0);1;:;`a`b!3 4]";{x}];"'nyi"]
+t[`reshapeMixedDicts;4#.[.:;,"1 0#(1 2!3 4;`a`b!(1;`c`d!3 4))";{x}];"'nyi"]
+/ an amend of an empty table that reaches no row gives the table back; one that reaches the null row (an elided index, :: anywhere in it) makes the table from what it gives
+t[`amendEmptyTable;`k@'(@[0#+`a`b!(1 2;3 4);!0;:;()];.[0#+`a`b!(1 2;3 4);(!0;`a);:;()];@[0#+`a`d!(1 2;(`x`y!1 2;`x`y!3 4));!0;:;()]);("+`a`b!(!0;!0)";"+`a`b!(!0;!0)";"+`a`d!(!0;+`x`y!(!0;!0))")]
+t[`amendEmptyElided;`k@'(@[0#+`a`b!(1 2;3 4);::;{x,`c!9}];@[0#+`a`b!(1 2;3 4);::;{1#x}];@[0#+`a`b!(1 2;3 4);(!0;::);{x,`c!9}]);("+`a`b`c!(!0;!0;!0)";"+(,`a)!,!0";"+`a`b`c!(!0;!0;!0)")]
+/ an @ amend of an empty table at rows and then columns is 'type, as in ngn/k (2.4.1 gave the table)
+t[`amendEmptyMixed;5#.[.:;,"@[0#+`a`b!(1 2;3 4);(!0;`a);{x}]";{x}];"'type"]
+
+hexpect[557]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

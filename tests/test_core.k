@@ -877,7 +877,14 @@ t[`flipEmptyTables;(`k@+0#,(+`a`b!(1 2;3 4));`k@+0#,,`a`b!1 2);("(+`a`b!(!0;!0);
 t[`flipBits;(+(01B;01B);+(101B;010B));((0 0;1 1);(1 0;0 1;1 0))]   / lists of bit booleans, read as bits
 t[`flipBits8;*+8#,11B;8#1]   / each column was read as 8-byte words of the lists
 
-hexpect[541]
+/ ---- odometer of a list of dicts uses their values (upstream ngn/k d99849c6) ----
+t[`tilDicts;!(`a`b!1 2;`c`d!3 4);(1 1 2 2;3 4 3 4)]
+t[`tilLists;!(1 2;3 4);(1 1 2 2;3 4 3 4)]
+t[`tilDictLast;!(,1;,2;,3;,4;5 6;`a`b!7 8);(1 1 1 1;2 2 2 2;3 3 3 3;4 4 4 4;5 5 6 6;7 8 7 8)]   / a dict after the first four items
+t[`tilAtomDict;.[!:;,(1;`a`b!3 4);{`e}];`e]   / an atom item still fails, with a dict beside it
+t[`tilKeyed;`k@!((+(,`k)!,1 2)!+(,`v)!,3 4;1 2);"(+(,`v)!,3 3 4 4;1 2 1 2)"]   / a keyed table uses its value table
+
+hexpect[546]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

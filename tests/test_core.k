@@ -153,6 +153,25 @@ t[`dictAssignMany;{x[AN+!AN]:AN#2.0;x}(!AN)!AN#1;(!2*AN)!(AN#1),AN#2.0]
 t[`dictCountMany;#@[(!0)!!0;(2*AN)#!AN;+;1];AN]
 te[`dictAmendLength;"@[`a`b!1 2;`c`d;:;1 2 3]"]
 
-hexpect[78]
+/ ---- the fused masked sums equal the unfused expression, bit for bit ----
+fu:{[x;m]`k@+/x@&m};un:{[x;m]i:&m;d:x@i;`k@+/d}
+t[`maskSumOrder;fu[-1298990374206.0 1.0 -9005900264370198.0 1298990374206.0;1 1 1 1];un[-1298990374206.0 1.0 -9005900264370198.0 1298990374206.0;1 1 1 1]]
+mv:{x#1e16 1.0 -1e16 3.0 0.1 7e15 -0.3}
+t[`maskSumLong;{fu[mv x;y]~un[mv x;y]}'[5 17 37 100;(5#1;17#1 0 1;37#1 1 0 1 0;100#0 1 1)];1 1 1 1]
+fa:{[a;b;m]`k@+/(a+0.1*b)@&m};ua:{[a;b;m]c:a+0.1*b;i:&m;d:c@i;`k@+/d}
+t[`maskFmaNoContract;fa[2#-0.30000000000000004;2#3.0;1 1];"0.0"]
+t[`maskFmaOrder;{fa[x;y;z]~ua[x;y;z]}'[0.3*!'17 37;0.7*1+!'17 37;(17#1 1 0;37#0 1)];1 1]
+
+/ cases that show the old order on x86 as well as arm64 (the four-item ones above are exact on x86)
+MD:1%1+!1000
+t[`maskSumX86;`k@{[x;m]+/x@&m}[MD;1000#1 0];`k@{[x;m]{+/x}x@&m}[MD;1000#1 0]]
+t[`maskFmaX86;`k@{[a;m]+/(a+0.1*a)@&m}[MD;1000#0 1 1];`k@{[a;m]{+/x}(a+0.1*a)@&m}[MD;1000#0 1 1]]
+t[`maskCmpX86;`k@{[x;c]+/x@&c>0}[MD;1000#1 -1];`k@{[x;c]{+/x}x@&c>0}[MD;1000#1 -1]]
+/ an int atom on the left is 'type, as unfused (the fused sum read it as a vector)
+t[`maskSumIntAtom;*"\n"\.[.:;,"+/0@&0 1";{x}];"'type"]
+t[`maskFmaIntAtom;*"\n"\.[.:;,"+/(1+2*3)@&0 1";{x}];"'type"]
+t[`maskCmpIntAtom;*"\n"\.[.:;,"+/0@&(0 1)>0";{x}];"'type"]
+
+hexpect[88]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

@@ -364,18 +364,8 @@ Z A shiftC(L code,A x){B s=code>=300;code-=s?300:200;B fl=code>=16;L op=code&15;
  #undef SHOP
  return z;}
 // ---- amber 2.3: masks that are comparisons, fused (F12) --------------------
-// cmkind: can c OP k feed simd_cmpmasksum_*? Fills the kernel's (ct,kd,kf,kl).
-// float c against a float/int atom or a same-length float vector; integer c
-// (any width) against an int atom. Anything else -- including an int null atom
-// against floats -- is 0, i.e. "run the unfused comparison".
-Z B cmkind(A c,A k,U n,I*ct,F*kd,CO F**kf,L*kl)_(P(_tP(c)||_n(c)!=n,0)UC t=_t(c);*kf=0;
- I(t==tF,*ct=0;I(_tf(k),*kd=*_F(k);return 1;)I(_tz(k),L v=gl_(k);P(v==NL,0)*kd=(F)v;return 1;)
-  I(!_tP(k)&&_t(k)==tF&&_n(k)==n,*kf=_F(k);return 1;)return 0;)
- I((t==tG||t==tH||t==tI||t==tL)&&_tz(k),*ct=t-tG+1;*kl=gl_(k);return 1;)
- 0)
 // +/x@&(c OP k): code 28+op, four arguments (code;x;c;k)
-Z A fredcmp(I op,A x,A c,A k){I ct;F kd=0;CO F*kf=0;L kl=0;
- I(!_tP(x)&&xtF&&cmkind(c,k,xn,&ct,&kd,&kf,&kl),int bad=0;F r=simd_cmpmasksum_f64(xV,_V(c),ct,kd,kf,kl,xn,op,&bad);I(!bad,return af(r)))
+Z A fredcmp(I op,A x,A c,A k){
  A m=v2[8+op](c,_R(k));P(!m,0)A fa[3];fa[0]=az(18);fa[1]=x;fa[2]=m;A r=fredC(fa,3);mr(m);return r;}
 // ---- amber 2.3: _x%y on integers -- floor division in one integer pass ------
 // `_x%y` is how k spells integer division, and it used to be three passes and
@@ -413,7 +403,7 @@ AA(fredC,/*10..0*/P(n!=3&&n!=4,en(*a))L d=gl(*a);A x=a[1],y=a[2];
  I(d>=200&&d<400,return shiftC(d,x))
  I(d==19,return fcntC(x))
  I(d>=108&&d<=110,return whrcmpC(d-100,x,y))
- I(d==18,I(!_tP(y)&&ytG&&yn&&yn<=xn,int bad=0;
+ I(d==18,I(!_tP(x)&&!_tP(y)&&ytG&&yn&&yn<=xn,int bad=0;
   I(xtF,F s=simd_masksum_f64(xV,yV,yn,&bad);I(!bad,return af(s)))
   I(xtL,L s=simd_masksum_i64(xV,yV,yn,&bad);I(!bad,return az(s)))))
  I(d==3,I(xtF&&ytF&&xn==yn,return af(simd_dot_f64(xV,yV,xn)))I(xtL&&ytL&&xn==yn,return az(simd_dot_i64(xV,yV,xn))))
@@ -466,14 +456,10 @@ Z A fmsslow(L sb,A x,A sc,A b,A m){
  A u=fmaC(fa,4);if(!u)return 0;
  A fr[3];fr[0]=az(18);fr[1]=u;fr[2]=m;
  A r=fredC(fr,3);mr(u);return r;}
-// amber 2.3: six arguments (code;a;s;b;c;k), code = sub + 2*op: the mask is
-// c OP k, computed inside the summing loop. Shapes the kernel does not take run
-// the comparison unfused and then the proven five-argument path below.
-Z A fmscmp(L code,A x,A sc,A b,A c,A k){I sub=(I)(code&1),op=(I)(code>>1);I ct;F kd=0;CO F*kf=0;L kl=0;
- I(_tF(x)&&_tF(b)&&xn==_n(b)&&(_tf(sc)||_tz(sc))&&cmkind(c,k,xn,&ct,&kd,&kf,&kl),
-  F sv=_tf(sc)?*_F(sc):(F)gl_(sc);int bad=0;
-  F r=simd_cmpmasksum_fma_f64(xV,sv,_V(b),sub,_V(c),ct,kd,kf,kl,xn,op,&bad);
-  I(!bad,return af(r)))
+// amber 2.3: six arguments (code;a;s;b;c;k), code = sub + 2*op: the mask c OP k
+// is built by the verb, then summed by the five-argument path below, whose sum is
+// exact (a kernel that built the mask inside its own loop was slower than this).
+Z A fmscmp(L code,A x,A sc,A b,A c,A k){I sub=(I)(code&1),op=(I)(code>>1);
  A m=v2[8+op](c,_R(k));P(!m,0)
  A fa[5];fa[0]=az(sub);fa[1]=x;fa[2]=sc;fa[3]=b;fa[4]=m;A r=fmsC(fa,5);mr(m);return r;}
 AA(fmsC,/*10..0*/P(n!=5&&n!=6,en(*a))L sb=gl(*a);A x=a[1],sc=a[2],b=a[3],m=a[4];

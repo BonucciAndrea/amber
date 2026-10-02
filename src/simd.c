@@ -51,6 +51,12 @@
 #else
   #define AMB_NOFMA
 #endif
+/* clang contracts by default (-ffp-contract=on) and has no per-function switch that
+ * AMB_NOFMA could use, so turn contraction off for the whole file. build.sh passes
+ * -ffp-contract=off already (since 2.3.0); this guards builds of simd.c without it. */
+#if defined(__clang__)
+  #pragma STDC FP_CONTRACT OFF
+#endif
 
 const char *simd_backend(void) {
 #if !defined(AMB_VEC)
@@ -970,18 +976,51 @@ int simd_frange_f64(const double *a, size_t n, double *mn, double *mx, int *sort
 }
 
 /* ==== amber 2.1: sum of the elements selected by a 0/1 byte mask ==========
- * +/x@&m without the compressed vector: one pass over x and m. Same
- * accumulator tree as simd_sum (lane-wise masked add), so the f64 result is
- * bit-identical to compress-then-sum on the same elements. *bad=1 when a mask
- * byte exceeds 1 (the caller then takes the general path). */
+ * +/x@&m without the compressed vector. The f64 result must be bit-identical to
+ * compress-then-sum, and simd_sum_f64's accumulators are indexed by position in the
+ * COMPRESSED vector: four accumulators of L lanes over each block of 4L selected
+ * elements, then the remaining whole groups of L into the first accumulator, the
+ * lanes added in order, and the last few elements one by one. So the selected values are
+ * compressed block by block, and the c-th of them goes to the accumulator and lane it
+ * would have had in +/ of the compressed vector. (A 16-lane tree over positions in x differed from +/ of the compressed
+ * vector whenever the sum was inexact.) *bad=1 when a mask byte exceeds 1 (the caller
+ * then takes the general path). b, when given, makes each element a[i]+s*b[i]. */
+static AMB_NOFMA double masktree(const double *a, double s, const double *b,
+                                 const unsigned char *m, size_t n, int *bad) {
+#if defined(AMB_VEC)
+    const size_t L = VBYTES / sizeof(double);
+#else
+    const size_t L = 1;                     /* the scalar simd_sum_f64: four scalar sums */
+#endif
+    const size_t G = 4 * L;
+    /* block by block: compress the selected values (simd_compress_64, bit-exact), add the full
+     * groups of G to the accumulators, and carry the rest (under G) to the next block; so the
+     * c-th selected value lands in accumulator c%G, as in +/ of the compressed vector */
+    enum { CI = 2048 };
+    double tmp[CI], buf[CI + 32], acc[4 * 8] = {0}, r = 0;
+    size_t i, j, k, kb = 0;
+    *bad = 0;
+    for (i = 0; i < n; i += CI) {
+        size_t len = n - i < CI ? n - i : CI; const double *src = a + i; int bd = 0;
+        if (b) { for (k = 0; k < len; k++) tmp[k] = a[i + k] + s * b[i + k]; src = tmp; }
+        kb += simd_compress_64((const int64_t *)src, m + i, (int64_t *)(buf + kb), len, &bd);
+        if (bd) { *bad = 1; return 0; }
+        for (j = 0; j + G <= kb; j += G) for (k = 0; k < G; k++) acc[k] += buf[j + k];
+        for (k = 0; j + k < kb; k++) buf[k] = buf[j + k];
+        kb -= j;
+    }
+    j = 0;
+#if defined(AMB_VEC)
+    for (; j + L <= kb; j += L) for (k = 0; k < L; k++) acc[k] += buf[j + k];
+    for (k = 0; k < L; k++) r += (acc[k] + acc[L + k]) + (acc[2 * L + k] + acc[3 * L + k]);
+#else
+    r = (acc[0] + acc[1]) + (acc[2] + acc[3]);
+#endif
+    for (; j < kb; j++) r += buf[j];
+    return r;
+}
 AMB_MV AMB_NOFMA double simd_masksum_f64(const double *a, const unsigned char *m, size_t n, int *bad) {
-    double s[16]; size_t i = 0, k; unsigned char acc = 0;
-    for (k = 0; k < 16; k++) s[k] = 0;
-    for (; i + 16 <= n; i += 16)
-        for (k = 0; k < 16; k++) { unsigned char mi = m[i + k]; acc |= mi; s[k] += mi ? a[i + k] : 0.0; }
-    { double r = 0; for (k = 0; k < 16; k++) r += s[k];
-      for (; i < n; i++) { unsigned char mi = m[i]; acc |= mi; r += mi ? a[i] : 0.0; }
-      *bad = acc > 1; return r; }
+    return masktree(a, 0, 0, m, n, bad);
 }
 AMB_MV int64_t simd_masksum_i64(const int64_t *a, const unsigned char *m, size_t n, int *bad) {
     uint64_t r = 0; unsigned char acc = 0;
@@ -999,82 +1038,16 @@ AMB_MV int64_t simd_masksum_i64(const int64_t *a, const unsigned char *m, size_t
  *
  * Bit-identical to the chain, not merely close: the product is rounded before
  * the add (AMB_NOFMA, no contraction), `a - s*b` is computed as a + (-s)*b
- * which is exact because negation is exact, and the accumulation uses the SAME
- * 16-lane tree in the same order as simd_masksum_f64. So a program that fuses
- * and one that does not produce the same double.
+ * which is exact because negation is exact, and the accumulation is the one
+ * simd_masksum_f64 uses, simd_sum_f64's tree over the selected elements. So a
+ * program that fuses and one that does not produce the same double.
  * *bad = 1 when a mask byte is neither 0 nor 1; the caller then discards the
  * answer and takes the unfused path, exactly as the other masked kernels do. */
 AMB_MV AMB_NOFMA double simd_masksum_fma_f64(const double *a, double s, const double *b,
                                              const unsigned char *m, size_t n, int sub,
                                              int *bad) {
-    double acc[16]; size_t i = 0, k; unsigned char o = 0;
-    const double sv = sub ? -s : s;
-    for (k = 0; k < 16; k++) acc[k] = 0;
-    for (; i + 16 <= n; i += 16)
-        for (k = 0; k < 16; k++) { unsigned char mi = m[i + k]; o |= mi;
-            acc[k] += mi ? (a[i + k] + sv * b[i + k]) : 0.0; }
-    { double r = 0; for (k = 0; k < 16; k++) r += acc[k];
-      for (; i < n; i++) { unsigned char mi = m[i]; o |= mi;
-          r += mi ? (a[i] + sv * b[i]) : 0.0; }
-      *bad = o > 1; return r; }
+    return masktree(a, sub ? -s : s, b, m, n, bad);
 }
-
-/* ==== amber 2.3: the comparison fused too ===================================
- * +/(a +- s*b)@&(c OP k) and +/x@&(c OP k) used to materialise the 0/1 mask of
- * `c OP k` (one byte written and re-read per element) before the masked sum
- * above consumed it -- the "F12" item of the 2.2 audit. Here the mask bit is
- * computed in the loop. OP: 0 `<`, 1 `>`, 2 `=`; k is a scalar, or a vector of
- * c's length. The accumulation tree is EXACTLY the one simd_masksum_f64 and
- * simd_masksum_fma_f64 use (16 lanes, then the tail added to the reduced sum),
- * so the double equals the unfused chain's bit for bit.
- * Float c: *bad = 1 when c or k holds a NaN or a -0.0 -- the two classes where
- * the engine's float collation is not IEEE -- and the caller discards the answer
- * and runs the unfused chain (the same guard simd_cmps_f64 applies). Integer c
- * compares exactly and never sets *bad. */
-#define AMB_FMSL(TERM, COND, BAD)                                              \
-    for (; i + 16 <= n; i += 16)                                               \
-        for (k = 0; k < 16; k++) { size_t j = i + k; BAD;                      \
-            acc[k] += (COND) ? (TERM) : 0.0; }                                 \
-    { r = 0; for (k = 0; k < 16; k++) r += acc[k];                             \
-      for (; i < n; i++) { size_t j = i; BAD; r += (COND) ? (TERM) : 0.0; } }
-#define AMB_FMSOPS(TERM, CV, KV, BAD)                                          \
-    if (op == 0)      { AMB_FMSL(TERM, (CV) <  (KV), BAD) }                   \
-    else if (op == 1) { AMB_FMSL(TERM, (CV) >  (KV), BAD) }                   \
-    else              { AMB_FMSL(TERM, (CV) == (KV), BAD) }
-/* ct: 0 = double c (kd scalar, or kf vector when non-null), 1/2/3/4 = int8/16/
- * 32/64 c against the int64 scalar kl. fma: 0 -> sum a[j]; 1 -> a[j] + sv*b[j]. */
-#define AMB_FMSBODY(TERM)                                                      \
-    switch (ct) {                                                              \
-    case 0: { const double *cc = (const double *)c;                            \
-        if (kf) { AMB_FMSOPS(TERM, cc[j], kf[j],                               \
-                  bb |= AMB_BADBITS(amb_bits(cc[j])) | AMB_BADBITS(amb_bits(kf[j]))) } \
-        else { bb |= AMB_BADBITS(amb_bits(kd)) ? 1 : 0;                        \
-               AMB_FMSOPS(TERM, cc[j], kd, bb |= AMB_BADBITS(amb_bits(cc[j]))) } } break; \
-    case 1: { const int8_t  *cc = (const int8_t  *)c; AMB_FMSOPS(TERM, (int64_t)cc[j], kl, (void)0) } break; \
-    case 2: { const int16_t *cc = (const int16_t *)c; AMB_FMSOPS(TERM, (int64_t)cc[j], kl, (void)0) } break; \
-    case 3: { const int32_t *cc = (const int32_t *)c; AMB_FMSOPS(TERM, (int64_t)cc[j], kl, (void)0) } break; \
-    default:{ const int64_t *cc = (const int64_t *)c; AMB_FMSOPS(TERM, cc[j], kl, (void)0) } break; }
-AMB_MV AMB_NOFMA double simd_cmpmasksum_fma_f64(const double *a, double s, const double *b, int sub,
-                                                const void *c, int ct, double kd, const double *kf,
-                                                int64_t kl, size_t n, int op, int *bad) {
-    double acc[16], r = 0; size_t i = 0, k; int64_t bb = 0;
-    const double sv = sub ? -s : s;
-    for (k = 0; k < 16; k++) acc[k] = 0;
-    AMB_FMSBODY(a[j] + sv * b[j])
-    *bad = bb != 0; return r;
-}
-AMB_MV AMB_NOFMA double simd_cmpmasksum_f64(const double *a,
-                                            const void *c, int ct, double kd, const double *kf,
-                                            int64_t kl, size_t n, int op, int *bad) {
-    double acc[16], r = 0; size_t i = 0, k; int64_t bb = 0;
-    for (k = 0; k < 16; k++) acc[k] = 0;
-    AMB_FMSBODY(a[j])
-    *bad = bb != 0; return r;
-}
-#undef AMB_FMSBODY
-#undef AMB_FMSOPS
-#undef AMB_FMSL
-
 /* sum and OR of a byte mask in one pass (sizing + validity for `&`). */
 AMB_MV int64_t simd_masksum_u8(const unsigned char *m, size_t n, unsigned *orv) {
     int64_t s = 0; unsigned o = 0; size_t i = 0;

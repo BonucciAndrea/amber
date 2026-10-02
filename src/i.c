@@ -275,7 +275,9 @@ A wjc(A x){
  A*e=(A*)_V(x);
  P(!_n(e[1]),x(emp(tA)))
  // normalise all integer inputs to 64-bit long (columns/times/bounds may be squeezed to G/H/I widths)
- A QT=N(cL(_R(e[0]))),CD=N(cL(_R(e[2]))),W0A=N(cL(_R(e[3]))),W1A=N(cL(_R(e[4]))),GBA=N(cL(_R(e[5]))),GEA=N(cL(_R(e[6])));
+ // times (quotes and window bounds) as keys: float times compare as floats (a.c tkey)
+ B f=_t(e[0])==tF||_t(e[3])==tF||_t(e[4])==tF;
+ A QT=N(tkey(_R(e[0]),f)),CD=N(cL(_R(e[2]))),W0A=N(tkey(_R(e[3]),f)),W1A=N(tkey(_R(e[4]),f)),GBA=N(cL(_R(e[5]))),GEA=N(cL(_R(e[6])));
  // Raw contiguous primitive column pointers, extracted ONCE before any loop.
  CO L*RES T=_V(QT),*RES W0=_V(W0A),*RES W1=_V(W1A),*RES GB=_V(GBA),*RES GE=_V(GEA),*RES cod=_V(CD);
  U nt=_n(W0A),na=_n(e[1]),nq=_n(QT);

@@ -99,10 +99,16 @@ U amub(CO L*RES a,U lo,U hi,L key){
 //    arena_mark()/arena_release(), so the kernel is arena-neutral to its
 //    caller in the sense that matters: its peak is one generation, and it
 //    gives back everything it took before it returns.
+// A time column as 64-bit keys for the time joins. Ints and temporals are themselves (cL); floats
+// (f set when any time column is float) become keys in value order -- every NaN one key, first,
+// then by value with -0.0 the same as 0.0 (issue #15) -- where cL used to truncate them (0.5 and
+// 0.7 both 0). The zero is mapped by its bits: the build's -fno-signed-zeros lets a compare ignore it.
+A tkey(A x,B f)_(P(!f,cL(x))x=cF(x);P(!x,0)U n=_n(x);A y=aL(n);CO W*RES s=_V(x);L*RES d=_V(y);
+ F(n,W b=s[i];b=b==1ull<<63?0:b;d[i]=b<<1>0xffe0000000000000ull?NL+1:(L)(b>>63?b^0x7fffffffffffffffull:b))x(y))
 A ajc(A x){
  P(_t(x)-tA||_n(x)-4,et(x))
- A*e=(A*)_V(x);
- A QT=N(cL(_R(e[0]))),TT=N(cL(_R(e[1]))),GB=N(cL(_R(e[2]))),GE=N(cL(_R(e[3])));
+ A*e=(A*)_V(x);B f=_t(e[0])==tF||_t(e[1])==tF;
+ A QT=N(tkey(_R(e[0]),f)),TT=N(tkey(_R(e[1]),f)),GB=N(cL(_R(e[2]))),GE=N(cL(_R(e[3])));
  CO L*RES qt=_V(QT),*RES tt=_V(TT),*RES gb=_V(GB),*RES ge=_V(GE);
  U nt=_n(TT),nq=_n(QT);
  // On a 32-bit target (wasm32) size_t is 32 bits, so nt*sizeof(L) can wrap.
@@ -218,10 +224,11 @@ Z W ajs_h(A c,U i){    // 64-bit hash contribution of column c at row i
   case tH: v=(W)(UH)((CO H*)_V(c))[i];break;
   case tI: case tS: v=(W)(U)((CO I*)_V(c))[i];break;
   case tL: v=(W)((CO L*)_V(c))[i];break;
-  case tF: {F f=((CO F*)_V(c))[i];MC(&v,&f,8);break;}
+  case tF: {F f=((CO F*)_V(c))[i];MC(&v,&f,8);I(f!=f,v=0x7ff8000000000000ull)E(I(!(v<<1),v=0));break;}   //one key per value, as = groups: both zeros, every NaN
   default: v=0;
  }
  return v*0x9E3779B97F4A7C15ull;}
+Z W ajs_fk(F f){W b;MC(&b,&f,8);P(f!=f,0)b=b==1ull<<63?0:b;return(b>>63?~b:b|1ull<<63)+2;}   //the join's key order (tkey): every NaN one value, first; -0.0 is 0.0
 A ajsC(A x){
  P(_t(x)-tA||(_n(x)-2&&_n(x)-3),et(x))
  A*e=(A*)_V(x);
@@ -250,18 +257,18 @@ A ajsC(A x){
     case tH: AJS_NE(H) break;
     case tI: case tS: AJS_NE(I) break;             // tS stores packed 32-bit ids
     case tL: AJS_NE(L) break;
-    case tF: AJS_NE(F) break;
+    case tF: {CO F*RES p=_V(c);for(U r=1;r<n;r++)chg[r]|=(UC)!(p[r]==p[r-1]||(p[r]!=p[r]&&p[r-1]!=p[r-1]));} break;   //by value, NaN as NaN: as = groups
     default: return x(al(0));                      // unknown type: sort, don't guess
    })
  #undef AJS_NE
  // ---- pass 2: ordering column non-decreasing inside each run ------------
  #define AJS_ORD(T) {CO T*RES p=_V(tcol);for(U r=1;r<n;r++)if(!chg[r]&&p[r]<p[r-1])return x(al(0));}
  switch(_t(tcol)){
-  case tG: case tC: AJS_ORD(G) break;
+  case tG: case tC: AJS_ORD(G) break;               // chars: signed, as xasc's kernel and the aj kernel read them
   case tH: AJS_ORD(H) break;
   case tI: AJS_ORD(I) break;
   case tL: AJS_ORD(L) break;
-  case tF: AJS_ORD(F) break;
+  case tF: {CO F*RES p=_V(tcol);for(U r=1;r<n;r++)if(!chg[r]&&ajs_fk(p[r])<ajs_fk(p[r-1]))return x(al(0));} break;   //the join's order: a NaN no longer hides an unsorted run
   default: return x(al(0));                        // unknown ordering column: sort
  }
  #undef AJS_ORD

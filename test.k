@@ -124,6 +124,10 @@ t[`ajZeroTimes;(+aj[`sym`time;+`sym`time!(`a`a`a`a;-0.0 0.0 0.5 1.0);+`sym`time`
 qwF:+`sym`time`bid!(`a`a`a;0.5 0.7 0.9;10 20 30)
 twF:0.6 1.0
 t[`wjFloat;(+wj[(twF-0.15;twF+0.15);`sym`time;+`sym`time!(`a`a;twF);qwF;,(`c;count;`bid)])`c;2 1]
+t[`wjFloatFallback;(+wj[(twF-0.15;twF+0.15);`sym`time;+`sym`time!(`a`a;twF);qwF;,(`s;{sum x};`bid)])`s;30 30]
+t[`wjNullLowFallback;(+wj[(0N 4 7;1 5 9);`sym`time;+`sym`time!(`a`a`a;1 5 9);+`sym`time`bid!(`a`a`a`a;0 4 5 8;10 20 30 40);,(`s;{sum x};`bid)])`s;10 50 40]   / a null lower bound starts at the first quote, as the kernel does
+t[`wjIntTimesFloatWindow;(+wj[(,4.5;,5.5);`sym`time;+`sym`time!(,`a;,5);+`sym`time`bid!(`a`a`a;3 4 5;10 20 30);,(`s;{sum x};`bid)])`s;,30]   / a float bound over int times, as the kernel
+t[`wjNullLowNaNQuote;(+wj[(,0N;,1.5);`sym`time;+`sym`time!(,`a;,1.5);+`sym`time`bid!(`a`a`a;0n 1.0 2.0;10 100 1000);,(`s;{sum x};`bid)])`s;,110]   / a null lower bound over float times with a NaN quote, as the kernel
 
 / ---- `ajs / ajsorted (src/a.c): is a table already in as-of order? ----
 / A WRONG 1b here silently corrupts every join that trusts it, so the predicate

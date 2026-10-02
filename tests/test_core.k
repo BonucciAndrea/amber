@@ -160,6 +160,13 @@ t[`symIdent;`k@`abc;"`abc"]
 t[`symList;`k@`$("1a";"b");"`\"1a\"`b"]
 tv[`symBack;"{x~. `k@x}@`$(\"1a\";\"a b\";\"\";\"a\";((`c$1),\"x\");(\"a\",`c$233))";1b]
 
-hexpect[83]
+
+/ ---- a Cyrillic lead byte takes the next byte only if it continues the character ----
+/ (at the end of the text it stepped over the terminator and the lexer ran on past it)
+tv[`pidEnd;"$.(\"`\",(`c$208),(`c$0),\";42\")";,`c$208]
+tv[`pidCyrillic;"$.(\"`\",`c$208 184 208 176)";`c$208 184 208 176]
+tv[`pidLoneBack;"{x~. `k@x}@`$((\"a\",`c$208);(\"b\",(`c$208),\"`\");(`c$208 208);(`c$208 184))";1b]
+
+hexpect[86]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

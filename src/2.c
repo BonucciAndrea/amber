@@ -98,7 +98,7 @@ Z A cmpZZ(A x,A y,U f)_(U w=xw-3;P(w<yw-3,x=ct(tG+yw-3,xR);x(cmpZZ(x,y,f)))I(yw-
 Z A cmpzZ(L v,A y,U f)_(U w=yw-3;P(tG+w<tZ(v),y(rsz(yn,ai(f==8?v<0:f==9?v>0:0))))
  U n=yn;A z=aG(n);My(A(&ltng,ltnh,ltni,ltnl,gtng,gtnh,gtni,gtnl,eqlg,eqlh,eqli,eqll)[f-8<<2|w](v,yV,zG,n))z)
 
-Z A addzE(L v,A x)_(Lij x(0);aE(i+v,j+v))
+Z A addzE(L v,A x)_(Lij P(v>0?j>WL-v:i<NL-v,addzZ(v,gZ(x),1))x(0);aE(i+v,j+v))   //ends past the int range: a vector (ints wrap), not a wrapped range
 Z A addfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;U n=zn+3&-4;SIMD F(n,zf=v+yf)y-z?y(z):z)
 Z A mulfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;U n=zn+3&-4;SIMD F(n,zf=v*yf)y-z?y(z):z)
 Z A subfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;simd_subs_f64(v,yV,zV,yn);y-z?y(z):z)/* v - y */

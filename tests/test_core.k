@@ -179,6 +179,16 @@ t[`reshapeWrapLimit;*"\n"\.[.:;,"3 6148914691236517206#!5";{x}];"'limit"]
 t[`reshapeHugeLimit;*"\n"\.[.:;,"65536 65536 65536 65536#0";{x}];"'limit"]
 t[`reshapeNullLongCount;(0N 4294967297#!3;0N 4294967296#!3);(,0 1 2;,0 1 2)]
 
-hexpect[95]
+
+/ ---- rolls of chars and of full-range ints check their count too ----
+t[`rollCharsLimit;.[.:;,"#4294967298?0x00";{(x?"\n")#x}];"'limit"]
+t[`rollFullLimit;.[.:;,"#4294967298?-1";{(x?"\n")#x}];"'limit"]
+t[`rollCharsNeg;.[.:;,"#-4294967294?\" \"";{(x?"\n")#x}];"'domain"]
+t[`rollCharsSmall;#5?" ";5]
+
+
+t[`rollNullChars;0N?" ";""]
+
+hexpect[100]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

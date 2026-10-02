@@ -40,6 +40,6 @@ Z A des(U n,W m)_(A x=aL(n);L*a=xL;F(n,a[i]=i)W t=1ll<<(66-CLZ(n));A y=aL(t);L*h
   I(j<(W)n,SW(a[i],a[j]))
   E(W p=2*j;I s=j;W(1,I hp=h[p&=b];B(!hp,h[p]=j)B((W)hp==j,s=v[p])p+=2)v[p]=a[i];a[i]=s)))ct(tZ(m),x))//linear probe
 Z A de(U n,W m)_(n>m?el0():!(m>>31)&&n+64>m>>4?ded(n,m):des(n,m))//deal
-Z A rd(L n,L m)_(m<0?(n<0?ed0():rt(n,tZ(m))):n==NL?rd(-m,m):n-(I)n?ez0():n<0?de(-n,m):ro(n,m))//roll or deal
+Z A rd(L n,L m)_(m<0?(n<0?ed0():n-(I)n?ez0():rt(n,tZ(m))):n==NL?rd(-m,m):n-(I)n?ez0():n<0?de(-n,m):ro(n,m))//roll or deal
 A rndF(L n)_(P(n<0,ed0())P(n>>32,ez0())A x=aF(n);F(n,xf=rf())x)//random floats 0..1
-A rnd(L n,A x)_(X(Ril(rd(n,gl(x)))Rc(P((32|xv)=='a',cC(add(x,Nx(rd(n,26)))))rt(n,tC))Rf(x(mul(x,Nx(rndF(n)))))RMT(x(x1(Nx(rd(n,xN)))))R_(et(x)))0)
+A rnd(L n,A x)_(X(Ril(rd(n,gl(x)))Rc(P((32|xv)=='a',cC(add(x,Nx(rd(n,26)))))P(n==NL,aC(0))P(n<0,ed0())P(n-(I)n,ez0())rt(n,tC))Rf(x(mul(x,Nx(rndF(n)))))RMT(x(x1(Nx(rd(n,xN)))))R_(et(x)))0)   //chars: rt takes 32 bits, so a count past them is 'limit, as for ints; a null count is "", as before (q gives 'domain)

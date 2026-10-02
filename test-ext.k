@@ -48,7 +48,7 @@ t[`d2ymd;d2ymd 8780;2024 1 15]
 t[`dstr;dstr 8780;"2024.01.15"]
 t[`pdate;pdate"2024.01.15";8780]
 t[`dow0;dow 0;`Sat]
-t[`pstr;pstr tstamp[8780;hms[9;30;0]];"2024.01.15D09:30:00.000"]
+t[`pstr;pstr tstamp[8780;hms[9;30;0]];"2024.01.15D09:30:00.000000000"]
 
 / ---- system namespaces ----
 t[`zdToday;`M=@meta([]a:1 2);0]           / (placeholder true/false shape check)

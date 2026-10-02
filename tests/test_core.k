@@ -386,7 +386,55 @@ t[`compileUnderLimit;. "a:1;#(",(";"/100#,"a"),")";100]
 / ---- a string that ends in a backslash is 'parse (the read past the text shows only under ASan, with piped input as in #22) ----
 t[`strTrailingBackslash;.[.:;,"\"a\\";{(x?"\n")#x}];"'parse"]
 
-hexpect[230]
+/ ---- temporal atoms: list verbs treat them as atoms; with a list, arithmetic goes item by item ----
+/ (the bare interpreter cannot print a date, so `i$ shows the day counts)
+t[`dateTake;(`i$3#2026.07.30;`i$1#2026.07.30;`i$-2#10:00:05.000;`i$2#2026.07.30D09:30:00.000000001);(9707 9707 9707;,9707;36005000 36005000;838719000000000001 838719000000000001)]
+t[`dateAtomVerbs;(`i$|2026.07.30;`i$*2026.07.30;#2026.07.30);9707 9707 1]
+t[`dateGrade;*"\n"\.[.:;,"<2026.07.30";{x}];"'type"]   / open of a temporal atom (monadic <) crashed
+t[`dateDrop;*"\n"\.[.:;,"2_2026.07.30";{x}];"'rank"]   / drop from an atom crashed; 'rank as for an int atom
+t[`dateIndexOut;((2026.07.30;2026.07.31)5;(`a`b!(2026.07.30;2026.07.31))`c)~(::;::);1]   / out of range: the null of an atom, :: (it was ,::)
+t[`datePlusList;(`i$2026.07.30+!3;`i$(!3)+2026.07.30;`i$10:00:05.000+0 1 2;`i$2026.07.30-0 1);(9707 9708 9709;9707 9708 9709;36005000 36005001 36005002;9707 9706)]
+t[`datePlusAtom;(`i$2026.07.30+1;2026.07.31-2026.07.30);9708 1]
+
+
+/ ---- fill and binary search with a temporal atom on the right are 'type, not a crash ----
+te[`fillTemporal;"0N^2026.07.30"]
+te[`fillTemporalSym;"`a^10:00:05.000"]
+te[`fillTemporalList;"0N^(2026.07.30;1)"]
+te[`binTemporal;"(1 2 3)'2026.07.30"]
+te[`binTemporalFloat;"1.0 2.0'2026.07.30"]
+te[`binTemporalGeneric;"(1 2 3)'(2026.07.30;1)"]
+
+/ a temporal atom on the left of fill is 'type too (it was 'nyi), not a fill
+t[`fillTemporalLeft;{.[{x^y};(x;y);{(x?"\n")#x}]}[2026.07.30;0N 1];"'type"]
+
+/ ---- a missing or failing temporal formatter is an error, not the end of the process or a crash ----
+te[`fmtMissing;"$2026.07.30"]
+te[`fmtMissingK;"`k@2026.07.30"]
+/ a projection, composition or derived verb holding a date, and JSON, pass the error up too
+te[`fmtMissingProj;"`k@{x+y}[2026.07.30]"]
+te[`fmtMissingDerived;"`k@(2026.07.30+)"]
+te[`fmtMissingString;"$({x+y}[2026.07.30])"]
+te[`fmtMissingJson;"`j@2026.07.30"]
+te[`fmtMissingJsonList;"`j@(1;2026.07.30)"]
+t[`fmtMissingGrade;<({x+y}[2026.07.30];{x+y}[2026.07.31]);0 1]
+tv[`fmtFails;"dstr::{x+`a};.[{$x};,2026.07.30;{`caught}]";`caught]
+te[`fmtFailsList;"dstr::{x+`a};`k@(2026.07.30;1)"]
+
+
+te[`fmtFailsProj;"dstr::{x+`a};`k@{x+y}[2026.07.30]"]
+te[`fmtFailsJson;"dstr::{x+`a};`j@`a`b!(1;2026.07.30)"]
+
+/ ---- a temporal item keeps its type in a list ----
+/ There is no temporal vector: pushing a date onto an int list made it an int.
+t[`joinDateType;@'1,2026.07.30;`i`d]
+t[`joinTimeType;@'100000 2,12:00:00.000;`i`i`t]
+t[`eachDateType;@'(1;0)+(2;2026.07.30);`i`d]
+t[`eachDateValue;2026.07.30=*|(1;0)+(2;2026.07.30);1]
+t[`eachStampType;@'(5000000000;1)+(2;2026.07.30D00:00:00.0);`i`n]
+t[`joinIntsStay;@1 2,3;`I]
+
+hexpect[262]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

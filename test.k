@@ -269,6 +269,15 @@ t[`tlitKeyCols;keys([sym:`a`b]px:1 2);,`sym]
 t[`tlitRows;#([]a:1 2 3 4);4]
 
 / ---- temporal ----
+\l temporal.k
+t[`tsLastNs;pstr 2026.07.30D23:59:59.999999999;"2026.07.30D23:59:59.999999999"]
+t[`tsMsFloor;pstr 2140.01.01D00:01:24.374999297;"2140.01.01D00:01:24.374999297"]
+t[`tsBefore2000;pstr 1999.12.31D23:59:59.999999999;"1999.12.31D23:59:59.999999999"]
+t[`fdivExact;(fdiv[4417977684374999297;1000000];fdiv[-5;10];fdiv[17;8];fdiv[-17;8];fdiv[80;9]);(4417977684374;-1;2;-3;8)]
+t[`fdivNegative;fdiv[17;-3];-6]
+t[`fdivNull;fdiv[17 0N -17;8];2 0N -3]
+t[`fdivFloat;fdiv[17.5;2];8]
+t[`fdivVector;fdiv[17;5 6];3 2]
 t[`hms;hms[9;30;15];34215000]
 t[`hh;hh hms[9;30;15];9]
 t[`mm;mm hms[9;30;15];30]
@@ -278,6 +287,10 @@ t[`second;second hms[9;30;15];34215]
 t[`milli;milli hms[9;30;15]+123;123]
 t[`stime;stime hms[9;30;15];"09:30:15.000"]
 t[`ptime;ptime"09:30:15.123";34215123]
+t[`stimeNeg;stime -1800000 -1 1800000;("-00:30:00.000";"-00:00:00.001";"00:30:00.000")]
+t[`ptimeNeg;(ptime"-00:30:00.000";ptime"-01:00:00");-1800000 -3600000]
+t[`ptimeList;*"\n"\.[{"T"$("09:30:00.100";"10:00:00.000")};,0;{x}];"'type"]   / a list of strings is 'type, as before (the sign test must not recurse)
+t[`timeNegText;`i$"T"$"-00:30:00.000";-1800000]
 t[`ptimeRound;(ptime stime hms[13;45;9])=hms[13;45;9];1]
 t[`minbar;minbar[5;hms[9;37;0]];hms[9;35;0]]
 t[`minbarVec;minute minbar[1;hms[9;30;0]+60000*0 1 2];570 571 572]
@@ -426,6 +439,7 @@ t[`litCursorAdvanced;   1e-309 1.5;              1e-309 1.5]
 t[`litCursorOverflow;   1e309 1.5;               0w 1.5]
 t[`litRoundTrip;        . `k 5e-324;             5e-324]
 t[`litRoundTripVec;     . `k (5e-324;1e-320;1.5);(5e-324;1e-320;1.5)]
+t[`temporalNullPrint;(pstr 0N;dstr 0N;stime 0N;`k@1707.09.22D00:12:43.145224192);("0N";"0N";"0N";"0N")]
 
 / ---- 2.3: grade of 8-byte keys whose span fits in 32 bits ----
 / the radix picked its 4-byte kernel from the normalised byte count, so an int64

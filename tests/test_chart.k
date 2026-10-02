@@ -153,6 +153,20 @@ tk["pplot";  "pplot (NSD;SIN)"]
 tk["chart xunit";  "chart `x`y`w`h`xunit!(MST;SIN;60;6;`time)"]
 tk["chart yunit";  "chart `y`w`h`yunit!(MST;60;6;`time)"]
 
-hexpect[62]
+/ ---- temporal.k's date parts: item by item on lists, and of a timestamp its day ----
+t["ymd list";      d2ymd 9707 9862;                    (2026 2027;7 1;30 1)]
+t["ymd days list"; ymd2d[2026 2027;7 1;30 1];          9707 9862]
+t["year list";     year (2026.07.30;2027.01.31);       2026 2027]
+t["ymd roundtrip"; {x~ymd2d . d2ymd x}[-800000+16*!100000];  1]
+t["parts stamp";   (year;month;day;dow)@\:2026.07.30D09:30:15.25;  (2026;7;30;`Thu)]
+t["parts stamps";  year (2026.07.30D09:30:00.0;2027.01.01D00:00:00.0);  2026 2027]
+t["tsdate stamp";  tsdate 2026.07.30D09:30:15.25;      9707]
+
+/ ---- "P"$ keeps every digit of the seconds' fraction, to the nanosecond ----
+t["P$ ns";    `i$"P"$"2026.07.30D09:30:00.123456789";   `i$2026.07.30D09:30:00.123456789]
+t["P$ ms";    `i$"P"$"2026.07.30D09:30:00.5";           `i$2026.07.30D09:30:00.5]
+t["P$ whole"; `i$"P"$"2026.07.30D09:30:00";             `i$2026.07.30D09:30:00.0]
+
+hexpect[72]
 hreport"AMBER CHART / TEMPORAL AXIS"
 $[FAILN;`exit 1;]

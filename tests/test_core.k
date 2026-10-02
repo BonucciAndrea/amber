@@ -164,6 +164,21 @@ t[`takeLimitCount;.[.:;,"#4294967297#!100";{(x?"\n")#x}];"'limit"]
 t[`takeBig;#100000#!3;100000]
 t[`takeCycle;5#1 2;1 2 1 2 1]
 
-hexpect[85]
+
+/ ---- counts: a list has at most 2^32-1 items; beyond is 'limit, never a wrapped count ----
+t[`tilBig;(#!3000000000;*|!3000000000;#!-3000000000;*!-3000000000);3000000000 2999999999 3000000000 -3000000000]
+t[`tilLimit;.[.:;,"#!1000000000000000";{(x?"\n")#x}];"'limit"]
+t[`tilLimitNeg;.[.:;,"#!-4294967296";{(x?"\n")#x}];"'limit"]
+t[`reshapeLimit;.[.:;,"2 4294967297#0";{(x?"\n")#x}];"'limit"]
+t[`rollLimit;.[.:;,"#4294967297?1.0";{(x?"\n")#x}];"'limit"]
+t[`tilDropBig;#3000000000_!3000000001;1]
+t[`windowsSmall;3':!5;(0 1 2;1 2 3;2 3 4)]
+
+/ reshape: a shape whose product passes 2^32, even by wrapping past 2^64, is 'limit; 0N with a long count keeps it
+t[`reshapeWrapLimit;*"\n"\.[.:;,"3 6148914691236517206#!5";{x}];"'limit"]
+t[`reshapeHugeLimit;*"\n"\.[.:;,"65536 65536 65536 65536#0";{x}];"'limit"]
+t[`reshapeNullLongCount;(0N 4294967297#!3;0N 4294967296#!3);(,0 1 2;,0 1 2)]
+
+hexpect[95]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

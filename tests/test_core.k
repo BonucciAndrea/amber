@@ -173,6 +173,19 @@ t[`charToSymFF;(`s$0xff)~`$,0xff;1b]
 t[`charToSymAll;(`s$'`c$!256)~`$,'`c$!256;1b]
 t[`charToSymA;`s$"a";`a]
 
-hexpect[90]
+/ ---- dict arithmetic: keys of different ranks and keyed tables are errors, not crashes ----
+t[`dictMixedRank;*"\n"\.[.:;,"(`a`b!1 2)+((1 2;3 4)!5 6)";{x}];"'domain"]
+t[`keyedPlusKeyed;*"\n"\.[.:;,"a:(+(,`a)!,1 2 3)!4 5 6;b:(+(,`a)!,2 3 4)!10 20 30;a+b";{x}];"'nyi"]
+t[`keyedPlusKeyedCols;*"\n"\.[.:;,"((+(,`a)!,1 2)!3 4)+((+(,`b)!,1 2)!3 4)";{x}];"'domain"]   / key tables with different columns do not join
+t[`dictListKeys;((1 2;3 4)!5 6)+(1 2;3 4)!7 8;(1 2;3 4)!12 14]
+t[`keyedPlusAtom;((+(,`a)!,1 2 3)!4 5 6)+1;(+(,`a)!,1 2 3)!5 6 7]
+
+/ the higher rank on the left crashed
+t[`dictMixedRankL;*"\n"\.[.:;,"((1 2;3 4)!5 6)+`a`b!1 2";{x}];"'domain"]
+
+/ a dict with no keys is not checked: two empty ones still add, as group counts from ()!() do
+t[`dictEmptyBoth;`k@((()!())+#'=0#`;(#'=0#`)+()!());"(()!0#,!0;(0#`)!!0)"]
+
+hexpect[97]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

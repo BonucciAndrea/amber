@@ -33,7 +33,7 @@ tsdate:{fdiv[`i$x;86400000000000]}                           / timestamp -> date
 tsms:{(fdiv[x;1000000])-86400000*fdiv[x;86400000000000]}    / timestamp -> ms-of-day
 tsus:{x-1000000*fdiv[x;1000000]}                            / timestamp -> its nanoseconds below the millisecond
 pstr:{$[^`i$x;"0N";(dstr tsdate `i$x),"D",(stime tsms `i$x),-6$"00000",$tsus `i$x]}   / timestamp -> "YYYY.MM.DDDHH:MM:SS.nnnnnnnnn", every digit (issue #18)
-ptstamp:{d:pdate(x?"D")#x;ms:ptime 1_(x?"D")_x;tstamp[d;ms]} / "YYYY.MM.DDD HH:MM:SS.mmm" -> ns   (for "P"$)
+ptstamp:{d:pdate(x?"D")#x;p:"."\1_(x?"D")_x;n:$[1<#p;`I$9#(p 1),"000000000";0];n+tstamp[d;ptime[*p]]} / "YYYY.MM.DDDHH:MM:SS.nnnnnnnnn" -> ns, every digit (for "P"$)
 
 / ---- native-type accessors on time atoms (extract raw ms, then decompose) ----
 thh:{_(`i$x)%3600000}                                       / .hh  hour of day

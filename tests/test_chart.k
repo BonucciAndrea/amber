@@ -162,6 +162,11 @@ t["parts stamp";   (year;month;day;dow)@\:2026.07.30D09:30:15.25;  (2026;7;30;`T
 t["parts stamps";  year (2026.07.30D09:30:00.0;2027.01.01D00:00:00.0);  2026 2027]
 t["tsdate stamp";  tsdate 2026.07.30D09:30:15.25;      9707]
 
-hexpect[69]
+/ ---- "P"$ keeps every digit of the seconds' fraction, to the nanosecond ----
+t["P$ ns";    `i$"P"$"2026.07.30D09:30:00.123456789";   `i$2026.07.30D09:30:00.123456789]
+t["P$ ms";    `i$"P"$"2026.07.30D09:30:00.5";           `i$2026.07.30D09:30:00.5]
+t["P$ whole"; `i$"P"$"2026.07.30D09:30:00";             `i$2026.07.30D09:30:00.0]
+
+hexpect[72]
 hreport"AMBER CHART / TEMPORAL AXIS"
 $[FAILN;`exit 1;]

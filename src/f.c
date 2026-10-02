@@ -350,6 +350,8 @@ Z X1(fndGx,
   I(mx<32768,UH th[256];F(256,th[i]=t[i]==NL?0x8000:(UH)t[i])A y=an(m,tH);UH acc=0;UH*r=yV;F(m,acc|=r[i]=th[a[i]])I(!(acc&0x8000),return x(y);)mr(y);return fndGxW(x);)
   fndGxW(x))
  R3(tH,tI,tL,fndGxW(x)))
+// does a needle (a generic list, at any depth) hold a number for a char haystack (c), or a char for a number one?
+Z B fmx(A x,B c)_(P(xtA,F(xn,P(fmx(xa,c),1))0)c?LH(tE,xt,tF)||LH(ti,xt,tf):xtC||xtc)
 X2(fnd,
  R_(et(y))
  Rm(i1(xx,N(fnd(xy,y))))
@@ -359,8 +361,10 @@ X2(fnd,
   X(RA(F(xn,P(mtc_(xa,y),y(az(i))))y(az(NL)))
     R_(F(xN,A z=ii(x,i);I m=mtc_(z,y);z(0);P(m,y(az(i))))y(az(NL))))0)
  RB(x=cG(xR);x(fnd(x,y)))
- RGC(F(256,t[i]=NL)UC*a=xV;U n=xn;F(n,t[a[n-1-i]]=n-1-i)fndGx(y))
+ // a char haystack with a number, or a number haystack with a char, is 'type, as in q (issue #20, row 12)
+ RGC(P(fmx(y,xtC),et(y))F(256,t[i]=NL)UC*a=xV;U n=xn;F(n,t[a[n-1-i]]=n-1-i)fndGx(y))
  R5(tH,tI,tL,tF,tS,
+  P(xt!=tS&&(ytC||ytc),et(y))
   YmMA(r2f(fnd,x,y))
   YE(fnd(x,gZ(y)))
   P(xt==TT[yt]||xtZ&&ytzZ,

@@ -299,6 +299,10 @@ t[`qaggGrouped; value sel"select mxf:max f, mnf:min f, af:avg f, sf:sum f, s:sum
 / Guard against a silently skipped block (see tests/harness.k): this is the
 / exact number of assertions this file is expected to record. Bump it when
 / you add or remove cases -- if it ever disagrees, some of them stopped running.
-hexpect[167]
+/ ---- an empty grouped select keeps each column's type (from its aggregate, as q) ----
+t[`byEmptySum;  @(.(sel"select sum px by sym from ft where px>1000"))`px; `F]
+t[`byEmptyLast; @(.(sel"select by sym from ft where px>1000"))`px; `F]
+
+hexpect[169]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

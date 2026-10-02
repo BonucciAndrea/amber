@@ -33,8 +33,12 @@ where:{&x}
 flip:{+x}
 count:{#x}
 mod:{y!x}
-div:{_x%y}
-xbar:{x*_y%x}
+idivv:{[x;y]x:$[`i~@x;(#y)#x;x];n:(^x)|^y;x0:0^x;y0:1^y;z:&y0=0;s:y0<0;x1:x0*1-2*s;y1:1|y0*1-2*s;q:_x1%y1;r:x1-q*y1;d:_r%y1;q:q+d;r:r-d*y1;q:q-r<0;r:x1-q*y1;q:q+~r<y1;q:@[q;z;:;_(x0 z)%0];@[q;&n;:;0N]}   / ints by an int vector, exactly: the float quotient, corrected by the exact (wrapped) remainder
+idiv:{$[(`I~@y)&~^`i`I?@x;$[#y;$[&/~^x,y;$[&/9007199254740992>{x|-x}x,y;_x%y;idivv[x;y]];idivv[x;y]];_x%y];~`i~@y;_x%y;^`i`I?@x;_x%y;^y;$[`i~@x;0N;(#x)#0N];y=0;_x%y;y<0;idiv[-x;-y];[r:$[y=8;(-4)!(-2)!x;y=9;(-3)!(-3)!x;(-y)!x];$[`i~@x;$[^x;0N;r];@[r;&^x;:;0N]]]]}   / floor division, exact for ints over an int or ints (-8! -9! are other verbs); else through the float quotient
+div:{$[(@x)in`f`F;fdiv0[x;$[`i~@y;$[^y;0n;y];`I~@y;@[`f$y;&^y;:;0n];y]];(@y)in`f`F;idiv[x;rnd0 y];idiv[x;y]]}   / as q: an int by a float divisor rounds it; a float dividend floors as a float
+rnd0:{r:{s:(x>0)-x<0;s*_0.5+x*s};$[`f~@x;$[^x;0N;r x];@[r@[x;&^x;:;0.0];&^x;:;0N]]}   / round half away from zero, as q's `long$ of a float
+fdiv0:{q:x%y;r:`f$_q;$[`f~@q;$[(^q)|^_q;0n;r];@[r;&^q;:;0n]]}   / floor of a float quotient through an int, kept a float, as q does
+xbar:{r:x*idiv[y;x];m:(^x)|^y;$[~|/m;r;(@r)in`i`f;$[(`f~@r)|(`f~@x)|`f~@y;0n;0N];@[r;&m;:;$[`I~@r;0N;0n]]]}   / a null width or value gives a null (0N*0N wraps to 0)
 xlog:{(`ln y)%`ln x}
 xexp:{[x;y]$[~y=_y;`exp y*`ln x;[e:$[y<0;-y;y];r:*{0<x[2]}{(x[0]*$[2!x[2];x[1];1.0];x[1]*x[1];_x[2]%2)}/(1.0;1.0*x;e);r:$[y<0;1%r;r];$[(x=_x)&(~y<0)&(r=_r)&9007199254740992.0>$[r<0;0-r;r];_r;r]]]} / x xexp y = x^y; fast squaring for integer y, exp/ln for fractional. An integer base to a non-negative integer power comes back as an INTEGER while the squaring is still exact (below 2^53); past that, or for a fractional/negative exponent, it stays a float. Load euler.k to get the exact bignum answer beyond 2^53.
 round:{[d;x]p:*/d#10;(_0.5+x*p)%p}
@@ -151,7 +155,7 @@ insert:{[t;r]t,r}
 / to box EVERY left row (rows[...]) purely to feed `?`, which cost 1.76 s on a 1M x 500
 / left join that q answers in 4 ms.
 jprobe:{[kc;kd;td]yc:kd kc;xc:td kc;$[1=#kc;(*yc;*xc);qcard[yc,'xc]<qEXACT;[e:qenc yc,'xc;n:#*yc;(n#e;n _ e)];(rows[+kd];+. kc#td)]}
-lj:{[t;kt]p:jprobe[keys kt;+!kt;+t];i:(p 0)?p 1;vc:cols value kt;+(+t),vc!{y@x}[i]'value value kt}
+lj:{[t;kt]p:jprobe[keys kt;+!kt;+t];i:(p 0)?p 1;vt:value kt;vc:cols vt;j:$[|/vc in !+t;$[&/m:~^i;`all;(!#i)+(#i)*m];0];+(+t),vc!{[i;j;t;vt;c]r:(vt c)@i;$[~c in !+t;r;(`A~@vt c)&0=#vt c;(+t)c;~(`A~@(+t)c)|(@(+t)c)~@vt c;`err"type";`all~j;$[`A~@(+t)c;(((+t)c),r)(#i)+!#i;r];(((+t)c),r)j]}[i;j;t;vt]'vc}  / a column t has keeps its values where nothing matches; one of another type is 'type, as in q
 / ij: the probe used to box every left row AND every right key row (rows[...])
 / purely to feed `?`.  Both sides are now rank-encoded column-wise -- jointly,
 / over one shared code space -- so the lookup is a native vector `?` on a flat
@@ -188,7 +192,7 @@ ajmK:{[c;x;y]c:c,();g:-1_c;tc:*|c;yt:(+y)tc;xt:(+x)tc;yg:$[#g;=rows[g#+y];(,0)!,
 ajm:{[c;x;y]c:c,();g:-1_c;tc:*|c;b:wjbnd[g;x;y];`aj((+y)tc;(+x)tc;b 0;b 1)}
 aj:{[c;x;y]c:c,();y:ajord[c;y];m:ajm[c;x;y];vc:except[cols y;c];+(+x),vc!{[m;yd;c](yd c)@m}[m;+y]'vc}
 aj0:{[c;x;y]c:c,();y:ajord[c;y];m:ajm[c;x;y];vc:except[cols y;-1_c];+(+x),vc!{[m;yd;c](yd c)@m}[m;+y]'vc}
-asof:{[t;d]c:!d;g:-1_c;tc:*|c;td:+t;msk:$[#g;&/({[td;d;c]td[c]=d c}[td;d]'g);(#t)#1b];i:&msk&~td[tc]>d tc;$[#i;(except[cols t;c])#t[*|i];()]}
+asof:{[t;d]c:!d;g:-1_c;tc:*|c;td:+t;msk:$[#g;&/({[td;d;c]td[c]=d c}[td;d]'g);(#t)#1b];i:&msk&~td[tc]>d tc;$[#i;(except[cols t;c])#t[i@*|&m=|/m:td[tc]i];()]}  / the latest at or before: the last row whose time is the greatest
 
 / ---- window join wj : w=(begins;ends) aligned to t rows -----------------------
 / VECTORISED window lookup: quotes are xasc'd on c, so within each group the time
@@ -247,7 +251,8 @@ qEXACT:9007199254740992.0
 / from indexing the raw columns with each group's first row (`*:'`) -- one
 / gather per by-column, instead of a flip over every row in the table.
 qgrp:{[t;b]d:+t;bc:d b;g:$[1=#b;=*bc;qcard[bc]<qEXACT;=qenc bc;=rows[b#+t]];iv:value g;(bc@\:*:'iv;iv)}
-qby:{[t;b;a]b:b,();r:qgrp[t;b];kt:+b!r 0;iv:r 1;subs:atr[t]'iv;vt:+(!a)!{[subs;f]f'subs}[subs]'value a;kt!vt}
+qby:{[t;b;a]b:b,();r:qgrp[t;b];kt:+b!r 0;iv:r 1;subs:atr[t]'iv;vt:+(!a)!{[t;subs;f]$[#subs;f'subs;qby0[f;0#t]]}[t;subs]'value a;kt!vt}
+qby0:{[f;e]r:.[f;,e;{`qby0err}];$[`qby0err~r;();(@r)in`i`f`c`s`d`t`n;0#,r;()]}   / no groups: a column typed by its aggregate's result (q); a plain column stays ()
 xgroup:{[k;t]k:k,();r:qgrp[t;k];kt:+k!r 0;vc:except[cols t;k];+(+kt),vc!{[t;iv;c]((+t)c)@/:iv}[t;r 1]'vc}
 ungroup:{[x]t:unkey x;d:+t;v:value d;m:{`A=@x}'v;cnt:#:'*v@&m;+(!d)!{[cnt;m;c]$[m;raze c;raze cnt#'c]}[cnt]'[m;v]}
 / fbymc: is g a PER-COLUMN group spec -- (sym;ex) rather than one vector?  q lets
@@ -309,7 +314,7 @@ z3:{-3$"00",$x}
 stime1:{$[^x;"0N";x<0;"-",stime1[-x];(z2 hh x),":",(z2 mm x),":",(z2 sec x),".",z3 milli x]}   / a negative time is "-" and its size, as in q
 stime:{x:tnum0 x;$[|/(@x)=`i`j;stime1 x;stime1'x]} / time -> "HH:MM:SS.mmm"
 ptime:{$["-"~*x;-ptime[1_x];[p:"."\x;t:`I$":"\*p;m:$[1<#p;`I$3#(p 1),"000";0];(3600000*t 0)+(60000*t 1)+(1000*t 2)+m]]}   / "-HH:MM:SS.mmm" is negative
-bar:{[w;u;t]s:w*u;s*_(t%s)}                        / w u-unit bars: bar[5;60000;t] = 5-min bars(ms)
+bar:{[w;u;t]xbar[$[(^w)|^u;0N;w*u];t]}                        / w u-unit bars: bar[5;60000;t] = 5-min bars(ms)
 minbar:{[w;t]60000*xbar[w;minute t]}               / w-minute bar as a time (ms)
 tsym:{[t;c]+@[+t;c,();stime]}                      / render time cols c of table t as HH:MM:SS strings
 / gentq (trade/quote generator) lives in fin.k, which loads after amber.k.

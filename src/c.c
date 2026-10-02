@@ -4,7 +4,7 @@
  M(H,G,4)M(G,H,4)M(H,I,3)M(I,H,3)M(G,I,3)M(I,G,3)M(H,L,2)M(L,I,2)M(I,L,2)M(G,L,2)//cHG cGH cHI cIH cGI cIG cHL cLI cIL cGL
 #undef M
 Z V cFL(abn){F*r=AL(a);CO L*p=AL(b);F(n+3>>2,Fj(4,*r++=*p==NL?NF:*p;p++))}
-Z V cLF(abn){L*r=AL(a);CO F*p=AL(b);F(n+3>>2,Fj(4,*r++=*p!=*p?NL:*p;p++))}
+Z V cLF(abn){L*r=AL(a);CO F*p=AL(b);L o=0;F(n,F v=p[i];L b=__builtin_fabs(v)<0x1p63;o|=(b|v!=v)^1;L c=(L)(b?v:0);r[i]=b?c:NL)I(o,F(n,F v=p[i];B b=__builtin_fabs(v)<0x1p63;L c=(L)(b?v:0);r[i]=b?c:v>0?WL:v<0?NL+1:NL))}//as F2C; the second loop only for a value out of range
 Z V cGB(abn){G*r=AL(a);CO G*p=AL(b);F(n,*r++=p[i>>3]>>(i&7)&1)}
 Z V cBG(abn){G*r=AL(a);CO G*p=AL(b);MS(r,0,n+63>>6<<3);F(n,r[i>>3]|=(*p++&1)<<(i&7))}
 Z V cLA(abn){L*r=AL(a);CO A*p=AL(b);F(n,*r++=gl_(*p++))}
@@ -15,10 +15,11 @@ Z A2(cT,UC t=xv,u=yt,i=t-tB,j=u-tB;Q(i<8);P(j>6,et(y))
  P((1<<t|1<<u)==(1<<tG|1<<tC),AT(t,mut(y)))
  cT(t,N(cT(u==tB?tG:G(tG,tI,tI,tL,tI,tL,tG,tC)[i],y))))
 NI A2(ct,UC t=xv,u=yt;Q(xti||x==t)Q(tB<=t&&t<=tS)P(t==TT[u],y)
- Y(RmMA(r2f(ct,x,y))RE(cT(x,gZ(y)))Rf(ct(x,al(gf(y))))Rilc(L v=gl(y);S(t,R4(tB,tG,tH,tI,ai(v))RC(ac(v))RL(al(v))RF(af(v==NL?NF:v))RS(u==tc?as(yv):et0()))0)R_(cT(x,y)))et(y))
+ Y(RmMA(r2f(ct,x,y))RE(cT(x,gZ(y)))Rf(ct(x,al(F2C(gf(y)))))Rilc(L v=gl(y);S(t,R4(tB,tG,tH,tI,ai(v))RC(ac(v))RL(al(v))RF(af(v==NL?NF:v))RS(u==tc?as(yv):et0()))0)R_(cT(x,y)))et(y))
 A1(cB,ct(tB,x))A1(cG,ct(tG,x))A1(cH,ct(tH,x))A1(cI,ct(tI,x))A1(cL,ct(tL,x))A1(cF,ct(tF,x))A1(cC,ct(tC,x))A1(cS,ct(tS,x))
-Z X1(csti,RmMA(e1f(csti,x))RF(sqzZ(cL(x)))Rf(az(gf(x)))RC(cG(x))Rc(ai(xv))Ruvw(ai(xv))R(tdt,ai((I)x))R(ttm,ai((I)x))R(tnp,L v_=*(L*)_V(x);x(al(v_)))RilEGHIL(x)R_(et(x)))
-Z X1(prsI,RmMA(e1f(prsI,x))Rc(prsI(enl(x)))RC(x=str0(x);S s=xV;P(!*s,x(_R(cn[tl])))L v=pl(&s);x(*s?_R(cn[tl]):az(v)      ))R_(et(x)))
+Z X1(csti,RmMA(e1f(csti,x))RF(sqzZ(cL(x)))Rf(az(F2C(gf(x))))RC(cG(x))Rc(ai(xv))Ruvw(ai(xv))R(tdt,ai((I)x))R(ttm,ai((I)x))R(tnp,L v_=*(L*)_V(x);x(al(v_)))RilEGHIL(x)R_(et(x)))
+Z B pov(S p,S e)_(B m=*p=='-';p+=m;W(*p=='0'&&C09(p[1]),p++)I n=e-p;n>19||n==19&&strncmp(p,m?"9223372036854775808":"9223372036854775807",19)>0)//digits p..e beyond int64?
+Z X1(prsI,RmMA(e1f(prsI,x))Rc(prsI(enl(x)))RC(x=str0(x);S s=xV;P(!*s,x(_R(cn[tl])))L v=pl(&s);x(*s||pov(xV,s)?_R(cn[tl]):az(v)))R_(et(x)))
 Z X1(prsF,RmMA(e1f(prsF,x))Rc(prsF(enl(x)))RC(x=str0(x);S s=xV;P(!*s,x(_R(cn[tf])))L v=pf(&s);x(*s?_R(cn[tf]):aV(tf,1,&v)))R_(et(x)))
 Z Y2(pad,RmMA(e2f(pad,x,y))RC(K2("{y@(!x)+(x<0)*#y}",x,y))Rc(dlr(x,enl(y)))R_(et(y)))
 X2(dlr,Rs(I v=xv;P(v-(C)v,ed(y))G(&csti,cF,cC,cS,prsI,prsF,ed)[si("ifcsIF",v|'s'*!v)](y))Ril(pad(x,y))

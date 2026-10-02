@@ -304,6 +304,8 @@ enum         {au=Lt(tu),FLP,NEG,FIR,SQR,TIL,WHR,REV,ASC,DSC,GRP,NOT,ENL,NUL,LEN,
 #define WF (*(F*)A(WFL))
 #define NL ((L)(1ull<<63))
 #define WL (~NL)
+#define F2L(v) ({F v_=(v);v_!=v_?NL:v_>=0x1p63?WL:v_<-0x1p63?NL:(L)v_;})//float to int, truncating: 0n is 0N, out of range is 0W above and 0N below, as q's floor gives (a plain cast is undefined there); F2C builds the casts on it
+#define F2C(v) ({F w_=(v);w_<=-0x1p63?NL+1:F2L(w_);})//cast to int: the same, but below the range -0W, the smallest int that is not null, as q's `long$
 #define K(s,a...) ({Z A f;k8(&f,s,A(a),L(A(a)));})
 #define K1(s,x)   ({Z A f;k1(&f,s,x);})
 #define K2(s,x,y) ({Z A f;k2(&f,s,x,y);})

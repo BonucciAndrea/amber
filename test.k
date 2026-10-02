@@ -52,6 +52,7 @@ t[`iasc;iasc 30 10 20;1 2 0]
 t[`rank;rank 30 10 20;2 0 1]
 t[`distinct;distinct 1 1 2 3 3;1 2 3]
 t[`inMem;in[3 5;1 2 3 4];10b]
+t[`inCharInt;*"\n"\.[in;(97;"abc");{x}];"'type"]   / a char and a number are 'type, as in q (issue #20, row 12)
 t[`except;except[1 2 3 4;2 4];1 3]
 t[`inter;inter[1 2 3 4;2 4 6];2 4]
 t[`union;union[1 2 3;3 4 5];1 2 3 4 5]
@@ -97,6 +98,16 @@ t[`meta;(!meta tt)`c;`s`p`v]
 lt:+`s`p!(`a`b`c`a;10 20 30 40)
 kv:xkey[`s;+`s`x!(`a`b;100 200)]
 t[`lj;(+lj[lt;kv])`x;100 200 0N 100]
+t[`ljKeepsOwn;+lj[+`sym`n`px!(`a`b;1 2;0.5 1.0);xkey[`sym;+`sym`n`px!(`a`c;10 30;5.0 7.0)]];`sym`n`px!(`a`b;10 2;5.0 1.0)]
+/ a column the table has, of another type in the keyed table, is 'type, as in q (issue #20, row 21), matched or not
+t[`ljOtherType;.[lj;(+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`a!(1 3;100 300.0)]);{`err}];`err]
+t[`ljOtherTypeNoMatch;.[lj;(+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`a!(5 6;100 300.0)]);{`err}];`err]
+t[`ljGenericRight;.[lj;(+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`a!(1 3;(100;`x))]);{`err}];`err]
+t[`ljGenericLeft;(+lj[+`k`a!(1 2 3;(10;`y;30));xkey[`k;+`k`a!(1 3;100 300)]])`a;(100;`y;300)]
+t[`ljNewColumn;+lj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`b!(1 3;100 300.0)]];`k`a`b!(1 2 3;10 20 30;100.0 0n 300.0)]
+t[`ljEmptyGeneric;+lj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`a!(0#0;())]];`k`a!(1 2 3;10 20 30)]   / an empty generic column matches nothing and is no type clash, as in q
+t[`ljAllMatch;(+lj[+`k`a!(1 2;10 20);xkey[`k;+`k`a!(1 2;5 6)]])`a;5 6]
+t[`ljAllMatchGeneric;(+lj[+`k`a!(1 2;(10;`y));xkey[`k;+`k`a!(1 2;5 6)]])`a;(5;6)]
 t[`ijRows;#ij[lt;kv];3]
 t[`uj;(+uj[+`a`b!(1 2;3 4);+`b`c!(5 6;7 8)])`c;0N 0N 7 8]
 t[`pj;(+pj[+`s`p!(`a`b`c;1 1 1);xkey[`s;+`s`p!(`a`b;10 20)]])`p;11 21 1]
@@ -128,6 +139,23 @@ t[`ajSortedZeros;{n:-1*x;(ajsorted[`s`t;+`s`t!(`a`a;n,x)];ajsorted[`s`t;+`s`t!(`
 / a NaN time sorts first, as one value: quotes 0.0 1.0 -0n are unsorted, and a trade at -0.0 takes the 0.0 quote, as in q
 t[`ajNanQuoteLast;(+aj[`sym`time;+`sym`time!(,`a;,-0.0);+`sym`time`bid!(`a`a`a;0.0 1.0 -0n;10 20 30)])`bid;,10]
 t[`ajCharTimes;(+aj[`sym`time;+`sym`time!(`a`a`a;`c$66 201 64);+`sym`time`bid!(`a`a;`c$65 200;10 20)])`bid;(+aj[`sym`time;+`sym`time!(`a`a`a;`c$66 201 64);xasc[`sym`time;+`sym`time`bid!(`a`a;`c$65 200;10 20)]])`bid]
+t[`asofLatest;asof[+`sym`time`bid!(`a`a`a`a;0 1 1 0;10 20 30 40);`sym`time!(`a;1)];(,`bid)!,30]
+
+t[`divExact;(div[4417977684374999297;1000000];div[-4417977684374999297;7];div[17;-3];div[17 0N -17;8]);(4417977684374;-631139669196428471;-6;2 0N -3)]
+t[`xbarExact;(xbar[1000000;4417977684374999297];xbar[5;4611686018427387903];xbar[5;17 18]);(4417977684374000000;4611686018427387900;15 15)]
+t[`barExact;bar[1;1000000;4417977684374999297];4417977684374000000]
+t[`divExactVec;(div[4417977684374999297;1000000 1000000];div[4417977684374999297 17;1000000 -7];div[17;5 -5 8 9 -8 -9];div[-17;5 -5 8 9]);(4417977684374 4417977684374;4417977684374 -3;3 -4 2 1 -3 -2;-4 3 -3 -2)]
+t[`xbarExactVec;(xbar[1000000 7;4417977684374999297 4417977684374999297];xbar[5 10;17]);(4417977684374000000 4417977684374999297;15 10)]
+t[`divVecFloat;div[17.5;2 3];8.0 5.0]
+/ q's rules (issue #20, row 10): an int by a float divisor rounds it half away from zero; a float dividend floors and stays a float
+t[`divFloatDivisor;(17 div 2.5;17 div 3.5;17 div -2.5;17 div 2.5 -2.5 0n;17 div 0n);(5;4;-6;5 -6 0N;0N)]
+t[`divFloatDividend;(17.5 div 2;17.5 div 2.5;-17.5 div 2;17.5 2.5 div 2;@17.5 div 2;0n div 2);(8.0;7.0;-9.0;8.0 1.0;`f;0n)]
+t[`divNullDivisor;(17 div 0N;17 18 div 0N;17 div 2 0N);(0N;0N 0N;8 0N)]
+t[`xbarNull;(xbar[0N;17];xbar[2;0N];xbar[5;0N];xbar[2;0N 17];xbar[0N 2;17];bar[0N;60;17];bar[5;60;0N]);(0N;0N;0N;0N 16;0N 16;0N;0N)]
+t[`xbarFloatNull;xbar[0.5;1.7 0n];1.5 0n]
+t[`divFloatNullDivisor;`k@(17.5 div 0N;17.5 2.5 div 2 0N;xbar[0N;17.5]);"(0n;8.0 0n;0n)"]   / a null divisor gives a null for a float dividend too, as in q
+t[`divVecExact;(9223372036854775807 -9223372036854775807 0N 7 -7 1700000000123456789 div 1 1 2 0N 2 60000000000);9223372036854775807 -9223372036854775807 0N 0N -4 28333333]   / an int vector divisor with nulls or values past 2^53, exactly
+t[`divFloatBelow;(-17.5 div 0;-1e300 div 3;-1e300 1e300 div 3);(0n;0n;0n 9.223372036854776e18)]   / below the int range the floor is null, as in q, atom or list
 / 64-bit nanosecond timestamps (values exceed 2^31 -> proves long/ns path)
 t[`ajNs;(+aj[`sym`time;+`sym`time`px!(,`a;,1500000000000;,1);+`sym`time`bid!(`a`a;1000000000000 2000000000000;10 20)])`bid;,10]
 / float times compare as floats (the kernels used to truncate them to ints, so 0.5 and 0.7 tied)

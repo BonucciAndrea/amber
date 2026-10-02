@@ -570,7 +570,70 @@ t[`charMinMaxNumber;(1&"a";0x80&0;("a";1)&"b");(1;-128;("a";1))]
 t[`charMinMaxFold;(&/"ab";|/"a",`c$200;&/0x80c3;&/"";|/"";"a"&/"bc";0&/"ab");("a";0xc8;0x80;0xff;0x00;"a";0)]
 t[`charMinMaxScan;(&\"bac";|\"bac";&':"bac";|':"bac";"z"&\"bac");("baa";"bbc";"baa";"bbc";"baa")]
 
-hexpect[354]
+/ ---- JSON: floats outside the int range, infinities, NaN ----
+t[`jsonBigFloat;(`j@1e20;`j@-1e20;`j@1e22;`j@1.5;`j@3.0;`j@-2.0);("1e20";"-1e20";"1e22";"1.5";,"3";"-2")]
+t[`jsonInfNan;(`j@0w;`j@-0w;`j@0n;`j@1.0 0w -0w 0n);("null";"null";"null";"[1,null,null,null]")]
+t[`jsonLiterals;`j?"[1,null,2]";(1.0;0n;2.0)]
+t[`jsonRoundTrip;`j?`j@1e20 -1.5 2.0;1e20 -1.5 2.0]
+
+
+/ ---- JSON true and false read as 1 and 0 ----
+t[`jsonBools;`j?"[true,false,null]";(1;0;0n)]
+t[`jsonDocExample;`j?"{\"a\":1,\"b\":[true,\"c\"]}";`a`b!(1.0;(1;,"c"))]
+/ :: is written as null, as in q, so writing and reading agree (issue #20, row 24)
+t[`jsonNullOut;(`j@(::);`j@(1;::);`j@`a`b!(1;::));("null";"[1,null]";"{\"a\":1,\"b\":null}")]
+
+/ ---- encoding with no digits is empty, and checks y as one digit does (issue #20, row 9) ----
+t[`encodeEmpty;((!0)\5;(!0)\6 7;(!0)\(3 4;5);10 10\123);(!0;0#,0N 0N;0#,(0N 0N;0N);2 3)]
+t[`encodeEmptyFloat;@(!0)\5.5;`F]
+t[`encodeEmptyChar;*"\n"\.[.:;,"(!0)\\\"a\"";{x}];"'type"]
+t[`encodeOneDigitChar;(,10)\"a";,7]
+t[`encodeEmptySym;*"\n"\.[.:;,"(!0)\\`a";{x}];"'type"]
+
+/ ---- float to int: 0n is 0N; out of range, floor gives 0W above and 0N below, a cast 0W and -0W (as q) ----
+t[`floorNull;(_0n;_0w;_-0w);0N 9223372036854775807 0N]
+t[`floorVec;_0n 0w -0w 1.5 -1.5;0N 9223372036854775807 0N 1 -2]
+t[`floorBig;_1e300 -1e300;9223372036854775807 0N]
+t[`castNull;(`i$0n;`i$0w;`i$-0w);0N 9223372036854775807 -9223372036854775807]
+t[`castVec;`i$0n 0w -0w 2.9 -2.9;0N 9223372036854775807 -9223372036854775807 2 -2]
+t[`castFloat;(`i$1e19;`i$-1e19);9223372036854775807 -9223372036854775807]
+t[`floorPlain;_2.5 -2.5 0.0;2 -3 0]
+
+/ ---- find between chars and numbers is 'type, as in q (issue #20, row 12) ----
+t[`findCharHayIntAtom;*"\n"\.[.:;,"\"abc\"?97";{x}];"'type"]
+t[`findCharHayIntVec;*"\n"\.[.:;,"\"abc\"?98 99";{x}];"'type"]
+t[`findCharHayFloat;*"\n"\.[.:;,"\"abc\"?97.0";{x}];"'type"]
+t[`findIntHayCharAtom;*"\n"\.[.:;,"1 2 97?\"a\"";{x}];"'type"]
+t[`findIntHayCharVec;*"\n"\.[.:;,"1 2 97?\"ab\"";{x}];"'type"]
+t[`findWideHayChar;*"\n"\.[.:;,"1000 2000 97?\"a\"";{x}];"'type"]
+t[`findMixedNeedles;*"\n"\.[.:;,"\"abc\"?(97;\"b\")";{x}];"'type"]
+t[`findCharChar;"abc"?"cb";2 1]
+t[`findIntInt;1 2 97?97 1;2 0]
+t[`findGeneric;((1;"a")?"a";(1;"a")?97);1 0N]
+t[`findNeedleKept;{n:98 99;.[{"abc"?x};,n;{x}];n}[];98 99]
+
+/ ---- integer literals: from 2^63 in magnitude 'limit, as q refuses them (issue #20, row 7) ----
+tv[`litIntMax;"9223372036854775807 -9223372036854775807 000000000000000000001";9223372036854775807 -9223372036854775807 1]
+te[`litInt2p63;"9223372036854775808"]
+te[`litInt2p63Neg;"-9223372036854775808"]
+te[`litIntWrap;"18446744073709551615"]
+te[`litIntLimit;"18446744073709551616"]
+/ a literal that fails for another reason (here, too many numbers, a cap the literal-limits fix removes; with it the case
+/ checks the ordinary path) leaves nothing behind for the next
+t[`litIntAfterFail;{.[.:;,"99999999999999999999 ",(" "/600#,"1");{`e}];. "1+1"}[];2]
+te[`litIntLimitNeg;"-18446744073709551616"]
+te[`litIntLimitVec;"1 18446744073709551617"]
+te[`litIntLimitBig;"99999999999999999999"]
+
+/ ---- `I$ of digits beyond int64 is 0N, like any text that is not an int ----
+t[`parseIntBig;`I$"99999999999999999999";0N]
+t[`parseIntMaxPlus1;`I$"9223372036854775808";0N]
+t[`parseIntMax;`I$"9223372036854775807";9223372036854775807]
+t[`parseIntMin;`I$"-9223372036854775807";-9223372036854775807]
+t[`parseIntZeros;`I$"0000000000000000000000012";12]
+t[`parseIntVec;`I$("12";"99999999999999999999";"x");12 0N 0N]
+
+hexpect[399]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

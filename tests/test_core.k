@@ -193,7 +193,12 @@ t[`listGlobals255;#. "(",(L[255;"G"]),")";255]
 t[`listGlobalsSum254;#. "(",(L[254;"G+1"]),")";254]
 t[`listGlobalsLambda254;#(. "{(",(L[254;"G+x"]),")}")1;254]
 
-hexpect[100]
+/ ---- an impossible size is 'limit, one error for all of them (issue #10) ----
+ER:{.[.:;,x;{(x?"\n")#x}]}
+t[`joinLimitError;ER"s:1048576#\"a\";#\",\"/4096#,s";"'limit"]
+t[`scanCountLimitError;ER"{x+y}\\[4294967296;1;2]";"'limit"]
+
+hexpect[102]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

@@ -179,6 +179,7 @@ A3(ars,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzfc)Q(ztZFC)
  ZE(z=gZ(zR);z(ars(x,y,z)))
  ZB(z=cG(zR);z(ars(x,y,z)))
  P(y&&ytf&&!ztF&&(xv==1||xv==2||xv==3||xv==6||xv==7),z=cF(zR);z(ars(x,y,z)))                     //a float seed: a scan of floats
+ P((ztF||y&&ytf)&&xv==10,___s(x,y,z))                                                            //float =\: the generic path (eqls reads ints)
  P(ztF&&xv==2,subsf(x,y,z))                                                                       //float -\: in order (subs is for ints)
  P(ztF&&(xv==1||xv==3),admsf(x,y,z))
  P(ztF&&(xv==6||xv==7),mmmsf(x,y,z))

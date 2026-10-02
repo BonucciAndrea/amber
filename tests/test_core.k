@@ -182,6 +182,12 @@ t[`scanSubFloatSeed;1.5-\1.5 2.5;0.0 -2.5]
 t[`scanSeedLong;((1.5+\!100000)~{x+y}\[1.5;!100000];(-\0.5+!100000)~{x-y}\0.5+!100000);11b]
 t[`scanOthersOk;(1.5&\1 2;1.5|\1 2;1+\1.5 2;+\1 2 3;-\1 2 3);(1.0 1.0;1.5 2.0;2.5 4.5;1 3 6;1 -1 -4)]
 
-hexpect[100]
+
+/ ---- =\ of floats compares values, as {x=y}\ does (it read the bits as ints) ----
+t[`eqScanFloat;=\1.0 1.0 1.0;(1.0;1;1)]
+t[`eqScanFloatSeed;1.0=\1 1 2;1 1 0]
+t[`eqScanFloatAsLambda;(=\0.5 0.5 1.5)~{x=y}\0.5 0.5 1.5;1]
+
+hexpect[103]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

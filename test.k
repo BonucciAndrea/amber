@@ -7,6 +7,9 @@ t:{r,:,($x;$[y~z;"ok";"FAIL got<",($y),"> exp<",($z),">"])}
 / xasc orders a char column as < does: unsigned bytes (issue #17)
 t[`xascChars;(+xasc[`c;+`c`v!(0x806100;1 2 3)])`v;3 2 1]
 
+/ amber.k's min and mins of chars give chars (issue #17: & and | of chars give a char)
+t[`minChars;(min "ab";mins "bac";max "ab";maxs "abc");("a";"baa";"b";"abc")]
+
 / ---- scalars / aggregations ----
 t[`sum;sum 1 2 3 4;10]
 t[`sumEmpty;sum 0#0;0]
@@ -121,6 +124,8 @@ t[`ajCharHighRev;(+aj[`sym`time;+`sym`time!(`a`a`a;`c$66 201 64);+`sym`time`bid!
 t[`wjCharHigh;{q:+`sym`time`bid!(`a`a`a;`c$65 200 210;10 20 30);t:+`sym`time!(`a`a;`c$66 201);w:(`c$64 199;t`time);((+wj[w;`sym`time;t;q;,(`mx;max;`bid)])`mx;(+wj[w;`sym`time;t;q;,(`n;count;`bid)])`n)}[];(10 20;1 1)]   / wj's kernel reads char times unsigned too (the max as in q; q counts the quote in force at the window start too)
 t[`wjCharFallback;{q:+`sym`time`bid!(`a`a`a;`c$65 128 200;10 20 30);t:+`sym`time!(,`a;,`c$200);w:(,`c$128;t`time);s:(+wj[w;`sym`time;t;q;,(`s;sum;`bid)])`s;v:(+wj[w;`sym`time;t;q;,(`v;{x};`bid)])`v;(s;v)}[];(,50;,20 30)]   / wj's fallback in K reads char times unsigned too, as the kernel
 t[`ajCharTradeNumQuotes;(+aj[`sym`time;+`sym`time!(,`a;,`c$250);+`sym`time`v!(`a`a`a;1 100 200;1 2 3)])`v;,0N]   / a char trade time against number quote times stays signed, as ' and ajmK read it
+t[`wjCharMax;{q:+`sym`time`c!(`a`a`a;1 2 3;"a",0x80,"b");t:+`sym`time!(,`a;,3);w:(,0;,3);((+wj[w;`sym`time;t;q;,(`m;max;`c)])`m;(+wj[w;`sym`time;t;q;,(`m;min;`c)])`m;(+wj[w;`sym`time;t;q;((`m;max;`c);(`k;{max x};`c))])`m)}[];(,0x80;,"a";,0x80)]   / min and max of a char column give chars, whatever else is aggregated
+t[`wjCharFirstMax;{q:+`sym`time`c!(`a`a`a;1 2 3;"a",0x80,"b");t:+`sym`time!(`a`a;3 0);w:(0 -5;3 0);r:+wj[w;`sym`time;t;q;((`f;first;`c);(`m;max;`c);(`n;min;`c))];(r`f;r`m;r`n)}[];(97 0N;0x8000;0x61ff)]   / the kernel keeps first as it was; min and max of chars give chars, an empty window the identity
 
 / ---- `ajs / ajsorted (src/a.c): is a table already in as-of order? ----
 / A WRONG 1b here silently corrupts every join that trusts it, so the predicate

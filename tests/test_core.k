@@ -188,6 +188,50 @@ t[`fusedCharVecVec;{c:0x806162;d:0x618081;(+/c<d;+/b:c<d)}[];2 2]
 t[`fusedCharCompress;{s:1 2;x:0x8061;s@&x<"b"}[];,2]
 t[`fusedCharInt;+/0x806162<100;3]
 
-hexpect[104]
+
+/ ---- folds and scans of chars agree with the verbs: arithmetic reads chars as ints, < > unsigned (& |: next section) ----
+t[`charFoldOne;(%/,"a";|/,"a";+/,"a";*/,"a");(97;"a";97;97)]
+t[`charScan;(+\"ab";|\"ab";&\"ba";%\,"a");(97 195;"ab";"ba";,97)]
+t[`charFoldSeed;("a"+/!0;"a"%/!0;"a"+/();0x80</!0);97 97 97 128]
+t[`charFoldLess;(</"ab";</0x0080;<\0x800061);(1;1;128 0 1)]
+t[`charFoldSum;(+/"ab";1+/"ab");195 196]
+
+
+/ ---- a seeded < > fold or scan of chars goes item by item, as the verb does ----
+t[`charFoldSeedItems;"a"</,0x80;1]
+t[`charFoldSeedItemsGt;"a">/,0x80;0]
+t[`charFoldSeedAsScan;("a"</0x8081)=*|"a"<\0x8081;1]
+t[`charFoldIntSeed;0</"ab";1]
+/ a seeded < > fold or scan with chars applies the verb item by item, so it is
+/ the lambda fold and the last of the scan, for atom, vector and dict items
+t[`charFoldAtomItem;"a"</0x80;"a"<0x80]
+t[`charScanAtomItem;"a"<\0x80;"a"<0x80]
+t[`charFoldVecSeedAtom;"ab"</0x80;1 1]
+t[`charFoldVecSeedScan;(0x8081</,0x00)~*|0x8081<\,0x00;1]
+t[`charFoldDictItems;("a"</`a`b!0x8080)~*|. "a"<\`a`b!0x8080;1]
+/ & and | with a char seed give a char over a char atom, a dict of chars, a list of strings, and none
+t[`charMinSeedAtom;("a"&/0x80;"a"|\0x80);("a";0x80)]
+t[`charMinSeedDict;"a"&/`a`b!"bc";"a"]
+t[`charMinSeedLists;"z"&/(,"b";,"a");,"a"]
+t[`charMinSeedEmpty;"a"&/!0;"a"]
+/ each-prior with a number seed: chars against each other unsigned, & | of two chars a char, as {x f y}': gives
+t[`charEachPriorIntSeed;(0<':0x8000;0>':0x0080);(1 1;0 1)]
+t[`charEachPriorIntSeedMin;`k@0&':0x8061;"(-128;\"a\")"]
+/ a dict or list seed holding chars goes item by item through & and |, as the verb does
+t[`charMinSeedDictItems;((`a`b!"a",0x80)&/,0x80;("ab";"cd")&/,"b";("ab";"cd")|\,0x80);(`a`b!"a",0x80;("ab";"bb");,(0x8080;0x8080))]
+/ amending a dict of chars at a new key with & or | starts from the char identity (0xff, 0x00)
+t[`charAmendIdentity;(@[`a!,"a";`c;|;"x"];@[`a!,"a";`c;&;0x80]);(`a`c!"ax";`a`c!"a",0x80)]
+t[`charFoldIntSeedVerb;(0</,0x80)~0<0x80;1]
+t[`charFoldLambda;("a"</0x61618080)~{x<y}/["a";0x61618080];1]
+t[`charScanEmpty;("a"+\"";0<\"");("";"")]
+
+
+/ ---- & and | of two chars compare them as unsigned bytes and give a char, as q; with a number they stay numeric ----
+t[`charMinMax;(0x80&"a";0x80|"a";"ab"&"ba";"a"&"b";"ab"&0x80);("a";0x80;"aa";"a";"ab")]
+t[`charMinMaxNumber;(1&"a";0x80&0;("a";1)&"b");(1;-128;("a";1))]
+t[`charMinMaxFold;(&/"ab";|/"a",`c$200;&/0x80c3;&/"";|/"";"a"&/"bc";0&/"ab");("a";0xc8;0x80;0xff;0x00;"a";0)]
+t[`charMinMaxScan;(&\"bac";|\"bac";&':"bac";|':"bac";"z"&\"bac");("baa";"bbc";"baa";"bbc";"baa")]
+
+hexpect[133]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

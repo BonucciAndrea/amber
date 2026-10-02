@@ -594,7 +594,7 @@ A1(parT,
 Z A1(sam,x)V_;T_;U _K(A x/*0*/)_(X(R2(tu,tw,1)Rv(2)Rx(x>>48&15)Ropqr(xk))0)
 X1(mkn,RmMA(e1f(mkn,x))Rt(x(_R(cn[xt])))R_(x(rsz(xN,_R(cn[xt])))))
 A1(iei,/*0*/0x2332211004>>(xv*(xtv&&xv<10u)<<2)&15)
-Y2(iex,/*01*/RmMA(r2f(iex,x,y))RT_A(rsz(yN,iex(x,fir(y))))Rs(as(0))Rc(ac(xtv&&xv-8<2u?-(xv==9):"\0\1\x7f\x80 "[iei(x)]))Rf(y(af(A(0.,1.,WF,-WF,NF)[iei(x)])))R_(y(az(G(0ll,1,WL,-WL,NL)[iei(x)]))))
+Y2(iex,/*01*/RmMA(r2f(iex,x,y))RT_A(rsz(yN,iex(x,fir(y))))Rs(as(0))Rc(ac(xtv&&xv-6<4u?-(xv==6||xv==9):"\0\1\x7f\x80 "[iei(x)]))Rf(y(af(A(0.,1.,WF,-WF,NF)[iei(x)])))R_(y(az(G(0ll,1,WL,-WL,NL)[iei(x)]))))
 A2(ie,/*00*/x==CAT?emp(yt):iex(x,fir(yR)))
 AX(prj,XmMA(x8(a,n))U k=MAX(n,xK);F(n,k-=a[i]!=GAP)x=(xtp?val:aA1)(xR);I i=0,j=1;W(i<n&&j<xn,I(xA[j]==GAP,xA[j]=a[i++])j++)W(i<n,PSH(x,a[i++]))P(xn>9,ez(x))AT(tp,AK(k,x)))
 A2(com,/*01*/AK(yK,AT(tq,aA2(xR,y))))

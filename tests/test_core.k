@@ -186,6 +186,9 @@ t[`dictMixedRankL;*"\n"\.[.:;,"((1 2;3 4)!5 6)+`a`b!1 2";{x}];"'domain"]
 / a dict with no keys is not checked: two empty ones still add, as group counts from ()!() do
 t[`dictEmptyBoth;`k@((()!())+#'=0#`;(#'=0#`)+()!());"(()!0#,!0;(0#`)!!0)"]
 
-hexpect[97]
+/ ---- an error with a computed message reads its text before releasing it ----
+t[`errComputedText;*"\n"\.[{`err "ab",x};,"cd";{x}];"'abcd"]
+
+hexpect[98]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

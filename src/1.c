@@ -6,7 +6,7 @@ X1(neg,RE(neg(gZ(x)))Rilc(az((L)(0-(W)gl(x))))Rf(af(-gf(x)))RC(neg(cG(x)))RmMA(e
 X1(not,RmMA(e1f(not,x))RU(x(ai(x==au)))
  RB(x=mut(x);W*a=xV;F((xn+255&-256)>>6,*a++^=-1)x)R_(eql(xtsS?as(0):ai(0),x)))
 X1(nul,RmMA(e1f(nul,x))RU(x(ai(x==au)))RB(whr(len(x)))RF(A y=aG(xn);Mx(F(xn,yg=xf!=xf))y)Rf(x(ai(*xF!=*xF)))R_(eql(cn[xt],x)))
-X1(flr,RmMA(e1f(flr,x))RcC(K1("{`c$x+32*~\"A[\"'x}",x))RsS(cS(flr(str(x))))RilEBGHIL(x)RfF(A y=an(xn,xt+tl-tf);Mx(F(yn,yl=xf<0?(L)((W)(L)xf-(W)(xf<(L)xf)):(L)xf))y)R_(et(x)))
+X1(flr,RmMA(e1f(flr,x))RcC(K1("{`c$x+32*~\"A[\"'x}",x))RsS(cS(flr(str(x))))RilEBGHIL(x)RfF(A y=an(xn,xt+tl-tf);L o=0;Mx(F(yn,F v=xf;L b=__builtin_fabs(v)<0x1p63;o|=b^1;yl=(L)__builtin_floor(b?v:0))I(o,F(yn,F v=xf;B b=__builtin_fabs(v)<0x1p63;L r=(L)__builtin_floor(b?v:0);yl=b?r:v>0?WL:NL)))y)R_(et(x)))
 
 #define M(k,f) X1(k,RfF(A y=MINE(x)?x:an(xn,xt);_at(y)=0;F(xn+3&~3,yf=f(xf));x-y?x(y):y)RmMA(e1f(k,x))R_(k(N(cF(x)))))
 M(ksin,sin)M(kcos,cos)M(klog,log)M(kexp,exp)M(sqr,SQ)

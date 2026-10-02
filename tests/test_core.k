@@ -173,6 +173,15 @@ t[`encodeEmptyChar;*"\n"\.[.:;,"(!0)\\\"a\"";{x}];"'type"]
 t[`encodeOneDigitChar;(,10)\"a";,7]
 t[`encodeEmptySym;*"\n"\.[.:;,"(!0)\\`a";{x}];"'type"]
 
-hexpect[90]
+/ ---- float to int: 0n is 0N; out of range, floor gives 0W above and 0N below, a cast 0W and -0W (as q) ----
+t[`floorNull;(_0n;_0w;_-0w);0N 9223372036854775807 0N]
+t[`floorVec;_0n 0w -0w 1.5 -1.5;0N 9223372036854775807 0N 1 -2]
+t[`floorBig;_1e300 -1e300;9223372036854775807 0N]
+t[`castNull;(`i$0n;`i$0w;`i$-0w);0N 9223372036854775807 -9223372036854775807]
+t[`castVec;`i$0n 0w -0w 2.9 -2.9;0N 9223372036854775807 -9223372036854775807 2 -2]
+t[`castFloat;(`i$1e19;`i$-1e19);9223372036854775807 -9223372036854775807]
+t[`floorPlain;_2.5 -2.5 0.0;2 -3 0]
+
+hexpect[97]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

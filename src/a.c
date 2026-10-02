@@ -242,6 +242,7 @@ A ajsC(A x){
  B trust=_n(x)==3&&_t(e[2])!=tA&&_v(e[2])!=0;
  U ng=_t(gcs)==tA?_n(gcs):0;
  A*gc=ng?(A*)_V(gcs):0;
+ P(_tP(tcol)||_t(tcol)>=tM,x(al(0)))                // an atom or a dict: not a column, so not known sorted
  U n=_n(tcol);
  P(n<2,x(al(1)))                                  // 0 or 1 row is trivially ordered
  // ---- pass 1: run boundaries -------------------------------------------
@@ -252,7 +253,7 @@ A ajsC(A x){
  MS(chg,0,(N)n);
  #define AJS_NE(T) {CO T*RES p=_V(c);for(U r=1;r<n;r++)chg[r]|=(UC)(p[r]!=p[r-1]);}
  F(ng,A c=gc[i];
-   P(_n(c)-n,x(al(0)))                            // ragged column: don't guess
+   P(_tP(c)||_t(c)>=tM||_n(c)-n,x(al(0)))                            // ragged column: don't guess
    switch(_t(c)){
     case tG: case tC: AJS_NE(G) break;
     case tH: AJS_NE(H) break;
@@ -822,6 +823,10 @@ Z A1(qsa,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)P(_at(x)==1,x)L d=atcnt(x,308);P(d<
 Z A1(qua,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)P(_at(x)==2,x)A u=unq(_R(x));P(!u,x(0))U k=_N(u);mr(u);P(k!=xn,x(err0("u-fail")))x=mut(x);_at(x)=2;x)//amber: `u unique
 Z A1(qpa,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)P(_at(x)==3,x)L e=atcnt(x,310);P(e<0,x(0))A u=unq(_R(x));P(!u,x(0))U k=_N(u);mr(u);
  P(xn&&(L)xn-e!=(L)k,x(err0("p-fail")))x=mut(x);_at(x)=3;x)//amber: `p parted: #runs = #distinct
+// whether x keeps the promise of attribute a (1 `s, 2 `u, 3 `p; 4 `g promises nothing), by the
+// checks `sa `ua `pa make, without an error: -9! (ser.c) keeps an attribute byte it reads only then
+UC atok(A x,UC a)_(P(a<1||a>3||_tP(x)||!LH(tG,_t(x),tS),a==4)P(a==1,atcnt(x,308)==0)
+ A u=unq(_R(x));P(!u,0)U k=_N(u);mr(u);P(a==2,k==_n(x))L e=atcnt(x,310);e>=0&&(L)_n(x)-e==(L)k)
 Z A1(qga,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=4;x)//amber: `g grouped
 // amber: `diag 0 / `diag 1 -- turn the Rust-style stderr diagnostic off/on at
 // runtime, returning the PREVIOUS setting so a caller can restore it. Needed by
@@ -912,7 +917,7 @@ A4(d4,/*1000*/U m=yN;P(y==au||!m,x(z2(x,uR)))P(m==1,y=fir(yR);y(a4(x,y,z,u)))A v
 Z AA(d8_,/*10..0*/A x=*a,y=a[1],z=a[2];P(n==4,d4(x,y,z,a[3]))P(n==3,d3(x,y,z))en(x))
 AA(d8,/*10..0*/A x=*a;
 I ixck(A,A,U,A);   //b.c: is .[`v;i;f;y] sure to fail on its index or count? (then v is not touched)
- X(RsS(P(ray_rc_sync,mrn(n,a);err0("noupdate"))A*p=gp(x);P(!p,mr(*a);0){I e_=n==4?ixck(*p,a[1],0,a[3]):0;P(e_,mr(*a);e_==1?ei0():el0())}I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;*p=_R(N(d8_(b,n))))// amend-by-name of a global: not from a peach worker (b.c bS)
+ X(RsS(P(ray_rc_sync,mr(*a);err0("noupdate"))A*p=gp(x);P(!p,mr(*a);0){I e_=n==4?ixck(*p,a[1],0,a[3]):0;P(e_,mr(*a);e_==1?ei0():el0())}I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;*p=_R(N(d8_(b,n))))// amend-by-name of a global: not from a peach worker (b.c bS)
    RU(n==3?try(x,a[1],a[2]):er(x))
    R_(d8_(a,n)))0)
 ZN A ki(A*p,S s)_(*p=evs(s,0);P(!*p,0)PSH(cns,*p))   //a name that does not evaluate (a missing formatter): its error, not die

@@ -649,7 +649,43 @@ t[`jsonCharDict;(`j@`a`b!"xy";`j@(`a!,"x";1));("{\"a\":\"x\",\"b\":\"y\"}";"[{\"
 / a large int: Jl compared it with the null by subtracting, which overflowed (UBSan)
 t[`jsonLongInt;(`j@3000000000;`j@(3000000000;1));("3000000000";"[3000000000,1]")]
 
-hexpect[404]
+/ ---- a symbol that is not an identifier prints quoted, with its bytes as they are ----
+t[`symDigitFirst;`k@`$"1a";"`\"1a\""]
+t[`symUtf8;`k@`$`c$195 169;"`\"",(`c$195 169),"\""]
+t[`symIdent;`k@`abc;"`abc"]
+t[`symList;`k@`$("1a";"b");"`\"1a\"`b"]
+tv[`symBack;"{x~. `k@x}@`$(\"1a\";\"a b\";\"\";\"a\";((`c$1),\"x\");(\"a\",`c$233))";1b]
+
+
+/ ---- a Cyrillic lead byte takes the next byte only if it continues the character ----
+/ (at the end of the text it stepped over the terminator and the lexer ran on past it)
+tv[`pidEnd;"$.(\"`\",(`c$208),(`c$0),\";42\")";,`c$208]
+tv[`pidCyrillic;"$.(\"`\",`c$208 184 208 176)";`c$208 184 208 176]
+tv[`pidLoneBack;"{x~. `k@x}@`$((\"a\",`c$208);(\"b\",(`c$208),\"`\");(`c$208 208);(`c$208 184))";1b]
+
+/ ---- `s$ of a char is the one-char symbol, for every byte ----
+t[`charToSym80;(`s$0x80)~`$,0x80;1b]
+t[`charToSymFF;(`s$0xff)~`$,0xff;1b]
+t[`charToSymAll;(`s$'`c$!256)~`$,'`c$!256;1b]
+t[`charToSymA;`s$"a";`a]
+
+/ ---- dict arithmetic: keys of different ranks and keyed tables are errors, not crashes ----
+t[`dictMixedRank;*"\n"\.[.:;,"(`a`b!1 2)+((1 2;3 4)!5 6)";{x}];"'domain"]
+t[`keyedPlusKeyed;*"\n"\.[.:;,"a:(+(,`a)!,1 2 3)!4 5 6;b:(+(,`a)!,2 3 4)!10 20 30;a+b";{x}];"'nyi"]
+t[`keyedPlusKeyedCols;*"\n"\.[.:;,"((+(,`a)!,1 2)!3 4)+((+(,`b)!,1 2)!3 4)";{x}];"'domain"]   / key tables with different columns do not join
+t[`dictListKeys;((1 2;3 4)!5 6)+(1 2;3 4)!7 8;(1 2;3 4)!12 14]
+t[`keyedPlusAtom;((+(,`a)!,1 2 3)!4 5 6)+1;(+(,`a)!,1 2 3)!5 6 7]
+
+/ the higher rank on the left crashed
+t[`dictMixedRankL;*"\n"\.[.:;,"((1 2;3 4)!5 6)+`a`b!1 2";{x}];"'domain"]
+
+/ a dict with no keys is not checked: two empty ones still add, as group counts from ()!() do
+t[`dictEmptyBoth;`k@((()!())+#'=0#`;(#'=0#`)+()!());"(()!0#,!0;(0#`)!!0)"]
+
+/ ---- an error with a computed message reads its text before releasing it ----
+t[`errComputedText;*"\n"\.[{`err "ab",x};,"cd";{x}];"'abcd"]
+
+hexpect[424]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

@@ -137,10 +137,10 @@ Z A dec(RB*b,I d){
    I(n>(W)(b->n-b->i),b->bad=1;return 0)          /* >=4 bytes per symbol */
    A x=an((U)n,tS);I*e=(I*)_V(x);
    F((U)n,U id=rsym(b);I(b->bad,mr(x);return 0)e[i]=(I)id)
-   _at(x)=at;return x)
+   _at(x)=at&&atok(x,at)?at:0;return x)   /* an attribute only if the data keeps it (sort and find trust it) */
  N nb=(N)((((W)n<<Tw[t])+7)>>3);
  CO V*q=rtake(b,nb);I(!q,return 0)
- A x=an((U)n,t);MC(_V(x),q,nb);_at(x)=at;return x;}
+ A x=an((U)n,t);MC(_V(x),q,nb);_at(x)=at&&atok(x,at)?at:0;return x;}
 
 A des9(A y/*1*/){
  /* NOTE: I(c,a) is `if(c){a;}` -- it does NOT return. Every early exit here

@@ -59,10 +59,11 @@ X1(unh,RmMA(e1f(unh,x))RC(x(unhC(xV,xn)))R_(et(x)))
 Z A pre(C c,A x)_(cat(ac(c),x))
 Z A1(par,apc(pre('(',x),')'))
 Z A1(ek,e1f(kst,x))
-Z A1(kss,
+Z A kss_(A x,B r)_(                                                                                   //"string" (r: raw bytes, never 0x.., as a symbol needs)
  Z CO C e[128]={'0',['\t']='t',['\n']='n',['\r']='r',['"']='"',['\\']='\\'};
- U n=xn+2;F(xn,C c=xc;P(c>126u||(c<32&&!e[c]),cat11(aCz("0x"),hex(x)))n+=!!e[c])
- A y=aC(n);C*s=yC;*s++='"';F(xn,C c=xc;I(e[c],*s++='\\';c=e[c])*s++=c)*s='"';x(y))
+ U n=xn+2;F(xn,C c=xc;P(!r&&(c>126u||(c<32&&!e[c])),cat11(aCz("0x"),hex(x)))n+=(UC)c<128&&e[c])
+ A y=aC(n);C*s=yC;*s++='"';F(xn,C c=xc;I((UC)c<128&&e[c],*s++='\\';c=e[c])*s++=c)*s='"';x(y))
+Z A1(kss,kss_(x,0))
 Z A kp(A x,S p,S q,S s)_(C t=TS[xt];B b=strchr(p,t)?xn==1:strchr(q,t)?xn<2:!!strchr(s,t);x=N(kst(x));b?par(x):x)   //kst's error (a failing formatter) passes up
 A1(kl,kp(x,"AC","IFS","Mmqruvw"))
 A1(kr,kp(x,"","","qruvw"))
@@ -83,7 +84,7 @@ X1(kst,R_(x(aCz("???")))
  R(ttm,ktx(K1("stime",ai((I)x))))
  R(tnp,L v_=*(L*)_V(x);x(ktx(K1("pstr",al(v_)))))
  Rc(kss(enl(x)))
- Rs(x=str0(str(x));I(xC+xn-pID(xC),x=kst(x);I(*xC==',',x=drp(1,x)))pre('`',x))
+ Rs(x=str0(str(x));I(xn&&!id0(*xC)||xC+xn-pID(xC),x=kss_(x,1))pre('`',x))
  Ro(x(_R(xx)))
  Rp(x=val(x);A y=xx,z=xy;
     P(xn==3&&((ytv&&y-av)||ytr)&&xy-GAP&&xz==GAP,z=Nx(kl(zR));y=Nz(kst(fir(x)));CA9(zC[zn-1])&&(CA9(*yC)||*yC==':'||*yC=='-')?cts(cat11(apc(y,'['),z),";]",2):cat11(z,y))

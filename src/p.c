@@ -6,7 +6,7 @@ Z B id1(C c)_(id0(c)|C09(c))                                                    
 Z B num(S s)_(C09(s[*s=='-']))                                                                      //is number start?
 Z S pw(S s)_(W((*s==32)|(*s==9)|(*s==13),s++)s)                                                     //skip whitespace: space, tab, CR (so CRLF/tabbed .k files parse; \n stays the statement separator)
 Z A1(p1,x&&xn==1?fir(x):x)                                                                          //singleton list to atom
-S pID(S s)_(W(id1(*s),s+=0xe555>>((UC)*s>>4&-2)&3)s)                                                //parse identifier
+S pID(S s)_(W(id1(*s),s+=*s<0&&(UC)s[1]>>6==2?2:1)s)                                                //parse identifier
 W pu(S*p)_(S s=*p;W v=0;C c=*s;W(C09(c),v=10*v+c-'0';c=*++s)*p-s?*p=s,v:NL)                         //parse unsigned long
 L pl(S*p)_(B m=**p=='-';*p+=m;(L)((W)(1-2*m)*pu(p)))                                                        //parse long
 Z B ovf;                                                                                            //set by plN: an integer literal of 2^63 or more in magnitude

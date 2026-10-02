@@ -26,10 +26,13 @@ Z A3(l2,/*001*/Xv(l2f(v2[xv],y,z))Yt(x2(y,z))Ym(x=prj(x,A8((A)GAP,z),2);x(e1(x,y
 Z AX(l8,/*01..1*/Ab8;MC(b,a,n*SZ(A));*b=GAP;x=prj(x,b,n);x(e1(x,*a)))
   A3(e2,/*001*/Xv(e2f(v2[xv],y,z))Yt(r2(x,y,z))Zt(l2(x,y,z))P(ytm||ztm,em(x,A8(yR,z),2))U m=yN;P(m-zN,el(z))P(!m,z(xtv&&xv<11?yR:emp(tA)))A u=0;C t=ztA&&MINE(z);
    F(m,A w=ii(y,i),v=x2(w,t?za:ii(z,i));mr(w);B(!v,I(u,u=u(0))I(t,mrn(m-i-1,zA+i+1)))I(!u,u=!v?0:LH(ti,_t(v),ts)?AN(0,an(m,TT[_t(v)])):aA0(m))PSH(u,v))mr(t?AZ(z):z);u)
+//dicts: keys of different ranks do not merge ('domain), and the union of the keys and looking
+//them up can fail ('nyi for table keys): check each
+U urnk(A);
 A e2f(A2 f,A x,A y/*f01*/)_(U k=xtt<<1|ytt;P(k==3,f(x,y))
  P(xtm||ytm,P(xtm>ytm,A z=N(e2f(f,xy,y));am(_R(xx),z))P(xtm<ytm,A z=Ny(e2f(f,x,_R(yy)));y(am(_R(yx),z)))
   P(_tM(xx)||_tM(yx),y(en0()))                                                                    //keyed tables: not yet (issue #19; the key union below crashed)
-  A z=unq(cat(xx,_R(yx)));B o=(f==add||f==sub||f==mul||f==dvd||f==mnm)&&(_n(xx)||_t(xx)-tA)&&(_n(yx)||_t(yx)-tA)&&!mtc_(xx,yx);A mx=o?fnd(xx,zR):0,my=o?fnd(yx,zR):0;x=x1(zR);y=y(y1(zR));   //mx my: 0N where a key is missing on that side (none is when the keys match)
+  P(_n(xx)&&_n(yx)&&urnk(xx)-urnk(yx),ed(y))A z=cat(xx,_R(yx));P(!z,y(0))z=unq(z);P(!z,y(0))B o=(f==add||f==sub||f==mul||f==dvd||f==mnm)&&(_n(xx)||_t(xx)-tA)&&(_n(yx)||_t(yx)-tA)&&!mtc_(xx,yx);A mx=o?fnd(xx,zR):0,my=o?fnd(yx,zR):0;x=x1(zR);P(!x,I(mx,mr(mx))I(my,mr(my))z(y(0)))y=y(y1(zR));P(!y,I(mx,mr(mx))I(my,mr(my))z(x(0)))   //mx my: 0N where a key is missing on that side (none is when the keys match)
   I(o,                                                         //a missing key takes the verb's identity (only a missing one: a null value stays)
    A u=f==mnm?(xtF||ytF?af(WF):az(WL)):ai(f==mul||f==dvd);x=K("{$[|/^z;@[x;&^z;:;y];x]}",x,_R(u),mx);P(!x,mr(u);mr(my);z(y(0)))y=K("{$[|/^z;@[x;&^z;:;y];x]}",y,u,my);P(!y,z(x(0))))   //the identity atom at the missing positions only
   am(z,Nz(x(e2f(f,x,y)))))

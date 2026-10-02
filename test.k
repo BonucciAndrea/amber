@@ -181,6 +181,8 @@ t[`wjCharFallback;{q:+`sym`time`bid!(`a`a`a;`c$65 128 200;10 20 30);t:+`sym`time
 t[`ajCharTradeNumQuotes;(+aj[`sym`time;+`sym`time!(,`a;,`c$250);+`sym`time`v!(`a`a`a;1 100 200;1 2 3)])`v;,0N]   / a char trade time against number quote times stays signed, as ' and ajmK read it
 t[`wjCharMax;{q:+`sym`time`c!(`a`a`a;1 2 3;"a",0x80,"b");t:+`sym`time!(,`a;,3);w:(,0;,3);((+wj[w;`sym`time;t;q;,(`m;max;`c)])`m;(+wj[w;`sym`time;t;q;,(`m;min;`c)])`m;(+wj[w;`sym`time;t;q;((`m;max;`c);(`k;{max x};`c))])`m)}[];(,0x80;,"a";,0x80)]   / min and max of a char column give chars, whatever else is aggregated
 t[`wjCharFirstMax;{q:+`sym`time`c!(`a`a`a;1 2 3;"a",0x80,"b");t:+`sym`time!(`a`a;3 0);w:(0 -5;3 0);r:+wj[w;`sym`time;t;q;((`f;first;`c);(`m;max;`c);(`n;min;`c))];(r`f;r`m;r`n)}[];(97 0N;0x8000;0x61ff)]   / the kernel keeps first as it was; min and max of chars give chars, an empty window the identity
+/ the sortedness check given an atom where a column belongs: "not known sorted", not a crash
+t[`ajsAtom;(`ajs(();5;0b);`ajs((5;1 2);1 2;0b);`ajs((1 2;5);1 2;0b);`ajs(();3 2 1;0b));0 0 0 0]
 
 / ---- `ajs / ajsorted (src/a.c): is a table already in as-of order? ----
 / A WRONG 1b here silently corrupts every join that trusts it, so the predicate
@@ -463,6 +465,13 @@ t[`nonFnListIdx;   @(&/;1;|/)[1];              `i]
 t[`fourVerbIdx;    @(+;-;*;%)[2];              `v]
 / a JSON surrogate pair is one character: four bytes of UTF-8
 t[`jsonSurrogate;  (`i$`j?"\"\\ud83d\\ude00\"";#`j?"\"a\\ud83d\\ude00\\u00e9\"");(-16 -97 -104 -128;7)]
+/ -8!/-9! leave a boxed int on the left alone (it used to be released, freeing a variable's value)
+t[`serLeftKept;    {m:(-8 5000000000)0;m!1 2;m!3 4;m}[];  -8]
+t[`serLeftKept9;{m:(-9 5000000000)0;m!-8!1 2;m}[];-9]
+
+/ -9! keeps an attribute only when the data keeps it (sort, grade and find trust `s)
+t[`deserAttrKept;  (`at@-9!-8!`sa 1000 2000 3000;`at@-9!-8!`pa 3 3 1 1 2;`at@-9!-8!`ua 1 2 3);(`s;`p;`u)]
+t[`deserAttrBad;   {c:-8!`sa 1000 2000 3000;c[14 15 18 19]:(-8!3000 2000 1000)14 15 18 19;x:-9!c;(`at@x;<x;x?1000)}[];(`;2 1 0;2)]
 
 / ---- amber 2.2: float literals below 1e-308 (subnormals) ------------------
 / pfu (src/p.c) clamped an out-of-range exponent and returned EARLY, before it
@@ -509,6 +518,10 @@ t[`symRoundTrip;    {x~$`$x}[{"symbol_",$x}'!20000];                1b]
 PG:0
 t[`peachNoupdate;   .[{`pe({PG::x;x};!50)};,0;{`noupdate}];          `noupdate]
 t[`peachGlobalKept; PG;                                              0]
+/ the 'noupdate of a global amend in a worker releases only what it owns: the value survives
+PV:100 200 300;PH:0
+PW:{.[{`pe({.[`PH;();:;PV]};x)};,!8;{x}]}
+t[`peachAmendKept;  {PW[];PW[];PW[];b:{x,x}'!100;PV}[];  100 200 300]
 t[`peachDict;       `pe({x+1};`a`b!1 2);                             `a`b!2 3]
 t[`peachSmallN;     `pe({x*x};!7);                                   {x*x}'!7]
 / workers used to parse over each other (file-static parser state): 'parse, then a segfault

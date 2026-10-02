@@ -764,7 +764,14 @@ te[`nestChainDeep;(,/20000#,"1+"),"1"]
 te[`nestAdverbsDeep;"1",,/20000#,"+/"]
 te[`stringBackslashEnd;"\"a\\"]
 
-hexpect[467]
+/ ---- 2.4.1: reverse, a seeded :': and m! by a power of two in one pass ----
+t[`revBytes;|"abcdefghijk";"kjihgfedcba"]
+t[`revWidths;(|1 2 3;|1 2 300000;|1 2 5000000000;|!0);(3 2 1;300000 2 1;5000000000 2 1;!0)]
+t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
+t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
+t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
+
+hexpect[472]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

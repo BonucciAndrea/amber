@@ -12,9 +12,9 @@
 **A low-latency array language: columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-2.4.0-orange)
+![version](https://img.shields.io/badge/version-2.4.1-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
-![tests](https://img.shields.io/badge/tests-1383%20K--suite%20cases-brightgreen)
+![tests](https://img.shields.io/badge/tests-1395%20K--suite%20cases-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
 
 </div>
@@ -39,10 +39,13 @@ qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                        / vwap by symbo
 ```
 
 <a name="whats-new"></a>
+<a name="whats-new-241"></a>
 <a name="whats-new-240"></a>
-## What's new in 2.4.0
+## What's new in 2.4.1
 
-Tail calls: a function can call itself (or another one) as its last step as deep as it likes,
+A small one on top of 2.4.0: really deep nesting is a `'limit` now instead of a crash, piped input
+copes with long lines, and reverse, `0 :':x` and `m!x` got a lot quicker on big vectors (the
+bignum collatz loop runs ~15% faster). 2.4.0 brought tail calls: a function can call itself (or another one) as its last step as deep as it likes,
 `{$[x;o x-1;0]}1000000` just works now. And a big round of fixes from pull requests: `sum avg min
 max` skip nulls the q way, `-0.0` is `0.0` and NaNs are one value wherever floats are compared or
 sorted, chars compare unsigned, `div`/`xbar`/JSON/`asof`/`lj` behave like q, 65536 globals, literals
@@ -52,7 +55,7 @@ of any length, and a long list of crashes gone. Details in the [changelog](CHANG
 <a name="whats-new-older"></a>
 ## Earlier releases
 
-2.3.1, 2.3.0, 2.2.0, 2.1.0 and everything before them are in
+2.4.0, 2.3.1, 2.3.0, 2.2.0, 2.1.0 and everything before them are in
 [`CHANGELOG.md`](CHANGELOG.md), which is the single place release notes live.
 
 <a name="quickstart"></a>

@@ -59,7 +59,11 @@ X1(whr,Ril(whr(enl(x)))RA(P(!xn,x(an(0,tI)))K1("{$[`A~@x;(,&#'*'x),,'/x@\\:!0|/#
              {H*r=yV;S4(w,F(m,Fj(xg,*r++=i)),F(m,Fj(xh,*r++=i)),F(m,Fj(xi,*r++=i)),F(m,Fj(xl,*r++=i)))},
              {I*r=yV;S4(w,F(m,Fj(xg,*r++=i)),F(m,Fj(xh,*r++=i)),F(m,Fj(xi,*r++=i)),F(m,Fj(xl,*r++=i)))},))y))
 X1(rev,Rm(A y=kv(&x);am(rev(x),rev(y)))RM(A y=kv(&x);aM(x,e1f(rev,y)))Rt(x)RE(rev(gZ(x)))RB(cB(rev(cG(x))))
- R_(P(xn<2,x)x=mut(x);U n=xn;I w=xw-3;S4(w,F(n>>1,SW(xg,xG[n-1-i])),F(n>>1,SW(xh,xH[n-1-i])),F(n>>1,SW(xi,xI[n-1-i])),F(n>>1,SW(xl,xL[n-1-i])))x))
+ R_(P(xn<2,x)P(TR(xt),x=mut(x);U n=xn;F(n>>1,SW(xl,xL[n-1-i]))x)   //items that are references keep the swaps: mut() takes the references
+  U n=xn;I w=xw-3;A z=an(n,xt);   //amber 2.4.1: one reversed copy into a new vector, bytes 8 at a time; was a copy then pairwise swaps
+  S4(w,{CO G*RES p=xV;G*RES r=zV;U k=n>>3;F(k,W u;MC(&u,p+n-8*(i+1),8);u=__builtin_bswap64(u);MC(r+8*i,&u,8))F(n-8*k,r[8*k+i]=p[n-1-8*k-i])},
+       {CO H*RES p=xV;H*RES r=zV;F(n,r[i]=p[n-1-i])},
+       {CO I*RES p=xV;I*RES r=zV;F(n,r[i]=p[n-1-i])},{CO L*RES p=xV;L*RES r=zV;F(n,r[i]=p[n-1-i])})x(z)))
 A1(typ,x(as(TS[xt])))
 A1(len,x(az(xN)))
 U _N(A x/*0*/){X(RE(Lij j-i)RT_E(xn)Rm(_N(xy))RM(_N(_x(xy)))R_(1))}

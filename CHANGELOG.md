@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.4.1
+
+- **nesting has a limit.** More than 512 levels of brackets, lambdas, chained verbs or adverbs is
+  `'limit` now, it used to run the C stack out and crash.
+- **piped input**: a line of 256 bytes or more no longer kills the process, and a line that
+  arrives in two reads runs whole.
+- **faster**: reverse is one copy (bytes 8 at a time, ~8x quicker on a byte vector), `0 :':x` is one
+  pass instead of two, and so is `m!x` for a power of two on a shared vector. The bignum collatz
+  loop at 2^18 went from ~300 to ~255 ms.
+
 ## 2.4.0
 
 Tail calls, and a big round of fixes that came in as pull requests: nulls the q way for the q-named

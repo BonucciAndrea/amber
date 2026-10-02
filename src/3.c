@@ -190,7 +190,12 @@ A3(ars,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzfc)Q(ztZFC)
  P(ztF&&(xv==6||xv==7),mmmsf(x,y,z))
  G(&dexs,adms,subs,adms,___s,___s,mnms,mxms,___s,___s,eqls)[xv](x,y,z))
 
-Z A3(dexp,/*010*/zn?cat11(y?y:_R(cn[zt]),drp(-1,zR)):y(zR))
+// amber 2.4.1: an int seed that fits z's width goes in front of a straight copy of z, one pass,
+// where drop-then-join copied z twice (0 :':x is the carry step of every bignum loop)
+Z A3(dexp,/*010*/P(!zn,y(zR))
+ P(y&&ztZ&&ytz&&tZ(gl_(y))<=zt,L v=gl_(y);U w=zw-3,n=zn;A r=an(n,zt);V*q=_V(r);S4(w,*(G*)q=v,*(H*)q=v,*(I*)q=v,*(L*)q=v);
+   MC((C*)q+(1<<w),zV,(n-1)<<w);y(r))
+ cat11(y?y:_R(cn[zt]),drp(-1,zR)))
 Z A3(___p,/*010*/v2[xv](z,dexp(av,y,z)))
 Z A3(modp,/*010*/e2f(mod,z,dexp(av,y,z)))
 // amber 2.3: the seed used to be written to z[-1] so the loop could run down to

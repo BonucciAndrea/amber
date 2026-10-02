@@ -185,6 +185,13 @@ t[`nullToFloatMin;(0N&1.5;0N|1.5);(0n;1.5)]
 t[`nullToFloatSum;+/(0N;1.5);0n]
 t[`nullToFloatVecOk;0N 1+1.5;0n 2.5]
 
-hexpect[100]
+/ ---- dict arithmetic: a null value is a value; only a missing key takes the identity ----
+t[`dictNullKept;((`a!0N)+`a!5;(`a!0n)+`a!5.0;(`a!0n)%`a!2.0);((,`a)!,-9223372036854775803;(,`a)!,0n;(,`a)!,0n)]
+t[`dictNullKeptMixed;(`a`b!0N 1)+`b`c!5 6;`a`b`c!0N 6 6]
+t[`dictMissing;((`a!1)+`b!2;(`a!1)-`b!2;(`a!1)*`b!2);(`a`b!1 2;`a`b!1 -2;`a`b!1 2)]
+t[`dictMissingMinMax;((`a!1)&`b!2;(`a!1)|`b!2;(`a!1.5)&`b!2.5);(`a`b!1 2;`a`b!1 2;`a`b!1.5 2.5)]
+t[`dictCommon;(`a`b!1 2)+`b`c!10 20;`a`b`c!1 12 20]
+
+hexpect[105]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

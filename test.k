@@ -486,6 +486,9 @@ t[`shiftF;          (1_SF)-(-1)_SF;                                  -2.5 3.0 0.
 FX:0.0+!10;FY:10.0+!10
 t[`fmsCmp;          +/(FY+2.5*FX)@&FX>5;                             {+/x@&y}[FY+2.5*FX;FX>5]]
 t[`fmsCmpLitLeft;   +/(FY-2*FX)@&5<FX;                               {+/x@&y}[FY-2*FX;FX>5]]
+/ the comparison-fused forms add in the same order as +/ of the selected values, also where the sum is inexact
+CX:-1298990374206.0 1.0 -9005900264370198.0 1298990374206.0;CC:1 1 1 1
+t[`fmsCmpExact;`k@(+/CX@&CC>0;+/(CX+0.0*CX)@&CC>0);`k@(+/CX;+/CX)]
 t[`maskSumCmp;      +/FY@&FX<3;                                      33.0]
 
 / ---- report ----

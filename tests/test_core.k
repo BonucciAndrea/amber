@@ -192,6 +192,20 @@ t[`dictMissing;((`a!1)+`b!2;(`a!1)-`b!2;(`a!1)*`b!2);(`a`b!1 2;`a`b!1 -2;`a`b!1 
 t[`dictMissingMinMax;((`a!1)&`b!2;(`a!1)|`b!2;(`a!1.5)&`b!2.5);(`a`b!1 2;`a`b!1 2;`a`b!1.5 2.5)]
 t[`dictCommon;(`a`b!1 2)+`b`c!10 20;`a`b`c!1 12 20]
 
-hexpect[105]
+
+/ ---- a key on one side only takes the identity atom; the other values are left as they are ----
+t[`dictMissListVal;(`a`b!1 2)+`c!,1 2;`a`b`c!(1;2;1 2)]
+t[`dictMissOrder;((`a`b!(1 2;3))+`c!5;(`a`b!(3;1 2))+`c!5);(`a`b`c!(1 2;3;5);`a`b`c!(3;1 2;5))]
+t[`dictMissLonger;(`a`b!(1 2 3;3))+`a`c!(5;6 7);`a`b`c!(6 7 8;3;6 7)]
+/ a temporal value: no crash; types only, as no formatter is loaded
+t[`dictDateAdd;@'.((,`a)!,2026.07.30)+(,`a)!,1;,`d]
+t[`dictDateAddValue;2026.07.31=*.((,`a)!,2026.07.30)+(,`a)!,1;1]
+t[`dictTyped;((`a!1.5)+`b!2.5;(`a`b!1 2)-`b`c!10 20);(`a`b!1.5 2.5;`a`b`c!1 -8 -20)]
+/ a dict with untyped empty keys fills nothing ('length, as 2.3.1); typed empty keys fill, as in q
+t[`dictEmptyUntyped;*"\n"\.[.:;,"(`a`b!1 2)+()!()";{x}];"'length"]
+t[`dictEmptyTyped;(`a`b!1 2)+(0#`)!!0;`a`b!1 2]
+t[`dictEmptyVals;(((0#`)!())-`a`b!1 2;(`a`b!1 2)+(0#`)!());(`a`b!-1 -2;`a`b!1 2)]   / empty values () filled nothing: `a`b!(!0;!0)
+
+hexpect[114]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

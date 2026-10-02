@@ -438,6 +438,10 @@ t[`groupSymDict;   =`c`a`b`a`c;           `c`a`b!(0 4;1 3;,2)]
 t[`groupSymSingle; =`x`x`x;               (,`x)!,0 1 2]
 t[`groupSymEmptyCount; #(=0#`a);          0]
 t[`groupSymMatchesInt; value(=`b`a`b`c`a); value(=2 1 2 3 1)]
+/ JSON \u escapes: four hex digits, either case; a short or bad one is an error, read no further
+t[`jsonHexCase;   `j?"\"\\u004a\\u004A\\u00e9\"";  "JJ",`c$195 169]
+t[`jsonHexShort;  {.[`j?;,x;{`err}]}'("\"\\u";"\"\\u12";"\"\\u12\"";"\"\\ud83d\\u");  `err`err`err`err]
+t[`jsonHexBad;    {.[`j?;,x;{`err}]}'("\"\\u004G\"";"\"\\uzz41\"";"\"\\u 041\"");  `err`err`err]
 
 / ---- tacit trains (hooks/forks) + function-list indexing (since 2.0.1) ----
 / A literal verb/lambda list applied to DATA runs as a train; the SAME shape of
@@ -457,6 +461,8 @@ t[`fnListMatchIdx; ((#;+/)[" "~" "]) 1 2 3;    6]
 t[`fnListIdxType;  @(#;+/)[0];                 `v]
 t[`nonFnListIdx;   @(&/;1;|/)[1];              `i]
 t[`fourVerbIdx;    @(+;-;*;%)[2];              `v]
+/ a JSON surrogate pair is one character: four bytes of UTF-8
+t[`jsonSurrogate;  (`i$`j?"\"\\ud83d\\ude00\"";#`j?"\"a\\ud83d\\ude00\\u00e9\"");(-16 -97 -104 -128;7)]
 
 / ---- amber 2.2: float literals below 1e-308 (subnormals) ------------------
 / pfu (src/p.c) clamped an out-of-range exponent and returned EARLY, before it

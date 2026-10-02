@@ -633,7 +633,23 @@ t[`parseIntMin;`I$"-9223372036854775807";-9223372036854775807]
 t[`parseIntZeros;`I$"0000000000000000000000012";12]
 t[`parseIntVec;`I$("12";"99999999999999999999";"x");12 0N 0N]
 
-hexpect[399]
+
+/ ---- JSON escapes of control characters ----
+t[`jsonCtl;(`j@`c$1;`j@`c$65 1;`j@`c$1 65;`j@`c$31 127);("\"\\u0001\"";"\"A\\u0001\"";"\"\\u0001A\"";"\"\\u001f\\u007f\"")]
+
+
+/ ---- JSON writes NUL as \u0000 ----
+t[`jsonNul;(`j@"a\0b";`j@"\0");("\"a\\u0000b\"";"\"\\u0000\"")]
+
+
+/ ---- JSON output is sized right (upstream ngn/k fdf2ec5f) ----
+t[`jsonLongNeg;(`j@-3908768282852987948;`j@(-3908768282852987948;1));("-3908768282852987948";"[-3908768282852987948,1]")]
+t[`jsonCharDict;(`j@`a`b!"xy";`j@(`a!,"x";1));("{\"a\":\"x\",\"b\":\"y\"}";"[{\"a\":\"x\"},1]")]
+
+/ a large int: Jl compared it with the null by subtracting, which overflowed (UBSan)
+t[`jsonLongInt;(`j@3000000000;`j@(3000000000;1));("3000000000";"[3000000000,1]")]
+
+hexpect[404]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

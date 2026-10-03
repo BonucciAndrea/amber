@@ -859,7 +859,7 @@ t[`eachDictList;{x,y}'[`a`b!1 2;3 4];`a`b!(1 3;2 4)]
 t[`eachDictsKeyTypes;(.[{x,y}';(`a`b!1 2;1 2!3 4);{x}];.[{x,y,z}';(`a`b!1 2;`c`d!1 2;1 2!3 4);{x}]);2#,"'domain\n"]
 t[`eachDictsKeyTypesLoop;+/{.[{x,y,z}';(`a`b!1 2;`c`d!1 2;(x+1 2)!3 4);{1}]}'!10000;10000]
 
-hexpect[502]
+hexpect[531]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.4.2
+
+- **table cells**: `t[i;c]:y` amends that one column instead of rebuilding the table, so 10,000
+  single-cell amends went from ~113 s to ~2 ms; a nested assignment at many keys is linear too.
+- **dates, times and timestamps** sort by value (timestamps used to sort by where they sat in
+  memory), and `aj`, `aj0` and `wj` take them as time columns.
+- **`ej`** gives every matching row, as q's does.
+- **parsing**: a number right before `-` with a float later on is no longer read as a float, and a
+  long strand of float literals parses about twice as fast.
+- **JSON** `` `j? `` and `` `j@ `` are safe inside `peach`.
+- **crashes and leaks**: seven small fixes, among them trapped `'stack`/`'rank` errors slowly using up
+  the call depth, and two C API key-list leaks. Int scans, seeded folds and amends at indices no
+  longer rely on signed overflow.
+- No speed was lost: every hot path these touch was timed against 2.4.1.
+
 ## 2.4.1
 
 - **nesting has a limit.** More than 512 levels of brackets, lambdas, chained verbs or adverbs is

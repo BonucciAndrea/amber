@@ -411,6 +411,12 @@ t[`milli;milli hms[9;30;15]+123;123]
 t[`stime;stime hms[9;30;15];"09:30:15.000"]
 t[`ptime;ptime"09:30:15.123";34215123]
 t[`stimeNeg;stime -1800000 -1 1800000;("-00:30:00.000";"-00:00:00.001";"00:30:00.000")]
+/ every digit of the hours, so a time of 100 hours or more reads back as itself (issue #62; it printed the last two)
+t[`stimeHours;stime 0 3600000 356400000 360000000 2147483647 -2147483647;("00:00:00.000";"01:00:00.000";"99:00:00.000";"100:00:00.000";"596:31:23.647";"-596:31:23.647")]
+t[`timeHoursText;($100:00:00.000;`k 50:00:00.000+50:00:00.000;$0-100:00:00.000);("100:00:00.000";"100:00:00.000";"-100:00:00.000")]
+t[`timeHoursRead;({x=. $x}'(100:00:00.000;596:31:23.647;99:59:59.999);`i$"T"$$123:45:06.789);(1 1 1;445506789)]
+t[`timeHoursGrid;tcell[`time;3600000 360000000];("01:00:00.000";"100:00:00.000")]
+t[`timeHoursAtoms;stime (01:00:00.000;100:00:00.000;3600000);("01:00:00.000";"100:00:00.000";"01:00:00.000")]   / a list of time atoms, as tsym gives
 t[`ptimeNeg;(ptime"-00:30:00.000";ptime"-01:00:00");-1800000 -3600000]
 t[`ptimeList;*"\n"\.[{"T"$("09:30:00.100";"10:00:00.000")};,0;{x}];"'type"]   / a list of strings is 'type, as before (the sign test must not recurse)
 t[`timeNegText;`i$"T"$"-00:30:00.000";-1800000]

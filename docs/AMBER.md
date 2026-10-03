@@ -970,7 +970,7 @@ same convention as q’s `time`. The q dotted temporal accessors map to plain Am
 | (millis)     | `milli t`    | millisecond (0–999)                  |
 | build        | `hms[h;m;s]` | construct a time                     |
 | parse        | `ptime "HH:MM:SS.mmm"` | string → ms                 |
-| format       | `stime t`    | ms → `"HH:MM:SS.mmm"`                 |
+| format       | `stime t`    | ms → `"HH:MM:SS.mmm"`, every digit of the hours past 99 (`"100:00:00.000"`) |
 
 Bucketing for bars:
 

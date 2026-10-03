@@ -29,6 +29,9 @@ so `xasc`/`s#` work unchanged.
   above is `'type`. There's no null date, so `date+0N` is `'domain` for now.
 - **Still missing:** `month`/`minute`/`second`/`timespan`/`datetime` as distinct types,
   `m` month-literals, and the dotted `t.hh` accessor form (Amber uses `thh t`).
+- **Differs from q:** a time of 100 hours or more prints every digit of its hours
+  (`100:00:00.000`, up to `596:31:23.647`), so the text reads back as the same time; q prints
+  `**:00:00.000`.
 
 ## 2. Missing atom types
 `short` (`h`), `real`/float32 (`e`), `byte` (`x`, `0x…`), `guid` (`g`, `0Ng`), plus the full

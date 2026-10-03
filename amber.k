@@ -355,8 +355,8 @@ minute:{_((tnum0 x)%60000)}                        / minutes since midnight (q t
 second:{_((tnum0 x)%1000)}                         / seconds since midnight (q time.second)
 z2:{-2$"0",$x}
 z3:{-3$"00",$x}
-stime1:{$[^x;"0N";x<0;"-",stime1[-x];(z2 hh x),":",(z2 mm x),":",(z2 sec x),".",z3 milli x]}   / a negative time is "-" and its size, as in q
-stime:{x:tnum0 x;$[|/(@x)=`i`j;stime1 x;stime1'x]} / time -> "HH:MM:SS.mmm"
+stime1:{$[^x;"0N";x<0;"-",stime1[-x];[h:$_(tnum0 x)%3600000;($[1=#h;"0",h;h]),":",(z2 mm x),":",(z2 sec x),".",z3 milli x]]}   / a negative time is "-" and its size, as in q; every digit of the hours (q prints ** past 99), so the text reads back as the same time
+stime:{x:tnum0 x;$[|/(@x)=`i`j;stime1 x;stime1'x]} / time -> "HH:MM:SS.mmm" (HHH past 99 hours)
 ptime:{$["-"~*x;-ptime[1_x];[p:"."\x;t:`I$":"\*p;m:$[1<#p;`I$3#(p 1),"000";0];(3600000*t 0)+(60000*t 1)+(1000*t 2)+m]]}   / "-HH:MM:SS.mmm" is negative
 bar:{[w;u;t]xbar[$[(^w)|^u;0N;w*u];t]}                        / w u-unit bars: bar[5;60000;t] = 5-min bars(ms)
 minbar:{[w;t]60000*xbar[w;minute t]}               / w-minute bar as a time (ms)

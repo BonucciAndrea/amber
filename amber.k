@@ -186,12 +186,16 @@ ej:{[c;x;y]ij[x;xkey[c;y]]}
 / how xasc happens to collate symbols.  It errs towards 0b (sort it) for anything
 / it cannot prove, so a false 1b -- the only answer that could corrupt a join --
 / is not reachable.
-ajsorted:{[c;t]c:c,();tc:*|c;g:-1_c;d:+t;gc:value g#d;g0:*gc;`ajs(gc;d tc;$[1=#gc;in[`at g0;`s`p];0b])}
+ajsorted:{[c;t]c:c,();tc:*|c;g:-1_c;d:+t;gc:value g#d;g0:*gc;`ajs(gc;tjnum d tc;$[1=#gc;in[`at g0;`s`p];0b])}
 / ajord: xasc only when it will actually change something.  Marks the result `s
 / so the attribute survives for callers that inspect it (meta/`at).
 ajord:{[c;t]$[ajsorted[c;t];t;xasc[c;t]]}
-ajmK:{[c;x;y]c:c,();g:-1_c;tc:*|c;yt:(+y)tc;xt:(+x)tc;yg:$[#g;=rows[g#+y];(,0)!,!#y];xg:$[#g;=rows[g#+x];(,0)!,!#x];{[yt;xt;yg;xg;acc;gk]yi:yg gk;xi:xg gk;b:(yt yi)'(xt xi);@[acc;xi;:;(yi,0N)@b]}[yt;xt;yg;xg]/[(#x)#0N;!xg]}  / pure-K reference
-ajm:{[c;x;y]c:c,();g:-1_c;tc:*|c;b:wjbnd[g;x;y];`aj((+y)tc;(+x)tc;b 0;b 1)}
+ajmK:{[c;x;y]c:c,();g:-1_c;tc:*|c;yt:tjnum(+y)tc;xt:tjnum(+x)tc;yg:$[#g;=rows[g#+y];(,0)!,!#y];xg:$[#g;=rows[g#+x];(,0)!,!#x];{[yt;xt;yg;xg;acc;gk]yi:yg gk;xi:xg gk;b:(yt yi)'(xt xi);@[acc;xi;:;(yi,0N)@b]}[yt;xt;yg;xg]/[(#x)#0N;!xg]}  / pure-K reference
+tjnum:{$[`~k:tjk x;0#0;k in`d`t`n;`i$x;x]}  / a column of dates, times or timestamps as their numbers (days, ms, ns), which is what the C kernels compare
+tjk:{$[`A~@x;$[#x;$[(1=#?t)&(*t:@'x)in`d`t`n;*t;`A];`];@x]}  / a time column's kind: `d `t `n when every item is a date, a time or a timestamp; ` for an empty generic list
+tjmx:{[x;k]$[`A~k;|/(@'x)in`d`t`n;0b]}  / a generic column holding a date, time or timestamp among items of other kinds (or ::)
+tjsame:{[a;b]p:tjk a;q:tjk b;$[tjmx[a;p]|tjmx[b;q];`err"type";(p~q)|(`~p)|`~q;::;(p in`d`t`n)|q in`d`t`n;`err"type";::]}  / 'type when one side is temporal and the other is not the same kind
+ajm:{[c;x;y]c:c,();g:-1_c;tc:*|c;tjsame[(+y)tc;(+x)tc];b:wjbnd[g;x;y];`aj(tjnum[(+y)tc];tjnum[(+x)tc];b 0;b 1)}
 aj:{[c;x;y]c:c,();y:ajord[c;y];m:ajm[c;x;y];vc:except[cols y;c];+(+x),vc!{[m;yd;c](yd c)@m}[m;+y]'vc}
 aj0:{[c;x;y]c:c,();y:ajord[c;y];m:ajm[c;x;y];vc:except[cols y;-1_c];+(+x),vc!{[m;yd;c](yd c)@m}[m;+y]'vc}
 asof:{[t;d]c:!d;g:-1_c;tc:*|c;td:+t;msk:$[#g;&/({[td;d;c]td[c]=d c}[td;d]'g);(#t)#1b];i:&msk&~td[tc]>d tc;$[#i;(except[cols t;c])#t[i@*|&m=|/m:td[tc]i];()]}  / the latest at or before: the last row whose time is the greatest
@@ -218,8 +222,8 @@ wjbndK:{[g;t;q]gdi:=rows[g#+q];bas:*:'value gdi;len:#:'value gdi;ix:(!gdi)?rows[
 / side's run boundaries and probes once per trade row, allocating nothing
 / per row; it returns () if it cannot handle the input, and we fall back.
 wjbnd:{[g;t;q]$[#g;[b:`wjb(value g#+q;value g#+t);$[#b;b;wjbndK[g;t;q]]];((#t)#0;(#t)#(#q))]}
-wjK:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;ub:{$[(@x)in`c`C;256!`i$x;x]};qt:ub qd tc;w:$[`C=@qd tc;ub'w;w];qg:$[#g;=rows[g#+q];(,0)!,!#q];tg:$[#g;rows[g#+t];(#t)#0];res:{[qt;qg;tg;w0;w1;qd;aggs;i]gk:tg i;p:$[in[gk;!qg];qg gk;0#0];sel:$[#p;{[gt;p;lo;hi]a:$[^lo;-1;(`F~@gt)|`f~@lo;-1++/gt<lo;gt'lo-1];p@(a+1)+!0|(gt'hi)-a}[qt p;p;w0 i;w1 i];0#0];{[qd;sel;a](a 1)(qd a 2)@sel}[qd;sel]'aggs}[qt;qg;tg;w 0;w 1;qd;aggs]'!#t;+(+t),(aggs[;0])!+res}
-wj:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;cs:wjcode'aggs[;1];$[|/cs<0;wjK[w;c;t;q;aggs];[b:wjbnd[g;t;q];v:qd aggs[;2];u:&(cs in 2 3)&`C=@:'v;v:@[v;u;{256!`i$x}];r:`wj(qd tc;v;cs;w 0;w 1;b 0;b 1);r:@[r;u;:;{[f;x]`c$@[x;&(x<0)|x>255;:;f]}'[(255 0)cs[u]-2;r u]];+(+t),(aggs[;0])!r]]}
+wjK:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;ub:{$[(@x)in`c`C;256!`i$x;x]};qt:ub tjnum qd tc;w:$[`C=@qd tc;ub'w;w];qg:$[#g;=rows[g#+q];(,0)!,!#q];tg:$[#g;rows[g#+t];(#t)#0];res:{[qt;qg;tg;w0;w1;qd;aggs;i]gk:tg i;p:$[in[gk;!qg];qg gk;0#0];sel:$[#p;{[gt;p;lo;hi]a:$[^lo;-1;(`F~@gt)|`f~@lo;-1++/gt<lo;gt'lo-1];p@(a+1)+!0|(gt'hi)-a}[qt p;p;w0 i;w1 i];0#0];{[qd;sel;a](a 1)(qd a 2)@sel}[qd;sel]'aggs}[qt;qg;tg;tjnum[w 0];tjnum[w 1];qd;aggs]'!#t;+(+t),(aggs[;0])!+res}
+wj:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;tjsame[qd tc;w 0];tjsame[qd tc;w 1];cs:wjcode'aggs[;1];$[|/cs<0;wjK[w;c;t;q;aggs];[b:wjbnd[g;t;q];v:qd aggs[;2];u:&(cs in 2 3)&`C=@:'v;v:@[v;u;{256!`i$x}];r:`wj(tjnum[qd tc];v;cs;tjnum[w 0];tjnum[w 1];b 0;b 1);r:@[r;u;:;{[f;x]`c$@[x;&(x<0)|x>255;:;f]}'[(255 0)cs[u]-2;r u]];+(+t),(aggs[;0])!r]]}
 
 / ---- qSQL-style select / group-by --------------------------------------------
 qwhere:{[t;m]t@&m}

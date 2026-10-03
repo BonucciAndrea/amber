@@ -473,6 +473,38 @@ t[`serLeftKept9;{m:(-9 5000000000)0;m!-8!1 2;m}[];-9]
 t[`deserAttrKept;  (`at@-9!-8!`sa 1000 2000 3000;`at@-9!-8!`pa 3 3 1 1 2;`at@-9!-8!`ua 1 2 3);(`s;`p;`u)]
 t[`deserAttrBad;   {c:-8!`sa 1000 2000 3000;c[14 15 18 19]:(-8!3000 2000 1000)14 15 18 19;x:-9!c;(`at@x;<x;x?1000)}[];(`;2 1 0;2)]
 
+/ dates, times and timestamps grade by their values (not their words, nor a timestamp's address)
+t[`gradeDates;     (<(1999.12.31;2000.01.01);<(2000.01.01;1999.12.31;2026.07.30);>(1999.12.31;2000.01.01));(0 1;1 0 2;1 0)]
+t[`gradeTimes;     <(00:00:00.000-1;00:00:00.000);0 1]
+t[`gradeStamps;    (<(2026.07.31D09:00:00.000;2026.07.30D10:00:00.000;2026.07.30D11:00:00.000);{<(x;x+0)}2026.07.30D10:00:00.000;<2026.07.30D10:00:00.000+|!5);(1 2 0;0 1;4 3 2 1 0)]
+GTS:(2026.07.30D10:00:00.000;2026.07.30D10:00:00.000+1;2026.07.30D10:00:00.000+0;2026.07.30D10:00:00.000+1)
+t[`groupStamps;   (#?GTS;#=GTS);  2 2]   / equal timestamps are one value
+
+/ aj and wj on columns of dates, times or timestamps compare their values
+AJT:+`ts`v!((2026.07.30D10:00:00.000;2026.07.30D11:00:00.000;2026.07.31D09:00:00.000);1 2 3)
+AJQ:+`ts`q!((2026.07.30D08:00:00.000;2026.07.30D10:30:00.000);6 5)
+t[`ajStamps;       (+aj[`ts;AJT;AJQ])`q;  6 5 5]
+t[`ajDates;        (+aj[`d;+`d`v!((2026.07.30;2026.07.31);1 2);+`d`q!((2026.07.29;2026.07.31);6 5)])`q;  6 5]
+t[`ajStampsEmpty;  ((+aj[`ts;AJT;0#AJQ])`q;#aj[`ts;0#AJT;AJQ]);  (0N 0N 0N;0)]
+AJW:((2026.07.30D09:00:00.000;2026.07.30D10:30:00.000);(2026.07.30D10:20:00.000;2026.07.30D11:10:00.000))
+AJWT:+`ts`v!((2026.07.30D10:00:00.000;2026.07.30D11:00:00.000);1 2)
+AJWQ:+`ts`q!((2026.07.30D09:30:00.000;2026.07.30D10:15:00.000;2026.07.30D10:50:00.000);6 5 4)
+t[`wjStamps;       ((+wj[AJW;`ts;AJWT;AJWQ;,(`c;count;`q)])`c;(+wj[AJW;`ts;AJWT;AJWQ;,(`s;{+/x};`q)])`s);  (2 1;11 4)]   / {+/x}: wj's pure-K fallback
+/ a temporal time column against one of another kind is 'type, as in q
+AJD:+`ts`v!((2026.07.30;2026.07.31);1 2)
+t[`ajMixedKinds;   *"\n"\.[aj;(`ts;AJD;AJQ);{x}];  "'type"]
+t[`ajMixedInt;     *"\n"\.[aj;(`ts;+`ts`v!(10 9708;1 2);AJQ);{x}];  "'type"]
+t[`wjMixedKinds;   *"\n"\.[wj;(((2026.07.30;2026.07.30);(2026.07.31;2026.07.31));`ts;AJWT;AJWQ;,(`c;count;`q));{x}];  "'type"]
+t[`ajMixedItems;   *"\n"\.[aj;(`ts;+`ts`v!((2026.07.30D10:00:00.000;9708);1 2);AJQ);{x}];  "'type"]   / every item must be of the kind
+t[`ajMixedNumbers; (*"\n"\.[aj;(`ts;+`ts`v!(1 2;1 2);+`ts`q!((1;2026.07.30D10:00:00.000);6 5));{x}];*"\n"\.[wj;((0 0;10 10);`ts;+`ts`v!(1 2;1 2);+`ts`q!((1;2026.07.30D10:00:00.000);6 5);,(`c;count;`q));{x}]);  2#,"'type"]   / a column mixing timestamps with numbers, against ints too (q answers for mixed quotes; here the timestamp would be read by its address)
+t[`ajStampsUnsorted; (+aj[`ts;AJT;+`ts`q!(|AJQ`ts;5 6)])`q;  6 5 5]   / quotes out of order: sorted by value first
+G0:2026.07.30D10:00:00.000
+GT:+`g`t`v!((G0;G0+1;G0+0);10 10 11;1 2 3);GQ:+`g`t`q!((G0;G0+1;G0+0;G0+1);9 9 10 10;5 6 7 8)
+t[`ajGroupStamps;   (+aj[`g`t;GT;GQ])`q;  7 8 7]   / grouped by a timestamp column: equal timestamps are one group
+t[`wjGroupStamps;   ((+wj[(10 10 10;11 11 11);`g`t;GT;GQ;,(`c;count;`q)])`c;(+wj[(10 10 10;11 11 11);`g`t;GT;GQ;,(`s;sum;`q)])`s);  (1 1 1;7 8 7)]
+t[`ajTimes;        (+aj[`t;+`t`v!((10:00:00.000;11:00:00.000);1 2);+`t`q!((09:00:00.000;10:30:00.000);6 5)])`q;  6 5]
+t[`ajsortedStamps; (ajsorted[`ts;AJQ];ajsorted[`ts;+`ts`q!(|AJQ`ts;6 5)]);  1 0]   / sorted temporal quotes are not sorted again
+
 / ---- amber 2.2: float literals below 1e-308 (subnormals) ------------------
 / pfu (src/p.c) clamped an out-of-range exponent and returned EARLY, before it
 / advanced the parse cursor -- so `1e-309` left "e-309" in the input and the

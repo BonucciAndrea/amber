@@ -761,7 +761,9 @@ Z F amuF(W k){W t=k^0x8000000000000000ull;t-=(W)((-1ull>>12)-1);
 // constant byte column contributes nothing to the order and is skipped -- with
 // the index array removed.
 #define AMRDXK(NM,KT)                                                          \
+Z KT* NM##_msd(KT*,KT*,N,U,int);Z KT* NM##_ppar(KT*,KT*,N,U,int);           \
 Z KT* NM(KT*RES ka,KT*RES kb,N n,U nb){                                        \
+  if(n>=PRDX_MIN){int nt=par_thread_count(n);if(nt>1){KT*r=NM##_msd(ka,kb,n,nb,nt);if(!r)r=NM##_ppar(ka,kb,n,nb,nt);if(r)return r;}}\
   N cnt[8][256];U d,ord[8],np=0;                                               \
   MS(cnt,0,SZ cnt);                                                            \
   for(N i=0;i<n;i++){KT v=ka[i];for(d=0;d<nb;d++)cnt[d][(v>>(8*d))&255]++;}     \
@@ -774,6 +776,67 @@ Z KT* NM(KT*RES ka,KT*RES kb,N n,U nb){                                        \
   return ka;}
 AMRDXK(amrdxk4,U)
 AMRDXK(amrdxk8,W)
+// amber 2.5 (exp): keys-only MSD-first, the PMSD plan without the index array. Result in kb.
+#define PMSDK(NM,KT)                                                           \
+TD struct{KT*ka,*kb;N n;U nt,dt,nlo,lo[8];AMN256*h;N bs[257];I nxt;}NM##_K;                                   \
+Z V NM##_kh(V*c_,int t){NM##_K*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;N*h=c->h[t];U d=c->dt;               \
+  MS(h,0,256*SZ(N));KT*RES ka=c->ka;for(N i=s;i<e;i++)h[(ka[i]>>(8*d))&255]++;}                                \
+Z V NM##_ks(V*c_,int t){NM##_K*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;N*h=c->h[t];U d=c->dt;               \
+  KT*RES ka=c->ka,*RES kb=c->kb;for(N i=s;i<e;i++){KT v=ka[i];kb[h[(v>>(8*d))&255]++]=v;}}                    \
+Z V NM##_kb(NM##_K*c,N s,N e){KT*RES src=c->kb,*RES dst=c->ka;N cnt[256];                                      \
+  for(U q=0;q<c->nlo;q++){U d=c->lo[q];KT f=(src[s]>>(8*d))&255;B var=0;for(N i=s+1;i<e;i++)if(((src[i]>>(8*d))&255)!=f){var=1;break;}\
+    if(!var)continue;MS(cnt,0,SZ cnt);for(N i=s;i<e;i++)cnt[(src[i]>>(8*d))&255]++;                           \
+    {N o=s;for(U b=0;b<256;b++){N x=cnt[b];cnt[b]=o;o+=x;}}                                                    \
+    for(N i=s;i<e;i++){KT v=src[i];dst[cnt[(v>>(8*d))&255]++]=v;}{KT*tk=src;src=dst;dst=tk;}}                \
+  if(src!=c->kb)MC(c->kb+s,src+s,(e-s)*SZ(KT));}                                                               \
+Z V NM##_kw(V*c_,int t){NM##_K*c=c_;(V)t;for(;;){I b=__atomic_fetch_add(&c->nxt,1,__ATOMIC_RELAXED);if(b>255)break;\
+  N s=c->bs[b],e=c->bs[b+1];if(e-s>1&&c->nlo)NM##_kb(c,s,e);}}                                                 \
+Z KT* NM##_msd(KT*ka,KT*kb,N n,U nb,int nt){                                                                   \
+  NM##_K c={.ka=ka,.kb=kb,.n=n,.nt=(U)nt};c.h=malloc((N)nt*256*SZ(N));if(!c.h)return 0;                        \
+  KT dif=0,f=ka[0];for(N i=1;i<n;i++)dif|=ka[i]^f;                                                             \
+  I top=-1;for(U d=0;d<nb;d++)if((dif>>(8*d))&255)top=(I)d;                                                    \
+  if(top<1){free(c.h);return 0;}                                                                               \
+  c.dt=(U)top;for(U d=0;d<(U)top;d++)if((dif>>(8*d))&255)c.lo[c.nlo++]=d;                                      \
+  par_run(nt,NM##_kh,&c);                                                                                      \
+  {N s=0;for(U b=0;b<256;b++){c.bs[b]=s;for(int w=0;w<nt;w++){N x=c.h[w][b];c.h[w][b]=s;s+=x;}}c.bs[256]=s;}   \
+  N mx=0;for(U b=0;b<256;b++)if(c.bs[b+1]-c.bs[b]>mx)mx=c.bs[b+1]-c.bs[b];                                   \
+  if(mx>n/2){free(c.h);return 0;}                                                                              \
+  par_run(nt,NM##_ks,&c);c.nxt=0;par_run(nt,NM##_kw,&c);free(c.h);return kb;}
+PMSDK(amrdxk4,U)
+PMSDK(amrdxk8,W)
+#define PAMRDXK(NM,KT)                                                         \
+TD struct{KT*ka,*kb;N n;U nt,d,nb;AMN256*h;AMN8x256*ha;}NM##_P;                                               \
+Z V NM##_pa(V*c_,int t){NM##_P*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;AMN256*h=c->ha[t];U nb=c->nb;         \
+  MS(h,0,8*256*SZ(N));KT*RES ka=c->ka;for(N i=s;i<e;i++){KT v=ka[i];for(U d=0;d<nb;d++)h[d][(v>>(8*d))&255]++;}}\
+Z V NM##_ph(V*c_,int t){NM##_P*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;N*h=c->h[t];U d=c->d;                \
+  MS(h,0,256*SZ(N));KT*RES ka=c->ka;for(N i=s;i<e;i++)h[(ka[i]>>(8*d))&255]++;}                                \
+Z V NM##_ps(V*c_,int t){NM##_P*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;N*h=c->h[t];U d=c->d;                \
+  KT*RES ka=c->ka,*RES kb=c->kb;for(N i=s;i<e;i++){KT v=ka[i];kb[h[(v>>(8*d))&255]++]=v;}}                    \
+Z KT* NM##_ppar(KT*ka,KT*kb,N n,U nb,int nt){                                                                  \
+  NM##_P c={.ka=ka,.kb=kb,.n=n,.nt=(U)nt,.nb=nb};c.h=malloc((N)nt*256*SZ(N));c.ha=malloc((N)nt*8*256*SZ(N));   \
+  if(!c.h||!c.ha){free(c.h);free(c.ha);return 0;}                                                              \
+  par_run(nt,NM##_pa,&c);U ord[8],np=0;                                                                        \
+  for(U d=0;d<nb;d++){N tot=0;U b0=(U)((ka[0]>>(8*d))&255);for(int q=0;q<nt;q++)tot+=c.ha[q][d][b0];if(tot-n)ord[np++]=d;}\
+  for(U q=0;q<np;q++){c.d=ord[q];par_run(nt,NM##_ph,&c);                                                       \
+    {N s=0;for(U b=0;b<256;b++)for(int w=0;w<nt;w++){N x=c.h[w][b];c.h[w][b]=s;s+=x;}}                       \
+    par_run(nt,NM##_ps,&c);{KT*tk=c.ka;c.ka=c.kb;c.kb=tk;}}                                                    \
+  free(c.h);free(c.ha);return c.ka;}
+PAMRDXK(amrdxk4,U)
+PAMRDXK(amrdxk8,W)
+// the key pass and the unfold of rdxsrt, per slice (see rdxsrt)
+TD struct{CO V*p;V*k;V*o;N n;U nt;UC t;B srt[PAR_MAX_THREADS];CO V*r;W mn;}RS;
+#define RSS(KT,T,EXPR) {CO T*RES p=(CO T*)c->p;KT*RES k=(KT*)c->k;KT pv=0;B sr=1;                               \
+  for(N i=s;i<e;i++){KT v=(KT)(EXPR);k[i]=v;if(i>s&&v<pv)sr=0;pv=v;}c->srt[t]=sr;}
+Z V rsk_w(V*c_,int t){RS*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;
+ switch(c->t){case tG:case tC:RSS(U,G,AMKG(p[i]))break;case tH:RSS(U,H,AMKH(p[i]))break;case tI:RSS(U,I,AMKI(p[i]))break;
+  case tL:RSS(W,L,AMKL(p[i]))break;default:RSS(W,F,amkF(p[i]))break;}}
+#undef RSS
+Z V rsu_w(V*c_,int t){RS*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;
+ switch(c->t){case tG:case tC:{CO U*r=c->r;U mn=(U)c->mn;G*RES o=c->o;for(N i=s;i<e;i++)o[i]=AMUKG(r[i]+mn);}break;
+  case tH:{CO U*r=c->r;U mn=(U)c->mn;H*RES o=c->o;for(N i=s;i<e;i++)o[i]=AMUKH(r[i]+mn);}break;
+  case tI:{CO U*r=c->r;U mn=(U)c->mn;I*RES o=c->o;for(N i=s;i<e;i++)o[i]=AMUKI(r[i]+mn);}break;
+  case tL:{CO W*r=c->r;W mn=c->mn;L*RES o=c->o;for(N i=s;i<e;i++)o[i]=AMUKL(r[i]+mn);}break;
+  default:{CO W*r=c->r;W mn=c->mn;F*RES o=c->o;for(N i=s;i<e;i++)o[i]=amuF(r[i]+mn);}break;}}
 // amnorm, but reporting the minimum it subtracted so the unfold can add it
 // back. Translating the keys to a zero minimum can cut passes on clustered
 // data (a nanosecond timestamp within one session spans barely 2^47), and it
@@ -810,7 +873,11 @@ A rdxsrt(A x){
  N kw=nb<=4?4u:8u;
  V*kA=arena_alloc(n*kw),*kB=arena_alloc(n*kw);
  if(!kA||!kB){arena_release(mk);return 0;}
- B srt=1;
+ B srt=1;int pnt=n>=PRDX_MIN?par_thread_count(n):1;
+ if(pnt>1){RS c={.p=_V(x),.k=kA,.n=n,.nt=(U)pnt,.t=t};par_run(pnt,rsk_w,&c);   //keys in parallel, then the seams
+  for(int w=0;w<pnt;w++)srt&=c.srt[w];
+  for(int w=1;srt&&w<pnt;w++){N j=n*w/pnt;if(kw==4?((U*)kA)[j]<((U*)kA)[j-1]:((W*)kA)[j]<((W*)kA)[j-1])srt=0;}}
+ else
  switch(t){
   case tG: case tC: RDXSK(U,G,AMKG(p[i])) break;
   case tH: RDXSK(U,H,AMKH(p[i])) break;
@@ -822,6 +889,7 @@ A rdxsrt(A x){
  if(nb<=4){
   U mn=0;U w=amnorms4((U*)kA,n,nb,&mn);
   U*r=w?amrdxk4((U*)kA,(U*)kB,n,w):(U*)kA;
+  if(pnt>1){RS c={.o=_V(z),.r=r,.mn=mn,.n=n,.nt=(U)pnt,.t=t};par_run(pnt,rsu_w,&c);}else
   switch(t){
    case tG: case tC:{G*RES o=(G*)_V(z);for(N i=0;i<n;i++)o[i]=AMUKG(r[i]+mn);}break;
    case tH:{H*RES o=(H*)_V(z);for(N i=0;i<n;i++)o[i]=AMUKH(r[i]+mn);}break;
@@ -829,6 +897,7 @@ A rdxsrt(A x){
  }else{
   W mn=0;U w=amnorms8((W*)kA,n,nb,&mn);
   W*r=w?amrdxk8((W*)kA,(W*)kB,n,w):(W*)kA;
+  if(pnt>1){RS c={.o=_V(z),.r=r,.mn=mn,.n=n,.nt=(U)pnt,.t=t};par_run(pnt,rsu_w,&c);}else
   if(t==tL){L*RES o=(L*)_V(z);for(N i=0;i<n;i++)o[i]=AMUKL(r[i]+mn);}
   else     {F*RES o=(F*)_V(z);for(N i=0;i<n;i++)o[i]=amuF(r[i]+mn);}}
  arena_release(mk);

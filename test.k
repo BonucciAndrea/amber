@@ -488,6 +488,10 @@ t[`gradeTimes;     <(00:00:00.000-1;00:00:00.000);0 1]
 t[`gradeStamps;    (<(2026.07.31D09:00:00.000;2026.07.30D10:00:00.000;2026.07.30D11:00:00.000);{<(x;x+0)}2026.07.30D10:00:00.000;<2026.07.30D10:00:00.000+|!5);(1 2 0;0 1;4 3 2 1 0)]
 GTS:(2026.07.30D10:00:00.000;2026.07.30D10:00:00.000+1;2026.07.30D10:00:00.000+0;2026.07.30D10:00:00.000+1)
 t[`groupStamps;   (#?GTS;#=GTS);  2 2]   / equal timestamps are one value
+GN:(2026.07.30D10:00:00.000;0N;2026.07.30D09:00:00.000;0N;2026.07.30D10:00:00.000+0;2026.07.29;0.5)
+t[`gradeStampsMixed; (<GN;>GN;#?GN;#=GN;GN?(?GN));  (5 6 1 3 2 0 4;0 4 2 1 3 6 5;5;5;0 1 2 5 6)]   / with a 0N, a date and a float among them: by kind (d f i n), then by value
+XN:+`s`t`v!(`a`b`a`a`b`a`a;GN;!7)
+t[`xascStampsMixed;  ((+`s`t xasc XN)`v;(+`s`t xdesc XN)`v;(+`t`s xasc XN)`v);  (5 6 3 2 0 1 4;4 1 0 2 3 6 5;5 6 3 1 2 0 4)]
 
 / aj and wj on columns of dates, times or timestamps compare their values
 AJT:+`ts`v!((2026.07.30D10:00:00.000;2026.07.30D11:00:00.000;2026.07.31D09:00:00.000);1 2 3)
@@ -513,6 +517,17 @@ t[`ajGroupStamps;   (+aj[`g`t;GT;GQ])`q;  7 8 7]   / grouped by a timestamp colu
 t[`wjGroupStamps;   ((+wj[(10 10 10;11 11 11);`g`t;GT;GQ;,(`c;count;`q)])`c;(+wj[(10 10 10;11 11 11);`g`t;GT;GQ;,(`s;sum;`q)])`s);  (1 1 1;7 8 7)]
 t[`ajTimes;        (+aj[`t;+`t`v!((10:00:00.000;11:00:00.000);1 2);+`t`q!((09:00:00.000;10:30:00.000);6 5)])`q;  6 5]
 t[`ajsortedStamps; (ajsorted[`ts;AJQ];ajsorted[`ts;+`ts`q!(|AJQ`ts;6 5)]);  1 0]   / sorted temporal quotes are not sorted again
+/ a range (!n, a+!n) rises, so ajsorted takes it as sorted and the joins no longer sort the quotes first; the
+/ wj kernel then reads a range value column as its items, not as its two ends (q has no ranges: the answers
+/ are q's for the same columns as lists, wj's q's wj1, whose windows Amber's wj takes)
+t[`ajsortedRange;  ((+aj[`g`time;+`g`time!(!3;!3);+`g`time`b!(!4;!4;10+!4)])`b;ajsorted[`s`time;+`s`time!(`a`a`b`b;!4)];ajsorted[`time;+(,`time)!,3+!4]);  (10 11 12;1b;1b)]
+WQ:+`time`q`r!(1 1 1 1 1 1 1 1 3 3 3 3 4;!13;1000000000000+!13)
+WW:(1 1 -1 -1 1 -1 -1 1 -1 -1 -1 2 -1;3 3 1 1 3 1 1 3 1 1 1 4 1)
+WT:+`time`v!(2 2 0 0 2 0 0 2 0 0 0 3 0;!13)
+t[`wjRangeColumn;  (+wj[WW;`time;WT;WQ;((`c;count;`q);(`z;sum;`q);(`f;first;`q);(`l;last;`r);(`m;max;`r);(`a;avg;`q))])`c`z`f`l`m`a;  (12 12 8 8 12 8 8 12 8 8 8 5 8;66 66 28 28 66 28 28 66 28 28 28 50 28;0 0 0 0 0 0 0 0 0 0 0 8 0;1000000000000+11 11 7 7 11 7 7 11 7 7 7 12 7;1000000000000+11 11 7 7 11 7 7 11 7 7 7 12 7;5.5 5.5 3.5 3.5 5.5 3.5 3.5 5.5 3.5 3.5 3.5 10 3.5)]
+t[`wjRangeQuotes;  (+wj[(-1+!4;1+!4);`s`time;+`s`time!(`a`a`a`a;!4);+`s`time`v!(13#`a;!13;!13);((`z;sum;`v);(`f;first;`v);(`m;min;`v))])`z`f`m;  (1 3 6 9;0 0 1 2;0 0 1 2)]
+/ wj's windows are as long as the trade table, as in q ('length; an empty trade table was read past its end)
+t[`wjWindowLength; {*"\n"\.[wj;x;{x}]}'((WW;`time;0#WT;WQ;,(`z;sum;`q));((0 1;2 3);`time;3#WT;WQ;,(`z;sum;`q));((0 1 2;2 3);`time;3#WT;WQ;,(`z;sum;`q));((0 1;2 3);`time;3#WT;WQ;,(`z;{+/x};`q)));  4#,"'length"]
 / int folds, scans and amends wrap (computed in unsigned arithmetic: a signed overflow in C is undefined)
 t[`scanWrap;       (*\0N 0N;+\9223372036854775807 1;*\4294967296 4294967296;9223372036854775806+\1 1);(0N 0;9223372036854775807 0N;4294967296 0;9223372036854775807 0N)]
 t[`foldSeedWrap;   (9223372036854775807+/1 2;0N*/0N 3);(-9223372036854775806;0)]

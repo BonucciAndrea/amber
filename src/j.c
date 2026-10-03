@@ -1,5 +1,5 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
-Z CO C je[]="\"\\/\b\f\n\r\t",ej[]="\"\\/bfnrt";Z C*s;
+Z CO C je[]="\"\\/\b\f\n\r\t",ej[]="\"\\/bfnrt";Z AM_TLS_IE C*s;   //read/write position, per thread (peach workers)
 
 Z A0 jx;Z C jw()_(W(*s&&*s<=32u,s++)*s)
 Z A0(jd,I m=*s=='-';s+=m;C c=*s++;P(!C09(c),0)F v=c-'0';W(C09(*s),v*=10;v+=*s++-'0')I(*s=='.',s++;F t=1;W(C09(*s),t/=10;v+=t*(*s++-'0')))
@@ -16,8 +16,8 @@ Z A jx(){C c=jw();S(c,R3('f','n','t',c=c>>3&3;I v=!memcmp(A("alse","null","true"
  R('[',ja())R('{',jo())R('"',js())R_(jd()))}
 X1(js0,RC(U n=xn;x=aa(n+4,x);MS(xC+n,0,4);s=xV;A y=jx();C c=jw();I(y&&c,y=y(0))I(!y,ep0();eS(x,s-xC))x(y))Rc(js0(enl(x)))R_(et(x)))
 
-Z V JX(A);Z U nX(A);Z I jf;   //jf: a value's text failed (a formatter's error)
-Z UC t[256];ZN V it(){MS(t,5,32);t[127]=5;F(L(je)-1,t[je[i]]=1)}  //L(je) counts the literal's NUL, which made NUL a one-letter escape
+Z V JX(A);Z U nX(A);Z AM_TLS_IE I jf;   //jf: a value's text failed (a formatter's error); per thread, as s is
+Z AM_TLS_IE UC t[256];/*escape table, filled on first use: per thread, so no worker reads it half filled*/ZN V it(){MS(t,5,32);t[127]=5;F(L(je)-1,t[je[i]]=1)}  //L(je) counts the literal's NUL, which made NUL a one-letter escape
 Z U nC(S p,U n)_(U m=2+n;F(n,m+=t[(UC)p[i]])m)
 //a control character is \u00 and its two hex digits: hexC of ONE byte (it was 2, which read the
 //next byte, past the end for the last character, and wrote one digit past the end of the output)

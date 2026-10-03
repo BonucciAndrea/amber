@@ -518,6 +518,11 @@ t[`symRoundTrip;    {x~$`$x}[{"symbol_",$x}'!20000];                1b]
 PG:0
 t[`peachNoupdate;   .[{`pe({PG::x;x};!50)};,0;{`noupdate}];          `noupdate]
 t[`peachGlobalKept; PG;                                              0]
+/ JSON in peach: the reader's and the writer's positions are per thread (workers shared one, and read or wrote each other's text)
+PJ:$%1+!100000
+t[`peachJsonRead;  (`pe({`j?PJ x};!#PJ))~{`j?PJ x}'!#PJ;  1b]
+t[`peachJsonWrite; (`pe({`j@PJ x};!#PJ))~{`j@PJ x}'!#PJ;  1b]
+t[`peachJsonWriteFn; (`pe({`j@(x;{x+y})};!20000))~{`j@(x;{x+y})}'!20000;  1b]   / with a function's text, written through another worker's position
 / the 'noupdate of a global amend in a worker releases only what it owns: the value survives
 PV:100 200 300;PH:0
 PW:{.[{`pe({.[`PH;();:;PV]};x)};,!8;{x}]}

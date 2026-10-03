@@ -1,4 +1,5 @@
-#include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+#include"a.h"
+#include"parallel.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include"arena.h"
 
 // amber: NaN-aware float compare for `~` (match).
@@ -181,6 +182,46 @@ enum{GA_SUM,GA_CNT,GA_MIN,GA_MAX,GA_AVG,GA_FST,GA_LST};
 // below 0.0), and give back the winner's own bits. The plain < and > skipped NaNs, so a
 // group min ignored the NaN &/ returns, and an all-NaN group came out as 0w/-0w.
 #define GA_OF(i) o1(((CO L*)vp)[i])
+// ---- amber 2.5 (exp): parallel gagg for the exactly-combinable ops, see patch notes / gaggC
+#define PGAG_MIN (1u<<20)
+#define PGAG_CELLS (1u<<22)        //threads x key range: the private tables' total size cap
+TD struct{CO V*kp,*vp;CO UC*mp;U wk,wv,nt;N n;I code;B vf;L lo;W rg;L*cnt,*acc;I*fst,*lst;}GQ;
+Z V gq1(V*c_,int t){GQ*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;W rg=c->rg;L*cnt=c->cnt+(N)t*rg,*acc=c->acc+(N)t*rg;
+ I*fst=c->fst+(N)t*rg,*lst=c->lst+(N)t*rg;CO V*vp=c->vp;U wv=c->wv;B vf=c->vf;I code=c->code;L lo=c->lo;
+ for(N i=s;i<e;i++){if(c->mp&&!c->mp[i])continue;W q=(W)GARD(c->wk,c->kp,i)-(W)lo;
+  if(!cnt[q])fst[q]=(I)i;lst[q]=(I)i;cnt[q]++;
+  S(code,
+   C(GA_SUM,L d=GARD(wv,vp,i);I(d!=NL,acc[q]=(L)((W)acc[q]+(W)d)))
+   C(GA_MIN,I(vf,F d=((CO F*)vp)[i];I(d==d,L t_=GA_OF(i);I(t_<acc[q],acc[q]=t_)))E(L t_=GARD(wv,vp,i);I(t_!=NL&&t_<acc[q],acc[q]=t_)))
+   C(GA_MAX,I(vf,F d=((CO F*)vp)[i];I(d==d,L t_=GA_OF(i);I(t_>acc[q],acc[q]=t_)))E(L t_=GARD(wv,vp,i);I(t_!=NL&&t_>acc[q],acc[q]=t_)))
+   D())}}
+Z I gq_cmp(CO V*a,CO V*b){I x_=*(CO I*)a,y_=*(CO I*)b;return(x_>y_)-(x_<y_);}
+// fills the group tables as the serial loop would; -1: not taken (wrong op, range too wide, or no memory)
+Z I gagg_par(I code,CO V*kp,U wk,CO V*vp,U wv,B vf,CO UC*mp,N n,L lo,W rg,B direct,L gmn,L gmx,int nt,
+ L**pgk,I**pgf,F**paf,L**pal,L**pgc,U*pcap,U*png){
+ P(!(code==GA_CNT||code==GA_SUM&&!vf||code==GA_MIN||code==GA_MAX||code==GA_FST||code==GA_LST),-1)
+ P(!direct||(W)nt*rg>PGAG_CELLS,-1)
+ N cells=(N)nt*(N)rg;GQ c={.kp=kp,.vp=vp,.mp=mp,.wk=wk,.wv=wv,.nt=(U)nt,.n=n,.code=code,.vf=vf,.lo=lo,.rg=rg};
+ c.cnt=calloc(cells,SZ(L));c.acc=malloc(cells*SZ(L));c.fst=malloc(cells*SZ(I));c.lst=malloc(cells*SZ(I));
+ I r=-1;if(!c.cnt||!c.acc||!c.fst||!c.lst)goto out;
+ {L a0=code==GA_MIN?(vf?gmn:WL):code==GA_MAX?(vf?gmx:NL+1):0;F(cells,c.acc[i]=a0)}
+ par_run(nt,gq1,&c);
+ // combine per slot in thread order, then order the groups by first row
+ {U ng=0;I*ord=malloc((N)rg*SZ(I)*2);if(!ord)goto out;I*first=ord+rg;   //ord: (first row, slot) pairs packed as two Is
+  TD struct{I f,s;}FS;FS*fs=(FS*)ord;
+  for(W q=0;q<rg;q++){I fr=-1;for(int w=0;w<nt;w++)if(c.cnt[(N)w*rg+q]){fr=c.fst[(N)w*rg+q];break;}if(fr>=0){fs[ng].f=fr;fs[ng].s=(I)q;ng++;}}
+  qsort(fs,ng,SZ(FS),gq_cmp);   //by first row (unique per slot), so the serial first-appearance order
+  U cap=*pcap;if(ng>cap){L*gk=realloc(*pgk,ng*SZ(L));I*gf=realloc(*pgf,ng*SZ(I));F*af=realloc(*paf,ng*SZ(F));L*al_=realloc(*pal,ng*SZ(L));L*gc=realloc(*pgc,ng*SZ(L));
+   if(gk)*pgk=gk;if(gf)*pgf=gf;if(af)*paf=af;if(al_)*pal=al_;if(gc)*pgc=gc;if(!gk||!gf||!af||!al_||!gc){free(ord);goto out;}*pcap=ng;}
+  L*gk=*pgk;I*gf=*pgf;F*af=*paf;L*al_=*pal;L*gc=*pgc;
+  for(U g=0;g<ng;g++){W q=(W)fs[g].s;gk[g]=lo+(L)q;af[g]=0;L cn=0,ac=code==GA_MIN?(vf?gmn:WL):code==GA_MAX?(vf?gmx:NL+1):0;I fr=-1,ls=-1;
+   for(int w=0;w<nt;w++){N j=(N)w*rg+q;if(!c.cnt[j])continue;cn+=c.cnt[j];I(fr<0,fr=c.fst[j])ls=c.lst[j];
+    S(code,C(GA_SUM,ac=(L)((W)ac+(W)c.acc[j]))C(GA_MIN,I(c.acc[j]<ac,ac=c.acc[j]))C(GA_MAX,I(c.acc[j]>ac,ac=c.acc[j]))D())}
+   gc[g]=cn;al_[g]=ac;gf[g]=code==GA_LST?ls:fr;I(code==GA_MIN,af[g]=WF)I(code==GA_MAX,af[g]=-WF)}
+  *png=ng;free(ord);r=0;}
+ out:
+ free(c.cnt);free(c.acc);free(c.fst);free(c.lst);
+ return r;}
 A1(gaggC,P(_t(x)-tA||(_n(x)-3&&_n(x)-4),et(x))A*e=_A(x);A op=e[0],k=e[1],v=e[2],m=_n(x)==4?e[3]:0;
  I code=-1;
  I(_ts(op),S nm=su(_v(op));code=!strcmp(nm,"sum")?GA_SUM:!strcmp(nm,"count")?GA_CNT:!strcmp(nm,"min")?GA_MIN:!strcmp(nm,"max")?GA_MAX:!strcmp(nm,"avg")?GA_AVG:!strcmp(nm,"first")?GA_FST:!strcmp(nm,"last")?GA_LST:-1)
@@ -205,7 +246,10 @@ A1(gaggC,P(_t(x)-tA||(_n(x)-3&&_n(x)-4),et(x))A*e=_A(x);A op=e[0],k=e[1],v=e[2],
  I(direct,slot=malloc((N)rg*SZ(I));I(slot,MS(slot,0xff,(N)rg*SZ(I))))
  E(hcap=2048;hlg=11;ht=malloc((N)hcap*SZ(W));I(ht,MS(ht,0,(N)hcap*SZ(W))))
  P(!gk||!gf||!af||!al_||!gc||(direct?!slot:!ht),free(gk);free(gf);free(af);free(al_);free(gc);free(slot);free(ht);I(mb_,mr(mb_))x(emp(tA)))
- for(N i=0;i<n;i++){
+ B pdone=0;
+ {int pnt=n>=PGAG_MIN?par_thread_count(n):1;
+  if(pnt>1&&!gagg_par(code,kp,wk,vp,wv,vf,mp,n,lo,rg,direct,gmn,gmx,pnt,&gk,&gf,&af,&al_,&gc,&cap,&ng))pdone=1;}
+ if(!pdone)for(N i=0;i<n;i++){
   I(mp&&!mp[i],continue)
   L key=GARD(wk,kp,i);I g;
   I(direct,W sidx=(W)key-(W)lo;g=slot[sidx];I(g<0,GA_GROW();g=(I)ng++;slot[sidx]=g;gk[g]=key;GA_ADD(g,i)))

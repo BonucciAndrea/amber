@@ -123,10 +123,9 @@ A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);
  {A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}                 // no threads in the wasm sandbox
 #else
  if(nw<2||n<2||ray_rc_sync){A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}
- // Warm the lazily-initialised float format/parse tables (src/s.c I5/P5,
- // src/p.c powers) on THIS parent thread, so no worker is ever the first to
- // touch them and race on their one-time build.
- {C wb[64];L wd;F wv=1.5;MC(&wd,&wv,8);sf(wb,wd);S ws="1.5";pf(&ws);}
+ // Warm the lazily-initialised float format tables (src/s.c I5/P5) on THIS parent thread,
+ // so no worker is ever the first to touch them and race on their one-time build.
+ {C wb[64];L wd;F wv=1.5;MC(&wd,&wv,8);sf(wb,wd);}
  A r=peach_pool(fn,dat,n,nw);
  mr(fn);mr(dat);
  // re-raise the error the failing worker hit ('noupdate, 'type, ...), which is

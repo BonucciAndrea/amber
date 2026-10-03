@@ -781,7 +781,46 @@ t[`strandMinusIntKinds;`k@'(0N-0.5<1;1-0xef;0-1 0.5<1);("9223372036854775807";"1
 t[`strandMinusBigInt;ER"99999999999999999999-0.5";"'limit"]   / an int literal past 64 bits is 'limit, as on its own (2.4.1 read it as a float here)
 t[`strandMinusDate;((1-2024.01.01)~1976.01.02;(`i$1-12:00:00.000)~-43199999);11b]   / an int minus a date or a time (2.4.1: the int read as a float and its bits used, 1976.01.01 and -12:00:00.000, -43200000 ms)
 
-hexpect[480]
+/ ---- assigning a table's cell by row amends just that column ----
+/ t[i;c]:y made a list of every row and a table of it again, so it took time in proportion to the rows.
+/ That rebuild drops each column's attribute and makes a list of dicts with the same keys a table.
+raT:+`a`b`c!(1 2 3;4.5 5 6;`x`y`z)
+t[`rowAssign;{x[1;`a]:9;x}raT;+`a`b`c!(1 9 3;4.5 5 6;`x`y`z)]
+t[`rowAssignType;{x[1;`a]:9.5;x}raT;+`a`b`c!((1;9.5;3);4.5 5 6;`x`y`z)]
+t[`rowAssignList;{x[0;`c]:1 2;x}raT;+`a`b`c!(1 2 3;4.5 5 6;(1 2;`y;`z))]
+t[`rowAssignPlus;({x[2;`b]+:1;x}raT;{x[1;`a]-:1;x}raT);(+`a`b`c!(1 2 3;4.5 5 7;`x`y`z);+`a`b`c!(1 1 3;4.5 5 6;`x`y`z))]
+t[`rowAssignFunc;.[raT;(1;`c);{`q}];+`a`b`c!(1 2 3;4.5 5 6;`x`q`z)]
+t[`rowAssignShared;{u:x;x[1;`a]:9;(x;u)}raT;(+`a`b`c!(1 9 3;4.5 5 6;`x`y`z);raT)]
+t[`rowAssignDeep;.[+`a`b!(1 2;(3 4;5 6));(1;`b;0);:;9];+`a`b!(1 2;(3 4;9 6))]
+t[`rowAssignSymJoin;{x[1;`b],:0;x}[+`a`b!(1 2;`x`y)];+`a`b!(1 2;(`x;(`y;0)))]
+t[`rowAssignDupName;{x[0;`a]:9;x}[+`a`a!(1 2;3 4)];+`a`a!(9 2;3 4)]
+t[`rowAssignNewCol;{x[1;`d]:9;x}raT;(`a`b`c!(1;4.5;`x);`a`b`c`d!(2;5.0;`y;9);`a`b`c!(3;6.0;`z))]
+t[`rowAssignAttrs;(`at'. +{x[1;`a]:9;x}[+`a`b!(`sa 1 2 3;`ua 4 5 6)];`at'. +{x[`a;1]:9;x}[+`a`b!(`sa 1 2 3;`ua 4 5 6)]);(``;``u)]
+t[`rowAssignDictsTable;{x[0;`b]:9;x}{x[`a;2]:`x`y!7 8;x}[+`a`b!((`x`y!1 2;`x`y!3 4;`z!,5);1 2 3)];+`a`b!(+`x`y!(1 3 7;2 4 8);9 2 3)]
+t[`rowAssignOneDict;({x[0;`a]:`x`y!1 2;x}[+`a`b!(,1;,2)];@'. +{x[`a;0]:`x`y!1 2;x}[+`a`b!(,1;,2)]);(+`a`b!(+`x`y!(,1;,2);,2);`A`I)]
+te[`rowAssignIndex;".[raT;(3;`a);:;9]"]
+te[`rowAssignTypeErr;".[raT;(1;`a);+;`x]"]
+/ ---- a nested assignment at many keys finds them all at once ----
+/ d[k;i]:y found each key on its own, by a linear search, so this was quadratic. The keys still go in
+/ order and the values squeeze as they did, after each atom and not at the end.
+nkD:`a`b`c!(1 2 3;4 5 6;7 8 9)
+t[`nestKeys;{x[`c`a;1]:0;x}nkD;`a`b`c!(1 0 3;4 5 6;7 0 9)]
+t[`nestKeysList;.[nkD;(`c`a;1);:;10 20];`a`b`c!(1 20 3;4 5 6;7 10 9)]
+t[`nestKeysRepeat;.[nkD;(`a`a`b;0);+;1];`a`b`c!(3 2 3;5 5 6;7 8 9)]
+t[`nestKeysNew;{x[`c`d;0]:5;x}nkD;`a`b`c`d!(1 2 3;4 5 6;5 8 9;5 0N 0N)]
+t[`nestKeysDeep;.[`a`b!(2 2#!4;2 2#4+!4);(`b`a;1;0);:;9];`a`b!((0 1;9 3);(4 5;9 7))]
+t[`nestKeysNoSqueeze;@.{x[`a`b;`y]:9;x}`a`b!(`x`y!1 2;(,`x)!,3);`A]
+t[`nestKeysInt;.[1 2 3!(1 2;3 4;5 6);(3 1;0);:;7 8];1 2 3!(8 2;3 4;7 6)]
+t[`nestKeysChar;.["ab"!(1 2;3 4);("ba";1);,;5];"ab"!((1;2 5);(3;4 5))]
+t[`nestKeysDup;.[`a`a`b!(1 2;3 4;5 6);(`a`b;0);:;9];`a`a`b!(9 2;3 4;9 6)]
+t[`nestKeysTable;.[+`a`b!(1 2;3 4);(`b`a;1);:;9];+`a`b!(1 9;3 9)]
+t[`nestKeysShared;{u:x;x[`a`b;0]:9;(x;u)}nkD;(`a`b`c!(9 2 3;9 5 6;7 8 9);nkD)]
+t[`nestKeysDictVal;.[nkD;(`a`b;1);:;`a`b!8 9];`a`b`c!(1 8 3;4 9 6;7 8 9)]
+t[`nestKeysMany;{r:.[x!(#x)#,1 2 3;(x;1);+;!#x];(r`k0;r`k1999;#r)}`$"k",'$!2000;(1 2 3;1 2001 3;2000)]
+te[`nestKeysAtoms;".[`a`b!1 2;(`a`b;0);:;9]"]
+te[`nestKeysLength;".[nkD;(`a`b;0);:;5 6 7]"]
+
+hexpect[502]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

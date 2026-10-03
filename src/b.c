@@ -58,6 +58,27 @@ Z I ixkd(A x,A y,U k,A z,B asg){A ks=_x(x),vs=_y(x);B last=k+1>=_N(y),tb=_t(x)==
  else if(tb&&_tz(q)){L v=gl_(q);if(v<0||v>=rows)r=1;else if(!last&&!(k+2==_N(y)&&_tA(y)&&_t(_A(y)[k+1])==ts)){A w=ii(x,(U)v);r=ixck(w,y,k+1,z,asg);mr(w);}}   //a row then one column name: nothing to check, so the row is not built
  else if(tb&&!_tP(q)&&LH(tE,_t(q),tL)){U m=_N(q);B dn=!last&&!(k+2==_N(y)&&_tA(y)&&_t(_A(y)[k+1])==ts);for(U i=0;i<m&&!r;i++){L v=ixe(q,i);if(v<0||v>=rows)r=1;else if(dn){A w=ii(x,(U)v);r=ixck(w,y,k+1,z,asg);mr(w);}}}   //rows then one column name: only the rows are checked, so no row is built
  I(own,mr(q))return r;}
+//an amend at y where every level is one index that is there (an int in range of a list or of a table's rows, a key of a dict
+//of symbol keys, a column of a table): its verb can go first and the result be assigned, so a verb that fails touches nothing.
+//ixwk walks y down x: the levels (at most 8; 0 for any other index), what each is in kd (list, key, column, row) and its place,
+//and in *q the item at the end. ixst then assigns r there, as a8 does with :, but without going down again.
+U ixwk(A x,A y,UC*kd,L*ix,A*q){B at=_tt(y),ty=!at&&LH(tE,_t(y),tL);U m=at?1:_N(y);if(!m||m>8||!at&&!ty&&!_tA(y)&&_t(y)!=tS)return 0;A v=x;
+ for(U k=0;k<m;k++){A w=0,s=at?y:ty?0:_tA(y)?_A(y)[k]:ii(y,k);L j=ty?ixe(y,k):_tz(s)?gl_(s):-1;UC t=0;   //s: borrowed, or a packed symbol
+  if(!_tP(v)&&_tT(v)){if(j>=0&&j<(L)_N(v))w=ii(v,(U)j);}
+  else if(!_tP(v)&&(_t(v)==tm||_t(v)==tM)&&_t(_x(v))==tS){A ks=_x(v),vs=_y(v);
+   if(!ty&&_t(s)==ts){A f=fnd(ks,_R(s));j=gl_(f);mr(f);if(j>=0&&j<(L)_N(ks))w=ii(vs,(U)j),t=_t(v)==tM?2:1;}
+   else if(_t(v)==tM&&_N(vs)&&j>=0&&j<(L)_N(_A(vs)[0]))w=ii(v,(U)j),t=3;}
+  if(v!=x)mr(v);if(!w)return 0;kd[k]=t;ix[k]=j;v=w;}
+ *q=v;return m;}
+//x[y]f:z, x the variable at p: checked first, and where ixwk finds the item, the verb (dyads[d]) goes first and ixst (a.c)
+//assigns its result, so a verb that fails leaves the variable as it was. The result, or 0 on an error. Out of run, which it would slow.
+//A verb that sets the variable (a function item, by @: or .:) leaves it as it set it, and the assignment's value (in *v, for by)
+//is then the verb's result, not the new value at y (indexing that could call a function again)
+A ixst(A,A,CO UC*,CO L*,U,U,A);
+Z NI A ixas(A*p,A x,A y,UC d,A z,A*v){I e=ixck(x,y,0,z,!d);if(e)return e==1?ei0():e==2?el0():et0();UC kd[8];L ix[8];A q;U m=d?ixwk(x,y,kd,ix,&q):0;
+ if(!m)return *p=d4(x,y,av+d,z);RC_INC(x);A r=v2[d](q,_R(z));mr(q);   //x (not packed: ixwk went into it) held across the verb: a function it calls (@:, .:) can set the variable, which would free x
+ if(*p!=x){mr(x);P(!r,0)I(v,*v=r)E(mr(r));return *p;}   //it did: the variable keeps what the function set it to
+ (V)RC_DECV(x);if(!r)return 0;return *p=ixst(x,y,kd,ix,0,m,r);}   //the variable still holds x
 Z NI __attribute__((cold)) V noupd(A*s){mr(*s);*s=err0("noupdate");}
 AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,es8(a,n))/*d: per-thread VM recursion depth (peach workers run the VM concurrently)*/P(n-xk,er8(a,n))UC*b=_V(xy),c,nl=_n(xA[3]);A own=0,l[nl+*b++],*s=l+L(l);MS(l,0,SZ l);I(n,MC(l,a,8*n))//virtual machine
  W((c=*b++),S(c,                                                                                    //          |BYTES |          STACK        |         EFFECT
@@ -74,8 +95,8 @@ AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,es8(a,n))/*d: per-thread VM recursion de
   C6(bm,bM,bx,bX,by,bY,A*p=(c&1?gv:l)+BG,x=*p;I(__builtin_expect(c&1&&ray_rc_sync,0),noupd(s);goto l)  //          |      |                       |
    U(x,*s=ev(*s))A y=*s++;                                                                           //          |      |                       |
    I(c==bm||c==bM,y=v2[*b++](x,y);U(y,*--s=0)*p=x(y))                                               //mod asgn  |bm,i,d|.. x -> ..             |vars[i]:dyads[d][vars[i];x]
-   E(UC d_=*b++;I e_=ixck(x,y,0,*s,!d_);x=e_?e_==1?ei0():e_==2?el0():et0():(*p=d4(x,y,av+d_,*s));mr(*s);I(c==bx||c==bX,mr(y);U(x,*s=0)s++)                              //ind asgn  |bx,i,d|.. z y -> ..           |vars[i]:  .[vars[i];y;dyads[d];z]
-                                    E(U(x,*s=y(0))U(*s=dot(x,y)))))                                 //ind asgn  |by,i,d|.. z y -> .. r         |vars[i]:r:.[vars[i];y;dyads[d];z]
+   E(A v=0;x=ixas(p,x,y,*b++,*s,c>=by?&v:0);mr(*s);I(c==bx||c==bX,mr(y);U(x,*s=0)s++)                    //ind asgn  |bx,i,d|.. z y -> ..           |vars[i]:  .[vars[i];y;dyads[d];z]
+                                    E(U(x,*s=y(0))U(*s=v?y(v):dot(x,y)))))                          //ind asgn  |by,i,d|.. z y -> .. r         |vars[i]:r:.[vars[i];y;dyads[d];z]
   C(bG,A x=*--s=gv[BG];U(x,ev0())xR)                                                                //get global|bG,i,i|.. -> .. globals[i]    |
   // amber 2.3: a peach dispatch runs this VM on several threads at once, and a
   // global store there raced on gv[] (two workers releasing the same old value

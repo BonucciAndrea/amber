@@ -799,7 +799,21 @@ t[`amendThroughSymbol;{r:IA["D18:`a`b!(1 2;`XS)";"D18[`b;0]:9"];(r;XS)}[];((::;`
 G1:1 2 3;N1.v:4 5 6
 t[`amendByNameListRefused;{r:{.[x;,0;{`err}]}'20#({.[,`G1;,5;:;9]};{.[`N1`v;,0 1;:;7 8 9]});(?r;G1;N1.v;. "1+1")}[];(,`err;1 2 3;4 5 6;2)]   / the name was released twice
 
-hexpect[494]
+/ ---- an assignment whose verb fails leaves the variable as it was ----
+/ (where each index is one int or key that is there, the verb goes first, on the item, and its result is assigned)
+t[`amendVerbFailsKeep;(IA["F1:1 2 3";"F1[1]+:`a"];IA["F2:+`a`b!(1 2 3;4 5 6)";"F2[1;`a]+:`x"];IA["F3:+`a`b!(1 2 3;4 5 6)";"F3[`a;1]+:`x"]);((`err;1 2 3);(`err;+`a`b!(1 2 3;4 5 6));(`err;+`a`b!(1 2 3;4 5 6)))]
+t[`amendVerbFailsKeepNested;(IA["F4:`a`b!(1 2;3 4)";"F4[`b]+:`x"];IA["F5:`a`b!(1 2;3 4)";"F5[`a;0]+:`x"];IA["F6:(1 2;(3;4 5))";"F6[1;1;0]+:`x"]);((`err;`a`b!(1 2;3 4));(`err;`a`b!(1 2;3 4));(`err;(1 2;(3;4 5))))]
+t[`amendVerbFailsKeepByName;(IA["F7:1 2 3";".[`F7;,1;+;`a]"];IA["F8:`a`b!(1 2;3 4)";".[`F8;(`a;0);{x+`z}]"];IA["F9:+`a`b!(1 2;3 4)";".[`F9;(`a;1);{x+y+`z};1]"]);((`err;1 2 3);(`err;`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4)))]   / by name, where :: was left in it
+t[`amendVerbStillWorks;(IA["F10:1 2 3";"F10[1]+:10"];IA["F11:+`a`b!(1 2;3 4)";"F11[1;`a]*:5"];IA["F12:`a`b!(1 2;3 4)";"F12[`b;0],:9"];IA["F13:(1 2;(3;4 5))";".[`F13;(1;1;0);-:]"]);((::;1 12 3);(::;+`a`b!(1 10;3 4));(::;`a`b!(1 2;(3 9;4)));2#,(1 2;(3;-4 5)))]
+t[`amendByNameFiveArgs;{r:IA["F14:(1 2;3 4)";".[`F14;1 0;{(x;y;z)};10;1]"];s:IA["F15:1 2";".[`F15;,0;{[a;b;c;d]a};10;1;2]"];e:*"\n"\.[.:;,".[`F14;0;+;1;2]";{x}];(r;s;e;F14;F15)}[];((`err;(1 2;3 4));(`err;1 2);"'nyi";(1 2;3 4);1 2)]   / five or more arguments: 'nyi, before the global is touched
+t[`amendByNameVerbSetsGlobal;{FA::1 2 3;r:.[{.[`FA;,1;{FA[0]:1;x+1}]};,0;{`t}];FB::1 2 3;s:.[{.[`FB;,1;{FB::99;x+`a}]};,0;{`t}];(r;FA;s;FB)}[];(`t;1 2 3;`t;99)]   / a verb that assigns into the global, then fails: the global is put back, or keeps what the verb set it to
+t[`amendVerbDictOfDicts;(IA["F16:`a`b!(`x`y!1 2;`x`y!3 4)";"F16[`b],:`q"];IA["F17:`a`b!(`x`y!1 2;`x`y!3 4)";"F17[`b;`x]+:10"];IA["F18:`a`b!(`x`y!1 2;`x`y!3 4)";"F18[`b;`x]+:`z"]);((::;`a`b!(`x`y!1 2;(`x`y!3 4;`q)));(::;`a`b!(`x`y!1 2;`x`y!13 4));(`err;`a`b!(`x`y!1 2;`x`y!3 4)))]   / values that are a table (dicts of the same keys): as a list of the dicts
+t[`amendVerbFunctionSetsGlobal;(IA["FG:+`a`b!(!1000;1000#{FG::0;x+1})";"FG[`b;3]@:5"];IA["FH:(!1000;(2;{FH::0;x+1}))";"FH[1;1]@:5"];IA["FI:+`a`b!(!1000;1000#{FI::0;x+1})";"FI[3;`b]@:5"]);((::;0);(::;0);(::;0))]   / a function item called by @: sets the global: it keeps what the function set (it was freed, then read)
+t[`amendVerbFunctionSetsGlobal2;(IA["FJ:(!1000),{FJ::!3;x+1}";"FJ[1000]@:5"];IA["FK:(1;(2;{FK::0;x+1}))";"FK[1;1]@:5"];IA["FL:`a`b!(1;{FL::!3;x+1})";"FL[`b].:,5"];{FS::(1;{FS::7 8;x+1});r:FS[1]@:5;(r;FS)}[];{FU::(1;(2;{FU::(1;{FU::7;x});x+1}));r:FU[1;1]@:5;(r;#FU;*FU)}[]);((::;0 1 2);(::;0);(::;0 1 2);(6;7 8);(6;2;1))]   / and with .:; the assignment's value is then the function's result (the new global is not indexed, which could call a function in it)
+t[`amendVerbFunctionSetsGlobalFails;{r:IA["FM:(1;(2;{FM::!3;x+`a}))";"FM[1;1]@:5"];s:IA["FP:(1;(2;{FP[0]:9;x+1}))";"FP[1;1]@:5"];(r;*s;FP 0;FP[1;0])}[];((`err;0 1 2);::;9;2)]   / sets it, then fails; or amends it itself: what the function set is kept
+t[`amendVerbFunctionKeepsGlobal;{r:(IA["FQ:(1;(2;{x+1}))";"FQ[1;1]@:5"];IA["FR:+`a`b!(!3;3#{x+1})";"FR[`b;1]@:5"]);s:{FT::(1;(2;{x+1}));r:FT[1;1]@:5;(r;FT)}[];(r[0];*r 1;FR[1;`b];FR`a;s)}[];((::;(1;2 6));::;6;0 1 2;(6;(1;2 6)))]   / a function item that leaves the global alone: amended as before
+
+hexpect[505]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

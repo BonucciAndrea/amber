@@ -347,7 +347,10 @@ hms:{[h;m;s]1000*s+(60*m)+3600*h}                  / build a time from h m s
 / truncate them, and a silently wrong hour is worse than an error. There is no
 / `j$ cast in this dialect -- it raises -- so there is nothing wider to use.
 tnum0:{$[|/(@x)=`t`T`d`D`u`U`v`V;`i$x;x]}
-hh:{_((tnum0 x)%3600000)}                          / hour of day      (q time.hh)
+/ hh: 0 to 23, and as q's `hh$ a negative time keeps its sign (-1 for -01:00): the hours and their remainder by 24,
+/ both toward zero; a null stays null. A time, an int or an int vector takes `hh (src/w.c), one pass in C; other
+/ values (floats, dates, general lists, dicts) take the general way, which puts nulls back by arithmetic, so they keep their shape.
+hh:{$[|/`t`i`I=@x;`hh x;{n:^x;(0N*n)+(~n)*(1-2*x<0)*24!_(x|-x)%3600000}tnum0 x]}   / hour of day      (q time.hh)
 mm:{60!_((tnum0 x)%60000)}                         / minute of hour   (q time.mm)
 sec:{60!_((tnum0 x)%1000)}                         / second of minute (q time.ss; ss=string-search)
 milli:{1000!tnum0 x}                               / millisecond      (q time.ms)

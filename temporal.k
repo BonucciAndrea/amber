@@ -36,6 +36,6 @@ pstr:{$[^`i$x;"0N";(dstr tsdate `i$x),"D",(stime tsms `i$x),-6$"00000",$tsus `i$
 ptstamp:{d:pdate(x?"D")#x;p:"."\1_(x?"D")_x;n:$[1<#p;`I$9#(p 1),"000000000";0];n+tstamp[d;ptime[*p]]} / "YYYY.MM.DDDHH:MM:SS.nnnnnnnnn" -> ns, every digit (for "P"$)
 
 / ---- native-type accessors on time atoms (extract raw ms, then decompose) ----
-thh:{_(`i$x)%3600000}                                       / .hh  hour of day
+thh:{hh `i$x}                                               / .hh  hour of day (0 to 23; amber.k's hh)
 tmm:{60!_(`i$x)%60000}                                      / .mm  minute of hour
 tss:{60!_(`i$x)%1000}                                       / .ss  second of minute

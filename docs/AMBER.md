@@ -962,7 +962,7 @@ same convention as q’s `time`. The q dotted temporal accessors map to plain Am
 
 | q            | Amber        | meaning                              |
 |--------------|--------------|--------------------------------------|
-| `t.hh`       | `hh t`       | hour of day (0–23)                   |
+| `t.hh`       | `hh t`       | hour of day (0–23; as q's `` `hh$ ``, a negative time keeps its sign: -1 for `-01:00:00.000`) |
 | `t.mm`       | `mm t`       | minute of hour (0–59)                |
 | `t.ss`       | `sec t`      | second of minute (`ss` = string-search) |
 | `t.minute`   | `minute t`   | minutes since midnight               |

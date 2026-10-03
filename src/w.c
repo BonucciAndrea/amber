@@ -222,3 +222,12 @@ A1(ejxC,P(_t(x)-tA||_n(x)-2,et(x))A a=_A(x)[0],b=_A(x)[1];
 #undef EJP
 #undef EJQ
 #undef EJF
+// ---- `hh: the hour of day, in C (amber.k's hh calls it); last in the link, so it moves no other code ----
+//`hh (amber.k's hh): hour of day of a time, an int or an int vector of ms, as q's `hh$: the hours toward zero and their remainder by
+//24 toward zero (0 to 23, -23 to 0 for a negative time); 0N stays 0N. The loops take the hours of 32-bit values in integers, with
+//h-24*(h/24) for h%24 so clang vectorises them; past 32 bits hhd takes them as amber.k's `i$x%3600000 did, from the double quotient.
+ZN L hhd(L v)_(v==NL?NL:(L)((F)v/3600000.0)%24)
+ZN L hhL(CO L*RES p,L*RES r,U n)_(L o=0;F(n,L v=p[i];I w=(I)v;I h=w/3600000;h-=24*(h/24);r[i]=v==NL?NL:(L)h;o|=(v!=w)&(v!=NL))o)   //nonzero: a value past 32 bits
+A1(hhC,UC t=_t(x);P(t==ttm,ai(hhd((I)x)))P(_tz(x),L v=gl_(x);x(az(hhd(v))))P(!_tZ(x),et(x))I(t==tE,x=gZ(x);t=_t(x))I(t-tI&&t-tL,x=cL(x);t=tL)   //a range (!n) expanded first
+ U n=xn;A z=aL(n);L*RES r=_V(z);P(t==tI,CO I*RES p=_V(x);F(n,I h=p[i]/3600000;r[i]=h-24*(h/24))x(z))
+ CO L*RES p=_V(x);I(hhL(p,r,n),F(n,L v=p[i];I(v!=(I)v,r[i]=hhd(v))))x(z))

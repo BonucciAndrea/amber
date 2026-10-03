@@ -403,6 +403,13 @@ t[`fdivFloat;fdiv[17.5;2];8]
 t[`fdivVector;fdiv[17;5 6];3 2]
 t[`hms;hms[9;30;15];34215000]
 t[`hh;hh hms[9;30;15];9]
+/ hh is the hour of day, as q's `hh$ (issue #62; it gave all the hours, 100 for 100 hours): a negative time keeps its sign
+t[`hhOfDay;hh'(24:00:00.000;23:59:59.999;100:00:00.000;596:31:23.647);0 23 4 20]
+t[`hhNeg;hh'0-(01:00:00.000;00:30:00.000;25:30:00.000);-1 0 -1]
+t[`hhInts;(hh 3600000 90000000 -3600000 0N;hh 0N;hh 1.5e7);(1 1 -1 0N;0N;4)]
+t[`hhVecPaths;(hh 0 3600000 86399999;hh 0 3600000 90000000;hh 0N 3600000;hh 0N 3600000 90000000 0N;hh 3600000 -3600000;hh 0N -3600000;hh 0n 3.6e6);(0 1 23;0 1 1;0N 1;0N 1 1 0N;1 -1;0N -1;0N 1)]
+t[`hhNested;(hh (0N 0;0);hh (0N -3600000;-90000000);hh `a`b!(0N -3600000;360000000));((0N 0;0);(0N -1;-1);`a`b!(0N -1;4))]   / a list of lists and a dict keep their shape
+t[`thhOfDay;thh (100:00:00.000;0-01:00:00.000;10:35:05.000);4 -1 10]
 t[`mm;mm hms[9;30;15];30]
 t[`sec;sec hms[9;30;15];15]
 t[`minute;minute hms[9;30;15];570]

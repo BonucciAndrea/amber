@@ -37,8 +37,6 @@ void simd_subs_i64(int64_t v, const int64_t *b, int64_t *out, size_t n);
 /* Reductions (empty input returns 0). */
 int64_t simd_sum_i64(const int64_t *a, size_t n);
 double  simd_sum_f64(const double  *a, size_t n);
-void    simd_sumst_f64(const double *a, size_t n, double *st);       /* amber 2.5 (exp): simd_sum_f64 a block at a time, */
-double  simd_sumfin_f64(const double *a, size_t n, const double *st); /* st: 32 doubles, zeroed (see simd.c)           */
 int64_t simd_sum_i32(const int32_t *a, size_t n);
 int64_t simd_sum_i16(const int16_t *a, size_t n);
 int64_t simd_sum_i8 (const int8_t  *a, size_t n);

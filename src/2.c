@@ -128,8 +128,9 @@ Z A dvdFf(A x,F v,U f)_(A z=aF(xn);fzdvr(xF,v,zF,xn);z)
 // stays in cache, and each operation through the function the unfused primitive uses, with the operands
 // arif() would give it (a number on the left of - is the subs kernel, on the right v+x with -v; an int number
 // goes through cF as arif does), so every element is the same double. A plain tree is split over threads by
-// whole blocks; +/ at the root streams the blocks through simd_sumst/fin_f64 on one thread (the sum's order is
-// fixed), or with threads has them write the vector and sums it with simd_sum_f64, which is what +/ does.
+// whole blocks. With +/ at the root the blocks write the root vector and simd_sum_f64 sums it, the very call +/
+// makes: a copy of its loop fed block by block adds in the same order, but where two NaNs meet the compiler's
+// choice of operand order decides which one survives, so only the same machine code gives the same bits.
 #define FZ_MIN 2048u
 #define FZ_BK 512u        //a multiple of 16: the sum's 4 accumulators x 4 lanes (x 8 lanes with 512-bit vectors)
 #define FZ_PAR (1u<<17)
@@ -161,9 +162,6 @@ A fzrun(A d,A*l){A pg=_A(d)[0];CO UC*q=(CO UC*)_V(pg),*e=q+_n(pg);B sum=*q++&1;F
  P(dp!=1||n<FZ_MIN||kd[0],0)
  c.np=np;c.n=n;c.nb=(n+FZ_BK-1)/FZ_BK;c.dp=0;{U k=0;F(np,I(c.p[i].op=='v'||c.p[i].op=='c',k++)E(k--)c.dp=MAX(c.dp,k))}
  int nt=n>=FZ_PAR?par_thread_count(n):1;I(nt>(int)c.nb,nt=(int)c.nb)c.nt=(U)nt;
- P(sum&&nt<=1,F bf[c.dp*FZ_BK],tb[FZ_BK],st[32]={0};U k=0;
-  for(;k+1<c.nb;k++){fzblk(&c,k*FZ_BK,FZ_BK,bf,tb);simd_sumst_f64(tb,FZ_BK,st);}
-  U o=k*FZ_BK;fzblk(&c,o,n-o,bf,tb);af(simd_sumfin_f64(tb,n-o,st)))
  A z=aF(n);P(!z,0)_at(z)=0;c.out=zF;
  I(nt>1,par_run(nt,fzw,&c))E(fzw(&c,0))
  P(sum,F r=simd_sum_f64(zF,n);mr(z);af(r))

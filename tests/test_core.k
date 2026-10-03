@@ -801,7 +801,16 @@ te[`amendKeyedPlus;"@[1 2;::;+;ktA]"]
 te[`eachKeyedThree;"{x+y+z}'[ktA;ktA;ktA]"]
 t[`amendDictElided;(@[1 2;::;:;`a`b!1 2];@[1 2;::;+;`a`b!3 4]);(`a`b!1 2;`a`b!4 6)]
 
-hexpect[489]
+/ ---- each over dicts whose keys cannot be joined is 'domain ----
+/ The values line up on the union of the keys; keys of another type are an
+/ error, which leaked the union built so far (the loop takes that path many
+/ times; the leak itself shows only in the process's memory use).
+t[`eachDictsUnion;({x,y}'[`a`b!1 2;`b`c!3 4];{x,y,z}'[`a!1;`b!2;`a`c!3 4]);(`a`b`c!(1 0N;2 3;0N 4);`a`b`c!(1 0N 3;0N 2 0N;0N 0N 4))]
+t[`eachDictList;{x,y}'[`a`b!1 2;3 4];`a`b!(1 3;2 4)]
+t[`eachDictsKeyTypes;(.[{x,y}';(`a`b!1 2;1 2!3 4);{x}];.[{x,y,z}';(`a`b!1 2;`c`d!1 2;1 2!3 4);{x}]);2#,"'domain\n"]
+t[`eachDictsKeyTypesLoop;+/{.[{x,y,z}';(`a`b!1 2;`c`d!1 2;(x+1 2)!3 4);{1}]}'!10000;10000]
+
+hexpect[493]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

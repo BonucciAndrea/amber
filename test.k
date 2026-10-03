@@ -120,6 +120,9 @@ t[`ejNone;ej[`s;+`s`n!(`a`b;1 2);+`s`v!(,`c;,9)];+`s`n`v!(0#`;!0;!0)]
 t[`ejTwoKeys;ej[`s`k;+`s`k`n!(`a`a;1 2;5 6);+`s`k`v!(`a`a`a;2 2 1;7 8 9)];+`s`k`n`v!(`a`a`a;1 2 2;5 6 6;9 7 8)]
 t[`ejUnique;(ej[`s;+`s`n!(`a`b`c`a;1 2 3 4);+`s`v!(`a`c;10 30)];ej[`s`k;+`s`k`n!(`a`a`b;1 2 1;5 6 7);+`s`k`v!(`a`b;1 1;8 9)]);(+`s`n`v!(`a`c`a;1 3 4;10 30 10);+`s`k`n`v!(`a`b;1 1;5 7;8 9))]
 t[`ejKeyedY;.[ej;(`s;+`s`n!(`a`b;1 2);(+(,`s)!,`a`c)!+(,`v)!,10 30);{`err}];`err]
+t[`ejFloatKeys;ej[`s;+`s`n!(-0.0 0n 1.5;1 2 3);+`s`v!(0.0 0n;10 20)];+`s`n`v!(-0.0 0n;1 2;10 20)]
+t[`ejManyMatches;ej[`s;+`s`n!(`a`b`c;1 2 3);+`s`v!(`b`a`b`b`c`b`b`b;1+!8)];+`s`n`v!(`a`b`b`b`b`b`b`c;1 2 2 2 2 2 2 3;2 1 3 4 6 7 8 5)]
+t[`ejCharKeys;ej[`s;+`s`n!("ab";1 2);+`s`v!("bba";10 11 20)];+`s`n`v!("abb";1 2 2;20 10 11)]
 
 / ---- asof / window joins ----
 trade:+`sym`time`px!(`a`b`a;3 4 9;100 200 300)

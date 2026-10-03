@@ -869,7 +869,20 @@ t[`amendKeepHeapIndexWide;{f:{L8[4294967296;`a]:7};L8::(1 2;3 4);r:{.[x;,0;{`err
 G1:1 2 3;N1.v:4 5 6
 t[`amendByNameListRefused;{r:{.[x;,0;{`err}]}'20#({.[,`G1;,5;:;9]};{.[`N1`v;,0 1;:;7 8 9]});(?r;G1;N1.v;. "1+1")}[];(,`err;1 2 3;4 5 6;2)]   / the name was released twice
 
-hexpect[535]
+/ ---- `ejx (y's keys;x's keys): the rows of an equi-join, (rows of x;rows of y) ----
+/ Each row of x in order, with every row of y that has its key, in y's order (amber.k's
+/ ej). Keys compare as find does: -0.0 is 0.0, NaN is NaN, null is null, integers of any
+/ width by value. y with a repeated key takes another path, with more than four rows to a
+/ key in ejxRepeats. Keys it does not take (chars here) give () and ej's K path.
+t[`ejxUnique;`ejx(`a`b`c;`c`d`a`c);(0 2 3;2 0 2)]
+t[`ejxRepeats;`ejx(1 2 1 1 1 1 2;1 3 2);(0 0 0 0 0 2 2;0 2 3 4 5 1 6)]
+t[`ejxFloat;`ejx(0.0 0n 1.5;-0.0 0n 2.0 0.0);(0 1 3;0 1 0)]
+t[`ejxWide;`ejx(5000000000 -7 0N;0N 3 5000000000 -7);(0 2 3;2 0 1)]
+t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
+t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
+t[`ejxOther;`ejx("ab";"ba");()]
+
+hexpect[542]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

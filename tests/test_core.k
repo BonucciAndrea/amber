@@ -989,6 +989,19 @@ t[`amendSelfByName;{r:{.[.:;,x;{`err}]}'("SV1:`a`b!(`SV1;1 2);SV1[`a;`b]:9";"SV2
 
 t[`amendSelfBelowStop;{r:{.[.:;,x;{`err}]}'("SD1:(0;((`SD1;0);(`SD1;1)));SD1[1;0 1;0;1]:9";"SD2:(0;`a`b!(`SD2;`SD2));SD2[1;`a`b;1]:9";"SD3:(0;+`a`b!(`SD3`SD3;1 2));SD3[1;0;`a;1]:9";"SD4:(0;((`SD4;0);(`SD4;1)));SD4[1;;0;1]:9";"SD5:(1;(2;`SD5));SD5[1;1;1;0]@:{x}");XW[`a;0]:8;(r;{.[.:;,x;{`lost}]}'("SD1";"SD2";"SD3";"SD4";"SD5");XW;+/!1000)}[];(5#`err;5#`lost;`a`b!(8 2;3 4);499500)]   / an amend by name below where the walk stopped (a list of indices, an elided level, a list of keys, a row) that names the variable, which the assignment has items out of: 'type before it is touched, and the variable lost; on main it read freed memory or crashed. With @: (assigned as before), as on main
 
+/ ---- `ejx (y's keys;x's keys): the rows of an equi-join, (rows of x;rows of y) ----
+/ Each row of x in order, with every row of y that has its key, in y's order (amber.k's
+/ ej). Keys compare as find does: -0.0 is 0.0, NaN is NaN, null is null, integers of any
+/ width by value. y with a repeated key takes another path, with more than four rows to a
+/ key in ejxRepeats. Keys it does not take (chars here) give () and ej's K path.
+t[`ejxUnique;`ejx(`a`b`c;`c`d`a`c);(0 2 3;2 0 2)]
+t[`ejxRepeats;`ejx(1 2 1 1 1 1 2;1 3 2);(0 0 0 0 0 2 2;0 2 3 4 5 1 6)]
+t[`ejxFloat;`ejx(0.0 0n 1.5;-0.0 0n 2.0 0.0);(0 1 3;0 1 0)]
+t[`ejxWide;`ejx(5000000000 -7 0N;0N 3 5000000000 -7);(0 2 3;2 0 1)]
+t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
+t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
+t[`ejxOther;`ejx("ab";"ba");()]
+
 hexpect[567]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

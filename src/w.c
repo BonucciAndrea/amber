@@ -107,3 +107,87 @@ A w8(U i,A x,CO A*a,U n/*0,1..1*/){A y=*a;P(n==1,w1(i,x,y))P(n==2,A z=a[1];z(w2(
  R(3,er8(a,n))
  R(4,er8(a,n))
  R_(l8(x,a,n)))}
+
+// ---- `ejx: ej's join kernel, kept here, last in the link ----------------------
+// It belongs with find in f.c, but 7 KB of new code there moves every function linked
+// after it, and that alone made the timestamp, date and generic grade benchmarks 5-9%
+// slower with their code unchanged. w.c is linked last (build.sh links o/*.o in name
+// order), so code at its end moves no function but two LTO copies of e2f and the cold
+// noupd. Copies of f.c's definitions; keep them in step (AMNF is find's float equality).
+V free(V*);
+I posix_memalign(V**,N,N);
+Z V*amal(N b)_(V*p=0;P(posix_memalign(&p,64,b),(V*)0)p)
+#define AMNZ(w) ((W)(w)==0x8000000000000000ull?(L)0:(w))
+#define AMNF(w) (((W)(w)<<1)>0xffe0000000000000ull?(L)0x7ff8000000000000ll:AMNZ(w))
+#define RD(w,p,i) ((w)==0?(L)((CO G*)(p))[i]:(w)==1?(L)((CO H*)(p))[i]:(w)==2?(L)((CO I*)(p))[i]:((CO L*)(p))[i])
+#define LUTDOM  ((W)1<<16)
+#define GOLD    0x9E3779B97F4A7C15ull
+// `ejx (yk;xk): the rows of an equi-join (amber.k's ej)
+// ej wants, for each row of x in order, every row of y with the same key, in y's order.
+// In K it found y's keys in themselves to learn whether any repeats, then x's keys in
+// y's: two hash builds over y where ij (2.4.1's ej) makes one. Here one build over
+// y's keys, backwards so a key's slot ends at
+// its first row, notices a repeat as an occupied slot. With none, one probe per row of x
+// writes the pair at once: ij's find, null test, where and index in one pass. With one,
+// a second pass numbers the keys and lists y's rows key by key (a counting sort, so each
+// key's rows stay in y's order), and each row of x copies its key's run.
+// Keys compare as find does: integers of any width by value, symbols by id, floats by
+// value with -0.0 equal to 0.0 and every NaN one value (AMNF). The table is a direct
+// LUT when y's integer keys span at most 64K or 4 slots per key, else
+// a hash sized to y. Anything else (chars, lists of rows, mismatched types) gives ()
+// and amber.k takes its K path. Returns (rows of x;rows of y) as int vectors.
+#define EJK(w,p,i) (fl?AMNF(((CO L*)(p))[i]):RD(w,p,i))
+#define EJB(SL) for(U j=m;j--;){L v=EJK(wa,pa,j);I*h=SL;dup|=*h>=0;*h=(I)j;}
+#define EJC(SL) F(m,L v=EJK(wa,pa,i);I*h=SL;I g=*h;I(g<0,g=*h=(I)ng++;cn[g]=0)cn[g]++;gy[i]=g)
+#define EJH(v) W s=((W)(v)*GOLD)>>sh;W(hd[s]>=0&&hk[s]!=(v),s=(s+1)&msk)
+#define EJLL(v) ({W d=(W)(v)-(W)lo;d<rg?hd[d]:-1;})
+#define EJHL(v) ({EJH(v)hd[s];})
+#define EJP(T,LK,ST) {CO T*RES pp=(CO T*)pb;F(n,L v=(L)pp[i];I k=LK;ST)}
+#define EJQ(ST) I(fl,{CO L*RES pp=(CO L*)pb;F(n,L v=AMNF(pp[i]);I k=EJHL(v);ST)}) \
+ J(lut,S4(wb,EJP(G,EJLL(v),ST),EJP(H,EJLL(v),ST),EJP(I,EJLL(v),ST),EJP(L,EJLL(v),ST))) \
+ E(S4(wb,EJP(G,EJHL(v),ST),EJP(H,EJHL(v),ST),EJP(I,EJHL(v),ST),EJP(L,EJHL(v),ST)))
+#define EJF free(hd);free(hk);free(gy);free(cn);free(st);free(ys);mr(a);mr(b);
+A1(ejxC,P(_t(x)-tA||_n(x)-2,et(x))A a=_A(x)[0],b=_A(x)[1];
+ P(_tP(a)||_tP(b),x(emp(tA)))
+ UC ta=_t(a),tb=_t(b);B fl=ta==tF;
+ P(!(LH(tE,ta,tL)&&LH(tE,tb,tL)||ta==tb&&(fl||ta==tS)),x(emp(tA)))
+ P(_n(a)>>31||_n(b)>>31,x(emp(tA)))
+ a=ta==tE?gZ(_R(a)):ta==tB?cG(_R(a)):_R(a);b=tb==tE?gZ(_R(b)):tb==tB?cG(_R(b)):_R(b);
+ U m=_n(a),n=_n(b),wa=_w(a)-3,wb=_w(b)-3;CO V*pa=_V(a);CO V*pb=_V(b);
+ P(!m||!n,mr(a);mr(b);x(aV(tA,2,A(aI(0),aI(0)))))
+ L lo=0,hi=-1;W rg=0;
+ I(!fl,lo=hi=RD(wa,pa,0);F(m,L v=RD(wa,pa,i);I(v<lo,lo=v)I(v>hi,hi=v))rg=(W)hi-(W)lo+1)
+ B lut=rg&&(rg<=LUTDOM||rg<=4*(W)m);W cap=16;U lg=4;I(lut,cap=rg)E(W(cap<2*(W)m,cap<<=1;lg++))
+ U sh=64-lg;W msk=cap-1;
+ I*hd=amal((N)cap*SZ(I)),*gy=0,*cn=0,*st=0,*ys=0;L*hk=lut?0:amal((N)cap*SZ(L));U ng=0;
+ P(!hd||!lut&&!hk,EJF x(emp(tA)))
+ MS(hd,0xff,(N)cap*SZ(I));B dup=0;
+ I(lut,EJB(hd+((W)v-(W)lo)))E(EJB(({EJH(v)hk[s]=v;hd+s;})))
+ I(dup,gy=amal((N)m*SZ(I));cn=amal((N)m*SZ(I));st=amal((N)m*SZ(I));ys=amal((N)(m+4)*SZ(I));P(!gy||!cn||!st||!ys,EJF x(emp(tA)))
+   MS(hd,0xff,(N)cap*SZ(I));I(lut,EJC(hd+((W)v-(W)lo)))E(EJC(({EJH(v)hk[s]=v;hd+s;})))   // a repeat: number the keys, count each one's rows
+   U t=0;F(ng,st[i]=t;t+=cn[i])F(m,ys[st[gy[i]]++]=(I)i)F(ng,st[i]-=cn[i])MS(ys+m,0,4*SZ(I)))   // and list y's rows key by key, each key's in y's order
+ A rx,ry;
+ I(!dup,rx=aI(n);ry=aI(n);I*RES p=_V(rx),*RES q=_V(ry);U h=0;
+   EJQ(p[h]=(I)i;q[h]=k;h+=k>=0)
+   AN(h,rx);AN(h,ry);)
+ E(I*kk=amal((N)n*SZ(I));W t=0;P(!kk,EJF x(emp(tA)))
+   EJQ(kk[i]=k;t+=k<0?0:(W)cn[k])
+   P(t>>31,free(kk);EJF ez(x))
+   rx=aI((U)t+4);ry=aI((U)t+4);I*RES p=_V(rx),*RES q=_V(ry);W o=0;
+   // four slots written whatever the count, so the usual count (0 to 4) costs no branch: a row's
+   // extra slots are overwritten by the next row's, or lie past the end, cut off below
+   F(n,I k=kk[i];U c=k<0?0:(U)cn[k];CO I*RES r=ys+(k<0?0:st[k]);
+     p[o]=p[o+1]=p[o+2]=p[o+3]=(I)i;q[o]=r[0];q[o+1]=r[1];q[o+2]=r[2];q[o+3]=r[3];
+     for(U u=4;u<c;u++){p[o+u]=(I)i;q[o+u]=r[u];}o+=c)
+   AN((U)t,rx);AN((U)t,ry);free(kk);)
+ EJF
+ x(aV(tA,2,A(rx,ry))))
+#undef EJK
+#undef EJB
+#undef EJC
+#undef EJH
+#undef EJLL
+#undef EJHL
+#undef EJP
+#undef EJQ
+#undef EJF

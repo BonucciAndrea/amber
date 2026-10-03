@@ -28,7 +28,7 @@ NI I ixck(A x,A y,U k,A z){I r=0;if(!x||k>=_N(y)||_tP(x)||!_tT(x))return 0;U n=_
  if(!_tP(y)&&LH(tE,_t(y),tL)){L v=ixe(y,k);if(v<0||v>=(L)n)return 1;if(one)return 0;A w=ii(x,(U)v);r=ixck(w,y,k+1,z);mr(w);return r;}   //y an int list: an int index per level
  A q=_tA(y)?_R(_A(y)[k]):ii(y,k);
  if(q==au){if(!one)for(U j=0;j<n&&!r;j++){A v=ii(x,j);r=ixck(v,y,k+1,z);mr(v);}}
- else if(_tz(q)){L v=gl(q);if(v<0||v>=(L)n)r=1;else if(!one){A w=ii(x,(U)v);r=ixck(w,y,k+1,z);mr(w);}}
+ else if(_tz(q)){L v=gl_(q);if(v<0||v>=(L)n)r=1;else if(!one){A w=ii(x,(U)v);r=ixck(w,y,k+1,z);mr(w);}}
  else if(!_tP(q)&&LH(tE,_t(q),tL)){U m=_N(q);
   if(one&&m&&_t(q)!=tB){L lo=_t(q)==tE?ixe(q,0):minfZ(WL,q),hi=_t(q)==tE?ixe(q,m-1):maxfZ(NL,q);if(lo<0||hi>=(L)n)r=1;}   //one level: the vector min/max, not a type switch per item
   else for(U j=0;j<m&&!r;j++){L v=ixe(q,j);if(v<0||v>=(L)n)r=1;else if(!one){A w=ii(x,(U)v);r=ixck(w,y,k+1,z);mr(w);}}

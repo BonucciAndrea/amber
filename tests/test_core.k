@@ -859,7 +859,17 @@ t[`eachDictList;{x,y}'[`a`b!1 2;3 4];`a`b!(1 3;2 4)]
 t[`eachDictsKeyTypes;(.[{x,y}';(`a`b!1 2;1 2!3 4);{x}];.[{x,y,z}';(`a`b!1 2;`c`d!1 2;1 2!3 4);{x}]);2#,"'domain\n"]
 t[`eachDictsKeyTypesLoop;+/{.[{x,y,z}';(`a`b!1 2;`c`d!1 2;(x+1 2)!3 4);{1}]}'!10000;10000]
 
-hexpect[531]
+/ ---- an int index refused by the check is released once ----
+/ (a 0N, or an int beyond 32 bits, is not packed in the pointer, so a second release freed it)
+t[`amendKeepHeapIndex;{f:{L5[0N;`a]:7};L5::(1 2;3 4);r:{.[x;,0;{`err}]}'20#f;(?r;.[.:;,"L5";{`gone}])}[];(,`err;(1 2;3 4))]
+t[`amendKeepHeapIndexByName;{V7::1 2 3;f:{.[`V7;0N;+;(1 2;3 4)]};r:{.[x;,0;{`err}]}'20#f;(?r;V7)}[];(,`err;1 2 3)]
+t[`amendKeepHeapIndexWide;{f:{L8[4294967296;`a]:7};L8::(1 2;3 4);r:{.[x;,0;{`err}]}'20#f;(?r;.[.:;,"L8";{`gone}])}[];(,`err;(1 2;3 4))]
+
+/ ---- an amend by name with a symbol list as the name, refused by the check, does not crash ----
+G1:1 2 3;N1.v:4 5 6
+t[`amendByNameListRefused;{r:{.[x;,0;{`err}]}'20#({.[,`G1;,5;:;9]};{.[`N1`v;,0 1;:;7 8 9]});(?r;G1;N1.v;. "1+1")}[];(,`err;1 2 3;4 5 6;2)]   / the name was released twice
+
+hexpect[535]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

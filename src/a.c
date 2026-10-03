@@ -103,13 +103,14 @@ U amub(CO L*RES a,U lo,U hi,L key){
 // (f set when any time column is float) become keys in value order -- every NaN one key, first,
 // then by value with -0.0 the same as 0.0 (issue #15) -- where cL used to truncate them (0.5 and
 // 0.7 both 0). The zero is mapped by its bits: the build's -fno-signed-zeros lets a compare ignore it.
-A tkey(A x,B f)_(P(!f,cL(x))x=cF(x);P(!x,0)U n=_n(x);A y=aL(n);CO W*RES s=_V(x);L*RES d=_V(y);
+A tkey(A x,B f)_(I(_t(x)==tE,x=gZ(x))P(!f,cL(x))x=cF(x);   //a lazy range (!n as a time column) is expanded first: cL kept it a 2-item range
+ P(!x,0)U n=_n(x);A y=aL(n);CO W*RES s=_V(x);L*RES d=_V(y);
  F(n,W b=s[i];b=b==1ull<<63?0:b;d[i]=b<<1>0xffe0000000000000ull?NL+1:(L)(b>>63?b^0x7fffffffffffffffull:b))x(y))
 A ucb(A);
 A ajc(A x){
  P(_t(x)-tA||_n(x)-4,et(x))
  A*e=(A*)_V(x);B f=_t(e[0])==tF||_t(e[1])==tF;
- B c_=_t(e[0])==tC;A QT=N(tkey(ucb(_R(e[0])),f)),TT=N(tkey(c_?ucb(_R(e[1])):_R(e[1]),f)),GB=N(cL(_R(e[2]))),GE=N(cL(_R(e[3])));   //float times as floats (tkey), char times as unsigned bytes (ucb)
+ B c_=_t(e[0])==tC;A QT=N(tkey(ucb(_R(e[0])),f)),TT=N(tkey(c_?ucb(_R(e[1])):_R(e[1]),f)),GB=N(tkey(_R(e[2]),0)),GE=N(tkey(_R(e[3]),0));   //float times as floats (tkey), char times as unsigned bytes (ucb)
  CO L*RES qt=_V(QT),*RES tt=_V(TT),*RES gb=_V(GB),*RES ge=_V(GE);
  U nt=_n(TT),nq=_n(QT);
  // On a 32-bit target (wasm32) size_t is 32 bits, so nt*sizeof(L) can wrap.

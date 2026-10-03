@@ -507,36 +507,29 @@ order for floats, and symbol order is interning order). This keeps results exact
 
 ## 9a. Parallelism: `peach`
 
-`peach[f;y]` is a drop-in parallel replacement for `` f'y `` (each): it forks
-`AMBER_THREADS` worker **processes** (default: the online CPU count, via `sysconf`;
-previously a hardcoded `4`, which oversubscribed small boxes and under-used large ones; see
-[CHANGELOG](../CHANGELOG.md)), each applies `f` to a slice of `y`,
-serialises its result with the binary serializer (`-8!`, §10b, where it was `` `k `` text before
-1.9.3) and streams it back, and the parent decodes it with `-9!` and concatenates. The result is
-**identical** to serial `` f'y `` for every value (vectors, symbols, tables, nested, ragged).
+`peach[f;y]` is a drop-in parallel `` f'y `` (each). It runs `f` over the items of `y` on a
+persistent pool of worker threads (`src/peachpool.c`), sized by `AMBER_THREADS` (default: the
+online CPU count), and the result is **identical** to serial `` f'y `` for every value (vectors,
+symbols, tables, nested, ragged). No fork, no copying `y` to a child, no serialising the results
+back; that's what it used to cost before the pool.
 
-Since 1.9.3 a worker that fails, whether an error raised inside `f`, a signal, or a chunk that cannot be
-encoded, is detected via the child's exit status and surfaced as a clean, trappable
-`'worker error in peach`, instead of the parent silently returning a short result. Since 2.3 an
-error raised inside `f` is re-raised with its own message (its first line); `'worker error in
-peach` is left for a worker whose error has no text of its own. Every child is still reaped, so
-no zombies and no orphaned pipes are left behind:
+Workers can read globals but not assign them: a global assignment inside `f` is
+`'noupdate`, so there's nothing to race on. Return the values instead. An error inside `f` comes
+back out of `peach` with its own message, so it traps like any other:
 
 ```k
-.[{peach[{$[x=5;`err"boom";x]};!10]};,0;{[e]"caught: ",e}]   / "caught: 'boom..." (2.3: the worker's own error)
+.[{peach[{$[x=5;`err"boom";x]};!10]};,0;{[e]"caught: ",e}]   / "caught: 'boom..."
 ```
 
 ```k
-peach[{avg x?1.0}; 8#1000000]        / 8 heavy tasks, one per worker, across cores
+peach[{avg x?1.0}; 8#800000]         / 8 heavy tasks across cores: ~4x on 8 threads
 AMBER_THREADS=8 ./amber examples/peach.k   / a Monte-Carlo demo timing serial vs peach
 ```
 
-It uses `fork` (copy-on-write heap), so there are no shared-memory data races and no
-atomic-refcount tax on ordinary single-threaded code, the same reason q parallelises
-with processes rather than threading its interpreter. And with no GIL, every worker runs on
-a real core at once. Use it for **coarse-grained, compute-heavy** per-item work (Monte-Carlo,
-per-symbol fits, bootstraps, parallel loads); for fine-grained work the fork + serialise
-round-trip makes plain `'` faster. `AMBER_THREADS=1` forces serial. See BENCHMARKS.md §4.
+Use it when each item is real work (Monte-Carlo, per-symbol fits, bootstraps, partition loads).
+Tiny items are fine too if you chunk them so each task does tens of microseconds; a 400-basket
+payoff sweep goes 451 ms -> 215 ms on 14 threads. `AMBER_THREADS=1` forces serial, and the wasm
+build has no threads, so it runs serially there. Numbers in BENCHMARKS.md §4.
 
 ## 9b. Display: Q-style grid preview
 

@@ -278,7 +278,7 @@ A wjc(A x){
  // normalise all integer inputs to 64-bit long (columns/times/bounds may be squeezed to G/H/I widths)
  // times (quotes and window bounds) as keys: float times compare as floats (a.c tkey)
  B f=_t(e[0])==tF||_t(e[3])==tF||_t(e[4])==tF;
- B c_=_t(e[0])==tC;A QT=N(tkey(ucb(_R(e[0])),f)),CD=N(cL(_R(e[2]))),W0A=N(tkey(c_?ucb(_R(e[3])):_R(e[3]),f)),W1A=N(tkey(c_?ucb(_R(e[4])):_R(e[4]),f)),GBA=N(cL(_R(e[5]))),GEA=N(cL(_R(e[6])));   //float times as floats, char times as unsigned bytes
+ B c_=_t(e[0])==tC;A QT=N(tkey(ucb(_R(e[0])),f)),CD=N(tkey(_R(e[2]),0)),W0A=N(tkey(c_?ucb(_R(e[3])):_R(e[3]),f)),W1A=N(tkey(c_?ucb(_R(e[4])):_R(e[4]),f)),GBA=N(tkey(_R(e[5]),0)),GEA=N(tkey(_R(e[6]),0));   //float times as floats, char times as unsigned bytes
  // Raw contiguous primitive column pointers, extracted ONCE before any loop.
  CO L*RES T=_V(QT),*RES W0=_V(W0A),*RES W1=_V(W1A),*RES GB=_V(GBA),*RES GE=_V(GEA),*RES cod=_V(CD);
  U nt=_n(W0A),na=_n(e[1]),nq=_n(QT);

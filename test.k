@@ -136,6 +136,10 @@ t[`ajNull;(+aj[`sym`time;tradeN;quote])`bid;0N 0N]
 / single-group (time-only) as-of: most recent quote on-or-before each trade time
 t[`ajNoGrp;(+aj[`time;+`time`x!(0 4 8;0 0 0);+`time`v!(1 3 5 7;10 20 30 40)])`v;0N 20 40]
 t[`ajNaNHidesUnsorted;(+aj[`sym`time;+`sym`time!(`a`a`a;0.5 1.5 3.5);+`sym`time`bid!(`a`a`a;3.0 0n 1.0;10 20 30)])`bid;20 30 10]
+/ a lazy range as a time column (!n): the kernels used to see it as a 2-item range
+t[`ajRangeTrades;(+aj[`time;+`time`px!(!10;!10);+`time`bid!(0 2 4 6 8;1 2 3 4 5)])`bid;1 1 2 2 3 3 4 4 5 5]
+t[`ajRangeQuotes;(+aj[`time;+`time`px!(1 3 5;7 8 9);+`time`bid!(!6;10+!6)])`bid;11 13 15]
+t[`wjRangeTime;(+wj[(-1+!5;1+!5);`time;+`time`px!(!5;!5);+`time`bid!(!5;10*!5);,(`s;sum;`bid)])`s;10 30 60 90 70]
 t[`ajZeroGroups;ajsorted[`g`time;+`g`time`bid!(0.0 1.0 -0.0;1 2 3;10 20 30)];0b]
 / the row is the one aj gives on the sorted quotes (which zero comes first is issue #15's order)
 ajZT:+`g`time!(0.0 -0.0 1.0;5 5 5);ajZQ:+`g`time`bid!(0.0 1.0 -0.0;1 2 3;10 20 30)

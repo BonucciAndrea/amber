@@ -813,7 +813,18 @@ t[`amendVerbFunctionSetsGlobal2;(IA["FJ:(!1000),{FJ::!3;x+1}";"FJ[1000]@:5"];IA[
 t[`amendVerbFunctionSetsGlobalFails;{r:IA["FM:(1;(2;{FM::!3;x+`a}))";"FM[1;1]@:5"];s:IA["FP:(1;(2;{FP[0]:9;x+1}))";"FP[1;1]@:5"];(r;*s;FP 0;FP[1;0])}[];((`err;0 1 2);::;9;2)]   / sets it, then fails; or amends it itself: what the function set is kept
 t[`amendVerbFunctionKeepsGlobal;{r:(IA["FQ:(1;(2;{x+1}))";"FQ[1;1]@:5"];IA["FR:+`a`b!(!3;3#{x+1})";"FR[`b;1]@:5"]);s:{FT::(1;(2;{x+1}));r:FT[1;1]@:5;(r;FT)}[];(r[0];*r 1;FR[1;`b];FR`a;s)}[];((::;(1;2 6));::;6;0 1 2;(6;(1;2 6)))]   / a function item that leaves the global alone: amended as before
 
-hexpect[505]
+/ ---- an assignment into a symbol list below a column, key or index amends the list ----
+/ (a symbol list there was taken as the name of a global to amend, as . takes one: 'type, and the variable was lost)
+t[`amendSymbolColumn;(IA["S1:+`a`b!(1 2 3;`x`y`z)";"S1[`b;1]:`q"];IA["S2:+`a`b!(1 2 3;`x`y`z)";"S2[`b;1 2]:`q`r"];IA["S3:+`a`b!(1 2 3;`x`y`z)";"S3[`b;1]:7"]);((::;+`a`b!(1 2 3;`x`q`z));(::;+`a`b!(1 2 3;`x`q`r));(::;+`a`b!(1 2 3;(`x;7;`z))))]
+t[`amendSymbolListInDict;(IA["S4:`a`b!(1 2;`x`y`z)";"S4[`b;1]:`q"];IA["S5:`a`b!(1 2;`x`y`z)";"S5[`b;0 1],:`s"];IA["S6:`a`b!(`x`y;`z`w)";"S6[`a`b;1]:`q"]);((::;`a`b!(1 2;`x`q`z));(::;`a`b!(1 2;(`x`s;`y`s;`z)));(::;`a`b!(`x`q;`z`q)))]
+t[`amendSymbolListInList;(IA["S7:(`a`b;`c`d)";"S7[1;0]:`q"];IA["S8:(`a`b;`c`d)";"S8[;1]:`q"];IA["S9:((`a`b;`c);`d)";"S9[0;0;1]:`q"]);((::;(`a`b;`q`d));(::;(`a`q;`c`q));(::;((`a`q;`c);`d)))]
+t[`amendSymbolListDot;(.[(`x`y;`z);(0;1);:;`q];.[`a`b!(1 2;`x`y`z);(`b;1);:;`q];IA["S0:`a`b!(1 2;`x`y`z)";".[`S0;(`b;1);:;`q]"]);((`x`q;`z);`a`b!(1 2;`x`q`z);2#,`a`b!(1 2;`x`q`z))]   / the data form, and by name: the name is the global, the list below it data
+SG:1 2 3;SH:4 5 6;SX:1 2 3;SV:(`SX`y;2);N2.b:1 2 3;N3.v:1 2 3
+t[`amendSymbolListNamesNone;{r:(IA["S14:`x`y!(1;`N2`b)";"S14[`y;1]:9"];IA["S15:`x`y!(1;,`SG)";"S15[`y;0]:9"]);.[`N3`v;,1;:;9];(r;N2.b;SG;N3.v)}[];(((::;`x`y!(1;(`N2;9)));(::;`x`y!(1;,9)));1 2 3;1 2 3;1 9 3)]   / a global by the list's name is not amended (2.4.1 amended it); . by name still is
+t[`amendSymbolListItems;{r:(IA["S16:`a`b!(1;`SG`SH)";"S16[`b;;0]:9"];IA["S17:`a`b!(1;`SG`SH)";"S17[`b;0 1;0]:9"];IA["S18:(1;`SG`SH)";"S18[1;;0]:9"];IA["S19:+`a`b!(1 2;`SG`SH)";"S19[`b;;0]:9"]);(r;SG;SH)}[];(((`err;`a`b!(1;`SG`SH));(`err;`a`b!(1;`SG`SH));(`err;(1;`SG`SH));(`err;+`a`b!(1 2;`SG`SH)));1 2 3;4 5 6)]   / its items are data too: an index below one is 'type, and the globals they name are not amended
+t[`amendSymbolListItemsError;{e:{r:.[{. x;`ok};,x;{x}];$[`ok~r;r;*"\n"\r]}'("S16[`b;;0]:9";"S18[1;0;0]+:9";".[`S18;(1;::;0);:;9]";".[`SV;(0 1;::;1.0);{x+1}]");(e;S16;S18;SG;SH;SX)}[];(4#,"'type";`a`b!(1;`SG`SH);(1;`SG`SH);1 2 3;4 5 6;1 2 3)]
+
+hexpect[512]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

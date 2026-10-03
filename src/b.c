@@ -29,17 +29,19 @@ Z I ixkd(A x,A y,U k,A z,B asg);
 Z B ixone(A y,U k){if(!_tA(y))return 1;F(k,A q=_A(y)[i];if(q==au||!_tt(q))return 0)return 1;}   //levels 0..k-1 each a single index, so the value at level k is z itself
 NI I ixck(A x,A y,U k,A z,B asg){I r=0;if(x&&k<_N(y)&&!_tP(x)&&(_t(x)==tm||_t(x)==tM))return ixkd(x,y,k,z,asg);
  if(x&&y!=au&&k<_N(y)&&(_t(x)!=ts&&LH(ti,_t(x),ts)||LH(tdt,_t(x),tnp)))return 3;   //an index into a number, char or temporal atom (:: as the index is the whole value); a symbol atom names a global, which the assignment amends
- if(!x||k>=_N(y)||_tP(x)||!_tT(x))return 0;U n=_N(x);B one=_N(y)==1;
- if(!_tP(y)&&LH(tE,_t(y),tL)){L v=ixe(y,k);if(v<0||v>=(L)n)return 1;if(one)return 0;A w=ii(x,(U)v);r=ixck(w,y,k+1,z,asg);mr(w);return r;}   //y an int list: an int index per level
+ if(!x||k>=_N(y)||_tP(x)||!_tT(x))return 0;U n=_N(x);B one=_N(y)==1,sd=k&&_t(x)==tS&&k+1<_N(y);   //sd: a symbol list below the first index is data, and its items too, so a level below them is 'type
+ #define IXD(w) (sd?3:ixck(w,y,k+1,z,asg))
+ if(!_tP(y)&&LH(tE,_t(y),tL)){L v=ixe(y,k);if(v<0||v>=(L)n)return 1;if(one)return 0;A w=ii(x,(U)v);r=IXD(w);mr(w);return r;}   //y an int list: an int index per level
  A q=_tA(y)?_R(_A(y)[k]):ii(y,k);
- if(q==au){if(!one)for(U j=0;j<n&&!r;j++){A v=ii(x,j);r=ixck(v,y,k+1,z,asg);mr(v);}}
- else if(_tz(q)){L v=gl_(q);if(v<0||v>=(L)n)r=1;else if(!one){A w=ii(x,(U)v);r=ixck(w,y,k+1,z,asg);mr(w);}}
+ if(q==au){if(!one)for(U j=0;j<n&&!r;j++){A v=ii(x,j);r=IXD(v);mr(v);}}
+ else if(_tz(q)){L v=gl_(q);if(v<0||v>=(L)n)r=1;else if(!one){A w=ii(x,(U)v);r=IXD(w);mr(w);}}
  else if(!_tP(q)&&LH(tE,_t(q),tL)){U m=_N(q);
   if(one&&m&&_t(q)!=tB){L lo=_t(q)==tE?ixe(q,0):minfZ(WL,q),hi=_t(q)==tE?ixe(q,m-1):maxfZ(NL,q);if(lo<0||hi>=(L)n)r=1;}   //one level: the vector min/max, not a type switch per item
-  else for(U j=0;j<m&&!r;j++){L v=ixe(q,j);if(v<0||v>=(L)n)r=1;else if(!one){A w=ii(x,(U)v);r=ixck(w,y,k+1,z,asg);mr(w);}}
+  else for(U j=0;j<m&&!r;j++){L v=ixe(q,j);if(v<0||v>=(L)n)r=1;else if(!one){A w=ii(x,(U)v);r=IXD(w);mr(w);}}
   if(!r&&(one||k+1==_N(y)&&ixone(y,k))&&!_tP(z)&&_tT(z)&&_N(z)!=m)r=2;}
  else if(_t(q)==ts||_t(q)==tS&&_N(q))r=3;   //a symbol indexes no list
  mr(q);return r;}
+#undef IXD
 //a dict or table (x) at level k: a key that is missing is added by the assignment, so only at the last
 //level is it fine; a key that is there goes a level down; at the last level a list of keys needs a
 //list value of its count, and a table's column, assigned with : (asg), one of its row count (any other verb

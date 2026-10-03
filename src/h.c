@@ -21,11 +21,11 @@ A rsz(L n,A x/*1*/)_(
       I(!r,MC(yV,xV,MIN(m,l)))J(l<=m,MC(yV,xV+m-l,l))E(MC(yV,xV+m-k,k);MC(yV+k,xV,m-k))
       cyc(yV,m,l);I(!n&&ytA,yx=mkn(_R(xx)))x(ytA?sqz(mRa(y)):y)))0)
 A slc(A x/*0*/,U i,U j)_(Q(xtT&&i<=j&&j<=xN)N n=j-i;XB(A y=an(j-i,tB);cpyB(yV,0,xV,i,j-i);y)XE(I v=*xL;aE(v+i,v+j))A y=an(n,xt);U w=xw-3;MC(yV,xV+((W)i<<w),(W)n<<w);XA(P(!n,yx=mkn(_R(xx));y)sqz(mRa(y)))y)
-Z A chp(L n,A x/*1*/)_(P(n<0,ed(x))L m=(xn+n-1)/n;A y=aA(m);F(m|!m,ya=slc(x,n*i,MIN((L)xn,n*i+n)))x(0);I(!m,yx=mkn(yx))y)
+Z A chp(L n,A x/*1*/)_(P(n<0,ed(x))XmM(en(x))L m=(xn+n-1)/n;A y=aA(m);F(m|!m,ya=slc(x,n*i,MIN((L)xn,n*i+n)))x(0);I(!m,yx=mkn(yx))y)
 Z A2(rsh,/*01*/XE(x=gZ(xR);x(rsh(x,y)))YE(rsh(x,gZ(y)))YmM(en(y))Yt(rsh(x,enl(y)))Q(xtZ);N r=xn;P(!r,fir(y))P(r>256,ez(y))x=Ny(cL(xR));L s[r];MC(s,xV,r<<3);x(0);
  I(r==2,P(*s==NL,chp(s[1],y))P(s[1]==NL,A u=az(*s);u(K2("{$[(0<x)&~x!#y;(x;(-x)!#y)#y;((-x)!(#y)*!x)_y]}",u,y))))P(r==1&&*s==NL,y)I(!yn,y=enl(fir(y)))
- L m=1;F(r,L d=s[r-1-i];P(d<0,ed(y))P(__builtin_mul_overflow(m,MAX(1ll,d),&m)||m>>32,ez(y)))y=N(rsz(m,y));F(r-1,L d=s[r-1-i];I(d,y=N(chp(MAX(1ll,d),y)))E(y=N(e1f(rs0,chp(1,y)))))rsz(*s,y))
-X2(hsh,/*01*/Ril(rsz(gl_(x),y))RU(flt(x,y,1))RT(P(ytm||ytM&&xtS,y(aV(yt,2,A(xR,y1(xR)))))XZ(rsh(x,y))et(y))R_(et(y)))
+ L m=1;F(r,L d=s[r-1-i];P(d<0,ed(y))P(__builtin_mul_overflow(m,MAX(1ll,d),&m)||m>>32,ez(y)))y=N(rsz(m,y));F(r-1,L d=s[r-1-i];I(d,y=N(chp(MAX(1ll,d),y)))E(y=N(e1f(rs0,N(chp(1,y))))))rsz(*s,y))
+X2(hsh,/*01*/Ril(rsz(gl_(x),y))RU(flt(x,y,1))RT(P(ytm,A k=xR,i=fnd(yx,xR);P(!i,mr(k);y(0))P(_tA(yx)&&_n(yx)&&_tt(i),mr(k);mr(i);en(y))A u=i1(yy,i);P(!u,mr(k);y(0))y(aV(yt,2,A(k,u))))P(ytM&&xtS,A k=xR,u=i1(y,xR);P(!u,mr(k);y(0))y(aV(yt,2,A(k,u))))XZ(rsh(x,y))et(y))R_(et(y)))   //dict: i1's lookup, inline; x one rank below list keys is one key, which find gives as an atom: 'nyi (not for (), as in `a`b#()!()); k: x's second reference, taken with the first (one read of the thread-local refcount flag)
 A drp(L n,A x/*1*/)_(X(Rm(A y=kv(&x);am(Ny(drp(n,x)),Nx(drp(n,y))))RM(A y=kv(&x);aM(x,Nx(e2f(und,az(n),y))))Rt(er(x))RE(Lij x(0);W d=n<0?0-(W)n:(W)n;d=MIN(d,(W)(j-i));n<0?aE(i,j-(L)d):aE(i+(L)d,j))   //drop at most the count: i+n and j+n could overflow
  R_(P(n==NL,rs0(x))L m=xn;n=MAX(-m,MIN(m,n));P(-n<(W)m&&MINE(x),I(xtA,mrn(-n,xA+m+n))AN(m+n,x))x(slc(x,MAX(0ll,n),m+MIN(0ll,n)))))0)
 Z A rmv(A x/*1*/,L i)_(XB(rmv(cG(x),i))X(RT_E(P(i>=(W)xn,x)A y=an(xn-1,xt);U w=xw-3;MC(yV,xV,i<<w);MC(yV+(i<<w),xV+(i+1<<w),xn-i-1<<w);I(xtA,I(!yn,yx=mkn(_R(xx)))y=sqz(mRa(y)))x(y))

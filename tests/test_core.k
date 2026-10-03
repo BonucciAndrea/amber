@@ -903,7 +903,53 @@ t[`jsonRoundLong;fb'`j?"[3.1000000000114159265358979,-0.100000000000000005551115
 t[`jsonRoundLongTie;fb'`j?"[9007199254740993.0000000000000000000,9007199254740993.000000000000000000001]";(0x4340000000000000;0x4340000000000001)]   / 2^53+1 in 35 and 37 digits: a tie (to even), and just past one
 t[`floatRound20Nines;fb `F$"9999999999999999999.9";0x43e158e460913d00]   / 20 digits: the first 19, plus one, make 10^19
 
-hexpect[563]
+/ ---- flip: an atom value is enlisted; bit lists; empty lists of tables (upstream ngn/k 7bf994cd) ----
+t[`flipAtom;`k@+(,`a)!,{x};"+(,`a)!,,{x}"]
+t[`flipCols;`k@+`a`b!(1 2;3 4);"+`a`b!(1 2;3 4)"]
+t[`flipEmptyTable;(`k@([]);#!+([]);#. +([]));("+(0#`)!0#,::";0;0)]   / ([]) stays as it was (ngn/k enlists the empty values here)
+t[`flipEmptyTables;(`k@+0#,(+`a`b!(1 2;3 4));`k@+0#,,`a`b!1 2);("(0#,`a`b!0N 0N;0#,`a`b!0N 0N)";",0#,`a`b!0N 0N")]   / empty lists of tables: the prototype was read before it was set; empty lists of dicts, as in ngn/k
+t[`flipBits;(+(01B;01B);+(101B;010B));((0 0;1 1);(1 0;0 1;1 0))]   / lists of bit booleans, read as bits
+t[`flipBits8;*+8#,11B;8#1]   / each column was read as 8-byte words of the lists
+
+/ ---- odometer of a list of dicts uses their values (upstream ngn/k d99849c6) ----
+t[`tilDicts;!(`a`b!1 2;`c`d!3 4);(1 1 2 2;3 4 3 4)]
+t[`tilLists;!(1 2;3 4);(1 1 2 2;3 4 3 4)]
+t[`tilDictLast;!(,1;,2;,3;,4;5 6;`a`b!7 8);(1 1 1 1;2 2 2 2;3 3 3 3;4 4 4 4;5 5 6 6;7 8 7 8)]   / a dict after the first four items
+t[`tilAtomDict;.[!:;,(1;`a`b!3 4);{`e}];`e]   / an atom item still fails, with a dict beside it
+t[`tilKeyed;`k@!((+(,`k)!,1 2)!+(,`v)!,3 4;1 2);"(+(,`v)!,3 3 4 4;1 2 1 2)"]   / a keyed table uses its value table
+
+/ ---- an empty general list whose prototype is a dict stays a list, not a table (upstream ngn/k d99849c6) ----
+t[`takeEmptyDictFirst;`k@'(0#((,`a)!,0;0);0#(1 2!3 4;0);0#(`a`b!1 2;`c`d!3 4));("0#,(,`a)!,0N";"0#,1 2!0N 0N";"0#,`a`b!0N 0N")]   / these were empty tables, the second with int columns
+t[`takeEmptyDictShape;*0#(`a`b!(0;0 0);0N);`a`b!(0N;0N 0N)]
+t[`takeEmptyTable;`k@'(0#(`a`b!1 2;`a`b!3 4);0#,`a`b!1 2);("+`a`b!(!0;!0)";"+`a`b!(!0;!0)")]
+t[`dropEmptyDictFirst;`k@2_((,`a)!,0;1 2);"0#,(,`a)!,0N"]
+/ reshaping such a list is 'nyi, as reshaping a table is (it read a table as rows of a list: crashes, heap addresses, a loop)
+t[`reshapeEmptyDicts;4#.[.:;,"2 0#0#(`a`b!1 2;0)";{x}];"'nyi"]
+t[`reshapeDroppedDicts;4#.[.:;,"2 0N#2_(`a`b!1 2;3)";{x}];"'nyi"]
+t[`reshapeAmendedDicts;4#.[.:;,"2 2#@[(`a`b!1 2;0);1;:;`a`b!3 4]";{x}];"'nyi"]
+t[`reshapeMixedDicts;4#.[.:;,"1 0#(1 2!3 4;`a`b!(1;`c`d!3 4))";{x}];"'nyi"]
+/ an amend of an empty table that reaches no row gives the table back; one that reaches the null row (an elided index, :: anywhere in it) makes the table from what it gives
+t[`amendEmptyTable;`k@'(@[0#+`a`b!(1 2;3 4);!0;:;()];.[0#+`a`b!(1 2;3 4);(!0;`a);:;()];@[0#+`a`d!(1 2;(`x`y!1 2;`x`y!3 4));!0;:;()]);("+`a`b!(!0;!0)";"+`a`b!(!0;!0)";"+`a`d!(!0;+`x`y!(!0;!0))")]
+t[`amendEmptyElided;`k@'(@[0#+`a`b!(1 2;3 4);::;{x,`c!9}];@[0#+`a`b!(1 2;3 4);::;{1#x}];@[0#+`a`b!(1 2;3 4);(!0;::);{x,`c!9}]);("+`a`b`c!(!0;!0;!0)";"+(,`a)!,!0";"+`a`b`c!(!0;!0;!0)")]
+/ an @ amend of an empty table at rows and then columns is 'type, as in ngn/k (2.4.1 gave the table)
+t[`amendEmptyMixed;5#.[.:;,"@[0#+`a`b!(1 2;3 4);(!0;`a);{x}]";{x}];"'type"]
+
+/ ---- take of keys from a dict whose keys are lists or a table (upstream ngn/k 5f50f8e3, d3b72007) ----
+t[`takeListKey;4#.[.:;,"(1 2)#(1 2;3 4)!5 6";{x}];"'nyi"]   / one list key, not a list of them (it gave 1 2!5, two keys and one value)
+t[`takeListKeys;(1 2;3 4)#(1 2;3 4)!5 6;(1 2;3 4)!5 6]
+t[`takeSymKeys;`a`c#`a`b`c!1 2 3;`a`c!1 3]
+t[`takeEmptyDict;`k@'(`a`b#()!();1 2#()!();(,`a)#()!();(0#`)#()!());("`a`b!\"\"";"1 2!\"\"";"(,`a)!\"\"";"(0#`)!\"\"")]   / the empty dict ()!() takes any keys, as on 2.4.1 (ngn/k: 'nyi)
+/ a keyed table's keys are a table: reshape or a key list one rank down is 'nyi (they crashed)
+t[`reshapeKeyed;4#.[.:;,"2 2#((+(,`k)!,1 2)!+(,`v)!,3 4)";{x}];"'nyi"]
+t[`reshapeKeyedNull;4#.[.:;,"0N 2#((+(,`k)!,1 2)!+(,`v)!,3 4)";{x}];"'nyi"]
+t[`reshapeKeyedEmpty;4#.[.:;,"2 0#=0#,`a`b!1 2";{x}];"'nyi"]
+t[`takeKeyedSyms;4#.[.:;,"(,`x)#((+(,`k)!,1 2)!+(,`v)!,3 4)";{x}];"'nyi"]
+/ keys of the other kind (chars against numbers): the lookup is 'type, as find is since 2.4.0, and the take passes it up (it crashed, even under a trap)
+t[`takeKeysCharsNums;(5#.[{"ab"#x};,1 2!3 4;{x}];5#.[{1 2#x};,"xy"!3 4;{x}]);("'type";"'type")]
+/ a failed lookup releases only the dict: the key list belongs to the caller (shared here, used again)
+t[`takeKeysFailShared;{k:"ab",();k2:1 2,!0;r:{5#.[#;(x;y);{x}]}[k]'4#,1 2!3 4;r2:{5#.[#;(x;y);{x}]}[k2]'4#,((1 2;3 4);(5 6;7 8))!9 10;(r;r2;k;k2)}[];(4#,"'type";4#,"'rank";"ab";1 2)]
+
+hexpect[567]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

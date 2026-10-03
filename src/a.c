@@ -647,7 +647,7 @@ ZN V o8(ambcn,L v){CO L*p=a;L*r=c;F(n+3&-4,*r++=b[i]<m?p[b[i]]:v)}
 ZN V oL(ambcn){o8(a,m,b,c,n,NL);}
 ZN V oF(ambcn){o8(a,m,b,c,n,NFL);}
 // amber 2.5 (exp): a big gather split across threads (see patch header). es: bytes per output item.
-#define PGAT_MIN (1u<<19)
+#define PGAT_MIN (1u<<16)
 TD struct{V(*f)(ambcn);CO V*a;U m;CO U*b;C*c;U n,nt,es;}GJ;
 Z V gat_w(V*c_,int t){GJ*c=c_;U s=(U)(((W)c->n*t/c->nt)&~31ull),e=(U)t+1==c->nt?c->n:(U)(((W)c->n*(t+1)/c->nt)&~31ull);
  if(e>s)c->f(c->a,c->m,c->b+s,c->c+(N)s*c->es,e-s);}

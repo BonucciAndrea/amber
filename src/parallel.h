@@ -30,7 +30,7 @@
 extern "C" {
 #endif
 
-#define PAR_THRESHOLD   100000  /* below this element count, run single-threaded */
+#define PAR_THRESHOLD   32768   /* below this element count, run single-threaded (2.5: was 100000 before the pool) */
 #define PAR_MAX_THREADS 64      /* hard cap regardless of AMBER_THREADS/CPU count */
 
 /* Number of worker threads a call of the given size `n` would actually use

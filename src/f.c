@@ -104,7 +104,7 @@ Z V fndL_lut(V*c_,int t){FJ*c=c_;CO V*b=c->b;V*z=c->z;U wy=c->wy,wz=c->wz,s=(U)(
  I*lut=c->lut;L lo=c->lo;W rg=c->rg;I miss=0;FNDW(W d=(W)v-(W)lo;k=d<rg?lut[d]:-1)c->miss[t]=miss;}
 Z V fndL_hash(V*c_,int t){FJ*c=c_;CO V*b=c->b;V*z=c->z;U wy=c->wy,wz=c->wz,s=(U)((W)c->n*t/c->nt),e=(U)((W)c->n*(t+1)/c->nt);
  L*hk=c->hk;I*hv=c->hv;U sh=c->sh;W msk=c->msk;I miss=0;FNDW(W j=((W)v*GOLD)>>sh;k=-1;W(1,B(hv[j]<0,)B(hk[j]==v,k=hv[j])j=(j+1)&msk))c->miss[t]=miss;}
-#define PFND_MIN (1u<<18)   //below this many probes thread start-up costs more than it saves
+#define PFND_MIN (1u<<15)   //below this many probes thread start-up costs more than it saves
 Z I fndrun(FJ*c,V(*fn)(V*,int))_(int nt=c->n<PFND_MIN?1:par_thread_count(c->n);c->nt=(U)nt;I(nt<2,fn(c,0))E(par_run(nt,fn,c))I m=0;F(nt,m|=c->miss[i])m)
 Z A fndL(A x,A y,B srt)_(
  P(srt,0)

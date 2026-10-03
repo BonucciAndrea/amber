@@ -183,7 +183,7 @@ enum{GA_SUM,GA_CNT,GA_MIN,GA_MAX,GA_AVG,GA_FST,GA_LST};
 // group min ignored the NaN &/ returns, and an all-NaN group came out as 0w/-0w.
 #define GA_OF(i) o1(((CO L*)vp)[i])
 // ---- amber 2.5 (exp): parallel gagg for the exactly-combinable ops, see patch notes / gaggC
-#define PGAG_MIN (1u<<20)
+#define PGAG_MIN (1u<<16)
 #define PGAG_CELLS (1u<<22)        //threads x key range: the private tables' total size cap
 TD struct{CO V*kp,*vp;CO UC*mp;U wk,wv,nt;N n;I code;B vf;L lo;W rg;L*cnt,*acc;I*fst,*lst;}GQ;
 Z V gq1(V*c_,int t){GQ*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;W rg=c->rg;L*cnt=c->cnt+(N)t*rg,*acc=c->acc+(N)t*rg;

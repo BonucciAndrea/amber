@@ -134,9 +134,8 @@ double par_sum_f64(const double *a, size_t n) {
 typedef struct { void (*fn)(void *, int); void *ctx; int i; } RunJob;
 static void *run_job(void *arg) { RunJob *j = (RunJob *)arg; j->fn(j->ctx, j->i); return 0; }
 
-void par_run(int t, void (*fn)(void *ctx, int i), void *ctx) {
-    if (t < 1) t = 1;
-    if (t > PAR_MAX_THREADS) t = PAR_MAX_THREADS;
+/* par_run's own threads: the way it always worked, and the fallback when the pool is taken */
+static void par_run_spawn(int t, void (*fn)(void *ctx, int i), void *ctx) {
     pthread_t th[PAR_MAX_THREADS];
     RunJob jobs[PAR_MAX_THREADS];
     int started[PAR_MAX_THREADS];
@@ -148,3 +147,111 @@ void par_run(int t, void (*fn)(void *ctx, int i), void *ctx) {
     fn(ctx, 0);
     for (int i = 1; i < t; i++) if (started[i]) pthread_join(th[i], 0);
 }
+
+#if !defined(wasm)
+/* ---- amber 2.5: the persistent pool ---------------------------------------
+ * Workers 1..pl_n, made once and kept. A call publishes a job as one 64-bit word (generation << 8 | t) after fn,
+ * ctx and the share counter are set (release). The t shares are not tied to threads: the caller and every worker
+ * awake take the next share from pl_next (generation << 16 | next index, by compare-and-swap, so a worker late
+ * from an older job can never take one of this job's) until none is left. A worker that wakes late, or was
+ * preempted -- with every CPU busy something always is -- finds nothing to do instead of making the call wait a
+ * scheduler tick for its share. The kernels still get share i of t, as before. The caller returns once pl_done
+ * says all t ran; a share still running keeps it from publishing the next job, so fn and ctx are read only while
+ * they are this job's. Workers spin a while after a job (kernels come in runs), then sleep on a condvar; the
+ * word and pl_sleep are both seq_cst, so a publish never misses a worker on its way to sleep. */
+#define PL_SPIN 20000
+static pthread_mutex_t pl_busy = PTHREAD_MUTEX_INITIALIZER;   /* one par_run on the pool at a time */
+static pthread_mutex_t pl_m = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t pl_go = PTHREAD_COND_INITIALIZER, pl_fin = PTHREAD_COND_INITIALIZER;
+static int pl_n, pl_done, pl_sleep, pl_wait;
+static uint64_t pl_word, pl_next, pl_g0[PAR_MAX_THREADS];
+static void (*pl_fn)(void *, int);
+static void *pl_ctx;
+
+static inline void pl_relax(void) {
+#if defined(__x86_64__) || defined(__i386__)
+    __builtin_ia32_pause();
+#elif defined(__aarch64__)
+    __asm__ __volatile__("yield");
+#endif
+}
+/* take and run shares of job g (t shares) until there are none */
+static void pl_take(uint64_t g, int t) {
+    for (;;) {
+        uint64_t c = __atomic_load_n(&pl_next, __ATOMIC_ACQUIRE);
+        if (c >> 16 != g || (int)(c & 0xffff) >= t) return;
+        if (!__atomic_compare_exchange_n(&pl_next, &c, c + 1, 0, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) continue;
+        pl_fn(pl_ctx, (int)(c & 0xffff));
+        if (__atomic_add_fetch(&pl_done, 1, __ATOMIC_SEQ_CST) == t && __atomic_load_n(&pl_wait, __ATOMIC_SEQ_CST)) {
+            pthread_mutex_lock(&pl_m); pthread_cond_signal(&pl_fin); pthread_mutex_unlock(&pl_m);
+        }
+    }
+}
+static void *pl_worker(void *arg) {
+    int k = (int)(intptr_t)arg;
+    uint64_t seen = pl_g0[k];                                     /* not the word now: the job may be out already */
+    for (;;) {
+        uint64_t w = 0; int s;
+        for (s = 0; s < PL_SPIN; s++) {
+            w = __atomic_load_n(&pl_word, __ATOMIC_ACQUIRE);
+            if (w >> 8 != seen) break;
+            pl_relax();
+        }
+        if (s == PL_SPIN) {
+            pthread_mutex_lock(&pl_m);
+            __atomic_add_fetch(&pl_sleep, 1, __ATOMIC_SEQ_CST);
+            while ((w = __atomic_load_n(&pl_word, __ATOMIC_SEQ_CST)) >> 8 == seen) pthread_cond_wait(&pl_go, &pl_m);
+            __atomic_sub_fetch(&pl_sleep, 1, __ATOMIC_SEQ_CST);
+            pthread_mutex_unlock(&pl_m);
+        }
+        seen = w >> 8;
+        pl_take(seen, (int)(w & 255));
+    }
+    return 0;
+}
+static void pl_atfork_child(void) {                               /* the child has none of the workers */
+    pl_n = 0; pl_done = 0; pl_sleep = 0; pl_wait = 0;
+    pthread_mutex_init(&pl_busy, 0); pthread_mutex_init(&pl_m, 0);
+    pthread_cond_init(&pl_go, 0); pthread_cond_init(&pl_fin, 0);
+}
+void par_run(int t, void (*fn)(void *ctx, int i), void *ctx) {
+    if (t < 1) t = 1;
+    if (t > PAR_MAX_THREADS) t = PAR_MAX_THREADS;
+    if (t == 1) { fn(ctx, 0); return; }
+    if (pthread_mutex_trylock(&pl_busy)) { par_run_spawn(t, fn, ctx); return; }
+    { static int at; if (!at) { at = 1; pthread_atfork(0, 0, pl_atfork_child); } }
+    uint64_t g = __atomic_load_n(&pl_word, __ATOMIC_RELAXED) >> 8;
+    while (pl_n < t - 1) {                                        /* more workers, told the current generation */
+        pthread_t th; pthread_attr_t a; pthread_attr_init(&a); pthread_attr_setdetachstate(&a, PTHREAD_CREATE_DETACHED);
+        pl_g0[pl_n + 1] = g;
+        int r = pthread_create(&th, &a, pl_worker, (void *)(intptr_t)(pl_n + 1));
+        pthread_attr_destroy(&a);
+        if (r) break;
+        pl_n++;
+    }
+    if (pl_n < 1) { pthread_mutex_unlock(&pl_busy); par_run_spawn(t, fn, ctx); return; }
+    g++;
+    pl_fn = fn; pl_ctx = ctx;
+    __atomic_store_n(&pl_done, 0, __ATOMIC_RELAXED);
+    __atomic_store_n(&pl_next, g << 16, __ATOMIC_RELAXED);
+    __atomic_store_n(&pl_word, g << 8 | (uint64_t)t, __ATOMIC_SEQ_CST);
+    if (__atomic_load_n(&pl_sleep, __ATOMIC_SEQ_CST)) { pthread_mutex_lock(&pl_m); pthread_cond_broadcast(&pl_go); pthread_mutex_unlock(&pl_m); }
+    pl_take(g, t);                                                /* the caller takes shares too */
+    int s;
+    for (s = 0; s < PL_SPIN && __atomic_load_n(&pl_done, __ATOMIC_ACQUIRE) < t; s++) pl_relax();
+    if (__atomic_load_n(&pl_done, __ATOMIC_ACQUIRE) < t) {
+        pthread_mutex_lock(&pl_m);
+        __atomic_store_n(&pl_wait, 1, __ATOMIC_SEQ_CST);
+        while (__atomic_load_n(&pl_done, __ATOMIC_SEQ_CST) < t) pthread_cond_wait(&pl_fin, &pl_m);
+        __atomic_store_n(&pl_wait, 0, __ATOMIC_SEQ_CST);
+        pthread_mutex_unlock(&pl_m);
+    }
+    pthread_mutex_unlock(&pl_busy);
+}
+#else
+void par_run(int t, void (*fn)(void *ctx, int i), void *ctx) {
+    if (t < 1) t = 1;
+    if (t > PAR_MAX_THREADS) t = PAR_MAX_THREADS;
+    par_run_spawn(t, fn, ctx);
+}
+#endif

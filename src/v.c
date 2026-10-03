@@ -334,7 +334,7 @@ A mwC(A x){
 // Returns whichever index buffer holds the result (ia or ib -- the caller must
 // use the returned pointer, not the one it passed in).
 // amber 2.5 (exp): the parallel form of AMRDX below. Same passes, same constant-column skip, same order.
-#define PRDX_MIN (1u<<20)
+#define PRDX_MIN (1u<<15)
 TD N AMN256[256];TD AMN256 AMN8x256[8];   //count rows (N(...) is a macro here, so no N(*h)[256])
 #define PAMRDX(NM,KT)                                                          \
 TD struct{KT*ka,*kb;I*ia,*ib;N n;U nt,d,last,nb;AMN256*h;AMN8x256*ha;}NM##_J;\

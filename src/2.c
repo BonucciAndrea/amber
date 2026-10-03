@@ -139,7 +139,7 @@ Z A dvdFf(A x,F v,U f)_(A z=aF(xn);fzdvr(xF,v,zF,xn);z)
 // the other of two NaNs: only the same machine code gives the same bits).
 #define FZ_MIN 2048u
 #define FZ_BK 512u
-#define FZ_PAR (1u<<17)
+#define FZ_PAR (1u<<15)
 #define FZ_N 32           //program steps
 TD struct{UC op,k,w,s;}FZS;   //op: 'v' float vector, 'z' int vector (w: width 0..3), 'c' float number, 'i' int number,
                               //else the operation; k: 0 float, 1 int, 2 comparison; s: 1 for a number

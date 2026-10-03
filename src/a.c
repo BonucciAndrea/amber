@@ -120,7 +120,7 @@ A ajc(A x){
  P(_t(x)-tA||_n(x)-4,et(x))
  A*e=(A*)_V(x);P(!tjs(e[0],e[1]),et(x))P(_N(e[2])-_N(e[1])||_N(e[3])-_N(e[1]),el(x))   //a slice per trade row
  A q0=tjn(e[0]),t0=tjn(e[1]);B f=_t(q0)==tF||_t(t0)==tF;
- B c_=_t(q0)==tC;A QT=N(tkey(ucb(q0),f)),TT=N(tkey(c_?ucb(t0):t0,f)),GB=N(tkey(_R(e[2]),0)),GE=N(tkey(_R(e[3]),0));   //float times as floats (tkey), char times as unsigned bytes (ucb)
+ B c_=_t(q0)==tC;A QT=N(tkey(ucb(q0),f),mr(t0);x(0)),TT=N(tkey(c_?ucb(t0):t0,f),mr(QT);x(0)),GB=N(tkey(_R(e[2]),0),mr(QT);mr(TT);x(0)),GE=N(tkey(_R(e[3]),0),mr(QT);mr(TT);mr(GB);x(0));   //float times as floats (tkey), char times as unsigned bytes (ucb)
  CO L*RES qt=_V(QT),*RES tt=_V(TT),*RES gb=_V(GB),*RES ge=_V(GE);
  U nt=_n(TT),nq=_n(QT);
  // On a 32-bit target (wasm32) size_t is 32 bits, so nt*sizeof(L) can wrap.

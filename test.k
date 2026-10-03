@@ -519,6 +519,11 @@ GT:+`g`t`v!((G0;G0+1;G0+0);10 10 11;1 2 3);GQ:+`g`t`q!((G0;G0+1;G0+0;G0+1);9 9 1
 t[`ajGroupStamps;   (+aj[`g`t;GT;GQ])`q;  7 8 7]   / grouped by a timestamp column: equal timestamps are one group
 t[`wjGroupStamps;   ((+wj[(10 10 10;11 11 11);`g`t;GT;GQ;,(`c;count;`q)])`c;(+wj[(10 10 10;11 11 11);`g`t;GT;GQ;,(`s;sum;`q)])`s);  (1 1 1;7 8 7)]
 t[`ajTimes;        (+aj[`t;+`t`v!((10:00:00.000;11:00:00.000);1 2);+`t`q!((09:00:00.000;10:30:00.000);6 5)])`q;  6 5]
+/ ej: null keys, int keys of mixed widths, an empty x; xasc of mixed temporals beside a bool column
+t[`ejNullKeys;ej[`s;+`s`n!(``a`;1 2 3);+`s`v!(`a``;10 20 30)];+`s`n`v!(```a``;1 1 2 3 3;20 30 10 20 30)]
+t[`ejMixedWidths;ej[`k;+`k`n!(1 2 300;1 2 3);+`k`v!(`i$300 1 7;10 20 30)];+`k`n`v!(1 300;1 3;20 10)]
+t[`ejEmptyX;{(!+x;@'(+x)`s`n`v)}ej[`s;+`s`n!(0#`;0#0);+`s`v!(`a`b;1 2)];(`s`n`v;`S`I`I)]
+t[`xascTemporalBool;(+`t`b xasc +`t`b`v!((2026.07.30;1;0.5;2026.07.29;2026.07.30D10:00:00.000;0N);101010b;!6))`v;3 0 2 4 5 1]
 t[`ajsortedStamps; (ajsorted[`ts;AJQ];ajsorted[`ts;+`ts`q!(|AJQ`ts;6 5)]);  1 0]   / sorted temporal quotes are not sorted again
 / a range (!n, a+!n) rises, so ajsorted takes it as sorted and the joins no longer sort the quotes first; the
 / wj kernel then reads a range value column as its items, not as its two ends (q has no ranges: the answers

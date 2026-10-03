@@ -15,9 +15,10 @@ and documentation -- is (c) 2026 the Amber authors, under the GNU AGPLv3.
 
 src/csv.c's csv_el and its table of 128-bit powers of five (csv_p5) follow
 compute_float and the table generator of the fast_float library
-(https://github.com/fastfloat/fast_float), which is available under the Apache
-License 2.0, the MIT License or the Boost Software License 1.0; they are used here
-under the MIT License:
+(https://github.com/fastfloat/fast_float), and csv_8 and csv_span follow its
+eight-digit parse and its w / w+1 check. fast_float is available under the Apache
+License 2.0, the MIT License or the Boost Software License 1.0; these parts are
+used here under the MIT License:
 
   Copyright (c) 2021 The fast_float authors
 

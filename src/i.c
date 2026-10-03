@@ -282,7 +282,8 @@ A wjc(A x){
  // normalise all integer inputs to 64-bit long (columns/times/bounds may be squeezed to G/H/I widths)
  // times (quotes and window bounds) as keys: float times compare as floats (a.c tkey)
  A q0=tjn(e[0]),w0=tjn(e[3]),w1=tjn(e[4]);B f=_t(q0)==tF||_t(w0)==tF||_t(w1)==tF;
- B c_=_t(q0)==tC;A QT=N(tkey(ucb(q0),f)),CD=N(tkey(_R(e[2]),0)),W0A=N(tkey(c_?ucb(w0):w0,f)),W1A=N(tkey(c_?ucb(w1):w1,f)),GBA=N(tkey(_R(e[5]),0)),GEA=N(tkey(_R(e[6]),0));   //float times as floats, char times as unsigned bytes
+ B c_=_t(q0)==tC;A QT=N(tkey(ucb(q0),f),mr(w0);mr(w1);x(0)),CD=N(tkey(_R(e[2]),0),mr(QT);mr(w0);mr(w1);x(0)),W0A=N(tkey(c_?ucb(w0):w0,f),mr(QT);mr(CD);mr(w1);x(0)),
+   W1A=N(tkey(c_?ucb(w1):w1,f),mr(QT);mr(CD);mr(W0A);x(0)),GBA=N(tkey(_R(e[5]),0),mr(QT);mr(CD);mr(W0A);mr(W1A);x(0)),GEA=N(tkey(_R(e[6]),0),mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);x(0));   //on a failed key, what was taken goes back   //float times as floats, char times as unsigned bytes
  // Raw contiguous primitive column pointers, extracted ONCE before any loop.
  CO L*RES T=_V(QT),*RES W0=_V(W0A),*RES W1=_V(W1A),*RES GB=_V(GBA),*RES GE=_V(GEA),*RES cod=_V(CD);
  U nt=_n(W0A),na=_n(e[1]),nq=_n(QT);

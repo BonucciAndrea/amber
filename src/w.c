@@ -158,6 +158,8 @@ A1(ejxC,P(_t(x)-tA||_n(x)-2,et(x))A a=_A(x)[0],b=_A(x)[1];
  L lo=0,hi=-1;W rg=0;
  I(!fl,lo=hi=RD(wa,pa,0);F(m,L v=RD(wa,pa,i);I(v<lo,lo=v)I(v>hi,hi=v))rg=(W)hi-(W)lo+1)
  B lut=rg&&(rg<=LUTDOM||rg<=4*(W)m);W cap=16;U lg=4;I(lut,cap=rg)E(W(cap<2*(W)m,cap<<=1;lg++))
+ // a 32-bit target (wasm32): sizes past size_t go back to the K path, as ajc does
+ P(cap>(W)((N)-1)/SZ(L)||(W)m+4>(W)((N)-1)/SZ(I)||(W)n>(W)((N)-1)/SZ(I),mr(a);mr(b);x(emp(tA)))
  U sh=64-lg;W msk=cap-1;
  I*hd=amal((N)cap*SZ(I)),*gy=0,*cn=0,*st=0,*ys=0;L*hk=lut?0:amal((N)cap*SZ(L));U ng=0;
  P(!hd||!lut&&!hk,EJF x(emp(tA)))

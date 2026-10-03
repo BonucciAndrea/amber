@@ -790,8 +790,27 @@ t[`rowAssignDictsTable;{x[0;`b]:9;x}{x[`a;2]:`x`y!7 8;x}[+`a`b!((`x`y!1 2;`x`y!3
 t[`rowAssignOneDict;({x[0;`a]:`x`y!1 2;x}[+`a`b!(,1;,2)];@'. +{x[`a;0]:`x`y!1 2;x}[+`a`b!(,1;,2)]);(+`a`b!(+`x`y!(,1;,2);,2);`A`I)]
 te[`rowAssignIndex;".[raT;(3;`a);:;9]"]
 te[`rowAssignTypeErr;".[raT;(1;`a);+;`x]"]
+/ ---- a nested assignment at many keys finds them all at once ----
+/ d[k;i]:y found each key on its own, by a linear search, so this was quadratic. The keys still go in
+/ order and the values squeeze as they did, after each atom and not at the end.
+nkD:`a`b`c!(1 2 3;4 5 6;7 8 9)
+t[`nestKeys;{x[`c`a;1]:0;x}nkD;`a`b`c!(1 0 3;4 5 6;7 0 9)]
+t[`nestKeysList;.[nkD;(`c`a;1);:;10 20];`a`b`c!(1 20 3;4 5 6;7 10 9)]
+t[`nestKeysRepeat;.[nkD;(`a`a`b;0);+;1];`a`b`c!(3 2 3;5 5 6;7 8 9)]
+t[`nestKeysNew;{x[`c`d;0]:5;x}nkD;`a`b`c`d!(1 2 3;4 5 6;5 8 9;5 0N 0N)]
+t[`nestKeysDeep;.[`a`b!(2 2#!4;2 2#4+!4);(`b`a;1;0);:;9];`a`b!((0 1;9 3);(4 5;9 7))]
+t[`nestKeysNoSqueeze;@.{x[`a`b;`y]:9;x}`a`b!(`x`y!1 2;(,`x)!,3);`A]
+t[`nestKeysInt;.[1 2 3!(1 2;3 4;5 6);(3 1;0);:;7 8];1 2 3!(8 2;3 4;7 6)]
+t[`nestKeysChar;.["ab"!(1 2;3 4);("ba";1);,;5];"ab"!((1;2 5);(3;4 5))]
+t[`nestKeysDup;.[`a`a`b!(1 2;3 4;5 6);(`a`b;0);:;9];`a`a`b!(9 2;3 4;9 6)]
+t[`nestKeysTable;.[+`a`b!(1 2;3 4);(`b`a;1);:;9];+`a`b!(1 9;3 9)]
+t[`nestKeysShared;{u:x;x[`a`b;0]:9;(x;u)}nkD;(`a`b`c!(9 2 3;9 5 6;7 8 9);nkD)]
+t[`nestKeysDictVal;.[nkD;(`a`b;1);:;`a`b!8 9];`a`b`c!(1 8 3;4 9 6;7 8 9)]
+t[`nestKeysMany;{r:.[x!(#x)#,1 2 3;(x;1);+;!#x];(r`k0;r`k1999;#r)}`$"k",'$!2000;(1 2 3;1 2001 3;2000)]
+te[`nestKeysAtoms;".[`a`b!1 2;(`a`b;0);:;9]"]
+te[`nestKeysLength;".[nkD;(`a`b;0);:;5 6 7]"]
 
-hexpect[487]
+hexpect[502]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

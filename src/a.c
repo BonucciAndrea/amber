@@ -894,20 +894,21 @@ Z A set(A x,L i,A y/*1i1*/)_(Q(MINE(x));
 #define AC(d,s,c) {I c_=(I)(c);I(c_>0,MC(d,s,8u*(U)c_))}
 //amend a dict at a list of keys whose places z come from one find, not a find per key, which made it quadratic.
 //With every key present that is one amend of the values. Otherwise the keys go in order, as the fold over them did:
-//a key not yet in the dict is added at its first use, with the value ie gives from the values at that point
+//a key not yet in the dict is added at its first use, with the value ie gives from the values at that point.
+//Deeper (n==5, .[d;(k;i);f;y]) the keys always go in order, squeezing as the fold did: after each atom, not at the end
 Z A dam(A x,A y,A z,CO A*a,U n/*10100*/)_(x=mut(x);U m=0;F(zn,m+=zL[i]==NL)
- P(!m,Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);xy=au;xy=Nx(z(a8(b,n)));x)
+ P(!m&&n<5,Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);xy=au;xy=Nx(z(a8(b,n)));x)
  A w=aL(m);m=0;F(zn,I(zL[i]==NL,_L(w)[m++]=i))A k=i1(y,_R(w)),p=k?fnd(k,_R(k)):0;I(k,mr(k))I(p,p=cL(p))P(!p,mr(w);z(x(0)))
- L c=_N(xx);z=mut(z);F(m,L q=_L(p)[i];_L(p)[i]=q==i?c++:_L(p)[q];zL[_L(w)[i]]=_L(p)[i])mr(p);mr(w);B t=n==4&&!_tt(a[3]);nsq++;
- F(zn,L j=zL[i];I(j==_N(xx),PSH(xx,ii(y,i));PSH(xy,ie(a[2],xy)))Ab8;*b=xy;b[1]=az(j);b[2]=a[2];I(n==4,b[3]=t?ii(a[3],i):a[3])
-  xy=au;A v=a8(b,n);mr(b[1]);I(t,mr(b[3]))P(!v,nsq--;z(x(0)))xy=v)
- nsq--;xy=sqz(xy);z(x))
+ L c=_N(xx);z=mut(z);F(m,L q=_L(p)[i];_L(p)[i]=q==i?c++:_L(p)[q];zL[_L(w)[i]]=_L(p)[i])mr(p);mr(w);B t=n>3&&!_tt(a[n-1]),s=n<5;nsq+=s;
+ F(zn,L j=zL[i];I(j==_N(xx),PSH(xx,ii(y,i));PSH(xy,ie(a[2],xy)))Ab8;*b=xy;b[1]=az(j);AC(b+2,a+2,n-2);I(t,b[n-1]=ii(a[n-1],i))
+  xy=au;A v=a8(b,n);mr(b[1]);I(t,mr(b[n-1]))P(!v,nsq-=s;z(x(0)))xy=v)
+ nsq-=s;I(s,xy=sqz(xy))z(x))
 AA(a8,/*10..0*/A x=*a,y=a[1];
  X(RE(Ab8;*b=gZ(x);AC(b+1,a+1,n-1);a8(b,n))
    RT_E(P(y==au,mRn(n-2,a+2);Ab8;*b=a[2];b[1]=x;AC(b+2,a+3,n-3);USQ(e8(AP1,b,n-1)))
     Yzc(L i=gl_(y);P(i>=(W)xn,ei(x))x=mut(x);Ab8;*b=ii(x,i);AC(b+1,a+3,n-3);mRn(n-3,b+1);A z=a[2];set(x,i,Nx(USQ(z8(b,n-2)))))
     I(ytZC&&n==4,A z=a[2],u=a[3];P(xtZ&&ztv&&utzZ&&(0xcf&1<<zv),ara(x,y,z,u))P(xtC&&z==av&&utcC,cC(N(ara(x,y,z,u)))))Yt(et(x))mRn(n-1,a+1);nsq++;A r_=f8(AP1,a,n);nsq--;r_?sqz(r_):0)
-   Rm(A z=Nx(fnd(xx,yR));ZT(P(LH(tG,zt,tL)&&(n==3||n==4&&(_tt(a[3])||_tT(a[3])&&_N(a[3])==zn)),dam(x,y,cL(z),a,n))z(0);mRn(n-1,a+1);f8(AP1,a,n))x=mut(x);I(ztl,z=mut(z);F(zN,I(zl==NL,zl=xN;PSH(xx,ztt?yR:ii(y,i));PSH(xy,ie(a[2],xy)))))
+   Rm(A z=Nx(fnd(xx,yR));ZT(P(LH(tG,zt,tL)&&(n==3||n==4&&(_tt(a[3])||_tT(a[3])&&_N(a[3])==zn)||n==5&&_tt(a[3])&&(_tt(a[4])||_tT(a[4])&&_N(a[4])==zn)),dam(x,y,cL(z),a,n))z(0);mRn(n-1,a+1);f8(AP1,a,n))x=mut(x);I(ztl,z=mut(z);F(zN,I(zl==NL,zl=xN;PSH(xx,ztt?yR:ii(y,i));PSH(xy,ie(a[2],xy)))))
     Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);xy=au;xy=Nx(z(a8(b,n)));x)
    RM(Ab8;AC(b,a,n);YsS(*b=flp(x);flp(N(a8(b,n))))*b=blw(x);sqz(N(a8(b,n))))
    RU(mRn(n-1,a+1);x(USQ(x8(a+1,n-1))))

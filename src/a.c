@@ -912,17 +912,39 @@ AA(a8,/*10..0*/A x=*a,y=a[1];
    RM(Ab8;AC(b,a,n);YsS(*b=flp(x);flp(N(a8(b,n))))*b=blw(x);sqz(N(a8(b,n))))
    RU(mRn(n-1,a+1);x(USQ(x8(a+1,n-1))))
    R_(et(x)))0)
+//ixst (with ixwk, b.c): assign r in x at the places in y that ixwk found (kd: list, key, column, row), as a8 does with :
+//but without going down again (from a table's row on, d4 does it); an amend whose verb goes first, on the item ixwk read,
+//so that a verb that fails touches nothing. A dict's values that are a table (dicts of the same keys) are amended as a8 does
+//them, as a list of the dicts, squeezed back after
+U ixwk(A,A,UC*,L*,A*);
+Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A r);
+A ixst(A x,A y,CO UC*kd,CO L*ix,U k,U m,A r/*10....1*/)_(UC t=kd[k];P(!t,ixsl(x,y,kd,ix,k,m,r))P(t==3,A w=k?drp(k,yR):yR;x=d4(x,w,av,r);mr(w);mr(r);x)
+ I(t==2,x=flp(x))x=mut(x);A v=_y(x);_y(x)=au;v=ixsl(v,y,kd,ix,k,m,r);P(!v,x(0))_y(x)=v;t==2?flp(x):x)   //a column: in the table flipped to a dict
+Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A r)_(U i=(U)ix[k];I(_t(x)==tE,x=gZ(x))P(_t(x)==tM,x=ixsl(blw(x),y,kd,ix,k,m,r);x?sqz(x):0)x=mut(x);P(k+1==m,set(x,i,r))A w;I(_t(x)==tA,w=_A(x)[i];_A(x)[i]=au)E(w=ii(x,i))   //a list's item: taken out, so it is amended in place
+ w=ixst(w,y,kd,ix,k+1,m,r);P(!w,x(0))set(x,i,w))
 Z A3(a3,/*100*/a8(A8(x,y,z),3))
 A4(a4,/*1000*/a8(A8(x,y,z,u),4))
 Z A a5(A x,A y,A z,A u,A v/*10000*/)_(a8(A8(x,y,z,u,v),5))
-Z A3(d3,/*100*/U m=yN;P(y==au||!m,z1(x))P(m==1,y=fir(yR);y(a3(x,y,z)))A u=prj(DOT,(A[]){GAP,drp(1,yR)},2);y=fir(yR);y(u(a4(x,y,u,z))))
-A4(d4,/*1000*/U m=yN;P(y==au||!m,x(z2(x,uR)))P(m==1,y=fir(yR);y(a4(x,y,z,u)))A v=prj(DOT,(A[]){GAP,drp(1,yR)},2);y=fir(yR);A r=y(a5(x,y,v,z,u));mr(v);r)
+Z A dt3(A,A,A),dt4(A,A,A,A),ds3(A,A,A),ds4(A,A,A,A);   //each item of a nested amend: as . (dt3, dt4); in a symbol list, data (ds3, ds4)
+Z A d3s(A x,A y,A z,B s/*100.*/)_(U m=yN;P(y==au||!m,z1(x))P(m==1,y=fir(yR);y(a3(x,y,z)))A u=prj(ax(s?ds3:dt3,3),(A[]){GAP,drp(1,yR)},2);y=fir(yR);y(u(a4(x,y,u,z))))
+Z A d4s(A x,A y,A z,A u,B s/*1000.*/)_(U m=yN;P(y==au||!m,x(z2(x,uR)))P(m==1,y=fir(yR);y(a4(x,y,z,u)))A v=prj(ax(s?ds4:dt4,4),(A[]){GAP,drp(1,yR)},2);y=fir(yR);A r=y(a5(x,y,v,z,u));mr(v);r)
+Z A3(d3,/*100*/d3s(x,y,z,0))
+A4(d4,/*1000*/d4s(x,y,z,u,0))
 Z AA(d8_,/*10..0*/A x=*a,y=a[1],z=a[2];P(n==4,d4(x,y,z,a[3]))P(n==3,d3(x,y,z))en(x))
 AA(d8,/*10..0*/A x=*a;
-I ixck(A,A,U,A);   //b.c: is .[`v;i;f;y] sure to fail on its index or count? (then v is not touched)
- X(RsS(P(ray_rc_sync,mr(*a);err0("noupdate"))A*p=gp(x);P(!p,mr(*a);0){I e_=n==4?ixck(*p,a[1],0,a[3]):0;P(e_,mr(*a);e_==1?ei0():el0())}I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;*p=_R(N(d8_(b,n))))// amend-by-name of a global: not from a peach worker (b.c bS)
+I ixck(A,A,U,A,B);   //b.c: is .[`v;i;f;y] sure to fail on its index, count or type? (then v is not touched; nor with 5 or more arguments, 'nyi)
+ X(RsS(P(ray_rc_sync,mr(*a);err0("noupdate"))A*p=gp(x);P(!p,0){I e_=n==4?ixck(*p,a[1],0,a[3],a[2]==av):0;P(e_,e_==1?ei0():e_==2?el0():et0())P(n>4,en0())}I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;
+  UC kd[8];L ix[8];A q;U m=a[2]!=av?ixwk(*b,a[1],kd,ix,&q):0;P(!m,*p=_R(N(d8_(b,n))))   //where ixwk finds the item, f goes first: if it fails, v is put back (unless f set v itself)
+  A c[]={q,n>3?_R(a[3]):0};A r=USQ(_8(a[2],c,n-2));P(!r,I(*p&&*p!=au,mr(*b))E(I(*p,mr(*p))*p=*b);0)*p=_R(N(ixst(*b,a[1],kd,ix,0,m,r))))// amend-by-name of a global: not from a peach worker (b.c bS)
    RU(n==3?try(x,a[1],a[2]):er(x))
    R_(d8_(a,n)))0)
+//an item of a nested amend, amended at the indices below: as . does it, but a symbol list is data there, not the name
+//of a global to amend (`a`b is a.b to .), so d[`b;1]:`q with d[`b]~`x`y`z amends that list (a symbol atom still names one).
+//So are its items (ds3, ds4): a symbol atom in it is not a name, so d[`b;;0]:9 is 'type, as indexing into an atom is
+Z A3(dt3,/*111*/A a_[]={x,y,z};A r=_tP(x)||_t(x)!=tS?d8(a_,3):d3s(x,y,z,1);mr(y);mr(z);r)
+Z A4(dt4,/*1111*/A a_[]={x,y,z,u};A r=_tP(x)||_t(x)!=tS?d8(a_,4):d4s(x,y,z,u,1);mr(y);mr(z);mr(u);r)
+Z A3(ds3,/*111*/A r=d3s(x,y,z,1);mr(y);mr(z);r)
+Z A4(ds4,/*1111*/A r=d4s(x,y,z,u,1);mr(y);mr(z);mr(u);r)
 ZN A ki(A*p,S s)_(*p=evs(s,0);P(!*p,0)PSH(cns,*p))   //a name that does not evaluate (a missing formatter): its error, not die
 A k1(A*p,S s,A x)_(I(!*p,ki(p,s))P(!*p,x(0))_1(*p,x))
 A k2(A*p,S s,A x,A y)_(I(!*p,ki(p,s))P(!*p,mr(y);x(0))_2(*p,x,y))

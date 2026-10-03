@@ -199,6 +199,12 @@ static void t_push(void) {
     CK(tab != 0);
     CK(amber_is_table(tab));
     CK(amber_count(tab) == 4);
+
+    res = amber_make_dict(names, cols, 2);
+    CK(res != 0);
+    CK(amber_is_dict(res));
+    CK(amber_count(res) == 2);
+    amber_release(res);
     amber_release(cols[0]);
     amber_release(cols[1]);
 

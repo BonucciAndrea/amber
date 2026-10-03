@@ -820,6 +820,45 @@ t[`nestKeysMany;{r:.[x!(#x)#,1 2 3;(x;1);+;!#x];(r`k0;r`k1999;#r)}`$"k",'$!2000;
 te[`nestKeysAtoms;".[`a`b!1 2;(`a`b;0);:;9]"]
 te[`nestKeysLength;".[nkD;(`a`b;0);:;5 6 7]"]
 
+/ ---- a 'stack or 'rank error gives back the call depth it took ----
+tcDeep:{$[x>0;1+o x-1;0]}
+t[`stackErrorsTrapped;{.[tcDeep;,x;{-1}]}'1000#3000;1000#-1]
+tv[`stackDepthAfterErrors;"tcDeep 1500";1500]
+tcRank:{x+y}
+t[`rankErrorsTrapped;{.[tcRank;1 2 3;{-1}]}'!1000;1000#-1]
+tv[`stackDepthAfterRankErrors;"tcDeep 1500";1500]
+
+/ ---- & and | of float atoms next to minus the smallest normal double ----
+t[`minMaxNegMinNormal;{(x&x;x|x;0.0&x;1.0&x;-1.0|x;-0.0&x;0n|x)}@-2.2250738585072014e-308;7#-2.2250738585072014e-308]
+t[`minMaxNegMinNormalPair;{(x&y;x|y;y&x;y|x)}[-2.225073858507201e-308;-2.225073858507202e-308];-2.225073858507202e-308 -2.225073858507201e-308 -2.225073858507202e-308 -2.225073858507201e-308]
+
+/ ---- an empty index takes the prototype from the list's first item ----
+/ (an empty index made by n_n#1 has a stale 1 past its end)
+t[`emptyIdxStale;{x:(1 2;"ab");?{[x;n]`k x@n_n#1}[x]'1+!20}[];,"0#,0N 0N"]
+t[`emptyIdxStaleDict;{x:(`c`d!3 4;`x);?{[x;n](x@n_n#1)~0#x}[x]'1+!20}[];,1]
+/ the stale slot made ~ of two such results depend on what ran before
+t[`emptyIdxMatch;{d:`a`a0!(,0#,,();0#,,());ks:`a`a0;ks_d;{[d;w]((!d)@w)!(.d)@w}[d;&^ks?!d];(ks_d)~{[d;w]((!d)@w)!(.d)@w}[d;&^ks?!d]}[];1]
+t[`emptyIdxEmptyList;(`k@()@!0;`k@(0#,,())@!0);("()";"0#,,()")]
+
+/ ---- an elided amend, or a lambda's each, with a keyed table is 'nyi, not a crash ----
+ktA:(+(,`k)!,1 2)!+(,`v)!,3 4
+te[`amendKeyedEmptyTable;"@[0#+`a`b!(1 2;3 4);::;:;ktA]"]
+te[`amendKeyedTable;"@[+`a`b!(1 2;3 4);::;:;ktA]"]
+te[`amendKeyedInts;"@[!0;::;:;ktA]"]
+te[`amendKeyedList;"@[();::;:;ktA]"]
+te[`amendKeyedPlus;"@[1 2;::;+;ktA]"]
+te[`eachKeyedThree;"{x+y+z}'[ktA;ktA;ktA]"]
+t[`amendDictElided;(@[1 2;::;:;`a`b!1 2];@[1 2;::;+;`a`b!3 4]);(`a`b!1 2;`a`b!4 6)]
+
+/ ---- each over dicts whose keys cannot be joined is 'domain ----
+/ The values line up on the union of the keys; keys of another type are an
+/ error, which leaked the union built so far (the loop takes that path many
+/ times; the leak itself shows only in the process's memory use).
+t[`eachDictsUnion;({x,y}'[`a`b!1 2;`b`c!3 4];{x,y,z}'[`a!1;`b!2;`a`c!3 4]);(`a`b`c!(1 0N;2 3;0N 4);`a`b`c!(1 0N 3;0N 2 0N;0N 0N 4))]
+t[`eachDictList;{x,y}'[`a`b!1 2;3 4];`a`b!(1 3;2 4)]
+t[`eachDictsKeyTypes;(.[{x,y}';(`a`b!1 2;1 2!3 4);{x}];.[{x,y,z}';(`a`b!1 2;`c`d!1 2;1 2!3 4);{x}]);2#,"'domain\n"]
+t[`eachDictsKeyTypesLoop;+/{.[{x,y,z}';(`a`b!1 2;`c`d!1 2;(x+1 2)!3 4);{1}]}'!10000;10000]
+
 hexpect[502]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

@@ -609,7 +609,8 @@ amber_value amber_make_table(const char *const *names,
     /* `+names!cols` -- flip a dictionary into a table.  Expressed in K rather
      * than assembled by hand so it stays correct if the internal table
      * representation ever changes; K2 compiles the lambda once and caches it. */
-    res = K2("{+x!y}", nm, cv);          /* consumes nm and cv */
+    res = K2("{+x!y}", nm, cv);          /* borrows nm, consumes cv */
+    mr(nm);
     if (!res) capi_err_grab();
     return (amber_value)res;
 }
@@ -631,7 +632,8 @@ amber_value amber_make_dict(const char *const *keys,
     if (!kv_ || !vv) { capi_err_set("'limit: allocation failed"); return 0; }
     slot = (A *)_V(vv);
     for (i = 0; i < n; i++) slot[i] = _R((A)vals[i]);
-    res = K2("{x!y}", kv_, vv);          /* consumes both */
+    res = K2("{x!y}", kv_, vv);          /* borrows kv_, consumes vv */
+    mr(kv_);
     if (!res) capi_err_grab();
     return (amber_value)res;
 }

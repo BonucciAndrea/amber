@@ -771,7 +771,27 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- assigning a table's cell by row amends just that column ----
+/ t[i;c]:y made a list of every row and a table of it again, so it took time in proportion to the rows.
+/ That rebuild drops each column's attribute and makes a list of dicts with the same keys a table.
+raT:+`a`b`c!(1 2 3;4.5 5 6;`x`y`z)
+t[`rowAssign;{x[1;`a]:9;x}raT;+`a`b`c!(1 9 3;4.5 5 6;`x`y`z)]
+t[`rowAssignType;{x[1;`a]:9.5;x}raT;+`a`b`c!((1;9.5;3);4.5 5 6;`x`y`z)]
+t[`rowAssignList;{x[0;`c]:1 2;x}raT;+`a`b`c!(1 2 3;4.5 5 6;(1 2;`y;`z))]
+t[`rowAssignPlus;({x[2;`b]+:1;x}raT;{x[1;`a]-:1;x}raT);(+`a`b`c!(1 2 3;4.5 5 7;`x`y`z);+`a`b`c!(1 1 3;4.5 5 6;`x`y`z))]
+t[`rowAssignFunc;.[raT;(1;`c);{`q}];+`a`b`c!(1 2 3;4.5 5 6;`x`q`z)]
+t[`rowAssignShared;{u:x;x[1;`a]:9;(x;u)}raT;(+`a`b`c!(1 9 3;4.5 5 6;`x`y`z);raT)]
+t[`rowAssignDeep;.[+`a`b!(1 2;(3 4;5 6));(1;`b;0);:;9];+`a`b!(1 2;(3 4;9 6))]
+t[`rowAssignSymJoin;{x[1;`b],:0;x}[+`a`b!(1 2;`x`y)];+`a`b!(1 2;(`x;(`y;0)))]
+t[`rowAssignDupName;{x[0;`a]:9;x}[+`a`a!(1 2;3 4)];+`a`a!(9 2;3 4)]
+t[`rowAssignNewCol;{x[1;`d]:9;x}raT;(`a`b`c!(1;4.5;`x);`a`b`c`d!(2;5.0;`y;9);`a`b`c!(3;6.0;`z))]
+t[`rowAssignAttrs;(`at'. +{x[1;`a]:9;x}[+`a`b!(`sa 1 2 3;`ua 4 5 6)];`at'. +{x[`a;1]:9;x}[+`a`b!(`sa 1 2 3;`ua 4 5 6)]);(``;``u)]
+t[`rowAssignDictsTable;{x[0;`b]:9;x}{x[`a;2]:`x`y!7 8;x}[+`a`b!((`x`y!1 2;`x`y!3 4;`z!,5);1 2 3)];+`a`b!(+`x`y!(1 3 7;2 4 8);9 2 3)]
+t[`rowAssignOneDict;({x[0;`a]:`x`y!1 2;x}[+`a`b!(,1;,2)];@'. +{x[`a;0]:`x`y!1 2;x}[+`a`b!(,1;,2)]);(+`a`b!(+`x`y!(,1;,2);,2);`A`I)]
+te[`rowAssignIndex;".[raT;(3;`a);:;9]"]
+te[`rowAssignTypeErr;".[raT;(1;`a);+;`x]"]
+
+hexpect[487]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

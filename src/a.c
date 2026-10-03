@@ -915,8 +915,17 @@ AA(a8,/*10..0*/A x=*a,y=a[1];
 Z A3(a3,/*100*/a8(A8(x,y,z),3))
 A4(a4,/*1000*/a8(A8(x,y,z,u),4))
 Z A a5(A x,A y,A z,A u,A v/*10000*/)_(a8(A8(x,y,z,u,v),5))
-Z A3(d3,/*100*/U m=yN;P(y==au||!m,z1(x))P(m==1,y=fir(yR);y(a3(x,y,z)))A u=prj(DOT,(A[]){GAP,drp(1,yR)},2);y=fir(yR);y(u(a4(x,y,u,z))))
-A4(d4,/*1000*/U m=yN;P(y==au||!m,x(z2(x,uR)))P(m==1,y=fir(yR);y(a4(x,y,z,u)))A v=prj(DOT,(A[]){GAP,drp(1,yR)},2);y=fir(yR);A r=y(a5(x,y,v,z,u));mr(v);r)
+//.[t;(i;c),p] of a table, at a row and one of its columns, amends that column at (i),p, by d3/d4 (. takes a symbol
+//column for a name). It made a list of every row and a table of it again, which keeps each column's values but drops
+//its attribute (so only without one; one inside a column that is a table is kept, as by t[c;i]:y) and builds each
+//generic column again item by item, as psh does: rbl
+Z U tci(A x,A y/*00*/)_(P(!xtM||!ytA||yn<2||!_tz(*yA)||!_ts(yA[1])||!_tS(xx),0)F(_n(xy),A c=_A(xy)[i];P(_at(c)||!_tT(c)&&!_tM(c),0))
+ U j=fI(_I(xx),_n(xx),_v(yA[1]));j<_n(xx)?j+1:0)
+Z A1(rbl,A y=enl(_R(*xA));F(xn-1,PSH(y,_R(xA[i+1])))x(y))
+Z A d3(A,A,A);Z A tca(A x,A y,A z,A u,U n,U j/*10000.*/)_(A w=aA(yn-1);*_A(w)=_R(*yA);F(yn-2,_A(w)[i+1]=_R(yA[i+2]))
+ x=mut(x);xy=mut(xy);A c=_A(xy)[j];_A(xy)[j]=au;c=n==4?d4(c,w,z,u):d3(c,w,z);mr(w);P(!c,x(0))_A(xy)[j]=c;F(_n(xy),A*p=_A(xy)+i;I(_tA(*p),*p=rbl(*p)))x)
+Z A3(d3,/*100*/U m=yN;P(y==au||!m,z1(x))P(m==1,y=fir(yR);y(a3(x,y,z)))U j=tci(x,y);P(j,tca(x,y,z,0,3,j-1))A u=prj(DOT,(A[]){GAP,drp(1,yR)},2);y=fir(yR);y(u(a4(x,y,u,z))))
+A4(d4,/*1000*/U m=yN;P(y==au||!m,x(z2(x,uR)))P(m==1,y=fir(yR);y(a4(x,y,z,u)))U j=tci(x,y);P(j,tca(x,y,z,u,4,j-1))A v=prj(DOT,(A[]){GAP,drp(1,yR)},2);y=fir(yR);A r=y(a5(x,y,v,z,u));mr(v);r)
 Z AA(d8_,/*10..0*/A x=*a,y=a[1],z=a[2];P(n==4,d4(x,y,z,a[3]))P(n==3,d3(x,y,z))en(x))
 AA(d8,/*10..0*/A x=*a;
 I ixck(A,A,U,A);   //b.c: is .[`v;i;f;y] sure to fail on its index or count? (then v is not touched)

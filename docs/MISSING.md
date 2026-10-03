@@ -245,6 +245,12 @@ behaviour shows up as a test failure rather than a silent regression.
   (which would change what an interactive line prints), 1.9 adds the `` `diag`` runtime switch:
   `` `diag 0`` suppresses the report and returns the previous setting, `` `diag 1`` restores it.
   `tests/harness.k` uses it. Code that catches errors in bulk should do the same.
+- **Folds and scans of chars under `% < > =` read the chars as numbers from the start, unlike
+  ngn/k.** `%/,"a"` and `</,"a"` are 97, `<\"ab"` is `97 1` and `"a"</!0` is 97, where ngn/k
+  keeps the char in the items the verb never sees (the one item of a fold of one, a scan's first
+  item, a char seed over no items): `"a"`, `("a";1)`, `"a"`. Kept so that `%/` and `+/` agree
+  (`+/,"a"` is 97 in both); see #17 and #64. Unseeded folds and scans of no chars differ too:
+  `</""` is `0N` and `<\""` is `!0`, where ngn/k gives `" "` and `""`.
 - **No long-typed infinity literal.** `0w`/`-0w` exist for floats; `0W`/`-0W` do not parse, so
   the identity elements of `&/`/`|/` over an empty long vector can only be obtained from the
   primitives themselves.

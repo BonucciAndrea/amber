@@ -771,7 +771,15 @@ t[`revShared;{v:x;(|v;x)}"abcdefghij";("jihgfedcba";"abcdefghij")]
 t[`seedShift;(0 :':5 6 7;300 :':1 2 3;"x" :':"abc");(0 5 6;300 1 2;"xab")]
 t[`modPow2Shared;{(4294967296!x;256!x;x)}5000000000 -7;(705032704 4294967289;0 249;5000000000 -7)]
 
-hexpect[472]
+/ ---- a 'stack or 'rank error gives back the call depth it took ----
+tcDeep:{$[x>0;1+o x-1;0]}
+t[`stackErrorsTrapped;{.[tcDeep;,x;{-1}]}'1000#3000;1000#-1]
+tv[`stackDepthAfterErrors;"tcDeep 1500";1500]
+tcRank:{x+y}
+t[`rankErrorsTrapped;{.[tcRank;1 2 3;{-1}]}'!1000;1000#-1]
+tv[`stackDepthAfterRankErrors;"tcDeep 1500";1500]
+
+hexpect[476]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

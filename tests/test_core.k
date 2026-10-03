@@ -910,6 +910,20 @@ t[`amendVerbRowBelowWorks;(IA["F25:+`a`b!(1 2 3;(1 2;3 4;5 6))";"F25[1;`b;0]+:10
 t[`amendVerbResultFits;(IA["F32:+`a`b!(1 2 3;4 5 6)";"F32[`a],:5"];IA["F33:+`a`b!(1 2 3;4 5 6)";"F33[`a]#:2"];IA["F34:+`a`b!(1 2 3;4 5 6)";"F34[`a]@:0 1"];IA["F35:+`a`b!(1 2 3;4 5 6)";".[`F35;,`a;,;5]"];IA["F36:`x`y!(+`a`b!(1 2 3;4 5 6);0)";"F36[`x;`a],:5"];IA["F37:+(,`a)!,1 2 3";"F37[`a],:5"]);((`err;+`a`b!(1 2 3;4 5 6));(`err;+`a`b!(1 2 3;4 5 6));(`err;+`a`b!(1 2 3;4 5 6));(`err;+`a`b!(1 2 3;4 5 6));(`err;`x`y!(+`a`b!(1 2 3;4 5 6);0));(::;+(,`a)!,1 2 3 5))]   / a verb whose result does not fit a table's column ('length): the variable is kept; one column can change its count
 t[`amendVerbFailsKeepThroughSymbol;{GK::1 2 3;F28::`a`b!(1;`GK);r:.[.:;,"F28[`b;0]+:`x";{`err}];GL::1 2 3;F29::`a`b!(1;`GL);s:.[.:;,"F29[`b;0]+:10";{`err}];GM::+`a`b!(1 2 3;4 5 6);F38::(1;`GM);u:.[.:;,"F38[1;`a],:5";{`err}];(r;GK;s;GL;F29;u;GM)}[];(`err;1 2 3;::;11 2 3;`a`b!(1;11 2 3);`err;+`a`b!(1 2 3;4 5 6))]   / a symbol on the way names a global, amended by name: that global is kept (the variable is still lost)
 
+/ ---- an assignment into a symbol list below a column, key or index amends the list ----
+/ (a symbol list there was taken as the name of a global to amend, as . takes one: 'type, and the variable was lost)
+t[`amendSymbolColumn;(IA["S1:+`a`b!(1 2 3;`x`y`z)";"S1[`b;1]:`q"];IA["S2:+`a`b!(1 2 3;`x`y`z)";"S2[`b;1 2]:`q`r"];IA["S3:+`a`b!(1 2 3;`x`y`z)";"S3[`b;1]:7"];IA["S20:+`a`b!(1 2 3;`x`y`z)";"S20[`b;1],:`w"]);((::;+`a`b!(1 2 3;`x`q`z));(::;+`a`b!(1 2 3;`x`q`r));(::;+`a`b!(1 2 3;(`x;7;`z)));(::;+`a`b!(1 2 3;(`x;`y`w;`z))))]
+t[`amendSymbolListInDict;(IA["S4:`a`b!(1 2;`x`y`z)";"S4[`b;1]:`q"];IA["S5:`a`b!(1 2;`x`y`z)";"S5[`b;0 1],:`s"];IA["S6:`a`b!(`x`y;`z`w)";"S6[`a`b;1]:`q"];IA["S21:`x`y!(`a`b;`c`d)";"S21[`z;0]:`q"]);((::;`a`b!(1 2;`x`q`z));(::;`a`b!(1 2;(`x`s;`y`s;`z)));(::;`a`b!(`x`q;`z`q));(::;`x`y`z!(`a`b;`c`d;`q`)))]   / and a key to add, whose value is the first value nulled
+t[`amendSymbolListInList;(IA["S7:(`a`b;`c`d)";"S7[1;0]:`q"];IA["S8:(`a`b;`c`d)";"S8[;1]:`q"];IA["S9:((`a`b;`c);`d)";"S9[0;0;1]:`q"]);((::;(`a`b;`q`d));(::;(`a`q;`c`q));(::;((`a`q;`c);`d)))]
+t[`amendSymbolListLocal;{d:`a`b!(1 2;`x`y`z);d[`b;1]:`q;e:d;e[`b;0 2]:`r`s;f:d;f[`b;]:`t;(d;e;f)}[];(`a`b!(1 2;`x`q`z);`a`b!(1 2;`r`q`s);`a`b!(1 2;`t`t`t))]
+t[`amendSymbolListDot;(.[(`x`y;`z);(0;1);:;`q];.[`a`b!(1 2;`x`y`z);(`b;1);:;`q];IA["S0:`a`b!(1 2;`x`y`z)";".[`S0;(`b;1);:;`q]"];IA["S22:`a`b!(1 2;`x`y`z)";".[`S22;(`b;2);^:]"]);((`x`q;`z);`a`b!(1 2;`x`q`z);2#,`a`b!(1 2;`x`q`z);2#,`a`b!(1 2;(`x;`y;0)))]   / the value form, and by name: the name is the global, the list below it data
+t[`amendSymbolListError;(IA["S23:(1;`x`y`z)";"S23[1;5]:`q"];IA["S24:(1;`x`y`z)";"S24[1;0 1]:`q`r`s"];{{*"\n"\.[.:;,x;{x}]}'(".[`a`b!(1 2;`x`y`z);(`b;5);:;`q]";".[`a`b!(1 2;`x`y`z);(`b;0 1);:;`q`r`s]")}[]);((`err;(1;`x`y`z));(`err;(1;`x`y`z));("'index";"'length"))]   / a bad index or count: the variable is kept; in the value form the error is the data's ('index, 'length), not 'type
+SG:1 2 3;SH:4 5 6;SX:1 2 3;SV:(`SX`y;2);N2.b:1 2 3;N3.v:1 2 3
+t[`amendSymbolListNamesNone;{r:(IA["S14:`x`y!(1;`N2`b)";"S14[`y;1]:9"];IA["S15:`x`y!(1;,`SG)";"S15[`y;0]:9"]);.[`N3`v;,1;:;9];(r;N2.b;SG;N3.v)}[];(((::;`x`y!(1;(`N2;9)));(::;`x`y!(1;,9)));1 2 3;1 2 3;1 9 3)]   / a global by the list's name is not amended (main amended it); . by name still is
+t[`amendSymbolListItems;{r:(IA["S16:`a`b!(1;`SG`SH)";"S16[`b;;0]:9"];IA["S17:`a`b!(1;`SG`SH)";"S17[`b;0 1;0]:9"];IA["S18:(1;`SG`SH)";"S18[1;;0]:9"];IA["S19:+`a`b!(1 2;`SG`SH)";"S19[`b;;0]:9"];IA["S27:`a`b!(1;`SG`SH)";"S27[`b;0;0]@:{x}"];IA["S28:`a`b!(1;`SG`SH)";"S28[`b;0;0]#:1"]);(r;SG;SH)}[];(((`err;`a`b!(1;`SG`SH));(`err;`a`b!(1;`SG`SH));(`err;(1;`SG`SH));(`err;+`a`b!(1 2;`SG`SH));(`err;`a`b!(1;`SG`SH));(`err;`a`b!(1;`SG`SH)));1 2 3;4 5 6)]   / its items are data too: an index below one is 'type, and the globals they name are not amended
+t[`amendSymbolListItemsError;{e:{r:.[{. x;`ok};,x;{x}];$[`ok~r;r;*"\n"\r]}'("S16[`b;;0]:9";"S18[1;0;0]+:9";".[`S18;(1;::;0);:;9]";".[`SV;(0 1;::;1.0);{x+1}]");(e;S16;S18;SG;SH;SX;(::)~SV)}[];(4#,"'type";`a`b!(1;`SG`SH);(1;`SG`SH);1 2 3;4 5 6;1 2 3;1b)]   / (SV, at a list of indices, is lost, as on main)
+t[`amendSymbolListBelowRow;(IA["S25:+`a`b!(1 2 3;(`x`y;`z`w;`u`v))";"S25[1;`b;0],:`q"];IA["S26:+`a`b!(1 2 3;(`x`y;`z`w;`u`v))";"S26[1;`b;0]+:1"]);((::;+`a`b!(1 2 3;(`x`y;(`z`q;`w);`u`v)));(`err;+`a`b!(1 2 3;(`x`y;`z`w;`u`v))))]   / below a table's row, with a verb: read first, as other data
+
 / ---- float literals, `F$ and JSON numbers are correctly rounded (issue #5) ----
 / fb gives a float's 64 bits, high byte first, so these check the exact double read
 fb:{8#|-8!x}
@@ -1043,7 +1057,7 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[666]
+hexpect[676]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

@@ -30,18 +30,20 @@ Z I ixkd(A x,A y,U k,A z,B asg);
 Z B ixone(A y,U k){if(!_tA(y))return 1;F(k,A q=_A(y)[i];if(q==au||!_tt(q))return 0)return 1;}   //levels 0..k-1 each a single index, so the value at level k is z itself
 NI I ixck(A x,A y,U k,A z,B asg){I r=0;if(x&&k<_N(y)&&!_tP(x)&&(_t(x)==tm||_t(x)==tM))return ixkd(x,y,k,z,asg);
  if(x&&y!=au&&k<_N(y)&&(_t(x)!=ts&&LH(ti,_t(x),ts)||LH(tdt,_t(x),tnp)))return 3;   //an index into a number, char or temporal atom (:: as the index is the whole value); a symbol atom names a global, which the assignment amends
- if(!x||k>=_N(y)||_tP(x)||!_tT(x))return 0;U n=_N(x);B one=_N(y)==1;
- if(!_tP(y)&&LH(tE,_t(y),tL)){L v=ixe(y,k);if(v<0||v>=(L)n)return 1;if(one)return 0;A w=ii(x,(U)v);r=ixck(w,y,k+1,z,asg);mr(w);return r;}   //y an int list: an int index per level
+ if(!x||k>=_N(y)||_tP(x)||!_tT(x))return 0;U n=_N(x);B one=_N(y)==1,sd=_t(x)==tS&&k&&k+1<_N(y);   //sd: a symbol list below the first level is data, and its items symbols, so a level below them is 'type
+ #define IXD(w) (sd?3:ixck(w,y,k+1,z,asg))
+ if(!_tP(y)&&LH(tE,_t(y),tL)){L v=ixe(y,k);if(v<0||v>=(L)n)return 1;if(one)return 0;A w=ii(x,(U)v);r=IXD(w);mr(w);return r;}   //y an int list: an int index per level
  A q=_tA(y)?_R(_A(y)[k]):ii(y,k);
  B dn=k+1<_N(y);   //a level below to check: else no item is built
- if(q==au){if(dn)for(U j=0;j<n&&!r;j++){A v=ii(x,j);r=ixck(v,y,k+1,z,asg);mr(v);}}
- else if(_tz(q)){L v=gl_(q);if(v<0||v>=(L)n)r=1;else if(dn){A w=ii(x,(U)v);r=ixck(w,y,k+1,z,asg);mr(w);}}
+ if(q==au){if(dn)for(U j=0;j<n&&!r;j++){A v=ii(x,j);r=IXD(v);mr(v);}}   //(sd: 'type, as there is an item)
+ else if(_tz(q)){L v=gl_(q);if(v<0||v>=(L)n)r=1;else if(dn){A w=ii(x,(U)v);r=IXD(w);mr(w);}}
  else if(!_tP(q)&&LH(tE,_t(q),tL)){U m=_N(q);
   if(one&&m&&_t(q)!=tB){L lo=_t(q)==tE?ixe(q,0):minfZ(WL,q),hi=_t(q)==tE?ixe(q,m-1):maxfZ(NL,q);if(lo<0||hi>=(L)n)r=1;}   //one level: the vector min/max, not a type switch per item
-  else for(U j=0;j<m&&!r;j++){L v=ixe(q,j);if(v<0||v>=(L)n)r=1;else if(dn){A w=ii(x,(U)v);r=ixck(w,y,k+1,z,asg);mr(w);}}
+  else{for(U j=0;j<m&&!r;j++){L v=ixe(q,j);if(v<0||v>=(L)n)r=1;else if(dn&&!sd){A w=ii(x,(U)v);r=ixck(w,y,k+1,z,asg);mr(w);}}I(!r&&dn&&sd&&m,r=3)}   //every index in range first, as without sd
   if(!r&&(one||k+1==_N(y)&&ixone(y,k))&&!_tP(z)&&_tT(z)&&_N(z)!=m)r=2;}
  else if(_t(q)==ts||_t(q)==tS&&_N(q))r=3;   //a symbol indexes no list
  mr(q);return r;}
+#undef IXD
 //a dict or table (x) at level k, below where ixwk went (a list of indices, an elided level or a list of keys above,
 //or the walk stopped short): at the last level a list of keys needs a list value of its count, and a table's column,
 //assigned with : (asg), one of its row count (any other verb gets the whole column, so only its result has to fit);
@@ -81,11 +83,11 @@ U tcc(A,A);
 I ixwk(A x,A y,A z,B asg,B gl,UC*kd,L*ix){if(!x)return 0;if(_t(x)==tm&&!_tMT(_y(x)))return -3;UC ry=_t(y);B at=ry>tm,ty=LH(tE,ry,tL);U m=at?1:_N(y),k=0;I a=-1;   //a: the first level with a key to add
  if(y==au||!m||m>8||!at&&!ty&&ry!=tA&&ry!=tS)return -ixck(x,y,0,z,asg);A v=x;
  for(;k<m;k++){B last=k+1==m;A s=at?y:ty?0:_tA(y)?_A(y)[k]:ii(y,k),w=0;L j=ty?ixe(y,k):_tz(s)?gl_(s):-1;UC t=_tP(v)?0:_t(v);   //s: borrowed, or a packed symbol
-  if(t&&t<tM&&!(k&&t==tS)){
+  if(t&&t<tM){   //a list; a symbol list below the first level too, as data
    if(last&&!ty&&!_tP(s)&&LH(tE,_t(s),tL)&&_t(s)!=tB){U c=_N(s);I r=0;   //a list of ints at the last level, as ixck checks it: in range, and a list value of its count
     if(c){L lo=_t(s)==tE?ixe(s,0):minfZ(WL,s),hi=_t(s)==tE?ixe(s,c-1):maxfZ(NL,s);I(lo<0||hi>=(L)_N(v),r=-1)}
     I(!r&&!_tP(z)&&_tT(z)&&_N(z)!=c,r=-2)I(v!=x,mr(v))P(r,r)P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;ix[k]=-1;return (I)k+1;}   //d8 there (3; no row: ix -1)
-   if(j<0||j>=(L)_N(v))break;kd[k]=0;ix[k]=j;I(!last,w=ii(v,(U)j))}
+   if(j<0||j>=(L)_N(v))break;P(!last&&k&&t==tS,I(v!=x,mr(v))-3)kd[k]=0;ix[k]=j;I(!last,w=ii(v,(U)j))}   //its items are symbols: a level below one is 'type
   else if((t==tm||t==tM)&&_t(_x(v))==tS&&(t==tm||_N(_y(v)))){A ks=_x(v),vs=_y(v);
    if(!ty&&_t(s)==ts&&a<0){A f=fnd(ks,_R(s));j=gl_(f);mr(f);
     if(j<0||j>=(L)_N(ks)){j=_N(ks);if(!last){kd[k]=t==tm?4:5;ix[k]=j;I(a<0,a=(I)k)   //a key not there, which the assignment adds: above the last level with the
@@ -105,7 +107,7 @@ I ixwk(A x,A y,A z,B asg,B gl,UC*kd,L*ix){if(!x)return 0;if(_t(x)==tm&&!_tMT(_y(
   else break;
   if(last){k++;break;}if(v!=x)mr(v);v=w;}
  if(k==m||k&&(kd[k-1]==3||kd[k-1]==6)){I(v!=x,mr(v))P(a>=0&&k==m&&a+2==(I)m&&!kd[a+1],kd[a]+=3;a+2)return a<0?(I)k:a+1|gl<<8;}   //7, 8: a key to add, then one index into a list
- I r=ixck(v,y,k,z,asg);B sy=gl&&k&&(_ts(v)||_tS(v));I(v!=x,mr(v))P(r,-r)P(sy,0)P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;ix[k]=-1;return (I)(k+1|(gl&&k+1<m)<<8);}   //stopped short below the first level: d8 from there (3)
+ I r=ixck(v,y,k,z,asg);B sy=gl&&k&&_ts(v);I(v!=x,mr(v))P(r,-r)P(sy,0)P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;ix[k]=-1;return (I)(k+1|(gl&&k+1<m)<<8);}   //stopped short below the first level: d8 from there (3)
 A ixst(A,A,CO UC*,CO L*,U,U,A,A,A*),ixv2(UC,A,A);
 //the item at the places ixwk found, where each is one that is there -- an int into a list (0), a key or column there
 //(1, 2: not one to add), a row then its column (6), or a table's row at the last level (3) -- so that the verb can go
@@ -121,12 +123,12 @@ NI __attribute__((cold)) A ixit(A x,A y,UC*kd,CO L*ix,U m,B*o){UC ry=_t(y);U my=
   if(!c){w=t==3&&k+1==m&&ry==tA&&_t(v)==tM&&_tz(_A(y)[k])?ixrr(v,y,k,my):0;I(vo,mr(v))I(w,*o=1)return w;}   //or the rest below one
   wo=!_tA(c);w=wo?ii(c,(U)j):_A(c)[j];I(vo,I(!wo,w=_R(w);wo=1)mr(v))v=w;vo=wo;}   //not where the walk stopped short
  *o=vo;return v;}
-//from row y[k] of table x on, each level one index that is there, as ixwk walks it: an int in range of a list (not a
-//symbol list, which names a global there) or of a table's rows, a key of a dict of symbol keys, or a table's column.
+//from row y[k] of table x on, each level one index that is there, as ixwk walks it: an int in range of a list (a
+//symbol list too, as data) or of a table's rows, a key of a dict of symbol keys, or a table's column.
 //The item, made; else 0, and the amend goes as before. Nothing below names a global (a symbol is an atom, read no further)
 Z __attribute__((cold)) A ixrr(A x,A y,U k,U my){L j=gl_(_A(y)[k]);P(!_N(_y(x))||j<0||j>=(L)_N(*_A(_y(x))),0)A v=ii(x,(U)j);
  for(k++;k<my;k++){A s=_A(y)[k],w=0;UC t=_tP(v)?0:_t(v);
-  if(t&&t<tM&&t!=tS){I(_tz(s)&&(j=gl_(s))>=0&&j<(L)_N(v),w=ii(v,(U)j))}
+  if(t&&t<tM){I(_tz(s)&&(j=gl_(s))>=0&&j<(L)_N(v),w=ii(v,(U)j))}
   else if((t==tm||t==tM)&&_t(_x(v))==tS){A vs=_y(v);
    if(_ts(s)){A f=fnd(_x(v),_R(s));j=gl_(f);mr(f);I(j>=0&&j<(L)_N(_x(v))&&(t==tM||_tMT(vs)),w=ii(vs,(U)j))}
    else I(t==tM&&_tz(s)&&_N(vs)&&(j=gl_(s))>=0&&j<(L)_N(*_A(vs)),w=ii(v,(U)j))}

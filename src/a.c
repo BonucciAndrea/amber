@@ -107,6 +107,22 @@ A tkey(A x,B f)_(I(_t(x)==tE,x=gZ(x))P(!f,cL(x))x=cF(x);   //a lazy range (!n as
  P(!x,0)U n=_n(x);A y=aL(n);CO W*RES s=_V(x);L*RES d=_V(y);
  F(n,W b=s[i];b=b==1ull<<63?0:b;d[i]=b<<1>0xffe0000000000000ull?NL+1:(L)(b>>63?b^0x7fffffffffffffffull:b))x(y))
 A ucb(A);
+// amber 2.5 (exp): one slice of trade rows for the parallel aj (see the parallel branch in ajc). Same row
+// logic as ajc's serial loop, with this slice's own cursor cache.
+#define PAJ_BITS 12u
+#define PAJ_N (1u<<PAJ_BITS)
+#define PAJ_H(b) ((U)(((W)(b)*0x9E3779B97F4A7C15ull)>>(64u-PAJ_BITS)))
+#define PAJ_MIN (1u<<17)
+TD struct{CO L*qt,*tt,*gb,*ge;L*m;U n,nq,np;L*cb[PAR_MAX_THREADS];L*ck[PAR_MAX_THREADS];U*cc[PAR_MAX_THREADS];}AJ;
+Z V ajrows(V*c_,int t){AJ*c=c_;CO L*RES qt=c->qt,*RES tt=c->tt,*RES gb=c->gb,*RES ge=c->ge;L*RES m=c->m;U nq=c->nq;
+ U s=(U)((W)c->n*t/c->np),e=(U)((W)c->n*(t+1)/c->np);L*RES cbase=c->cb[t],*RES ckey=c->ck[t];U*RES ccur=c->cc[t];
+ MS(cbase,0xff,(N)PAJ_N*SZ(L));
+ for(U i=s;i<e;i++){L b=gb[i],en=ge[i],key=tt[i];
+  if(b==NL||en==NL||en<=b||(U)en>nq){m[i]=NL;continue;}
+  U lo=(U)b,hi=(U)en,h=PAJ_H(b),j;
+  if(cbase[h]==b&&ckey[h]<=key){U cur=ccur[h],lim=hi-cur>AMGALLOP?cur+AMGALLOP:hi;j=cur;while(j<lim&&qt[j]<=key)j++;if(j==lim&&lim<hi)j=amub(qt,lim,hi,key);}
+  else j=amub(qt,lo,hi,key);
+  m[i]=j>lo?(L)(j-1):NL;cbase[h]=b;ckey[h]=key;ccur[h]=j;}}
 A ajc(A x){
  P(_t(x)-tA||_n(x)-4,et(x))
  A*e=(A*)_V(x);B f=_t(e[0])==tF||_t(e[1])==tF;
@@ -155,6 +171,12 @@ A ajc(A x){
  // reaches the reset at all. Measured before this change: 41.5 KB of RSS
  // permanently per aj call, constant in row count; 200k joins reached 5 GB.
  // Two stores on the slab fast path, so it costs nothing.
+ {int np=nt<PAJ_MIN?1:par_thread_count(nt);
+  I(np>1,AJ c={.qt=qt,.tt=tt,.gb=gb,.ge=ge,.m=m,.n=nt,.nq=nq,.np=(U)np};B ok=1;
+   F(np,c.cb[i]=malloc((N)PAJ_N*SZ(L));c.ck[i]=malloc((N)PAJ_N*SZ(L));c.cc[i]=malloc((N)PAJ_N*SZ(U));I(!c.cb[i]||!c.ck[i]||!c.cc[i],ok=0))
+   I(ok,par_run(np,ajrows,&c))
+   F(np,free(c.cb[i]);free(c.ck[i]);free(c.cc[i]))
+   I(ok,mr(QT);mr(TT);mr(GB);mr(GE);return x(out);))}   //parallel: done; else the serial loop below
  ArenaMark ajmk=arena_mark();
  L*RES cbase=(L*)arena_alloc((N)AJC_N*SZ(L));   // slice base occupying the slot
  L*RES ckey =(L*)arena_alloc((N)AJC_N*SZ(L));   // that group's last probed key

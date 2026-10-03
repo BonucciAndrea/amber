@@ -1,6 +1,7 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include"arena.h"
 #include"simd.h"
+#include"parallel.h"
 I rnk(A x/*0*/){X(RA(I v=rnk(xx);P(v<0,v)F(xn,P(v-rnk(xa),-1))v+1)RmM(rnk(xy))RT_A(1)R_(0))}//-1 for mixed rank
 U urnk(A x/*0*/){X(RA(urnk(xx)+1)RmM(urnk(xy))RT_A(1)R_(0))}//assuming unirank
 
@@ -92,9 +93,19 @@ Z V*amal(N b)_(V*p=0;P(posix_memalign(&p,64,b),(V*)0)p)
 // there, which is exactly the vector the old code built. With no miss the
 // values are identical and only the storage width differs, as everywhere else
 // Amber narrows integers.
-#define FNDP(PT,RT,LOOK) {CO PT*RES pb=(CO PT*)b;RT*RES rr=(RT*)zV;for(U i=0;i<n;i++){L v=(L)pb[i];L k;LOOK;rr[i]=(RT)k;miss|=k<0;}}
+// amber 2.5 (exp): the probe loop runs over [s,e), so it can be split across threads (fndrun below)
+#define FNDP(PT,RT,LOOK) {CO PT*RES pb=(CO PT*)b;RT*RES rr=(RT*)z;for(U i=s;i<e;i++){L v=(L)pb[i];L k;LOOK;rr[i]=(RT)k;miss|=k<0;}}
 #define FNDW(LOOK) S4(wy,S4(wz,FNDP(G,G,LOOK),FNDP(G,H,LOOK),FNDP(G,I,LOOK),FNDP(G,L,LOOK)),S4(wz,FNDP(H,G,LOOK),FNDP(H,H,LOOK),FNDP(H,I,LOOK),FNDP(H,L,LOOK)), \
                                 S4(wz,FNDP(I,G,LOOK),FNDP(I,H,LOOK),FNDP(I,I,LOOK),FNDP(I,L,LOOK)),S4(wz,FNDP(L,G,LOOK),FNDP(L,H,LOOK),FNDP(L,I,LOOK),FNDP(L,L,LOOK)))
+// a probe job: the table (lut, or hk/hv), y's data b, the result z, and one miss flag per slice.
+// Workers only read the table and write their own [s,e) of z: no allocation, no refcounts.
+TD struct{CO V*b;V*z;U n,wy,wz,nt;I*lut;L lo;W rg;L*hk;I*hv;U sh;W msk;I miss[PAR_MAX_THREADS];}FJ;
+Z V fndL_lut(V*c_,int t){FJ*c=c_;CO V*b=c->b;V*z=c->z;U wy=c->wy,wz=c->wz,s=(U)((W)c->n*t/c->nt),e=(U)((W)c->n*(t+1)/c->nt);
+ I*lut=c->lut;L lo=c->lo;W rg=c->rg;I miss=0;FNDW(W d=(W)v-(W)lo;k=d<rg?lut[d]:-1)c->miss[t]=miss;}
+Z V fndL_hash(V*c_,int t){FJ*c=c_;CO V*b=c->b;V*z=c->z;U wy=c->wy,wz=c->wz,s=(U)((W)c->n*t/c->nt),e=(U)((W)c->n*(t+1)/c->nt);
+ L*hk=c->hk;I*hv=c->hv;U sh=c->sh;W msk=c->msk;I miss=0;FNDW(W j=((W)v*GOLD)>>sh;k=-1;W(1,B(hv[j]<0,)B(hk[j]==v,k=hv[j])j=(j+1)&msk))c->miss[t]=miss;}
+#define PFND_MIN (1u<<18)   //below this many probes thread start-up costs more than it saves
+Z I fndrun(FJ*c,V(*fn)(V*,int))_(int nt=c->n<PFND_MIN?1:par_thread_count(c->n);c->nt=(U)nt;I(nt<2,fn(c,0))E(par_run(nt,fn,c))I m=0;F(nt,m|=c->miss[i])m)
 Z A fndL(A x,A y,B srt)_(
  P(srt,0)
  P(!(xtH||xtI||xtL||xtS),0)   // amber 2.1: symbol vectors too (interned 32-bit ids, compared by value)
@@ -115,7 +126,7 @@ Z A fndL(A x,A y,B srt)_(
    I*lut=amal((N)rg*SZ(I));P(!lut,mr(z);0)
    MS(lut,0xff,(N)rg*SZ(I));
    for(U i=m;i--;)lut[(W)RD(wx,a,i)-(W)lo]=(I)i;
-   FNDW(W d=(W)v-(W)lo;k=d<rg?lut[d]:-1)
+   FJ c={.b=b,.z=zV,.n=n,.wy=wy,.wz=wz,.lut=lut,.lo=lo,.rg=rg};miss=fndrun(&c,fndL_lut);
    free(lut);)
  E(W cap=16,need=2*mm;U lg;W(cap<need,cap<<=1;)
    {W c=cap;lg=0;W(c>1,c>>=1;lg++)}
@@ -125,7 +136,7 @@ Z A fndL(A x,A y,B srt)_(
    MS(hv,0xff,(N)cap*SZ(I));
    for(U i=m;i--;){L v=RD(wx,a,i);W j=((W)v*GOLD)>>sh;
      W(1,B(hv[j]<0,hk[j]=v;hv[j]=(I)i)B(hk[j]==v,hv[j]=(I)i)j=(j+1)&msk)}
-   FNDW(W j=((W)v*GOLD)>>sh;k=-1;W(1,B(hv[j]<0,)B(hk[j]==v,k=hv[j])j=(j+1)&msk))
+   FJ c={.b=b,.z=zV,.n=n,.wy=wy,.wz=wz,.hk=hk,.hv=hv,.sh=sh,.msk=msk};miss=fndrun(&c,fndL_hash);
    free(hk);free(hv);)
  y(0);
  P(!miss,z)
@@ -293,6 +304,17 @@ Z NI A unqF(A x){
 // (a bitmap over its range when that fits 8 MB, else a hash sized to the key
 // COUNT) and each element of x costs one probe writing one byte. Integer and
 // symbol keys only; anything else returns () and amber.k falls back.
+// amber 2.5 (exp): membC's probe loops over [s,e), split across threads like fndL's (fndrun)
+TD struct{CO V*a;G*r;U n,wv,nt;W*bm;L lo;W rg;W*tab;U sh;W msk;B has0;}MJ;
+#define MSLICE MJ*c=c_;CO V*a=c->a;G*RES r=c->r;U wv=c->wv,s=(U)((W)c->n*t/c->nt),e=(U)((W)c->n*(t+1)/c->nt);
+#define MBM(T) {CO T*RES p=(CO T*)a;for(U i=s;i<e;i++){W q=(W)(L)p[i]-(W)lo;r[i]=q<rg&&((bm[q>>6]>>(q&63))&1);}}   //one loop per width: no width test per element
+Z V memb_bm(V*c_,int t){MSLICE W*bm=c->bm;L lo=c->lo;W rg=c->rg;S4(wv,MBM(G),MBM(H),MBM(I),MBM(L))}
+#define MHS(T) {CO T*RES p=(CO T*)a;for(U i=s;i<e;i++){W k=(W)(L)p[i]+1;if(!k){r[i]=has0;continue;}W j=(k*GOLD)>>sh;while(tab[j]&&tab[j]!=k)j=(j+1)&msk;r[i]=!!tab[j];}}
+Z V memb_hash(V*c_,int t){MSLICE W*tab=c->tab;U sh=c->sh;W msk=c->msk;B has0=c->has0;S4(wv,MHS(G),MHS(H),MHS(I),MHS(L))}
+#undef MBM
+#undef MHS
+#undef MSLICE
+Z V membrun(MJ*c,V(*fn)(V*,int)){int nt=c->n<PFND_MIN?1:par_thread_count(c->n);c->nt=(U)nt;I(nt<2,fn(c,0))E(par_run(nt,fn,c))}
 A1(membC,P(_t(x)-tA||_n(x)-2,et(x))A v=_A(x)[0],y=_A(x)[1];
  B va=_tz(v);UC vt=va?tl:_t(v),yt_=_t(y);
  P(_tP(y)||!(yt_==tH||yt_==tI||yt_==tL||yt_==tS)||!(va||vt==tH||vt==tI||vt==tL||vt==tS),x(emp(tA)))
@@ -304,12 +326,12 @@ A1(membC,P(_t(x)-tA||_n(x)-2,et(x))A v=_A(x)[0],y=_A(x)[1];
  A z=an(n,tG);G*RES r=_V(z);
  I(rg&&rg<=BMDOM,N nb=(N)((rg+63)>>6);W*bm=amal(nb*SZ(W));P(!bm,mr(z);x(emp(tA)))MS(bm,0,nb*SZ(W));
   F(m,W s=(W)RD(wy,b,i)-(W)lo;bm[s>>6]|=1ull<<(s&63))
-  F(n,W s=(W)RD(wv,a,i)-(W)lo;r[i]=s<rg&&((bm[s>>6]>>(s&63))&1))
+  {MJ c={.a=a,.r=r,.n=n,.wv=wv,.bm=bm,.lo=lo,.rg=rg};membrun(&c,memb_bm);}
   free(bm);)
  E(W cap=16,need=2*(W)m;U lg;W(cap<need,cap<<=1;){W c=cap;lg=0;W(c>1,c>>=1;lg++)}U sh=64-lg;W msk=cap-1;
   W*tab=amal((N)cap*SZ(W));P(!tab,mr(z);x(emp(tA)))MS(tab,0,(N)cap*SZ(W));B has0=0;
   F(m,L t=RD(wy,b,i);W k=(W)t+1;I(!k,has0=1;continue)W j=(k*GOLD)>>sh;W(tab[j]&&tab[j]!=k,j=(j+1)&msk)tab[j]=k)
-  F(n,L t=RD(wv,a,i);W k=(W)t+1;I(!k,r[i]=has0;continue)W j=(k*GOLD)>>sh;W(tab[j]&&tab[j]!=k,j=(j+1)&msk)r[i]=!!tab[j])
+  {MJ c={.a=a,.r=r,.n=n,.wv=wv,.tab=tab,.sh=sh,.msk=msk,.has0=has0};membrun(&c,memb_hash);}
   free(tab);)
  x(va?({A r_=ai(r[0]);mr(z);r_;}):z))
 

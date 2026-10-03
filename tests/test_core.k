@@ -795,7 +795,11 @@ t[`amendDictMissingKey;(IA["D19:`a`b!(1 2 3;4 5)";"D19[`z;2]:9"];IA["D20:`a`b!(1
 XS:1 2 3
 t[`amendThroughSymbol;{r:IA["D18:`a`b!(1 2;`XS)";"D18[`b;0]:9"];(r;XS)}[];((::;`a`b!(1 2;9 2 3));9 2 3)]   / a symbol atom at a level names a global, which the assignment amends (as in ngn/k), so it is not refused
 
-hexpect[493]
+/ ---- an amend by name with a symbol list as the name, refused by the check, does not crash ----
+G1:1 2 3;N1.v:4 5 6
+t[`amendByNameListRefused;{r:{.[x;,0;{`err}]}'20#({.[,`G1;,5;:;9]};{.[`N1`v;,0 1;:;7 8 9]});(?r;G1;N1.v;. "1+1")}[];(,`err;1 2 3;4 5 6;2)]   / the name was released twice
+
+hexpect[494]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

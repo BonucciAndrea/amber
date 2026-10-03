@@ -275,6 +275,10 @@ A wjc(A x){
  P(_t(x)-tA||_n(x)-7,et(x))
  A*e=(A*)_V(x);
  P(!tjs(e[0],e[3])||!tjs(e[0],e[4]),et(x))   //dates, times and timestamps as their numbers (a.c tjn), against bounds of their kind
+ P(_t(e[1])-tA||_N(e[2])-_n(e[1]),et(x))      //a code per column
+ // Two windows and a slice per trade row, as q's 'length: wjbounds reads all four as far as the first
+ // window goes (_N: a lazy range's length, not its two ends).
+ U nw=_N(e[3]);P(_N(e[4])-nw||_N(e[5])-nw||_N(e[6])-nw,el(x))
  P(!_n(e[1]),x(emp(tA)))
  // normalise all integer inputs to 64-bit long (columns/times/bounds may be squeezed to G/H/I widths)
  // times (quotes and window bounds) as keys: float times compare as floats (a.c tkey)
@@ -284,6 +288,7 @@ A wjc(A x){
  CO L*RES T=_V(QT),*RES W0=_V(W0A),*RES W1=_V(W1A),*RES GB=_V(GBA),*RES GE=_V(GEA),*RES cod=_V(CD);
  U nt=_n(W0A),na=_n(e[1]),nq=_n(QT);
  A*QC=(A*)_V(e[1]);
+ F(na,P(cod[i]-6&&_N(QC[i])-nq,mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);el(x)))   //a column read has an item per quote (count reads none)
  // The two bounds vectors are the kernel's ONLY workspace and are bump-allocated
  // from the thread-local arena exactly once, before the column loop -- no heap,
  // no per-row or per-column allocation. They are bracketed with
@@ -310,7 +315,7 @@ A wjc(A x){
   // loop over rows or elements.
   B isf=_t(col)==tF,flo=(c==5)||(isf&&c!=6);
   A out=flo?aF(nt):aL(nt);
-  A colL=(isf||c==6)?0:N(cL(_R(col)));   // count never reads the column at all
+  A colL=(isf||c==6)?0:N(tkey(_R(col),0));   // count never reads the column at all; tkey(,0): cL, a range expanded
   if(c==6)                       wjrCNT(LO,HI,nt,(L*)_V(out));
   else if(isf)                   wjrFF((CO F*)_V(col),LO,HI,nt,c,(F*)_V(out));
   else if(c==5)                  wjrLF((CO L*)_V(colL),LO,HI,nt,(F*)_V(out));

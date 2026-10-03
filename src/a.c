@@ -118,7 +118,8 @@ A tjn(A x){I k=tjk(x);P(k==1,aL(0))P(k<2,_R(x))U n=_n(x);CO A*a=_V(x);A y=aL(n);
 A ucb(A);
 A ajc(A x){
  P(_t(x)-tA||_n(x)-4,et(x))
- A*e=(A*)_V(x);P(!tjs(e[0],e[1]),et(x))A q0=tjn(e[0]),t0=tjn(e[1]);B f=_t(q0)==tF||_t(t0)==tF;
+ A*e=(A*)_V(x);P(!tjs(e[0],e[1]),et(x))P(_N(e[2])-_N(e[1])||_N(e[3])-_N(e[1]),el(x))   //a slice per trade row
+ A q0=tjn(e[0]),t0=tjn(e[1]);B f=_t(q0)==tF||_t(t0)==tF;
  B c_=_t(q0)==tC;A QT=N(tkey(ucb(q0),f)),TT=N(tkey(c_?ucb(t0):t0,f)),GB=N(tkey(_R(e[2]),0)),GE=N(tkey(_R(e[3]),0));   //float times as floats (tkey), char times as unsigned bytes (ucb)
  CO L*RES qt=_V(QT),*RES tt=_V(TT),*RES gb=_V(GB),*RES ge=_V(GE);
  U nt=_n(TT),nq=_n(QT);
@@ -253,7 +254,7 @@ A ajsC(A x){
  U ng=_t(gcs)==tA?_n(gcs):0;
  A*gc=ng?(A*)_V(gcs):0;
  P(_tP(tcol)||_t(tcol)>=tM,x(al(0)))                // an atom or a dict: not a column, so not known sorted
- U n=_n(tcol);
+ U n=_N(tcol);                                    // _N: a lazy range's length, not its two ends
  P(n<2,x(al(1)))                                  // 0 or 1 row is trivially ordered
  // ---- pass 1: run boundaries -------------------------------------------
  // chg[r] = "row r starts a new group". The type switch is hoisted OUT of the
@@ -281,6 +282,7 @@ A ajsC(A x){
   case tH: AJS_ORD(H) break;
   case tI: AJS_ORD(I) break;
   case tL: AJS_ORD(L) break;
+  case tE: break;                                  // a range (!n, a+!n) rises
   case tF: {CO F*RES p=_V(tcol);for(U r=1;r<n;r++)if(!chg[r]&&ajs_fk(p[r])<ajs_fk(p[r-1]))return x(al(0));} break;   //the join's order: a NaN no longer hides an unsorted run
   case tA: {CO A*RES p=_V(tcol);UC k=_t(*p);   //dates, times or timestamps of one kind (tjk): by their numbers, as the joins read them
    I(k==tnp,L v=*(L*)_V(*p);for(U r=1;r<n;r++){A y=p[r];P(_t(y)-tnp,x(al(0)))L u=*(L*)_V(y);if(!chg[r]&&u<v)return x(al(0));v=u;})

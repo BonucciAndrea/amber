@@ -243,6 +243,10 @@ t[`temporalTextType;(TX["T";"5"];TX["T";("10:00";"11:00")];TX["D";`a];TX["P";1])
 / blanks around the text are skipped, as q skips them: spaces, tabs and carriage returns, not newlines; not inside the text
 t[`temporalTextBlanks;(TX["T"]'(" 10:00";"10:00 ";" \t-10:00\r");TX["D"]'(" 2026.1.1";"2026.1.1\t");TX["P"]'(" 2026.07.30D10:00 ";"2026.07.30D ";"2026.07.30 "));(36000000 36000000 -36000000;9497 9497;838720800000000000 838684800000000000 838684800000000000)]
 t[`temporalTextBlanksBad;(TX["T"]'("10:00\n";"\n10:00");TX["D"]'("2026 .1.1";"  ");TX["P"]'("2026.07.30 D10:00";"2026.07.30D 10:00";"  "));(2#,"'parse";2#,"'parse";3#,"'parse")]
+/ ^ of midnight, 2000.01.01 and the epoch timestamp is 0, as q's null (issue #62; they were taken for nulls). A date or a time
+/ has no null of its own; a timestamp's is 0N's nanoseconds, which prints as 0N
+t[`nullTemporalZero;(^00:00:00.000;^2000.01.01;^2000.01.01D00:00:00.000000000;^(00:00:00.000;2000.01.01;01:00:00.000));(0;0;0;0 0 0)]
+t[`nullStamp;(^1707.09.22D00:12:43.145224192;^`mkp 0N;^(`mkp 0N;2000.01.01D00:00:00.000000001));(1;1;1 0)]
 
 / ---- float literals past 2^63: the integer digits no longer wrap ----
 t[`floatLitBig;`k@12345678901234567890.0;"1.2345678901234567e19"]
@@ -1185,7 +1189,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
-hexpect[759]
+hexpect[761]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

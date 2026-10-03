@@ -424,6 +424,7 @@ t[`timeHoursText;($100:00:00.000;`k 50:00:00.000+50:00:00.000;$0-100:00:00.000);
 t[`timeHoursRead;({x=. $x}'(100:00:00.000;596:31:23.647;99:59:59.999);`i$"T"$$123:45:06.789);(1 1 1;445506789)]
 t[`timeHoursGrid;tcell[`time;3600000 360000000];("01:00:00.000";"100:00:00.000")]
 t[`timeHoursAtoms;stime (01:00:00.000;100:00:00.000;3600000);("01:00:00.000";"100:00:00.000";"01:00:00.000")]   / a list of time atoms, as tsym gives
+t[`stimeMidnightAtom;stime (00:00:00.000;01:00:00.000);("00:00:00.000";"01:00:00.000")]   / midnight is not null (issue #62; it printed as 0N)
 t[`ptimeNeg;(ptime"-00:30:00.000";ptime"-01:00:00");-1800000 -3600000]
 t[`ptimeList;*"\n"\.[{"T"$("09:30:00.100";"10:00:00.000")};,0;{x}];"'type"]   / a list of strings is 'type, as before (the sign test must not recurse)
 t[`timeNegText;`i$"T"$"-00:30:00.000";-1800000]

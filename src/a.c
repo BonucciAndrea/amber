@@ -915,6 +915,27 @@ AA(a8,/*10..0*/A x=*a,y=a[1];
     B m=_tA(u)&&!_n(u)&&_tm(ux)&&mtc_(ux,p);mr(p);m?u(x):x(sqz(u)))   //no amend reached the null row: the table as it was (one that did comes back a table already)
    RU(mRn(n-1,a+1);x(USQ(x8(a+1,n-1))))
    R_(et(x)))0)
+//ixst (with ixwk, b.c): .[x;y;f;z] at the places in y that ixwk found (kd), as a8 does it but without looking them up
+//again (from a table's row on, and where the walk stopped short below the first level, d8 does it, as d4's projection
+//does; from a key to add above the last level, a8; and from a list of keys above the last level, dam, at the places
+//the check found). An item on the way is taken out of its list, so it is amended in place. z 0: .[x;y;f], f of one argument
+Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z);
+Z A rbl(A),d3(A,A,A),a5(A,A,A,A,A);
+A ixst(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z/*10....00*/)_(UC t=kd[k];P(!t,ixsl(x,y,kd,ix,k,m,f,z))
+ P(t==3,A w=k?drp(k,yR):yR;x=USQ(z?d8(A8(x,w,f,z),4):d8(A8(x,w,f),3));mr(w);x)   //d8, not d4: a symbol below the first level names a global
+ P(t==9,A s=_A(y)[k],p=(A)ix[k],v=prj(DOT,(A[]){GAP,drp(k+1,yR)},2);B tb=_t(x)==tM;I(tb,x=flp(x))U n=z?5:4;A b[5]={x,s,v,f,z};   //keys above the last level:
+  x=LH(tG,_t(p),tL)&&(n==4?_tt(f)||_tT(f)&&_N(f)==_n(p):_tt(f)&&(_tt(z)||_tT(z)&&_N(z)==_n(p)))?dam(x,s,cL(p),b,n):(mr(p),a8(b,n));mr(v);P(!x,0)tb?flp(x):x)   //as a8 does (Rm), the find from ixwk
+ P(t==6,U j=(U)ix[k+1];x=mut(x);xy=mut(xy);A c=_A(xy)[j];_A(xy)[j]=au;c=ixsl(c,y,kd,ix,k,k+1,f,z);P(!c,x(0))_A(xy)[j]=c;   //a row then a column: that column
+  F(_n(xy),A*p=_A(xy)+i;I(_tA(*p),*p=rbl(*p)))x)   //amended at the row, as d4 does it (tca)
+ P(t>6,I(t==8,x=flp(x))x=mut(x);A s=_tA(y)?_A(y)[k]:ii(y,k);PSH(xx,_R(s));PSH(xy,ie(av,xy));A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z);P(!v,x(0))xy=v;t==8?flp(x):x)   //a key to add,
+  //then an index into its value, the first value nulled (as for d4's projection, ie gives the nulled first value for :), which keeps its count
+ P(t>3,I(t==5,x=flp(x))x=mut(x);A s=_tA(y)?_A(y)[k]:ii(y,k),v=prj(DOT,(A[]){GAP,drp(k+1,yR)},2);PSH(xx,_R(s));PSH(xy,ie(v,xy));   //a key to add above the last level:
+  A w=xy;xy=au;w=z?a8(A8(w,az(ix[k]),v,f,z),5):a8(A8(w,az(ix[k]),v,f),4);mr(v);P(!w,x(0))xy=w;t==5?flp(x):x)   //the rest as a8 does it (d4's projection), without finding the key again
+ I(t==2,x=flp(x))x=mut(x);I(ix[k]==_N(xx),A s=_tt(y)?y:_tA(y)?_A(y)[k]:ii(y,k);PSH(xx,_R(s));PSH(xy,ie(f,xy)))   //a key not there (the last level): added, as a8 does
+ A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z);P(!v,x(0))xy=v;t==2?flp(x):x)   //a column: in the table flipped to a dict
+Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z)_(U i=(U)ix[k];I(_t(x)==tE,x=gZ(x))P(_t(x)==tM,x=ixsl(blw(x),y,kd,ix,k,m,f,z);x?sqz(x):0)x=mut(x);
+ P(k+1==m,set(x,i,Nx(z&&f==av?_R(z):USQ(z?_8(f,A8(ii(x,i),_R(z)),2):_8(f,A8(ii(x,i)),1)))))   //the item at the last place: f applied to it (: needs not read it)
+ A w;I(_t(x)==tA,w=_A(x)[i];_A(x)[i]=au)E(w=ii(x,i))w=ixst(w,y,kd,ix,k+1,m,f,z);P(!w,x(0))set(x,i,w))
 Z A3(a3,/*100*/a8(A8(x,y,z),3))
 A4(a4,/*1000*/a8(A8(x,y,z,u),4))
 Z A a5(A x,A y,A z,A u,A v/*10000*/)_(a8(A8(x,y,z,u,v),5))
@@ -922,8 +943,8 @@ Z A a5(A x,A y,A z,A u,A v/*10000*/)_(a8(A8(x,y,z,u,v),5))
 //column for a name). It made a list of every row and a table of it again, which keeps each column's values but drops
 //its attribute (so only without one; one inside a column that is a table is kept, as by t[c;i]:y) and builds each
 //generic column again item by item, as psh does: rbl
-Z U tci(A x,A y/*00*/)_(P(!xtM||!ytA||yn<2||!_tz(*yA)||!_ts(yA[1])||!_tS(xx),0)F(_n(xy),A c=_A(xy)[i];P(_at(c)||!_tT(c)&&!_tM(c),0))
- U j=fI(_I(xx),_n(xx),_v(yA[1]));j<_n(xx)?j+1:0)
+U tcc(A x,A s/*00*/)_(P(!_tS(xx),0)F(_n(xy),A c=_A(xy)[i];P(_at(c)||!_tT(c)&&!_tM(c),0))U j=fI(_I(xx),_n(xx),_v(s));j<_n(xx)?j+1:0)   //column s of t, +1 (0: not this way)
+Z U tci(A x,A y/*00*/)_(P(!xtM||!ytA||yn<2||!_tz(*yA)||!_ts(yA[1]),0)tcc(x,yA[1]))
 Z A1(rbl,A y=enl(_R(*xA));F(xn-1,PSH(y,_R(xA[i+1])))x(y))
 Z A d3(A,A,A);Z A tca(A x,A y,A z,A u,U n,U j/*10000.*/)_(A w=aA(yn-1);*_A(w)=_R(*yA);F(yn-2,_A(w)[i+1]=_R(yA[i+2]))
  x=mut(x);xy=mut(xy);A c=_A(xy)[j];_A(xy)[j]=au;c=n==4?d4(c,w,z,u):d3(c,w,z);mr(w);P(!c,x(0))_A(xy)[j]=c;F(_n(xy),A*p=_A(xy)+i;I(_tA(*p),*p=rbl(*p)))x)
@@ -931,8 +952,10 @@ Z A3(d3,/*100*/U m=yN;P(y==au||!m,z1(x))P(m==1,y=fir(yR);y(a3(x,y,z)))U j=tci(x,
 A4(d4,/*1000*/U m=yN;P(y==au||!m,x(z2(x,uR)))P(m==1,y=fir(yR);y(a4(x,y,z,u)))U j=tci(x,y);P(j,tca(x,y,z,u,4,j-1))A v=prj(DOT,(A[]){GAP,drp(1,yR)},2);y=fir(yR);A r=y(a5(x,y,v,z,u));mr(v);r)
 Z AA(d8_,/*10..0*/A x=*a,y=a[1],z=a[2];P(n==4,d4(x,y,z,a[3]))P(n==3,d3(x,y,z))en(x))
 AA(d8,/*10..0*/A x=*a;
-I ixck(A,A,U,A);   //b.c: is .[`v;i;f;y] sure to fail on its index or count? (then v is not touched)
- X(RsS(P(ray_rc_sync,mr(*a);err0("noupdate"))A*p=gp(x);P(!p,0){I e_=n==4?ixck(*p,a[1],0,a[3]):0;P(e_,e_==1?ei0():el0())}I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;*p=_R(N(d8_(b,n))))// amend-by-name of a global: not from a peach worker (b.c bS)
+I ixwk(A,A,A,B,B,UC*,L*),ixck(A,A,U,A,B),ixgn(A*);   //b.c: is .[`v;i;f;y] sure to fail on its index, count or type? (then v is not touched) If not, where can ixst assign? (.[`v;i;f] is not checked)
+ //while run assigns a global (ixgs): as before (ixck, d4) in an assignment by d4, and refused if ixst is assigning this one
+ X(RsS(P(ray_rc_sync,mr(*a);err0("noupdate"))A*p=gp(x);P(!p,0)I g_=ixgn(p);P(g_>1&&n>2,et0())UC kd[8];L ix[8];
+   I w_=n==3||n==4?g_?n<4?0:*p&&_t(*p)==tm&&!_tMT(_y(*p))?-3:-ixck(*p,a[1],0,a[3],a[2]==av):ixwk(*p,a[1],n==4?a[3]:au,n==4&&a[2]==av,0,kd,ix):0;P(n==4&&w_<0,w_==-1?ei0():w_==-2?el0():et0())I(w_<0,w_=0)I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;*p=_R(N(w_?ixst(*b,a[1],kd,ix,0,(U)w_,a[2],n==4?a[3]:0):n==4&&_tA(a[1])&&_n(a[1])==1?a4(*b,*_A(a[1]),a[2],a[3]):d8_(b,n))))// amend-by-name of a global: not from a peach worker (b.c bS)
    RU(n==3?try(x,a[1],a[2]):er(x))
    R_(d8_(a,n)))0)
 ZN A ki(A*p,S s)_(*p=evs(s,0);P(!*p,0)PSH(cns,*p))   //a name that does not evaluate (a missing formatter): its error, not die

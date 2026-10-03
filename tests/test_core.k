@@ -225,6 +225,24 @@ t[`litTemporalGood;TL'("2024.02.29";"2000.02.29";"2026.04.30";"24:00:00.000";"99
 t[`litTimeLimit;TL'("596:31:23.648";"1000:00:00.000";"18446744073709551616:00:00.000");3#`$"'limit"]
 t[`litTimeTop;TL'("596:31:23.647";"00000000000000000001:00:00.000");2147483647 3600000]
 t[`mktLimit;(.[{`mkt x};,2147483648;{(x?"\n")#x}];`i$`mkt -2147483648);("'limit";-2147483648)]
+/ `mkd, `mkt and `mkp take an int atom: of anything else they read its bits (issue #62)
+t[`mkTemporalType;ER'("`mkd {x}";"`mkt 5.5";"`mkp 0x05";"`mkd 1 2");4#,"'type"]
+/ "T"$, "D"$ and "P"$ read the text as the literal reader does, and refuse text that is not a time, a date or a timestamp,
+/ and fields out of range, with 'parse (issue #62; they rolled over: 10:61 was 11:01, 2026.02.29 was 2026.03.01;
+/ "T"$"abc" was midnight, and "D"$"abc" a date that changed from run to run); past the type's range 'limit
+TX:{.[{`i$x$y};(x;y);{(x?"\n")#x}]}
+t[`timeTextBad;TX["T"]'("10:61:00.000";"10:00:60.000";"abc";"**:00:00.000";"";"10:-5:00";"--10:00";"10:00:00.000:00";"10:00:00.5x";"10 :00";"10:";":10";"- 10:00";"10:00 x";"   ");15#,"'parse"]
+t[`timeTextGood;TX["T"]'("10";"10:00";"10:00:00.";"10.5";"-10:00";"23:59:59.999";"99:00";"1:2:3";"-596:31:23.648";"596:31:23.647";"00000000000000000001:00");36000000 36000000 36000000 36000500 -36000000 86399999 356400000 3723000 -2147483648 2147483647 3600000]
+t[`timeTextLimit;TX["T"]'("596:31:23.648";"-596:31:23.649";"1000:00:00.000";"99999999999999999999999");4#,"'limit"]
+t[`dateTextBad;TX["D"]'("2026.02.29";"1900.02.29";"2026.13.01";"2026.00.10";"2026.04.31";"abc";"2026.01";"2026.01.01.01";"2026-01-01";"";"2026.1.x";"-1.02.29";"--1.01.01");13#,"'parse"]
+t[`dateTextGood;(TX["D"]'("2024.02.29";"2026.1.1";"2000.01.01";"-4.02.29";"0.02.29");TX["D";"99999999.01.01"]);(8825 9497 0 -731887 -730426;"'limit")]
+t[`stampTextBad;TX["P"]'("2026.07.30D10:61:00.000";"2026.02.29D10:00:00.000";"abc";"2026.07.30D-01:00:00.000";"2026.07.30x10:00";"2026.07.30D10:00:00.5x";"2026.07.30D10:");7#,"'parse"]
+t[`stampTextGood;TX["P"]'("2026.07.30";"2026.07.30D";"2026.07.30D24:00:00.000";"2026.07.30D99:00";"2026.07.30D09:30:00.123456789";"1707.09.22D00:12:43.145224192");838684800000000000 838684800000000000 838771200000000000 839041200000000000 838719000123456789 0N]
+t[`stampTextLimit;TX["P"]'("2026.07.30D2562047:00";"-1.01.01D10:00");2#,"'limit"]
+t[`temporalTextType;(TX["T";"5"];TX["T";("10:00";"11:00")];TX["D";`a];TX["P";1]);4#,"'type"]
+/ blanks around the text are skipped, as q skips them: spaces, tabs and carriage returns, not newlines; not inside the text
+t[`temporalTextBlanks;(TX["T"]'(" 10:00";"10:00 ";" \t-10:00\r");TX["D"]'(" 2026.1.1";"2026.1.1\t");TX["P"]'(" 2026.07.30D10:00 ";"2026.07.30D ";"2026.07.30 "));(36000000 36000000 -36000000;9497 9497;838720800000000000 838684800000000000 838684800000000000)]
+t[`temporalTextBlanksBad;(TX["T"]'("10:00\n";"\n10:00");TX["D"]'("2026 .1.1";"  ");TX["P"]'("2026.07.30 D10:00";"2026.07.30D 10:00";"  "));(2#,"'parse";2#,"'parse";3#,"'parse")]
 
 / ---- float literals past 2^63: the integer digits no longer wrap ----
 t[`floatLitBig;`k@12345678901234567890.0;"1.2345678901234567e19"]
@@ -1167,7 +1185,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
-hexpect[747]
+hexpect[759]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

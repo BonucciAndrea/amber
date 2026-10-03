@@ -83,7 +83,7 @@ Z A amcg(C end,U*np)_(I nm[256];A ex[256];U n=0;s=pws(s);                       
  s++;*np=n;aA3(EXC,qte(aV(tS,n,nm)),amkl(ex,n)))
 Z A0(amtbl,s++;U nk,nv;A kd=N(amcg(']',&nk)),vd=N(amcg(')',&nv));                                    //table literal ([keys]cols) ; s at '['
  A vt=aA2(FLP,vd);P(!nk,vt)aA3(EXC,aA2(FLP,kd),vt))                                                  //unkeyed:+names!cols  keyed:keytable!valtable
-// amber: civil date -> days since 2000.01.01 (Howard Hinnant, epoch-shifted; matches temporal.k ymd2d)
+// amber: civil date -> days since 2000.01.01 (Howard Hinnant, epoch-shifted; matches temporal.k ymd2d); "D"$ and "P"$ use it too (below)
 Z L ymd2days(L y,L m,L d){L wy=y-(m<=2);L era=(wy>=0?wy:wy-399)/400;L yoe=wy-era*400;L mp=m+(m>2?-3:9);L doy=(153*mp+2)/5+d-1;return era*146097+365*yoe+yoe/4-yoe/100+doy-730425;}
 // amber: temporal-literal scanner.  Fires only on unambiguous patterns:
 //   HH:MM[:SS[.mmm]]              -> time atom (ms of day)
@@ -200,3 +200,17 @@ Z A pb(A x,C c)_(x=x?aA1(x):emp(tA);                                            
  P(c==10&&!*s,x)P(*s-c,ep(x))s++;x)
 Z A pk_(S*p,C c)_(s0=s=*p;A x=pb(GAP,c);*p=s;P(x,xn==2?las(x):x)eD(s0,SL(s0),s-s0);eQ(s0,SL(s0),s-s0);0)                  //parse either a group of lines (c='\n') or till '\0' (c='\0')
 A pk(S*p,C c)_(P(!ray_rc_sync,pk_(p,c))plk(1);A x=pk_(p,c);plk(0);x)                               //pk_ under the peach parse lock (m.c plk)
+// "D"$ "T"$ "P"$ (issue #62): the text as the literal reader reads it, its fields checked as there, else 'parse (they rolled
+// over, and "D"$"abc" made a date of a function's address). A time also takes a sign and one to three fields ("10", "10:00"),
+// a date a sign on its year, a timestamp a date alone; past the range of the type 'limit. Blanks around the text (spaces, tabs,
+// carriage returns, as pw skips) are skipped, as q skips them. Out of line and after the parser, so the parser's hot loops keep
+// their place in the binary.
+Z B tdg(S*p,W*v)_(S s=*p;W u=0;W(C09(*s),u=u<(W)1e15?10*u+(W)(*s-'0'):u;s++)*v=u;B n=s>*p;*p=s;n)   //digits: 1 if any; their value, held at 1e15 or more past it
+Z B ttx(S*p,W*h,W*m,W*c,W*f)_(S s=*p;*m=*c=*f=0;P(!tdg(&s,h),1)I(*s==':',s++;P(!tdg(&s,m),1)I(*s==':',s++;P(!tdg(&s,c),1)))   //H[:M[:S]][.f]: f in ns; 1 if bad
+ I(*s=='.',s++;W k=0;W(C09(*s),I(k<9,*f=10**f+(W)(*s-'0'))k++;s++)W(k<9,*f*=10;k++))*p=s;*m>59||*c>59)
+Z B tdx(S*p,L*d)_(S s=*p;B n=*s=='-';s+=n;W y,m,e;P(!tdg(&s,&y)||*s-'.',1)s++;P(!tdg(&s,&m)||*s-'.',1)s++;P(!tdg(&s,&e),1)L Y=n?-(L)y:(L)y;   //[-]Y.M.D: days; 1 if bad
+ P(m<1||m>12||e<1||e>(m==2?28+(Y%4==0&&(Y%100!=0||Y%400==0)):30+((m+(m>7))&1)),1)*p=s;*d=ymd2days(Y,(L)m,(L)e);0)
+NI A ptT(A x)_(P(_t(x)-tC,et(x))x=str0(x);S s=pw(xV);B n=*s=='-';s+=n;W h,m,c,f;P(ttx(&s,&h,&m,&c,&f)||*pw(s),x(ep0()))W v=h>596?WL:3600000*h+60000*m+1000*c+f/1000000;P(v>2147483647u+n,x(ez0()))x(atm(n?-(L)v:(L)v)))
+NI A ptD(A x)_(P(_t(x)-tC,et(x))x=str0(x);S s=pw(xV);L d;P(tdx(&s,&d)||*pw(s),x(ep0()))P(d-(I)d,x(ez0()))x(adt(d)))
+NI A ptP(A x)_(P(_t(x)-tC,et(x))x=str0(x);S s=pw(xV);L d;W h=0,m=0,c=0,f=0;P(tdx(&s,&d),x(ep0()))I(*s=='D',s++;I(*pw(s),P(ttx(&s,&h,&m,&c,&f),x(ep0()))))P(*pw(s),x(ep0()))   //a date alone, or "D" and nothing, is midnight
+ __int128 t=(__int128)d*86400000000000ll+(__int128)h*3600000000000ll+60000000000ll*(L)m+1000000000ll*(L)c+(L)f;P(t-(L)t,x(ez0()))x(antp((L)t)))

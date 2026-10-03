@@ -428,8 +428,9 @@ t[`ptimeNeg;(ptime"-00:30:00.000";ptime"-01:00:00");-1800000 -3600000]
 t[`ptimeList;*"\n"\.[{"T"$("09:30:00.100";"10:00:00.000")};,0;{x}];"'type"]   / a list of strings is 'type, as before (the sign test must not recurse)
 t[`timeNegText;`i$"T"$"-00:30:00.000";-1800000]
 / "T"$ of a time past 32 bits of milliseconds is 'limit, as the literal (issue #62; it wrapped)
-t[`timeTextLimit;(.[{"T"$x};,"1000:00:00.000";{(x?"\n")#x}];.[{"T"$x};,"596:31:23.648";{(x?"\n")#x}];`i$"T"$"-596:31:23.648";ptime"1000:00:00.000");("'limit";"'limit";-2147483648;3600000000)]
+t[`timeTextLimit;(.[{"T"$x};,"1000:00:00.000";{(x?"\n")#x}];.[{"T"$x};,"596:31:23.648";{(x?"\n")#x}];`i$"T"$"-596:31:23.648";.[ptime;,"1000:00:00.000";{(x?"\n")#x}]);("'limit";"'limit";-2147483648;"'limit")]
 t[`ptimeRound;(ptime stime hms[13;45;9])=hms[13;45;9];1]
+t[`ptextAsCasts;(ptime"-01:00";pdate"2024.02.29";ptstamp"2026.07.30D09:30:00.123456789";.[pdate;,"2026.02.29";{(x?"\n")#x}]);(-3600000;8825;838719000123456789;"'parse")]   / as "T"$, "D"$ and "P"$ read them (issue #62)
 t[`minbar;minbar[5;hms[9;37;0]];hms[9;35;0]]
 t[`minbarVec;minute minbar[1;hms[9;30;0]+60000*0 1 2];570 571 572]
 t[`bar5m;bar[5;60000;hms[9;37;30]];hms[9;35;0]]

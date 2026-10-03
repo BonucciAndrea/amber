@@ -274,6 +274,12 @@ t 1                  / `sym`px`sz!(`b;200;20) row as a dict
 cols t               / `sym`px`sz
 ```
 
+Assigning to a table's columns:
+
+- `` t[`px]:v `` or `` @[t;`px;f] ``: an atom fills every row (an empty table stays empty); a list or dict
+  must have the row count, unless every column is replaced (`` t[`px]:7 8 `` on a one-column table gives
+  two rows).
+
 Table / keyed‑table toolkit (all in `amber.k`):
 
 | function            | meaning                                                     |

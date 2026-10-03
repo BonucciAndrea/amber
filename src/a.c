@@ -1027,6 +1027,13 @@ Z A dam(A x,A y,A z,CO A*a,U n/*10100*/)_(x=mut(x);U m=0;F(zn,m+=zL[i]==NL)
  F(zn,L j=zL[i];I(j==_N(xx),PSH(xx,ii(y,i));PSH(xy,ie(a[2],xy)))Ab8;*b=xy;b[1]=az(j);AC(b+2,a+2,n-2);I(t,b[n-1]=ii(a[n-1],i))
   xy=au;A v=a8(b,n);mr(b[1]);I(t,mr(b[n-1]))P(!v,nsq-=s;z(x(0)))xy=v)
  nsq-=s;I(s,xy=sqz(xy))z(x))
+//t[c]:y and @[t;c;f] amend a table as the dict of its columns and flip it back (x, the dict amended). The flip gives an
+//atom column the count of the columns that are lists, so with none left it made one row (+(,`a)!,,9 from three), or
+//'length where the atoms were of two types: tfl gives each atom column the table's old row count, r (an empty table
+//stays empty), as update and the amend while a list column remains do. Lists replacing every column still give their
+//count (t[`a]:7 8 on a one-column table: two rows). Not in flip, which knows no row count (+`a`b!1 2 is one row)
+ZN A tfa(A x,U r/*1.*/)_(A y=xy;P(!_n(y),flp(x))A v=aA(_n(y));F(_n(y),_A(v)[i]=rsz(r,ii(y,i)))x=mut(x);mr(xy);xy=v;flp(x))   //every column an atom: r of each (no column: as before)
+Z A tfl(A x,U r/*1.*/)_(A y=xy;I(_tA(y),F(_n(y),P(!_tt(_A(y)[i]),flp(x))))tfa(x,r))   //a column a list (the first, nearly always): flip
 AA(a8,/*10..0*/A x=*a,y=a[1];
  X(RE(Ab8;*b=gZ(x);AC(b+1,a+1,n-1);a8(b,n))
    RT_E(P(y==au,mRn(n-2,a+2);Ab8;*b=a[2];b[1]=x;AC(b+2,a+3,n-3);USQ(e8(AP1,b,n-1)))
@@ -1035,7 +1042,7 @@ AA(a8,/*10..0*/A x=*a,y=a[1];
    Rm(P(y==au,x=mut(x);Ab8;*b=xy;AC(b+1,a+1,n-1);xy=au;xy=Nx(a8(b,n));x)   //:: is every key, as it is when reading d[::;..]: amend the values
       A z=Nx(fnd(xx,yR));ZT(P(LH(tG,zt,tL)&&(n==3||n==4&&(_tt(a[3])||_tT(a[3])&&_N(a[3])==zn)||n==5&&_tt(a[3])&&(_tt(a[4])||_tT(a[4])&&_N(a[4])==zn)),dam(x,y,cL(z),a,n))z(0);mRn(n-1,a+1);f8(AP1,a,n))x=mut(x);I(ztl,z=mut(z);F(zN,I(zl==NL,zl=xN;PSH(xx,ztt?yR:ii(y,i));PSH(xy,ie(a[2],xy)))))
     Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);xy=au;xy=Nx(z(a8(b,n)));x)
-   RM(Ab8;AC(b,a,n);YsS(*b=flp(x);flp(N(a8(b,n))))B e=!xN;*b=blw(e?_R(x):x);A p=e?_R(*_A(*b)):0;A u=a8(b,n);P(!u,e?(mr(p),x(0)):0)P(!e,sqz(u))   //p: the prototype of an empty table's rows, its null row
+   RM(Ab8;AC(b,a,n);YsS(U r=xN;*b=flp(x);tfl(N(a8(b,n)),r))B e=!xN;*b=blw(e?_R(x):x);A p=e?_R(*_A(*b)):0;A u=a8(b,n);P(!u,e?(mr(p),x(0)):0)P(!e,sqz(u))   //p: the prototype of an empty table's rows, its null row
     B m=_tA(u)&&!_n(u)&&_tm(ux)&&mtc_(ux,p);mr(p);m?u(x):x(sqz(u)))   //no amend reached the null row: the table as it was (one that did comes back a table already)
    RU(mRn(n-1,a+1);x(USQ(x8(a+1,n-1))))
    R_(et(x)))0)
@@ -1059,8 +1066,8 @@ A ixst(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u/*10....00.*/)_(UC t=kd[k];P(
   //then an index into its value, the first value nulled (as for d4's projection, ie gives the nulled first value for :), which keeps its count
  P(t>3,I(t==5,x=flp(x))x=mut(x);A s=_tA(y)?_A(y)[k]:ii(y,k),v=prj(z?ax(dt4,4):ax(dt3,3),(A[]){GAP,drp(k+1,yR)},2);PSH(xx,_R(s));PSH(xy,ie(v,xy));   //a key to add above the last level:
   A w=xy;xy=au;w=z?a8(A8(w,az(ix[k]),v,f,z),5):a8(A8(w,az(ix[k]),v,f),4);mr(v);P(!w,x(0))xy=w;t==5?flp(x):x)   //the rest as a8 does it (d4's projection), without finding the key again
- I(t==2,x=flp(x))x=mut(x);I(ix[k]==_N(xx),u=0;A s=_tt(y)?y:_tA(y)?_A(y)[k]:ii(y,k);PSH(xx,_R(s));PSH(xy,ie(f,xy)))   //a key not there (the last level): added, as a8 does
- A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z,u);P(!v,u&&*u?(xy=*u,*u=t==2?flp(x):x,(A)0):x(0))xy=v;t==2?flp(x):x)   //a column: in the table flipped to a dict
+ U r=0;I(t==2,r=xN;x=flp(x))x=mut(x);I(ix[k]==_N(xx),u=0;A s=_tt(y)?y:_tA(y)?_A(y)[k]:ii(y,k);PSH(xx,_R(s));PSH(xy,ie(f,xy)))   //a key not there (the last level): added, as a8 does
+ A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z,u);P(!v,u&&*u?(xy=*u,*u=t==2?flp(x):x,(A)0):x(0))xy=v;t==2?tfl(x,r):x)   //a column: in the table flipped to a dict (tfl)
 Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u)_(U i=(U)ix[k];I(_t(x)==tE,x=gZ(x))P(_t(x)==tM,x=ixsl(blw(x),y,kd,ix,k,m,f,z,u);I(!x&&u&&*u,*u=sqz(*u))x?sqz(x):0)x=mut(x);
  P(k+1==m,A r=!f?z:z&&f==av?_R(z):USQ(z?_8(f,A8(ii(x,i),_R(z)),2):_8(f,A8(ii(x,i)),1));   //the item at the last place: f applied to it (: needs not read it)
   I(__builtin_expect(kd[k]==2,0)&&r&&_n(x)>1&&!_tP(r)&&_tT(r)&&_N(r)!=_N(_A(x)[!i]),mr(r);r=el0())   //a table's column (2): a list of another count does not fit

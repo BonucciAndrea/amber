@@ -1033,6 +1033,15 @@ t[`takeKeysCharsNums;(5#.[{"ab"#x};,1 2!3 4;{x}];5#.[{1 2#x};,"xy"!3 4;{x}]);("'
 / a failed lookup releases only the dict: the key list belongs to the caller (shared here, used again)
 t[`takeKeysFailShared;{k:"ab",();k2:1 2,!0;r:{5#.[#;(x;y);{x}]}[k]'4#,1 2!3 4;r2:{5#.[#;(x;y);{x}]}[k2]'4#,((1 2;3 4);(5 6;7 8))!9 10;(r;r2;k;k2)}[];(4#,"'type";4#,"'rank";"ab";1 2)]
 
+/ ---- an amend that leaves no column of a table a list fills each column to the table's row count (an empty table stays empty), as update does; a list still replaces a column ----
+t[`tableAtomColumns;({t:+(,`a)!,1 2 3;t[`a]:9;t}[];@[+(,`a)!,1 2 3;`a;:;9];@[+(,`a)!,1 2 3;`a;+/];{t:+`a`b!(1 2 3;4 5 6);t[`a`b]:9;t}[];@[+`a`b!(1 2 3;4 5 6);`a`b;:;(::;::)];@[+`a`b!(1 2 3;4 5 6);`a`b;:;(+;-)]);(+(,`a)!,9 9 9;+(,`a)!,9 9 9;+(,`a)!,6 6 6;+`a`b!(9 9 9;9 9 9);+`a`b!((::;::;::);(::;::;::));+`a`b!((+;+;+);(-;-;-)))]   / one row, before
+tv[`tableAtomColumnsTypes;"@[+`a`b!(1 2 3;`x`y`z);`a`b;:;(9;`q)]";+`a`b!(9 9 9;`q`q`q)]   / atoms of two types: 'length, before
+t[`tableAtomColumnsGlobal;(IA["TA1:+(,`a)!,1 2 3";"TA1[`a]:9"];IA["TA2:+(,`a)!,1 2 3";".[`TA2;,`a;:;9]"];IA["TA3:+`a`b!(1 2 3;4 5 6)";"TA3[`a`b]:9"];IA["TA4:`x`y!(+(,`a)!,1 2 3;5)";"TA4[`x;`a]:9"]);((::;+(,`a)!,9 9 9);(+(,`a)!,9 9 9;+(,`a)!,9 9 9);(::;+`a`b!(9 9 9;9 9 9));(::;`x`y!(+(,`a)!,9 9 9;5)))]
+t[`tableAtomColumnsEmpty;({t:+(,`a)!,!0;t[`a]:9;t}[];{t:0#+`a`b!(1 2;3 4);t[`a`b]:9;t}[];@[0#+(,`a)!,1 2;`a;:;`x];{t:+(0#`)!();t[`a]:9;t}[]);(+(,`a)!,!0;+`a`b!(!0;!0);+(,`a)!,0#`;+(,`a)!,!0)]
+tv[`tableAtomColumnsTypesEmpty;"@[0#+`a`b!(1 2;`x`y);`a`b;:;(9;`q)]";+`a`b!(!0;0#`)]
+t[`tableAtomColumnsNone;({t:+(0#`)!();t[0#`]:9;t}[];@[+(0#`)!();0#`;:;9];@[+(0#`)!();0#`;{x}];IA["TN1:+(0#`)!()";"TN1[0#`]:9"]);(+(0#`)!();+(0#`)!();+(0#`)!();(::;+(0#`)!()))]   / no column: the table as it was
+t[`tableListColumnStill;({t:+(,`a)!,1 2 3;t[`a]:7 8;t}[];{t:+(,`a)!,1 2 3;t[`a]:,9;t}[];{t:+`a`b!(1 2 3;4 5 6);t[`a]:9;t}[];{t:+(,`a)!,1 2 3;t[`b]:9;t}[];{t:+`a`b!(1 2 3;4 5 6);t[`a`b]:(9;10 11);t}[]);(+(,`a)!,7 8;+(,`a)!,,9;+`a`b!(9 9 9;4 5 6);+`a`b!(1 2 3;9 9 9);+`a`b!(9 9;10 11))]   / as before
+
 / ---- a failed assignment below a dict key, to a table, or into an atom leaves the variable ----
 t[`amendKeepDictIndex;(IA["D1:`a`b!(1 2;3 4)";"D1[`a;7]:9"];IA["D2:`a`b!(1 2;3 4)";"D2[`a`b;5]:9"];IA["D3:`a`b!(1 2;3 4)";"D3[`a;7]+:9"]);3#,(`err;`a`b!(1 2;3 4))]
 t[`amendKeepDictElided;IA["D4:`a`b!(1 2;3 4)";"D4[;5]:9"];(`err;`a`b!(1 2;3 4))]
@@ -1163,7 +1172,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
-hexpect[744]
+hexpect[751]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

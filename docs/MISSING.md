@@ -276,3 +276,6 @@ behaviour shows up as a test failure rather than a silent regression.
   with `\` (standard K). Since **2.0.0** an *unterminated* one (no closing `\` before EOF) raises a
   clean parse error instead of silently truncating the file; a properly-closed `/ … \` block is
   unchanged. `tests/harness.k` still carries a warning comment about the sharp edge.
+- **An amend that leaves no column of a table a list fills each to the table's row count**
+  (`` t[`a]:9 `` with `t:([]a:1 2 3)` gives `9 9 9`; an empty table stays empty), as `update` does;
+  q gives `'rank` for these (`` t[`a]:9 ``, `` @[t;`a;:;9] ``, `` @[t;`a`b;:;9] ``).

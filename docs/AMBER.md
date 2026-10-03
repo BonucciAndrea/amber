@@ -517,11 +517,13 @@ serialises its result with the binary serializer (`-8!`, §10b, where it was `` 
 
 Since 1.9.3 a worker that fails, whether an error raised inside `f`, a signal, or a chunk that cannot be
 encoded, is detected via the child's exit status and surfaced as a clean, trappable
-`'worker error in peach`, instead of the parent silently returning a short result. Every child is
-still reaped, so no zombies and no orphaned pipes are left behind:
+`'worker error in peach`, instead of the parent silently returning a short result. Since 2.3 an
+error raised inside `f` is re-raised with its own message (its first line); `'worker error in
+peach` is left for a worker whose error has no text of its own. Every child is still reaped, so
+no zombies and no orphaned pipes are left behind:
 
 ```k
-.[{peach[{$[x=5;'"boom";x]};!10]};,0;{[e]"caught: ",e}]   / 'worker error in peach
+.[{peach[{$[x=5;`err"boom";x]};!10]};,0;{[e]"caught: ",e}]   / "caught: 'boom..." (2.3: the worker's own error)
 ```
 
 ```k

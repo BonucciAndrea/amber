@@ -1,4 +1,5 @@
 #include"a.h"
+#include <stdlib.h>   // amber 2.5 (exp): malloc/free for the parallel kernels
 #include"parallel.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include"simd.h"
 // ---- vectorisation hints ---------------------------------------------------

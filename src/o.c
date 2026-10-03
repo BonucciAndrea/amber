@@ -1,4 +1,5 @@
 #include"a.h"
+#include <stdlib.h>   // amber 2.5 (exp): malloc/calloc/qsort/free for the parallel kernels
 #include"parallel.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include"arena.h"
 
@@ -197,7 +198,7 @@ Z V gq1(V*c_,int t){GQ*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;W rg=c->rg;L*cnt
    D())}}
 Z I gq_cmp(CO V*a,CO V*b){I x_=*(CO I*)a,y_=*(CO I*)b;return(x_>y_)-(x_<y_);}
 // fills the group tables as the serial loop would; -1: not taken (wrong op, range too wide, or no memory)
-Z I gagg_par(I code,CO V*kp,U wk,CO V*vp,U wv,B vf,CO UC*mp,N n,L lo,W rg,B direct,L gmn,L gmx,int nt,
+NI Z I gagg_par(I code,CO V*kp,U wk,CO V*vp,U wv,B vf,CO UC*mp,N n,L lo,W rg,B direct,L gmn,L gmx,int nt,
  L**pgk,I**pgf,F**paf,L**pal,L**pgc,U*pcap,U*png){
  P(!(code==GA_CNT||code==GA_SUM&&!vf||code==GA_MIN||code==GA_MAX||code==GA_FST||code==GA_LST),-1)
  P(!direct||(W)nt*rg>PGAG_CELLS,-1)
@@ -246,10 +247,7 @@ A1(gaggC,P(_t(x)-tA||(_n(x)-3&&_n(x)-4),et(x))A*e=_A(x);A op=e[0],k=e[1],v=e[2],
  I(direct,slot=malloc((N)rg*SZ(I));I(slot,MS(slot,0xff,(N)rg*SZ(I))))
  E(hcap=2048;hlg=11;ht=malloc((N)hcap*SZ(W));I(ht,MS(ht,0,(N)hcap*SZ(W))))
  P(!gk||!gf||!af||!al_||!gc||(direct?!slot:!ht),free(gk);free(gf);free(af);free(al_);free(gc);free(slot);free(ht);I(mb_,mr(mb_))x(emp(tA)))
- B pdone=0;
- {int pnt=n>=PGAG_MIN?par_thread_count(n):1;
-  if(pnt>1&&!gagg_par(code,kp,wk,vp,wv,vf,mp,n,lo,rg,direct,gmn,gmx,pnt,&gk,&gf,&af,&al_,&gc,&cap,&ng))pdone=1;}
- if(!pdone)for(N i=0;i<n;i++){
+ for(N i=0;i<n;i++){
   I(mp&&!mp[i],continue)
   L key=GARD(wk,kp,i);I g;
   I(direct,W sidx=(W)key-(W)lo;g=slot[sidx];I(g<0,GA_GROW();g=(I)ng++;slot[sidx]=g;gk[g]=key;GA_ADD(g,i)))
@@ -284,3 +282,44 @@ A1(gaggC,P(_t(x)-tA||(_n(x)-3&&_n(x)-4),et(x))A*e=_A(x);A op=e[0],k=e[1],v=e[2],
 #undef GA_GROW
 #undef GA_ADD
 #undef GA_OF
+// ---- amber 2.5 (exp): `gagg comes here first. The parallel aggregation (gagg_par) has its own entry point rather
+// than a branch in gaggC: inside gaggC it made GCC compile the serial loop 3-10% slower even where it is never taken.
+// gaggT takes what gagg_par does exactly -- count, int sum, min, max, first, last over a direct key range, n at least
+// PGAG_MIN, more than one thread, no bit mask -- checked as gaggC checks it, and builds the result as gaggC does;
+// everything else, and anything gagg_par declines, goes to gaggC as it always went.
+A gaggT(A x){
+ P(_t(x)-tA||(_n(x)-3&&_n(x)-4),gaggC(x))
+ A*e=_A(x);A op=e[0],k=e[1],v=e[2],m=_n(x)==4?e[3]:0;
+ P(_tP(k)||_n(k)<PGAG_MIN,gaggC(x))
+ I code=-1;
+ I(_ts(op),S nm=su(_v(op));code=!strcmp(nm,"sum")?GA_SUM:!strcmp(nm,"count")?GA_CNT:!strcmp(nm,"min")?GA_MIN:!strcmp(nm,"max")?GA_MAX:!strcmp(nm,"avg")?GA_AVG:!strcmp(nm,"first")?GA_FST:!strcmp(nm,"last")?GA_LST:-1)
+ J(_tz(op),code=(I)gl_(op))
+ P(!(code==GA_SUM||code==GA_CNT||code==GA_MIN||code==GA_MAX||code==GA_FST||code==GA_LST),gaggC(x))
+ UC kt=_t(k);P(!(kt==tG||kt==tH||kt==tI||kt==tL||kt==tS),gaggC(x))
+ N n=_n(k);int nt=par_thread_count(n);P(nt<2,gaggC(x))
+ U wk=kt==tG?0:kt==tH?1:(kt==tI||kt==tS)?2:3;
+ UC vt=code==GA_CNT?tL:_t(v);B vf=vt==tF;P(code==GA_SUM&&vf,gaggC(x))
+ I(code!=GA_CNT&&code!=GA_FST&&code!=GA_LST,P(_tP(v)||!(vt==tG||vt==tH||vt==tI||vt==tL||vt==tF)||_n(v)!=n,gaggC(x)))
+ I(code==GA_FST||code==GA_LST,P(_tP(v)||_N(v)!=n,gaggC(x)))
+ P(m&&(_tP(m)||_t(m)!=tG||_n(m)!=n),gaggC(x))
+ U wv=vt==tG?0:vt==tH?1:vt==tI?2:3;
+ L gmn,gmx;{F w=WF;L b;MC(&b,&w,SZ b);gmn=o1(b);w=-WF;MC(&b,&w,SZ b);gmx=o1(b);}
+ CO V*kp=_V(k),*vp=code==GA_CNT?0:_V(v);CO UC*mp=m?_V(m):0;
+ L lo=GARD(wk,kp,0),hi=lo;F(n,L t=GARD(wk,kp,i);I(t<lo,lo=t)I(t>hi,hi=t))
+ W rg=(W)hi-(W)lo+1;B direct=rg&&rg<=((W)1<<22)&&rg<=8*(W)n+1024;
+ P(!direct||(W)nt*rg>PGAG_CELLS,gaggC(x))
+ U cap=(U)MIN((W)n,rg),ng=0;
+ L*gk=malloc((N)cap*SZ(L));I*gf=malloc((N)cap*SZ(I));F*af=malloc((N)cap*SZ(F));L*al_=malloc((N)cap*SZ(L));L*gc=malloc((N)cap*SZ(L));
+ I r=gk&&gf&&af&&al_&&gc?gagg_par(code,kp,wk,vp,wv,vf,mp,n,lo,rg,direct,gmn,gmx,nt,&gk,&gf,&af,&al_,&gc,&cap,&ng):-1;
+ P(r,free(gk);free(gf);free(af);free(al_);free(gc);gaggC(x))
+ A ky=an(ng,kt);S4(wk,F(ng,_G(ky)[i]=(G)gk[i]),F(ng,_H(ky)[i]=(H)gk[i]),F(ng,_I(ky)[i]=(I)gk[i]),F(ng,_L(ky)[i]=gk[i]))
+ A fr=aV(tI,ng,gf);A vl;
+ S(code,
+  C(GA_SUM,vl=aV(tL,ng,al_))
+  C(GA_MIN,I(vf,F(ng,al_[i]=o0(al_[i]))vl=aV(tF,ng,al_))E(vl=aV(tL,ng,al_)))
+  C(GA_MAX,I(vf,F(ng,al_[i]=o0(al_[i]))vl=aV(tF,ng,al_))E(vl=aV(tL,ng,al_)))
+  C(GA_CNT,vl=aV(tL,ng,gc))
+  D(vl=i1(v,_R(fr))))
+ free(gk);free(gf);free(af);free(al_);free(gc);
+ P(!vl,mr(ky);mr(fr);x(0))
+ return x(aV(tA,3,A(ky,vl,fr)));}

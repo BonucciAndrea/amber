@@ -106,11 +106,20 @@ U amub(CO L*RES a,U lo,U hi,L key){
 A tkey(A x,B f)_(I(_t(x)==tE,x=gZ(x))P(!f,cL(x))x=cF(x);   //a lazy range (!n as a time column) is expanded first: cL kept it a 2-item range
  P(!x,0)U n=_n(x);A y=aL(n);CO W*RES s=_V(x);L*RES d=_V(y);
  F(n,W b=s[i];b=b==1ull<<63?0:b;d[i]=b<<1>0xffe0000000000000ull?NL+1:(L)(b>>63?b^0x7fffffffffffffffull:b))x(y))
+// A time column of dates, times or timestamps (a generic list) goes to the joins as its numbers (days, ms or
+// ns: their order). tjk is what a time column is to them: tdt, ttm or tnp for a generic list of that kind
+// alone; 1 for an empty generic list; -1 for a generic list holding one among items of other kinds (or ::),
+// whose items would be read by their addresses; 0 for anything else. tjs: 'type (0) when one of two time
+// columns is temporal and the other is not of its kind (an empty generic list goes with any), or either
+// mixes, as in q. tjn: a time column as the kernels read it, a new reference.
+I tjk(A x){P(_t(x)-tA,0)U n=_n(x);P(!n,1)CO A*a=_V(x);UC t=_t(*a);B m=0,o=0;F(n,UC u=_t(a[i]);m|=u==tdt||u==ttm||u==tnp;o|=u!=t)P(!m,0)return o?-1:t;}
+B tjs(A a,A b){I p=tjk(a),q=tjk(b);P(p<0||q<0,0)P(p==q||p==1||q==1,1)return p<2&&q<2;}
+A tjn(A x){I k=tjk(x);P(k==1,aL(0))P(k<2,_R(x))U n=_n(x);CO A*a=_V(x);A y=aL(n);L*RES v=_V(y);I(k==tnp,F(n,v[i]=*(L*)_V(a[i])))E(F(n,v[i]=(I)a[i]))return y;}
 A ucb(A);
 A ajc(A x){
  P(_t(x)-tA||_n(x)-4,et(x))
- A*e=(A*)_V(x);B f=_t(e[0])==tF||_t(e[1])==tF;
- B c_=_t(e[0])==tC;A QT=N(tkey(ucb(_R(e[0])),f)),TT=N(tkey(c_?ucb(_R(e[1])):_R(e[1]),f)),GB=N(tkey(_R(e[2]),0)),GE=N(tkey(_R(e[3]),0));   //float times as floats (tkey), char times as unsigned bytes (ucb)
+ A*e=(A*)_V(x);P(!tjs(e[0],e[1]),et(x))A q0=tjn(e[0]),t0=tjn(e[1]);B f=_t(q0)==tF||_t(t0)==tF;
+ B c_=_t(q0)==tC;A QT=N(tkey(ucb(q0),f)),TT=N(tkey(c_?ucb(t0):t0,f)),GB=N(tkey(_R(e[2]),0)),GE=N(tkey(_R(e[3]),0));   //float times as floats (tkey), char times as unsigned bytes (ucb)
  CO L*RES qt=_V(QT),*RES tt=_V(TT),*RES gb=_V(GB),*RES ge=_V(GE);
  U nt=_n(TT),nq=_n(QT);
  // On a 32-bit target (wasm32) size_t is 32 bits, so nt*sizeof(L) can wrap.
@@ -273,6 +282,10 @@ A ajsC(A x){
   case tI: AJS_ORD(I) break;
   case tL: AJS_ORD(L) break;
   case tF: {CO F*RES p=_V(tcol);for(U r=1;r<n;r++)if(!chg[r]&&ajs_fk(p[r])<ajs_fk(p[r-1]))return x(al(0));} break;   //the join's order: a NaN no longer hides an unsorted run
+  case tA: {CO A*RES p=_V(tcol);UC k=_t(*p);   //dates, times or timestamps of one kind (tjk): by their numbers, as the joins read them
+   I(k==tnp,L v=*(L*)_V(*p);for(U r=1;r<n;r++){A y=p[r];P(_t(y)-tnp,x(al(0)))L u=*(L*)_V(y);if(!chg[r]&&u<v)return x(al(0));v=u;})
+   J(k==tdt||k==ttm,I v=(I)*p;for(U r=1;r<n;r++){A y=p[r];P(_t(y)-k,x(al(0)))I u=(I)y;if(!chg[r]&&u<v)return x(al(0));v=u;})
+   E(return x(al(0));)} break;
   default: return x(al(0));                        // unknown ordering column: sort
  }
  #undef AJS_ORD
@@ -758,6 +771,7 @@ Z B xskey(A c,CO I*RES ix,W*RES k,N n,U*nbo,int desc){
  // across the vector before the complement, so they still are.
  if(desc)for(N i=0;i<n;i++)k[i]=~k[i];
  return 1;}
+A kys(A,A*,U*);
 A xsC(A x){
  P(_t(x)-tA||_n(x)-2,x(emp(tA)))
  A*e=(A*)_V(x);A CS=e[0];
@@ -768,6 +782,19 @@ A xsC(A x){
  N n=_n(cv[0]);
  P(!n||n!=(N)(U)(I)n,x(emp(tA)))                // grade indices are 32-bit
  F(nc,P(_tP(cv[i])||_n(cv[i])-(U)n,x(emp(tA))))
+ // A generic column of dates, times or timestamps (ints or floats among them too) sorts as grade orders it:
+ // by its keys (o.c kys), after its items' kinds when it holds more than one. Such columns are swapped for
+ // their keys and the sort is asked again; a generic column of anything else is left to the K path. That
+ // path grades the rows, and a row of ints alone is an int list, one of floats alone a float list, and any
+ // other a generic list, which sort before float lists, which sort before int lists: the row's class leads
+ // when a generic column holds ints or floats, so the order is the K path's.
+ {B g=0;F(nc,g|=_t(cv[i])==tA)I(g,A b[2*XS_MAXCOL+1],kd[XS_MAXCOL];U m=1,w=0;
+  F(nc,A q=cv[i],d=0;U s=0;kd[i]=0;I(_t(q)-tA,b[m++]=_R(q);continue)A k=kys(q,&d,&s);I(!k,mrn(m-1,b+1);return x(emp(tA));)w|=s;I(d,b[m++]=kd[i]=d)b[m++]=k)
+  U o=1;I(w&6u,A z=aG((U)n);UC*RES r=_V(z);MS(r,3,n);o=0;b[0]=z;   //r: bit 0, the row is ints alone so far; bit 1, floats alone
+   F(nc,A q=cv[i];UC t=_t(q);CO UC*RES k=kd[i]?_V(kd[i]):0;
+     I(t==tA,Fj(n,UC u=k?k[j]:9;r[j]&=(u==2)|(u==1)<<1))E(UC f=t==tG||t==tH||t==tI||t==tL?1:t==tF?2:0;Fj(n,r[j]&=f)))
+   Fj(n,r[j]=r[j]&1?2:r[j]>>1))
+  P(m-o>XS_MAXCOL,mrn(m-o,b+o);x(emp(tA)))return x(xsC(aV(tA,2,A(aV(tA,m-o,b+o),_R(e[1]))))));}
  int desc=tru(_R(e[1]));
  ArenaMark mk=arena_mark();
  I*cur=(I*)arena_alloc(n*SZ(I)),*alt=(I*)arena_alloc(n*SZ(I));

@@ -488,6 +488,10 @@ t[`gradeTimes;     <(00:00:00.000-1;00:00:00.000);0 1]
 t[`gradeStamps;    (<(2026.07.31D09:00:00.000;2026.07.30D10:00:00.000;2026.07.30D11:00:00.000);{<(x;x+0)}2026.07.30D10:00:00.000;<2026.07.30D10:00:00.000+|!5);(1 2 0;0 1;4 3 2 1 0)]
 GTS:(2026.07.30D10:00:00.000;2026.07.30D10:00:00.000+1;2026.07.30D10:00:00.000+0;2026.07.30D10:00:00.000+1)
 t[`groupStamps;   (#?GTS;#=GTS);  2 2]   / equal timestamps are one value
+GN:(2026.07.30D10:00:00.000;0N;2026.07.30D09:00:00.000;0N;2026.07.30D10:00:00.000+0;2026.07.29;0.5)
+t[`gradeStampsMixed; (<GN;>GN;#?GN;#=GN;GN?(?GN));  (5 6 1 3 2 0 4;0 4 2 1 3 6 5;5;5;0 1 2 5 6)]   / with a 0N, a date and a float among them: by kind (d f i n), then by value
+XN:+`s`t`v!(`a`b`a`a`b`a`a;GN;!7)
+t[`xascStampsMixed;  ((+`s`t xasc XN)`v;(+`s`t xdesc XN)`v;(+`t`s xasc XN)`v);  (5 6 3 2 0 1 4;4 1 0 2 3 6 5;5 6 3 1 2 0 4)]
 
 / aj and wj on columns of dates, times or timestamps compare their values
 AJT:+`ts`v!((2026.07.30D10:00:00.000;2026.07.30D11:00:00.000;2026.07.31D09:00:00.000);1 2 3)

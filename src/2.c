@@ -120,56 +120,155 @@ Z A subfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;simd_subs_f64(v,yV,zV,yn);
 Z A admfF(F v,A y,U f)_((f==3?mulfF:f==2?subfF:addfF)(v,y,f))
 Z A dvdfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;fzdvl(v,yF,zF,zn+3&-4);y-z?y(z):z)
 Z A dvdFf(A x,F v,U f)_(A z=aF(xn);fzdvr(xF,v,zF,xn);z)
-// ---- amber 2.5 (exp): float fusion ------------------------------------------------------------------------
-// fzrun runs the program the compiler made for an element-wise tree of + - * % (src/b.c fz): d is
-// (program bytes; literals..), l the frame's locals. It reads the leaves; unless every one is a float vector of
-// one length n>=FZ_MIN or a number (and no operation has two numbers) it returns 0 and the unfused code runs.
-// Otherwise the tree is evaluated FZ_BK elements at a time, each block's intermediates in a small buffer that
-// stays in cache, and each operation through the function the unfused primitive uses, with the operands
-// arif() would give it (a number on the left of - is the subs kernel, on the right v+x with -v; an int number
-// goes through cF as arif does), so every element is the same double. A plain tree is split over threads by
-// whole blocks. With +/ at the root the blocks write the root vector and simd_sum_f64 sums it, the very call +/
-// makes: a copy of its loop fed block by block adds in the same order, but where two NaNs meet the compiler's
-// choice of operand order decides which one survives, so only the same machine code gives the same bits.
+// ---- amber 2.5 (exp): fusion --------------------------------------------------------------------------------
+// fzrun runs the program the compiler made for an element-wise tree (src/b.c fz): d is (program bytes;
+// literals..), l the frame's locals. Leaves are float or int vectors of one length n>=FZ_MIN and numbers;
+// + - * % & | anywhere, < > = at the root, maybe +/ on top. Anything else (and an operation on two numbers)
+// returns 0 and the unfused code runs. The tree is evaluated FZ_BK elements at a time, intermediates in small
+// buffers that stay in cache, every step as the unfused primitive does it:
+//  - floats: the very kernel function the primitive calls, with the operands arif() gives it (a number left
+//    of - is the subs kernel, right of it v+x with -v), so every element is the same double;
+//  - ints: + - * in int64, the exact value (narrow ops widen on overflow and redo, 64-bit ones wrap, as
+//    here); the width the unfused result would have is max(the operands' widths, the narrowest holding every
+//    value), found after the pass from each step's min and max; & | are min and max;
+//  - an int meeting % or a float becomes a float as cF makes it (0N is 0n);
+//  - float & | and < > = go by the order keys of src/o.c (of1/of0): -0.0 is 0.0, NaN is 0n and first;
+//  - a number too wide for the int vector it is compared with gives cmpzZ's answer (rsz of 0/1: an I vector).
+// Blocks are split over threads. +/ of ints or comparisons sums in 64-bit wrap per thread (exact in any order);
+// +/ of floats writes the vector and simd_sum_f64 sums it, the call +/ makes (a copy of its loop could end with
+// the other of two NaNs: only the same machine code gives the same bits).
 #define FZ_MIN 2048u
-#define FZ_BK 512u        //a multiple of 16: the sum's 4 accumulators x 4 lanes (x 8 lanes with 512-bit vectors)
+#define FZ_BK 512u
 #define FZ_PAR (1u<<17)
 #define FZ_N 32           //program steps
-TD struct{UC op,s;}FZS;    //'v' vector leaf, 'c' number leaf, else + - * % on the two below
-TD struct{FZS p[FZ_N];U np,dp,n,nb,nt;CO F*lv[FZ_N];F lc[FZ_N];F*out;}FZC;
-Z V fzblk(CO FZC*c,U o,U cnt,F*bf,F*dst){CO F*sv[FZ_N];F ss[FZ_N];B sk[FZ_N];U d=0,cr=cnt+3&~3u;
- for(U j=0;j<c->np;j++){FZS s=c->p[j];
-  if(s.op=='v'){sv[d]=c->lv[j]+o;sk[d++]=0;continue;}
-  if(s.op=='c'){ss[d]=c->lc[j];sk[d++]=1;continue;}
-  U a=d-2,e=d-1;d--;F*r=j==c->np-1?dst:bf+(N)a*FZ_BK;
-  if(!sk[a]&&!sk[e]){CO F*x=sv[a],*y=sv[e];
-   S(s.op,C('+',simd_add_f64(x,y,r,cr))C('-',simd_sub_f64(x,y,r,cr))C('*',simd_mul_f64(x,y,r,cr))C('%',simd_div_f64(x,y,r,cr)))}
-  else if(sk[a]){F v=ss[a];CO F*y=sv[e];
-   S(s.op,C('+',fzadd(v,y,r,cr))C('-',simd_subs_f64(v,y,r,cnt))C('*',fzmul(v,y,r,cr))C('%',fzdvl(v,y,r,cr)))}
-  else{CO F*x=sv[a];F v=ss[e];
-   S(s.op,C('+',fzadd(v,x,r,cr))C('-',fzadd(-v,x,r,cr))C('*',fzmul(v,x,r,cr))C('%',fzdvr(x,v,r,cnt)))}
-  sv[a]=r;sk[a]=0;}}
+TD struct{UC op,k,w,s;}FZS;   //op: 'v' float vector, 'z' int vector (w: width 0..3), 'c' float number, 'i' int number,
+                              //else the operation; k: 0 float, 1 int, 2 comparison; s: 1 for a number
+TD struct{FZS p[FZ_N];U np,dp,n,nb,nt;int ab;B sum,i32;UC ow,tr[FZ_N];CO V*lv[FZ_N];F lc[FZ_N];L li[FZ_N];V*out;L*mn,*mx;W*acc;}FZC;
+// src/o.c's order key for floats (of1, of0), the same integer steps
+Z CO W fzo_=(-1ull>>12)-1;Z L fzt_(L v)_(v^(W)(v>>63)>>1)
+Z L fzco(L v)_(W b=(W)v<<1;!b?0:b>0xffe0000000000000ull?NFL:v)
+Z L fzk1(F x)_(L v;MC(&v,&x,8);fzt_(fzco(v))+fzo_)
+Z F fzk0(L v)_(v=fzt_(v-fzo_);F x;MC(&x,&v,8);x)
+// a NaN or a -0.0 among x[0..n): where the keys and IEEE order part
+Z B fzbad(CO F*x,U n){W b=0;F(n,W u;MC(&u,x+i,8);b|=(u<<1>0xffe0000000000000ull)|(u==1ull<<63))return b!=0;}
+Z B fzbad1(F v)_(fzbad(&v,1))
+TD __int128 FZL;
+Z U fzfit(FZL lo,FZL hi){U w=0;W(w<3&&(lo<-((FZL)1<<((8<<w)-1))||hi>((FZL)1<<((8<<w)-1))-1),w++)return w;}
+// the block evaluator, made for int lanes of type T (L or I; UT its unsigned); DW: the width T stores (3 or 2)
+#if defined(__x86_64__) && defined(__ELF__) && defined(__GNUC__) && !defined(wasm) && !defined(__AVX2__)
+#define FZMV __attribute__((target_clones("avx2","default")))
+#else
+#define FZMV
+#endif
+#define FZI(T,UT,X,Y) S(op,C('+',F(cnt,R[i]=(T)((UT)(X)+(UT)(Y))))C('-',F(cnt,R[i]=(T)((UT)(X)-(UT)(Y))))C('*',F(cnt,R[i]=(T)((UT)(X)*(UT)(Y))))\
+ C('&',F(cnt,T u_=X,v_=Y;R[i]=MIN(u_,v_)))C('|',F(cnt,T u_=X,v_=Y;R[i]=MAX(u_,v_))))
+#define FZQ(X,Y) S(op,C('<',F(cnt,R[i]=(X)<(Y)))C('>',F(cnt,R[i]=(X)>(Y)))C('=',F(cnt,R[i]=(X)==(Y))))
+#define FZM(X,Y) I(op=='&',F(cnt,F u_=X,v_=Y;r[i]=v_<u_?v_:u_))E(F(cnt,F u_=X,v_=Y;r[i]=v_>u_?v_:u_))
+#define FZBLK(NAME,T,UT,DW) \
+Z FZMV V NAME(CO FZC*c,U o,U cnt,F*bf,L*mn,L*mx,W*acc){CO V*sp[FZ_N];F sf[FZ_N];L sz[FZ_N];UC sk[FZ_N],ss[FZ_N],tb[FZ_BK];U d=0,cr=cnt+3&~3u;\
+ for(U j=0;j<c->np;j++){FZS s=c->p[j];F*bs=bf+(N)d*FZ_BK;\
+  if(s.op=='v'){sp[d]=(CO F*)c->lv[j]+o;sk[d]=0;ss[d++]=0;continue;}\
+  if(s.op=='z'){T*q_=(T*)bs;I(s.w==DW,sp[d]=(CO T*)c->lv[j]+o)\
+   E(S(s.w,C(0,CO G*g_=(CO G*)c->lv[j]+o;F(cnt,q_[i]=g_[i]))C(1,CO H*g_=(CO H*)c->lv[j]+o;F(cnt,q_[i]=g_[i]))C(2,CO I*g_=(CO I*)c->lv[j]+o;F(cnt,q_[i]=g_[i])))sp[d]=bs)\
+   sk[d]=1;ss[d++]=0;continue;}\
+  if(s.op=='c'){sf[d]=c->lc[j];sk[d]=0;ss[d++]=1;continue;}\
+  if(s.op=='i'){sz[d]=c->li[j];sk[d]=1;ss[d++]=1;continue;}\
+  U a=d-2,e=d-1;d--;B last=j==c->np-1;UC op=s.op;F*ba=bf+(N)a*FZ_BK,*be=bf+(N)e*FZ_BK;\
+  if(s.k==1){B dir=last&&!c->sum&&c->ow==DW;T*R=dir?(T*)c->out+o:(T*)ba;\
+   I(ss[a],T v=(T)sz[a];CO T*y=sp[e];FZI(T,UT,v,y[i]))J(ss[e],CO T*x=sp[a];T v=(T)sz[e];FZI(T,UT,x[i],v))E(CO T*x=sp[a],*y=sp[e];FZI(T,UT,x[i],y[i]))\
+   I(c->tr[j],T lo_=R[0],hi_=R[0];F(cnt,T u_=R[i];lo_=MIN(lo_,u_);hi_=MAX(hi_,u_))mn[j]=MIN(mn[j],(L)lo_);mx[j]=MAX(mx[j],(L)hi_))\
+   I(last&&c->sum,W t=0;F(cnt,t+=(W)(L)R[i])*acc+=t)\
+   I(last&&!c->sum&&!dir,S(c->ow,C(0,G*q=(G*)c->out+o;F(cnt,q[i]=(G)R[i]))C(1,H*q=(H*)c->out+o;F(cnt,q[i]=(H)R[i]))\
+    C(2,I*q=(I*)c->out+o;F(cnt,q[i]=(I)R[i]))C(3,L*q=(L*)c->out+o;F(cnt,q[i]=(L)R[i]))))\
+   sp[a]=R;sk[a]=1;ss[a]=0;continue;}\
+  if(s.k==2&&sk[a]&&sk[e]){UC*R=c->sum?tb:(UC*)c->out+o;\
+   I(ss[a],L v=sz[a];CO T*y=sp[e];FZQ(v,(L)y[i]))J(ss[e],CO T*x=sp[a];L v=sz[e];FZQ((L)x[i],v))E(CO T*x=sp[a],*y=sp[e];FZQ(x[i],y[i]))\
+   I(c->sum,W t=0;F(cnt,t+=R[i])*acc+=t)continue;}\
+  F va=0,ve=0;CO F*x=0,*y=0;\
+  I(ss[a],va=sk[a]?(sz[a]==NL?NF:(F)sz[a]):sf[a])J(sk[a],CO T*z_=sp[a];for(U i_=cr;i_--;){L v_=z_[i_];ba[i_]=v_==NL?NF:(F)v_;}x=ba)E(x=sp[a])\
+  I(ss[e],ve=sk[e]?(sz[e]==NL?NF:(F)sz[e]):sf[e])J(sk[e],CO T*z_=sp[e];for(U i_=cr;i_--;){L v_=z_[i_];be[i_]=v_==NL?NF:(F)v_;}y=be)E(y=sp[e])\
+  if(s.k==2||op=='&'||op=='|'){\
+   B bad=(ss[a]?fzbad1(va):fzbad(x,cnt))||(ss[e]?fzbad1(ve):fzbad(y,cnt));\
+   if(s.k==2){UC*R=c->sum?tb:(UC*)c->out+o;\
+    I(!bad,I(ss[a],FZQ(va,y[i]))J(ss[e],FZQ(x[i],ve))E(FZQ(x[i],y[i])))\
+    E(L ka=ss[a]?fzk1(va):0,ke=ss[e]?fzk1(ve):0;I(ss[a],FZQ(ka,fzk1(y[i])))J(ss[e],FZQ(fzk1(x[i]),ke))E(FZQ(fzk1(x[i]),fzk1(y[i]))))\
+    I(c->sum,W t=0;F(cnt,t+=R[i])*acc+=t)continue;}\
+   F*r=last?(F*)c->out+o:ba;\
+   I(!bad,I(ss[a],FZM(va,y[i]))J(ss[e],FZM(x[i],ve))E(FZM(x[i],y[i])))\
+   E(B mx_=op=='|';L ka=ss[a]?fzk1(va):0,ke=ss[e]?fzk1(ve):0;\
+     F(cnt,L u_=ss[a]?ka:fzk1(x[i]),v_=ss[e]?ke:fzk1(y[i]);r[i]=fzk0(mx_?MAX(u_,v_):MIN(u_,v_))))\
+   sp[a]=r;sk[a]=0;ss[a]=0;continue;}\
+  F*r=last?(F*)c->out+o:ba;\
+  if(!ss[a]&&!ss[e])S(op,C('+',simd_add_f64(x,y,r,cr))C('-',simd_sub_f64(x,y,r,cr))C('*',simd_mul_f64(x,y,r,cr))C('%',simd_div_f64(x,y,r,cr)))\
+  else if(ss[a])S(op,C('+',fzadd(va,y,r,cr))C('-',simd_subs_f64(va,y,r,cnt))C('*',fzmul(va,y,r,cr))C('%',fzdvl(va,y,r,cr)))\
+  else S(op,C('+',fzadd(ve,x,r,cr))C('-',fzadd(-ve,x,r,cr))C('*',fzmul(ve,x,r,cr))C('%',fzdvr(x,ve,r,cnt)))\
+  sp[a]=r;sk[a]=0;ss[a]=0;}}
+FZBLK(fzblk64,L,W,3)
+FZBLK(fzblk32,I,U,2)
 Z V fzw(V*c_,int t){FZC*c=c_;U b0=(U)((N)c->nb*t/c->nt),b1=(U)((N)c->nb*(t+1)/c->nt);F bf[c->dp*FZ_BK];
- for(U k=b0;k<b1;k++){U o=k*FZ_BK,m=MIN(FZ_BK,c->n-o);fzblk(c,o,m,bf,c->out+o);}}
-A fzrun(A d,A*l){A pg=_A(d)[0];CO UC*q=(CO UC*)_V(pg),*e=q+_n(pg);B sum=*q++&1;FZC c;B kd[FZ_N];U np=0,dp=0,n=0;
+ L mn[FZ_N],mx[FZ_N];W acc=0;F(FZ_N,mn[i]=WL;mx[i]=NL)
+ U r=c->np-1;B wa=c->p[r].k==1&&!c->sum&&c->tr[r];                     //watch the root's width
+ for(U k=b0;k<b1;k++){U o=k*FZ_BK,m=MIN(FZ_BK,c->n-o);I(wa&&__atomic_load_n(&c->ab,__ATOMIC_RELAXED),break)
+  I(c->i32,fzblk32(c,o,m,bf,mn,mx,&acc))E(fzblk64(c,o,m,bf,mn,mx,&acc))
+  I(wa&&fzfit(mn[r],mx[r])>c->ow,__atomic_store_n(&c->ab,1,__ATOMIC_RELAXED);break)}
+ MC(c->mn+(N)t*FZ_N,mn,SZ mn);MC(c->mx+(N)t*FZ_N,mx,SZ mx);c->acc[t]=acc;}
+A fzrun(A d,A*l){A pg=_A(d)[0];CO UC*q=(CO UC*)_V(pg),*e=q+_n(pg);FZC c;c.sum=*q++&1;UC kd[FZ_N],sd[FZ_N];U np=0,dp=0,n=0;
  W(q<e,UC o=*q++;A v=0;
   I(o=='l',v=l[*q++])J(o=='g',v=gv[q[0]|(U)q[1]<<8];q+=2)J(o=='k',v=_A(d)[*q++])
-  E(P(dp<2||kd[dp-1]&&kd[dp-2]||np>=FZ_N,0)c.p[np++]=(FZS){o,0};dp--;kd[dp-1]=0;continue)
+  E(P(dp<2||sd[dp-1]&&sd[dp-2]||np>=FZ_N,0)B cmp=o=='<'||o=='>'||o=='=';P(cmp&&q<e,0)
+    UC k=cmp?2:o!='%'&&kd[dp-1]==1&&kd[dp-2]==1?1:0;c.p[np++]=(FZS){o,k,0,0};dp--;kd[dp-1]=k;sd[dp-1]=0;continue)
   P(!v||np>=FZ_N,0)
-  I(!_tP(v)&&_T(v)==tF,U m=_n(v);P(n&&m!=n,0)n=m;c.lv[np]=_F(v);c.p[np++]=(FZS){'v',0};kd[dp++]=0)
-  E(UC t=_t(v);P(t!=tf&&t!=ti&&t!=tl,0)c.lc[np]=t==tf?*_F(v):gf(cF(_R(v)));c.p[np++]=(FZS){'c',0};kd[dp++]=1)
-  )
- P(dp!=1||n<FZ_MIN||kd[0],0)
- c.np=np;c.n=n;c.nb=(n+FZ_BK-1)/FZ_BK;c.dp=0;{U k=0;F(np,I(c.p[i].op=='v'||c.p[i].op=='c',k++)E(k--)c.dp=MAX(c.dp,k))}
+  I(!_tP(v)&&_T(v)==tF,U m=_n(v);P(n&&m!=n,0)n=m;c.lv[np]=_V(v);c.p[np++]=(FZS){'v',0,0,0};kd[dp]=0;sd[dp++]=0)
+  J(!_tP(v)&&LH(tG,_T(v),tL),U m=_n(v);P(n&&m!=n,0)n=m;c.lv[np]=_V(v);c.p[np++]=(FZS){'z',1,(UC)(_T(v)-tG),0};kd[dp]=1;sd[dp++]=0)
+  E(UC t=_t(v);P(t!=tf&&t!=ti&&t!=tl,0)
+    I(t==tf,c.lc[np]=*_F(v);c.p[np++]=(FZS){'c',0,0,1};kd[dp]=0)E(c.li[np]=gl_(v);c.p[np++]=(FZS){'i',1,0,1};kd[dp]=1)sd[dp++]=1))
+ P(dp!=1||n<FZ_MIN||sd[0],0)
+ c.np=np;c.n=n;c.nb=(n+FZ_BK-1)/FZ_BK;c.dp=0;{U k=0;F(np,I(c.p[i].op=='v'||c.p[i].op=='z'||c.p[i].op=='c'||c.p[i].op=='i',k++)E(k--)c.dp=MAX(c.dp,k))}
+ // before the pass: the bounds of every int step, the least and most width it can end at, and which steps
+ // need watching (their bound does not fit the least width their operands can have)
+ FZL lo[FZ_N],hi[FZ_N];UC wl[FZ_N],wm[FZ_N];U st[FZ_N],sp_=0;
+ F(np,FZS s=c.p[i];c.tr[i]=0;
+  I(s.op=='z',L a_=s.w==3?NL:-(1ll<<((8<<s.w)-1)),b_=s.w==3?WL:(1ll<<((8<<s.w)-1))-1;lo[i]=a_;hi[i]=b_;wl[i]=wm[i]=s.w;st[sp_++]=i;continue)
+  I(s.op=='i',lo[i]=hi[i]=c.li[i];wl[i]=wm[i]=0;st[sp_++]=i;continue)
+  I(s.op=='v'||s.op=='c',st[sp_++]=i;continue)
+  U ea=st[sp_-1],aa=st[sp_-2];sp_--;st[sp_-1]=i;
+  I(s.k==1,FZS sa=c.p[aa],se=c.p[ea];
+   U la=sa.s?tZ(c.li[aa])-tG:wl[aa],le=se.s?tZ(s.op=='-'?(L)(0-(W)c.li[ea]):c.li[ea])-tG:wl[ea];
+   U ma=sa.s?la:wm[aa],me=se.s?le:wm[ea];wl[i]=MAX(la,le);wm[i]=MAX(ma,me);
+   FZL x0=lo[aa],x1=hi[aa],y0=lo[ea],y1=hi[ea];
+   S(s.op,C('+',lo[i]=x0+y0;hi[i]=x1+y1)C('-',lo[i]=x0-y1;hi[i]=x1-y0)
+    C('*',FZL p0=x0*y0,p1=x0*y1,p2=x1*y0,p3=x1*y1;lo[i]=MIN(MIN(p0,p1),MIN(p2,p3));hi[i]=MAX(MAX(p0,p1),MAX(p2,p3)))
+    C('&',lo[i]=MIN(x0,y0);hi[i]=MIN(x1,y1))C('|',lo[i]=MAX(x0,y0);hi[i]=MAX(x1,y1)))
+   I(s.op=='+'||s.op=='-'||s.op=='*',U f=fzfit(lo[i],hi[i]);I(f>wl[i],c.tr[i]=1)wm[i]=MAX(wm[i],f))
+   I(lo[i]<NL||hi[i]>WL,lo[i]=NL;hi[i]=WL)))                           //it may wrap (only where a 64-bit op wraps too)
+ c.i32=1;F(np,FZS s=c.p[i];I(s.op=='z'&&s.w==3||s.op=='i'&&c.li[i]!=(I)c.li[i]||s.k==1&&s.op!='z'&&s.op!='i'&&(lo[i]<-((FZL)1<<31)||hi[i]>((FZL)1<<31)-1),c.i32=0))
  int nt=n>=FZ_PAR?par_thread_count(n):1;I(nt>(int)c.nb,nt=(int)c.nb)c.nt=(U)nt;
- A z=aF(n);P(!z,0)_at(z)=0;c.out=zF;
+ UC rk=c.p[np-1].k;c.ow=rk==1?wl[np-1]:3;L mnb[PAR_MAX_THREADS*FZ_N],mxb[PAR_MAX_THREADS*FZ_N];W acb[PAR_MAX_THREADS];c.mn=mnb;c.mx=mxb;c.acc=acb;
+ A z=0;c.ab=0;
+ again:I(!c.sum||rk==0,z=an(n,rk==0?tF:rk==1?tG+c.ow:tG);P(!z,0)_at(z)=0;c.out=_V(z))
  I(nt>1,par_run(nt,fzw,&c))E(fzw(&c,0))
- P(sum,F r=simd_sum_f64(zF,n);mr(z);af(r))
+ I(c.ab,mr(z);c.ab=0;c.ow=wm[np-1];goto again)                        //the guess was too narrow: at the widest
+ P(c.sum&&rk==0,F r=simd_sum_f64(zF,n);mr(z);af(r))
+ P(c.sum,W t=0;F(nt,t+=acb[i])az((L)t))
+ // widths: replay the steps; an int step's width is max(its operands', the narrowest holding its values)
+ U wd[FZ_N];sp_=0;
+ F(np,FZS s=c.p[i];
+  I(s.op=='v'||s.op=='z'||s.op=='c'||s.op=='i',wd[i]=s.op=='z'?s.w:0;st[sp_++]=i;continue)
+  U ea=st[sp_-1],aa=st[sp_-2];sp_--;st[sp_-1]=i;
+  I(s.k==1,FZS sa=c.p[aa],se=c.p[ea];
+   U wa=sa.s?tZ(c.li[aa])-tG:wd[aa],we=se.s?tZ(s.op=='-'?(L)(0-(W)c.li[ea]):c.li[ea])-tG:wd[ea];wd[i]=MAX(wa,we);
+   I(c.tr[i],L lo_=WL,hi_=NL;F_(t,nt,lo_=MIN(lo_,mnb[t*FZ_N+i]);hi_=MAX(hi_,mxb[t*FZ_N+i]))wd[i]=MAX(wd[i],fzfit(lo_,hi_))))
+  // a comparison of an int vector with an int number wider than it: cmpzZ's rsz (the number taken on the left)
+  I(s.k==2&&i==np-1,FZS sa=c.p[aa],se=c.p[ea];
+   I(sa.k==1&&se.k==1&&(sa.s||se.s),L v=sa.s?c.li[aa]:c.li[ea];U w=sa.s?wd[ea]:wd[aa];U f=s.op=='<'?8:s.op=='>'?9:10;I(se.s&&f<10,f^=1)
+    I(tG+w<tZ(v),mr(z);return rsz(n,ai(f==8?v<0:f==9?v>0:0))))))
+ I(rk==1&&wd[np-1]>c.ow,mr(z);c.ow=(UC)wd[np-1];goto again)          //wider than guessed (an operand widened): again at its width
+ I(rk==1&&wd[np-1]<c.ow,z=ct(tG+wd[np-1],z))                         //after a rerun at the widest
  return z;}
 // the VM's bF (src/b.c): b at its operands j c p, l the frame's locals, k the lambda's constants. Out of line so
 // that the dispatch loop's registers are not disturbed; p, a local leaf, is looked at first and unless it holds
-// a float vector long enough there is nothing more to do (scalar code, short vectors).
-NI A fzop(CO UC*b,A*l,A*k){UC p=b[2];I(p<16,A v=l[p];P(!v||_tP(v)||_T(v)!=tF||_n(v)<FZ_MIN,0))return fzrun(k[b[1]],l);}
+// a float or int vector long enough there is nothing more to do (scalar code, short vectors).
+NI A fzop(CO UC*b,A*l,A*k){UC p=b[2];I(p<16,A v=l[p];P(!v||_tP(v)||(_T(v)!=tF&&!LH(tG,_T(v),tL))||_n(v)<FZ_MIN,0))return fzrun(k[b[1]],l);}
 Z A dvdzZ(L v,A y,U f)_(dvdfF(v==NL?NF:v,cF(y),f))
 Z A dvdZZ(A x,A y,U f)_(x=cF(xR);x(amdFF(x,cF(y),f)))
 // amber: scalar-scalar fallback arithmetic. Every step that can involve the

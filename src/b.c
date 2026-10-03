@@ -117,24 +117,25 @@ Z I shpair(A oa,A ob)_(A u=shv(oa,1),w=shv(ob,-1);P(u&&w&&mtc_(u,w),0)u=shv(oa,-
 // order in which the two operands are then evaluated cannot matter.
 Z I cmpn(A m,A*c,A*k)_(P(!_tA(m)||_n(m)!=3,-1)A d=_A(m)[0];I op=d==LTN?0:d==GTN?1:d==EQL?2:-1;P(op<0,-1)
  A p=_A(m)[1],q=_A(m)[2];P(!fnode(p,0)||!fnode(q,0),-1)I(numlit(p)&&!numlit(q),SW(p,q)I(op<2,op^=1))*c=p;*k=q;op)
-// ---- amber 2.5 (exp): float fusion. An element-wise tree of + - * % over variables and number literals
+// ---- amber 2.5 (exp): fusion. An element-wise tree of + - * % & | (< > = at the root) over variables and number literals
 // (two operations or more, or one under +/) compiles to  bF j c p  followed by the usual code for it. bF gives
 // the program (constant c: its bytes, then the literals) to fzrun (src/2.c), which takes it only for float
 // vectors and numbers and then jumps the j bytes of usual code; everything else falls through to that code.
 // p is the rightmost local leaf: unless it holds a float vector bF does not even call fzrun, so scalar code
 // pays one test. If the tree's usual code is longer than a jump reaches, the bF is taken back out.
 Z B fzno,fzu;   //fzno: emit no fused code (the fallback being compiled, or the recompile after a limit); fzu: emitted some
-Z B fzt(A t,I*k,I*v){I(_tS(t),P(_n(t)!=1,0)++*v;return 1)P(numlit(t),1)P(!_tA(t)||_n(t)!=3,0)A d=_A(t)[0];
- P(d!=ADD&&d!=SUB&&d!=MUL&&d!=DVD,0)P(++*k>15,0)return fzt(_A(t)[1],k,v)&&fzt(_A(t)[2],k,v);}
+// is t a fusable tree? k counts operations, v variable leaves; r: t is the root, where < > = may stand too
+Z B fzt(A t,I*k,I*v,B r){I(_tS(t),P(_n(t)!=1,0)++*v;return 1)P(numlit(t),1)P(!_tA(t)||_n(t)!=3,0)A d=_A(t)[0];
+ P(d!=ADD&&d!=SUB&&d!=MUL&&d!=DVD&&d!=MNM&&d!=MXM&&!(r&&(d==LTN||d==GTN||d==EQL)),0)P(++*k>15,0)return fzt(_A(t)[1],k,v,0)&&fzt(_A(t)[2],k,v,0);}
 Z B fzp(A t,UC*p,I*np,A*d,I*pk){P(*np>60,0)
  I(_tS(t),I w=*_I(t),i=fI(l,nl,w);P(i<nl,p[(*np)++]='l';p[(*np)++]=i;*pk=i;1)P(w=='o',0)U g=gi(t);
   p[(*np)++]='g';p[(*np)++]=g&255;p[(*np)++]=g>>8;return 1)
  I(numlit(t),P(_n(*d)>250,0)p[(*np)++]='k';p[(*np)++]=_n(*d);PSH(*d,_R(t));return 1)
- P(!fzp(_A(t)[1],p,np,d,pk)||!fzp(_A(t)[2],p,np,d,pk),0)A o=_A(t)[0];p[(*np)++]=o==ADD?'+':o==SUB?'-':o==MUL?'*':'%';return 1;}
+ P(!fzp(_A(t)[1],p,np,d,pk)||!fzp(_A(t)[2],p,np,d,pk),0)A o=_A(t)[0];p[(*np)++]=o==ADD?'+':o==SUB?'-':o==MUL?'*':o==DVD?'%':o==MNM?'&':o==MXM?'|':o==LTN?'<':o==GTN?'>':'=';return 1;}
 Z I fzc(A x)_(U n=un,i=OFF;W(i<n&&!cid(x,ua),i++)I(i>=n,PSH(u,xR))i-OFF)
 Z I fz(A x,B r){P(fzno||!r,-2)U n=xn;A y=xx,t=x;I o=xo;UC fl=0;
  I(n==2&&((_tA(y)&&_n(y)==2&&_A(y)[0]==aw+1&&_A(y)[1]==ADD)||(!_tP(y)&&_t(y)==tr&&_E(y)==1&&_n(y)==1&&_A(y)[0]==ADD)),t=xy;fl=1)
- I k=0,v=0;P(!fzt(t,&k,&v)||!v||k<2-fl,-2)
+ I k=0,v=0;P(!fzt(t,&k,&v,1)||!v||k<2-fl,-2)
  UC p[72];I np=1,pk=255;p[0]=fl;A d=aA(1);_A(d)[0]=au;P(!fzp(t,p,&np,&d,&pk),mr(d);-2)
  _A(d)[0]=aCn((S)p,np);I c=fzc(d);mr(d);P(c>255,-2)
  I st=nb;M(bF)M(0)M(c)M(pk)fzno=1;I r_=cr(x,1);fzno=0;P(r_-OK,r_)

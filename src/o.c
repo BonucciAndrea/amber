@@ -31,7 +31,7 @@ NI B mtc_(A x,A y/*00*/)_(
 
 A2(mtc,/*01*/y(ai(mtc_(x,y))))
 Z CO W o=(-1ull>>12)-1;Z L t(L v)_(v^(W)(v>>63)>>1);Z A of_(A,I);
-Z L o0(L v)_(t(v-o))Z V of0LL(CO L*a,L*r,N n){F(n+3&~3,r[i]=o0(a[i]))}A1(of0,Q(xtlL);of_(x,0))
+Z L o0(L v)_(t(v-o))Z V of0LL(CO L*a,L*r,N n){F(n+3&~3,r[i]=o0(a[i]))}A1(of0,P(xti,of0(al(xv)))/*a key in int range comes back from ari packed*/Q(xtlL);of_(x,0))
 // Issue #15 (option A): -0.0 and 0.0 are one value, and so are all NaNs, wherever order is seen, so
 // the order key canonicalises first: either zero is 0.0, any NaN is 0n (which sorts first). Ties then
 // keep their places (the sorts are stable), and min and max give 0.0 or 0n for them.

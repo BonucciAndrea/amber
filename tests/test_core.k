@@ -779,7 +779,11 @@ tcRank:{x+y}
 t[`rankErrorsTrapped;{.[tcRank;1 2 3;{-1}]}'!1000;1000#-1]
 tv[`stackDepthAfterRankErrors;"tcDeep 1500";1500]
 
-hexpect[476]
+/ ---- & and | of float atoms next to minus the smallest normal double ----
+t[`minMaxNegMinNormal;{(x&x;x|x;0.0&x;1.0&x;-1.0|x;-0.0&x;0n|x)}@-2.2250738585072014e-308;7#-2.2250738585072014e-308]
+t[`minMaxNegMinNormalPair;{(x&y;x|y;y&x;y|x)}[-2.225073858507201e-308;-2.225073858507202e-308];-2.225073858507202e-308 -2.225073858507201e-308 -2.225073858507202e-308 -2.225073858507201e-308]
+
+hexpect[478]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

@@ -509,6 +509,10 @@ t[`ajGroupStamps;   (+aj[`g`t;GT;GQ])`q;  7 8 7]   / grouped by a timestamp colu
 t[`wjGroupStamps;   ((+wj[(10 10 10;11 11 11);`g`t;GT;GQ;,(`c;count;`q)])`c;(+wj[(10 10 10;11 11 11);`g`t;GT;GQ;,(`s;sum;`q)])`s);  (1 1 1;7 8 7)]
 t[`ajTimes;        (+aj[`t;+`t`v!((10:00:00.000;11:00:00.000);1 2);+`t`q!((09:00:00.000;10:30:00.000);6 5)])`q;  6 5]
 t[`ajsortedStamps; (ajsorted[`ts;AJQ];ajsorted[`ts;+`ts`q!(|AJQ`ts;6 5)]);  1 0]   / sorted temporal quotes are not sorted again
+/ int folds, scans and amends wrap (computed in unsigned arithmetic: a signed overflow in C is undefined)
+t[`scanWrap;       (*\0N 0N;+\9223372036854775807 1;*\4294967296 4294967296;9223372036854775806+\1 1);(0N 0;9223372036854775807 0N;4294967296 0;9223372036854775807 0N)]
+t[`foldSeedWrap;   (9223372036854775807+/1 2;0N*/0N 3);(-9223372036854775806;0)]
+t[`amendWrap;      ({x[0 1]*:-9223372036854775807;x}3#-1099511627776;@[2#9223372036854775807;0 0;+;1];{x[0 1]+:1;x}2#9223372036854775807);(3#-1099511627776;-9223372036854775807 9223372036854775807;0N 0N)]
 
 / ---- amber 2.2: float literals below 1e-308 (subnormals) ------------------
 / pfu (src/p.c) clamped an out-of-range exponent and returned EARLY, before it

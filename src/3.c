@@ -109,8 +109,8 @@ Z L maxfG(CO V*a,U n)_(MNM1(G,(G)(1u  << 7),MAX,max))
 Z L maxfH(CO V*a,U n)_(MNM1(H,(H)(1u  <<15),MAX,max))
 Z L maxfI(CO V*a,U n)_(MNM1(I,(I)(1u  <<31),MAX,max))
 Z L maxfL(CO V*a,U n)_(n?MAX((L)(1ull<<63),simd_max_i64(a,n)):(L)(1ull<<63))
-  L addfZ(L v,A x/*0*/)_(v+    G(&addfG,addfH,addfI,addfL)[xw-3](xV,xn) )
-Z L mulfZ(L v,A x/*0*/)_(v*    G(&mulfG,mulfH,mulfI,mulfL)[xw-3](xV,xn) )
+  L addfZ(L v,A x/*0*/)_((L)((W)v+(W)G(&addfG,addfH,addfI,addfL)[xw-3](xV,xn)))   //the seed added as the kernels add: wrapping, in W
+Z L mulfZ(L v,A x/*0*/)_((L)((W)v*(W)G(&mulfG,mulfH,mulfI,mulfL)[xw-3](xV,xn)))
   L minfZ(L v,A x/*0*/)_(MIN(v,G(&minfG,minfH,minfI,minfL)[xw-3](xV,xn)))
   L maxfZ(L v,A x/*0*/)_(MAX(v,G(&maxfG,maxfH,maxfI,maxfL)[xw-3](xV,xn)))
 // sumF: four-way partial float sum (see the header note above).
@@ -149,8 +149,9 @@ A3(arf,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzfc)Q(ztZFC)
 Z A3(___s,/*010*/U i=!y;A u;I(i,y=ii(z,0);u=enl(yR))E(yR;u=emp(tG))U n=zn;W(i<n,y=y(x2(y,ii(z,i++)));P(!y,u(0))PSH(u,yR))y(u))
 Z A3(dexs,/*010*/I(y,y(0))zR)
 Z A3(adms,/*010*/L w=y?gl(y):x==MUL;U n=zn;I b=1;L v=w;C t=tG+zw-3;A u=an(n,t);
- I(x==ADD,F4(zw-3,n,ug=v+=zg;B(v-(G)v,b=0),uh=v+=zh;B(v-(H)v,b=0),ui=v+=zi;B(v-(I)v,b=0),ul=v+=zl))
- E(       F4(zw-3,n,ug=v*=zg;B(v-(G)v,b=0),uh=v*=zh;B(v-(H)v,b=0),ui=v*=zi;B(v-(I)v,b=0),ul=v*=zl))P(b,u)z=ct(t+1,u(zR));z(adms(x,az(w),z)))
+ //the running total wraps in W, as the folds and K arithmetic do (in L an overflow is undefined behaviour)
+ I(x==ADD,F4(zw-3,n,ug=v=(L)((W)v+(W)zg);B(v!=(G)v,b=0),uh=v=(L)((W)v+(W)zh);B(v!=(H)v,b=0),ui=v=(L)((W)v+(W)zi);B(v!=(I)v,b=0),ul=v=(L)((W)v+(W)zl)))
+ E(       F4(zw-3,n,ug=v=(L)((W)v*(W)zg);B(v!=(G)v,b=0),uh=v=(L)((W)v*(W)zh);B(v!=(H)v,b=0),ui=v=(L)((W)v*(W)zi);B(v!=(I)v,b=0),ul=v=(L)((W)v*(W)zl)))P(b,u)z=ct(t+1,u(zR));z(adms(x,az(w),z)))
 Z A3(subs,/*010*/y=neg(y?y:mul(ai(2),ii(z,0)));neg(adms(ADD,y,z)))
 Z A3(mxms,/*010*/P((!y||ytz)&&ztZ,L v=y?gl(y):NL,l=(L)(~0ull<<((1<<zw)-1)),h=~l;U n=zn;I(v<=l||h<=v,P(v>=0,rsz(n,az(v)))v=v<0?l:h)
                                   A u=an(n,zt);F4(zw-3,n,ug=v=MAX(v,zg),uh=v=MAX(v,zh),ui=v=MAX(v,zi),ul=v=MAX(v,zl))u)___s(x,y,z))
@@ -235,8 +236,10 @@ Z A4(dexa,/*1000*/uR;Ny(sup(&x,&u));x=mut(x);U n=yn;I wx=xw-3,wy=yw-3,wu=utt?-1:
   Mu(I(utt,F4(wx,n,xG[iw(y,wy,i)]=v ,xH[iw(y,wy,i)]=v ,xI[iw(y,wy,i)]=v ,xL[iw(y,wy,i)]=v ))
      E(    F4(wx,n,xG[iw(y,wy,i)]=ug,xH[iw(y,wy,i)]=uh,xI[iw(y,wy,i)]=ui,xL[iw(y,wy,i)]=ul)))x)
 Z A4(adma,/*1000*/yR;uR;x=cL(x);u=cL(u);x=mut(x);I(!ytL,y=cI(y))U n=yn;
- I(utt,L v=gl(u);My(I(zv==1,I(ytL,F(n,xL[yl]+=v ))E(F(n,xL[yi]+=v )))E(I(ytL,F(n,xL[yl]*=v ))E(F(n,xL[yi]*=v )))))
- E(Mu(           My(I(zv==1,I(ytL,F(n,xL[yl]+=ul))E(F(n,xL[yi]+=ul)))E(I(ytL,F(n,xL[yl]*=ul))E(F(n,xL[yi]*=ul))))))x)
+ #define AWR(i,o,v) xL[i]=(L)((W)xL[i] o (W)(v))   //wrapping, in W: an overflow in L is undefined behaviour
+ I(utt,L v=gl(u);My(I(zv==1,I(ytL,F(n,AWR(yl,+,v)))E(F(n,AWR(yi,+,v))))E(I(ytL,F(n,AWR(yl,*,v)))E(F(n,AWR(yi,*,v))))))
+ E(Mu(           My(I(zv==1,I(ytL,F(n,AWR(yl,+,ul)))E(F(n,AWR(yi,+,ul))))E(I(ytL,F(n,AWR(yl,*,ul)))E(F(n,AWR(yi,*,ul)))))))x)
+ #undef AWR
 Z A4(mmma,/*1000*/yR;uR;B d=utT;I(!d,u=enl(u))Ny(sup(&x,&u));x=mut(x);I(!ytL,y=cI(y))U n=yn;
  My(Mu(I(zv==6,I(ytL,F4(xw-3,n,xG[yl]=MIN(xG[yl],uG[d*i]),xH[yl]=MIN(xH[yl],uH[d*i]),xI[yl]=MIN(xI[yl],uI[d*i]),xL[yl]=MIN(xL[yl],uL[d*i])))
                E(    F4(xw-3,n,xG[yi]=MIN(xG[yi],uG[d*i]),xH[yi]=MIN(xH[yi],uH[d*i]),xI[yi]=MIN(xI[yi],uI[d*i]),xL[yi]=MIN(xL[yi],uL[d*i]))))

@@ -646,6 +646,13 @@ ZN V oI(ambcn){CO I*p=a;L*r=c;F(n+3&-4,*r++=b[i]<m?p[b[i]]:NL)}
 ZN V o8(ambcn,L v){CO L*p=a;L*r=c;F(n+3&-4,*r++=b[i]<m?p[b[i]]:v)}
 ZN V oL(ambcn){o8(a,m,b,c,n,NL);}
 ZN V oF(ambcn){o8(a,m,b,c,n,NFL);}
+// amber 2.5 (exp): a big gather split across threads (see patch header). es: bytes per output item.
+#define PGAT_MIN (1u<<19)
+TD struct{V(*f)(ambcn);CO V*a;U m;CO U*b;C*c;U n,nt,es;}GJ;
+Z V gat_w(V*c_,int t){GJ*c=c_;U s=(U)(((W)c->n*t/c->nt)&~31ull),e=(U)t+1==c->nt?c->n:(U)(((W)c->n*(t+1)/c->nt)&~31ull);
+ if(e>s)c->f(c->a,c->m,c->b+s,c->c+(N)s*c->es,e-s);}
+Z V gat(V(*f)(ambcn),U es,CO V*a,U m,CO U*b,V*c,U n){int nt=n<PGAT_MIN?1:par_thread_count(n);
+ if(nt<2){f(a,m,b,c,n);return;}GJ j={f,a,m,b,(C*)c,n,(U)nt,es};par_run(nt,gat_w,&j);}
 A2(i1,/*01*/P(y==GAP||y==au,xR)
  X(Rt(y(xR))
    RE(x=gZ(xR);x(i1(x,y)))
@@ -666,7 +673,7 @@ A2(i1,/*01*/P(y==GAP||y==au,xR)
         RI(U n=yn;
          X(RA(A z=aA(n);F(n,za=io(x,yi))y(0);I(!n,zx=mkn(io(x,0)))sqz(z))
            RB(x=cG(xR);x(i1(x,y)))
-           R_(C t=xt;B k=t-tG<3u&&maxfU(yV,yn)>=xn;A z=an(n,k?tL:t);My(G(&iG,iH,iI,oL,oF,iC,iS,oG,oH,oI)[7*k+t-tG](xV,xn,yV,zV,n))z))0))0))0)
+           R_(C t=xt;B k=t-tG<3u&&maxfU(yV,yn)>=xn;A z=an(n,k?tL:t);My(U q_=7*k+t-tG;gat(G(&iG,iH,iI,oL,oF,iC,iS,oG,oH,oI)[q_],(U)"\1\2\4\10\10\1\4\10\10\10"[q_],xV,xn,yV,zV,n))z))0))0))0)
 Z A3(i2,/*001*/C b=ytT||y==GAP||y==au;x=Nz(i1(x,yR));P(!b,x(x1(z)))x(l2f(dot,x,aA1(z))))
 Z AX(i8,A y=*a;P(n==1,i1(x,y))P(n==2,y(_2(x,y,a[1])))a++;n--;C b=ytT||y==GAP||y==au;x=i1(x,y);P(!x,mrn(n,a);x)P(!b,x(i8(x,a,n)))x(l2f(dot,x,aV(tA,n,a))))
 L iw(A x/*0*/,U w,L i)_(S4(w,_(xg),_(xh),_(xi),_(xl))0)

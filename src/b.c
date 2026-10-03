@@ -84,7 +84,7 @@ I ixwk(A x,A y,A z,B asg,B gl,UC*kd,L*ix){if(!x)return 0;if(_t(x)==tm&&!_tMT(_y(
   if(t&&t<tM&&!(k&&t==tS)){
    if(last&&!ty&&!_tP(s)&&LH(tE,_t(s),tL)&&_t(s)!=tB){U c=_N(s);I r=0;   //a list of ints at the last level, as ixck checks it: in range, and a list value of its count
     if(c){L lo=_t(s)==tE?ixe(s,0):minfZ(WL,s),hi=_t(s)==tE?ixe(s,c-1):maxfZ(NL,s);I(lo<0||hi>=(L)_N(v),r=-1)}
-    I(!r&&!_tP(z)&&_tT(z)&&_N(z)!=c,r=-2)I(v!=x,mr(v))P(r,r)P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;return (I)k+1;}   //d8 there (3)
+    I(!r&&!_tP(z)&&_tT(z)&&_N(z)!=c,r=-2)I(v!=x,mr(v))P(r,r)P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;ix[k]=-1;return (I)k+1;}   //d8 there (3; no row: ix -1)
    if(j<0||j>=(L)_N(v))break;kd[k]=0;ix[k]=j;I(!last,w=ii(v,(U)j))}
   else if((t==tm||t==tM)&&_t(_x(v))==tS&&(t==tm||_N(_y(v)))){A ks=_x(v),vs=_y(v);
    if(!ty&&_t(s)==ts&&a<0){A f=fnd(ks,_R(s));j=gl_(f);mr(f);
@@ -100,18 +100,46 @@ I ixwk(A x,A y,A z,B asg,B gl,UC*kd,L*ix){if(!x)return 0;if(_t(x)==tm&&!_tMT(_y(
      if(e&&u&&!_tP(u)&&_tT(u)){L g=gl_(e);I(g<0||g>=(L)_N(u),r=1)}   //one int into a list below: its range, as ixck checks it, without taking the list
      else I(kin||!tb&&_N(vs),u=ii(vs,kin?(U)q:0);r=ixck(u,y,k+1,z,asg);mr(u))I(r,break))
     I(v!=x,mr(v))P(r,mr(f);-r)kd[k]=9;ix[k]=(L)f;return (I)(k+1|gl<<8);}   //as ixkd checks it: a missing key above the last level adds it, the first value nulled
-   else if(t==tM&&s==au){I(v!=x,mr(v))P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;return (I)(k+1|(gl&&k+1<m)<<8);}   //every row of a table: nothing to check (ixkd), so not called
+   else if(t==tM&&s==au){I(v!=x,mr(v))P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;ix[k]=-1;return (I)(k+1|(gl&&k+1<m)<<8);}   //every row of a table: nothing to check (ixkd), so not called
    else break;}
   else break;
   if(last){k++;break;}if(v!=x)mr(v);v=w;}
  if(k==m||k&&(kd[k-1]==3||kd[k-1]==6)){I(v!=x,mr(v))P(a>=0&&k==m&&a+2==(I)m&&!kd[a+1],kd[a]+=3;a+2)return a<0?(I)k:a+1|gl<<8;}   //7, 8: a key to add, then one index into a list
- I r=ixck(v,y,k,z,asg);B sy=gl&&k&&(_ts(v)||_tS(v));I(v!=x,mr(v))P(r,-r)P(sy,0)P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;return (I)(k+1|(gl&&k+1<m)<<8);}   //stopped short below the first level: d8 from there (3)
-A ixst(A,A,CO UC*,CO L*,U,U,A,A);
+ I r=ixck(v,y,k,z,asg);B sy=gl&&k&&(_ts(v)||_tS(v));I(v!=x,mr(v))P(r,-r)P(sy,0)P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;ix[k]=-1;return (I)(k+1|(gl&&k+1<m)<<8);}   //stopped short below the first level: d8 from there (3)
+A ixst(A,A,CO UC*,CO L*,U,U,A,A,A*),ixv2(UC,A,A);
+//the item at the places ixwk found, where each is one that is there -- an int into a list (0), a key or column there
+//(1, 2: not one to add), a row then its column (6), or a table's row at the last level (3) -- so that the verb can go
+//first, on it, and its result be assigned with :, and a verb that fails touches nothing. Else 0 (the amend goes as before).
+//Borrowed from a general list (*o 0), else made, an atom or a row (*o 1): no count is touched on the way down x.
+//Where the walk stopped at a table's row (3) with more levels below, or did not start (m 0: d4) at one at the first
+//level (then kd[0] 3), the rest is read too, where each level below is one that is there (ixrr)
+Z A ixrr(A,A,U,U);
+NI __attribute__((cold)) A ixit(A x,A y,UC*kd,CO L*ix,U m,B*o){UC ry=_t(y);U my=ry>tm?1:_N(y);A v=x,w,c;B vo=0,wo;
+ if(!m){P(ry!=tA||my<2||_t(x)!=tM||!_tz(*_A(y)),0)v=ixrr(x,y,0,my);I(v,kd[0]=3;*o=1)return v;}
+ for(U k=0;k<m;k++){UC t=kd[k];L j=ix[k];   //c: the list the item is in
+  c=!t?v:t<3?j<(L)_N(_x(v))?_y(v):0:t==6?_A(_y(v))[ix[k+1]]:t==3&&j>=0&&k+1==my&&_t(v)==tM&&(LH(tE,ry,tL)||(ry>tm?_tz(y):ry==tA&&_tz(_A(y)[k])))?v:0;   //3: a row,
+  if(!c){w=t==3&&k+1==m&&ry==tA&&_t(v)==tM&&_tz(_A(y)[k])?ixrr(v,y,k,my):0;I(vo,mr(v))I(w,*o=1)return w;}   //or the rest below one
+  wo=!_tA(c);w=wo?ii(c,(U)j):_A(c)[j];I(vo,I(!wo,w=_R(w);wo=1)mr(v))v=w;vo=wo;}   //not where the walk stopped short
+ *o=vo;return v;}
+//from row y[k] of table x on, each level one index that is there, as ixwk walks it: an int in range of a list (not a
+//symbol list, which names a global there) or of a table's rows, a key of a dict of symbol keys, or a table's column.
+//The item, made; else 0, and the amend goes as before. Nothing below names a global (a symbol is an atom, read no further)
+Z __attribute__((cold)) A ixrr(A x,A y,U k,U my){L j=gl_(_A(y)[k]);P(!_N(_y(x))||j<0||j>=(L)_N(*_A(_y(x))),0)A v=ii(x,(U)j);
+ for(k++;k<my;k++){A s=_A(y)[k],w=0;UC t=_tP(v)?0:_t(v);
+  if(t&&t<tM&&t!=tS){I(_tz(s)&&(j=gl_(s))>=0&&j<(L)_N(v),w=ii(v,(U)j))}
+  else if((t==tm||t==tM)&&_t(_x(v))==tS){A vs=_y(v);
+   if(_ts(s)){A f=fnd(_x(v),_R(s));j=gl_(f);mr(f);I(j>=0&&j<(L)_N(_x(v))&&(t==tM||_tMT(vs)),w=ii(vs,(U)j))}
+   else I(t==tM&&_tz(s)&&_N(vs)&&(j=gl_(s))>=0&&j<(L)_N(*_A(vs)),w=ii(v,(U)j))}
+  mr(v);P(!w,0)v=w;}
+ return v;}
 //x[y]f:z (f dyads[d]) in run, the variable at p: ixca checks it (ixwk) and assigns it (by ixst where ixwk walked y, else
 //as before), in one call, so what ixwk found stays in its frame: in run's frame it changed how run's whole loop was
 //compiled, and made every bytecode a few percent slower; kept per thread between two calls, it cost a lookup each.
-//f#y, f_y, f@y and f.y call f, which may be an item of x and see or set the variable while ixst has items out of it, so
-//# _ @ and . go as before: ixck checks, and d4 assigns.
+//Where ixit reads the item, the verb goes first and ixst assigns its result with :, so a verb that fails leaves the
+//variable as it was. f#y, f_y, f@y and f.y call f, which may be an item of x: there the variable is whole while f runs,
+//and held, so that f can set it (a global): if f then fails, the variable keeps what f set; if not, the assignment is
+//made on the variable as it was, as before. Elsewhere f could see or set the variable while ixst has items out of it,
+//so # _ @ and . go as before: ixck checks, and d4 assigns.
 //A global (g) is run's variable while it is assigned, which an amend by name (d8, a.c) in the assignment meets: a symbol
 //below names a global, which may name the variable again, directly or through other globals (v:(1;(2;`v)); v[1;1;1;0]:9).
 //So it is assigned as before (d4) where the walk meets a symbol (ixwk), and the global's place is kept, innermost first,
@@ -120,12 +148,24 @@ A ixst(A,A,CO UC*,CO L*,U,U,A,A);
 //assigning, which has items out of it, is refused ('type) before it is touched. Only one thread (no peach) assigns a global
 Z struct ixg{A*p;struct ixg*n;B m;}*ixgs;
 I ixgn(A*p){I r=0;for(struct ixg*q=ixgs;q;q=q->n){if(q->p==p&&!q->m)return 2;r|=q->m;}return r;}   //2: refused; 1: by d4
-Z A ixas(A x,A y,A z,UC d,CO UC*kd,CO L*ix,I m)_(m?ixst(x,y,kd,ix,0,(U)m,av+d,z):_tA(y)&&_n(y)==1?a4(x,*_A(y),av+d,z):d4(x,y,av+d,z))   //one level: what d4 does, without taking it out of y
-Z NI A ixag(A*p,A x,A y,A z,UC d,CO UC*kd,CO L*ix,I m){struct ixg e={p,ixgs,!m};ixgs=&e;x=ixas(x,y,z,d,kd,ix,m);ixgs=e.n;return x;}   //a global, kept in ixgs while assigned
+I ixgh(A*p){for(struct ixg*q=ixgs;q;q=q->n)if(q->p==p)return 1;return 0;}   //is p's global being assigned?
+Z A ixas(A x,A y,A z,UC d,CO UC*kd,CO L*ix,I m,A*u)_(m?ixst(x,y,kd,ix,0,(U)m,av+d,z,u):_tA(y)&&_n(y)==1?a4(x,*_A(y),av+d,z):d4(x,y,av+d,z))   //one level: what d4 does, without taking it out of y
+Z NI A ixag(A*p,A x,A y,A z,UC d,CO UC*kd,CO L*ix,I m){struct ixg e={p,ixgs,!m};ixgs=&e;x=ixas(x,y,z,d,kd,ix,m,0);ixgs=e.n;return x;}   //a global, kept in ixgs while assigned
+Z NI I ixcv(A*p,A x,A y,A z,UC d,B g,UC*kd,L*ix,I m,I n){B f=d==14||d==15||d==18||d==19,o;A q=0;
+ if(!n){if(m>0&&m<256){I(f||kd[m-1]==3,q=ixit(x,y,kd,ix,(U)m,&o))}   //a row with more below (where the walk stopped, or did not start):
+  else if(m?m>0&&kd[(m&255)-1]==3:_t(x)==tM){U w=m&255;q=ixit(x,y,kd,ix,w,&o);I(q,m=w?(I)w:1)}}   //no symbol is met, so no global is amended by name
+ if(q){B h=f&&g;I(h,RC_INC(x))A r=ixv2(d,q,z);I(o,mr(q))   //f, or at a table's row: the verb first, on the item
+  if(h&&*p!=x){P(!r,mr(x);4)I(*p,mr(*p))*p=x;}E(I(h,(V)RC_DECV(x))P(!r,4))   //f set the variable: if f failed, it keeps that; else
+  B rw=kd[m-1]==3;A u=0;A w=ixst(x,y,kd,ix,0,(U)m,rw?av:0,r,rw?0:&u);I(rw,mr(r))P(!w&&u,*p=u;4)*p=w;return 0;}   //the assignment is made on x, as before (held). ixst takes r,
+ //but for a row (d8); a result that does not fit (a column's count) is its error, and x is put back (u)
+ I(f&&!n&&m>0&&kd[(m&255)-1]==9,mr((A)ix[(m&255)-1]))   //no item read: the find ixwk made for a list of keys (9) is not passed to ixst
+ P(m<0,-m)I(f&&!n,m=_t(x)==tm&&!_tMT(_y(x))?-3:-ixck(x,y,0,z,!d))P(m<0,-m)   //ixwk's or ixck's error, and *p untouched;
+ P(m>255||g&&!m,*p=ixag(p,x,y,z,d,kd,ix,m&255);0)A u=0;x=ixas(x,y,z,d,kd,ix,m,&u);P(!x&&u,*p=u;4)*p=x;return 0;}   //else 0; 4: the verb's error, and *p as it was (or as f set it)
 Z NI I ixca(A*p,A x,A y,A z,UC d,B g){UC kd[8];L ix[8];I n=g&&ixgs?ixgn(p):0;P(n>1,3)
- I m=n||d==14||d==15||d==18||d==19?_t(x)==tm&&!_tMT(_y(x))?-3:-ixck(x,y,0,z,!d):ixwk(x,y,z,!d,g,kd,ix);P(m<0,-m)   //ixck's error, and *p untouched;
- *p=m>255||g&&!m?ixag(p,x,y,z,d,kd,ix,m&255):ixas(x,y,z,d,kd,ix,m);return 0;}   //else 0
+ I m=n?_t(x)==tm&&!_tMT(_y(x))?-3:-ixck(x,y,0,z,!d):ixwk(x,y,z,!d,g,kd,ix);P(d,ixcv(p,x,y,z,d,g,kd,ix,m,n))P(m<0,-m)   //a verb, which can fail: ixcv
+ *p=m>255||g&&!m?ixag(p,x,y,z,0,kd,ix,m&255):ixas(x,y,z,0,kd,ix,m,0);return 0;}   //: assigns z, which ixwk checked fits
 Z NI __attribute__((cold)) V noupd(A*s){mr(*s);*s=err0("noupdate");}
+Z NI __attribute__((cold)) A ixer(I e)_(e==1?ei0():e==2?el0():e==3?et0():0)   //ixca's error (4: the verb's, already set)
 A fzop(CO UC*,A*,A*);
 // Amber 2.5 (exp): the VM's start pinned to 64 bytes. Its dispatch loop's speed depended on where the linker happened
 // to put it: a change anywhere else (one constant in src/2.c, here) moved run() 16 bytes and made nbody 7% slower, and
@@ -149,7 +189,7 @@ AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,d--,es8(a,n))/*d: per-thread VM recursio
   C6(bm,bM,bx,bX,by,bY,A*p=(c&1?gv:l)+BG,x=*p;I(__builtin_expect(c&1&&ray_rc_sync,0),noupd(s);goto l)  //          |      |                       |
    U(x,*s=ev(*s))A y=*s++;                                                                           //          |      |                       |
    I(c==bm||c==bM,y=v2[*b++](x,y);U(y,*--s=0)*p=x(y))                                               //mod asgn  |bm,i,d|.. x -> ..             |vars[i]:dyads[d][vars[i];x]
-   E(UC d_=*b++;I e_=ixca(p,x,y,*s,d_,c&1);x=e_?e_==1?ei0():e_==2?el0():et0():*p;mr(*s);I(c==bx||c==bX,mr(y);U(x,*s=0)s++)                  //ind asgn  |bx,i,d|.. z y -> ..           |vars[i]:  .[vars[i];y;dyads[d];z]
+   E(UC d_=*b++;I e_=ixca(p,x,y,*s,d_,c&1);x=e_?ixer(e_):*p;mr(*s);I(c==bx||c==bX,mr(y);U(x,*s=0)s++)        //ind asgn  |bx,i,d|.. z y -> ..           |vars[i]:  .[vars[i];y;dyads[d];z]
                                     E(U(x,*s=y(0))U(*s=dot(x,y)))))                                 //ind asgn  |by,i,d|.. z y -> .. r         |vars[i]:r:.[vars[i];y;dyads[d];z]
   C(bG,A x=*--s=gv[BG];U(x,ev0())xR)                                                                //get global|bG,i,i|.. -> .. globals[i]    |
   // amber 2.3: a peach dispatch runs this VM on several threads at once, and a

@@ -892,6 +892,24 @@ t[`amendKeepHeapIndexWide;{f:{L8[4294967296;`a]:7};L8::(1 2;3 4);r:{.[x;,0;{`err
 G1:1 2 3;N1.v:4 5 6
 t[`amendByNameListRefused;{r:{.[x;,0;{`err}]}'20#({.[,`G1;,5;:;9]};{.[`N1`v;,0 1;:;7 8 9]});(?r;G1;N1.v;. "1+1")}[];(,`err;1 2 3;4 5 6;2)]   / the name was released twice
 
+/ ---- an assignment whose verb fails leaves the variable as it was ----
+/ (where each level is one place that is there, each level puts back the item it took out; #: _: @: .: and a table's row read the item first)
+t[`amendVerbFailsKeep;(IA["F1:1 2 3";"F1[1]+:`a"];IA["F2:+`a`b!(1 2 3;4 5 6)";"F2[1;`a]+:`x"];IA["F3:+`a`b!(1 2 3;4 5 6)";"F3[`a;1]+:`x"];IA["F19:+`a`b!(1 2 3;4 5 6)";"F19[1]+:`x"];IA["F31:!5";"F31[2]+:`q"]);((`err;1 2 3);(`err;+`a`b!(1 2 3;4 5 6));(`err;+`a`b!(1 2 3;4 5 6));(`err;+`a`b!(1 2 3;4 5 6));(`err;!5))]
+t[`amendVerbFailsKeepNested;(IA["F4:`a`b!(1 2;3 4)";"F4[`b]+:`x"];IA["F5:`a`b!(1 2;3 4)";"F5[`a;0]+:`x"];IA["F6:(1 2;(3;4 5))";"F6[1;1;0]+:`x"];IA["F39:`a`b!(1 2;3 4)";"F39[`a;5]#:1"]);((`err;`a`b!(1 2;3 4));(`err;`a`b!(1 2;3 4));(`err;(1 2;(3;4 5)));(`err;`a`b!(1 2;3 4)))]
+t[`amendVerbFailsKeepByName;(IA["F7:1 2 3";".[`F7;,1;+;`a]"];IA["F8:`a`b!(1 2;3 4)";".[`F8;(`a;0);{x+`z}]"];IA["F9:+`a`b!(1 2;3 4)";".[`F9;(`a;1);{x+y+`z};1]"]);((`err;1 2 3);(`err;`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4)))]   / by name, where :: was left in it
+t[`amendVerbStillWorks;(IA["F10:1 2 3";"F10[1]+:10"];IA["F11:+`a`b!(1 2;3 4)";"F11[1;`a]*:5"];IA["F12:`a`b!(1 2;3 4)";"F12[`b;0],:9"];IA["F13:(1 2;(3;4 5))";".[`F13;(1;1;0);-:]"];IA["F20:+`a`b!(1 2;3 4)";"F20[1]+:10"]);((::;1 12 3);(::;+`a`b!(1 10;3 4));(::;`a`b!(1 2;(3 9;4)));2#,(1 2;(3;-4 5));(::;+`a`b!(1 12;3 14)))]
+t[`amendByNameFiveArgs;{r:IA["F14:(1 2;3 4)";".[`F14;1 0;{(x;y;z)};10;1]"];s:IA["F15:1 2";".[`F15;,0;{[a;b;c;d]a};10;1;2]"];e:*"\n"\.[.:;,".[`F14;0;+;1;2]";{x}];(r;s;e;F14;F15)}[];((`err;(1 2;3 4));(`err;1 2);"'nyi";(1 2;3 4);1 2)]   / five or more arguments: 'nyi, before the global is touched
+t[`amendByNameVerbSetsGlobal;{FA::1 2 3;r:.[{.[`FA;,1;{FA[0]:1;x+1}]};,0;{`t}];FB::1 2 3;s:.[{.[`FB;,1;{FB::99;x+`a}]};,0;{`t}];(r;FA;s;FB)}[];(`t;1 2 3;`t;99)]   / a verb that assigns into the global, then fails: the global is put back, or keeps what the verb set it to
+t[`amendVerbDictOfDicts;(IA["F16:`a`b!(`x`y!1 2;`x`y!3 4)";"F16[`b],:`q"];IA["F17:`a`b!(`x`y!1 2;`x`y!3 4)";"F17[`b;`x]+:10"];IA["F18:`a`b!(`x`y!1 2;`x`y!3 4)";"F18[`b;`x]+:`z"]);((::;`a`b!(`x`y!1 2;(`x`y!3 4;`q)));(::;`a`b!(`x`y!1 2;`x`y!13 4));(`err;`a`b!(`x`y!1 2;`x`y!3 4)))]   / values that are a table (dicts of the same keys): as a list of the dicts
+t[`amendVerbFunctionSetsGlobal;({r:IA["FG:+`a`b!(!1000;1000#{FG::0;x+1})";"FG[`b;3]@:5"];(*r;r[1;`b;3];#r 1)}[];IA["FH:(!1000;(2;{FH::0;x+1}))";"FH[1;1]@:5"][1;1;1];{r:IA["FI:+`a`b!(!1000;1000#{FI::0;x+1})";"FI[3;`b]@:5"];(*r;r[1;`b;3];#r 1)}[]);((::;6;1000);6;(::;6;1000))]   / a function item called by @: sets the global (it was freed, then read): the assignment is made on the global as it was
+t[`amendVerbFunctionSetsGlobal2;({r:IA["FJ:(!1000),{FJ::!3;x+1}";"FJ[1000]@:5"];(*r;r[1;1000];#r 1)}[];IA["FK:(1;(2;{FK::0;x+1}))";"FK[1;1]@:5"];IA["FL:`a`b!(1;{FL::!3;x+1})";"FL[`b].:,5"];{FS::(1;{FS::7 8;x+1});r:FS[1]@:5;(r;FS)}[];{FU::(1;(2;{FU::(1;{FU::7;x});x+1}));r:FU[1;1]@:5;(r;FU)}[]);((::;6;1001);(::;(1;2 6));(::;`a`b!1 6);(6;1 6);(6;(1;2 6)))]   / and with .:, and with the assignment's value used
+t[`amendVerbFunctionSetsGlobalFails;(IA["FM:(1;(2;{FM::!3;x+`a}))";"FM[1;1]@:5"];IA["FW:(1;(2;{FW[0]:9;x+`a}))";"FW[1;1]@:5"];IA["FP:(1;(2;{FP[0]:9;x+1}))";"FP[1;1]@:5"]);((`err;0 1 2);(`err;(9;(2;{FW[0]:9;x+`a})));(::;(1;2 6)))]   / sets or amends it, then fails: what the function set is kept; amends it, then succeeds: the assignment is made on the global as it was
+t[`amendVerbFunctionKeepsGlobal;{r:(IA["FQ:(1;(2;{x+1}))";"FQ[1;1]@:5"];IA["FR:+`a`b!(!3;3#{x+1})";"FR[`b;1]@:5"]);s:{FT::(1;(2;{x+1}));r:FT[1;1]@:5;(r;FT)}[];(r[0];*r 1;FR[1;`b];FR`a;s)}[];((::;(1;2 6));::;6;0 1 2;(6;(1;2 6)))]   / a function item that leaves the global alone: amended as before
+t[`amendVerbFailsKeepRowBelow;(IA["F21:+`a`b!(1 2 3;(1 2;3 4;5 6))";"F21[1;`b;0]+:`x"];IA["F22:+`a`b!(1 2 3;(1 2;3 4;5 6))";".[`F22;(1;`b;0);+;`x]"];IA["F23:`t`u!(+`a`b!(1 2 3;(1 2;3 4;5 6));0)";"F23[`t;1;`b;0]+:`x"];IA["F24:`t`u!(+`a`b!(1 2 3;(1 2;3 4;5 6));0)";".[`F24;(`t;1;`b;0);{x+`z}]"]);((`err;+`a`b!(1 2 3;(1 2;3 4;5 6)));(`err;+`a`b!(1 2 3;(1 2;3 4;5 6)));(`err;`t`u!(+`a`b!(1 2 3;(1 2;3 4;5 6));0));(`err;`t`u!(+`a`b!(1 2 3;(1 2;3 4;5 6));0)))]   / a table's row with more than one level below it
+t[`amendVerbRowBelowWorks;(IA["F25:+`a`b!(1 2 3;(1 2;3 4;5 6))";"F25[1;`b;0]+:10"];IA["F26:+`a`b!(1 2 3;(1 2;3 4;5 6))";".[`F26;(1;`b;0);,;9]"];IA["F27:`t`u!(+`a`b!(1 2 3;(1 2;3 4;5 6));0)";"F27[`t;1;`b;0]-:1"];IA["F30:+`a`b!(1 2 3;(`p`q!1 2;`p`q!3 4;`p`q!5 6))";"F30[1;`b;`r]+:100"]);((::;+`a`b!(1 2 3;(1 2;13 4;5 6)));2#,+`a`b!(1 2 3;(1 2;(3 9;4);5 6));(::;`t`u!(+`a`b!(1 2 3;(1 2;2 4;5 6));0));(::;+`a`b!(1 2 3;(`p`q!1 2;`p`q`r!3 4 100;`p`q!5 6))))]   / (a key not there below: added, as before)
+t[`amendVerbResultFits;(IA["F32:+`a`b!(1 2 3;4 5 6)";"F32[`a],:5"];IA["F33:+`a`b!(1 2 3;4 5 6)";"F33[`a]#:2"];IA["F34:+`a`b!(1 2 3;4 5 6)";"F34[`a]@:0 1"];IA["F35:+`a`b!(1 2 3;4 5 6)";".[`F35;,`a;,;5]"];IA["F36:`x`y!(+`a`b!(1 2 3;4 5 6);0)";"F36[`x;`a],:5"];IA["F37:+(,`a)!,1 2 3";"F37[`a],:5"]);((`err;+`a`b!(1 2 3;4 5 6));(`err;+`a`b!(1 2 3;4 5 6));(`err;+`a`b!(1 2 3;4 5 6));(`err;+`a`b!(1 2 3;4 5 6));(`err;`x`y!(+`a`b!(1 2 3;4 5 6);0));(::;+(,`a)!,1 2 3 5))]   / a verb whose result does not fit a table's column ('length): the variable is kept; one column can change its count
+t[`amendVerbFailsKeepThroughSymbol;{GK::1 2 3;F28::`a`b!(1;`GK);r:.[.:;,"F28[`b;0]+:`x";{`err}];GL::1 2 3;F29::`a`b!(1;`GL);s:.[.:;,"F29[`b;0]+:10";{`err}];GM::+`a`b!(1 2 3;4 5 6);F38::(1;`GM);u:.[.:;,"F38[1;`a],:5";{`err}];(r;GK;s;GL;F29;u;GM)}[];(`err;1 2 3;::;11 2 3;`a`b!(1;11 2 3);`err;+`a`b!(1 2 3;4 5 6))]   / a symbol on the way names a global, amended by name: that global is kept (the variable is still lost)
+
 / ---- float literals, `F$ and JSON numbers are correctly rounded (issue #5) ----
 / fb gives a float's 64 bits, high byte first, so these check the exact double read
 fb:{8#|-8!x}
@@ -1025,7 +1043,7 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[651]
+hexpect[666]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

@@ -201,6 +201,51 @@ AMB_SUM(simd_sum_i64, int64_t, uint64_t, vu64)
 AMB_DOT(simd_dot_f64, double,  double,   vf64)
 AMB_DOT(simd_dot_i64, int64_t, uint64_t, vu64)
 
+/* amber 2.5 (exp): AMB_SUM in two halves for the fusion engine (src/2.c fzrun), which makes its vector a
+ * block at a time. simd_sumst_f64 runs AMB_SUM's main loop over one block, the four accumulators kept in st
+ * (4*L doubles, zeroed by the caller); simd_sumfin_f64 takes the last block through the main loop and the
+ * rest of AMB_SUM. With every block but the last a whole number of 4*L groups these are AMB_SUM's additions
+ * over the whole vector in the same order: the same double as simd_sum_f64. */
+AMB_MV void simd_sumst_f64(const double *a, size_t n, double *st) {
+    const size_t L = VBYTES / sizeof(double);
+    vf64 s0, s1, s2, s3; size_t i = 0;
+    __builtin_memcpy(&s0, st, VBYTES);         __builtin_memcpy(&s1, st + L, VBYTES);
+    __builtin_memcpy(&s2, st + 2 * L, VBYTES); __builtin_memcpy(&s3, st + 3 * L, VBYTES);
+    for (; i + 4 * L <= n; i += 4 * L) {
+        vf64 v0, v1, v2, v3;
+        __builtin_memcpy(&v0, a + i,         VBYTES);
+        __builtin_memcpy(&v1, a + i + L,     VBYTES);
+        __builtin_memcpy(&v2, a + i + 2 * L, VBYTES);
+        __builtin_memcpy(&v3, a + i + 3 * L, VBYTES);
+        s0 += v0; s1 += v1; s2 += v2; s3 += v3;
+    }
+    __builtin_memcpy(st, &s0, VBYTES);         __builtin_memcpy(st + L, &s1, VBYTES);
+    __builtin_memcpy(st + 2 * L, &s2, VBYTES); __builtin_memcpy(st + 3 * L, &s3, VBYTES);
+}
+AMB_MV double simd_sumfin_f64(const double *a, size_t n, const double *st) {
+    const size_t L = VBYTES / sizeof(double);
+    vf64 s0, s1, s2, s3; size_t i = 0;
+    __builtin_memcpy(&s0, st, VBYTES);         __builtin_memcpy(&s1, st + L, VBYTES);
+    __builtin_memcpy(&s2, st + 2 * L, VBYTES); __builtin_memcpy(&s3, st + 3 * L, VBYTES);
+    for (; i + 4 * L <= n; i += 4 * L) {
+        vf64 v0, v1, v2, v3;
+        __builtin_memcpy(&v0, a + i,         VBYTES);
+        __builtin_memcpy(&v1, a + i + L,     VBYTES);
+        __builtin_memcpy(&v2, a + i + 2 * L, VBYTES);
+        __builtin_memcpy(&v3, a + i + 3 * L, VBYTES);
+        s0 += v0; s1 += v1; s2 += v2; s3 += v3;
+    }
+    for (; i + L <= n; i += L) {
+        vf64 v0; __builtin_memcpy(&v0, a + i, VBYTES); s0 += v0;
+    }
+    { double r = 0; size_t k;
+      vf64 t0 = (s0 + s1) + (s2 + s3);
+      const double *lanes = (const double *)&t0;
+      for (k = 0; k < L; k++) r += lanes[k];
+      for (; i < n; i++) r += a[i];
+      return r; }
+}
+
 #else  /* no vector extensions: plain scalar loops */
 #define AMB_SCALAR_VV(FN, T, CT, OP) \
     void FN(const T *a, const T *b, T *out, size_t n) { \
@@ -237,6 +282,18 @@ int64_t simd_dot_i64(const int64_t *a, const int64_t *b, size_t n) {
     for(;i<m;i+=4){s0+=(uint64_t)a[i]*(uint64_t)b[i];s1+=(uint64_t)a[i+1]*(uint64_t)b[i+1];
                    s2+=(uint64_t)a[i+2]*(uint64_t)b[i+2];s3+=(uint64_t)a[i+3]*(uint64_t)b[i+3];}
     { uint64_t r=(s0+s1)+(s2+s3); for(;i<n;i++)r+=(uint64_t)a[i]*(uint64_t)b[i]; return (int64_t)r; }
+}
+
+/* amber 2.5 (exp): the two halves of the scalar simd_sum_f64 above, see the vector ones */
+void simd_sumst_f64(const double *a, size_t n, double *st) {
+    double s0=st[0],s1=st[1],s2=st[2],s3=st[3]; size_t m=n&~(size_t)3,i=0;
+    for(;i<m;i+=4){s0+=a[i];s1+=a[i+1];s2+=a[i+2];s3+=a[i+3];}
+    st[0]=s0;st[1]=s1;st[2]=s2;st[3]=s3;
+}
+double simd_sumfin_f64(const double *a, size_t n, const double *st) {
+    double s0=st[0],s1=st[1],s2=st[2],s3=st[3]; size_t m=n&~(size_t)3,i=0;
+    for(;i<m;i+=4){s0+=a[i];s1+=a[i+1];s2+=a[i+2];s3+=a[i+3];}
+    { double r=(s0+s1)+(s2+s3); for(;i<n;i++)r+=a[i]; return r; }
 }
 #endif
 

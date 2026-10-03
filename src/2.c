@@ -1,5 +1,6 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include"simd.h"
+#include"parallel.h"
 // amber item 3: the element-wise kernels below now call src/simd.c instead of
 // re-implementing the loop. They keep their (a,b,c,GROUPS) signature -- every
 // call site passes a group count, and each group is 32/sizeof(T) elements --
@@ -102,12 +103,75 @@ Z A cmpzZ(L v,A y,U f)_(U w=yw-3;P(tG+w<tZ(v),y(rsz(yn,ai(f==8?v<0:f==9?v>0:0)))
  U n=yn;A z=aG(n);My(A(&ltng,ltnh,ltni,ltnl,gtng,gtnh,gtni,gtnl,eqlg,eqlh,eqli,eqll)[f-8<<2|w](v,yV,zG,n))z)
 
 Z A addzE(L v,A x)_(Lij P(v>0?j>WL-v:i<NL-v,addzZ(v,gZ(x),1))x(0);aE(i+v,j+v))   //ends past the int range: a vector (ints wrap), not a wrapped range
-Z A addfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;U n=zn+3&-4;SIMD F(n,zf=v+yf)y-z?y(z):z)
-Z A mulfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;U n=zn+3&-4;SIMD F(n,zf=v*yf)y-z?y(z):z)
+// amber 2.5 (exp): the number-with-vector float loops are functions of their own (noipa: one copy of the
+// machine code) so that these primitives and the fusion engine below make every element the same way.
+#if defined(__clang__)
+#define FZK NI
+#else
+#define FZK __attribute__((noipa))
+#endif
+Z FZK V fzadd(F v,CO F*y,F*z,U n){SIMD F(n,z[i]=v+y[i])}
+Z FZK V fzmul(F v,CO F*y,F*z,U n){SIMD F(n,z[i]=v*y[i])}
+Z FZK V fzdvl(F v,CO F*y,F*z,U n){SIMD F(n,z[i]=v/y[i])}
+Z FZK V fzdvr(CO F*x,F v,F*z,U n){SIMD F(n,z[i]=x[i]/v)}
+Z A addfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;fzadd(v,yF,zF,zn+3&-4);y-z?y(z):z)
+Z A mulfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;fzmul(v,yF,zF,zn+3&-4);y-z?y(z):z)
 Z A subfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;simd_subs_f64(v,yV,zV,yn);y-z?y(z):z)/* v - y */
 Z A admfF(F v,A y,U f)_((f==3?mulfF:f==2?subfF:addfF)(v,y,f))
-Z A dvdfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;U n=zn+3&-4;SIMD F(n,zf=v/yf)y-z?y(z):z)
-Z A dvdFf(A x,F v,U f)_(A z=aF(xn);SIMD F(xn,zf=xf/v)z)
+Z A dvdfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;fzdvl(v,yF,zF,zn+3&-4);y-z?y(z):z)
+Z A dvdFf(A x,F v,U f)_(A z=aF(xn);fzdvr(xF,v,zF,xn);z)
+// ---- amber 2.5 (exp): float fusion ------------------------------------------------------------------------
+// fzrun runs the program the compiler made for an element-wise tree of + - * % (src/b.c fz): d is
+// (program bytes; literals..), l the frame's locals. It reads the leaves; unless every one is a float vector of
+// one length n>=FZ_MIN or a number (and no operation has two numbers) it returns 0 and the unfused code runs.
+// Otherwise the tree is evaluated FZ_BK elements at a time, each block's intermediates in a small buffer that
+// stays in cache, and each operation through the function the unfused primitive uses, with the operands
+// arif() would give it (a number on the left of - is the subs kernel, on the right v+x with -v; an int number
+// goes through cF as arif does), so every element is the same double. A plain tree is split over threads by
+// whole blocks; +/ at the root streams the blocks through simd_sumst/fin_f64 on one thread (the sum's order is
+// fixed), or with threads has them write the vector and sums it with simd_sum_f64, which is what +/ does.
+#define FZ_MIN 2048u
+#define FZ_BK 512u        //a multiple of 16: the sum's 4 accumulators x 4 lanes (x 8 lanes with 512-bit vectors)
+#define FZ_PAR (1u<<17)
+#define FZ_N 32           //program steps
+TD struct{UC op,s;}FZS;    //'v' vector leaf, 'c' number leaf, else + - * % on the two below
+TD struct{FZS p[FZ_N];U np,dp,n,nb,nt;CO F*lv[FZ_N];F lc[FZ_N];F*out;}FZC;
+Z V fzblk(CO FZC*c,U o,U cnt,F*bf,F*dst){CO F*sv[FZ_N];F ss[FZ_N];B sk[FZ_N];U d=0,cr=cnt+3&~3u;
+ for(U j=0;j<c->np;j++){FZS s=c->p[j];
+  if(s.op=='v'){sv[d]=c->lv[j]+o;sk[d++]=0;continue;}
+  if(s.op=='c'){ss[d]=c->lc[j];sk[d++]=1;continue;}
+  U a=d-2,e=d-1;d--;F*r=j==c->np-1?dst:bf+(N)a*FZ_BK;
+  if(!sk[a]&&!sk[e]){CO F*x=sv[a],*y=sv[e];
+   S(s.op,C('+',simd_add_f64(x,y,r,cr))C('-',simd_sub_f64(x,y,r,cr))C('*',simd_mul_f64(x,y,r,cr))C('%',simd_div_f64(x,y,r,cr)))}
+  else if(sk[a]){F v=ss[a];CO F*y=sv[e];
+   S(s.op,C('+',fzadd(v,y,r,cr))C('-',simd_subs_f64(v,y,r,cnt))C('*',fzmul(v,y,r,cr))C('%',fzdvl(v,y,r,cr)))}
+  else{CO F*x=sv[a];F v=ss[e];
+   S(s.op,C('+',fzadd(v,x,r,cr))C('-',fzadd(-v,x,r,cr))C('*',fzmul(v,x,r,cr))C('%',fzdvr(x,v,r,cnt)))}
+  sv[a]=r;sk[a]=0;}}
+Z V fzw(V*c_,int t){FZC*c=c_;U b0=(U)((N)c->nb*t/c->nt),b1=(U)((N)c->nb*(t+1)/c->nt);F bf[c->dp*FZ_BK];
+ for(U k=b0;k<b1;k++){U o=k*FZ_BK,m=MIN(FZ_BK,c->n-o);fzblk(c,o,m,bf,c->out+o);}}
+A fzrun(A d,A*l){A pg=_A(d)[0];CO UC*q=(CO UC*)_V(pg),*e=q+_n(pg);B sum=*q++&1;FZC c;B kd[FZ_N];U np=0,dp=0,n=0;
+ W(q<e,UC o=*q++;A v=0;
+  I(o=='l',v=l[*q++])J(o=='g',v=gv[q[0]|(U)q[1]<<8];q+=2)J(o=='k',v=_A(d)[*q++])
+  E(P(dp<2||kd[dp-1]&&kd[dp-2]||np>=FZ_N,0)c.p[np++]=(FZS){o,0};dp--;kd[dp-1]=0;continue)
+  P(!v||np>=FZ_N,0)
+  I(!_tP(v)&&_T(v)==tF,U m=_n(v);P(n&&m!=n,0)n=m;c.lv[np]=_F(v);c.p[np++]=(FZS){'v',0};kd[dp++]=0)
+  E(UC t=_t(v);P(t!=tf&&t!=ti&&t!=tl,0)c.lc[np]=t==tf?*_F(v):gf(cF(_R(v)));c.p[np++]=(FZS){'c',0};kd[dp++]=1)
+  )
+ P(dp!=1||n<FZ_MIN||kd[0],0)
+ c.np=np;c.n=n;c.nb=(n+FZ_BK-1)/FZ_BK;c.dp=0;{U k=0;F(np,I(c.p[i].op=='v'||c.p[i].op=='c',k++)E(k--)c.dp=MAX(c.dp,k))}
+ int nt=n>=FZ_PAR?par_thread_count(n):1;I(nt>(int)c.nb,nt=(int)c.nb)c.nt=(U)nt;
+ P(sum&&nt<=1,F bf[c.dp*FZ_BK],tb[FZ_BK],st[32]={0};U k=0;
+  for(;k+1<c.nb;k++){fzblk(&c,k*FZ_BK,FZ_BK,bf,tb);simd_sumst_f64(tb,FZ_BK,st);}
+  U o=k*FZ_BK;fzblk(&c,o,n-o,bf,tb);af(simd_sumfin_f64(tb,n-o,st)))
+ A z=aF(n);P(!z,0)_at(z)=0;c.out=zF;
+ I(nt>1,par_run(nt,fzw,&c))E(fzw(&c,0))
+ P(sum,F r=simd_sum_f64(zF,n);mr(z);af(r))
+ return z;}
+// the VM's bF (src/b.c): b at its operands j c p, l the frame's locals, k the lambda's constants. Out of line so
+// that the dispatch loop's registers are not disturbed; p, a local leaf, is looked at first and unless it holds
+// a float vector long enough there is nothing more to do (scalar code, short vectors).
+NI A fzop(CO UC*b,A*l,A*k){UC p=b[2];I(p<16,A v=l[p];P(!v||_tP(v)||_T(v)!=tF||_n(v)<FZ_MIN,0))return fzrun(k[b[1]],l);}
 Z A dvdzZ(L v,A y,U f)_(dvdfF(v==NL?NF:v,cF(y),f))
 Z A dvdZZ(A x,A y,U f)_(x=cF(xR);x(amdFF(x,cF(y),f)))
 // amber: scalar-scalar fallback arithmetic. Every step that can involve the

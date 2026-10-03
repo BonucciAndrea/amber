@@ -8,7 +8,8 @@
 #define n1 -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
 #define p1  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 enum {bu,  bv=32,bs=64,bg=80,bd=96,ba=112,bp,bm,bM,bx,bX,by,bY,bG,bS,bl,bL,bz,bj,bo,bP,bV,bc};      //opcodes
-Z CO C di[]={                     [ba]= 1, 1, 3, 3, 3, 3, 3, 3, 2, 2, 1, 1, 1, 1, 0, 0, 2, 0},      //extra bytes after opcode (2-byte global/var index)
+#define bF (bu+31) //amber 2.5 (exp): fused float tree, bF j c p (the unused monad slot 31: no opcode moves)
+Z CO C di[]={[bF]=3,              [ba]= 1, 1, 3, 3, 3, 3, 3, 3, 2, 2, 1, 1, 1, 1, 0, 0, 2, 0},      //extra bytes after opcode (2-byte global/var index)
 ds[]={[bv]=n1,n1,n1,   p1,   p1,  [ba]= 1, 1,-1,-1,-1,-1,-1,-1, 1,-1, 1, 0,-1, 0, 1,-1, 0, 1},      //stack size delta
 ks[]={                            [ba]=-1,-1, 0, 0, 0, 0, 0, 0, 0, 0,-1, 1, 0, 0, 0, 0, 0, 0};      //stack size delta (coefficient for the next byte)
 #define BG (b+=2,b[-2]|(U)b[-1]<<8)                                                                 //read a 2-byte little-endian global/var index
@@ -35,9 +36,13 @@ NI I ixck(A x,A y,U k,A z){I r=0;if(!x||k>=_N(y)||_tP(x)||!_tT(x))return 0;U n=_
   if(!r&&one&&!_tP(z)&&_tT(z)&&_N(z)!=m)r=2;}
  mr(q);return r;}
 Z NI __attribute__((cold)) V noupd(A*s){mr(*s);*s=err0("noupdate");}
+A fzop(CO UC*,A*,A*);
 AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,d--,es8(a,n))/*d: per-thread VM recursion depth (peach workers run the VM concurrently)*/P(n-xk,d--,er8(a,n))UC*b=_V(xy),c,nl=_n(xA[3]);A own=0,l[nl+*b++],*s=l+L(l);MS(l,0,SZ l);I(n,MC(l,a,8*n))//virtual machine
  W((c=*b++),S(c,                                                                                    //          |BYTES |          STACK        |         EFFECT
-  C32(bu,U(*s=v1[c-bu](*s)))                                                                        //monad     |bu+m  |.. x -> monads[m][x]   |
+  C16(bu,U(*s=v1[c-bu](*s)))                                                                        //monad     |bu+m  |.. x -> monads[m][x]   |
+  case bu+16:case bu+17:case bu+18:case bu+19:case bu+20:case bu+21:case bu+22:case bu+23:
+  case bu+24:case bu+25:case bu+26:case bu+27:case bu+28:case bu+29:case bu+30:{U(*s=v1[c-bu](*s))}break;
+  C(bF,UC j=*b;A r=fzop(b,l,xA+OFF);b+=3;I(r,*--s=r;b+=j))                                          //fused     |bF,j,c,p|.. -> .. r       |when fzop takes it: PC+:j
   C32(bv,A x=*s++;U(*s=x(v2[c-bv](x,*s))))                                                          //dyad      |bv+d  |.. y x -> dyads[d][x;y]|
   C16(bs,A*p=l+c%16;I(*p,mr(*p))*p=*s++)                                                            //set local |bs+i  |.. x -> ..             |locals[i]:x
   C16(bg,A*p=l+c%16,x=*p;U(*--s=x)xR)                                                               //get local |bg+i  |.. -> .. locals[i]     |
@@ -112,6 +117,29 @@ Z I shpair(A oa,A ob)_(A u=shv(oa,1),w=shv(ob,-1);P(u&&w&&mtc_(u,w),0)u=shv(oa,-
 // order in which the two operands are then evaluated cannot matter.
 Z I cmpn(A m,A*c,A*k)_(P(!_tA(m)||_n(m)!=3,-1)A d=_A(m)[0];I op=d==LTN?0:d==GTN?1:d==EQL?2:-1;P(op<0,-1)
  A p=_A(m)[1],q=_A(m)[2];P(!fnode(p,0)||!fnode(q,0),-1)I(numlit(p)&&!numlit(q),SW(p,q)I(op<2,op^=1))*c=p;*k=q;op)
+// ---- amber 2.5 (exp): float fusion. An element-wise tree of + - * % over variables and number literals
+// (two operations or more, or one under +/) compiles to  bF j c p  followed by the usual code for it. bF gives
+// the program (constant c: its bytes, then the literals) to fzrun (src/2.c), which takes it only for float
+// vectors and numbers and then jumps the j bytes of usual code; everything else falls through to that code.
+// p is the rightmost local leaf: unless it holds a float vector bF does not even call fzrun, so scalar code
+// pays one test. If the tree's usual code is longer than a jump reaches, the bF is taken back out.
+Z B fzno,fzu;   //fzno: emit no fused code (the fallback being compiled, or the recompile after a limit); fzu: emitted some
+Z B fzt(A t,I*k,I*v){I(_tS(t),P(_n(t)!=1,0)++*v;return 1)P(numlit(t),1)P(!_tA(t)||_n(t)!=3,0)A d=_A(t)[0];
+ P(d!=ADD&&d!=SUB&&d!=MUL&&d!=DVD,0)P(++*k>15,0)return fzt(_A(t)[1],k,v)&&fzt(_A(t)[2],k,v);}
+Z B fzp(A t,UC*p,I*np,A*d,I*pk){P(*np>60,0)
+ I(_tS(t),I w=*_I(t),i=fI(l,nl,w);P(i<nl,p[(*np)++]='l';p[(*np)++]=i;*pk=i;1)P(w=='o',0)U g=gi(t);
+  p[(*np)++]='g';p[(*np)++]=g&255;p[(*np)++]=g>>8;return 1)
+ I(numlit(t),P(_n(*d)>250,0)p[(*np)++]='k';p[(*np)++]=_n(*d);PSH(*d,_R(t));return 1)
+ P(!fzp(_A(t)[1],p,np,d,pk)||!fzp(_A(t)[2],p,np,d,pk),0)A o=_A(t)[0];p[(*np)++]=o==ADD?'+':o==SUB?'-':o==MUL?'*':'%';return 1;}
+Z I fzc(A x)_(U n=un,i=OFF;W(i<n&&!cid(x,ua),i++)I(i>=n,PSH(u,xR))i-OFF)
+Z I fz(A x,B r){P(fzno||!r,-2)U n=xn;A y=xx,t=x;I o=xo;UC fl=0;
+ I(n==2&&((_tA(y)&&_n(y)==2&&_A(y)[0]==aw+1&&_A(y)[1]==ADD)||(!_tP(y)&&_t(y)==tr&&_E(y)==1&&_n(y)==1&&_A(y)[0]==ADD)),t=xy;fl=1)
+ I k=0,v=0;P(!fzt(t,&k,&v)||!v||k<2-fl,-2)
+ UC p[72];I np=1,pk=255;p[0]=fl;A d=aA(1);_A(d)[0]=au;P(!fzp(t,p,&np,&d,&pk),mr(d);-2)
+ _A(d)[0]=aCn((S)p,np);I c=fzc(d);mr(d);P(c>255,-2)
+ I st=nb;M(bF)M(0)M(c)M(pk)fzno=1;I r_=cr(x,1);fzno=0;P(r_-OK,r_)
+ I len=nb-st-4;I(len>255,__builtin_memmove(b+st,b+st+4,len);__builtin_memmove(m+st,m+st+4,len);nb-=4;F(16,I(lu[i]>=st+4,lu[i]-=4))return OK)
+ b[st+1]=len;fzu=1;return OK;}
 Z I fus(A x,B r){U n=xn;A y=xx;I o=xo;                                                //OK when it emitted fused code, -2 when not an idiom, else the error
  I(n==2&&((_tA(y)&&_n(y)==2&&_A(y)[0]==aw+1&&_A(y)[1]==ADD)||(!_tP(y)&&_t(y)==tr&&_E(y)==1&&_n(y)==1&&_A(y)[0]==ADD)),A z=xy;// +/ (folded by cf() into a tr constant, or still a node) applied to a dyad node
   // +/(1_v) CMP ((-1)_v) : count neighbour comparisons in one read of v (amber 2.3)
@@ -173,6 +201,7 @@ Z I cr(A x/*0*/,B r)_(I o=xo;                                                   
   Nr(n&1?*++a:au,1);F(n&~1,I d=(i&1?nb-1:p[i+1])-p[i];I(i&1,I j=(n&~1)-1;W(i<j&&d>255,d=p[j]-2-p[i];j-=2))P(d>255,lim=1;o)b[p[i]]=d)I(!r,M(bP))OK)
  I(n==2&&y==FIR,A z=xy;I(ztA&&zn==2,P(zx-REV<3u,Nr(zy,1);M(bu+zx-REV+LAS-au)I(!r,M(bP))OK)))        // *|x      recognized idioms
  {I f_=fus(x,r);P(f_!=-2,f_)}                                                                        // amber 2.1 fused idioms
+ {I f_=fz(x,r);P(f_!=-2,f_)}                                                                         // amber 2.5 (exp) float fusion
  I p=0;F(n-1,A z=xA[n-1-i];I(z-GAP,Nr(z,1))E(p=1;cc(GAP,o)))I(p,Nr(xx,1);M(bp)M(n-1))               // x[y;]    projection
  J(y==MKL,n--;P(n>255u,lim=1;o)M(bl)M(n))                                                                 // (x;y)    list
  J(n==2&&ytu,M(bu+yv))                                                                              // +x       monad
@@ -185,8 +214,15 @@ Z A3(c3,/*000*/P(ADD<=x&&x<=MUL&&ytzZ&&ztzZ&&(ytt||ztt||yn==zn)&&MAX(xN,yN)<101,
 Z A1(cf,P(!xtA||!xn,x)P(xx==MKL,F(xn,A y=xa;YSA(x))qte(N(drp(1,x))))P(xn==2?c2(xx,xy):xn==3?c3(xx,xy,xz):0,qte(N(val(x))))A y=rsz(xn,au);F(xn,ya=cf(xa);xa=au;P(!ya,die("CF")))AO(xo,x(y)))
 Z I mxs(I i,I s)_(I r=s;W(1,UC c=MIN(bc,b[i++]);r=MAX(r,s);P(!c,r)s+=ds[c]+ks[c]*b[i];i+=di[c]+(c==bj)*b[i];I(c==bz,r=MAX(r,mxs(i+b[i-1],s))))r)//max stack
 Z B shy(A x/*0*/)_(!xtA?0:xn&&xx==GAP?shy(xA[xn-1]):xn==3&&cm(xx)&&_tSA(xy))                        //is last expr an assignment?
-Z A3(cpl_,/*111*/nb=1;MS(lu,-1,SZ lu);I k=0;I(z,k=zn;MC(l,zV,OFF*k);z(0))nl=k;u=aA(OFF);y=Nx(cf(y));ux=x;uy=uz=uA[3]=au;B s=shy(y);I r=cr(y,!s);y(0);P(r-OK||gfull,gfull||lim?(gfull=lim=0,ez0()):ec0();eS(ux,r-OK?r:0);u(0))
- I o=0;I(s,cc(au,o))P(un>255||nb>MB-2||nl>L(l)-2,ez0();eS(ux,0);u(0))M(bu)P(nb>MB-2||un>255-bc+OFF,ez0();eS(ux,0);u(0))   //ez0 first, as above: eS marks the error ez0 makes (the other order read a null error)
- F(nl,I j=lu[i];I(j>=0&&b[j]==bg,b[j]=bd))I sx=mxs(1,0);P(sx>255,ez0();eS(ux,0);u(0))*b=sx;*m=-1;uy=aCn(b,nb);uz=aCn(m,nb);uA[3]=aV(tS,nl,l);AK(k,AT(to,u)))
+// amber 2.5 (exp): one compile of the body: OK, a cr() error offset, -2 a size limit, -3 the global table full
+Z I cpl1(A y,B s,I k,CO I*l0){nb=1;MS(lu,-1,SZ lu);MC(l,l0,OFF*k);nl=k;fzu=0;I r=cr(y,!s);P(r-OK,r)P(gfull,-3)
+ I o=0;I(s,cc(au,o))P(un>255||nb>MB-2||nl>L(l)-2,-2)M(bu)P(nb>MB-2||un>255-bc+OFF,-2)
+ F(nl,I j=lu[i];I(j>=0&&b[j]==bg,b[j]=bd))I sx=mxs(1,0);P(sx>255,-2)*b=sx;*m=-1;return OK;}
+// compiled with float fusion first; if that hits a limit of the bytecode and fused code was emitted, compiled
+// again without it, so fusion never turns a lambda that compiled before into a 'limit
+Z A3(cpl_,/*111*/I k=0,l0[16];I(z,k=zn;MC(l0,zV,OFF*k);z(0))y=Nx(cf(y));B s=shy(y);fzno=0;u=aA(OFF);ux=xR;uy=uz=uA[3]=au;I r=cpl1(y,s,k,l0);
+ I(r!=OK&&fzu&&(r==-2||lim),mr(u);lim=0;fzno=1;u=aA(OFF);ux=xR;uy=uz=uA[3]=au;r=cpl1(y,s,k,l0);fzno=0)
+ y(0);mr(x);P(r==-2,ez0();eS(ux,0);u(0))P(r!=OK,gfull||lim?(gfull=lim=0,ez0()):ec0();eS(ux,r>=0?r:0);u(0))
+ uy=aCn(b,nb);uz=aCn(m,nb);uA[3]=aV(tS,nl,l);AK(k,AT(to,u)))
 A3(cpl,P(!ray_rc_sync,cpl_(x,y,z))plk(1);A r=cpl_(x,y,z);plk(0);r)                                 //cpl_ under the peach parse lock (m.c plk)
 #undef M

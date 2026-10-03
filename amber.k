@@ -167,7 +167,7 @@ ij:{[t;kt]kc:keys kt;kd:+!kt;td:+t;yc:kd kc;xc:td kc;p:$[1=#kc;(*yc;*xc);qcard[y
 gc:{[t;n;ot;c]$[in[c;cols t];(+t)c;n#0#(+ot)c]}
 uj:{[x;y]c:distinct cols[x],cols y;+c!{[x;y;c]gc[x;#x;y;c],gc[y;#y;x;c]}[x;y]'c}
 pj:{[t;kt]p:jprobe[keys kt;+!kt;+t];i:(#p 0)^(p 0)?p 1;vt:value kt;vc:cols vt;+(+t),vc!{[i;t;vt;c]z:$[`F~@vt c;0.0;0];a:$[c in !+t;(+t)c;z];r:a+z^((vt c),z)@i;$[|/^a;@[r;&^a;:;*0#r];r]}[i;t;vt]'vc}
-ej:{[c;x;y]c:c,();p:jprobe[c;c#+y;+x];$[(!#y)~(p 0)?p 0;[i:(p 0)?p 1;j:&~^i;+(+atr[x;j]),{y@x}[i@j]'c_+y];ejm[c;x;y;p]]}   / every matching row of y, in order (keys encoded as lj/ij do); unique keys in y: at most one match per row, found as ij finds it
+ej:{[c;x;y]c:c,();p:jprobe[c;c#+y;+x];$[#r:`ejx p;+(+atr[x;r 0]),{y@x}[r 1]'c_+y;(!#y)~(p 0)?p 0;[i:(p 0)?p 1;j:&~^i;+(+atr[x;j]),{y@x}[i@j]'c_+y];ejm[c;x;y;p]]}   / every matching row of y, in order (keys encoded as lj/ij do); `ejx (src/w.c) finds them in one hash pass over y's keys; other keys: unique ones found as ij finds them, else grouped
 ejm:{[c;x;y;p]g:=p 0;i:(#g)^(!g)?p 1;n:(#'. g),0;+(+x@&n i),c_+y@,/((. g),,!0)i}   / repeated keys: group y's keys and repeat each row of x for each of its matches
 
 / ---- asof join (aj/aj0) : y must contain matching + time cols -----------------

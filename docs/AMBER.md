@@ -913,6 +913,7 @@ attributes `sa `ua `pa `ga (set sorted/unique/parted/grouped)   `at (get)  [kern
            ascending value sorts (asc, x@<x, `srt, xasc) return `s-flagged results (2.1)
 kernels    `memb (membership) `gagg (group aggregate) `srt (value sort) `mw (windows)
            `xs (multi-column grade) `aj `wjb `ajs (as-of join)  [2.1: see section 5a]
+           `ejx (the rows of an equi-join; amber.k's ej uses it)
 moving     mcount msum mavg mprd mvar mdev mmin mmax   (std.k, O(n) prefix)
 math       dot mmu (matrix multiply)                   (std.k)
 parse/ser  parse eval reval ser deser protect          (std.k; text serialise)

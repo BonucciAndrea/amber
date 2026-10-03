@@ -91,12 +91,13 @@ Z L ymd2days(L y,L m,L d){L wy=y-(m<=2);L era=(wy>=0?wy:wy-399)/400;L yoe=wy-era
 //   YYYY.MM.DDD HH:MM:SS.fffffffff-> timestamp atom (ns).  Returns 0 (s unchanged) on no match.
 // Issue #18: the fields are checked, as q does: a month of 1 to 12, a day that month has, minutes and
 // seconds below 60 (hours are not limited: 99:00:00.000 is a time, and a timestamp's 24:00 is the next
-// day). A literal that fails is 'parse; before, 2026.02.29 read as 2026.03.01.
-Z B tbad;Z B dok(W y,W m,W d){if(m<1||m>12||d<1)return 0;W n=m==2?28+(y%4==0&&(y%100!=0||y%400==0)):30+((m+(m>7))&1);return d<=n;}
+// day). A literal that fails is 'parse; before, 2026.02.29 read as 2026.03.01. A time is 32 bits of milliseconds,
+// so one past 596:31:23.647 is 'limit (issue #62; it wrapped, 1000:00:00.000 read as -193:02:47.296). tbad: 1 'parse, 2 'limit.
+Z C tbad;Z B dok(W y,W m,W d){if(m<1||m>12||d<1)return 0;W n=m==2?28+(y%4==0&&(y%100!=0||y%400==0)):30+((m+(m>7))&1);return d<=n;}
 Z A pTmp(){S p=s;if(!C09(*p))return 0;W a=0;S q=p;while(C09(*q)){a=10*a+(W)(*q-'0');q++;}
- if(*q==':'){q++;W mi=0;while(C09(*q)){mi=10*mi+(W)(*q-'0');q++;}W sc=0,ms=0;
+ if(*q==':'){S e=q++;W mi=0;while(C09(*q)){mi=10*mi+(W)(*q-'0');q++;}W sc=0,ms=0;
   if(*q==':'){q++;while(C09(*q)){sc=10*sc+(W)(*q-'0');q++;}if(*q=='.'){q++;I nd=0;while(C09(*q)&&nd<3){ms=10*ms+(W)(*q-'0');q++;nd++;}while(nd<3){ms*=10;nd++;}while(C09(*q))q++;}}
-  if(mi>59||sc>59){tbad=1;return 0;}s=q;return atm((I)(3600000*a+60000*mi+1000*sc+ms));}
+  if(mi>59||sc>59){tbad=1;return 0;}S z=p;W(z<e-1&&*z=='0',z++)if(e-z>19||a>596||3600000*a+60000*mi+1000*sc+ms>2147483647){tbad=2;return 0;}s=q;return atm((I)(3600000*a+60000*mi+1000*sc+ms));}
  if(*q=='.'){S q2=q+1;if(!C09(*q2))return 0;W mo=0;while(C09(*q2)){mo=10*mo+(W)(*q2-'0');q2++;}if(*q2!='.')return 0;q2++;if(!C09(*q2))return 0;W dy=0;while(C09(*q2)){dy=10*dy+(W)(*q2-'0');q2++;}
   if(!dok(a,mo,dy)){tbad=1;return 0;}L days=ymd2days((L)a,(L)mo,(L)dy);
   if(*q2=='D'){q2++;W hh=0;while(C09(*q2)){hh=10*hh+(W)(*q2-'0');q2++;}if(*q2!=':')return 0;q2++;W mi=0;while(C09(*q2)){mi=10*mi+(W)(*q2-'0');q2++;}W sc=0,ns=0;
@@ -161,7 +162,7 @@ Z A pt(C*v)_(C c=*s;                                                            
  P(C09(c)&&s[1]==':',B u=s[2]==':';s+=2+u;U i=20+c-'0';P(i>25,ep0())*v=1;Lt(tv-u)|i)
  P(c=='0'&&s[1]=='x',s+=2;p1(p0x()))
  P(num(s)&&(c-'-'||s==s0||s==ppe||(!id1(s[-1])&&!strchr(")]}\"",s[-1]))),   //ppe: just past a lambda's [params], whose ] is no noun (digest #40)
-  A tlit=pTmp();P(tlit,pTms(tlit))P(tbad,tbad=0;ep0())
+  A tlit=pTmp();P(tlit,pTms(tlit))P(tbad,C b=tbad;tbad=0;b>1?ez0():ep0())
   B d=0,f=1;S p=s;c=*p;W(1,S q=p;p=pw(p);B(!f&&p==q||!num(p))f=0;p+=*p=='-';c=*p;B(!CA9(c))W(CA9(c)||c=='.'||c==':',d|=!!strchr(".nwef",c);c=*++p))p1(d?pF():pZ()))
  P(c>>7,S p=s;A x=N(pP());*v=1;AO(p-s0,x))
  U i=si("'/\\",c);P(i<3,c=*++s;B h=c==':';s+=h;*v=1;aw+i+3*h)i=si(vc,c);P(i>19,GAP)

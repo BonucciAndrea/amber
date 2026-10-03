@@ -641,7 +641,7 @@ A2(i1,/*01*/P(y==GAP||y==au,xR)
         R_(et(y))
         RL(A z=aI(yn);My(F(yn+3&-4,L v=yl;zi=v|-(v!=(I)v)))i1(x,z))
         RI(U n=yn;
-         X(RA(A z=aA(n);F(n|!n,za=io(x,yi))y(0);I(!zn,zx=mkn(zx))sqz(z))
+         X(RA(A z=aA(n);F(n,za=io(x,yi))y(0);I(!n,zx=mkn(io(x,0)))sqz(z))
            RB(x=cG(xR);x(i1(x,y)))
            R_(C t=xt;B k=t-tG<3u&&maxfU(yV,yn)>=xn;A z=an(n,k?tL:t);My(G(&iG,iH,iI,oL,oF,iC,iS,oG,oH,oI)[7*k+t-tG](xV,xn,yV,zV,n))z))0))0))0)
 Z A3(i2,/*001*/C b=ytT||y==GAP||y==au;x=Nz(i1(x,yR));P(!b,x(x1(z)))x(l2f(dot,x,aA1(z))))

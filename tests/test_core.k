@@ -783,7 +783,15 @@ tv[`stackDepthAfterRankErrors;"tcDeep 1500";1500]
 t[`minMaxNegMinNormal;{(x&x;x|x;0.0&x;1.0&x;-1.0|x;-0.0&x;0n|x)}@-2.2250738585072014e-308;7#-2.2250738585072014e-308]
 t[`minMaxNegMinNormalPair;{(x&y;x|y;y&x;y|x)}[-2.225073858507201e-308;-2.225073858507202e-308];-2.225073858507202e-308 -2.225073858507201e-308 -2.225073858507202e-308 -2.225073858507201e-308]
 
-hexpect[478]
+/ ---- an empty index takes the prototype from the list's first item ----
+/ (an empty index made by n_n#1 has a stale 1 past its end)
+t[`emptyIdxStale;{x:(1 2;"ab");?{[x;n]`k x@n_n#1}[x]'1+!20}[];,"0#,0N 0N"]
+t[`emptyIdxStaleDict;{x:(`c`d!3 4;`x);?{[x;n](x@n_n#1)~0#x}[x]'1+!20}[];,1]
+/ the stale slot made ~ of two such results depend on what ran before
+t[`emptyIdxMatch;{d:`a`a0!(,0#,,();0#,,());ks:`a`a0;ks_d;{[d;w]((!d)@w)!(.d)@w}[d;&^ks?!d];(ks_d)~{[d;w]((!d)@w)!(.d)@w}[d;&^ks?!d]}[];1]
+t[`emptyIdxEmptyList;(`k@()@!0;`k@(0#,,())@!0);("()";"0#,,()")]
+
+hexpect[482]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

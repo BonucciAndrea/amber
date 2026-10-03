@@ -37,6 +37,10 @@ NI I ixck(A x,A y,U k,A z){I r=0;if(!x||k>=_N(y)||_tP(x)||!_tT(x))return 0;U n=_
  mr(q);return r;}
 Z NI __attribute__((cold)) V noupd(A*s){mr(*s);*s=err0("noupdate");}
 A fzop(CO UC*,A*,A*);
+// amber 2.5 (exp): the VM's start pinned to 64 bytes. Its dispatch loop's speed depended on where the linker happened
+// to put it: a change anywhere else (one constant in src/2.c, here) moved run() 16 bytes and made nbody 7% slower, and
+// that alignment luck is the 5-8% nbody swing seen between builds since 2.3. Pinned, unrelated changes no longer move it.
+A run(A,CO A*,U)__attribute__((aligned(64)));
 AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,d--,es8(a,n))/*d: per-thread VM recursion depth (peach workers run the VM concurrently)*/P(n-xk,d--,er8(a,n))UC*b=_V(xy),c,nl=_n(xA[3]);A own=0,l[nl+*b++],*s=l+L(l);MS(l,0,SZ l);I(n,MC(l,a,8*n))//virtual machine
  W((c=*b++),S(c,                                                                                    //          |BYTES |          STACK        |         EFFECT
   C16(bu,U(*s=v1[c-bu](*s)))                                                                        //monad     |bu+m  |.. x -> monads[m][x]   |

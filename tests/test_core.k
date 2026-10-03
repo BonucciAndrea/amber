@@ -791,7 +791,17 @@ t[`emptyIdxStaleDict;{x:(`c`d!3 4;`x);?{[x;n](x@n_n#1)~0#x}[x]'1+!20}[];,1]
 t[`emptyIdxMatch;{d:`a`a0!(,0#,,();0#,,());ks:`a`a0;ks_d;{[d;w]((!d)@w)!(.d)@w}[d;&^ks?!d];(ks_d)~{[d;w]((!d)@w)!(.d)@w}[d;&^ks?!d]}[];1]
 t[`emptyIdxEmptyList;(`k@()@!0;`k@(0#,,())@!0);("()";"0#,,()")]
 
-hexpect[482]
+/ ---- an elided amend, or a lambda's each, with a keyed table is 'nyi, not a crash ----
+ktA:(+(,`k)!,1 2)!+(,`v)!,3 4
+te[`amendKeyedEmptyTable;"@[0#+`a`b!(1 2;3 4);::;:;ktA]"]
+te[`amendKeyedTable;"@[+`a`b!(1 2;3 4);::;:;ktA]"]
+te[`amendKeyedInts;"@[!0;::;:;ktA]"]
+te[`amendKeyedList;"@[();::;:;ktA]"]
+te[`amendKeyedPlus;"@[1 2;::;+;ktA]"]
+te[`eachKeyedThree;"{x+y+z}'[ktA;ktA;ktA]"]
+t[`amendDictElided;(@[1 2;::;:;`a`b!1 2];@[1 2;::;+;`a`b!3 4]);(`a`b!1 2;`a`b!4 6)]
+
+hexpect[489]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

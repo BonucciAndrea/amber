@@ -11,7 +11,7 @@ A jC(S s,U m,A x)_(XC(jC(s,m,flp(flp(x))))L n=jN(m,x);P(n<-1,ez(x))P(n<0,et(x))A
 Z A1(re0,x?rs0(enl(x)):0) Z A o1f(A1 f,A x/*f1*/)_(re0(f==whr?x(aI(0)):f(fir(x)))) Z A2(o1,/*01*/ xtu?o1f(v1[xv],y):y(emp(tA)))
                           Z A o2f(A2 f,A x,A y/*f01*/)_(re0(f(x,y)))               Z A3(o2,/*001*/xtv?o2f(v2[xv],y,z):z(emp(tA)))
 Z AX(em,/*01..1*/A z=0;U k=0;F(n,A y=a[i];I(ytm,k++;y=yx;I(z,P(TS[yt]-TS[zt],ed8(a,n));z=cat10(z,y))E(z=yR)))z=unq(z);
- Ab8;MC(b,a,n*SZ(A));F(n,A y=b[i];I(ytm,A u=kv(&y);PSH(u,ie(x,u));b[i]=u(u1(y(fil(ai(yn),fnd(y,zR)))))))AX e8;am(z,Nz(e8(x,b,n))))
+ Ab8;MC(b,a,n*SZ(A));F(n,A y=b[i];I(ytm,A u=kv(&y);b[i]=au;PSH(u,ie(x,u));b[i]=u(u1(y(fil(ai(yn),N(fnd(y,zR),mrn(n,b);u(y(z(0))))))))))AX e8;am(z,Nz(e8(x,b,n))))
 A e1f(A1 f,A x){X(Rt(f(x))Rm(A y=kv(&x);am(x,Nx(e1f(f,y))))RA(U n=xn;P(!n,o1f(f,x))x=mut(x);F(n,P(!(xa=f(xa)),xa=au;x(0)))sqz(x))
  RE(Lij x(0);L n=j-i,i0=i;P(!n,o1f(f,x))A y=aA(n);F(n,P(!(ya=f(ai(i0+i))),mrn(i,yA);0))sqz(y))
  RGHIL(U n=xn;P(!n,o1f(f,x))A y=aA(n);

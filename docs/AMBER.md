@@ -308,7 +308,10 @@ delete from trades where sz<300                   / drop rows
 r:select n:#px, avg px by sym from trades         / assign; also  5#select …  count select …
 ```
 
-Bare column names in the expressions become `x`col`, so `wavg[sz;px]` just works. The same
+Bare column names in the expressions become `x`col`, so `wavg[sz;px]` just works. Columns get
+q's names: the first name in the expression (`sum px*sz` is `px`, `2*px` is `x`), repeats
+numbered (`px px1 px2`). An atom next to full columns is stretched to the column length, and
+`where a, b` cascades as in q: `b` only sees the rows `a` kept. The same
 templates are also callable as strings (`sel"select …"`, `exq`, `upd`, `del`) and via the
 **functional form** below (handy when you build the query programmatically).
 
@@ -854,7 +857,11 @@ syntax and type-aware arithmetic:
 year 2026.07.30                 / accessors: year month day dow  ·  thh tmm tss (time)
 "D"$"2026.12.25"                / string casts: "D"$ (date) "T"$ (time) "P"$ (timestamp)
 `i$2026.07.30                   / extract the raw numeric value
+2026.01.01 2026.01.02           / a strand of dates (or times) is a list of them
 ```
+
+anything else is `'type` (date+2.3, date*2, date+date), and date+0N is `'domain`: there's no null
+date yet, so it used to just hand the date back.
 
 Columns keep numeric storage (as q does internally), so `xasc` and the `s#` attribute work
 unchanged and a `time`-named column auto-renders as `HH:MM:SS.mmm` in a grid.

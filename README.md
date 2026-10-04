@@ -12,9 +12,9 @@
 **A low-latency array language: columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-2.4.2-orange)
+![version](https://img.shields.io/badge/version-2.5.0-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
-![tests](https://img.shields.io/badge/tests-1480%20K--suite%20cases-brightgreen)
+![tests](https://img.shields.io/badge/tests-1555%20K--suite%20cases-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
 
 </div>
@@ -42,24 +42,23 @@ qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                        / vwap by symbo
 <a name="whats-new-241"></a>
 <a name="whats-new-240"></a>
 <a name="whats-new-242"></a>
-## What's new in 2.4.2
+<a name="whats-new-250"></a>
+## What's new in 2.5.0
 
-A round of fixes from pull requests: amending one cell of a table no longer rebuilds the table
-(10,000 of them went from ~2 minutes to ~2 ms), dates and times sort by value and work in `aj`/`wj`,
-`ej` gives every match as q does, JSON is safe inside `peach`, and seven crash and leak fixes.
-Nothing got slower. 2.4.1 before it: really deep nesting is a `'limit` now instead of a crash, piped input
-copes with long lines, and reverse, `0 :':x` and `m!x` got a lot quicker on big vectors (the
-bignum collatz loop runs ~15% faster). 2.4.0 brought tail calls: a function can call itself (or another one) as its last step as deep as it likes,
-`{$[x;o x-1;0]}1000000` just works now. And a big round of fixes from pull requests: `sum avg min
-max` skip nulls the q way, `-0.0` is `0.0` and NaNs are one value wherever floats are compared or
-sorted, chars compare unsigned, `div`/`xbar`/JSON/`asof`/`lj` behave like q, 65536 globals, literals
-of any length, and a long list of crashes gone. Details in the [changelog](CHANGELOG.md).
+A long bug list worked through: crashes first, then wrong answers, then a pile of spots where Amber
+now answers like q (nulls in `sums`/`wavg`/`cov`, dicts with keys on one side, qSQL where-clauses
+and column names, `wj` vs `wj1`, JSON keys, date strands). Nothing got slower, and `cor`,
+`prev`/`next`, `differ` and same-key dict maths got a lot faster.
+
+2.4.2 before it was a fix round from pull requests: one-cell table amends stopped rebuilding the
+table (~2 minutes to ~2 ms for 10,000 of them), dates sort by value, `ej` matches q. Details in the
+[changelog](CHANGELOG.md).
 
 <a name="whats-new-220"></a>
 <a name="whats-new-older"></a>
 ## Earlier releases
 
-2.4.0, 2.3.1, 2.3.0, 2.2.0, 2.1.0 and everything before them are in
+2.4.1, 2.4.0, 2.3.1, 2.3.0, 2.2.0 and everything before them are in
 [`CHANGELOG.md`](CHANGELOG.md), which is the single place release notes live.
 
 <a name="quickstart"></a>

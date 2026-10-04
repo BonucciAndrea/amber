@@ -25,6 +25,8 @@ Native `date` / `time` / `timestamp` types with literal syntax (`2026.07.30`,
 (`time+time`, `date-date`→days, `date+n`, comparisons), string casts `"D"$`/`"T"$`/`"P"$`,
 and accessors `year`/`month`/`day`/`dow`/`thh`/`tmm`/`tss`. Columns keep numeric storage
 so `xasc`/`s#` work unchanged.
+- **Since 2.5:** a strand like `2026.01.01 2026.01.02` is a list; arithmetic outside the cases
+  above is `'type`. There's no null date, so `date+0N` is `'domain` for now.
 - **Still missing:** `month`/`minute`/`second`/`timespan`/`datetime` as distinct types,
   `m` month-literals, and the dotted `t.hh` accessor form (Amber uses `thh t`).
 
@@ -46,6 +48,8 @@ inside a **`.k` script** loaded once the stdlib is up (the loader runs each file
   or a table. (The where-clause form was always implemented; this list used to say
   otherwise. The multi-column list form returned one value per column instead of
   one per row and is fixed.)
+- **Since 2.5:** where-clauses cascade (`where sym=`a, n=max n` is the biggest n among the a's),
+  columns get q's names (`v v1`, `x`), and `select n, s:sum n` stretches `s`, as `update` does.
 - Still missing: the general functional forms `?[t;where;by;select]` /
   `![t;where;by;cols]`, and correlated subqueries. Note that `?` at arity 3+ is
   already `ins` in this dialect, so the `?[…]` spelling cannot be added without
@@ -67,9 +71,9 @@ The primitives keep k's treatment, where the int null is just the smallest int:
 | `&/0N 5` | `0N` (the null is the smallest) | `min` gives `5` |
 | `0^1.5 0n` | `(1.5;0)`: a fill of another type makes a generic list | `1.5 0f` |
 
-Not yet changed: on a dict, `sum` and `min` still count the null (`sum `a`b!0N 1` is
-`-9223372036854775807`; q gives `1`), and the other q-named functions, such as `sums`, `avgs`,
-`prd`, `wavg` and `med`, still treat nulls as the primitives do.
+Since 2.5 `sums prds prd wsum wavg svar sdev` skip nulls too, and `cov scov cor` drop a pair
+with a null. Still k: on a dict, `sum` and `min` count the null (`sum `a`b!0N 1` is
+`-9223372036854775807`; q gives `1`), and `avgs` and `med` treat nulls as the primitives do.
 
 ## 3b. Signed zero and NaN: one value each, as in q
 

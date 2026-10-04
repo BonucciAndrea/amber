@@ -861,6 +861,9 @@ t[`strandMinusBigInt;ER"99999999999999999999-0.5";"'limit"]   / an int literal p
 t[`temporalKept;(2026.07.30+1;1+2026.07.30;2026.07.30-1;2026.07.30-2026.07.29;10:00:00.000+00:00:01.000;2026.07.30&2026.07.29;2026.07.30<2026.07.31)~(2026.07.31;2026.07.31;2026.07.29;1;10:00:01.000;2026.07.29;1);1]
 t[`temporalType;ER'("2026.07.30+2.3";"2026.07.30*2";"2026.07.30%2";"2!2026.07.30";"2026.07.30+2026.07.30");5#,"'type"]
 t[`temporalNull;ER"2026.07.30+0N";"'domain"]
+/ a date plus or minus an int past 32 bits of days is 'limit, as the literal (it wrapped: 2026.07.30+2147483647 was -5877584.01.18)
+t[`dateArithLimit;ER'("2026.07.30+2147483647";"2147483647+2026.07.30";"5881610.07.11+1";"(`mkd -2147483648)-1";"2026.07.30+9223372036854775807";"2026.07.30+1 2147483647");6#,"'limit"]
+t[`dateArithTop;`i$(5881610.07.10+1;2026.07.30-2147483647;(`mkd -2147483647)-1;2026.07.30+-9707);2147483647 -2147473940 -2147483648 0]
 t[`temporalAmend;@[2#2026.07.30;0;:;2026.08.01]~(2026.08.01;2026.07.30);1]
 t[`strandMinusDate;((1-2024.01.01)~1976.01.02;(`i$1-12:00:00.000)~-43199999);11b]   / an int minus a date or a time (2.4.1: the int read as a float and its bits used, 1976.01.01 and -12:00:00.000, -43200000 ms)
 
@@ -1194,7 +1197,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
-hexpect[764]
+hexpect[766]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

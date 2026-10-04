@@ -99,7 +99,7 @@ qproj:{[t;cs]+(?cs)#+t}
 / answered by qaggf through the fused C group-aggregate (`gagg) -- one pass per
 / aggregate over the raw columns, no per-group sub-tables, no lambda per group.
 / Integer results are narrowed with `i$ so column types match the generic path.
-qsimp:`sum`avg`min`max`count`first`last
+qsimp:`sum`avg`min`max`count`first`last`dev`var
 / 2.1+: a THREE-word item of the form `w wavg c` / `w wsum c`, with w and c both real
 / columns, is also fused -- qaggf answers it with two `gagg sum passes (over w*c and over w)
 / and one divide, instead of dropping the whole query onto the per-group path. Without this,
@@ -110,15 +110,22 @@ qsagg:{[C;e]w:" "vs trim e;$[2=#w;$[(in[`$w 0;qsimp])&in[`$w 1;C];(`$w 0;`$w 1);
 / the by-branch of sel, split out so sel itself stays under the bytecode limit.
 / u is the UNFILTERED table and m the where-mask: the fused path hands the mask
 / to `gagg and never builds the filtered table; the generic path filters first.
-qselby:{[u;m;byp;it;d]r:qbyx[u;byp];sg:qsagg[cols r 0]'{(qname x)1}'it;fa:$[(&/{0<#x}'sg)&~(0<#m)&~|/m;qaggf[r 0;r 1;(!d)!sg;m];()];$[#fa;qks fa;[t:$[#m;qwhere[r 0;m];r 0];qby[qproj[t;(r 1),(,/qrefs[cols t]'{(qname x)1}'it)];r 1;d]]]}
+qselby:{[u;m;byp;it;d]r:qbyx[u;byp];sg:qsagg[cols r 0]'{(qname x)1}'it;fa:$[~&/{0<#x}'sg;();$[#m;|/m;1];qaggf[r 0;r 1;(!d)!sg;m];()];$[#fa;qks fa;[t:$[#m;qwhere[r 0;m];r 0];qby[qproj[t;(r 1),(,/qrefs[cols t]'{(qname x)1}'it)];r 1;d]]]}
 / gag1: one select-list item -> one fused result triple (head;values;first-row-indices).
 / (agg;col)        -> a single `gagg pass, as before.
 / (wavg|wsum;w;c)  -> two `gagg sum passes over the same keys and mask, so the group order
 /                     matches, then divide for wavg. Returns () if either pass declines,
 /                     which keeps the existing "cannot fuse -> fall back" contract.
 qgg:{[o;k;v;m]$[#m;`gagg(o;k;v;m);`gagg(o;k;v)]}   / an empty mask is every row (no where-clause)
-gag1:{[d;k;m;p]$[2=#p;qgg[p 0;k;d p 1;m];[wv:d p 1;a:qgg[`sum;k;wv*d p 2;m];$[(p 0)~`wsum;a;$[0=#a;();[b:qgg[`sum;k;wv;m];$[0=#b;();(a 0;(a 1)%b 1;a 2)]]]]]]}
-qaggf:{[t;b;sg;m]d:+t;bc:d b;k:$[1=#b;*bc;qcard[bc]<qEXACT;qenc bc;()];$[0=#k;();[rs:gag1[d;k;m]'sg;$[&/value[{0<#x}'rs];[fr:(*value[rs])2;(+b!bc@\:fr)!+{v:x 1;$[`I=@v;`i$v;v]}'rs];()]]]}
+/ 2.7.2: a big symbol key read by more than one `gagg pass is hashed once, to codes (`senc, on the threads; () on
+/ one thread, where each pass hashing as it goes is cheaper). The group keys still come from the rows, so the
+/ codes never show
+qsc:{[k]e:`senc(k);$[#e;e 1;k]}
+gag1:{[d;k;m;p]$[(2=#p)&in[p 0;`dev`var];qvd[d;k;m;p];2=#p;qgg[p 0;k;d p 1;m];[wv:d p 1;a:qgg[`sum;k;wv*d p 2;m];$[(p 0)~`wsum;a;$[0=#a;();[b:qgg[`sum;k;wv;m];$[0=#b;();(a 0;(a 1)%b 1;a 2)]]]]]]}
+/ 2.7.2: dev and var by group as var does it, avg of the squared distance from the mean: one pass for the group
+/ means, each row's mean found by its key, one pass for the average square
+qvd:{[d;k;m;p]v:d p 1;a:qgg[`avg;k;v;m];$[0=#a;();[e:v-(a 1)@(a 0)?k;b:qgg[`avg;k;e*e;m];$[0=#b;();(b 0;$[`dev~p 0;sqrt b 1;b 1];b 2)]]]}
+qaggf:{[t;b;sg;m]d:+t;bc:d b;k:$[1=#b;*bc;qcard[bc]<qEXACT;qenc bc;()];k:$[(1=#b)&1<+/{1+(2<#x)|in[*x;`dev`var]}'value sg;qsc k;k];$[0=#k;();[rs:gag1[d;k;m]'sg;$[&/value[{0<#x}'rs];[fr:(*value[rs])2;(+b!bc@\:fr)!+{v:x 1;$[`I=@v;`i$v;v]}'rs];()]]]}
 
 
 / ---- select[...] : q's sorted and limited select ---------------------------

@@ -8,9 +8,15 @@ Z V cLF(abn){L*r=AL(a);CO F*p=AL(b);L o=0;F(n,F v=p[i];L b=__builtin_fabs(v)<0x1
 Z V cGB(abn){G*r=AL(a);CO G*p=AL(b);F(n,*r++=p[i>>3]>>(i&7)&1)}
 Z V cBG(abn){G*r=AL(a);CO G*p=AL(b);MS(r,0,n+63>>6<<3);F(n,r[i>>3]|=(*p++&1)<<(i&7))}
 Z V cLA(abn){L*r=AL(a);CO A*p=AL(b);F(n,*r++=gl_(*p++))}
+// amber 2.7: a cast of 1M items or more runs on the thread pool, chunks of whole 32-item blocks (the kernels
+// write in blocks of up to 16), each item made as on one thread. Bit vectors (B) stay on one thread.
+#include"parallel.h"
+TD V(*CK)(V*RES,CO V*RES,U);TD struct{CK f;C*o;CO C*p;U n,so,si;int nt;}CJ;
+Z V cjw(V*c_,int t){CJ*c=c_;U nb=(c->n+31)/32;U s=(U)((W)nb*t/c->nt)*32,e=(U)((W)nb*(t+1)/c->nt)*32;if(e>c->n)e=c->n;if(e>s)c->f(c->o+(N)s*c->so,c->p+(N)s*c->si,e-s);}
+Z V pcast(CK f,V*o,CO V*p,U n,U so,U si){int nt=n<(1u<<20)?1:par_thread_count(n);if(nt>(int)(n>>18))nt=(int)(n>>18);if(nt<2){f(o,p,n);return;}CJ c={f,(C*)o,(CO C*)p,n,so,si,nt};par_run(nt,cjw,&c);}
 Z A2(cT,UC t=xv,u=yt,i=t-tB,j=u-tB;Q(i<8);P(j>6,et(y))
  Z CO TY(&cBG)a[][8]={{0,cBG,0,0,0,0,cBG},{cGB,0,cGH,cGI,cGL,0,0},{0,cHG,0,cHI,cHL,0,cHG},{0,cIG,cIH,0,cIL,0,cIG},{0,0,0,cLI,0,cLF,0},{0,0,0,0,cFL,0,0},{},{}};
- TY(&cBG)f=a[i][j];P(f,A z=an(yn,t);My(f(zV,yV,zn));z)
+ TY(&cBG)f=a[i][j];P(f,A z=an(yn,t);My(I(t==tB||u==tB,f(zV,yV,zn))E(pcast(f,zV,yV,zn,1u<<(Tw[t]-3),1u<<(Tw[u]-3))));z)
  P(t==tS,u==tC?(y=str0(y),y(sym(yV))):et(y))
  P((1<<t|1<<u)==(1<<tG|1<<tC),AT(t,mut(y)))
  cT(t,N(cT(u==tB?tG:G(tG,tI,tI,tL,tI,tL,tG,tC)[i],y))))

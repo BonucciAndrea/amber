@@ -19,7 +19,42 @@ ZN V dFF(CO V*RES a,CO V*RES b,V*RES c,U n){simd_div_f64(AL(a),AL(b),AL(c),AMEL(
 // the very check that depends on it (UBSan flags this on examples/graphs.k).
 // Doing the addition in the unsigned counterpart type is defined two's
 // complement wraparound and compiles to the identical instruction.
-ZN A amdFF(A x,A y,U f)_(U n=xn;P(n-yn,el(y))A z=MINE(y)?y:aF(n);_at(z)=0;G(&aFF,sFF,mFF,dFF)[f-1](xV,yV,zV,n+3>>2);y-z?y(z):z)
+// ---- amber 2.7: element-wise kernels on the thread pool ----------------------------------------------------
+// From PEW_MIN elements up, a kernel runs on chunks of whole 32-element blocks, one per thread: every element
+// is made by the same machine code as on one thread, so the answer is the same at any thread count. Each
+// thread gets at least PEW_MIN/4 elements (fewer threads for a smaller vector).
+#define PEW_MIN (1u<<20)
+typedef V(*PK3)(CO V*RES,CO V*RES,V*RES,U);   //(a;b;out;count)
+typedef V(*PK2)(L,CO V*RES,V*RES,U);           //(number;a;out;count)
+typedef V(*PKF)(F,CO F*,F*,U);                 //(float number;a;out;count)
+typedef struct{V*f;CO C*a;CO C*b;C*c;L v;F fv;U n,u,sa,sb,sc;int nt,kind;int bad[PAR_MAX_THREADS];}PEW;
+Z V pew_w(V*c_,int t){PEW*c=c_;U nb=(c->n+c->u-1)/c->u;U b0=(U)((W)nb*t/c->nt),b1=(U)((W)nb*(t+1)/c->nt);
+ U s=b0*c->u,e=b1*c->u;if(e>c->n)e=c->n;if(e<=s)return;U m=e-s;
+ switch(c->kind){
+  case 0:((PK3)c->f)(c->a+(N)s*c->sa,c->b+(N)s*c->sb,c->c+(N)s*c->sc,m);break;
+  case 1:((PK2)c->f)(c->v,c->a+(N)s*c->sa,c->c+(N)s*c->sc,m);break;
+  case 2:((PKF)c->f)(c->fv,(CO F*)(c->a+(N)s*8),(F*)(c->c+(N)s*8),m);break;
+  case 3:simd_cmpv_f64((CO F*)(c->a+(N)s*8),(CO F*)(c->b+(N)s*8),(UC*)c->c+s,m,(int)c->v,&c->bad[t]);break;
+  case 4:simd_cmps_f64((CO F*)(c->a+(N)s*8),c->fv,(UC*)c->c+s,m,(int)c->v,&c->bad[t]);break;
+  case 5:simd_subs_f64(c->fv,(CO F*)(c->a+(N)s*8),(F*)(c->c+(N)s*8),m);break;
+  case 6:((V(*)(F,CO F*,G*,U))c->f)(c->fv,(CO F*)(c->a+(N)s*8),(G*)c->c+s,m);break;}}
+Z int pew_nt(U el){if(el<PEW_MIN)return 1;int nt=par_thread_count(el);U cap=el/(PEW_MIN/4);return nt<(int)cap?nt:(int)cap;}
+Z V pew_go(PEW*j){par_run(j->nt,pew_w,j);}
+Z V pk3(PK3 f,CO V*a,CO V*b,V*c,U n,U u,U sa,U sb,U sc,U el){int nt=pew_nt(el);if(nt<2){f(a,b,c,n);return;}
+ PEW j={0};j.f=(V*)f;j.a=a;j.b=b;j.c=c;j.n=n;j.u=u;j.sa=sa;j.sb=sb;j.sc=sc;j.nt=nt;j.kind=0;pew_go(&j);}
+Z V pk2(PK2 f,L v,CO V*a,V*c,U n,U u,U sa,U sc,U el){int nt=pew_nt(el);if(nt<2){f(v,a,c,n);return;}
+ PEW j={0};j.f=(V*)f;j.v=v;j.a=a;j.c=c;j.n=n;j.u=u;j.sa=sa;j.sc=sc;j.nt=nt;j.kind=1;pew_go(&j);}
+Z V pkf(PKF f,F v,CO F*a,F*c,U n){int nt=pew_nt(n);if(nt<2){f(v,a,c,n);return;}
+ PEW j={0};j.f=(V*)f;j.fv=v;j.a=(CO C*)a;j.c=(C*)c;j.n=n;j.u=32;j.nt=nt;j.kind=2;pew_go(&j);}
+Z V psubs(F v,CO V*a,V*c,U n){int nt=pew_nt(n);if(nt<2){simd_subs_f64(v,a,c,n);return;}
+ PEW j={0};j.fv=v;j.a=a;j.c=c;j.n=n;j.u=32;j.nt=nt;j.kind=5;pew_go(&j);}
+Z V pkfg(V(*f)(F,CO F*,G*,U),F v,CO F*a,G*c,U n){int nt=pew_nt(n);if(nt<2){f(v,a,c,n);return;}
+ PEW j={0};j.f=(V*)f;j.fv=v;j.a=(CO C*)a;j.c=(C*)c;j.n=n;j.u=32;j.nt=nt;j.kind=6;pew_go(&j);}
+Z V pcmpv(CO V*a,CO V*b,V*c,U n,int op,int*bad){int nt=pew_nt(n);if(nt<2){simd_cmpv_f64(a,b,c,n,op,bad);return;}
+ PEW j={0};j.a=a;j.b=b;j.c=c;j.n=n;j.u=32;j.v=op;j.nt=nt;j.kind=3;pew_go(&j);F(nt,*bad|=j.bad[i])}
+Z V pcmps(CO V*a,F v,V*c,U n,int op,int*bad){int nt=pew_nt(n);if(nt<2){simd_cmps_f64(a,v,c,n,op,bad);return;}
+ PEW j={0};j.a=a;j.fv=v;j.c=c;j.n=n;j.u=32;j.v=op;j.nt=nt;j.kind=4;pew_go(&j);F(nt,*bad|=j.bad[i])}
+ZN A amdFF(A x,A y,U f)_(U n=xn;P(n-yn,el(y))A z=MINE(y)?y:aF(n);_at(z)=0;pk3(G(&aFF,sFF,mFF,dFF)[f-1],xV,yV,zV,n+3>>2,8,32,32,32,n);y-z?y(z):z)
 // amber 2.1: the overflow test is fused into the kernel (simd_addc_*: one pass
 // over x, y and z instead of the add plus a second read of all three), and the
 // integer multiply is a vectorisable flag-accumulating loop instead of a scalar
@@ -101,9 +136,9 @@ ZN V eqlH(CO V*RES a,CO V*RES b,V*RES c,U n){CO H16*p=a,*q=b;G16*r=c;F(n+15>>4,F
 ZN V eqlI(CO V*RES a,CO V*RES b,V*RES c,U n){CO I8 *p=a,*q=b;G8 *r=c;F(n+ 7>>3,Fj( 8,r[i][j]=p[i][j]==q[i][j]))}
 ZN V eqlL(CO V*RES a,CO V*RES b,V*RES c,U n){CO L4 *p=a,*q=b;G4 *r=c;F(n+ 3>>2,Fj( 4,r[i][j]=p[i][j]==q[i][j]))}
 Z A cmpZZ(A x,A y,U f)_(U w=xw-3;P(w<yw-3,x=ct(tG+yw-3,xR);x(cmpZZ(x,y,f)))I(yw-3<w,y=ct(tG+w,y))V*a=xV,*b=yV;I(f==9,SW(a,b))
- U n=xn;A z=aG(n);My(A(&ltnG,ltnH,ltnI,ltnL,eqlG,eqlH,eqlI,eqlL)[(f==10)<<2|w](a,b,zV,n))z)
+ U n=xn;A z=aG(n);My(pk3(A(&ltnG,ltnH,ltnI,ltnL,eqlG,eqlH,eqlI,eqlL)[(f==10)<<2|w],a,b,zV,n,32,1u<<w,1u<<w,1,n))z)
 Z A cmpzZ(L v,A y,U f)_(U w=yw-3;P(tG+w<tZ(v),y(rsz(yn,ai(f==8?v<0:f==9?v>0:0))))
- U n=yn;A z=aG(n);My(A(&ltng,ltnh,ltni,ltnl,gtng,gtnh,gtni,gtnl,eqlg,eqlh,eqli,eqll)[f-8<<2|w](v,yV,zG,n))z)
+ U n=yn;A z=aG(n);My(pk2(A(&ltng,ltnh,ltni,ltnl,gtng,gtnh,gtni,gtnl,eqlg,eqlh,eqli,eqll)[f-8<<2|w],v,yV,zG,n,32,1u<<w,1,n))z)
 
 Z A addzE(L v,A x)_(Lij P(v>0?j>WL-v:i<NL-v,addzZ(v,gZ(x),1))x(0);aE(i+v,j+v))   //ends past the int range: a vector (ints wrap), not a wrapped range
 // Amber 2.5 (exp): the number-with-vector float loops are functions of their own (noipa: one copy of the
@@ -117,11 +152,11 @@ Z FZK V fzadd(F v,CO F*y,F*z,U n){SIMD F(n,z[i]=v+y[i])}
 Z FZK V fzmul(F v,CO F*y,F*z,U n){SIMD F(n,z[i]=v*y[i])}
 Z FZK V fzdvl(F v,CO F*y,F*z,U n){SIMD F(n,z[i]=v/y[i])}
 Z FZK V fzdvr(CO F*x,F v,F*z,U n){SIMD F(n,z[i]=x[i]/v)}
-Z A addfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;fzadd(v,yF,zF,zn+3&-4);y-z?y(z):z)
-Z A mulfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;fzmul(v,yF,zF,zn+3&-4);y-z?y(z):z)
-Z A subfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;simd_subs_f64(v,yV,zV,yn);y-z?y(z):z)/* v - y */
+Z A addfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;pkf(fzadd,v,yF,zF,zn+3&-4);y-z?y(z):z)
+Z A mulfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;pkf(fzmul,v,yF,zF,zn+3&-4);y-z?y(z):z)
+Z A subfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;psubs(v,yV,zV,yn);y-z?y(z):z)/* v - y */
 Z A admfF(F v,A y,U f)_((f==3?mulfF:f==2?subfF:addfF)(v,y,f))
-Z A dvdfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;fzdvl(v,yF,zF,zn+3&-4);y-z?y(z):z)
+Z A dvdfF(F v,A y,U f)_(A z=MINE(y)?y:aF(yn);_at(z)=0;pkf(fzdvl,v,yF,zF,zn+3&-4);y-z?y(z):z)
 Z A dvdFf(A x,F v,U f)_(A z=aF(xn);fzdvr(xF,v,zF,xn);z)
 // ---- amber 2.5 (exp): fusion --------------------------------------------------------------------------------
 // fzrun runs the program the compiler made for an element-wise tree (src/b.c fz): d is (program bytes;
@@ -298,8 +333,10 @@ Z A fzn(A x/*1*/)_(P(!xtf&&!xtF,x)U n=xtf?1:xn;CO F*p=xF;U i=0;W b_=0;   //bits 
 // = of float vectors in one pass: IEEE == already takes -0.0 for 0.0, and the second term
 // makes every NaN equal; 0 (nothing consumed) for shapes it does not handle.
 #define EQV(u,v) ((u)==(v)|((u)!=(u))&((v)!=(v)))
+Z V eqvvk(CO V*RES a,CO V*RES b,V*RES c,U n){CO F*RES p=a,*RES q=b;G*RES r=c;F(n,r[i]=EQV(p[i],q[i]))}
+Z V eqsvk(F u,CO F*q,G*r,U n){F(n,r[i]=EQV(u,q[i]))}
 Z A eqFF(A x,A y/*00*/)_(B a=xtf,b=ytf;P(a&&b||!a&&!b&&xn-yn,0)U n=a?yn:xn;A z=an(n,tG);G*RES r=zV;CO F*RES p=xF,*RES q=yF;
- P(a,F u=*p;F(n,r[i]=EQV(u,q[i]))z)P(b,F v=*q;F(n,r[i]=EQV(p[i],v))z)F(n,r[i]=EQV(p[i],q[i]))z)
+ P(a,pkfg(eqsvk,*p,q,r,n);z)P(b,pkfg(eqsvk,*q,p,r,n);z)pk3(eqvvk,p,q,r,n,32,8,8,1,n);z)   //2.7: on the thread pool from 1M items
 ZN A arif(A x,A y,U f)_(C t=xt,u=yt;
  P(f==5,xtz?modzf(gl_(x),y,f):et(y))
  P(t-tf&&t-tF,x=Ny(cF(xR));x(ari(x,y)))
@@ -327,9 +364,9 @@ ZN A arif(A x,A y,U f)_(C t=xt,u=yt;
      U nc_=vv||sv?xn:yn;
      A z_=aG(nc_);int bad_=0;
      // `>` is op 1 and `<` is op 0; a scalar on the LEFT flips the sense.
-     I(vv,simd_cmpv_f64(xV,yV,_V(z_),nc_,f==9,&bad_))
-     J(sv,simd_cmps_f64(xV,*(CO F*)yV,_V(z_),nc_,f==9,&bad_))
-     E(   simd_cmps_f64(yV,*(CO F*)xV,_V(z_),nc_,f==8,&bad_))
+     I(vv,pcmpv(xV,yV,_V(z_),nc_,f==9,&bad_))
+     J(sv,pcmps(xV,*(CO F*)yV,_V(z_),nc_,f==9,&bad_))
+     E(   pcmps(yV,*(CO F*)xV,_V(z_),nc_,f==8,&bad_))
      I(!bad_,{y(0);return z_;})/*arif owns y, NOT x: the general path below does of1(xR) but of1(y)*/
      mr(z_);})})
  x=of1(xR);y=ari(x,of1(y));x(f<8&&y?of0(y):y))

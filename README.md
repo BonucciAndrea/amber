@@ -12,7 +12,7 @@
 **A low-latency array language: columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-2.7.1-orange)
+![version](https://img.shields.io/badge/version-2.7.2-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
 ![tests](https://img.shields.io/badge/tests-1555%20K--suite%20cases-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
@@ -55,6 +55,8 @@ load.
 
 2.7.1 makes qSQL a lot faster where it was slow (`select distinct`, `like` on symbols, `update ... by`,
 `select by`, the functional forms) and fixes `update ... by ... where`.
+2.7.2 puts qSQL on all your cores (big where-clauses, maths, casts and symbol group-bys) and makes
+group-by on symbols 2-4x faster on one core too.
 
 Attributes work like q now too: `` `s#x ``, `` `u#x ``, `` `p#x ``, `` `g#x ``, `` `#x `` and `attr`,
 on lists, tables and dicts, checked against q.exe case by case, including sorted dicts that look up

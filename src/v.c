@@ -48,6 +48,14 @@ V tilV(V*p,L v,L n,U w){L*RES a=p;W k=(W)G(0x101010101010101ll,0x1000100010001ll
 Z NI A tlm(A x)_(F(xn,A y=xa;I(ytm,x=mut(x);xa=y(_R(yy))))x)   //dict items to their values, for til's odometer (out of line: inlined, til read the thread-local refcount flag for every list)
 Z NI A tld(A x)_(B d=0;F(xn,A y=xa;d|=_T(_t0(y)?x:y)==tm)d?tlm(x):x)   //any dict items of x to their values: a test, out of line and frameless so that til's own code is as before (an atom item reads x's own header: no branch per item)
 X1(til,RA(K1("{x@'!#'x}",tld(x)))Ril(L n=gl(x);I(n==NL,n=0)P((n<0?-n:n)>>32,ez0())aE(MIN(0ll,n),MAX(0ll,n)))REBGHIL(K1("{(*a)#'&'x#'1_a:|*\\|x,1}",x))RmM(x(_R(xx)))Ro(val(x))RS(gns(_v(jS(x))))Rs(gns(xv))R_(et(x)))
+// amber 2.7: & of a 0/1 byte mask of 1M items or more on the thread pool: each thread counts its chunk's ones
+// (and ORs its bytes, so anything but 0 or 1 is caught as before), then writes its indices at its offset.
+TD struct{CO UC*m;V*o;U n;int nt;UC w;N k[PAR_MAX_THREADS+1];UC a[PAR_MAX_THREADS];}WHJ;
+Z V whc(V*c_,int t){WHJ*c=c_;U s=(U)((W)c->n*t/c->nt),e=(U)((W)c->n*(t+1)/c->nt);N k=0;UC a=0;CO UC*RES m=c->m;for(U i=s;i<e;i++){a|=m[i];k+=m[i]!=0;}c->k[t+1]=k;c->a[t]=a;}
+Z V whw(V*c_,int t){WHJ*c=c_;U s=(U)((W)c->n*t/c->nt),e=(U)((W)c->n*(t+1)/c->nt);N k=c->k[t];CO UC*RES m=c->m;
+ if(c->w==1){H*RES o=c->o;for(U i=s;i<e;i++)if(m[i])o[k++]=(H)i;}else{I*RES o=c->o;for(U i=s;i<e;i++)if(m[i])o[k++]=(I)i;}}   //a store only for a 1: the serial kernel's unconditional store would write into the next thread's first slot
+Z N pwhr(CO UC*m,V*o,U n,UC w,int nt,int*bad){WHJ c;c.m=m;c.o=o;c.n=n;c.nt=nt;c.w=w;c.k[0]=0;par_run(nt,whc,&c);UC a=0;
+ for(int t=0;t<nt;t++){c.k[t+1]+=c.k[t];a|=c.a[t];}if(a>1){*bad=1;return 0;}par_run(nt,whw,&c);return c.k[nt];}
 X1(whr,Ril(whr(enl(x)))RA(P(!xn,x(an(0,tI)))K1("{$[`A~@x;(,&#'*'x),,'/x@\\:!0|/#'x:o'x;,&x]}",x))Rm(A y=kv(&x);x(x1(Nx(whr(y)))))RE(whr(gZ(x)))R_(et(x))
  RB(U m=xn,n=addfB(xV,m);A y=aI(n);I*r=yV;Mx(F(m+7>>3,C v=xg;I(i+1==n_&&m&7,v&=(1<<(m&7))-1)W(v,U j=CTZ(v);v&=~(1<<j);*r++=i<<3|j)))Q(r-yI==n);y)
  RGHIL(I w=xw-3;
@@ -56,8 +64,9 @@ X1(whr,Ril(whr(enl(x)))RA(P(!xn,x(an(0,tI)))K1("{$[`A~@x;(,&#'*'x),,'/x@\\:!0|/#
   // byte is 0 or 1, then simd_where_* writes the indices with an unconditional
   // store and a masked cursor advance. Anything else takes the general
   // replicate-by-count loop below.
-  I(w==0&&xn,{C t_=tZ((L)xn-1);A y_=an(xn,t_);int bad_=0;N k_=0;
+  I(w==0&&xn,{C t_=tZ((L)xn-1);A y_=an(xn,t_);int bad_=0;N k_=0;int pt_=xn<(1u<<20)?1:par_thread_count(xn);I(pt_>(int)(xn>>18),pt_=(int)(xn>>18))
     I(t_==tG,{G*r_=_V(y_);CO UC*mm_=xV;unsigned char acc_=0;F(xn,acc_|=mm_[i];r_[k_]=(G)i;k_+=mm_[i]!=0)bad_=acc_>1;})
+    J(pt_>1&&(t_==tH||t_==tI),k_=pwhr(xV,_V(y_),xn,t_==tH?1:2,pt_,&bad_))
     J(t_==tH,k_=simd_where_i16(xV,_V(y_),xn,&bad_))E(k_=simd_where_i32(xV,_V(y_),xn,&bad_))
     I(!bad_,return x(AN((U)k_,y_));)mr(y_);})
   L m=xn,n=addfZ(0,x);P(minfZ(0,x)<0,ed(x))P(n<maxfZ(0,x)||(W)n-(U)n,ez(x))C t=tZ(m-!!m);P(t>tI,ez(x))A y=an(n,t);

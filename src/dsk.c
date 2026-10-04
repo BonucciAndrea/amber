@@ -1,3 +1,17 @@
+/* pread, strdup, struct stat and dirent are POSIX, hidden under a strict -std=c99 unless asked for before the
+ * first system header (CI builds every file that way; clang makes the implicit declarations errors). */
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE
+#endif
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
+#ifndef _DARWIN_C_SOURCE
+#define _DARWIN_C_SOURCE
+#endif
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 /* dsk.c  -  on-disk columns (2.7): `wcol writes one, `rcol maps one back.
  *

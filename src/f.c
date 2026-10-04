@@ -38,6 +38,9 @@ Z L fLL(CO V*a,U n,L v)_(             U i=fL(a,n,v);i<n?i:NL)
 // (fL, as before); a zero or NaN needle scans for any of its spellings.
 #define AMNW(w) (((W)(w)<<1)>0xffe0000000000000ull)
 Z U fFs(CO L*a,U n,L v)_(U i=0;P(!v,W(i<n&&AMNZ(a[i]),i++)i)P(AMNW(v),W(i<n&&!AMNW(a[i]),i++)i)fL(a,n,v))
+// fFL pinned to 64 bytes: its loop ran at about half speed where it crossed a 4 KB boundary (Apple cores), so a
+// change anywhere before f.c moved float find and distinct by up to 88% (digest #82)
+Z L fFL(CO V*,U,L)__attribute__((aligned(64)));
 Z L fFL(CO V*a,U n,L v)_(             U i=fFs(a,n,AMNF(v));i<n?i:NL)
 
 //amber: binary search on a sorted(`s#) vector -> O(log n) find; returns index or NL

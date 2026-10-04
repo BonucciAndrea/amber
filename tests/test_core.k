@@ -358,6 +358,9 @@ t[`distinctFirstNeg;`k@?(0;-1*0.0;1.0-1.0);"(0;-0.0)"]
 t[`distinctFirstNan;?(1;0n;-0n;0n);(1;0n)]
 t[`distinctGenPlain;?(1;"a";1;`b;"a");(1;"a";`b)]
 
+/ |/ and &/ of floats give 0.0 for a zero, as | & and the scans do (the SIMD kernel kept a lane's zero), threaded too
+t[`foldZeros;1%(|/-0.0 0.0;|/0.0 -0.0;&/-0.0 0.0;&/0.0 -0.0;|/-0.0 -0.0;|/20#-0.0 0.0;&/20#0.0 -0.0;|/,-0.0);8#0w]
+t[`foldZerosBig;1%(|/2000000#-0.0;&/2000000#-0.0 0.0);0w 0w]
 / ---- group of floats: -0.0 and 0.0 (and NaNs) are one key, indices ascending, first key seen ----
 t[`groupZeros;(=0.0 -0.0;=-0.0 0.0 1.5 0.0);((,0.0)!,0 1;-0.0 1.5!(0 1 3;,2))]
 t[`groupNans;=0n 1.0 -0n;0n 1.0!(0 2;,1)]
@@ -1053,7 +1056,7 @@ t[`divCharsOne;-1!"ab";97 98]
 t[`divCharsHigh;-2!0x8081;-64 -64]
 t[`divCharsEmpty;@-2!"";`I]
 
-hexpect[667]
+hexpect[669]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

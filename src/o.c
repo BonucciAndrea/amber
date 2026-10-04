@@ -214,9 +214,9 @@ enum{GA_SUM,GA_CNT,GA_MIN,GA_MAX,GA_AVG,GA_FST,GA_LST};
 #define GARD(w,p,i) ((w)==0?(L)((CO G*)(p))[i]:(w)==1?(L)((CO H*)(p))[i]:(w)==2?(L)((CO I*)(p))[i]:((CO L*)(p))[i])
 #define GA_GROW() I(ng==cap,U nc=cap*2;gk=realloc(gk,(N)nc*SZ(L));gf=realloc(gf,(N)nc*SZ(I));af=realloc(af,(N)nc*SZ(F));al_=realloc(al_,(N)nc*SZ(L));gc=realloc(gc,(N)nc*SZ(L));cap=nc;)
 #define GA_ADD(g,i) {af[g]=0;al_[g]=0;gc[g]=0;gf[g]=(I)(i);I(code==GA_MIN,af[g]=WF;al_[g]=vf?gmn:WL)I(code==GA_MAX,af[g]=-WF;al_[g]=vf?gmx:NL+1)}
-// amber 2.3: float min/max compare o1() keys, the order &/ and |/ use (NaN lowest, -0.0
-// below 0.0), and give back the winner's own bits. The plain < and > skipped NaNs, so a
-// group min ignored the NaN &/ returns, and an all-NaN group came out as 0w/-0w.
+// amber 2.3: float min/max compare o1() keys, the order &/ and |/ use, and give back the key's
+// value: either zero is 0.0 (issue #15). NaNs are skipped, as q's min/max skip nulls, so an
+// all-NaN group is 0w/-0w.
 #define GA_OF(i) o1(((CO L*)vp)[i])
 // ---- amber 2.5 (exp): parallel gagg for the exactly-combinable ops, see patch notes / gaggC
 #define PGAG_MIN (1u<<16)

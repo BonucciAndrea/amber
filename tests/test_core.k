@@ -463,6 +463,12 @@ t[`dictTyped;((`a!1.5)+`b!2.5;(`a`b!1 2)-`b`c!10 20);(`a`b!1.5 2.5;`a`b`c!1 -8 -
 / A dict with no keys on one side gives the other one, as q and ngn/k (it was 'length, digest #24)
 t[`dictEmptyUntyped;((`a`b!1 2)+()!();((1 2;3 4)!5 6)+()!();(()!())-`a`b!1 2;(()!())+()!());(`a`b!1 2;(1 2;3 4)!5 6;`a`b!-1 -2;()!())]
 t[`dictEmptyTyped;(`a`b!1 2)+(0#`)!!0;`a`b!1 2]
+t[`dictEmptyCompare;((`a`b!1 2)<()!();(`a`b!1 2)>()!();(`a`b!1 2)=()!();(()!())<`a`b!1 2;(()!())>`a`b!1 2;(()!())=`a`b!1 2;(`a`b!1.5 2)<()!();(()!())<`a`b!1.5 2);(`a`b!0 0;`a`b!1 1;`a`b!0 0;`a`b!1 1;`a`b!0 0;`a`b!0 0;`a`b!0 0;`a`b!1 1)]   / as with (0#`)!!0: a key on one side meets a null; it was 'length
+t[`dictEmptyCompareVals;(((0#`)!())<`a`b!1 2;(`a`b!1 2)=(0#`)!();(`a`b!1 2)<(0#,`x)!();((1 2;3 4)!5 6)<()!();(()!())<()!();((0#`)!())<(0#`)!());(`a`b!1 1;`a`b!0 0;`a`b!0 0;(1 2;3 4)!0 0;()!();(0#`)!())]   / () values and generic keys of any prototype: it was `a`b!(!0;!0)
+t[`dictEmptyListVals;((`a`b!(1 2;3 4))+()!();(`a`b!(1 2;3 4))|()!();(`a`b!+(,`c)!,1 2)+()!();(`a`b!(1 2;3 4))<()!();(()!())<`a`b!(1 2;3 4);(`a`b!+(,`c)!,1 2)<()!();(`a`b!1 2)<(0#`)!0#,1 2;(`a`b!+(,`c)!,1 2)+(0#`)!0#,1 2);(`a`b!(1 2;3 4);`a`b!(1 2;3 4);`a`b!+(,`c)!,1 2;`a`b!(0 0;0 0);`a`b!(1 1;1 1);`a`b!+(,`c)!,0 0;`a`b!0 0;`a`b!+(,`c)!,1 2)]   / as x f 0#x; it was 'length or (0 0;0 0)
+t[`dictEmptyBothCompare;`k@(((0#`)!"")<(0#`)!"";((0#`)!0#0n)<(0#`)!0#0n;(()!())<(0#`)!!0;((0#`)!!0)<()!();((0#`)!())<(0#`)!!0;(()!0#0n)<()!0#0n;(()!0#0n)<()!();(()!())<()!0#0n;(()!0#0n)<(0#`)!();((0#`)!())<()!0#0n);"((0#`)!!0;(0#`)!!0;(0#`)!!0;(0#`)!!0;(0#`)!!0;()!!0;()!!0;()!!0;(0#`)!!0;(0#`)!!0)"]   / two empty dicts: typed ones as before, generic keys or values take the other's typed 0# in either order (+ - * % & | ,' are dkey's)
+lk:(1 2;3 4)!5 6
+t[`dictEmptyGenericKeys;(lk+(0#`)!!0;lk+(0#`)!();((0#`)!!0)+lk;((0#`)!!0)-lk;lk<(0#`)!!0;((0#`)!!0)<lk;lk<()!();lk,'(0#`)!!0;((0#`)!!0),'lk);((1 2;3 4)!5 6;(1 2;3 4)!5 6;(1 2;3 4)!5 6;(1 2;3 4)!-5 -6;(1 2;3 4)!0 0;(1 2;3 4)!1 1;(1 2;3 4)!0 0;(1 2;3 4)!5 6;(1 2;3 4)!5 6)]   / it was (1 2;3 4;`)!5 6 0N, 'type or (1 2;3 4)!(0 0;0 0)
 t[`dictEmptyVals;(((0#`)!())-`a`b!1 2;(`a`b!1 2)+(0#`)!());(`a`b!-1 -2;`a`b!1 2)]   / empty values () filled nothing: `a`b!(!0;!0)
 
 / ---- the fused masked sums equal the unfused expression, bit for bit ----
@@ -1029,7 +1035,7 @@ t[`ejxOther;`ejx("ab";"ba");()]
 t[`indexTable;1 2 3@+`c`e!(0 1;2 0);+`c`e!(1 2;3 1)]
 t[`indexDict;1 2 3@`c`e!(0 1;2 0);`c`e!(1 2;3 1)]
 
-hexpect[653]
+hexpect[658]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

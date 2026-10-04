@@ -37,14 +37,29 @@ U urnk(A);
 Z A dkey(I c,A2 f,A x,A y/*00f01*/)_(P(!_n(xx)&&!_n(yx),y(_R(x)))P(c<6&&mtc_(xx,yx),A v=f(xy,_R(yy));y(v?am(_R(xx),v):0))
  A v=K("{[c;kx;vx;ky;vy]yo:$[#kx;&^kx?ky;!#ky];iy:$[#ky;ky?kx;(#kx)#0N];iy:$[#kx;@[iy;&~(kx?kx)=!#kx;:;0N];iy];b:&~^iy;xo:&^iy;f:(+;-;*;%;&;|;,)c;u:c>1;r:$[c=6;f'[vx b;vy iy b];f[vx b;vy iy b]];(kx,ky yo)!($[c<4;f[vx xo;u];vx xo],r,$[c<4;f[u;vy yo];vy yo])@<xo,b,(#kx)+!#yo}",
        az(c),_R(xx),_R(xy),_R(yx),_R(yy));y(v))
-A e2f(A2 f,A x,A y/*f01*/)_(U k=xtt<<1|ytt;P(k==3,f(x,y))
- P(xtm||ytm,P(xtm>ytm,A z=N(e2f(f,xy,y));am(_R(xx),z))P(xtm<ytm,A z=Ny(e2f(f,x,_R(yy)));y(am(_R(yx),z)))
-  P(_n(xx)&&_n(yx)&&urnk(xx)-urnk(yx),ed(y))
-  I c=f==add?0:f==sub?1:f==mul?2:f==dvd?3:f==mnm||f==mnu?4:f==mxm||f==mxu?5:f==cat?6:-1;P(c>=0&&!_tM(xx)&&!_tM(yx),dkey(c,f,x,y))
+//two dicts (x and y as in e2f; c: dkey's verb, or -1)
+Z A e2d(I c,A2 f,A x,A y/*0f01*/)_(P(_n(xx)&&_n(yx)&&urnk(xx)-urnk(yx),ed(y))
+  P(c>=0&&!_tM(xx)&&!_tM(yx),dkey(c,f,x,y))
   A z=cat(xx,_R(yx));P(!z,y(0))P(_tM(xx)||_tM(yx),mr(z);y(en0()))   /*Keyed tables: not yet (issue #19); keys that do not join were 'domain above*/z=unq(z);P(!z,y(0))B o=(f==add||f==sub||f==mul||f==dvd||f==mnm||f==mnu)&&(_n(xx)||_t(xx)-tA)&&(_n(yx)||_t(yx)-tA)&&!mtc_(xx,yx);A mx=o?fnd(xx,zR):0,my=o?fnd(yx,zR):0;x=x1(zR);P(!x,I(mx,mr(mx))I(my,mr(my))z(y(0)))y=y(y1(zR));P(!y,I(mx,mr(mx))I(my,mr(my))z(x(0)))   //mx my: 0N where a key is missing on that side (none is when the keys match)
   I(o,                                                         //a missing key takes the verb's identity (only a missing one: a null value stays)
    A u=f==mnm||f==mnu?(xtF||ytF?af(WF):az(WL)):ai(f==mul||f==dvd);x=K("{$[|/^z;@[x;&^z;:;y];x]}",x,_R(u),mx);P(!x,mr(u);mr(my);z(y(0)))y=K("{$[|/^z;@[x;&^z;:;y];x]}",y,u,my);P(!y,z(x(0))))   //the identity atom at the missing positions only
   am(z,Nz(x(e2f(f,x,y)))))
+#define D0(a,b) (!_n(_x(a))&&(_tA(_x(a))||_tA(_y(a))||_tA(_x(b))))   //a has no keys (b has some), and its keys or values, or b's keys, are generic
+//x (no keys) with y's 0# for its generic keys or values, and for its keys where y's are generic; when y has no keys either,
+//only where y's are not generic
+Z A d0(A x,A y/*00*/)_(B e=_n(yx)>0;A k=(e?_tA(xx)||_tA(yx):_tA(xx)&&!_tA(yx))?rs0(_R(yx)):_R(xx);P(!k,0)
+ A v=_tA(xy)&&(e||!_tA(yy))?rs0(_R(yy)):_R(xy);P(!v,mr(k);0)am(k,v))
+A e2f(A2 f,A x,A y/*f01*/)_(U k=xtt<<1|ytt;P(k==3,f(x,y))
+ P(xtm||ytm,P(xtm>ytm,A z=N(e2f(f,xy,y));am(_R(xx),z))P(xtm<ytm,A z=Ny(e2f(f,x,_R(yy)));y(am(_R(yx),z)))
+  //a dict with no keys whose keys or values are a generic list (()!()) found the other's keys as one item, so a
+  //'length, or read () as each value, and empty keys met generic ones the same way: those are the other's 0#, so
+  //x f ()!() is x f 0#x for every verb (a key on one side meets a null of the other's type for < > =, as with a
+  //typed empty dict). Two empty dicts are left to dkey for its verbs; for the rest they give x when both values are
+  //generic, otherwise each takes the other's 0# where it is generic and the other is not, so the order does not
+  //matter except that x is returned when both values are generic (digest #24)
+  I c=f==add?0:f==sub?1:f==mul?2:f==dvd?3:f==mnm||f==mnu?4:f==mxm||f==mxu?5:f==cat?6:-1;
+  P(!_n(xx)&&!_n(yx),P(c>=0&&!_tM(xx)&&!_tM(yx),e2d(c,f,x,y))P(_tA(xy)&&_tA(yy),y(_R(x)))A u=Ny(d0(y,x)),t=d0(x,y);y=y(u);P(!t,y(0))A z=e2d(c,f,t,y);mr(t);z)
+  P(D0(x,y),x=Ny(d0(x,y));A z=e2d(c,f,x,y);x(z))I(D0(y,x),A t=Ny(d0(y,x));y=y(t))e2d(c,f,x,y))
  P(!k&&xN-yN,el(y))U n=k<2?xN:yN;P(!n,x=fir(xR);x(o2f(f,x,fir(y))))A z=emp(tA);F(n,A v=ii(x,i);A u=f(v,ii(y,i));mr(v);B(!u,z=z(0))PSH(z,u))y(z))
 AX(e8,/*01..1*/P(n==1,e1(x,*a))P(n==2,A y=*a;y(e2(x,y,a[1])))Ab8;C t[8];L m=-1;F(n,A y=b[i]=a[i];Ym(em(x,a,n))t[i]=ytP?0:ytt?1:ytA?2+!MINE(y):4;I(t[i]>1,L l=yN;P(m>=0&&m-l,el8(a,n))m=l))
  P(m<0,x8(a,n))F(n,I(t[i]==1,_r(a[i])+=m))A u=0;I(!m,u=x==LEN?emp(tG):n==2&&xtv&&xv<11?_R(a[!_N(a[1])]):emp(tA))//t[i] 0:pkdatm,1:refatm,2:tA(r=1),3:tA,4:other

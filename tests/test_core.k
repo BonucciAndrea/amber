@@ -691,6 +691,7 @@ t[`keyedPlusAtom;((+(,`a)!,1 2 3)!4 5 6)+1;(+(,`a)!,1 2 3)!5 6 7]
 t[`dictMixedRankL;*"\n"\.[.:;,"((1 2;3 4)!5 6)+`a`b!1 2";{x}];"'domain"]
 
 / a dict with no keys is not checked: two empty ones still add, as group counts from ()!() do
+t[`groupMixedRank;(=(1;"ab");=(1 2;1);=(1;"ab";1);(1;"ab")?"ab";((1;"ab")!10 20)"ab";5#.[?;(("ab";"cd");1);{x}]);((1;"ab")!(,0;,1);(1 2;1)!(,0;,1);(1;"ab")!(0 2;,1);1;20;"'rank")]   / digest #29: as q
 t[`dictEmptyBoth;`k@((()!())+#'=0#`;(#'=0#`)+()!());"(()!();(0#`)!!0)"]
 / digest #23 #25 #26: a key on one side passes its value through; x's repeated keys stay
 t[`dictOneSide;((`a`b!1 2)|`c!,1 2;(`a`b!(1 2 3;3))|`a`c!(5;6 7);(`a`b!0x0102)|`b`c!0x0304;(`a`b!0x0102)&`b`c!0x0304);(`a`b`c!(1;2;1 2);`a`b`c!(5 5 5;3;6 7);`a`b`c!0x010304;`a`b`c!0x010204)]
@@ -1023,7 +1024,7 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[649]
+hexpect[650]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

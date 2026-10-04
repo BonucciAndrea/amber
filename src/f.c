@@ -360,7 +360,10 @@ X2(fnd,
  Rm(i1(xx,N(fnd(xy,y))))
  RM(en(y))
  RE(x=gZ(xR);x(fnd(x,y)))
- RA(U k=urnk(x),l=urnk(y);P(k<l+1,r2f(fnd,x,y))P(k>l+1,er(y))
+ // the rank of x's first item says whether y is one item or a list of them; when the items differ in rank, y may be
+ // one of them all the same, so it is looked for whole first ((1;"ab")?"ab" is 1, it was 0N 0N). An x of one rank
+ // never matches there, so it is only a scan more on these two paths (digest #29)
+ RA(U k=urnk(x),l=urnk(y);I(k-l-1,F(xn,P(mtc_(xa,y),y(az(i)))))P(k<l+1,r2f(fnd,x,y))P(k>l+1,er(y))
   X(RA(F(xn,P(mtc_(xa,y),y(az(i))))y(az(NL)))
     R_(F(xN,A z=ii(x,i);I m=mtc_(z,y);z(0);P(m,y(az(i))))y(az(NL))))0)
  RB(x=cG(xR);x(fnd(x,y)))

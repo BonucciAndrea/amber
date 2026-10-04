@@ -29,9 +29,19 @@ Z AX(l8,/*01..1*/Ab8;MC(b,a,n*SZ(A));*b=GAP;x=prj(x,b,n);x(e1(x,*a)))
 //dicts: keys of different ranks do not merge ('domain), and the union of the keys and looking
 //them up can fail ('nyi for table keys): check each
 U urnk(A);
+// + - * % & | and ,' on two dicts line them up by key: x's keys in order (a repeat kept, as ngn/k and q), then y's
+// new ones; a key on both sides gets f, a key on one side passes its value through (+ - * % with their identity,
+// so 0-y, 1%y and the types they give). They were looked up in the union of the keys, so a missing key read a null
+// shaped like the other dict's first value (| and ,' mangled lists, bytes became ints), an empty dict was 'length
+// and a repeated key of x went (digest #23-#26). The same keys: just f on the two value lists
+Z A dkey(I c,A2 f,A x,A y/*00f01*/)_(P(!_n(xx)&&!_n(yx),y(_R(x)))P(c<6&&mtc_(xx,yx),A v=f(xy,_R(yy));y(v?am(_R(xx),v):0))
+ A v=K("{[c;kx;vx;ky;vy]yo:$[#kx;&^kx?ky;!#ky];iy:$[#ky;ky?kx;(#kx)#0N];iy:$[#kx;@[iy;&~(kx?kx)=!#kx;:;0N];iy];b:&~^iy;xo:&^iy;f:(+;-;*;%;&;|;,)c;u:c>1;r:$[c=6;f'[vx b;vy iy b];f[vx b;vy iy b]];(kx,ky yo)!($[c<4;f[vx xo;u];vx xo],r,$[c<4;f[u;vy yo];vy yo])@<xo,b,(#kx)+!#yo}",
+       az(c),_R(xx),_R(xy),_R(yx),_R(yy));y(v))
 A e2f(A2 f,A x,A y/*f01*/)_(U k=xtt<<1|ytt;P(k==3,f(x,y))
  P(xtm||ytm,P(xtm>ytm,A z=N(e2f(f,xy,y));am(_R(xx),z))P(xtm<ytm,A z=Ny(e2f(f,x,_R(yy)));y(am(_R(yx),z)))
-  P(_n(xx)&&_n(yx)&&urnk(xx)-urnk(yx),ed(y))A z=cat(xx,_R(yx));P(!z,y(0))P(_tM(xx)||_tM(yx),mr(z);y(en0()))   /*keyed tables: not yet (issue #19); keys that do not join were 'domain above*/z=unq(z);P(!z,y(0))B o=(f==add||f==sub||f==mul||f==dvd||f==mnm||f==mnu)&&(_n(xx)||_t(xx)-tA)&&(_n(yx)||_t(yx)-tA)&&!mtc_(xx,yx);A mx=o?fnd(xx,zR):0,my=o?fnd(yx,zR):0;x=x1(zR);P(!x,I(mx,mr(mx))I(my,mr(my))z(y(0)))y=y(y1(zR));P(!y,I(mx,mr(mx))I(my,mr(my))z(x(0)))   //mx my: 0N where a key is missing on that side (none is when the keys match)
+  P(_n(xx)&&_n(yx)&&urnk(xx)-urnk(yx),ed(y))
+  I c=f==add?0:f==sub?1:f==mul?2:f==dvd?3:f==mnm||f==mnu?4:f==mxm||f==mxu?5:f==cat?6:-1;P(c>=0&&!_tM(xx)&&!_tM(yx),dkey(c,f,x,y))
+  A z=cat(xx,_R(yx));P(!z,y(0))P(_tM(xx)||_tM(yx),mr(z);y(en0()))   /*keyed tables: not yet (issue #19); keys that do not join were 'domain above*/z=unq(z);P(!z,y(0))B o=(f==add||f==sub||f==mul||f==dvd||f==mnm||f==mnu)&&(_n(xx)||_t(xx)-tA)&&(_n(yx)||_t(yx)-tA)&&!mtc_(xx,yx);A mx=o?fnd(xx,zR):0,my=o?fnd(yx,zR):0;x=x1(zR);P(!x,I(mx,mr(mx))I(my,mr(my))z(y(0)))y=y(y1(zR));P(!y,I(mx,mr(mx))I(my,mr(my))z(x(0)))   //mx my: 0N where a key is missing on that side (none is when the keys match)
   I(o,                                                         //a missing key takes the verb's identity (only a missing one: a null value stays)
    A u=f==mnm||f==mnu?(xtF||ytF?af(WF):az(WL)):ai(f==mul||f==dvd);x=K("{$[|/^z;@[x;&^z;:;y];x]}",x,_R(u),mx);P(!x,mr(u);mr(my);z(y(0)))y=K("{$[|/^z;@[x;&^z;:;y];x]}",y,u,my);P(!y,z(x(0))))   //the identity atom at the missing positions only
   am(z,Nz(x(e2f(f,x,y)))))

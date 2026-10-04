@@ -460,8 +460,8 @@ t[`dictMissLonger;(`a`b!(1 2 3;3))+`a`c!(5;6 7);`a`b`c!(6 7 8;3;6 7)]
 t[`dictDateAdd;@'.((,`a)!,2026.07.30)+(,`a)!,1;,`d]
 t[`dictDateAddValue;2026.07.31=*.((,`a)!,2026.07.30)+(,`a)!,1;1]
 t[`dictTyped;((`a!1.5)+`b!2.5;(`a`b!1 2)-`b`c!10 20);(`a`b!1.5 2.5;`a`b`c!1 -8 -20)]
-/ a dict with untyped empty keys fills nothing ('length, as 2.3.1); typed empty keys fill, as in q
-t[`dictEmptyUntyped;*"\n"\.[.:;,"(`a`b!1 2)+()!()";{x}];"'length"]
+/ a dict with no keys on one side gives the other one, as q and ngn/k (it was 'length, digest #24)
+t[`dictEmptyUntyped;((`a`b!1 2)+()!();((1 2;3 4)!5 6)+()!();(()!())-`a`b!1 2;(()!())+()!());(`a`b!1 2;(1 2;3 4)!5 6;`a`b!-1 -2;()!())]
 t[`dictEmptyTyped;(`a`b!1 2)+(0#`)!!0;`a`b!1 2]
 t[`dictEmptyVals;(((0#`)!())-`a`b!1 2;(`a`b!1 2)+(0#`)!());(`a`b!-1 -2;`a`b!1 2)]   / empty values () filled nothing: `a`b!(!0;!0)
 
@@ -691,7 +691,12 @@ t[`keyedPlusAtom;((+(,`a)!,1 2 3)!4 5 6)+1;(+(,`a)!,1 2 3)!5 6 7]
 t[`dictMixedRankL;*"\n"\.[.:;,"((1 2;3 4)!5 6)+`a`b!1 2";{x}];"'domain"]
 
 / a dict with no keys is not checked: two empty ones still add, as group counts from ()!() do
-t[`dictEmptyBoth;`k@((()!())+#'=0#`;(#'=0#`)+()!());"(()!0#,!0;(0#`)!!0)"]
+t[`dictEmptyBoth;`k@((()!())+#'=0#`;(#'=0#`)+()!());"(()!();(0#`)!!0)"]
+/ digest #23 #25 #26: a key on one side passes its value through; x's repeated keys stay
+t[`dictOneSide;((`a`b!1 2)|`c!,1 2;(`a`b!(1 2 3;3))|`a`c!(5;6 7);(`a`b!0x0102)|`b`c!0x0304;(`a`b!0x0102)&`b`c!0x0304);(`a`b`c!(1;2;1 2);`a`b`c!(5 5 5;3;6 7);`a`b`c!0x010304;`a`b`c!0x010204)]
+t[`dictRepeatKey;((`a`a!1 2)+`a!10;(`a`a!1 2)*`b!3);(`a`a!11 2;`a`a`b!1 2 3)]
+t[`dictEachJoin;(`a`b!1 2),'(1 2!3 4);(`a;`b;1;2)!1 2 3 4]
+t[`dictSameKeys;((`a`b!1 2)+`a`b!10 20;(`a`b!1 2)|`a`b!0 5;(`a`b!1 2.0)%`a`b!2 4);(`a`b!11 22;`a`b!1 5;`a`b!0.5 0.5)]
 
 / ---- an error with a computed message reads its text before releasing it ----
 t[`errComputedText;*"\n"\.[{`err "ab",x};,"cd";{x}];"'abcd"]
@@ -1013,7 +1018,7 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[641]
+hexpect[645]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

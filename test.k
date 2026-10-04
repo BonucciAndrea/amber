@@ -584,9 +584,11 @@ t[`gradeI64Small;   <2147483458 2147483929 2147483995 2147483362 2147483030 2147
 t[`symCapacity;     {#?`$x}[{"symbol_",$x}'!20000];                 20000]
 t[`symRoundTrip;    {x~$`$x}[{"symbol_",$x}'!20000];                1b]
 / ---- 2.3: peach -- globals are read-only in workers; dicts map values ----
+/ one lane (AMBER_THREADS=1) is a plain serial each, where a global may be set (digest #79)
+PS:(,"1")~(`env[])@`$"AMBER_THREADS"
 PG:0
-t[`peachNoupdate;   .[{`pe({PG::x;x};!50)};,0;{`noupdate}];          `noupdate]
-t[`peachGlobalKept; PG;                                              0]
+t[`peachNoupdate;   .[{`pe({PG::x;x};!50)};,0;{`noupdate}];          $[PS;!50;`noupdate]]
+t[`peachGlobalKept; PG;                                              $[PS;49;0]]
 / JSON in peach: the reader's and the writer's positions are per thread (workers shared one, and read or wrote each other's text)
 / digest #5: a worker recurses as deep as the main thread (its stack was the platform default, 512 KB on macOS)
 PF:{$[x>0;1+o x-1;0]}

@@ -141,7 +141,9 @@ Z __attribute__((cold)) A ixrr(A x,A y,U k,U my){L j=gl_(_A(y)[k]);P(!_N(_y(x))|
 //variable as it was. f#y, f_y, f@y and f.y call f, which may be an item of x: there the variable is whole while f runs,
 //and held, so that f can set it (a global): if f then fails, the variable keeps what f set; if not, the assignment is
 //made on the variable as it was, as before. Elsewhere f could see or set the variable while ixst has items out of it,
-//so # _ @ and . go as before: ixck checks, and d4 assigns.
+//so # _ @ and . go as before: ixck checks, and d4 assigns; a global held (ixfh) where an item they call can be a
+//function (ixhr), so that d4 amends a copy of it, and the variable is then as where ixit reads the item. g f:y (bM)
+//holds g so too (bmh), for the verb calls g itself.
 //A global (g) is run's variable while it is assigned, which an amend by name (d8, a.c) in the assignment meets: a symbol
 //below names a global, which may name the variable again, directly or through other globals (v:(1;(2;`v)); v[1;1;1;0]:9).
 //So it is assigned as before (d4) where the walk meets a symbol (ixwk), and the global's place is kept, innermost first,
@@ -153,6 +155,29 @@ I ixgn(A*p){I r=0;for(struct ixg*q=ixgs;q;q=q->n){if(q->p==p&&!q->m)return 2;r|=
 I ixgh(A*p){for(struct ixg*q=ixgs;q;q=q->n)if(q->p==p)return 1;return 0;}   //is p's global being assigned?
 Z A ixas(A x,A y,A z,UC d,CO UC*kd,CO L*ix,I m,A*u)_(m?ixst(x,y,kd,ix,0,(U)m,av+d,z,u):_tA(y)&&_n(y)==1?a4(x,*_A(y),av+d,z):d4(x,y,av+d,z))   //one level: what d4 does, without taking it out of y
 Z NI A ixag(A*p,A x,A y,A z,UC d,CO UC*kd,CO L*ix,I m){struct ixg e={p,ixgs,!m};ixgs=&e;x=ixas(x,y,z,d,kd,ix,m,0);ixgs=e.n;return x;}   //a global, kept in ixgs while assigned
+//f by d4 (a list of indices, an elided level, a key to add, ..), where ixhr finds it can call a function: x held, so the
+//amend makes its own copy, and a function item that sets the variable (or amends it) frees nothing the amend uses; then
+//as where ixit reads the item first
+Z NI __attribute__((cold)) I ixfh(A*p,A x,A y,A z,UC d,CO UC*kd,CO L*ix){x=ixag(p,_R(x),y,z,d,kd,ix,0);P(!x,4)I(*p,mr(*p))*p=x;return 0;}
+//can f by d4, amending x at y from level k (of m), call a function (# _ @: the item, .: anything in it, e), here or in a
+//global that a symbol on the way names? Then the global is held (ixfh), else d4 amends it in place, as before. Only the
+//items at y are looked at (every one for an elided level, or an index that is not ints or keys). t: x is where an amend
+//starts, whose symbol list's items name globals. Where unsure -- a table with a general or symbol column, a dict that
+//is not keys!list, a function above the last level, a chain of more than 32 names, an item more than 64 levels deep
+//(ixfd: . takes at most 8 index levels, so .: calls no function below that, and 1 only costs a copy) -- 1. The walk is
+//O(the items at y; for .: all of each), where d4 may touch one path in each: to measure in the timing pass
+A*gq(A);Z I ixfd(A x,I l){UC t=_t(x);P(_tU(x)||l>64,1)P(t==tA,({I r=0;F(_N(x),I(ixfd(_A(x)[i],l+1),r=1;break))r;}))return (t==tm||t==tM)&&(ixfd(_x(x),l+1)||ixfd(_y(x),l+1));}
+Z I ixhr(A x,A y,U k,U m,B e,B t,I l){if(k==m)return e?ixfd(x,0):_tU(x);UC vt=_t(x);
+ if(vt==ts){A*q=gq(x);return q&&*q&&(l>32||ixhr(*q,y,k,m,e,1,l+1));}   //a name: the amend goes on in its global
+ if(_tP(x)&&!_tU(x))return 0;if(_tU(x)||vt==tM&&({I r=0;A c=_y(x);F(_N(c),I(_t(_A(c)[i])==tA||_t(_A(c)[i])==tS,r=1))r;}))return 1;
+ B dc=vt==tm;A v=dc?_y(x):x;P(vt>tm||vt==tM,0)P(dc&&(!_tT(_x(x))||!_tT(v)),1)UC u=_t(v);P(u!=tA&&!(u==tS&&(t||dc)),0)   //items that are data
+ UC ry=_t(y);U n=_N(v);L j=0;A s=0,g=0;B a=0;I r=0;   //the items at y[k]: every one (a), g's (an int list), or j
+ if(ry>tm)s=y;else if(ry==tA)s=_A(y)[k];else if(LH(tE,ry,tL))j=ixe(y,k);else if(ry==tS)s=ii(y,k);else a=1;
+ if(!a&&(s==au||s&&_tA(s)))a=1;else if(!a&&dc)I(_t(_x(x))==tS&&s&&(_ts(s)||_t(s)==tS),g=fnd(_x(x),_R(s));I(!_tT(g),j=gl_(g);mr(g);g=0))E(a=1)
+ else if(s&&_tz(s))j=gl_(s);else if(s)I(_tZ(s),g=_R(s))E(a=1);
+ U c=a?n:g?_N(g):1;for(U i=0;i<c&&!r;i++){L q=a?(L)i:g?ixe(g,i):j;I(q>=0&&q<(L)n,r=ixhr(u==tA?_A(v)[q]:ii(v,(U)q),y,k+1,m,e,0,l))}
+ I(g,mr(g))return r;}
+Z I ixho(A x,A y,UC d)_(ixhr(x,y,0,y==au?0:_t(y)>tm?1:_N(y),d==19,1,0))   //from the first level
 Z NI I ixcv(A*p,A x,A y,A z,UC d,B g,UC*kd,L*ix,I m,I n){B f=d==14||d==15||d==18||d==19,o;A q=0;
  if(!n){if(m>0&&m<256){I(f||kd[m-1]==3,q=ixit(x,y,kd,ix,(U)m,&o))}   //a row with more below (where the walk stopped, or did not start):
   else if(m?m>0&&kd[(m&255)-1]==3:_t(x)==tM){U w=m&255;q=ixit(x,y,kd,ix,w,&o);I(q,m=w?(I)w:1)}}   //no symbol is met, so no global is amended by name
@@ -162,11 +187,13 @@ Z NI I ixcv(A*p,A x,A y,A z,UC d,B g,UC*kd,L*ix,I m,I n){B f=d==14||d==15||d==18
  //but for a row (d8); a result that does not fit (a column's count) is its error, and x is put back (u)
  I(f&&!n&&m>0&&kd[(m&255)-1]==9,mr((A)ix[(m&255)-1]))   //no item read: the find ixwk made for a list of keys (9) is not passed to ixst
  P(m<0,-m)I(f&&!n,m=_t(x)==tm&&!_tMT(_y(x))?-3:-ixck(x,y,0,z,!d))P(m<0,-m)   //ixwk's or ixck's error, and *p untouched;
- P(m>255||g&&!m,*p=ixag(p,x,y,z,d,kd,ix,m&255);0)A u=0;x=ixas(x,y,z,d,kd,ix,m,&u);P(!x&&u,*p=u;4)*p=x;return 0;}   //else 0; 4: the verb's error, and *p as it was (or as f set it)
+ P(f&&g&&ixho(x,y,d),ixfh(p,x,y,z,d,kd,ix))P(m>255||g&&!m,*p=ixag(p,x,y,z,d,kd,ix,m&255);0)A u=0;x=ixas(x,y,z,d,kd,ix,m,&u);P(!x&&u,*p=u;4)*p=x;return 0;}   //else 0; 4: the verb's error, and *p as it was (or as f set it)
 Z NI I ixca(A*p,A x,A y,A z,UC d,B g){UC kd[8];L ix[8];I n=g&&ixgs?ixgn(p):0;P(n>1,3)
  I m=n?_t(x)==tm&&!_tMT(_y(x))?-3:-ixck(x,y,0,z,!d):ixwk(x,y,z,!d,g,kd,ix);P(d,ixcv(p,x,y,z,d,g,kd,ix,m,n))P(m<0,-m)   //a verb, which can fail: ixcv
  *p=m>255||g&&!m?ixag(p,x,y,z,0,kd,ix,m&255):ixas(x,y,z,0,kd,ix,m,0);return 0;}   //: assigns z, which ixwk checked fits
 Z NI __attribute__((cold)) V noupd(A*s){mr(*s);*s=err0("noupdate");}
+//g f:y, f a global that # _ @ or . calls (bM), which can set g: g held while f runs, as for g[i]f:y (ixfh); 0: f's error
+Z NI __attribute__((cold)) I bmh(A*p,A x,A y,UC d){y=v2[d](_R(x),y);mr(x);P(!y,0)I(*p,mr(*p))*p=y;return 1;}
 Z NI __attribute__((cold)) A ixer(I e)_(e==1?ei0():e==2?el0():e==3?et0():0)   //ixca's error (4: the verb's, already set)
 A fzop(CO UC*,A*,A*);
 // Amber 2.5 (exp): the VM's start pinned to 64 bytes. Its dispatch loop's speed depended on where the linker happened
@@ -190,7 +217,7 @@ AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,d--,es8(a,n))/*d: per-thread VM recursio
    E(b++;UC n=m;A x=f;s+=n;U(*s=x((c==ba?_8:prj)(x,s-n+1,n)))))
   C6(bm,bM,bx,bX,by,bY,A*p=(c&1?gv:l)+BG,x=*p;I(__builtin_expect(c&1&&ray_rc_sync,0),noupd(s);goto l)  //          |      |                       |
    U(x,*s=ev(*s))A y=*s++;                                                                           //          |      |                       |
-   I(c==bm||c==bM,y=v2[*b++](x,y);U(y,*--s=0)*p=x(y))                                               //mod asgn  |bm,i,d|.. x -> ..             |vars[i]:dyads[d][vars[i];x]
+   I(c==bm||c==bM,UC d_=*b++;I(c==bM&&(d_-14<2u||d_-18<2u),U(bmh(p,x,y,d_),*--s=0))E(y=v2[d_](x,y);U(y,*--s=0)*p=x(y)))   //mod asgn  |bm,i,d|.. x -> ..             |vars[i]:dyads[d][vars[i];x]
    E(UC d_=*b++;I e_=ixca(p,x,y,*s,d_,c&1);x=e_?ixer(e_):*p;mr(*s);I(c==bx||c==bX,mr(y);U(x,*s=0)s++)        //ind asgn  |bx,i,d|.. z y -> ..           |vars[i]:  .[vars[i];y;dyads[d];z]
                                     E(U(x,*s=y(0))U(*s=dot(x,y)))))                                 //ind asgn  |by,i,d|.. z y -> .. r         |vars[i]:r:.[vars[i];y;dyads[d];z]
   C(bG,A x=*--s=gv[BG];U(x,ev0())xR)                                                                //get global|bG,i,i|.. -> .. globals[i]    |

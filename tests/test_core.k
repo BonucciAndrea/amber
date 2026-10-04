@@ -938,6 +938,12 @@ t[`amendVerbFailsKeepRowBelow;(IA["F21:+`a`b!(1 2 3;(1 2;3 4;5 6))";"F21[1;`b;0]
 t[`amendVerbRowBelowWorks;(IA["F25:+`a`b!(1 2 3;(1 2;3 4;5 6))";"F25[1;`b;0]+:10"];IA["F26:+`a`b!(1 2 3;(1 2;3 4;5 6))";".[`F26;(1;`b;0);,;9]"];IA["F27:`t`u!(+`a`b!(1 2 3;(1 2;3 4;5 6));0)";"F27[`t;1;`b;0]-:1"];IA["F30:+`a`b!(1 2 3;(`p`q!1 2;`p`q!3 4;`p`q!5 6))";"F30[1;`b;`r]+:100"]);((::;+`a`b!(1 2 3;(1 2;13 4;5 6)));2#,+`a`b!(1 2 3;(1 2;(3 9;4);5 6));(::;`t`u!(+`a`b!(1 2 3;(1 2;2 4;5 6));0));(::;+`a`b!(1 2 3;(`p`q!1 2;`p`q`r!3 4 100;`p`q!5 6))))]   / (a key not there below: added, as before)
 t[`amendVerbResultFits;(IA["F32:+`a`b!(1 2 3;4 5 6)";"F32[`a],:5"];IA["F33:+`a`b!(1 2 3;4 5 6)";"F33[`a]#:2"];IA["F34:+`a`b!(1 2 3;4 5 6)";"F34[`a]@:0 1"];IA["F35:+`a`b!(1 2 3;4 5 6)";".[`F35;,`a;,;5]"];IA["F36:`x`y!(+`a`b!(1 2 3;4 5 6);0)";"F36[`x;`a],:5"];IA["F37:+(,`a)!,1 2 3";"F37[`a],:5"]);((`err;+`a`b!(1 2 3;4 5 6));(`err;+`a`b!(1 2 3;4 5 6));(`err;+`a`b!(1 2 3;4 5 6));(`err;+`a`b!(1 2 3;4 5 6));(`err;`x`y!(+`a`b!(1 2 3;4 5 6);0));(::;+(,`a)!,1 2 3 5))]   / a verb whose result does not fit a table's column ('length): the variable is kept; one column can change its count
 t[`amendVerbFailsKeepThroughSymbol;{GK::1 2 3;F28::`a`b!(1;`GK);r:.[.:;,"F28[`b;0]+:`x";{`err}];GL::1 2 3;F29::`a`b!(1;`GL);s:.[.:;,"F29[`b;0]+:10";{`err}];GM::+`a`b!(1 2 3;4 5 6);F38::(1;`GM);u:.[.:;,"F38[1;`a],:5";{`err}];(r;GK;s;GL;F29;u;GM)}[];(`err;1 2 3;::;11 2 3;`a`b!(1;11 2 3);`err;+`a`b!(1 2 3;4 5 6))]   / a symbol on the way names a global, amended by name: that global is kept (the variable is still lost)
+/ (a list of indices, an elided level, a list of keys: d4 amends a copy, the variable held; then as above)
+t[`amendVerbFunctionSetsGlobalList;.[{(IA["FV1:(!1000),2#{FV1::!3;x+1}";"FV1[1000 1001]@:5"];IA["FV2:(1;({FV2::!3;x+1};{x+2}))";"FV2[1;]@:5"];IA["FV3:`a`b!({FV3::!3;x+1};{x+2})";"FV3[`a`b]@:5"];{r:IA["FV4:+`a`b!(!3;3#{FV4::0;x+1})";"FV4[`b;0 1]@:5"];(*r;2#r[1;`b])}[];{FV5::(1;({FV5[0]:7;x+1};{x}));r:FV5[1;0 1]@:5;(r;FV5)}[])};,0;{x}];((::;(!1000),6 6);(::;(1;6 7));(::;`a`b!6 7);(::;6 6);(6 5;(1;6 5)))]   / (main: 'type, and the variable lost)
+t[`amendVerbFunctionSetsGlobalListFails;.[{(IA["FV6:(!3),2#{FV6::!3;x+`a}";"FV6[3 4]@:5"];{r:IA["FV7:(!3),({x+1};{x+`a})";"FV7[3 4]@:5"];(*r;`k r 1)}[];{r:IA["FV8:(1;({FV8[0]:7;x+1};2))";"FV8[1;0 0]@:5"];(*r;r[1;0];r[1;1;1])}[])};,0;{x}];((`err;0 1 2);(`err;"(0;1;2;{x+1};{x+`a})");(`err;7;2))]   / sets or amends it, then fails: what the function set is kept; else the variable as it was
+t[`amendVerbFunctionSetsGlobalWhole;.[{(+/{FV9::{FV9::!1000;x+1};FV9@:5;FV9}'!3;{FV10::{FV10::!3;x>1};FV10#:1 2 3;FV10}[];IA["FV11:{FV11::!3;x+`a}";"FV11@:5"])};,0;{x}];(18;2 3;(`err;0 1 2))]   / f@:y, f a global that sets itself (main read it freed)
+t[`amendVerbFunctionSetsGlobalTake;.[{({`k@IA["FV12:(0;(1;(2;{FV12::0;x>1})))";"FV12[1;1;1]#:1 2 3"]1}[];{`k@IA["FV13:(0;(1;(2;{FV13::0;x>1})))";"FV13[1;1;1]_:1 2 3"]1}[];{`k@IA["FV14:(0;(1;({FV14::0;x>1};{x>2})))";"FV14[1;1;0 1]#:(1 2 3;1 2 3)"]1}[];{`k@IA["FV15:(0;(1;({FV15::0;x>1};{x>2})))";"FV15[1;1;0 1]_:(1 2 3;1 2 3)"]1}[];{FV16::(!1000),2#{FV16::!3;x+1};FV16[1000 1001]@:5;FV16::0;!30}[])};,0;{x}];("(0;(1;(2;2 3)))";"(0;(1;(2;,1)))";"(0;(1;(2 3;,3)))";"(0;(1;(,1;1 2)))";!30)]   / #: and _: (main: a third item, and memory reused)
+t[`amendVerbDotDeep;.[{N:{(x;0)}/[100;0];FV17::(N;N);FV17[0 1].:(,1;,1);r:FV17;FV17::0;r};,0;{x}];0 0]   / .: on items 100 levels deep: the look for a function in them stops at 64 levels, and holds the variable
 
 / ---- an assignment into a symbol list below a column, key or index amends the list ----
 / (a symbol list there was taken as the name of a global to amend, as . takes one: 'type, and the variable was lost)
@@ -1176,7 +1182,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
-hexpect[754]
+hexpect[759]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

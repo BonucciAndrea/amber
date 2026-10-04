@@ -793,16 +793,12 @@ A xsC(A x){
  F(nc,P(_tP(cv[i])||_n(cv[i])-(U)n,x(emp(tA))))
  // A generic column of dates, times or timestamps (ints or floats among them too) sorts as grade orders it:
  // by its keys (o.c kys), after its items' kinds when it holds more than one. Such columns are swapped for
- // their keys and the sort is asked again; a generic column of anything else is left to the K path. That
- // path grades the rows, and a row of ints alone is an int list, one of floats alone a float list, and any
- // other a generic list, which sort before float lists, which sort before int lists: the row's class leads
- // when a generic column holds ints or floats, so the order is the K path's.
+ // their keys and the sort is asked again; a generic column of anything else is left to the K path. Each
+ // column orders as < on it does: a leading "row class" key used to copy the K path's row grade, where a
+ // row of one int squeezed to an int list and sorted after every generic row (digest #58)
  {B g=0;F(nc,g|=_t(cv[i])==tA)I(g,A b[2*XS_MAXCOL+1],kd[XS_MAXCOL];U m=1,w=0;
   F(nc,A q=cv[i],d=0;U s=0;kd[i]=0;I(_t(q)-tA,b[m++]=_R(q);continue)A k=kys(q,&d,&s);I(!k,mrn(m-1,b+1);return x(emp(tA));)w|=s;I(d,b[m++]=kd[i]=d)b[m++]=k)
-  U o=1;I(w&6u,A z=aG((U)n);UC*RES r=_V(z);MS(r,3,n);o=0;b[0]=z;   //r: bit 0, the row is ints alone so far; bit 1, floats alone
-   F(nc,A q=cv[i];UC t=_t(q);CO UC*RES k=kd[i]?_V(kd[i]):0;
-     I(t==tA,Fj(n,UC u=k?k[j]:9;r[j]&=(u==2)|(u==1)<<1))E(UC f=t==tG||t==tH||t==tI||t==tL?1:t==tF?2:0;Fj(n,r[j]&=f)))
-   Fj(n,r[j]=r[j]&1?2:r[j]>>1))
+  U o=1;(V)w;
   P(m-o>XS_MAXCOL,mrn(m-o,b+o);x(emp(tA)))return x(xsC(aV(tA,2,A(aV(tA,m-o,b+o),_R(e[1]))))));}
  int desc=tru(_R(e[1]));
  ArenaMark mk=arena_mark();

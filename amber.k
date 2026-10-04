@@ -155,8 +155,9 @@ xcols:{[c;t]c:c,();+(c,except[cols t;c])#+t}
 / the DISTINCT ids), which is the collation `<` on a symbol vector gives and the
 / one ajsorted's contiguity note assumes.  Descending is the same sort with
 / complemented keys, which reproduces `>`'s "ties in ascending index order".
-xasc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;0b);o:$[#o;o;<+(+t)c];t:t@o;d:+t;+d,(1#c)!`sa'd@1#c}
-xdesc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;1b);o:$[#o;o;>+(+t)c];t@o}
+xsg:{[cs;d]{[d;o;v]o@$[d;>v o;<v o]}[d]/[!#*cs;|cs]}   / each column's own order, the last key first (stable); the rows' grade squeezed one-item rows (digest #58)
+xasc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;0b);o:$[#o;o;xsg[(+t)c;0b]];t:t@o;d:+t;+d,(1#c)!`sa'd@1#c}
+xdesc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;1b);o:$[#o;o;xsg[(+t)c;1b]];t@o}
 meta:{d:+unkey x;xkey[`c;+`c`t`a!(!d;{@*x}'value d;{`at x}'value d)]}
 insert:{[t;r]t,r}
 

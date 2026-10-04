@@ -588,6 +588,9 @@ PG:0
 t[`peachNoupdate;   .[{`pe({PG::x;x};!50)};,0;{`noupdate}];          `noupdate]
 t[`peachGlobalKept; PG;                                              0]
 / JSON in peach: the reader's and the writer's positions are per thread (workers shared one, and read or wrote each other's text)
+/ digest #5: a worker recurses as deep as the main thread (its stack was the platform default, 512 KB on macOS)
+PF:{$[x>0;1+o x-1;0]}
+t[`peachDeep;`pe({PF x};4#2000);4#2000]
 PJ:$%1+!100000
 t[`peachJsonRead;  (`pe({`j?PJ x};!#PJ))~{`j?PJ x}'!#PJ;  1b]
 t[`peachJsonWrite; (`pe({`j@PJ x};!#PJ))~{`j@PJ x}'!#PJ;  1b]

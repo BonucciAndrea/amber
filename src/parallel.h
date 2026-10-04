@@ -54,6 +54,15 @@ double  par_sum_f64(const double  *a, size_t n);
  * parse one chunk of a file per thread. */
 void par_run(int t, void (*fn)(void *ctx, int i), void *ctx);
 
+/* 2.5 (exp): float sum and dot in fixed 64K blocks from PBS_MIN elements up, the block sums then added in
+ * order -- one answer for any thread count; below PBS_MIN exactly simd_sum_f64/simd_dot_f64. par_mm_f64: max
+ * (mx=1) or min of n>0 doubles, the serial kernel's answer always (a NaN or a zero result is redone serially). */
+#define PBS_MIN   (1u << 20)
+#define PBS_BLOCK (1u << 16)
+double par_bsum_f64(const double *a, size_t n);
+double par_bdot_f64(const double *a, const double *b, size_t n);
+double par_mm_f64(const double *a, size_t n, int mx, int *sawnan);
+
 #ifdef __cplusplus
 }
 #endif

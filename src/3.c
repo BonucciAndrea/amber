@@ -1,5 +1,6 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include"simd.h"
+#include"parallel.h"   //2.5 (exp): par_bsum_f64 and friends (undeclared they would return a cut-off int)
 #include <stdlib.h>
 // ---- amber 1.9.2: vectorised reduction kernels ------------------------------
 // The reduction loops below were plain scalar accumulator chains. A float `+/`
@@ -118,7 +119,7 @@ Z L mulfZ(L v,A x/*0*/)_((L)((W)v*(W)G(&mulfG,mulfH,mulfI,mulfL)[xw-3](xV,xn)))
 // is the same summation order (four independent accumulators) widened to the
 // native vector register. Results are bit-identical to the previous four-way
 // split, so no benchmark answer moves.
-Z F sumF(CO F*RES p,U n)_(simd_sum_f64(p,n))
+Z F sumF(CO F*RES p,U n)_(par_bsum_f64(p,n))   //2.5 (exp): blocked and parallel from 1M up (parallel.c)
 Z A3(admf,/*010*/B i=xv==3;U n=zn;P((y&&ytf)||ztF,F v=y?gf(cF(y)):i;z=cF(zR);CO F*RES q=zV;Mz(I(i,F(n,v*=q[i]))E(v+=sumF(q,n)))af(v))L v=y?gl(y):i;az((i?mulfZ:addfZ)(v,z)))
 // -/ reuses the sum: x0-x1-.. is -((-2*x0)+(+/x)), exact for ints (they wrap). Not for
 // floats: -2*x0 overflows above 2^1023 and turns an infinite x0 into inf-inf, so `-/0w 1.0`
@@ -136,7 +137,7 @@ Z A3(subf,/*010*/P(ztF||y&&ytf,z=cF(zR);CO F*RES q=zV;U i=!y;F v=y?gf(cF(y)):zn?
 // ordering is precisely what the of1() domain defines and maxsd does not.
 Z A3(mmmf,/*010*/B i=xv==7;
  I(ztF&&!y&&zn,{int nan_=0;CO F*RES q=zV;U nm_=zn;
-   F v_=i?simd_max_f64(q,nm_,&nan_):simd_min_f64(q,nm_,&nan_);
+   F v_=par_mm_f64(q,nm_,i,&nan_);   //2.5 (exp): parallel from 1M up, the serial answer always
    if(!nan_)return af(v_);})
  P((y&&ytf)||ztF,y=y?of1(cF(y)):zn?al(i?NL:WL):of1(aV(tf,1,A((L)((W)i<<63)|WFL)));z=of1(cF(zR));of0(N(z(mmmf(x,y,z)))))
  // |/ of a non-empty int vector starts at 0N, so |/0N 0N is 0N (it was -0W, not an element)
@@ -278,7 +279,7 @@ A wsmC(A x){
  if(_t(x)!=tA||_n(x)!=2) return et(x);
  A*a=_A(x);A p=a[0],q=a[1];U n=_n(p);
  if(_n(q)!=n) return et(x);
- if(_t(p)==tF&&_t(q)==tF){F r=simd_dot_f64((CO F*)_V(p),(CO F*)_V(q),n);mr(x);return af(r);}
+ if(_t(p)==tF&&_t(q)==tF){F r=par_bdot_f64((CO F*)_V(p),(CO F*)_V(q),n);mr(x);return af(r);}
  // ints: only a 64-bit list can hold 0N, so two narrower ones are k's +/x*y and one is widened; a null on either side gives 0N, so
  // amber.k's wsum knows to take the pairs instead (an int 0N*y wraps, it doesn't stay null) - digest #43
  if(LH(tB,_t(p),tL)&&LH(tB,_t(q),tL)){I(_t(p)!=tL&&_t(q)!=tL,A wp=_R(p),wq=_R(q);mr(x);return K2("{+/x*y}",wp,wq);)   //no null possible: k's own fused +/x*y
@@ -459,7 +460,7 @@ AA(fredC,/*10..0*/P(n!=3&&n!=4,en(*a))L d=gl(*a);A x=a[1],y=a[2];
  I(d==18,I(!_tP(x)&&!_tP(y)&&ytG&&yn&&yn<=xn,int bad=0;
   I(xtF,F s=simd_masksum_f64(xV,yV,yn,&bad);I(!bad,return af(s)))
   I(xtL,L s=simd_masksum_i64(xV,yV,yn,&bad);I(!bad,return az(s)))))
- I(d==3,I(xtF&&ytF&&xn==yn,return af(simd_dot_f64(xV,yV,xn)))I(xtL&&ytL&&xn==yn,return az(simd_dot_i64(xV,yV,xn))))
+ I(d==3,I(xtF&&ytF&&xn==yn,return af(par_bdot_f64(xV,yV,xn)))I(xtL&&ytL&&xn==yn,return az(simd_dot_i64(xV,yV,xn))))
  I(d>=8&&d<=10,I op=d==8?0:d==9?1:2,fl=d==8?1:d==9?0:2;int bad=0;
   I(xtF&&ytF&&xn==yn,L c=simd_cntcmpv_f64(xV,yV,xn,op,&bad);I(!bad,return az(c)))
   J(xtF&&ytf,L c=simd_cntcmps_f64(xV,*yF,xn,op,&bad);I(!bad,return az(c)))

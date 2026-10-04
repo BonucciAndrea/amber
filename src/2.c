@@ -251,7 +251,7 @@ A fzrun(A d,A*l){A pg=_A(d)[0];CO UC*q=(CO UC*)_V(pg),*e=q+_n(pg);FZC c;c.sum=*q
  again:I(!c.sum||rk==0,z=an(n,rk==0?tF:rk==1?tG+c.ow:tG);P(!z,0)_at(z)=0;c.out=_V(z))
  I(nt>1,par_run(nt,fzw,&c))E(fzw(&c,0))
  I(c.ab,mr(z);c.ab=0;c.ow=wm[np-1];goto again)                        //the guess was too narrow: at the widest
- P(c.sum&&rk==0,F r=simd_sum_f64(zF,n);mr(z);af(r))
+ P(c.sum&&rk==0,F r=par_bsum_f64(zF,n);mr(z);af(r))
  P(c.sum,W t=0;F(nt,t+=acb[i])az((L)t))
  // widths: replay the steps; an int step's width is max(its operands', the narrowest holding its values)
  U wd[FZ_N];sp_=0;

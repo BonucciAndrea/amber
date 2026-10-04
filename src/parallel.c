@@ -255,3 +255,51 @@ void par_run(int t, void (*fn)(void *ctx, int i), void *ctx) {
     par_run_spawn(t, fn, ctx);
 }
 #endif
+
+
+/* ---- 2.5 (exp): blocked float sum/dot, parallel float min/max ------------------------------------------ */
+typedef struct { const double *a, *b; size_t n, nb; double *part; int mx; int nan[PAR_MAX_THREADS];
+                 double mm[PAR_MAX_THREADS]; int t; size_t next; } PBS;
+static void pbs_job(void *c_, int i) {
+    PBS *c = (PBS *)c_; (void)i;
+    for (;;) {
+        size_t k = __atomic_fetch_add(&c->next, 1, __ATOMIC_RELAXED);
+        if (k >= c->nb) break;
+        size_t lo = k * PBS_BLOCK, m = c->n - lo < PBS_BLOCK ? c->n - lo : PBS_BLOCK;
+        c->part[k] = c->b ? simd_dot_f64(c->a + lo, c->b + lo, m) : simd_sum_f64(c->a + lo, m);
+    }
+}
+static double pbs(const double *a, const double *b, size_t n) {
+    if (n < PBS_MIN) return b ? simd_dot_f64(a, b, n) : simd_sum_f64(a, n);
+    PBS c; c.a = a; c.b = b; c.n = n; c.nb = (n + PBS_BLOCK - 1) / PBS_BLOCK; c.next = 0;
+    double stack[512];
+    c.part = c.nb <= 512 ? stack : (double *)malloc(c.nb * sizeof(double));
+    if (!c.part) return b ? simd_dot_f64(a, b, n) : simd_sum_f64(a, n);
+    int t = par_thread_count(n);
+    if ((size_t)t > c.nb) t = (int)c.nb;
+    if (t < 2) pbs_job(&c, 0); else par_run(t, pbs_job, &c);
+    double r = simd_sum_f64(c.part, c.nb);
+    if (c.part != stack) free(c.part);
+    return r;
+}
+double par_bsum_f64(const double *a, size_t n) { return pbs(a, 0, n); }
+double par_bdot_f64(const double *a, const double *b, size_t n) { return pbs(a, b, n); }
+
+static void pmm_job(void *c_, int i) {
+    PBS *c = (PBS *)c_;
+    size_t ch = c->n / (size_t)c->t, lo = (size_t)i * ch, hi = i == c->t - 1 ? c->n : lo + ch;
+    int s = 0;
+    c->mm[i] = c->mx ? simd_max_f64(c->a + lo, hi - lo, &s) : simd_min_f64(c->a + lo, hi - lo, &s);
+    c->nan[i] = s;
+}
+double par_mm_f64(const double *a, size_t n, int mx, int *sawnan) {
+    int t = n < PBS_MIN ? 1 : par_thread_count(n);
+    if (t < 2) return mx ? simd_max_f64(a, n, sawnan) : simd_min_f64(a, n, sawnan);
+    PBS c; c.a = a; c.b = 0; c.n = n; c.mx = mx; c.t = t;
+    par_run(t, pmm_job, &c);
+    double r = c.mm[0]; int s = c.nan[0];
+    for (int i = 1; i < t; i++) { s |= c.nan[i]; if (mx ? c.mm[i] > r : c.mm[i] < r) r = c.mm[i]; }
+    if (s || r == 0.0) return mx ? simd_max_f64(a, n, sawnan) : simd_min_f64(a, n, sawnan);   /* NaN rules, zero's sign */
+    *sawnan = 0;
+    return r;
+}

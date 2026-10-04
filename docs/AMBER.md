@@ -391,6 +391,7 @@ Every join is a function; call it in bracket form `lj[t;kt]` or, since 2.0.0, **
 | `aj0[c;x;y]`         | as‑of, `y`’s time   | like `aj` but result time is `y`’s      |
 | `asof[t;d]`          | as‑of lookup        | single as‑of row for the dict `d`       |
 | `wj[w;c;t;q;aggs]`   | **window** join     | aggregate `q` over a window per `t` row |
+| `wj1[w;c;t;q;aggs]`  | window join, inside | like wj, but only the quotes inside the window (wj also counts the one in force at its start, as q) |
 
 `c` is `` `key…`time``: the last name is the ordering (time) column, the rest are exact‑match keys.
 

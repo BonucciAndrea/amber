@@ -201,15 +201,20 @@ t[`ajFloatInt;(+aj[`time;+(,`time)!,0.5 2.5;+`time`v!(1 2;10 20)])`v;0N 20]
 t[`ajZeroTimes;(+aj[`sym`time;+`sym`time!(`a`a`a`a;-0.0 0.0 0.5 1.0);+`sym`time`bid!(`a`a`a;-0.0 0.0 1.0;10 20 30)])`bid;20 20 20 30]
 qwF:+`sym`time`bid!(`a`a`a;0.5 0.7 0.9;10 20 30)
 twF:0.6 1.0
-t[`wjFloat;(+wj[(twF-0.15;twF+0.15);`sym`time;+`sym`time!(`a`a;twF);qwF;,(`c;count;`bid)])`c;2 1]
-t[`wjFloatFallback;(+wj[(twF-0.15;twF+0.15);`sym`time;+`sym`time!(`a`a;twF);qwF;,(`s;{sum x};`bid)])`s;30 30]
-t[`wjNullLowFallback;(+wj[(0N 4 7;1 5 9);`sym`time;+`sym`time!(`a`a`a;1 5 9);+`sym`time`bid!(`a`a`a`a;0 4 5 8;10 20 30 40);,(`s;{sum x};`bid)])`s;10 50 40]   / a null lower bound starts at the first quote, as the kernel does
-t[`wjIntTimesFloatWindow;(+wj[(,4.5;,5.5);`sym`time;+`sym`time!(,`a;,5);+`sym`time`bid!(`a`a`a;3 4 5;10 20 30);,(`s;{sum x};`bid)])`s;,30]   / a float bound over int times, as the kernel
+t[`wjFloat;(+wj1[(twF-0.15;twF+0.15);`sym`time;+`sym`time!(`a`a;twF);qwF;,(`c;count;`bid)])`c;2 1]
+t[`wjFloatFallback;(+wj1[(twF-0.15;twF+0.15);`sym`time;+`sym`time!(`a`a;twF);qwF;,(`s;{sum x};`bid)])`s;30 30]
+t[`wjNullLowFallback;(+wj1[(0N 4 7;1 5 9);`sym`time;+`sym`time!(`a`a`a;1 5 9);+`sym`time`bid!(`a`a`a`a;0 4 5 8;10 20 30 40);,(`s;{sum x};`bid)])`s;10 50 40]   / a null lower bound starts at the first quote, as the kernel does
+t[`wjIntTimesFloatWindow;(+wj1[(,4.5;,5.5);`sym`time;+`sym`time!(,`a;,5);+`sym`time`bid!(`a`a`a;3 4 5;10 20 30);,(`s;{sum x};`bid)])`s;,30]   / a float bound over int times, as the kernel
 t[`wjNullLowNaNQuote;(+wj[(,0N;,1.5);`sym`time;+`sym`time!(,`a;,1.5);+`sym`time`bid!(`a`a`a;0n 1.0 2.0;10 100 1000);,(`s;{sum x};`bid)])`s;,110]   / a null lower bound over float times with a NaN quote, as the kernel
 t[`ajCharHigh;(+aj[`sym`time;+`sym`time!(`a`a`a;`c$66 201 64);+`sym`time`bid!(`a`a;`c$65 200;10 20)])`bid;10 20 0N]   / char times order as unsigned bytes, as in q (issue #17)
 t[`ajCharQuoteHigh;(+aj[`sym`time;+`sym`time!(`a`a;`c$66 71);+`sym`time`bid!(`a`a`a;`c$65 70 200;10 20 30)])`bid;10 20]
 t[`ajCharHighRev;(+aj[`sym`time;+`sym`time!(`a`a`a;`c$66 201 64);+`sym`time`bid!(`a`a;`c$200 65;20 10)])`bid;10 20 0N]   / the same quotes in the other order
-t[`wjCharHigh;{q:+`sym`time`bid!(`a`a`a;`c$65 200 210;10 20 30);t:+`sym`time!(`a`a;`c$66 201);w:(`c$64 199;t`time);((+wj[w;`sym`time;t;q;,(`mx;max;`bid)])`mx;(+wj[w;`sym`time;t;q;,(`n;count;`bid)])`n)}[];(10 20;1 1)]   / wj's kernel reads char times unsigned too (the max as in q; q counts the quote in force at the window start too)
+/ digest #68: wj counts the quote in force at the window's start, as q's wj (the tests around use wj1, the old window)
+WQ8:+`sym`time`p!(5#`a;1 3 5 7 9;10 20 30 40 50);WT8:+`sym`time!(,`a;,5)
+WF8:{[j;a;b]r:+j[(,a;,b);`sym`time;WT8;WQ8;((`n;#:;`p);(`s;sum;`p))];(r[`n]0;r[`s]0)}
+t[`wjPrevailing;(WF8[wj]'[4 3 0 10 0;6 6 6 12 0];WF8[wj1]'[4 3 0 10 0;6 6 6 12 0]);((2 50;2 50;3 60;1 50;0 0);(1 30;2 50;3 60;0 0;0 0))]   / q's answers
+t[`wjPrevailingRun;{[j](+j[(,3;,6);`sym`time;WT8;+`sym`time`p!(5#`a;1 3 3 5 9;10 20 25 30 50);,(`s;{+/x};`p)])[`s]0}'(wj;wj1);55 75]   / a run at the start time: wj from its last
+t[`wjCharHigh;{q:+`sym`time`bid!(`a`a`a;`c$65 200 210;10 20 30);t:+`sym`time!(`a`a;`c$66 201);w:(`c$64 199;t`time);((+wj1[w;`sym`time;t;q;,(`mx;max;`bid)])`mx;(+wj1[w;`sym`time;t;q;,(`n;count;`bid)])`n)}[];(10 20;1 1)]   / wj's kernel reads char times unsigned too (as q's wj1)
 t[`wjCharFallback;{q:+`sym`time`bid!(`a`a`a;`c$65 128 200;10 20 30);t:+`sym`time!(,`a;,`c$200);w:(,`c$128;t`time);s:(+wj[w;`sym`time;t;q;,(`s;sum;`bid)])`s;v:(+wj[w;`sym`time;t;q;,(`v;{x};`bid)])`v;(s;v)}[];(,50;,20 30)]   / wj's fallback in K reads char times unsigned too, as the kernel
 t[`ajCharTradeNumQuotes;(+aj[`sym`time;+`sym`time!(,`a;,`c$250);+`sym`time`v!(`a`a`a;1 100 200;1 2 3)])`v;,0N]   / a char trade time against number quote times stays signed, as ' and ajmK read it
 t[`wjCharMax;{q:+`sym`time`c!(`a`a`a;1 2 3;"a",0x80,"b");t:+`sym`time!(,`a;,3);w:(,0;,3);((+wj[w;`sym`time;t;q;,(`m;max;`c)])`m;(+wj[w;`sym`time;t;q;,(`m;min;`c)])`m;(+wj[w;`sym`time;t;q;((`m;max;`c);(`k;{max x};`c))])`m)}[];(,0x80;,"a";,0x80)]   / min and max of a char column give chars, whatever else is aggregated
@@ -529,7 +534,7 @@ t[`ajStampsEmpty;  ((+aj[`ts;AJT;0#AJQ])`q;#aj[`ts;0#AJT;AJQ]);  (0N 0N 0N;0)]
 AJW:((2026.07.30D09:00:00.000;2026.07.30D10:30:00.000);(2026.07.30D10:20:00.000;2026.07.30D11:10:00.000))
 AJWT:+`ts`v!((2026.07.30D10:00:00.000;2026.07.30D11:00:00.000);1 2)
 AJWQ:+`ts`q!((2026.07.30D09:30:00.000;2026.07.30D10:15:00.000;2026.07.30D10:50:00.000);6 5 4)
-t[`wjStamps;       ((+wj[AJW;`ts;AJWT;AJWQ;,(`c;count;`q)])`c;(+wj[AJW;`ts;AJWT;AJWQ;,(`s;{+/x};`q)])`s);  (2 1;11 4)]   / {+/x}: wj's pure-K fallback
+t[`wjStamps;       ((+wj1[AJW;`ts;AJWT;AJWQ;,(`c;count;`q)])`c;(+wj1[AJW;`ts;AJWT;AJWQ;,(`s;{+/x};`q)])`s);  (2 1;11 4)]   / {+/x}: wj's pure-K fallback
 / a temporal time column against one of another kind is 'type, as in q
 AJD:+`ts`v!((2026.07.30;2026.07.31);1 2)
 t[`ajMixedKinds;   *"\n"\.[aj;(`ts;AJD;AJQ);{x}];  "'type"]
@@ -560,7 +565,7 @@ t[`ajsortedRange;  ((+aj[`g`time;+`g`time!(!3;!3);+`g`time`b!(!4;!4;10+!4)])`b;a
 WQ:+`time`q`r!(1 1 1 1 1 1 1 1 3 3 3 3 4;!13;1000000000000+!13)
 WW:(1 1 -1 -1 1 -1 -1 1 -1 -1 -1 2 -1;3 3 1 1 3 1 1 3 1 1 1 4 1)
 WT:+`time`v!(2 2 0 0 2 0 0 2 0 0 0 3 0;!13)
-t[`wjRangeColumn;  (+wj[WW;`time;WT;WQ;((`c;count;`q);(`z;sum;`q);(`f;first;`q);(`l;last;`r);(`m;max;`r);(`a;avg;`q))])`c`z`f`l`m`a;  (12 12 8 8 12 8 8 12 8 8 8 5 8;66 66 28 28 66 28 28 66 28 28 28 50 28;0 0 0 0 0 0 0 0 0 0 0 8 0;1000000000000+11 11 7 7 11 7 7 11 7 7 7 12 7;1000000000000+11 11 7 7 11 7 7 11 7 7 7 12 7;5.5 5.5 3.5 3.5 5.5 3.5 3.5 5.5 3.5 3.5 3.5 10 3.5)]
+t[`wjRangeColumn;  (+wj1[WW;`time;WT;WQ;((`c;count;`q);(`z;sum;`q);(`f;first;`q);(`l;last;`r);(`m;max;`r);(`a;avg;`q))])`c`z`f`l`m`a;  (12 12 8 8 12 8 8 12 8 8 8 5 8;66 66 28 28 66 28 28 66 28 28 28 50 28;0 0 0 0 0 0 0 0 0 0 0 8 0;1000000000000+11 11 7 7 11 7 7 11 7 7 7 12 7;1000000000000+11 11 7 7 11 7 7 11 7 7 7 12 7;5.5 5.5 3.5 3.5 5.5 3.5 3.5 5.5 3.5 3.5 3.5 10 3.5)]
 t[`wjRangeQuotes;  (+wj[(-1+!4;1+!4);`s`time;+`s`time!(`a`a`a`a;!4);+`s`time`v!(13#`a;!13;!13);((`z;sum;`v);(`f;first;`v);(`m;min;`v))])`z`f`m;  (1 3 6 9;0 0 1 2;0 0 1 2)]
 / wj's windows are as long as the trade table, as in q ('length; an empty trade table was read past its end)
 t[`wjWindowLength; {*"\n"\.[wj;x;{x}]}'((WW;`time;0#WT;WQ;,(`z;sum;`q));((0 1;2 3);`time;3#WT;WQ;,(`z;sum;`q));((0 1 2;2 3);`time;3#WT;WQ;,(`z;sum;`q));((0 1;2 3);`time;3#WT;WQ;,(`z;{+/x};`q)));  4#,"'length"]

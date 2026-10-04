@@ -207,7 +207,7 @@ Z U wjfwd_ub(CO L*RES a,U cur,U hi,L key){U lim=hi-cur>AMGALLOP?cur+AMGALLOP:hi,
 #define WJC_N    (1u<<WJC_BITS)
 #define WJC_H(b) ((U)(((W)(b)*0x9E3779B97F4A7C15ull)>>(64u-WJC_BITS)))
 Z V wjbounds(CO L*RES T,U nq,CO L*RES W0,CO L*RES W1,CO L*RES GB,CO L*RES GE,U nt,U*RES LO,U*RES HI,
-              L*RES cbase,L*RES ck0,L*RES ck1,U*RES clo_,U*RES chi_){
+              L*RES cbase,L*RES ck0,L*RES ck1,U*RES clo_,U*RES chi_,B pv){
  MS(cbase,0xff,(N)WJC_N*SZ(L));       // -1: no real slice base is negative
  F(nt,
    L b=GB[i],en=GE[i];
@@ -217,7 +217,10 @@ Z V wjbounds(CO L*RES T,U nq,CO L*RES W0,CO L*RES W1,CO L*RES GB,CO L*RES GE,U n
      lo=wjfwd_lb(T,clo_[g],h,k0);hi=wjfwd_ub(T,chi_[g],h,k1))
    E(lo=amlb(T,(U)b,h,k0);hi=amub(T,(U)b,h,k1))
    I(hi<lo,hi=lo)                      // inverted window -> empty, never a wrapped count
-   LO[i]=lo;HI[i]=hi;
+   // pv, q's wj: from the quote in force at the window's start, the last one at or before it (the last of a run at
+   // that very time), or the group's first if there is none; lo is the first one inside, which is wj1 (digest #68)
+   U s=lo;I(pv,I(s<h&&T[s]==k0,W(s+1<h&&T[s+1]==k0,s++))E(I(s>(U)b,s--)))
+   LO[i]=s;HI[i]=hi<s?s:hi;
    cbase[g]=b;ck0[g]=k0;ck1[g]=k1;clo_[g]=lo;chi_[g]=hi;)}
 // Pass 2, float column -> float result. c: 0=first 1=last 2=min 3=max 4=sum 5=avg.
 Z V wjrFF(CO F*RES p,CO U*RES LO,CO U*RES HI,U nt,I c,F*RES o){
@@ -271,8 +274,8 @@ Z V wjrLF(CO L*RES p,CO U*RES LO,CO U*RES HI,U nt,F*RES o){
 Z V wjrCNT(CO U*RES LO,CO U*RES HI,U nt,L*RES o){F(nt,o[i]=(L)(HI[i]-LO[i]))}
 A ucb(A),tjn(A);B tjs(A,A);
 A wjc(A x){
- P(_t(x)-tA||_n(x)-7,et(x))
- A*e=(A*)_V(x);
+ P(_t(x)-tA||_n(x)-7&&_n(x)-8,et(x))
+ A*e=(A*)_V(x);B pv=_n(x)==8&&tru(e[7]);   //pv: q's wj, from the quote in force at the window's start (digest #68)
  P(!tjs(e[0],e[3])||!tjs(e[0],e[4]),et(x))   //dates, times and timestamps as their numbers (a.c tjn), against bounds of their kind
  P(_t(e[1])-tA||_N(e[2])-_n(e[1]),et(x))      //a code per column
  // Two windows and a slice per trade row, as q's 'length: wjbounds reads all four as far as the first
@@ -307,7 +310,7 @@ A wjc(A x){
  U*RES cl=(U*)arena_alloc((N)WJC_N*SZ(U));
  U*RES ch=(U*)arena_alloc((N)WJC_N*SZ(U));
  P(!LO||!HI||!cb||!c0||!c1||!cl||!ch,arena_release(wjmk);mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);eo(x))
- wjbounds(T,nq,W0,W1,GB,GE,nt,LO,HI,cb,c0,c1,cl,ch);
+ wjbounds(T,nq,W0,W1,GB,GE,nt,LO,HI,cb,c0,c1,cl,ch,pv);
  A res=aA(na);A*R=(A*)_V(res);
  for(U a=0;a<na;a++){
   A col=QC[a];I c=(I)cod[a];

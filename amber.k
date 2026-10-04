@@ -238,8 +238,11 @@ wjbndK:{[g;t;q]gdi:=rows[g#+q];bas:*:'value gdi;len:#:'value gdi;ix:(!gdi)?rows[
 / side's run boundaries and probes once per trade row, allocating nothing
 / per row; it returns () if it cannot handle the input, and we fall back.
 wjbnd:{[g;t;q]$[#g;[b:`wjb(value g#+q;value g#+t);$[#b;b;wjbndK[g;t;q]]];((#t)#0;(#t)#(#q))]}
-wjK:{[w;c;t;q;aggs]$[&/(#t)=#:'w;::;`err"length"];c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;ub:{$[(@x)in`c`C;256!`i$x;x]};qt:qd tc;$[(`A~@qt)|(`A~@w 0)|`A~@w 1;[tjsame[qt;w 0];tjsame[qt;w 1];qt:tjnum qt;w:tjnum'w];::];qt:ub qt;w:$[`C=@qd tc;ub'w;w];qg:$[#g;=rows[g#+q];(,0)!,!#q];tg:$[#g;rows[g#+t];(#t)#0];res:{[qt;qg;tg;w0;w1;qd;aggs;i]gk:tg i;p:$[in[gk;!qg];qg gk;0#0];sel:$[#p;{[gt;p;lo;hi]a:$[^lo;-1;(`F~@gt)|`f~@lo;-1++/gt<lo;gt'lo-1];p@(a+1)+!0|(gt'hi)-a}[qt p;p;w0 i;w1 i];0#0];{[qd;sel;a](a 1)(qd a 2)@sel}[qd;sel]'aggs}[qt;qg;tg;w 0;w 1;qd;aggs]'!#t;+(+t),(aggs[;0])!+res}
-wj:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;cs:wjcode'aggs[;1];$[|/cs<0;wjK[w;c;t;q;aggs];[b:wjbnd[g;t;q];v:qd aggs[;2];u:&(cs in 2 3)&`C=@:'v;v:@[v;u;{256!`i$x}];r:`wj(qd tc;v;cs;w 0;w 1;b 0;b 1);r:@[r;u;:;{[f;x]`c$@[x;&(x<0)|x>255;:;f]}'[(255 0)cs[u]-2;r u]];+(+t),(aggs[;0])!r]]}
+wjK:{[m;w;c;t;q;aggs]$[&/(#t)=#:'w;::;`err"length"];c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;ub:{$[(@x)in`c`C;256!`i$x;x]};qt:qd tc;$[(`A~@qt)|(`A~@w 0)|`A~@w 1;[tjsame[qt;w 0];tjsame[qt;w 1];qt:tjnum qt;w:tjnum'w];::];qt:ub qt;w:$[`C=@qd tc;ub'w;w];qg:$[#g;=rows[g#+q];(,0)!,!#q];tg:$[#g;rows[g#+t];(#t)#0];res:{[m;qt;qg;tg;w;qd;aggs;i]gk:tg i;p:$[in[gk;!qg];qg gk;0#0];sel:$[#p;{[m;gt;p;lo;hi]s:$[^lo;0;m;0|$[(`F~@gt)|`f~@lo;-1++/~gt>lo;gt'lo];1+$[(`F~@gt)|`f~@lo;-1++/gt<lo;gt'lo-1]];p@s+!0|1+(gt'hi)-s}[m;qt p;p;w[0]i;w[1]i];0#0];{[qd;sel;a](a 1)(qd a 2)@sel}[qd;sel]'aggs}[m;qt;qg;tg;w;qd;aggs]'!#t;+(+t),(aggs[;0])!+res}
+/ wj counts the quote in force at the window's start, as q's; wj1 only the quotes inside the window (digest #68)
+wj:{[w;c;t;q;aggs]wjm[1b;w;c;t;q;aggs]}
+wj1:{[w;c;t;q;aggs]wjm[0b;w;c;t;q;aggs]}
+wjm:{[m;w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;cs:wjcode'aggs[;1];$[|/cs<0;wjK[m;w;c;t;q;aggs];[b:wjbnd[g;t;q];v:qd aggs[;2];u:&(cs in 2 3)&`C=@:'v;v:@[v;u;{256!`i$x}];r:`wj(qd tc;v;cs;w 0;w 1;b 0;b 1;m);r:@[r;u;:;{[f;x]`c$@[x;&(x<0)|x>255;:;f]}'[(255 0)cs[u]-2;r u]];+(+t),(aggs[;0])!r]]}
 
 / ---- qSQL-style select / group-by --------------------------------------------
 qwhere:{[t;m]t@&m}

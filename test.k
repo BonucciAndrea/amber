@@ -64,6 +64,11 @@ t[`negAfterParams;({[x]-1+x}0 1 2;{[x]-x}0 1 2;{[x;y]-1+x+y}[1;2];{[x]-1.5*x}2);
 t[`exceptCharNum;(1 2 3^"a";"ab"^1;(1 2 3)^,"a";except[1 2 3;"a"];except["ab";1 2];"abc"^"b";1 2 3^2);(1 2 3;"ab";1 2 3;1 2 3;"ab";"ac";1 3)]   / Digest #64: nothing removed, as q and ngn/k
 t[`jsonKeys;(`j@1 2!3 4;`j@(1.5 2)!3 4;`j@`a`b!3 4;`j@("ab";"cd")!3 4;5#.[`j@;,(1 2;3 4)!3 4;{x}]);("{\"1\":3,\"2\":4}";"{\"1.5\":3,\"2\":4}";"{\"a\":3,\"b\":4}";"{\"ab\":3,\"cd\":4}";"'type")]   / Digest #60: number keys as strings, list keys 'type, as q
 t[`listFnAtom;(prev 5;next 5;raze 5;5#.[distinct;,5;{x}];5#.[group;,5;{x}];distinct `a`b!1 1);(5;5;,5;"'type";"'type";,1)]
+t[`listFnAtomRank;{5#.[x;,5;{x}]}'(asc;desc;iasc;idesc;rank;flip;xrank[2];rotate[1];xprev[1]);9#,"'rank"]   / was 5, 'io (desc), 5, 'io (idesc), 5, ,,5, 10, 5, 'type
+t[`listFnAtomAsIs;{.[*x;1_x;{5#x}]}'((deltas;5);(ratios;2.0);(fills;0N);(fills;`a);(sublist;2;5);(xbar;2;5.5);(xbar;2 3;5.5));(5;2.0;0N;`a;5;4.0;4 3.0)]   / was 'rank 'rank 'type 'domain ,5 4 4 3
+t[`listFnOneItem;(asc@,5;deltas@,5;fills@,0N;sublist[2;,5];rotate[1;,5];xprev[1;,5];deltas `a!5);(,5;,5;,0N;,5;,5;,0N;(,`a)!,5)]   / a one-item list is not an atom
+t[`listFnAtomArgs;{5#.[*x;1_x;{x}]}'((rotate;1.5;,5);(rotate;`a;,5);(sublist;`a;5);(sublist;0n;5);(sublist;0N;5);(asc;{x});(iasc;+);(xrank;2;{x}));8#,"'type"]   / a bad count, a function: 'type, as q
+t[`listFnAtomFn;{.[*x;1_x;{5#x}]}'((flip;{x});(deltas;{x});(xprev;1;{x}));("'rank";{x};,-1)]   / as q: flip is 'rank, deltas returns it, xprev indexes it
 
 / ---- ordering / set ----
 t[`asc;asc 3 1 2;1 2 3]

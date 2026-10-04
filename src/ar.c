@@ -84,6 +84,7 @@ Z A mkcol(S fmt,CO V*data,CO UC*valid,L n){A c;C f=fmt?*fmt:'l';
 
 // arrow.import: x=(schemaAddr; arrayAddr) -> (names; cols).  Copies buffers, then releases the Arrow structs.
 A arrowImport(A x){
+ I(!_tP(x)&&_t(x)==tE,x=gZ(x))   //a range: its items, not its two stored ends (digest #11)
  P(_n(x)-2,el(x))
  A lv=N(cL(_R(x)));L pa=((CO L*)_V(lv))[0],pb=((CO L*)_V(lv))[1];mr(lv);
  struct ArrowSchema*sc=(V*)pa;struct ArrowArray*ar=(V*)pb;

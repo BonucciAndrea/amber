@@ -578,6 +578,7 @@ t[`findBits;((,1)?0101010101B;(,0)?0101b;1 0?0101b;(,1)?0#01b);(0N 0 0N 0 0N 0 0
 t[`exceptBits;(0101010101B^1;11B^1;0101010101B^0;11B^0);(00000b;0#01b;11111b;11b)]
 / digest #6: > leaves stdin, stdout and stderr open (a failed write with no stderr to report it on looped or crashed)
 t[`closeStdHandles;(7#.[{[d]>0};,0;{x}];7#.[{[d]>1};,0;{x}];7#.[{[d]>2};,0;{x}]);3#,"'domain"]
+t[`aimRange;(7#.[{[d]`aim[!5]};,0;{x}];7#.[{[d]`aim[1000+!3]};,0;{x}]);2#,"'length"]   / digest #11: a range is its items, not its two stored ends (read as addresses)
 t[`jsonNegZero;1%(`j?"-0";`j?"[-0,-0.0,0]");(-0w;-0w -0w 0w)]   / -0 keeps its sign
 t[`jsonLiterals;`j?"[1,null,2]";(1.0;0n;2.0)]
 t[`jsonRoundTrip;`j?`j@1e20 -1.5 2.0;1e20 -1.5 2.0]
@@ -1008,7 +1009,7 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[636]
+hexpect[637]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

@@ -567,12 +567,14 @@ Z A plotBare(A x){
 //   7 names   list of char vectors, for the legend (or ())
 //   8 cols    256-colour codes, one per series (or () for the default palette)
 //   9 styles  0 line, 1 scatter, 2 step, 3 area, one per series (or ())
+//a lazy range as its items: cL hands one back unchanged, and its two stored words are its ends (digest #59)
+Z A rgx(A x)_(!_tP(x)&&_t(x)==tE?gZ(x):x)
 Z A plotSpec(A x){
  A*e=(A*)_V(x);
  A ysL=e[0];P(_t(ysL)-tA||!_n(ysL),et(x))
  U ns=_n(ysL);if(ns>PLTMAXS)ns=PLTMAXS;
  A xsL=e[1];B hasx=_t(xsL)==tA&&_n(xsL)>=ns;
- A optA=N(cL(_R(e[2]))),limA=N(cF(_R(e[3])));
+ A optA=N(cL(rgx(_R(e[2])))),limA=N(cF(_R(e[3])));
  if(!optA||!limA||_n(optA)<6||_n(limA)<4){if(optA)mr(optA);if(limA)mr(limA);return et(x);}
  CO L*opt=(CO L*)_V(optA);CO F*lim=(CO F*)_V(limA);
  I W=(I)opt[0],H=(I)opt[1];B grid=opt[2]!=0,axis=opt[3]!=0,leg=opt[4]!=0;
@@ -588,7 +590,7 @@ Z A plotSpec(A x){
  if(W<8)W=8;if(W>400)W=400;if(H<2)H=2;if(H>120)H=120;
  I pw=2*W,ph=4*H;
  A title=e[4],xlab=e[5],ylab=e[6],names=e[7];
- A colA=N(cL(_R(e[8]))),styA=N(cL(_R(e[9])));
+ A colA=N(cL(rgx(_R(e[8])))),styA=N(cL(rgx(_R(e[9]))));
  CO L*cols=colA&&_n(colA)>=ns?(CO L*)_V(colA):0;
  CO L*stys=styA&&_n(styA)>=ns?(CO L*)_V(styA):0;
  Z CO L DFC[PLTMAXS]={39,208,78,203,141,179,45,211,116,222,99,150};

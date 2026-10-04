@@ -347,12 +347,13 @@ hms:{[h;m;s]1000*s+(60*m)+3600*h}                  / build a time from h m s
 / truncate them, and a silently wrong hour is worse than an error. There is no
 / `j$ cast in this dialect -- it raises -- so there is nothing wider to use.
 tnum0:{$[|/(@x)=`t`T`d`D`u`U`v`V;`i$x;x]}
-/ hh: 0 to 23, and as q's `hh$ a negative time keeps its sign (-1 for -01:00): the hours and their remainder by 24,
-/ both toward zero; a null stays null. A time, an int or an int vector takes `hh (src/w.c), one pass in C; other
-/ values (floats, dates, general lists, dicts) take the general way, which puts nulls back by arithmetic, so they keep their shape.
-hh:{$[|/`t`i`I=@x;`hh x;{n:^x;(0N*n)+(~n)*(1-2*x<0)*24!_(x|-x)%3600000}tnum0 x]}   / hour of day      (q time.hh)
-mm:{60!_((tnum0 x)%60000)}                         / minute of hour   (q time.mm)
-sec:{60!_((tnum0 x)%1000)}                         / second of minute (q time.ss; ss=string-search)
+/ hh mm sec: as q's `hh$ `mm$ `ss$, a negative time keeps its sign (hh -1, mm -30 for -01:30:00.000): tpart takes the units
+/ of u ms and their remainder by m, both toward zero; a null stays null. hh of a time, an int or an int vector takes `hh
+/ (src/w.c), one pass in C; mm and sec of a number or a numeric list none below 0 take the floor as before (the same there, in fewer passes).
+tpart:{[u;m;x]n:^x;(0N*n)+(~n)*(1-2*x<0)*m!_(x|-x)%u}   / nulls by arithmetic, so a list of lists or a dict of them too
+hh:{$[|/`t`i`I=@x;`hh x;tpart[3600000;24]tnum0 x]}  / hour of day      (q time.hh)
+mm:{x:tnum0 x;$[$[(@x)in`i`I`f`F;&/~x<0;0];60!_x%60000;tpart[60000;60;x]]}   / minute of hour   (q time.mm)
+sec:{x:tnum0 x;$[$[(@x)in`i`I`f`F;&/~x<0;0];60!_x%1000;tpart[1000;60;x]]}    / second of minute (q time.ss; ss=string-search)
 milli:{1000!tnum0 x}                               / millisecond      (q time.ms)
 minute:{_((tnum0 x)%60000)}                        / minutes since midnight (q time.minute)
 second:{_((tnum0 x)%1000)}                         / seconds since midnight (q time.second)

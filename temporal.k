@@ -37,5 +37,5 @@ ptstamp:{`i$"P"$x}                                          / "YYYY.MM.DDDHH:MM:
 
 / ---- native-type accessors on time atoms (extract raw ms, then decompose) ----
 thh:{hh `i$x}                                               / .hh  hour of day (0 to 23; amber.k's hh)
-tmm:{60!_(`i$x)%60000}                                      / .mm  minute of hour
-tss:{60!_(`i$x)%1000}                                       / .ss  second of minute
+tmm:{mm `i$x}                                               / .mm  minute of hour (amber.k's mm)
+tss:{sec `i$x}                                              / .ss  second of minute (amber.k's sec)

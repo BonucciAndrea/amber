@@ -412,6 +412,12 @@ t[`hhNested;(hh (0N 0;0);hh (0N -3600000;-90000000);hh `a`b!(0N -3600000;3600000
 t[`thhOfDay;thh (100:00:00.000;0-01:00:00.000;10:35:05.000);4 -1 10]
 t[`mm;mm hms[9;30;15];30]
 t[`sec;sec hms[9;30;15];15]
+/ mm and sec of a negative time keep its sign, as q's `mm$ and `ss$ and as hh (a follow-up to #62; mm -01:30 was 30, sec -01:30:15 was 45); a null stays null
+t[`mmSecNeg;(mm 0-01:30:00.000;sec 0-01:30:15.000;mm 0-25:59:59.999;sec 0-25:59:59.999;mm 0-00:00:15.000;sec 0-00:00:00.500);-30 -15 -59 -59 0 0]
+t[`mmSecInts;(mm -361815000 -5415123 361815000 0N;sec -361815000 -5415123 361815000 0N;mm 0N;sec 0N;mm 361815000;tmm 0-01:30:00.000;tss 0-01:30:15.000);(-30 -30 30 0N;-15 -15 15 0N;0N;0N;30;-30;-15)]
+t[`mmSecNested;(mm (-5415123 0;0);sec (-5415123 0;0);mm `a`b!(-5415123;0);mm `a`b!(-5415123 0;0);mm (0N 0;0);hh (0N 0;0);hh `a`b!(0N -5415123;0));((-30 0;0);(-15 0;0);`a`b!-30 0;`a`b!(-30 0;0);(0N 0;0);(0N 0;0);`a`b!(0N -1;0))]   / lists of lists and dicts, item by item
+t[`mmSecFrac;(mm -0.5;sec -0.5;mm -0.5 60000.5;sec -1500.5;hh -0.5);(0;0;0 1;-1;0)]   / a fraction of a ms below 0 is no minute, not 59
+t[`mmSecRagged;(mm (5415123 0;,0);mm (5415123 0;-5415123 0 1);mm `a`b!(5415123 0;,0);sec (5415123 0;,0N));((30 0;,0);(30 0;-30 0 0);`a`b!(30 0;,0);(15 0;,0N))]   / lists of lists of any lengths
 t[`minute;minute hms[9;30;15];570]
 t[`second;second hms[9;30;15];34215]
 t[`milli;milli hms[9;30;15]+123;123]

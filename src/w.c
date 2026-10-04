@@ -39,7 +39,7 @@ A e2f(A2 f,A x,A y/*f01*/)_(U k=xtt<<1|ytt;P(k==3,f(x,y))
 AX(e8,/*01..1*/P(n==1,e1(x,*a))P(n==2,A y=*a;y(e2(x,y,a[1])))Ab8;C t[8];L m=-1;F(n,A y=b[i]=a[i];Ym(em(x,a,n))t[i]=ytP?0:ytt?1:ytA?2+!MINE(y):4;I(t[i]>1,L l=yN;P(m>=0&&m-l,el8(a,n))m=l))
  P(m<0,x8(a,n))F(n,I(t[i]==1,_r(a[i])+=m))A u=0;I(!m,u=x==LEN?emp(tG):n==2&&xtv&&xv<11?_R(a[!_N(a[1])]):emp(tA))//t[i] 0:pkdatm,1:refatm,2:tA(r=1),3:tA,4:other
  Fj(m,F(n,A y=a[i];I(t[i]==2,b[i]=yA[j])I(t[i]>2,b[i]=ii(y,j)))A z=x8(b,n);B(!z,I(u,u=u(0))F(n,A y=a[i];I(t[i]==1,yr-=m-j-1)I(t[i]==2,mrn(m-j-1,yA+j+1))))I(!j,u=LH(ti,zt,ts)?AN(0,an(m,TT[zt])):emp(tA))PSH(u,z))
- F(n,mr(t[i]-2?a[i]:AZ(a[i])))u)
+ F(n,mr(t[i]-2||!m?a[i]:AZ(a[i])))u)   //an empty list gave none of its items out: released whole (AZ, the container only, leaked an empty list's prototype item, digest #8)
 
 Z A2(cs,/*01*/A z,v=yR,u=enl(yR);W(1,z=yR;y=x1(y);P(!y,mr(v);z(u(0)))B m=mtc_(y,z)||mtc_(y,v);z(0);B(m)PSH(u,yR))mr(v);y(u))
 Z A2(cf,/*01*/A z=yR,u;W(1,zR;u=x1(z);B(!u)P(mtc_(u,y)||mtc_(u,z),y(u(z)))z=z(u))y(z(u)))

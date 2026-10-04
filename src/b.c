@@ -170,7 +170,8 @@ Z B cm(A x/*0*/){X(Rv(!xv)Ru(1)RS(P(xn-1,0)S s=su(*xI);U n=SL(s);n&&s[n-1]==':')
 // amber 2.3: two constants share a pool slot only if IDENTICAL. ~ calls -0.0 and
 // 0.0 (and any two NaNs) one value, so deduplicating on ~ turned {1%x*-0.0} into
 // 0w whenever a 0.0 literal came first. Floats must agree bit for bit, down lists.
-Z B cid(A x,A y)_(P(!mtc_(x,y),0)UC t=_t(x);P(t==tf||t==tF,_t(y)==t&&!memcmp(_V(x),_V(y),(N)(t==tf?1:_n(x))*SZ(F)))
+Z B cid(A x,A y)_(P(!mtc_(x,y),0)UC t=_t(x);P(_t(y)!=t,0)   //and of one type: a bit list was pooled with the equal int list (digest #36)
+P(t==tf||t==tF,_t(y)==t&&!memcmp(_V(x),_V(y),(N)(t==tf?1:_n(x))*SZ(F)))
  P((t==tA||t==tm||t==tM)&&_t(y)==t,U m=_n(x)|!_n(x);F(m,P(!cid(_A(x)[i],_A(y)[i]),0))1)1)
 Z V cc(A x/*0*/,I o){U n=un,i=OFF;W(i<n&&!cid(x,ua),i++)I(i>=n,PSH(u,xR))M(i+bc-OFF)}              //append a "load constant" instruction
 Z B lim;//cr: an expression exceeds a limit of the bytecode ('limit rather than 'compile)

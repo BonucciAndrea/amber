@@ -111,7 +111,11 @@ rotate:{$[0=#y;y;0=n:(#y)!x;y;(n_y),n#y]}   / A multiple of the count: y as is
 / q accepts an atom on the right of all four, so this is parity as well as a fix.
 isatm:{"a"<*$@x}                                  / type symbol lowercase -> atom
 isat:{("a"<*$@x)&~`m=@x}                          / An atom, not a dict
-in:{y:$[isatm y;,y;y];$[0=#y;$[isat x;0b;(#x)#0b];[r:`memb(x;y);$[`A~@r;~^y?x;r]]]}   / 2.1: one-pass C membership; K fallback for other types
+in:{y:$[isatm y;,y;y];$[0=#y;$[isat x;0b;(#x)#0b];[r:`memb(x;y);$[`A~@r;$[`A~@y;inA[x;y];~^y?x];r]]]}   / 2.1: one-pass C membership; K fallback for other types
+/ x in a general list y: y?x is 'rank for an x (or an item of x) of lower rank than y's items; that is not found, as q:
+/ (1 2;3) in (1 2;3 4) is 1 0 (digest #53). Strings in strings (all items vectors) keep the one find
+inA:{[x;y]k:rk y;l:rk x;$[(k<2)|l=k-1;~^y?x;l<k-1;|/x~/:y;(k=2)&&/(@'x)in`I`F`C`S;~^y?x;|/x~/:y;1b;inA[;y]'x]}
+rk:{$[`A~@x;$[#x;1+rk@*x;1];|/`m`M=@x;rk@. x;isatm x;0;1]}   / rank by first items, as find reads it (urnk, src/f.c)
 / 2.1: fused group aggregates. `gagg (src/o.c) does acc[group]op=v in ONE pass
 / with the same first-appearance key order as =k; each wrapper keeps the
 / portable K definition as its fallback for shapes the kernel declines.
@@ -128,9 +132,11 @@ glast:{[k;v]r:`gagg(`last;k;v);$[#r;(r 0)!r 1;{[v;i]*|v i}[v]'=k]}
 / verbs are never infix here (see the REPL's \h note), so it is within[t;(a;b)],
 / not  t within (a;b).
 within:{[x;r]$[isat x;(~x<r[0])&~x>r[1];[w:`wtn(x;r);$[isat w;(~x<r[0])&~x>r[1];w]]]}   / one C pass for numbers (2.7)
-except:{$[cxk[x;y];x;x@&~in[x;y]]}   / Chars against numbers share nothing: x as it is, as q (digest #64)
+except:{$[cxk[x;y];x;x@&~ini[x;y]]}   / Chars against numbers share nothing: x as it is, as q (digest #64)
 cxk:{c:`c`C;n:`i`I`f`F;((|/c=@x)&|/n=@y)|(|/n=@x)&|/c=@y}
-inter:{x@&in[x;y]}
+inter:{x@&ini[x;y]}
+ini:{y:$[isatm y;,y;y];r:in[x;y];a:(isat r)&~isat x;$[(`A~@r)|a&(rk x)=rk y;{|/x~/:y}[;y]'x;a;`err"type";r]}   / a flag per item of x: one found only in parts ((1 2;3) in (3;5) is (0 0;1)) is not in y
+/ in gives one flag for a list x one item of y (1 2 3 in (1 2;3)): 'type, as q's where 1b; x found whole among items of its own rank (#29) goes item by item, as q
 union:{distinct x,y}
 raze:{$[isat x;,x;,/x]}
 sublist:{n:(abs x)&#y;$[x<0;(0-n)#y;n#y]}

@@ -76,6 +76,11 @@ t[`inMem;in[3 5;1 2 3 4];10b]
 t[`inCharInt;*"\n"\.[in;(97;"abc");{x}];"'type"]   / a char and a number are 'type, as in q (issue #20, row 12)
 t[`except;except[1 2 3 4;2 4];1 3]
 t[`inter;inter[1 2 3 4;2 4 6];2 4]
+t[`inGeneric;((1 2;3) in (1 2;3 4);3 in (1 2;3 4);1 2 in (1 2;3);(1;`a) in (1 2;`a);("ab";"c") in ("ab";"cd"));(10b;0b;1b;0b;10b)]   / an item of lower rank than y's items is not found, as q (digest #53)
+t[`interExceptGeneric;(inter[(1 2;3);(1 2;5 6)];inter[(1 2;3);(3;5)];except[(1 2;3);(1 2;3 4)];except[(1 2;3);(3;5)]);(,1 2;,3;,3;,1 2)]   / each item of x is one item
+t[`interExceptOneItem;{$[`e~*r:.[x;y;{(`e;*"\n"\x)}];r 1;r]}'[(except;inter;except;except;except;except);((1 2 3;(1 2;3));(1 2;(1 2;3));("ab";("ab";"cd"));((1;"a");("ab";"cd"));((1 2;3);,(1 2;3));((1;"a");("ab";1)))];6#,"'type"]   / x one item of y: 'type, as q (where 1b)
+t[`interExceptWholeItem;(except[(1 2;3 4);(1 2;(1 2;3 4))];inter[(1 2;3 4);(1 2;(1 2;3 4))]);(,3 4;,1 2)]   / x found whole (#29) still goes item by item, as q
+t[`interExceptTypedY;(except[(1 2;3 4);1 2 3];inter[(1 2;3);1 2 3]);((1 2;3 4);,3)]   / a general x against a typed y: item by item too (2.7.2: nested garbage; q: 'type)
 t[`union;union[1 2 3;3 4 5];1 2 3 4 5]
 t[`sublistPos;sublist[3;1 2 3 4 5];1 2 3]
 t[`sublistCap;sublist[9;1 2 3];1 2 3]

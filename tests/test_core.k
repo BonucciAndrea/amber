@@ -582,6 +582,7 @@ t[`aimRange;(7#.[{[d]`aim[!5]};,0;{x}];7#.[{[d]`aim[1000+!3]};,0;{x}]);2#,"'leng
 t[`modBigFloat;(7!1e19;5!-0w;5!0w;7!-7.0;7!8.5;1%3!-0.0);(3.0;0n;0n;0.0;1.5;-0w)]   / digest #15: the float remainder is exact, 0 to x (infinities: 0n)
 t[`findEmptyGeneric;(-8!1.0 2.0?();-8!1000000 2?();5#.[{[d]1.0 2.0?"a"};,0;{x}]);(-8!1 2?();-8!1 2?();"'type")]   / digest #30
 t[`literalPoolType;(4_5#(-8!0110B;0 1 1 0)0;4_5#{(-8!0110B;0 1 1 0)}[]0);2#,,0x03]   / digest #36: a bit list stays a bit list next to an equal int list
+t[`dropSqueeze;({4_5#-8!-1_(0;1;())}[];(0 1)~-1_(0;1;());-1_(1;"a";2.5));(,0x04;1b;(1;"a"))]   / digest #28: a negative drop squeezes in place too
 t[`jsonNegZero;1%(`j?"-0";`j?"[-0,-0.0,0]");(-0w;-0w -0w 0w)]   / -0 keeps its sign
 t[`jsonLiterals;`j?"[1,null,2]";(1.0;0n;2.0)]
 t[`jsonRoundTrip;`j?`j@1e20 -1.5 2.0;1e20 -1.5 2.0]
@@ -1012,7 +1013,7 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[640]
+hexpect[641]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

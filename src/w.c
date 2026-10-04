@@ -30,8 +30,8 @@ Z AX(l8,/*01..1*/Ab8;MC(b,a,n*SZ(A));*b=GAP;x=prj(x,b,n);x(e1(x,*a)))
 //them up can fail ('nyi for table keys): check each
 U urnk(A);
 // + - * % & | and ,' on two dicts line them up by key: x's keys in order (a repeat kept, as ngn/k and q), then y's
-// new ones; a key on both sides gets f, a key on one side passes its value through (+ - * % with their identity,
-// so 0-y, 1%y and the types they give). They were looked up in the union of the keys, so a missing key read a null
+// new ones; a key on both sides gets f, a key on one side passes its value through (+ - * with their identity, so
+// 0-y; % as it is, as q and ngn/k: (`a!1)%`b!2 is `a`b!1 2). They were looked up in the union of the keys, so a missing key read a null
 // shaped like the other dict's first value (| and ,' mangled lists, bytes became ints), an empty dict was 'length
 // and a repeated key of x went (digest #23-#26). The same keys: just f on the two value lists. Two empty dicts:
 // f on the two value lists too (each for ,'), so their types combine as for lists, either way round, with x's keys
@@ -39,7 +39,7 @@ U urnk(A);
 #define u0(v) (_tA(v)&&!_n(v)&&_t(_x(v))==tC&&!_n(_x(v)))
 Z A dkey(I c,A2 f,A x,A y/*00f01*/)_(B e=!_n(xx)&&!_n(yx);P(e&&u0(yx)&&u0(yy),y(_R(x)))P(e&&u0(xx)&&u0(xy),y)
  P(e||c<6&&mtc_(xx,yx),A v=c<6?f(xy,_R(yy)):e2f(f,xy,_R(yy));y(v?am(_R(e&&u0(xx)?yx:xx),v):0))
- A v=K("{[c;kx;vx;ky;vy]yo:$[#kx;&^kx?ky;!#ky];iy:$[#ky;ky?kx;(#kx)#0N];iy:$[#kx;@[iy;&~(kx?kx)=!#kx;:;0N];iy];b:&~^iy;xo:&^iy;f:(+;-;*;%;&;|;,)c;u:c>1;r:$[c=6;f'[vx b;vy iy b];f[vx b;vy iy b]];(kx,ky yo)!($[c<4;f[vx xo;u];vx xo],r,$[c<4;f[u;vy yo];vy yo])@<xo,b,(#kx)+!#yo}",
+ A v=K("{[c;kx;vx;ky;vy]yo:$[#kx;&^kx?ky;!#ky];iy:$[#ky;ky?kx;(#kx)#0N];iy:$[#kx;@[iy;&~(kx?kx)=!#kx;:;0N];iy];b:&~^iy;xo:&^iy;f:(+;-;*;%;&;|;,)c;u:c>1;r:$[c=6;f'[vx b;vy iy b];f[vx b;vy iy b]];(kx,ky yo)!($[c<3;f[vx xo;u];vx xo],r,$[c<3;f[u;vy yo];vy yo])@<xo,b,(#kx)+!#yo}",
        az(c),_R(xx),_R(xy),_R(yx),_R(yy));y(v))
 //two dicts (x and y as in e2f; c: dkey's verb, or -1)
 Z A e2d(I c,A2 f,A x,A y/*0f01*/)_(P(_n(xx)&&_n(yx)&&urnk(xx)-urnk(yx),ed(y))

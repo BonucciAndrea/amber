@@ -718,6 +718,7 @@ t[`dictOneSide;((`a`b!1 2)|`c!,1 2;(`a`b!(1 2 3;3))|`a`c!(5;6 7);(`a`b!0x0102)|`
 t[`dictRepeatKey;((`a`a!1 2)+`a!10;(`a`a!1 2)*`b!3);(`a`a!11 2;`a`a`b!1 2 3)]
 t[`dictEachJoin;(`a`b!1 2),'(1 2!3 4);(`a;`b;1;2)!1 2 3 4]
 t[`dictSameKeys;((`a`b!1 2)+`a`b!10 20;(`a`b!1 2)|`a`b!0 5;(`a`b!1 2.0)%`a`b!2 4);(`a`b!11 22;`a`b!1 5;`a`b!0.5 0.5)]
+t[`dictOneSideDiv;((`a!1)%`b!2;(`a`b!1 2)%`b`c!4 8;(`a!1.5)%`b!2);(`a`b!1 2;`a`b`c!(1;0.5;8);`a`b!(1.5;2))]   / % passes a one-sided value through, as q (it took 1%y: `a`b!1.0 0.5)
 
 / ---- an error with a computed message reads its text before releasing it ----
 t[`errComputedText;*"\n"\.[{`err "ab",x};,"cd";{x}];"'abcd"]
@@ -1048,7 +1049,7 @@ t[`ejxOther;`ejx("ab";"ba");()]
 t[`indexTable;1 2 3@+`c`e!(0 1;2 0);+`c`e!(1 2;3 1)]
 t[`indexDict;1 2 3@`c`e!(0 1;2 0);`c`e!(1 2;3 1)]
 
-hexpect[669]
+hexpect[670]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

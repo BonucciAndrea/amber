@@ -128,7 +128,8 @@ glast:{[k;v]r:`gagg(`last;k;v);$[#r;(r 0)!r 1;{[v;i]*|v i}[v]'=k]}
 / verbs are never infix here (see the REPL's \h note), so it is within[t;(a;b)],
 / not  t within (a;b).
 within:{[x;r](~x<r[0])&~x>r[1]}
-except:{x@&~in[x;y]}
+except:{$[cxk[x;y];x;x@&~in[x;y]]}   / chars against numbers share nothing: x as it is, as q (digest #64)
+cxk:{c:`c`C;n:`i`I`f`F;((|/c=@x)&|/n=@y)|(|/n=@x)&|/c=@y}
 inter:{x@&in[x;y]}
 union:{?x,y}
 raze:{$[isat x;,x;,/x]}

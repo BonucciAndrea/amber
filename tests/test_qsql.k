@@ -303,6 +303,13 @@ t[`qaggGrouped; value sel"select mxf:max f, mnf:min f, af:avg f, sf:sum f, s:sum
 t[`byEmptySum;  @(.(sel"select sum px by sym from ft where px>1000"))`px; `F]
 t[`byEmptyLast; @(.(sel"select by sym from ft where px>1000"))`px; `F]
 
-hexpect[169]
+/ ---- digest #39: constraints cascade, as q's (each sees the rows the earlier ones kept); #40: a leading minus ----
+tq[`whereCascade;     "select from trades where sym=`a, px=max px";   ([]sym:,`a; px:,60.0; sz:,6)];
+tq[`whereCascadeExec; "exec sz from trades where px>15, sz<count sz"; 2 3 4];
+tq[`whereLocalAnd;    "select from trades where sym=`a, px>25";       ([]sym:`a`a; px:30 60.0; sz:3 6)];
+tq[`execNegLead;      "exec -1+sz from trades";                       0 1 2 3 4 5];
+tqa[`updNegLead;      "update d:-1+sz from trades"; {(+x)`d};         0 1 2 3 4 5];
+
+hexpect[174]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

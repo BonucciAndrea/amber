@@ -59,6 +59,7 @@ t[`reverse;reverse 1 2 3;3 2 1]
 t[`rotate;rotate[2;1 2 3 4 5];3 4 5 1 2]
 t[`rotateWhole;(rotate[3;1 2 3];rotate[0;1 2 3];rotate[-3;1 2 3]);3#,1 2 3]   / digest #47: was ::
 / digest #38: an atom does what q does, not what the k primitive does
+t[`negAfterParams;({[x]-1+x}0 1 2;{[x]-x}0 1 2;{[x;y]-1+x+y}[1;2];{[x]-1.5*x}2);(-1 0 1;0 -1 -2;2;-3.0)]   / digest #40: was -(1+x)
 t[`listFnAtom;(prev 5;next 5;raze 5;5#.[distinct;,5;{x}];5#.[group;,5;{x}];distinct `a`b!1 1);(5;5;,5;"'type";"'type";,1)]
 
 / ---- ordering / set ----

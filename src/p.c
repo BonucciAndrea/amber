@@ -1,6 +1,6 @@
 #include"a.h" // Amber parser - GNU AGPLv3 - see LICENSE and NOTICE
 #include"csv.h"   //csv_float: numbers read as a CSV cell reads them
-Z S s0,s;Z U k;Z A pb(A,C);Z A pe(A,C*);Z A ps();                                                   //parser state (s:current pointer, s0:start of source, k:implicit arg counter)
+Z S s0,s,ppe;Z U k;Z A pb(A,C);Z A pe(A,C*);Z A ps();                                                   //parser state (s:current pointer, s0:start of source, k:implicit arg counter)
 U si(S s,C v)_(strchrnul(s,v)-(C*)s)                                                                //find char (string index)
 B id0(UC c)_(CAz(c)|(c|1)==0xd1)                                                                    //is identifier start char?
 Z B id1(C c)_(id0(c)|C09(c))                                                                        //is identifier char?
@@ -72,7 +72,7 @@ Z A pS(C c)_(pSw(c,0))
 Z A0(pP,I a[8];U n=0;                                                                               //parse dot-separated path of identifiers
  W(1,P(n>=L(a),ez0())A y=str0(ps());a[n++]=us(yV);y(0);B(*s-'.'||!id0(s[1]))++s)
  aV(tS,n,a))
-Z A0(pp,P(*s-'[',au)A x=N(pSw(';',1));s=pw(s);P(*s-']'||!xn,ep(x))P(xN>8,ez(x))s++;x)                          //parse parameter list
+Z A0(pp,P(*s-'[',au)A x=N(pSw(';',1));s=pw(s);P(*s-']'||!xn,ep(x))P(xN>8,ez(x))s++;ppe=s;x)                          //parse parameter list
 Z S pws(S s)_(W(*s==32||*s==10,s++)s)                                                               //skip spaces and newlines
 Z A amkl(CO A*e,U n)_(A x=aA1(MKL);F(n,PSH(x,e[i]))x)                                                //make-list node (e0;e1;..)
 Z A amcg(C end,U*np)_(I nm[256];A ex[256];U n=0;s=pws(s);                                            //parse `name:expr;..` group up to end -> (names ! (e0;e1;..))
@@ -155,7 +155,7 @@ Z A pt(C*v)_(C c=*s;                                                            
   I((infixkw(p,s-p)||am_infix_dyad(p,s-p))&&*s!=':'&&!isparm(p,s-p)&&!am_name_nonfn(p,s-p),*v=1)AO(p-s0,x))
  P(C09(c)&&s[1]==':',B u=s[2]==':';s+=2+u;U i=20+c-'0';P(i>25,ep0())*v=1;Lt(tv-u)|i)
  P(c=='0'&&s[1]=='x',s+=2;p1(p0x()))
- P(num(s)&&(c-'-'||s==s0||(!id1(s[-1])&&!strchr(")]}\"",s[-1]))),
+ P(num(s)&&(c-'-'||s==s0||s==ppe||(!id1(s[-1])&&!strchr(")]}\"",s[-1]))),   //ppe: just past a lambda's [params], whose ] is no noun (digest #40)
   A tlit=pTmp();P(tlit,tlit)P(tbad,tbad=0;ep0())
   B d=0,f=1;S p=s;c=*p;W(1,S q=p;p=pw(p);B(!f&&p==q||!num(p))f=0;p+=*p=='-';c=*p;B(!CA9(c))W(CA9(c)||c=='.'||c==':',d|=!!strchr(".nwef",c);c=*++p))p1(d?pF():pZ()))
  P(c>>7,S p=s;A x=N(pP());*v=1;AO(p-s0,x))

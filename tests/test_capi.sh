@@ -63,7 +63,7 @@ if [ "$DO_SAN" = 1 ]; then
   mkdir -p o/capisan
   for f in src/*.c ext/*.c; do
     [ -e "$f" ] || continue
-    $CC -fsigned-char -g -O1 -w -pthread -fPIC -Dshared $SAN -fno-omit-frame-pointer \
+    $CC -fsigned-char -g -O1 -w -pthread -fPIC -DAMBER_SHARED $SAN -fno-omit-frame-pointer \
         -c "$f" -o "o/capisan/$(basename "${f%.c}").o" || exit 1
   done
   # No export map on the sanitizer build: ASan needs its own interceptor symbols
@@ -78,7 +78,9 @@ if [ "$DO_SAN" = 1 ]; then
 
   if $CC -w -g -O1 -std=c99 -Isrc $SAN -o o/capisan/test_capi tests/test_capi.c \
         -L"$ROOT/o/capisan" -lamber_san -lm -Wl,-rpath,"$ROOT/o/capisan"; then
-    export ASAN_OPTIONS="detect_leaks=1:detect_stack_use_after_return=1"
+    # leak checks where ASan has them: on macOS detect_leaks=1 stops it at startup (digest #81)
+    LK=1; [ "$(uname)" = Darwin ] && LK=0
+    export ASAN_OPTIONS="detect_leaks=$LK:detect_stack_use_after_return=1"
     export UBSAN_OPTIONS="print_stacktrace=1:halt_on_error=0"
     # Belt and braces. Amber reserves its object heap (mmap) and its interned
     # symbol table for process lifetime by design and has no teardown path --

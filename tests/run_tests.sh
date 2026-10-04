@@ -197,7 +197,8 @@ if [ "$ASAN" = 1 ]; then
   done
   $CC -fsigned-char -g -O1 -w -pthread $SAN \
       -o o/san/amber o/san/*.o -lm -ldl || exit 1
-  export ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=print_stacktrace=1
+  LK=1; [ "$(uname)" = Darwin ] && LK=0   # macOS ASan stops at startup with detect_leaks=1 (digest #81)
+  export ASAN_OPTIONS=detect_leaks=$LK UBSAN_OPTIONS=print_stacktrace=1
   for s in $SUITES; do
     say "$s (asan+ubsan)"
     out=$(o/san/amber "$s" 2>&1); rc=$?

@@ -84,7 +84,7 @@ glast[G;X]~{[v;i]*|v i}[X]'=G
 gsum[100000!H;X]~{[v;i]+/v i}[X]'=100000!H
 (sel"select sum px by sym from T")~qby[T;`sym;(,`px)!,{sum x`px}]
 (sel"select sum px,avg sz by sym from T")~qby[T;`sym;`px`sz!({sum x`px};{avg x`sz})]
-(sel"select min px,max px,count px by g from T")~qby[T;`g;`px`px`px!({min x`px};{max x`px};{count x`px})]
+(sel"select min px,max px,count px by g from T")~qby[T;`g;`px`px1`px2!({min x`px};{max x`px};{count x`px})]
 (sel"select sum px by sym,g from T")~qby[T;`sym`g;(,`px)!,{sum x`px}]
 (sel"select sum px by sym from T where sz>250")~qby[qwhere[T;T[`sz]>250];`sym;(,`px)!,{sum x`px}]
 

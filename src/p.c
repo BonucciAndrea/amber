@@ -92,18 +92,19 @@ Z L ymd2days(L y,L m,L d){L wy=y-(m<=2);L era=(wy>=0?wy:wy-399)/400;L yoe=wy-era
 // Issue #18: the fields are checked, as q does: a month of 1 to 12, a day that month has, minutes and
 // seconds below 60 (hours are not limited: 99:00:00.000 is a time, and a timestamp's 24:00 is the next
 // day). A literal that fails is 'parse; before, 2026.02.29 read as 2026.03.01. A time is 32 bits of milliseconds,
-// so one past 596:31:23.647 is 'limit (issue #62; it wrapped, 1000:00:00.000 read as -193:02:47.296). tbad: 1 'parse, 2 'limit.
+// so one past 596:31:23.647 is 'limit (issue #62; it wrapped, 1000:00:00.000 read as -193:02:47.296), and a date is 32 bits
+// of days, so one past 5881610.07.11 is 'limit, as "D"$ (it wrapped: 100000000.01.01 read as -5832990.07.06). tbad: 1 'parse, 2 'limit.
 Z C tbad;Z B dok(W y,W m,W d){if(m<1||m>12||d<1)return 0;W n=m==2?28+(y%4==0&&(y%100!=0||y%400==0)):30+((m+(m>7))&1);return d<=n;}
 Z A pTmp(){S p=s;if(!C09(*p))return 0;W a=0;S q=p;while(C09(*q)){a=10*a+(W)(*q-'0');q++;}
  if(*q==':'){S e=q++;W mi=0;while(C09(*q)){mi=10*mi+(W)(*q-'0');q++;}W sc=0,ms=0;
   if(*q==':'){q++;while(C09(*q)){sc=10*sc+(W)(*q-'0');q++;}if(*q=='.'){q++;I nd=0;while(C09(*q)&&nd<3){ms=10*ms+(W)(*q-'0');q++;nd++;}while(nd<3){ms*=10;nd++;}while(C09(*q))q++;}}
   if(mi>59||sc>59){tbad=1;return 0;}S z=p;W(z<e-1&&*z=='0',z++)if(e-z>19||a>596||3600000*a+60000*mi+1000*sc+ms>2147483647){tbad=2;return 0;}s=q;return atm((I)(3600000*a+60000*mi+1000*sc+ms));}
  if(*q=='.'){S q2=q+1;if(!C09(*q2))return 0;W mo=0;while(C09(*q2)){mo=10*mo+(W)(*q2-'0');q2++;}if(*q2!='.')return 0;q2++;if(!C09(*q2))return 0;W dy=0;while(C09(*q2)){dy=10*dy+(W)(*q2-'0');q2++;}
-  if(!dok(a,mo,dy)){tbad=1;return 0;}L days=ymd2days((L)a,(L)mo,(L)dy);
+  W y=0;S r=p;W(r<q,y=y<(W)1e15?10*y+(W)(*r-'0'):y;r++)if(!dok(y,mo,dy)){tbad=1;return 0;}S z=p;W(z<q-1&&*z=='0',z++)if(q-z>19||a>9999999){tbad=2;return 0;}L days=ymd2days((L)a,(L)mo,(L)dy);   //y: the year held at 1e15 as "D"$ holds it (a wraps past 64 bits)
   if(*q2=='D'){q2++;W hh=0;while(C09(*q2)){hh=10*hh+(W)(*q2-'0');q2++;}if(*q2!=':')return 0;q2++;W mi=0;while(C09(*q2)){mi=10*mi+(W)(*q2-'0');q2++;}W sc=0,ns=0;
    if(*q2==':'){q2++;while(C09(*q2)){sc=10*sc+(W)(*q2-'0');q2++;}if(*q2=='.'){q2++;I nd=0;while(C09(*q2)&&nd<9){ns=10*ns+(W)(*q2-'0');q2++;nd++;}while(nd<9){ns*=10;nd++;}while(C09(*q2))q2++;}}
    if(mi>59||sc>59){tbad=1;return 0;}s=q2;return antp((L)((W)days*86400000000000ULL+3600000000000ULL*hh+60000000000ULL*mi+1000000000ULL*sc+ns));}
-  s=q2;return adt((I)days);}
+  if(days-(I)days){tbad=2;return 0;}s=q2;return adt((I)days);}
  return 0;}
 //A strand of temporal literals of one kind (2026.01.01 2026.01.02) is a list of them, as q; it was 'type, the second
 //applied to the first. Another kind, or anything else after the space, ends it (digest #65)

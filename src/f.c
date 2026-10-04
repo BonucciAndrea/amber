@@ -539,6 +539,6 @@ Z A emaF(F a,A y)_(U n=yn;A z=aF(n);CO F*RES p=AL(yV);F*RES r=AL(zV);F b=1-a;I(n
 A1(emaC,P(_t(x)-tA||_n(x)-2,et(x))F a=gf(N(ii(x,0)));A y=N(cF(N(ii(x,1))));A z=emaF(a,y);mr(y);x(z))
 //amber: native temporal atom constructors.  `mkd d -> date(days), `mkt m -> time(ms), `mkp n -> timestamp(ns).
 //An int atom only: of anything else they read its bits (`mkd {x}, a function's address, gave a date that varied by run).
-A1(mkdt,P(!_tz(x),et(x))L v=gl_(x);mr(x);adt((I)v))
+A1(mkdt,P(!_tz(x),et(x))L v=gl_(x);mr(x);P(v-(I)v,ez0())adt((I)v))   // a date is 32 bits of days: past them 'limit, as the literal and "D"$ (it wrapped)
 A1(mktm,P(!_tz(x),et(x))L v=gl_(x);mr(x);P(v-(I)v,ez0())atm((I)v))   // a time is 32 bits of ms: past them 'limit, as the literal (it wrapped)
 A1(mknp,P(!_tz(x),et(x))L v=gl_(x);mr(x);antp(v))

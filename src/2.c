@@ -69,7 +69,10 @@ Z A modzZ(L m,A y,U f)_(P(!m,y)
  // amber 2.4.1: a shared y was copied by mut() and then masked, two passes; mask into a new vector
  P(yt==t&&!MINE(y),A z=an(yn,t);S4(w,F(zn,zg=yg&(G)m),F(zn,zh=yh&(H)m),F(zn,zi=yi&(I)m),F(zn,zl=yl&m))y(z))
  y=mut(N(ct(t,y)));F(3-w,m|=m<<(8<<w+i))L*p=yV;F((yn<<w)+31>>5,Fj(4,*p++&=m))y)
-Z A modzf(L n,A y,U f)_(P(!n,y)P(n<0,en(y))A u=az(n);u(K2("{y-x*(-x)!_y}",u,y)))
+// digest #15: the float remainder from fmod (exact), then made non-negative. It was {y-x*(-x)!_y}, whose _y
+// saturates past 2^63 (7!1e19 was 7.8e17) and makes 0w 0N (5!-0w was -0w; now 0n, as q). -0.0 stays -0.0.
+Z F fmz(F v,F m)_(F r=__builtin_fmod(v,m);P(r<0,r+m)W u;MC(&u,&r,8);P(u<<1,r)MC(&u,&v,8);P(!(u<<1),v)0.0)   //an exact multiple: 0.0, -0.0 only from y -0.0 itself (as before); on bits: the build has -fno-signed-zeros
+Z A modzf(L n,A y,U f)_(P(!n,y)P(n<0,en(y))F m=(F)n;P(ytf,F v=*yF;y(af(fmz(v,m))))A z=MINE(y)?y:aF(yn);_at(z)=0;CO F*p=yF;F*q=zF;F(yn,q[i]=fmz(p[i],m))y-z?y(z):z)
 Z A mmmzZ(L v,A y,U f)_(C t=tZ(v),u=tG+yw-3;I(u<t||u-yt,y=ct(t,y))E(t=u)U n=yn;A z=MINE(y)?y:an(n,t);_at(z)=0;C w=t-tG;n+=31>>w;L m=-(f==7);v^=m;
  S4(w,F(n&~31,zg=m^MIN(v,m^yg)),F(n&~15,zh=m^MIN(v,m^yh)),F(n&~7,zi=m^MIN(v,m^yi)),F(n&~3,zl=m^MIN(v,m^yl)))y-z?y(z):z)
 Z A mmmZZ(A x,A y,U f)_(C w=xw-3;P(w<yw-3,x=ct(tG+yw-3,xR);x(mmmZZ(x,y,f)))y=ct(tG+w,y);U n=yn;A z=MINE(y)?y:an(n,tG+w);_at(z)=0;n+=31>>w;L m=-(f==7);

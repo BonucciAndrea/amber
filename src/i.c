@@ -61,7 +61,7 @@ Z A fwm(I f,S s,N n)_(ftruncate(f,n);V*p=mmap(0,n,PROT_READ|PROT_WRITE,MAP_SHARE
 Z X2(fw,Ril(I f=gl_(x);My(x=(f<3||!S_ISREG(fm(f))?fws:fwm)(f,yV,yn))x)R_(I f=N(o(xR,O_RDWR|O_CREAT|O_TRUNC));A z=v1c(ai(f),y);I(f>2,close(f))z))                   // write
 ZN A dle()_(C*e=dlerror();I(e,os(e);os("\n"))eo0())
 A1(opn,Xz(x)ai(N(o(x,O_RDWR|O_CREAT))))                                                                                     // <s
-A cls(L n)_(close(n);au)                                                                                                    // >i
+A cls(L n)_(P(n>=0&&n<3,ed0())P(close(n)<0,eo0())au)   /*digest #6: stdin/out/err stay open (an error with no stderr to report it looped), and a bad close is an error*/                                                                                                    // >i
 A1(u0c,spl(N(u1c(x))))                                                                                                      // 0:x
 X1(u1c,RA(P(xn-2,el(x))P(!_tZ(xy),et(x))P(_n(xy)-2,el(x))A y=kv(&x);N i=gl(ii(y,0)),n=gl(ii(y,1));fr(x,i,n))R_(fr(x,0,-1))) // 1:x
 A1(u2c,en(x))                                                                                                               // 2:x

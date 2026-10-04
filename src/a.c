@@ -29,6 +29,7 @@
 #define _POSIX_C_SOURCE 199309L
 #endif
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+#include <stdlib.h>   // getenv (qdiag): undeclared it returned an int, a cut-off pointer
 #include"ext.h"// amber 1.9.5: out-of-tree verb registry (see src/ext.h)
 #include"arena.h"
 #include"diagnostic.h"
@@ -862,7 +863,8 @@ Z A1(qga,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=4;x)//amber: `g gro
 // runtime, returning the PREVIOUS setting so a caller can restore it. Needed by
 // anything that deliberately provokes errors it then catches (tests/harness.k,
 // std.k's protect); see the note above amdiag in e.c.
-Z A1(qdiag,I(amdiag<0,amdiag=1)I v=amdiag;I(_tz(x),amdiag=!!gl_(x))x(0);ai(v))
+Z A1(qdiag,I(amdiag<0,amdiag=({S dgev=getenv("AMBER_DIAG");!dgev||*dgev!='0';}))   //unset: from $AMBER_DIAG, as eD resolves it (it was 1, so AMBER_DIAG=0 lost: digest #77)
+ I v=amdiag;I(_tz(x),amdiag=!!gl_(x))x(0);ai(v))
 // amber: `srt x -- SORT (not grade). Takes the counting-sort path in src/v.c
 // when the value range is small relative to n, and otherwise reproduces the
 // previous K definition of asc verbatim, so semantics (collation, the `s

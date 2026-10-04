@@ -22,19 +22,22 @@
 / identical to the K definitions.
 / .
 / Each wrapper keeps its original K definition as mXXXK and falls back to it
-/ whenever the kernel declines the input (unsupported type, w<1, empty vector).
+/ whenever the kernel declines the input (unsupported type, w<1, an atom); a
+/ dict (or keyed table) goes through the wrapper by its values and a table by
+/ its columns (mwt), as q's msum does.
 / `mw signals that by returning the generic empty list (), hence the `A type
 / test -- every value the kernel can actually produce is a flat F/I vector.
-mcount:{[w;x]w&1+!#x}                                    / window element count
-msumK:{[w;x]s:sums 0.0+x;s-(w#0.0),(-w)_s}               / moving sum   (prefix diff)
+msumK:{[w;x]s:sums 0^x;s-(-w)_(w#0*s),s}                / moving sum   (q's prefix diff; a null adds 0)
+mwt:{[f;w;x]$[`M~@x;+(!+x)!f[w]'.+x;(!x)!f[w;. x]]}      / a table by its columns, a dict (keyed table) by its values
+mcount:{[w;x]$[~`A~@r:`mw(6;w;x);r;(@x)in`m`M;mwt[mcount;w;x];msumK[w;~^x]]}   / window count of non-nulls
 mavgK:{[w;x]msumK[w;x]%mcount[w;x]}                      / moving average
-mvarK:{[w;x]m:mavgK[w;x];(mavgK[w;x*x])-m*m}             / moving variance (population)
+mvarK:{[w;x]m:mavgK[w;x:0.0+x];(mavgK[w;x*x])-m*m}       / moving variance (population), of floats as q's
 mminK:{[w;x]{[w;x;j]&/x@(0|1+j-w)+!(1+j)&w}[w;x]'!#x}    / moving min  (window)
 mmaxK:{[w;x]{[w;x;j]|/x@(0|1+j-w)+!(1+j)&w}[w;x]'!#x}    / moving max  (window)
-msum:{[w;x]$[`A~@r:`mw(0;w;x);msumK[w;x];r]}             / O(n) running difference
-mavg:{[w;x]$[`A~@r:`mw(1;w;x);mavgK[w;x];r]}
-mvar:{[w;x]$[`A~@r:`mw(2;w;x);mvarK[w;x];r]}
-mdev:{[w;x]$[`A~@r:`mw(3;w;x);sqrt mvarK[w;x];r]}        / moving standard deviation
+msum:{[w;x]$[~`A~@r:`mw(0;w;x);r;(@x)in`m`M;mwt[msum;w;x];msumK[w;x]]}   / O(n) running difference
+mavg:{[w;x]$[~`A~@r:`mw(1;w;x);r;(@x)in`m`M;mwt[mavg;w;x];mavgK[w;x]]}
+mvar:{[w;x]$[~`A~@r:`mw(2;w;x);r;(@x)in`m`M;mwt[mvar;w;x];mvarK[w;x]]}
+mdev:{[w;x]$[~`A~@r:`mw(3;w;x);r;(@x)in`m`M;mwt[mdev;w;x];sqrt mvarK[w;x]]}   / moving standard deviation
 mmin:{[w;x]$[`A~@r:`mw(4;w;x);mminK[w;x];r]}             / O(n) monotonic deque
 mmax:{[w;x]$[`A~@r:`mw(5;w;x);mmaxK[w;x];r]}
 mprd:{[w;x]exp msum[w;log 0.0+x]}                        / moving product

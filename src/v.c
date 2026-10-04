@@ -179,11 +179,13 @@ X1(imn,RC(imn(ucb(x)))RF(imn(of1(x)))RE(Lij x(0);az(NL*(i==j)))R_(fir(N(asc(x)))
 //     msum -> the sum of the non-null members of the window (0 if all null)
 //     mavg -> sum / count-of-non-nulls, or 0n when the window is all null
 //     mmin/mmax -> the extreme of the non-null members, 0n when there are none
+//     mcount -> the count of the non-null members
 // which is what q does and what the prefix-sum version could not do (one 0n
-// anywhere made every later element 0n). The int null 0N is recognised
-// on the sum path and mapped to 0n. On null-free input every result is
-// identical to the K definitions it replaces.
-enum{MWSUM,MWAVG,MWVAR,MWDEV,MWMIN,MWMAX};
+// anywhere made every later element 0n). The int null 0N is absent too:
+// mavg/mvar/mdev read it as 0n, the integer sums skip it. The sums and
+// counts of an int list are ints (q: msum of a long list is long). On
+// null-free input every result is identical to the K definitions it replaces.
+enum{MWSUM,MWAVG,MWVAR,MWDEV,MWMIN,MWMAX,MWCNT};
 // Numerical hygiene for the running difference. Adding and later subtracting
 // the same double is not exactly reversible, so over millions of elements the
 // running sum drifts away from the true window sum -- and the drift is
@@ -226,6 +228,15 @@ MWRUN(mwsum,0,s)
 MWRUN(mwavg,0,c?s/(F)c:NF)
 MWRUN(mwvar,1,MWVARQ)
 MWRUN(mwdev,1,SQ(MWVARQ))
+// msum of an int list and mcount stay in integers: there the running difference
+// is exact while a window's sum fits in a long and wraps past that (q's prefix
+// sums can reach 0N there and give 0N), so it needs no resync. ADD is the
+// contribution of v: 0 for a null.
+#define MWSI(NM,T,ADD) Z V NM(CO T*RES p,L*RES r,N n,N w){W s=0;N i=0;             \
+  for(;i<n&&i<w;i++){T v=p[i];s+=ADD;r[i]=(L)s;}                               \
+  for(;i<n;i++){T v=p[i];s+=ADD;v=p[i-w];s-=ADD;r[i]=(L)s;}}
+MWSI(mwsiG,G,(W)(L)v) MWSI(mwsiH,H,(W)(L)v) MWSI(mwsiI,I,(W)(L)v) MWSI(mwsiL,L,v==NL?0:(W)v)
+MWSI(mwcnL,L,(W)(v!=NL)) MWSI(mwcnF,F,(W)(v==v))
 
 // Monotonic deque. `dq` holds indices whose values are strictly increasing
 // (min) / decreasing (max); the front is therefore the extreme of the live
@@ -284,15 +295,13 @@ A mwC(A x){
  A*e=(A*)_V(x);A cd=e[0],wa=e[1],c=e[2];
  P(!_tz(cd)||!_tz(wa),x(emp(tA)))
  L code=gl_(cd),w=gl_(wa);
- P(code<0||code>MWMAX||w<1||w==NL,x(emp(tA)))
- UC t=_t(c);N n=_n(c);
+ P(code<0||code>MWCNT||w<1||w==NL,x(emp(tA)))
  P(_tP(c),x(emp(tA)))                           // atom: use the K path
+ A ce=0;if(_t(c)==tE)ce=c=gZ(_R(c));            // a range (!n, i+!n) is filled in
+ UC t=_t(c);N n=_n(c);if(w>(L)n)w=(L)n+1;       // any w past n is n+1: (N)w fits in 32 bits
  P(!(t==tG||t==tH||t==tI||t==tL||t==tF),x(emp(tA)))
- P(code<MWMIN&&t==tG,x(emp(tA)))                // char-ish byte vectors: K path
- // An empty vector is answered here rather than punted: the K definitions
- // cannot do it at all -- `(-w)_s` on a shorter-than-w vector is a 'length
- // error -- so falling back would turn "no rows" into an exception.
- P(!n,x(an(0,code<=MWDEV?tF:t)))
+ B iz=code==MWCNT||(code==MWSUM&&t!=tF);        // an int result
+ P(!n,(ce?mr(ce):0,x(an(0,iz?tL:code<=MWDEV?tF:t))))
  // amber 2.1: a float input is read IN PLACE (mwld used to memcpy 80 MB of
  // f64 into scratch first), integer inputs are widened into a bucket-allocated
  // vector (recycled by the allocator; the arena overflow block for anything
@@ -300,7 +309,16 @@ A mwC(A x){
  // scratch is a small ring. Semantics unchanged: the kernels treat NaN as
  // absent, which is exactly what mwld produced for the integer nulls.
  A y=0;
- if(code<=MWDEV){
+ if(iz){
+   y=an((U)n,tL);L*RES r=(L*)_V(y);CO V*p=_V(c);
+   if(code==MWSUM)switch(t){
+     case tG: mwsiG(p,r,n,(N)w);break;
+     case tH: mwsiH(p,r,n,(N)w);break;
+     case tI: mwsiI(p,r,n,(N)w);break;
+     default: mwsiL(p,r,n,(N)w);break;}
+   else if(t==tL)mwcnL(p,r,n,(N)w);else if(t==tF)mwcnF(p,r,n,(N)w);
+   else for(N i=0;i<n;i++)r[i]=i<(N)w?(L)i+1:w;  // no nulls: the window's width
+ }else if(code<=MWDEV){
    A tmp=0;CO F*d;
    if(t==tF)d=(CO F*)_V(c);
    else{tmp=an((U)n,tF);F*RES dd=(F*)_V(tmp);mwld(c,dd,n);d=dd;}
@@ -331,6 +349,7 @@ A mwC(A x){
      mx?mwmaxF(p,r,n,(N)w,dq,mk):mwminF(p,r,n,(N)w,dq,mk);
      mr(dqa);}
  }
+ if(ce)mr(ce);
  return x(y);}
 
 // ---- 2. LSD radix grade ----------------------------------------------------

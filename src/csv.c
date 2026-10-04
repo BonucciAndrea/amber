@@ -1884,7 +1884,12 @@ static size_t st_csv(char *o, size_t cap) {
 }
 
 int csv_selftest(void) {
-    CO char *path = "/tmp/.amber_csv_selftest2.csv";
+    char path[64];   /* a name of this process's own (digest #80) */
+#if !defined(wasm)
+    snprintf(path, sizeof path, "/tmp/.amber_csv_selftest2.%d.csv", (int)getpid());
+#else
+    snprintf(path, sizeof path, "/tmp/.amber_csv_selftest2.csv");
+#endif
     st_rng = 0x5eedcafe;
     csv_quiet = 1;
     long count = 300000;

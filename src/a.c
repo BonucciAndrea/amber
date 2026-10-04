@@ -560,7 +560,13 @@ X1(csvxT,RC(C buf[1024];U n=MIN(xn,SZ buf-1);MC(buf,xC,n);buf[n]=0;x(al((L)csv_c
 // asserts the resulting table's shape/types/values/null-handling. Cleans up
 // the temp file whether the assertions pass or fail.
 A1(csv0T,
- CO C*P_="/tmp/.amber_csv_selftest.csv";
+ // a name of this process's own: two test runs at once shared one file (digest #80)
+ C P_[64];
+#if !defined(wasm)
+ snprintf(P_,SZ P_,"/tmp/.amber_csv_selftest.%d.csv",(I)getpid());
+#else
+ snprintf(P_,SZ P_,"/tmp/.amber_csv_selftest.csv");
+#endif
  CO C*body="sym,px,qty,note\nAAPL,187.5,100,\"a note, with a comma\"\nMSFT,410.2,50,plain\nGOOG,138.9,,\"a \"\"quoted\"\" word\"\n";
  FILE*fp=fopen(P_,"wb");B ok=!!fp;I(fp,fwrite(body,1,strlen(body),fp);fclose(fp))
  // Delegate the actual shape/value/null-handling assertions to the real,
@@ -574,8 +580,8 @@ A1(csv0T,
  // to the bare global `t` here would clobber test.k's own harness function
  // (also named `t`), breaking every t[...] assertion that runs after this
  // self-test in the same session. Hit and fixed via the full regression run.
- CO C*chk="_ct:`csvr \"/tmp/.amber_csv_selftest.csv\";"
-   "((#_ct)=3)&(_ct[`sym]~`AAPL`MSFT`GOOG)&(_ct[`px]~187.5 410.2 138.9)&(_ct[`qty]~100 50 0N)&((@_ct[`note])=`S)";
+ C chk[512];snprintf(chk,SZ chk,"_ct:`csvr \"%s\";"
+   "((#_ct)=3)&(_ct[`sym]~`AAPL`MSFT`GOOG)&(_ct[`px]~187.5 410.2 138.9)&(_ct[`qty]~100 50 0N)&((@_ct[`note])=`S)",P_);
  // evs() returns 0 (not `au`) on a parse/compile/eval error -- check
  // truthiness of r itself, not identity against `au`, before touching it.
  A r=ok?evs(chk,0):0;ok=ok&&r&&tru(r);I(r,mr(r))

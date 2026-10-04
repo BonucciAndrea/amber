@@ -246,6 +246,17 @@ x@<x   x@>x                   sort by value: counting sort for integral-valued d
                               gsum[k;v] gavg gmin gmax gcount[k] gfirst glast -> keys!values
 ```
 
+**Fused element-wise trees (since 2.6.0).** Inside a lambda, a tree of `+ - * % & |` over float
+or int vectors and numbers (with `< > =` allowed at the top, and `+/` on top of it all) compiles to
+one fused op. At run time, if the vectors are 2048 items or more, the whole tree runs in one pass
+of 512-item blocks that stay in cache, split over the threads, instead of one full vector per verb.
+Every element comes out the same double or int the unfused code makes, int widths included.
+Anything it doesn't handle just runs the normal code.
+
+```k
+f:{[a;b;c]+/(a*b)-c%2.0}    / one pass, no a*b or c%2.0 vectors
+```
+
 Every ascending value sort (`asc x`, `x@<x`, `` `srt x``, a single-column `xasc`) returns its
 result flagged `` `s``, so `?`, `in`, `bin` and `aj` on it take the O(log n) path without an
 explicit `` `sa``.
@@ -342,8 +353,8 @@ with `./amber file.k` does not go through that per-line rewrite, so bare qSQL su
 there. Use the `sel"…"`/`exq"…"`/`upd"…"`/`del"…"` string forms, or call `qwhere`/`qselect`/`qby`
 directly, exactly as `test.k` and every script under `examples/` already do.
 
-**Inside a lambda.** the string forms (and bare qSQL, which turns into them) only see globals, so
-`{[x] sel"select from t where n>x"}` can't see `x`. use the functional forms there, they take locals fine:
+**Inside a lambda.** The string forms (and bare qSQL, which turns into them) only see globals, so
+`{[x] sel"select from t where n>x"}` can't see `x`. Use the functional forms there, they take locals fine:
 `{[x] qwhere[t;t[`n]>x]}`.
 
 | function             | q analogue                                     |
@@ -538,6 +549,28 @@ Use it when each item is real work (Monte-Carlo, per-symbol fits, bootstraps, pa
 Tiny items are fine too if you chunk them so each task does tens of microseconds; a 400-basket
 payoff sweep goes 451 ms -> 215 ms on 14 threads. `AMBER_THREADS=1` forces serial, and the wasm
 build has no threads, so it runs serially there. Numbers in BENCHMARKS.md §4.
+
+### Threads inside primitives (since 2.6.0)
+
+You don't have to ask for these. Once a vector gets big, these primitives split it over the same
+`AMBER_THREADS` pool `peach` uses:
+
+```
+sort and grade      asc desc < > xasc xdesc, ints and floats     32K items and up
+search              ? (find) in                                   32K and up
+as-of join          the aj match                                  128K and up
+gather              x@i with a big index                          64K and up
+distinct            ? of ints                                     256K and up
+group aggregates    `gagg / gsum gavg gmin gmax gcount ...       64K rows and up
+float reductions    sum, dot, max, min                            1M items and up
+fused trees         see 5a                                        2048 items and up
+```
+
+Small vectors never touch the pool, and `AMBER_THREADS=1` turns all of it off. The answers are
+the same as on one thread, with one exception: float `sum`/`dot` of 1M+ items add in fixed 64K
+blocks and then add the blocks in order. That's the same answer for any thread count, but the
+last digits can differ from a plain left-to-right sum (and from 2.5.0). Float group sums and
+averages add per 256K-row block the same way, from 256K rows.
 
 ## 9b. Display: Q-style grid preview
 
@@ -857,10 +890,10 @@ syntax and type-aware arithmetic:
 year 2026.07.30                 / accessors: year month day dow  ·  thh tmm tss (time)
 "D"$"2026.12.25"                / string casts: "D"$ (date) "T"$ (time) "P"$ (timestamp)
 `i$2026.07.30                   / extract the raw numeric value
-2026.01.01 2026.01.02           / a strand of dates (or times) is a list of them
+2026.01.01 2026.01.02           / A strand of dates (or times) is a list of them
 ```
 
-anything else is `'type` (date+2.3, date*2, date+date), and date+0N is `'domain`: there's no null
+Anything else is `'type` (date+2.3, date*2, date+date), and date+0N is `'domain`: there's no null
 date yet, so it used to just hand the date back.
 
 Columns keep numeric storage (as q does internally), so `xasc` and the `s#` attribute work
@@ -930,7 +963,7 @@ moving     mcount msum mavg mprd mvar mdev mmin mmax   (std.k, O(n) prefix)
 math       dot mmu (matrix multiply)                   (std.k)
 parse/ser  parse eval reval ser deser protect          (std.k; text serialise)
 cast       long int float char sym bool cast           (std.k)
-parallel   peach (multi-core, fork-based C kernel)      (std.k) ; ts (\ts timing)
+parallel   peach (multi-core, thread pool)              (std.k) ; ts (\ts timing)
 .z/.Q/.j/.h  z.p z.d z.t … · Q.f Q.dd Q.trp Q.s … · j.j j.k (JSON) · h.ht (HTML)  (sys.k)
 on-disk    dset dget splay dload partsave partload parts   (hdb.k, text-serialised)
 ipc/tick   hopen hclose hsend hrecv hsync · u.def u.sub u.pub u.get u.end  (ipc.k)
@@ -981,8 +1014,8 @@ it, including locals, constant pool and instruction stream, without executing it
 **Engine extensions** (all additive, standalone modules; see the README's
 [Engine extensions](INTERNALS.md#engine-extensions) section for full detail and benchmarks):
 SIMD vector kernels (`src/simd.{h,c}`, AVX2/NEON/scalar, self-test `` `simd 0``), a
-multithreaded vector engine for arrays over 100,000 elements (`src/parallel.{h,c}`, self-test
-`` `para 0``), and a native CSV parser that reads a file straight into a typed table
+thread pool plus the parallel kernels behind sort, find, distinct, group sums and fusion
+(`src/parallel.{h,c}`, self-test `` `para 0``), and a native CSV parser that reads a file straight into a typed table
 (`src/csv.{h,c}`, `` `csvr "path.csv"``, self-test `` `csv0 0``).
 
 ---

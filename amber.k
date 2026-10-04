@@ -27,7 +27,7 @@ value:{. x}
 first:{*x}
 last:{*|x}
 reverse:{|x}
-distinct:{$[isat x;`err"type";?x]}   / an atom: 'type as q (?5 is a random deal)
+distinct:{$[isat x;`err"type";?x]}   / An atom: 'type as q (?5 is a random deal)
 group:{$[isat x;`err"type";=x]}     / =5 is the unit matrix
 where:{&x}
 flip:{+x}
@@ -38,8 +38,8 @@ idiv:{$[(`I~@y)&~^`i`I?@x;$[#y;$[&/~^x,y;$[&/9007199254740992>{x|-x}x,y;_x%y;idi
 div:{$[(@x)in`f`F;fdiv0[x;$[`i~@y;$[^y;0n;y];`I~@y;@[`f$y;&^y;:;0n];y]];(@y)in`f`F;idiv[x;rnd0 y];idiv[x;y]]}   / as q: an int by a float divisor rounds it; a float dividend floors as a float
 rnd0:{r:{s:(x>0)-x<0;s*_0.5+x*s};$[`f~@x;$[^x;0N;r x];@[r@[x;&^x;:;0.0];&^x;:;0N]]}   / round half away from zero, as q's `long$ of a float
 fdiv0:{q:x%y;r:`f$_q;$[`f~@q;$[(^q)|^_q;0n;r];@[r;&^q;:;0n]]}   / floor of a float quotient through an int, kept a float, as q does
-xbar:{r:xbi[x;y];$[|/`f`F=(@x),@y;`f$r;r]}   / a float width or value gives floats, as q (digest #67)
-xbi:{r:x*idiv[y;x];$[`i~@x;$[`I~@y;$[^x;xbn[x;y;r];0N=&/y;xbn[x;y;r];r];xbn[x;y;r]];xbn[x;y;r]]}   / a null width or value gives a null (0N*0N wraps to 0); ints with no null: just the product
+xbar:{r:xbi[x;y];$[|/`f`F=(@x),@y;`f$r;r]}   / A float width or value gives floats, as q (digest #67)
+xbi:{r:x*idiv[y;x];$[`i~@x;$[`I~@y;$[^x;xbn[x;y;r];0N=&/y;xbn[x;y;r];r];xbn[x;y;r]];xbn[x;y;r]]}   / A null width or value gives a null (0N*0N wraps to 0); ints with no null: just the product
 xbn:{[x;y;r]m:(^x)|^y;$[~|/m;r;(@r)in`i`f;$[(`f~@r)|(`f~@x)|`f~@y;0n;0N];@[r;&m;:;$[`I~@r;0N;0n]]]}
 xlog:{(`ln y)%`ln x}
 xexp:{[x;y]$[~y=_y;`exp y*`ln x;[e:$[y<0;-y;y];r:*{0<x[2]}{(x[0]*$[2!x[2];x[1];1.0];x[1]*x[1];_x[2]%2)}/(1.0;1.0*x;e);r:$[y<0;1%r;r];$[(x=_x)&(~y<0)&(r=_r)&9007199254740992.0>$[r<0;0-r;r];_r;r]]]} / x xexp y = x^y; fast squaring for integer y, exp/ln for fractional. An integer base to a non-negative integer power comes back as an INTEGER while the squaring is still exact (below 2^53); past that, or for a fractional/negative exponent, it stays a float. Load euler.k to get the exact bignum answer beyond 2^53.
@@ -50,7 +50,7 @@ round:{[d;x]p:*/d#10;(_0.5+x*p)%p}
 / on an int or float list a null takes the verb's identity, so it changes nothing (avg leaves it out)
 nid:{[x;i;f]$[`I=@x;$[0N=&/x;i^x;x];`F=@x;$[^&/x;f^x;x];x]}           / x with its nulls filled by i (ints) or f (floats); one &/ finds whether there are any (0N is the least int, and &/ takes NaN as the least float)
 sum:{$[0=#x;$[`F=@x;0.0;0];`F=@x;$[^s:+/x;+/0.0^x;s];`I=@x;`sumn x;+/nid[x;0;0.0]]}   / sum 0N 1 is 1; a float sum is NaN only when a NaN is in it; empty: keep the float type
-prd:{$[0=#x;$[`F=@x;1.0;1];`F=@x;$[^r:*/x;*/1.0^x;r];`I=@x;`prn x;*/nid[x;1;1.0]]}   / nulls skipped; empty: keep the float type
+prd:{$[0=#x;$[`F=@x;1.0;1];`F=@x;$[^r:*/x;*/1.0^x;r];`I=@x;`prn x;*/nid[x;1;1.0]]}   / Nulls skipped; empty: keep the float type
 min:{$[`I=@x;$[0N=m:&/x;&/9223372036854775807^x;m];`F=@x;$[^m:&/x;&/0w^x;m];&/x]}   / min 0N 5 is 5; all nulls: the largest int (q 0W); no nulls: just &/
 max:{$[`I=@x;$[0N=m:|/x;-9223372036854775807;m];`F=@x;$[^m:|/x;-0w;m];|/x]}   / a null is the least, so |/ skips it unless all are null (then -0W, -0w)
 avg:{$[`I=@x;$[0N=&/x;avgn x;(+/0.0+x)%#x];`F=@x;$[^s:+/x;avgn x;s%#x];(+/0.0+x)%#x]}   / the non-null items, summed as floats, like q (an int64 +/ can wrap); none: 0n
@@ -58,7 +58,7 @@ avgn:{v:x@&~^x;$[#v;(+/0.0+v)%#v;0n]}
 / fused dot (`wsm) when both sides are float vectors: no product vector is
 / built, so the 80MB temporary `+/x*y` writes and re-reads never exists.
 / wsum, wavg: a pair with a null is skipped (its weight too). `wsm gives NaN for floats or 0N for ints when one is in
-wsum:{r:wsi[x;y];$[`i~@r;`f$r;r]}   / a float, as q (ints gave an int, digest #67)
+wsum:{r:wsi[x;y];$[`i~@r;`f$r;r]}   / A float, as q (ints gave an int, digest #67)
 wsi:{$[(`F=@x)&`F=@y;$[^r:`wsm(x;y);wsp[x;y];r];(`I=@x)&`I=@y;$[0N=r:`wsm(x;y);wsp[x;y];r];`hnl[x]|`hnl y;wsp[x;y];+/x*y]}
 wavg:{$[(`F=@x)&`F=@y;$[^r:(`wsm(x;y))%+/x;wvp[x;y];r];(`I=@x)&`I=@y;$[0N=r:`wsm(x;y);wvp[x;y];r%+/x];`hnl[x]|`hnl y;wvp[x;y];(+/x*y)%+/x]}
 wsp:{m:&~(^x)|^y;+/x[m]*y m}   / (an int 0N*y wraps, so the pairs go before the product)
@@ -76,16 +76,16 @@ cov:{$[cvk[x;y];[r:`cvm(x;y);r[0]%r 3];[p:pdr[x;y];x:p 0;y:p 1;avg(x-avg x)*y-av
 scov:{$[cvk[x;y];[r:`cvm(x;y);r[0]%-1+r 3];[p:pdr[x;y];n:#x:p 0;y:p 1;(n*avg(x-avg x)*y-avg y)%-1+n]]}
 cor:{$[cvk[x;y];[r:`cvm(x;y);r[0]%sqrt r[1]*r 2];[p:pdr[x;y];a:p[0]-avg p 0;b:p[1]-avg p 1;(avg a*b)%sqrt avg[a*a]*avg b*b]]}
 med:{$[isat x;0.0+x;0=#x;0n;[a:x@<x;n:#a;m:_n%2;$[2!n;0.0+a m;avg a@m-1 0]]]}
-all:{$[#x;~|/x=0;1]}   / all of an empty list is 1, as q
+all:{$[#x;~|/x=0;1]}   / All of an empty list is 1, as q
 any:{~&/x=0}
-sums:{$[`F=@x;$[^*|r:+\x;+\0.0^x;r];`I=@x;$[`hnl x;+\0^x;+\x];+\nid[x;0;0.0]]}   / a null adds 0; floats: the last sum is NaN only if a NaN is in
+sums:{$[`F=@x;$[^*|r:+\x;+\0.0^x;r];`I=@x;$[`hnl x;+\0^x;+\x];+\nid[x;0;0.0]]}   / A null adds 0; floats: the last sum is NaN only if a NaN is in
 prds:{$[`F=@x;$[^*|r:*\x;*\1.0^x;r];`I=@x;$[`hnl x;*\1^x;*\x];*\nid[x;1;1.0]]}
 mins:{&\nid[x;9223372036854775807;0w]}                                       / mins 0n 1.0 is 0w 1.0, as q
 maxs:{|\nid[x;-9223372036854775807;-0w]}
 deltas:{$[#x;x-0,-1_x;x]}
 ratios:{$[#x;x%1,-1_x;0#0.0]}   / empty: an empty float list, as q (digest #67)
-differ:{$[isat x;1b;~#x;x=x;|/`I`S`C=@x;1b,~(1_x)=-1_x;`F=@x;1b,~((1_x)=-1_x)|(^1_x)&^-1_x;@[~~':x;0;:;1b]]}   / the first item always differs, a null too; typed lists compare shifted (NaN matches NaN, as ~)
-prev:{$[isat x;x;-1_(,x@#x),x]}   / an atom comes back as is, as q; the null is the list's own (x@#x), not 0N
+differ:{$[isat x;1b;~#x;x=x;|/`I`S`C=@x;1b,~(1_x)=-1_x;`F=@x;1b,~((1_x)=-1_x)|(^1_x)&^-1_x;@[~~':x;0;:;1b]]}   / The first item always differs, a null too; typed lists compare shifted (NaN matches NaN, as ~)
+prev:{$[isat x;x;-1_(,x@#x),x]}   / An atom comes back as is, as q; the null is the list's own (x@#x), not 0N
 next:{$[isat x;x;1_x,,x@#x]}
 
 / ---- ranking / ordering ----------------------------------------------------
@@ -96,7 +96,7 @@ asc:{`srt x}
 desc:{x@>x}
 xrank:{_y*x%#y:<<y}
 xprev:{y[(!#y)-x]}
-rotate:{$[0=#y;y;0=n:(#y)!x;y;(n_y),n#y]}   / a multiple of the count: y as is
+rotate:{$[0=#y;y;0=n:(#y)!x;y;(n_y),n#y]}   / A multiple of the count: y as is
 
 / ---- membership / set ops --------------------------------------------------
 / x in y : which elements of x are members of y.
@@ -110,7 +110,7 @@ rotate:{$[0=#y;y;0=n:(#y)!x;y;(n_y),n#y]}   / a multiple of the count: y as is
 /   1 2 3 except 2  ->  !0    where q gives  1 3
 / q accepts an atom on the right of all four, so this is parity as well as a fix.
 isatm:{"a"<*$@x}                                  / type symbol lowercase -> atom
-isat:{("a"<*$@x)&~`m=@x}                          / an atom, not a dict
+isat:{("a"<*$@x)&~`m=@x}                          / An atom, not a dict
 in:{y:$[isatm y;,y;y];r:`memb(x;y);$[`A~@r;~^y?x;r]}   / 2.1: one-pass C membership; K fallback for other types
 / 2.1: fused group aggregates. `gagg (src/o.c) does acc[group]op=v in ONE pass
 / with the same first-appearance key order as =k; each wrapper keeps the
@@ -128,7 +128,7 @@ glast:{[k;v]r:`gagg(`last;k;v);$[#r;(r 0)!r 1;{[v;i]*|v i}[v]'=k]}
 / verbs are never infix here (see the REPL's \h note), so it is within[t;(a;b)],
 / not  t within (a;b).
 within:{[x;r](~x<r[0])&~x>r[1]}
-except:{$[cxk[x;y];x;x@&~in[x;y]]}   / chars against numbers share nothing: x as it is, as q (digest #64)
+except:{$[cxk[x;y];x;x@&~in[x;y]]}   / Chars against numbers share nothing: x as it is, as q (digest #64)
 cxk:{c:`c`C;n:`i`I`f`F;((|/c=@x)&|/n=@y)|(|/n=@x)&|/c=@y}
 inter:{x@&in[x;y]}
 union:{?x,y}
@@ -144,7 +144,7 @@ cols:{$[iskeyed x;(!!x),!.x;!x]}
 keys:{$[iskeyed x;!!x;0#`]}
 rows:{+. x}
 atr:{[t;i]+(cols t)!{y@x}[i]'. t}
-/ a column the table lacks is an error named after it, as q (xasc added a column of nulls, xdesc ignored it)
+/ A column the table lacks is an error named after it, as q (xasc added a column of nulls, xdesc ignored it)
 hasc:{[c;t]m:c@&~in[c;cols t];$[#m;`err@$*m;0]}
 xkey:{[k;t]k:k,();hasc[k;t];$[0=#k;unkey t;[d:+t;(+k#d)!+(except[cols t;k])#d]]}   / () xkey t -> unkey (q idiom)
 unkey:{$[iskeyed x;+(+!x),+.x;x]}
@@ -158,7 +158,7 @@ xcols:{[c;t]c:c,();+(c,except[cols t;c])#+t}
 / the DISTINCT ids), which is the collation `<` on a symbol vector gives and the
 / one ajsorted's contiguity note assumes.  Descending is the same sort with
 / complemented keys, which reproduces `>`'s "ties in ascending index order".
-xsg:{[cs;d]{[d;o;v]o@$[d;>v o;<v o]}[d]/[!#*cs;|cs]}   / each column's own order, the last key first (stable); the rows' grade squeezed one-item rows (digest #58)
+xsg:{[cs;d]{[d;o;v]o@$[d;>v o;<v o]}[d]/[!#*cs;|cs]}   / Each column's own order, the last key first (stable); the rows' grade squeezed one-item rows (digest #58)
 xasc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;0b);o:$[#o;o;xsg[(+t)c;0b]];t:t@o;d:+t;+d,(1#c)!`sa'd@1#c}
 xdesc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;1b);o:$[#o;o;xsg[(+t)c;1b]];t@o}
 meta:{d:+unkey x;xkey[`c;+`c`t`a!(!d;{@*x}'value d;{`at x}'value d)]}
@@ -254,7 +254,7 @@ qwhere:{[t;m]t@&m}
 / dict `a`b!(210.0;6) and flipping it raised 'length -- the single-aggregate
 / case only appeared to work because the each-result happened to be a 1-item
 / list whose single item was the atom. (),x leaves genuine vectors untouched.
-qselect:{[t;a]v:{[t;f]f t}[t]'value a;m:~isat'v;+(!a)!$[|/m;{[n;x]$[isat x;n#x;x]}[#v@*&m]'v;,:'v]}   / an atom beside a list is extended to it, as update does (digest #61); all atoms: one row
+qselect:{[t;a]v:{[t;f]f t}[t]'value a;m:~isat'v;+(!a)!$[|/m;{[n;x]$[isat x;n#x;x]}[#v@*&m]'v;,:'v]}   / An atom beside a list is extended to it, as update does (digest #61); all atoms: one row
 / ---- raw-column grouping: the qSQL fast path --------------------------------
 / qby/xgroup/ij used to group with  =rows[cols#+t] .  rows:{+. x} flips the
 / column dict into ONE BOXED K OBJECT PER ROW, so a 10M-row group-by allocated
@@ -281,7 +281,7 @@ qEXACT:9007199254740992.0
 qgrp:{[t;b]d:+t;bc:d b;g:$[1=#b;=*bc;qcard[bc]<qEXACT;=qenc bc;=rows[b#+t]];iv:value g;(bc@\:*:'iv;iv)}
 qby:{[t;b;a]b:b,();r:qgrp[t;b];kt:+b!r 0;iv:r 1;subs:atr[t]'iv;vt:+(!a)!{[t;subs;f]$[#subs;f'subs;qby0[f;0#t]]}[t;subs]'value a;kt!vt}
 qby0:{[f;e]r:.[f;,e;{`qby0err}];$[`qby0err~r;();(@r)in`i`f`c`s`d`t`n;0#,r;()]}   / no groups: a column typed by its aggregate's result (q); a plain column stays ()
-xgroup:{[k;t]k:k,();r:qgrp[t;k];kt:+k!r 0;vc:except[cols t;k];kt!+vc!{[t;iv;c]((+t)c)@/:iv}[t;r 1]'vc}   / keyed by k, as q
+xgroup:{[k;t]k:k,();r:qgrp[t;k];kt:+k!r 0;vc:except[cols t;k];kt!+vc!{[t;iv;c]((+t)c)@/:iv}[t;r 1]'vc}   / Keyed by k, as q
 ungroup:{[x]t:unkey x;d:+t;v:value d;m:{`A=@x}'v;cnt:#:'*v@&m;+(!d)!{[cnt;m;c]$[m;raze c;raze cnt#'c]}[cnt]'[m;v]}
 / fbymc: is g a PER-COLUMN group spec -- (sym;ex) rather than one vector?  q lets
 / `fby` group on several columns, and `=` on such a list groups the COLUMNS, not

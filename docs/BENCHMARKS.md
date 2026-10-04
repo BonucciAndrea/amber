@@ -1,5 +1,24 @@
 # Amber: sanity checks & benchmarks
 
+> **2.6.0 note, threads.** The tables below are still one core per engine, so they don't move.
+> What 2.6 adds is threads inside primitives (see [AMBER.md](AMBER.md), "Threads inside
+> primitives"). On the scout set (10M items, same laptop, 14 threads vs 2.5.0 on one), ms:
+>
+> | op | 2.5.0 | 2.6.0, 14 threads | |
+> |---|---:|---:|---:|
+> | `find` | 14.5 | 3.2 | 4.6× |
+> | `member` | 9.3 | 2.8 | 3.4× |
+> | `distinct` | 4.3 | 1.3 | 3.3× |
+> | `sum_f` | 4.2 | 1.4 | 2.9× |
+> | `max_f` | 4.0 | 1.7 | 2.3× |
+> | `group_100` | 19.2 | 8.7 | 2.2× |
+> | `dot` | 6.2 | 2.9 | 2.2× |
+> | `tablesort` | 89.5 | 48.4 | 1.9× |
+>
+> About 1.6× over all 24 ops. Things that are one fast pass already (`sum_i`, `scan_f`, the
+> presorted sort) stay where they were, and `group_100k` is level. With `AMBER_THREADS=1` 2.6.0
+> runs at 2.5.0's speed.
+>
 > **2.4.1 note.** Every table that describes the current build was re-measured on 2.4.1, on one
 > laptop (Intel Core Ultra 7 255U, WSL2, one core per engine unless a section says threads): §1,
 > §2 and all its subsections, §2.10 (scout), §4 (peach) and §5 (CI, which re-runs itself on a

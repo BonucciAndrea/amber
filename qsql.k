@@ -28,17 +28,17 @@ qfn:{[cols;e]. "{[x]",qidsub[cols;e],"}"}                                       
 / clause never fused, while the same query WITH a where clause did. ~(#t)#0b is materialised,
 / ~-identical to (#t)#1b, and fuses. (Verified: gagg with (#t)#1b -> 0 rows; with ~(#t)#0b,
 / K=K or 0<1+!#t -> the correct rows.)
-qmask:{[t;w]$[0=#w;~(#t)#0b;1=#c:qcut w;qfn[cols t;*c]t;&/qloc[cols t]'1_c;&/{[t;c]qfn[cols t;c]t}[t]'c;qcas[t;c]]}   / where -> boolean mask
-/ several constraints cascade, as q's do: each one sees only the rows the earlier ones kept (and only the columns it
+qmask:{[t;w]$[0=#w;~(#t)#0b;1=#c:qcut w;qfn[cols t;*c]t;&/qloc[cols t]'1_c;&/{[t;c]qfn[cols t;c]t}[t]'c;qcas[t;c]]}   / Where -> boolean mask
+/ Several constraints cascade, as q's do: each one sees only the rows the earlier ones kept (and only the columns it
 / names), so  where sym=`a, n=max n  is the largest n among the a's. They were all run on the whole table (digest #39).
 / A constraint that only looks at its own row (columns, literals, data globals, comparisons, in/within/like...) gives
 / the same answer either way, so when every later one is like that the masks are just and-ed, at the old speed.
 qcas:{[t;c]C:cols t;i:qcw[t;C;!#t;*c];i:{[t;C;i;e]qcw[t;C;i;e]}[t;C]/[i;1_c];@[~(#t)#1b;i;:;1b]}
-qcw:{[t;C;i;e]r:qrefs[C;e];v:qfn[C;e]$[#r;+r!(+t)[r]@\:i;t i];$[isat v;$[v;i;0#i];i@&v]}   / the rows of i that e keeps
+qcw:{[t;C;i;e]r:qrefs[C;e];v:qfn[C;e]$[#r;+r!(+t)[r]@\:i;t i];$[isat v;$[v;i;0#i];i@&v]}   / The rows of i that e keeps
 qlw:`in`within`like`not`null`abs`neg`floor`ceiling`signum`string`lower`upper`mod`div`xbar
-qlwd:{[C;w]s:`$w;c:*w;$[in[s;C]|in[s;qlw];1;(~(c<"0")|c>"9")&~|/w="_";1;[v:.[{.x};,s;{`qlfail}];$[`qlfail~v;0;~|/"opqruvwx"=*$@v]]]}   / a word that keeps a row to itself
+qlwd:{[C;w]s:`$w;c:*w;$[in[s;C]|in[s;qlw];1;(~(c<"0")|c>"9")&~|/w="_";1;[v:.[{.x};,s;{`qlfail}];$[`qlfail~v;0;~|/"opqruvwx"=*$@v]]]}   / A word that keeps a row to itself
 qblank:{[e]s:e;q:qsmask s;s:@[s;&q|s="\"";:;" "];w:qword 0+s;rid:+\~~':w;bt:&s="`";p:1+bt;p:p@&p<#s;p:p@&w p;s:@[s;bt;:;" "];@[s;&w&in[rid;rid p];:;" "]}   / strings and `symbols blanked
-qloc:{[C;e]s:qblank e;w:qword 0+s;b:&~~':w;tk:b _ s;ok:&/1,qlwd[C]'tk@&w b;oi:&~w|s=" ";o:s oi;ok&:&/1,in[o;"=<>~+-*%&|$,.()"];nsi:&~s=" ";mp:oi@&in[o;"*|&,<>=+"];ok&&/1,{[s;w;nsi;p]j:nsi?p;$[j=0;0;[q:nsi j-1;c:s q;$[w q;1;c=")";1;(|/c="<>")&|/(s p)="=>";1;0]]]}[s;w;nsi]'mp}   / no aggregate, adverb or monadic first/where/count
+qloc:{[C;e]s:qblank e;w:qword 0+s;b:&~~':w;tk:b _ s;ok:&/1,qlwd[C]'tk@&w b;oi:&~w|s=" ";o:s oi;ok&:&/1,in[o;"=<>~+-*%&|$,.()"];nsi:&~s=" ";mp:oi@&in[o;"*|&,<>=+"];ok&&/1,{[s;w;nsi;p]j:nsi?p;$[j=0;0;[q:nsi j-1;c:s q;$[w q;1;c=")";1;(|/c="<>")&|/(s p)="=>";1;0]]]}[s;w;nsi]'mp}   / No aggregate, adverb or monadic first/where/count
 / qdec: drop a trailing K comment from a query string.
 / A "/" that STARTS a token -- at the beginning of the string, or preceded by a
 / space or a tab -- and is not inside a "…" literal begins a comment.  The qSQL
@@ -58,15 +58,15 @@ qdec:{[s]$[0=#s;s;[q:(s="\"")&~0,-1_s="\\";ins:1=2!0,-1_sums q;ws:1,-1_(s=" ")|s
 / never matched and fell over on the first fragment.  Comments are removed line
 / by line first, so a comment can only ever eat the rest of its own line.
 qnorm:{[s]trim(" "/qdec'"\n"\s)}
-/ item -> column name, as q: an explicit name; else the first name in the expression, following a function to its
+/ Item -> column name, as q: an explicit name; else the first name in the expression, following a function to its
 / first argument and into brackets (sum px*sz is px, f[a;b] is a, (v+w)*2 is v); a number or literal first is x.
 / qnms numbers the repeats as q does: v v1 v2, x x1 (they were two columns called v, or x0 x1, digest #56)
 qnm:{[C;i;it]p:qname it;$[#p 0;`$p 0;qcn[C;p 1]]}
 qnms:{[C;it]n:qnm[C]'[!#it;it];{[n;i]k:+/n[i]=i#n;$[k;`$($n i),$k;n i]}[n]'!#n}
 qcn:{[C;e]e:trim e;$[0=#e;`err"parse";"("=*e;qcn[C;qpin[e;"(";")"]];"`"=*e;`x;"\""=*e;`x;~qword 0+*e;$[("-"=*e)&(1<#e)&~(e 1)<"0";$[(e 1)>"9";qcn[C;1_e];`x];qcn[C;1_e]];qcnw[C;e]]}
 qcnw:{[C;e]w:qword 0+e;n:*(&~w),#e;t:n#e;r:trim n_e;c:*t;$[in[`$t;C];`$t;~(c<"0")|c>"9";`x;~qfnw t;`$t;0=#r;`$t;"["=*r;qcn[C;*qscut qpin[r;"[";"]"]];qcn[C;r]]}
-qfnw:{v:.[{.x};,`$x;{`qlfail}];$[`qlfail~v;0;|/"opqruvwx"=*$@v]}   / does the word name a function
-qpin:{[e;o;c]d:+\(e=o)-e=c;j:*(&d=0),#e;1_j#e}   / the text inside the bracket e starts with
+qfnw:{v:.[{.x};,`$x;{`qlfail}];$[`qlfail~v;0;|/"opqruvwx"=*$@v]}   / Does the word name a function
+qpin:{[e;o;c]d:+\(e=o)-e=c;j:*(&d=0),#e;1_j#e}   / The text inside the bracket e starts with
 / by-clause item -> the name its group column gets.  Explicit "name:expr" wins;
 / a bare column keeps its own name; an expression over exactly one column takes
 / that column's name (so `by time:1m xbar time` and `by minbar[1;time]` both

@@ -1,5 +1,5 @@
 #include"a.h"
-#include <stdlib.h>   // amber 2.5 (exp): malloc/free for the parallel kernels
+#include <stdlib.h>   // Amber 2.5 (exp): malloc/free for the parallel kernels
 #include"parallel.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include"simd.h"
 // ---- vectorisation hints ---------------------------------------------------
@@ -74,7 +74,7 @@ A1(typ,x(as(TS[xt])))
 A1(len,x(az(xN)))
 U _N(A x/*0*/){X(RE(Lij j-i)RT_E(xn)Rm(_N(xy))RM(_N(_x(xy)))R_(1))}
 Y2(fil,RmMA(e2f(fil,x,y))Rt(P(yt>=tdt,et(y))YU(y-au?y:xR)fir(fil(x,enl(y))))R_(K2("{@[y;&^y;:;x]}",x,y)))
-//chars against ints or floats share no item: except removes nothing, as 2.3.1, ngn/k and q (find of one in the
+//Chars against ints or floats share no item: except removes nothing, as 2.3.1, ngn/k and q (find of one in the
 //other is 'type since issue #20 row 12, and except inherited it - digest #64)
 Z B cxn(UC a,UC b)_(B ca=a==tC||a==tc,cb=b==tC||b==tc,na=a==tB||LH(tG,a,tF)||a==ti||a==tl||a==tf,nb=b==tB||LH(tG,b,tF)||b==ti||b==tl||b==tf;ca&&nb||na&&cb)
 X2(crt,Rt(P(LH(tdt,xt,tnp),et(y))fil(x,y))R_(en(y))
@@ -341,9 +341,9 @@ A mwC(A x){
 //
 // Returns whichever index buffer holds the result (ia or ib -- the caller must
 // use the returned pointer, not the one it passed in).
-// amber 2.5 (exp): the parallel form of AMRDX below. Same passes, same constant-column skip, same order.
+// Amber 2.5 (exp): the parallel form of AMRDX below. Same passes, same constant-column skip, same order.
 #define PRDX_MIN (1u<<15)
-TD N AMN256[256];TD AMN256 AMN8x256[8];   //count rows (N(...) is a macro here, so no N(*h)[256])
+TD N AMN256[256];TD AMN256 AMN8x256[8];   //Count rows (N(...) is a macro here, so no N(*h)[256])
 #define PAMRDX(NM,KT)                                                          \
 TD struct{KT*ka,*kb;I*ia,*ib;N n;U nt,d,last,nb;AMN256*h;AMN8x256*ha;}NM##_J;\
 Z V NM##_all(V*c_,int t){NM##_J*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;AMN256*h=c->ha[t];U nb=c->nb;  \
@@ -364,7 +364,7 @@ Z I* NM##_par(KT*ka,I*ia,KT*kb,I*ib,N n,U nb,int nt){                           
   for(U q=0;q<np;q++){                                                                                        \
     c.d=ord[q];c.last=q+1==np;                                                                                \
     par_run(nt,NM##_hist,&c);                                                                                 \
-    {N s=0;for(U b=0;b<256;b++)for(int w=0;w<nt;w++){N x=c.h[w][b];c.h[w][b]=s;s+=x;}}  /* bucket, then thread order */\
+    {N s=0;for(U b=0;b<256;b++)for(int w=0;w<nt;w++){N x=c.h[w][b];c.h[w][b]=s;s+=x;}}  /* Bucket, then thread order */\
     par_run(nt,NM##_scat,&c);                                                                                 \
     {KT*tk=c.ka;c.ka=c.kb;c.kb=tk;}{I*ti=c.ia;c.ia=c.ib;c.ib=ti;}}                                           \
   free(c.h);free(c.ha);return c.ia;}
@@ -376,7 +376,7 @@ Z V NM##_mh(V*c_,int t){NM##_M*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;N*h=c->h
 Z V NM##_ms(V*c_,int t){NM##_M*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;N*h=c->h[t];U d=c->dt;              \
   KT*RES ka=c->ka,*RES kb=c->kb;I*RES ia=c->ia,*RES ib=c->ib;                                                 \
   for(N i=s;i<e;i++){KT v=ka[i];N j=h[(v>>(8*d))&255]++;kb[j]=v;ib[j]=ia[i];}}                               \
-/* local LSD of bucket [s,e): data starts in kb/ib, the result ends in ib */                                   \
+/* Local LSD of bucket [s,e): data starts in kb/ib, the result ends in ib */                                   \
 Z V NM##_mb(NM##_M*c,N s,N e){KT*RES src=c->kb,*RES dst=c->ka;I*RES isrc=c->ib,*RES idst=c->ia;N cnt[256];   \
   U todo[8],nd=0;                                                                                             \
   for(U q=0;q<c->nlo;q++){U d=c->lo[q];KT f=(src[s]>>(8*d))&255;B var=0;for(N i=s+1;i<e;i++)if(((src[i]>>(8*d))&255)!=f){var=1;break;}if(var)todo[nd++]=d;}\
@@ -391,7 +391,7 @@ Z V NM##_mw(V*c_,int t){NM##_M*c=c_;(V)t;for(;;){I b=__atomic_fetch_add(&c->nxt,
 Z I* NM##_msd(KT*ka,I*ia,KT*kb,I*ib,N n,U nb,int nt){                                                        \
   NM##_M c={.ka=ka,.kb=kb,.ia=ia,.ib=ib,.n=n,.nt=(U)nt};                                                      \
   c.h=malloc((N)nt*256*SZ(N));if(!c.h)return 0;                                                               \
-  /* the varying bytes, as the serial kernel finds them: sample-free, one parallel histogram per byte is too   \
+  /* The varying bytes, as the serial kernel finds them: sample-free, one parallel histogram per byte is too   \
      dear, so take the top byte that differs anywhere (OR of k^k[0]) and let the buckets skip the rest */      \
   KT dif=0,f=ka[0];for(N i=1;i<n;i++)dif|=ka[i]^f;                                                            \
   I top=-1;for(U d=0;d<nb;d++)if((dif>>(8*d))&255)top=(I)d;                                                   \
@@ -401,7 +401,7 @@ Z I* NM##_msd(KT*ka,I*ia,KT*kb,I*ib,N n,U nb,int nt){                           
   {N s=0;for(U b=0;b<256;b++){c.bs[b]=s;for(int w=0;w<nt;w++){N x=c.h[w][b];c.h[w][b]=s;s+=x;}}c.bs[256]=s;}  \
   N mx=0;for(U b=0;b<256;b++)if(c.bs[b+1]-c.bs[b]>mx)mx=c.bs[b+1]-c.bs[b];                                  \
   if(mx>n/2){free(c.h);return 0;}                   /* skewed: one bucket would serialise the work */          \
-  par_run(nt,NM##_ms,&c);                           /* now kb/ib hold the buckets, in order */                \
+  par_run(nt,NM##_ms,&c);                           /* Now kb/ib hold the buckets, in order */                \
   c.nxt=0;par_run(nt,NM##_mw,&c);                                                                             \
   free(c.h);return ib;}
 PAMRDX(amrdx4,U)
@@ -497,7 +497,7 @@ W amkFc(F f){W b;MC(&b,&f,SZ(F));b=b<<1==0?0:b<<1>0xffe0000000000000ull?(W)NFL:b
 // Ascending grade of a flat numeric vector. Borrows x; returns a tI index
 // vector, or 0 when the type is not one this kernel handles or the arena could
 // not supply scratch -- in both cases the caller falls back.
-// amber 2.5 (exp): rdxg's key pass and final copy, split across threads (see rdxg)
+// Amber 2.5 (exp): rdxg's key pass and final copy, split across threads (see rdxg)
 TD struct{CO V*p;V*k;I*ia;N n;U nt;UC t;B srt[PAR_MAX_THREADS];I*o;CO I*r;}RK;
 #define RKS(KT,T,EXPR) {CO T*RES p=(CO T*)c->p;KT*RES k=(KT*)c->k;KT pv=0;B sr=1;          \
   for(N i=s;i<e;i++){KT v=(KT)(EXPR);k[i]=v;ia[i]=(I)i;if(i>s&&v<pv)sr=0;pv=v;}c->srt[t]=sr;}
@@ -522,7 +522,7 @@ A rdxg(A x){
  I*RES iA=(I*)arena_alloc(n*SZ(I));I*iB=(I*)arena_alloc(n*SZ(I));
  if(!kA||!kB||!iA||!iB){arena_release(mk);mr(y);return 0;}
  B srt=1;int pnt=n>=PRDX_MIN?par_thread_count(n):1;
- if(pnt>1){RK c={.p=_V(x),.k=kA,.ia=iA,.n=n,.nt=(U)pnt,.t=t};par_run(pnt,rdxk_w,&c);   //keys in parallel, then the seams
+ if(pnt>1){RK c={.p=_V(x),.k=kA,.ia=iA,.n=n,.nt=(U)pnt,.t=t};par_run(pnt,rdxk_w,&c);   //Keys in parallel, then the seams
   for(int w=0;w<pnt;w++)srt&=c.srt[w];
   for(int w=1;srt&&w<pnt;w++){N j=n*w/pnt;if(kw==4?((U*)kA)[j]<((U*)kA)[j-1]:((W*)kA)[j]<((W*)kA)[j-1])srt=0;}}
  else
@@ -784,7 +784,7 @@ Z KT* NM(KT*RES ka,KT*RES kb,N n,U nb){                                        \
   return ka;}
 AMRDXK(amrdxk4,U)
 AMRDXK(amrdxk8,W)
-// amber 2.5 (exp): keys-only MSD-first, the PMSD plan without the index array. Result in kb.
+// Amber 2.5 (exp): keys-only MSD-first, the PMSD plan without the index array. Result in kb.
 #define PMSDK(NM,KT)                                                           \
 TD struct{KT*ka,*kb;N n;U nt,dt,nlo,lo[8];AMN256*h;N bs[257];I nxt;}NM##_K;                                   \
 Z V NM##_kh(V*c_,int t){NM##_K*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;N*h=c->h[t];U d=c->dt;               \
@@ -831,7 +831,7 @@ Z KT* NM##_ppar(KT*ka,KT*kb,N n,U nb,int nt){                                   
   free(c.h);free(c.ha);return c.ka;}
 PAMRDXK(amrdxk4,U)
 PAMRDXK(amrdxk8,W)
-// the key pass and the unfold of rdxsrt, per slice (see rdxsrt)
+// The key pass and the unfold of rdxsrt, per slice (see rdxsrt)
 TD struct{CO V*p;V*k;V*o;N n;U nt;UC t;B srt[PAR_MAX_THREADS];CO V*r;W mn;}RS;
 #define RSS(KT,T,EXPR) {CO T*RES p=(CO T*)c->p;KT*RES k=(KT*)c->k;KT pv=0;B sr=1;                               \
   for(N i=s;i<e;i++){KT v=(KT)(EXPR);k[i]=v;if(i>s&&v<pv)sr=0;pv=v;}c->srt[t]=sr;}
@@ -882,7 +882,7 @@ A rdxsrt(A x){
  V*kA=arena_alloc(n*kw),*kB=arena_alloc(n*kw);
  if(!kA||!kB){arena_release(mk);return 0;}
  B srt=1;int pnt=n>=PRDX_MIN?par_thread_count(n):1;
- if(pnt>1){RS c={.p=_V(x),.k=kA,.n=n,.nt=(U)pnt,.t=t};par_run(pnt,rsk_w,&c);   //keys in parallel, then the seams
+ if(pnt>1){RS c={.p=_V(x),.k=kA,.n=n,.nt=(U)pnt,.t=t};par_run(pnt,rsk_w,&c);   //Keys in parallel, then the seams
   for(int w=0;w<pnt;w++)srt&=c.srt[w];
   for(int w=1;srt&&w<pnt;w++){N j=n*w/pnt;if(kw==4?((U*)kA)[j]<((U*)kA)[j-1]:((W*)kA)[j]<((W*)kA)[j-1])srt=0;}}
  else

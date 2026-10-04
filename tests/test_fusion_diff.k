@@ -23,7 +23,7 @@ G:100!H
 NX:@[X;3 7 11;:;0n]                 / with NaNs
 ZX:@[X;5;:;-0.0]                    / with a negative zero
 S1:`$'"s",/:$100!H
-sh:{"  ",($@x)," ",$[(@x)in`A`m`M;`k x;$x]}   / general lists, dicts and tables through `k: $x of one is not a string, which `0: refused (digest #78)
+sh:{"  ",($@x)," ",$[(@x)in`A`m`M;`k x;$x]}   / General lists, dicts and tables through `k: $x of one is not a string, which `0: refused (digest #78)
 p:{`0:sh x}
 pk:{`0:`k x}                          / dicts and tables: the REPL formatter
 / ---- fused reductions --------------------------------------------------------

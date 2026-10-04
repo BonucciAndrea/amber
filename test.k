@@ -22,11 +22,11 @@ t[`medEven;med 1 2 3 4;2.5]
 t[`dev;dev 2 4 4 4 5 5 7 9;2.0]
 t[`svar;svar 2 4 4 4 5 5 7 9;4.571428571428571]
 t[`wsum;wsum[1 2 3;10 20 30];140.0]
-t[`qEdges67;(wsum[1 2;3 4];xbar[2;1.5 3.5];xbar[2;1 3];@ratios[!0];med 5;med 1.5);(11.0;0.0 2.0;0 2;`F;5.0;1.5)]   / digest #67: as q
+t[`qEdges67;(wsum[1 2;3 4];xbar[2;1.5 3.5];xbar[2;1 3];@ratios[!0];med 5;med 1.5);(11.0;0.0 2.0;0 2;`F;5.0;1.5)]   / Digest #67: as q
 t[`wavg;wavg[10 20 30;1 2 3];7%3.0]
 t[`cor;0.0001>abs 1.0-cor[1 2 3;2 4 6];1]
 t[`cov;0.0001>abs cov[1 2 3;1 2 3]-2%3.0;1]
-/ digest #43: the q-named stats skip nulls (a pair with one, for the two-list ones); #46: cov is centred
+/ Digest #43: the q-named stats skip nulls (a pair with one, for the two-list ones); #46: cov is centred
 t[`sumsNull;   (sums 1 0n 2;sums 1 0N 2;prds 2 0n 3;prds 2 0N 3);   (1 1 3.0;1 1 3;2 2 6.0;2 2 6)]
 t[`prdNull;    (prd 2 0n 3;prd 2 0N 3;prd 2 0N 3 2147483648);     (6.0;6;6*2147483648)]
 t[`wsumNull;   (wsum[1 2 3.0;1 0n 2];wsum[1 2 3;1 0N 2];wsum[1 2 3;1 0n 2];wsum[1 2 3+2147483648;1 0N 2]);   (7.0;7.0;7.0;`f$7+3*2147483648)]
@@ -51,18 +51,18 @@ t[`deltas;deltas 1 3 6 10;1 2 3 4]
 t[`differ;differ 1 1 2 2 3;10101b]
 t[`prev;prev 1 2 3;0N 1 2]
 t[`next;next 1 2 3;2 3 0N]
-/ digest #48: the null is the list's own; #49 all of empty; #50 differ's first item; #51 x vs ""
+/ Digest #48: the null is the list's own; #49 all of empty; #50 differ's first item; #51 x vs ""
 t[`prevNextTyped;(next `a`b;next 1.5 2.5;prev 1.5 2.5;prev "ab";prev[!0]);(`b`;2.5 0n;0n 1.5;" a";!0)]
 t[`allEmpty;(all 0#0;all 1 2;all 1 0;all 0#0.0;any 0#0);1 1 0 1 0]
 t[`differNull;(differ 0N 0N 1;differ 0.0 -0.0 0n 0n 1.0;differ `a`a`b;differ (1;1;`a);differ 5);(101b;10101b;101b;101b;1b)]
 t[`vsEmpty;("," vs "";"," vs "a,b");(,"";(,"a";,"b"))]
 t[`reverse;reverse 1 2 3;3 2 1]
 t[`rotate;rotate[2;1 2 3 4 5];3 4 5 1 2]
-t[`rotateWhole;(rotate[3;1 2 3];rotate[0;1 2 3];rotate[-3;1 2 3]);3#,1 2 3]   / digest #47: was ::
-/ digest #38: an atom does what q does, not what the k primitive does
-t[`negAfterParams;({[x]-1+x}0 1 2;{[x]-x}0 1 2;{[x;y]-1+x+y}[1;2];{[x]-1.5*x}2);(-1 0 1;0 -1 -2;2;-3.0)]   / digest #40: was -(1+x)
-t[`exceptCharNum;(1 2 3^"a";"ab"^1;(1 2 3)^,"a";except[1 2 3;"a"];except["ab";1 2];"abc"^"b";1 2 3^2);(1 2 3;"ab";1 2 3;1 2 3;"ab";"ac";1 3)]   / digest #64: nothing removed, as q and ngn/k
-t[`jsonKeys;(`j@1 2!3 4;`j@(1.5 2)!3 4;`j@`a`b!3 4;`j@("ab";"cd")!3 4;5#.[`j@;,(1 2;3 4)!3 4;{x}]);("{\"1\":3,\"2\":4}";"{\"1.5\":3,\"2\":4}";"{\"a\":3,\"b\":4}";"{\"ab\":3,\"cd\":4}";"'type")]   / digest #60: number keys as strings, list keys 'type, as q
+t[`rotateWhole;(rotate[3;1 2 3];rotate[0;1 2 3];rotate[-3;1 2 3]);3#,1 2 3]   / Digest #47: was ::
+/ Digest #38: an atom does what q does, not what the k primitive does
+t[`negAfterParams;({[x]-1+x}0 1 2;{[x]-x}0 1 2;{[x;y]-1+x+y}[1;2];{[x]-1.5*x}2);(-1 0 1;0 -1 -2;2;-3.0)]   / Digest #40: was -(1+x)
+t[`exceptCharNum;(1 2 3^"a";"ab"^1;(1 2 3)^,"a";except[1 2 3;"a"];except["ab";1 2];"abc"^"b";1 2 3^2);(1 2 3;"ab";1 2 3;1 2 3;"ab";"ac";1 3)]   / Digest #64: nothing removed, as q and ngn/k
+t[`jsonKeys;(`j@1 2!3 4;`j@(1.5 2)!3 4;`j@`a`b!3 4;`j@("ab";"cd")!3 4;5#.[`j@;,(1 2;3 4)!3 4;{x}]);("{\"1\":3,\"2\":4}";"{\"1.5\":3,\"2\":4}";"{\"a\":3,\"b\":4}";"{\"ab\":3,\"cd\":4}";"'type")]   / Digest #60: number keys as strings, list keys 'type, as q
 t[`listFnAtom;(prev 5;next 5;raze 5;5#.[distinct;,5;{x}];5#.[group;,5;{x}];distinct `a`b!1 1);(5;5;,5;"'type";"'type";,1)]
 
 / ---- ordering / set ----
@@ -134,7 +134,7 @@ t[`uj;(+uj[+`a`b!(1 2;3 4);+`b`c!(5 6;7 8)])`c;0N 0N 7 8]
 t[`pj;(+pj[+`s`p!(`a`b`c;1 1 1);xkey[`s;+`s`p!(`a`b;10 20)]])`p;11 21 1]
 t[`pjNewCol;(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`b!(1 3;100 300)]])`b;100 0 300]
 t[`pjNulls;((+pj[+`k`a!(1 2 3;0N 20 30);xkey[`k;+`k`a!(1 3;1 2)]])`a;(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`a!(1 3;0N 2)]])`a);(0N 20 32;10 20 32)]
-/ digest #45: a column t lacks takes kt's values as they are; key columns must agree in type
+/ Digest #45: a column t lacks takes kt's values as they are; key columns must agree in type
 t[`pjNewColKinds;{(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`c!(1 3;x)]])`c}'("xy";(10 20;30 40);`p`q);("x",(`c$0),"y";(10 20;!0;30 40);`p``q)]
 t[`pjKeyType;.[pj;(+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`b!(`x`y;5 6)]);{5#x}];"'type"]
 t[`pjNewColFloat;(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`b!(1 3;1.5 2.5)]])`b;1.5 0.0 2.5]
@@ -206,17 +206,17 @@ qwF:+`sym`time`bid!(`a`a`a;0.5 0.7 0.9;10 20 30)
 twF:0.6 1.0
 t[`wjFloat;(+wj1[(twF-0.15;twF+0.15);`sym`time;+`sym`time!(`a`a;twF);qwF;,(`c;count;`bid)])`c;2 1]
 t[`wjFloatFallback;(+wj1[(twF-0.15;twF+0.15);`sym`time;+`sym`time!(`a`a;twF);qwF;,(`s;{sum x};`bid)])`s;30 30]
-t[`wjNullLowFallback;(+wj1[(0N 4 7;1 5 9);`sym`time;+`sym`time!(`a`a`a;1 5 9);+`sym`time`bid!(`a`a`a`a;0 4 5 8;10 20 30 40);,(`s;{sum x};`bid)])`s;10 50 40]   / a null lower bound starts at the first quote, as the kernel does
-t[`wjIntTimesFloatWindow;(+wj1[(,4.5;,5.5);`sym`time;+`sym`time!(,`a;,5);+`sym`time`bid!(`a`a`a;3 4 5;10 20 30);,(`s;{sum x};`bid)])`s;,30]   / a float bound over int times, as the kernel
+t[`wjNullLowFallback;(+wj1[(0N 4 7;1 5 9);`sym`time;+`sym`time!(`a`a`a;1 5 9);+`sym`time`bid!(`a`a`a`a;0 4 5 8;10 20 30 40);,(`s;{sum x};`bid)])`s;10 50 40]   / A null lower bound starts at the first quote, as the kernel does
+t[`wjIntTimesFloatWindow;(+wj1[(,4.5;,5.5);`sym`time;+`sym`time!(,`a;,5);+`sym`time`bid!(`a`a`a;3 4 5;10 20 30);,(`s;{sum x};`bid)])`s;,30]   / A float bound over int times, as the kernel
 t[`wjNullLowNaNQuote;(+wj[(,0N;,1.5);`sym`time;+`sym`time!(,`a;,1.5);+`sym`time`bid!(`a`a`a;0n 1.0 2.0;10 100 1000);,(`s;{sum x};`bid)])`s;,110]   / a null lower bound over float times with a NaN quote, as the kernel
 t[`ajCharHigh;(+aj[`sym`time;+`sym`time!(`a`a`a;`c$66 201 64);+`sym`time`bid!(`a`a;`c$65 200;10 20)])`bid;10 20 0N]   / char times order as unsigned bytes, as in q (issue #17)
 t[`ajCharQuoteHigh;(+aj[`sym`time;+`sym`time!(`a`a;`c$66 71);+`sym`time`bid!(`a`a`a;`c$65 70 200;10 20 30)])`bid;10 20]
 t[`ajCharHighRev;(+aj[`sym`time;+`sym`time!(`a`a`a;`c$66 201 64);+`sym`time`bid!(`a`a;`c$200 65;20 10)])`bid;10 20 0N]   / the same quotes in the other order
-/ digest #68: wj counts the quote in force at the window's start, as q's wj (the tests around use wj1, the old window)
+/ Digest #68: wj counts the quote in force at the window's start, as q's wj (the tests around use wj1, the old window)
 WQ8:+`sym`time`p!(5#`a;1 3 5 7 9;10 20 30 40 50);WT8:+`sym`time!(,`a;,5)
 WF8:{[j;a;b]r:+j[(,a;,b);`sym`time;WT8;WQ8;((`n;#:;`p);(`s;sum;`p))];(r[`n]0;r[`s]0)}
 t[`wjPrevailing;(WF8[wj]'[4 3 0 10 0;6 6 6 12 0];WF8[wj1]'[4 3 0 10 0;6 6 6 12 0]);((2 50;2 50;3 60;1 50;0 0);(1 30;2 50;3 60;0 0;0 0))]   / q's answers
-t[`wjPrevailingRun;{[j](+j[(,3;,6);`sym`time;WT8;+`sym`time`p!(5#`a;1 3 3 5 9;10 20 25 30 50);,(`s;{+/x};`p)])[`s]0}'(wj;wj1);55 75]   / a run at the start time: wj from its last
+t[`wjPrevailingRun;{[j](+j[(,3;,6);`sym`time;WT8;+`sym`time`p!(5#`a;1 3 3 5 9;10 20 25 30 50);,(`s;{+/x};`p)])[`s]0}'(wj;wj1);55 75]   / A run at the start time: wj from its last
 t[`wjCharHigh;{q:+`sym`time`bid!(`a`a`a;`c$65 200 210;10 20 30);t:+`sym`time!(`a`a;`c$66 201);w:(`c$64 199;t`time);((+wj1[w;`sym`time;t;q;,(`mx;max;`bid)])`mx;(+wj1[w;`sym`time;t;q;,(`n;count;`bid)])`n)}[];(10 20;1 1)]   / wj's kernel reads char times unsigned too (as q's wj1)
 t[`wjCharFallback;{q:+`sym`time`bid!(`a`a`a;`c$65 128 200;10 20 30);t:+`sym`time!(,`a;,`c$200);w:(,`c$128;t`time);s:(+wj[w;`sym`time;t;q;,(`s;sum;`bid)])`s;v:(+wj[w;`sym`time;t;q;,(`v;{x};`bid)])`v;(s;v)}[];(,50;,20 30)]   / wj's fallback in K reads char times unsigned too, as the kernel
 t[`ajCharTradeNumQuotes;(+aj[`sym`time;+`sym`time!(,`a;,`c$250);+`sym`time`v!(`a`a`a;1 100 200;1 2 3)])`v;,0N]   / a char trade time against number quote times stays signed, as ' and ajmK read it
@@ -330,8 +330,8 @@ t[`fbyTable;fby[(sum;1 2 3 4 5);([]s:`a`b`a`b`a;e:`X`X`Y`Y`X)];6 2 3 4 6]
 / ... and a general list that genuinely has one item per datum is NOT flipped
 t[`fbyListSame;fby[(sum;10 20);(`a`b;`a`b)];30 30]
 t[`xgroupUngroup;ungroup xgroup[`s;st];+`s`v!(`a`a`a`b`b;1 3 5 2 4)]
-t[`xgroupKeyed;xgroup[`k;+`k`a!(1 2 1;10 20 30)];(+(,`k)!,1 2)!+(,`a)!,(10 30;,20)]   / digest #57: keyed, as q
-/ digest #52: a column the table lacks is an error named after it
+t[`xgroupKeyed;xgroup[`k;+`k`a!(1 2 1;10 20 30)];(+(,`k)!,1 2)!+(,`a)!,(10 30;,20)]   / Digest #57: keyed, as q
+/ Digest #52: a column the table lacks is an error named after it
 t[`tableFnMissing;{.[x;(`a;+`k`v!(-1 -2;3 4));{2#x}]}'(xasc;xdesc;xkey);3#,"'a"]
 
 / ---- strings ----
@@ -552,12 +552,12 @@ t[`ajGroupStamps;   (+aj[`g`t;GT;GQ])`q;  7 8 7]   / grouped by a timestamp colu
 t[`wjGroupStamps;   ((+wj[(10 10 10;11 11 11);`g`t;GT;GQ;,(`c;count;`q)])`c;(+wj[(10 10 10;11 11 11);`g`t;GT;GQ;,(`s;sum;`q)])`s);  (1 1 1;7 8 7)]
 t[`ajTimes;        (+aj[`t;+`t`v!((10:00:00.000;11:00:00.000);1 2);+`t`q!((09:00:00.000;10:30:00.000);6 5)])`q;  6 5]
 / ej: null keys, int keys of mixed widths, an empty x; xasc of mixed temporals beside a bool column
-t[`inBits;(0101B in 1;(0101B;1) in 1);(0101b;(0101b;1b))]   / digest #7
+t[`inBits;(0101B in 1;(0101B;1) in 1);(0101b;(0101b;1b))]   / Digest #7
 t[`ejNullKeys;ej[`s;+`s`n!(``a`;1 2 3);+`s`v!(`a``;10 20 30)];+`s`n`v!(```a``;1 1 2 3 3;20 30 10 20 30)]
 t[`ejMixedWidths;ej[`k;+`k`n!(1 2 300;1 2 3);+`k`v!(`i$300 1 7;10 20 30)];+`k`n`v!(1 300;1 3;20 10)]
 t[`ejEmptyX;{(!+x;@'(+x)`s`n`v)}ej[`s;+`s`n!(0#`;0#0);+`s`v!(`a`b;1 2)];(`s`n`v;`S`I`I)]
-t[`xascTemporalBool;(+`t`b xasc +`t`b`v!((2026.07.30;1;0.5;2026.07.29;2026.07.30D10:00:00.000;0N);101010b;!6))`v;3 0 2 5 1 4]   / as < orders the column (digest #58; it was the rows' order)
-/ digest #58: a generic column mixing temporals with numbers orders as < (>) on it, with one key or two
+t[`xascTemporalBool;(+`t`b xasc +`t`b`v!((2026.07.30;1;0.5;2026.07.29;2026.07.30D10:00:00.000;0N);101010b;!6))`v;3 0 2 5 1 4]   / As < orders the column (digest #58; it was the rows' order)
+/ Digest #58: a generic column mixing temporals with numbers orders as < (>) on it, with one key or two
 XG:(2026.07.30D10:00:00.000;0N;1.5;2026.07.30;2026.07.30D09:59:59.999999999;0n;5;-0.0;0.0;2026.07.29);XT:+`g`v!(XG;9 8 7 6 5 4 3 2 1 0)
 t[`xascGeneric;((+xasc[`g;XT])`v;(+xdesc[`g;XT])`v;(+xasc[`v`g;XT])`v);(XT[`v]@<XG;XT[`v]@>XG;!10)]
 t[`ajsortedStamps; (ajsorted[`ts;AJQ];ajsorted[`ts;+`ts`q!(|AJQ`ts;6 5)]);  1 0]   / sorted temporal quotes are not sorted again
@@ -625,7 +625,7 @@ PG:0
 t[`peachNoupdate;   .[{`pe({PG::x;x};!50)};,0;{`noupdate}];          $[PS;!50;`noupdate]]
 t[`peachGlobalKept; PG;                                              $[PS;49;0]]
 / JSON in peach: the reader's and the writer's positions are per thread (workers shared one, and read or wrote each other's text)
-/ digest #5: a worker recurses as deep as the main thread (its stack was the platform default, 512 KB on macOS)
+/ Digest #5: a worker recurses as deep as the main thread (its stack was the platform default, 512 KB on macOS)
 PF:{$[x>0;1+o x-1;0]}
 t[`peachDeep;`pe({PF x};4#2000);4#2000]
 PJ:$%1+!100000

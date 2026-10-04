@@ -8,8 +8,8 @@ X1(not,RmMA(e1f(not,x))RU(x(ai(x==au)))
 X1(nul,RmMA(e1f(nul,x))RU(x(ai(x==au)))RB(whr(len(x)))RF(A y=aG(xn);Mx(F(xn,yg=xf!=xf))y)Rf(x(ai(*xF!=*xF)))R_(eql(cn[xt],x)))
 X1(flr,RmMA(e1f(flr,x))RcC(K1("{`c$x+32*~\"A[\"'x}",x))RsS(cS(flr(str(x))))RilEBGHIL(x)RfF(A y=an(xn,xt+tl-tf);L o=0;Mx(F(yn,F v=xf;L b=__builtin_fabs(v)<0x1p63;o|=b^1;yl=(L)__builtin_floor(b?v:0))I(o,F(yn,F v=xf;B b=__builtin_fabs(v)<0x1p63;L r=(L)__builtin_floor(b?v:0);yl=b?r:v>0?WL:NL)))y)R_(et(x)))
 
-// amber 2.5 (exp): `abs (amber.k: abs:{`abs x}). It was {x*signum x}, five passes; one here, the same bits:
-// a float flips its sign only below 0, a NaN and a -0.0 stay as they were (NaN*-1 is that NaN, -0.0*0 is -0.0);
+// Amber 2.5 (exp): `abs (amber.k: abs:{`abs x}). It was {x*signum x}, five passes; one here, the same bits:
+// A float flips its sign only below 0, a NaN and a -0.0 stay as they were (NaN*-1 is that NaN, -0.0*0 is -0.0);
 // an int vector is |x| at its width, one wider if it holds the width's least value (the multiply overflowed and
 // redid it wider, as for neg), and 64-bit 0N stays 0N (it wraps). The sign is flipped on the bits so that no
 // -fno-signed-zeros fold can turn the test into a fabs. Anything else goes the old way.

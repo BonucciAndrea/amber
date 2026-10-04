@@ -70,9 +70,9 @@ Z A modzZ(L m,A y,U f)_(P(!m,y)
  // amber 2.4.1: a shared y was copied by mut() and then masked, two passes; mask into a new vector
  P(yt==t&&!MINE(y),A z=an(yn,t);S4(w,F(zn,zg=yg&(G)m),F(zn,zh=yh&(H)m),F(zn,zi=yi&(I)m),F(zn,zl=yl&m))y(z))
  y=mut(N(ct(t,y)));F(3-w,m|=m<<(8<<w+i))L*p=yV;F((yn<<w)+31>>5,Fj(4,*p++&=m))y)
-// digest #15: the float remainder from fmod (exact), then made non-negative. It was {y-x*(-x)!_y}, whose _y
+// Digest #15: the float remainder from fmod (exact), then made non-negative. It was {y-x*(-x)!_y}, whose _y
 // saturates past 2^63 (7!1e19 was 7.8e17) and makes 0w 0N (5!-0w was -0w; now 0n, as q). -0.0 stays -0.0.
-Z F fmz(F v,F m)_(F r=__builtin_fmod(v,m);P(r<0,r+m)W u;MC(&u,&r,8);P(u<<1,r)MC(&u,&v,8);P(!(u<<1),v)0.0)   //an exact multiple: 0.0, -0.0 only from y -0.0 itself (as before); on bits: the build has -fno-signed-zeros
+Z F fmz(F v,F m)_(F r=__builtin_fmod(v,m);P(r<0,r+m)W u;MC(&u,&r,8);P(u<<1,r)MC(&u,&v,8);P(!(u<<1),v)0.0)   //An exact multiple: 0.0, -0.0 only from y -0.0 itself (as before); on bits: the build has -fno-signed-zeros
 Z A modzf(L n,A y,U f)_(P(!n,y)P(n<0,en(y))F m=(F)n;P(ytf,F v=*yF;y(af(fmz(v,m))))A z=MINE(y)?y:aF(yn);_at(z)=0;CO F*p=yF;F*q=zF;F(yn,q[i]=fmz(p[i],m))y-z?y(z):z)
 Z A mmmzZ(L v,A y,U f)_(C t=tZ(v),u=tG+yw-3;I(u<t||u-yt,y=ct(t,y))E(t=u)U n=yn;A z=MINE(y)?y:an(n,t);_at(z)=0;C w=t-tG;n+=31>>w;L m=-(f==7);v^=m;
  S4(w,F(n&~31,zg=m^MIN(v,m^yg)),F(n&~15,zh=m^MIN(v,m^yh)),F(n&~7,zi=m^MIN(v,m^yi)),F(n&~3,zl=m^MIN(v,m^yl)))y-z?y(z):z)
@@ -106,7 +106,7 @@ Z A cmpzZ(L v,A y,U f)_(U w=yw-3;P(tG+w<tZ(v),y(rsz(yn,ai(f==8?v<0:f==9?v>0:0)))
  U n=yn;A z=aG(n);My(A(&ltng,ltnh,ltni,ltnl,gtng,gtnh,gtni,gtnl,eqlg,eqlh,eqli,eqll)[f-8<<2|w](v,yV,zG,n))z)
 
 Z A addzE(L v,A x)_(Lij P(v>0?j>WL-v:i<NL-v,addzZ(v,gZ(x),1))x(0);aE(i+v,j+v))   //ends past the int range: a vector (ints wrap), not a wrapped range
-// amber 2.5 (exp): the number-with-vector float loops are functions of their own (noipa: one copy of the
+// Amber 2.5 (exp): the number-with-vector float loops are functions of their own (noipa: one copy of the
 // machine code) so that these primitives and the fusion engine below make every element the same way.
 #if defined(__clang__)
 #define FZK NI
@@ -127,7 +127,7 @@ Z A dvdFf(A x,F v,U f)_(A z=aF(xn);fzdvr(xF,v,zF,xn);z)
 // fzrun runs the program the compiler made for an element-wise tree (src/b.c fz): d is (program bytes;
 // literals..), l the frame's locals. Leaves are float or int vectors of one length n>=FZ_MIN and numbers;
 // + - * % & | anywhere, < > = at the root, maybe +/ on top. Anything else (and an operation on two numbers)
-// returns 0 and the unfused code runs. The tree is evaluated FZ_BK elements at a time, intermediates in small
+// Returns 0 and the unfused code runs. The tree is evaluated FZ_BK elements at a time, intermediates in small
 // buffers that stay in cache, every step as the unfused primitive does it:
 //  - floats: the very kernel function the primitive calls, with the operands arif() gives it (a number left
 //    of - is the subs kernel, right of it v+x with -v), so every element is the same double;
@@ -143,21 +143,21 @@ Z A dvdFf(A x,F v,U f)_(A z=aF(xn);fzdvr(xF,v,zF,xn);z)
 #define FZ_MIN 2048u
 #define FZ_BK 512u
 #define FZ_PAR (1u<<15)
-#define FZ_N 32           //program steps
+#define FZ_N 32           //Program steps
 TD struct{UC op,k,w,s;}FZS;   //op: 'v' float vector, 'z' int vector (w: width 0..3), 'c' float number, 'i' int number,
-                              //else the operation; k: 0 float, 1 int, 2 comparison; s: 1 for a number
+                              //Else the operation; k: 0 float, 1 int, 2 comparison; s: 1 for a number
 TD struct{FZS p[FZ_N];U np,dp,n,nb,nt;int ab;B sum,i32;UC ow,tr[FZ_N];CO V*lv[FZ_N];F lc[FZ_N];L li[FZ_N];V*out;L*mn,*mx;W*acc;}FZC;
 // src/o.c's order key for floats (of1, of0), the same integer steps
 Z CO W fzo_=(-1ull>>12)-1;Z L fzt_(L v)_(v^(W)(v>>63)>>1)
 Z L fzco(L v)_(W b=(W)v<<1;!b?0:b>0xffe0000000000000ull?NFL:v)
 Z L fzk1(F x)_(L v;MC(&v,&x,8);fzt_(fzco(v))+fzo_)
 Z F fzk0(L v)_(v=fzt_(v-fzo_);F x;MC(&x,&v,8);x)
-// a NaN or a -0.0 among x[0..n): where the keys and IEEE order part
+// A NaN or a -0.0 among x[0..n): where the keys and IEEE order part
 Z B fzbad(CO F*x,U n){W b=0;F(n,W u;MC(&u,x+i,8);b|=(u<<1>0xffe0000000000000ull)|(u==1ull<<63))return b!=0;}
 Z B fzbad1(F v)_(fzbad(&v,1))
 TD __int128 FZL;
 Z U fzfit(FZL lo,FZL hi){U w=0;W(w<3&&(lo<-((FZL)1<<((8<<w)-1))||hi>((FZL)1<<((8<<w)-1))-1),w++)return w;}
-// the block evaluator, made for int lanes of type T (L or I; UT its unsigned); DW: the width T stores (3 or 2)
+// The block evaluator, made for int lanes of type T (L or I; UT its unsigned); DW: the width T stores (3 or 2)
 #if defined(__x86_64__) && defined(__ELF__) && defined(__GNUC__) && !defined(wasm) && !defined(__AVX2__)
 #define FZMV __attribute__((target_clones("avx2","default")))
 #else
@@ -210,7 +210,7 @@ FZBLK(fzblk64,L,W,3)
 FZBLK(fzblk32,I,U,2)
 Z V fzw(V*c_,int t){FZC*c=c_;U b0=(U)((N)c->nb*t/c->nt),b1=(U)((N)c->nb*(t+1)/c->nt);F bf[c->dp*FZ_BK];
  L mn[FZ_N],mx[FZ_N];W acc=0;F(FZ_N,mn[i]=WL;mx[i]=NL)
- U r=c->np-1;B wa=c->p[r].k==1&&!c->sum&&c->tr[r];                     //watch the root's width
+ U r=c->np-1;B wa=c->p[r].k==1&&!c->sum&&c->tr[r];                     //Watch the root's width
  for(U k=b0;k<b1;k++){U o=k*FZ_BK,m=MIN(FZ_BK,c->n-o);I(wa&&__atomic_load_n(&c->ab,__ATOMIC_RELAXED),break)
   I(c->i32,fzblk32(c,o,m,bf,mn,mx,&acc))E(fzblk64(c,o,m,bf,mn,mx,&acc))
   I(wa&&fzfit(mn[r],mx[r])>c->ow,__atomic_store_n(&c->ab,1,__ATOMIC_RELAXED);break)}
@@ -227,7 +227,7 @@ A fzrun(A d,A*l){A pg=_A(d)[0];CO UC*q=(CO UC*)_V(pg),*e=q+_n(pg);FZC c;c.sum=*q
     I(t==tf,c.lc[np]=*_F(v);c.p[np++]=(FZS){'c',0,0,1};kd[dp]=0)E(c.li[np]=gl_(v);c.p[np++]=(FZS){'i',1,0,1};kd[dp]=1)sd[dp++]=1))
  P(dp!=1||n<FZ_MIN||sd[0],0)
  c.np=np;c.n=n;c.nb=(n+FZ_BK-1)/FZ_BK;c.dp=0;{U k=0;F(np,I(c.p[i].op=='v'||c.p[i].op=='z'||c.p[i].op=='c'||c.p[i].op=='i',k++)E(k--)c.dp=MAX(c.dp,k))}
- // before the pass: the bounds of every int step, the least and most width it can end at, and which steps
+ // Before the pass: the bounds of every int step, the least and most width it can end at, and which steps
  // need watching (their bound does not fit the least width their operands can have)
  FZL lo[FZ_N],hi[FZ_N];UC wl[FZ_N],wm[FZ_N];U st[FZ_N],sp_=0;
  F(np,FZS s=c.p[i];c.tr[i]=0;
@@ -243,14 +243,14 @@ A fzrun(A d,A*l){A pg=_A(d)[0];CO UC*q=(CO UC*)_V(pg),*e=q+_n(pg);FZC c;c.sum=*q
     C('*',FZL p0=x0*y0,p1=x0*y1,p2=x1*y0,p3=x1*y1;lo[i]=MIN(MIN(p0,p1),MIN(p2,p3));hi[i]=MAX(MAX(p0,p1),MAX(p2,p3)))
     C('&',lo[i]=MIN(x0,y0);hi[i]=MIN(x1,y1))C('|',lo[i]=MAX(x0,y0);hi[i]=MAX(x1,y1)))
    I(s.op=='+'||s.op=='-'||s.op=='*',U f=fzfit(lo[i],hi[i]);I(f>wl[i],c.tr[i]=1)wm[i]=MAX(wm[i],f))
-   I(lo[i]<NL||hi[i]>WL,lo[i]=NL;hi[i]=WL)))                           //it may wrap (only where a 64-bit op wraps too)
+   I(lo[i]<NL||hi[i]>WL,lo[i]=NL;hi[i]=WL)))                           //It may wrap (only where a 64-bit op wraps too)
  c.i32=1;F(np,FZS s=c.p[i];I(s.op=='z'&&s.w==3||s.op=='i'&&c.li[i]!=(I)c.li[i]||s.k==1&&s.op!='z'&&s.op!='i'&&(lo[i]<-((FZL)1<<31)||hi[i]>((FZL)1<<31)-1),c.i32=0))
  int nt=n>=FZ_PAR?par_thread_count(n):1;I(nt>(int)c.nb,nt=(int)c.nb)c.nt=(U)nt;
  UC rk=c.p[np-1].k;c.ow=rk==1?wl[np-1]:3;L mnb[PAR_MAX_THREADS*FZ_N],mxb[PAR_MAX_THREADS*FZ_N];W acb[PAR_MAX_THREADS];c.mn=mnb;c.mx=mxb;c.acc=acb;
  A z=0;c.ab=0;
  again:I(!c.sum||rk==0,z=an(n,rk==0?tF:rk==1?tG+c.ow:tG);P(!z,0)_at(z)=0;c.out=_V(z))
  I(nt>1,par_run(nt,fzw,&c))E(fzw(&c,0))
- I(c.ab,mr(z);c.ab=0;c.ow=wm[np-1];goto again)                        //the guess was too narrow: at the widest
+ I(c.ab,mr(z);c.ab=0;c.ow=wm[np-1];goto again)                        //The guess was too narrow: at the widest
  P(c.sum&&rk==0,F r=par_bsum_f64(zF,n);mr(z);af(r))
  P(c.sum,W t=0;F(nt,t+=acb[i])az((L)t))
  // widths: replay the steps; an int step's width is max(its operands', the narrowest holding its values)
@@ -261,14 +261,14 @@ A fzrun(A d,A*l){A pg=_A(d)[0];CO UC*q=(CO UC*)_V(pg),*e=q+_n(pg);FZC c;c.sum=*q
   I(s.k==1,FZS sa=c.p[aa],se=c.p[ea];
    U wa=sa.s?tZ(c.li[aa])-tG:wd[aa],we=se.s?tZ(s.op=='-'?(L)(0-(W)c.li[ea]):c.li[ea])-tG:wd[ea];wd[i]=MAX(wa,we);
    I(c.tr[i],L lo_=WL,hi_=NL;F_(t,nt,lo_=MIN(lo_,mnb[t*FZ_N+i]);hi_=MAX(hi_,mxb[t*FZ_N+i]))wd[i]=MAX(wd[i],fzfit(lo_,hi_))))
-  // a comparison of an int vector with an int number wider than it: cmpzZ's rsz (the number taken on the left)
+  // A comparison of an int vector with an int number wider than it: cmpzZ's rsz (the number taken on the left)
   I(s.k==2&&i==np-1,FZS sa=c.p[aa],se=c.p[ea];
    I(sa.k==1&&se.k==1&&(sa.s||se.s),L v=sa.s?c.li[aa]:c.li[ea];U w=sa.s?wd[ea]:wd[aa];U f=s.op=='<'?8:s.op=='>'?9:10;I(se.s&&f<10,f^=1)
     I(tG+w<tZ(v),mr(z);return rsz(n,ai(f==8?v<0:f==9?v>0:0))))))
- I(rk==1&&wd[np-1]>c.ow,mr(z);c.ow=(UC)wd[np-1];goto again)          //wider than guessed (an operand widened): again at its width
- I(rk==1&&wd[np-1]<c.ow,z=ct(tG+wd[np-1],z))                         //after a rerun at the widest
+ I(rk==1&&wd[np-1]>c.ow,mr(z);c.ow=(UC)wd[np-1];goto again)          //Wider than guessed (an operand widened): again at its width
+ I(rk==1&&wd[np-1]<c.ow,z=ct(tG+wd[np-1],z))                         //After a rerun at the widest
  return z;}
-// the VM's bF (src/b.c): b at its operands j c p, l the frame's locals, k the lambda's constants. Out of line so
+// The VM's bF (src/b.c): b at its operands j c p, l the frame's locals, k the lambda's constants. Out of line so
 // that the dispatch loop's registers are not disturbed; p, a local leaf, is looked at first and unless it holds
 // a float or int vector long enough there is nothing more to do (scalar code, short vectors).
 NI A fzop(CO UC*b,A*l,A*k){UC p=b[2];I(p<16,A v=l[p];P(!v||_tP(v)||(_T(v)!=tF&&!LH(tG,_T(v),tL))||_n(v)<FZ_MIN,0))return fzrun(k[b[1]],l);}
@@ -348,7 +348,7 @@ Z A tmk(UC k,L w)_(k==tdt?adt((I)w):k==ttm?atm((I)w):k==tnp?antp(w):az(w))
 // Only the documented cases (issue #18): a temporal plus or minus an int (either side), one minus the same
 // kind (an int), time plus time, & | of the same kind, comparisons. Anything else is 'type: tari read any other
 // operand's low bits, so date+2.3 or date*2 were silent nonsense, and % ! returned x as it was. A null int is 'domain:
-// there is no null date, time or timestamp to give (date+0N was the date). x:y is y (it gave x) - digest #27
+// There is no null date, time or timestamp to give (date+0N was the date). x:y is y (it gave x) - digest #27
 Z A tari(A x,A y,U op)_(UC ka=_t(x),kb=_t(y);B qa=ka>=tdt,qb=kb>=tdt;P(!op,y)
  I(op<8,B ia=ka==ti||ka==tl,ib=kb==ti||kb==tl;
   B ok=qa&&qb?((op==2||op==6||op==7)&&ka==kb)||(op==1&&ka==ttm&&kb==ttm):(op==1||op==2)&&(qa?ib:ia);P(!ok,et(y))

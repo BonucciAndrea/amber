@@ -1,19 +1,35 @@
 # Changelog
 
+## 2.6.0
+
+Threads and fusion come in from the experimental branch. Big vectors now use all the cores, and
+small ones don't notice.
+
+- **Threads inside primitives**: sort, grade, `xasc`, find, `in`, the `aj` match, gather, distinct
+  of ints, group aggregates and float sum/dot/max/min split over `AMBER_THREADS` once a vector is
+  big. On 14 threads: find 4.6x, `in` 3.4x, distinct 3.3x, float sums 2.9x, table sort 1.9x.
+- **Fusion**: inside a lambda, `+ - * % & |` trees over float or int vectors (comparisons at the
+  top, `+/` on top) run in one cache-sized pass instead of a vector per verb. Same bits as before.
+- **The pool stays up** between calls, so a small call right after a big one costs nothing extra.
+- **`abs`** is one pass instead of five.
+- **One thing to know**: float sums of 1M+ items add in fixed 64K blocks, so the last digits can
+  differ from 2.5.0, but they're the same at any thread count. `AMBER_THREADS=1` turns threads off.
+- The VM's start is pinned to 64 bytes, which ends the 5-8% nbody swing between builds.
+
 ## 2.5.0
 
 A long bug list worked through (crashes first, then wrong answers), and a pile of places where Amber
 now answers like q. Nothing got slower, and a few things got a lot faster.
 
-- **crashes and leaks**: closing stdin/stdout/stderr with `>`, deep recursion inside `peach`, except
+- **Crashes and leaks**: closing stdin/stdout/stderr with `>`, deep recursion inside `peach`, except
   on a bit list, an empty table's amend, a racy lambda cache in `peach`, and `aim`/`plot` reading a
   range as two addresses. All gone.
-- **wrong answers**: `x!y` of huge floats, find of `()` in floats, `-1_` on a general list, bit-list
+- **Wrong answers**: `x!y` of huge floats, find of `()` in floats, `-1_` on a general list, bit-list
   literals, roll past 2^29, arrow int32 nulls, `pj` with char or nested columns, `xasc` on a mixed
   column, `=(1;"ab")`.
-- **dicts**: `+ - * % & |` and `,'` with keys on one side work as in q (empty dicts, repeated keys
+- **Dicts**: `+ - * % & |` and `,'` with keys on one side work as in q (empty dicts, repeated keys
   too), and equal keys skip the lookup, ~400x faster on 1M keys.
-- **dates and times**: only the documented arithmetic (date+2.3 used to give nonsense, now it's
+- **Dates and times**: only the documented arithmetic (date+2.3 used to give nonsense, now it's
   `'type`), and `2026.01.01 2026.01.02` is a list.
 - **q names**: `sums prds prd wsum wavg svar sdev cov cor` skip nulls, `cov` keeps its digits far
   from 0, `prev next all differ vs rotate distinct raze` do what q does, `wsum` and `med` give floats,
@@ -21,10 +37,10 @@ now answers like q. Nothing got slower, and a few things got a lot faster.
 - **qSQL**: where-clauses cascade, columns get q's names (`v v1`, `x`), an atom column is stretched,
   and `exec -1+n` no longer negates everything (`{[x]-1+x}` was `-(1+x)`).
 - **wj** counts the quote in force at the window start, as q's does; `wj1` is the old one.
-- **fix round from pull requests**: float parsing rounds right, amend by key ~40% faster, dates and
+- **Fix round from pull requests**: float parsing rounds right, amend by key ~40% faster, dates and
   timestamps grade ~90% faster, `ej` 12-68% faster, three crash fixes; `aj`/`wj` take `!n` as a time
   column.
-- **faster on the way**: `cor` 3x, `prev`/`next` on floats ~100x, `differ` 7-17x.
+- **Faster on the way**: `cor` 3x, `prev`/`next` on floats ~100x, `differ` 7-17x.
 
 ## 2.4.2
 

@@ -120,7 +120,7 @@ tv[`emptyRev;"|0#0";0#0];
 tv[`emptyAsc;"<0#0";0#0];
 tv[`emptyDist;"?0#0";0#0];
 tv[`emptyDeltas;"deltas 0#0";0#0];
-tv[`emptyRatios;"ratios 0#0";0#0.0];   / an empty float list, as q (digest #67)
+tv[`emptyRatios;"ratios 0#0";0#0.0];   / An empty float list, as q (digest #67)
 tv[`emptySums;"sums 0#0";0#0];
 tv[`emptyAvg;"avg 0#0";0n];
 tv[`emptyMed;"med 0#0";0n];

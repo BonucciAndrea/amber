@@ -40,7 +40,7 @@ Z V Jl(L v){s=v!=NL?sl(s,v):MC(s,"null",4)+4;}  //v-NL overflowed for v>=0
 //keys and values are sized as lists (nx sized a char vector as one string, where each char is
 //written as a string of its own), and nl counts up to 20 characters (a negative 19-digit int).
 Z U nxe(A x/*0*/)_(U n=xN,m=1+n+!n;F(n,m+=nX(ii(x,i)))m)
-//a dict's keys: a number is written as a string, as q ({1:3} is no JSON), so two quotes more each; a key that is
+//A dict's keys: a number is written as a string, as q ({1:3} is no JSON), so two quotes more each; a key that is
 //a list other than a string is 'type, as q (digest #60)
 Z B jkq(UC u)_(u==ti||u==tl||u==tf)
 Z U nkq(A k/*0*/)_(UC u=_t(k);P(_tP(k)||u==tS||u==tC,0)P(LH(tB,u,tF),2*_n(k))P(u-tA,0)U m=0;

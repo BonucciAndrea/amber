@@ -62,7 +62,7 @@ add  vector   ██░                   (native C kernel, auto-SIMD)   ~2-9x f
 mul  scalar   ██████████████░
 mul  vector   █░                                                    ~2-9x faster
 sum  serial   ░
-sum  peach    ███░   (fork/IPC overhead dominates a cheap reduction --
+sum  peach    ███░   (handing out tasks costs more than a cheap reduction --
                        peach earns its keep on per-task-heavy work, see examples/peach.k)
 ```
 
@@ -155,8 +155,8 @@ Three notes on that block, because the obvious-looking variants do not work:
 | **Alias the launcher `a`, not the binary `amber`** | The bare `amber` binary is the interpreter with **no** stdlib: `amber` alone gives you a REPL where `select`, `aj` and `sum` are undefined. `./a` loads `repl.k`, which loads everything else. |
 | **`AMBER_NATIVE` is a *build*-time variable** | It is read by `build.sh`, not by the interpreter. It belongs on the `a` alias, which may rebuild, and does nothing on `amberx`. There is no `AMBER_MEM_MB`: the heap is `mmap`'d with `MAP_NORESERVE` and sized lazily by the OS, so there is nothing to tune. |
 
-The variables the engine itself reads at run time are exactly: `AMBER_THREADS` (vector-engine
-lanes), `AMBER_DIAG` (rich diagnostics on/off), `AMBER_NO_EDIT` and `AMBER_RLWRAP` (line editor),
+The variables the engine itself reads at run time are exactly: `AMBER_THREADS` (threads for
+`peach` and big vectors), `AMBER_DIAG` (rich diagnostics on/off), `AMBER_NO_EDIT` and `AMBER_RLWRAP` (line editor),
 plus `AMBER_AI_*` once the [amber-ai](https://github.com/bonucciandrea/amber-ai) extension is
 installed. Nothing is installed system-wide; see [Isolation](#isolation).
 
@@ -210,7 +210,7 @@ v ? 12345 67890                              / O(log n)  (see bench.k: ~1000x fa
 b:-8!+`a`b!(1 2 3;4 5 6)     / table -> compact byte vector
 (-9!b)~+`a`b!(1 2 3;4 5 6)   / 1b  -- exact, attributes and nulls included
 
-/ multi-core: peach runs f over items in parallel worker processes (no GIL)
+/ multi-core: peach runs f over items on a pool of threads (no GIL)
 peach[{avg x?1.0}; 8#1000000]                / 8 heavy tasks across AMBER_THREADS cores
 ```
 

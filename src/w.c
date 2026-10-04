@@ -41,7 +41,7 @@ A e2f(A2 f,A x,A y/*f01*/)_(U k=xtt<<1|ytt;P(k==3,f(x,y))
  P(xtm||ytm,P(xtm>ytm,A z=N(e2f(f,xy,y));am(_R(xx),z))P(xtm<ytm,A z=Ny(e2f(f,x,_R(yy)));y(am(_R(yx),z)))
   P(_n(xx)&&_n(yx)&&urnk(xx)-urnk(yx),ed(y))
   I c=f==add?0:f==sub?1:f==mul?2:f==dvd?3:f==mnm||f==mnu?4:f==mxm||f==mxu?5:f==cat?6:-1;P(c>=0&&!_tM(xx)&&!_tM(yx),dkey(c,f,x,y))
-  A z=cat(xx,_R(yx));P(!z,y(0))P(_tM(xx)||_tM(yx),mr(z);y(en0()))   /*keyed tables: not yet (issue #19); keys that do not join were 'domain above*/z=unq(z);P(!z,y(0))B o=(f==add||f==sub||f==mul||f==dvd||f==mnm||f==mnu)&&(_n(xx)||_t(xx)-tA)&&(_n(yx)||_t(yx)-tA)&&!mtc_(xx,yx);A mx=o?fnd(xx,zR):0,my=o?fnd(yx,zR):0;x=x1(zR);P(!x,I(mx,mr(mx))I(my,mr(my))z(y(0)))y=y(y1(zR));P(!y,I(mx,mr(mx))I(my,mr(my))z(x(0)))   //mx my: 0N where a key is missing on that side (none is when the keys match)
+  A z=cat(xx,_R(yx));P(!z,y(0))P(_tM(xx)||_tM(yx),mr(z);y(en0()))   /*Keyed tables: not yet (issue #19); keys that do not join were 'domain above*/z=unq(z);P(!z,y(0))B o=(f==add||f==sub||f==mul||f==dvd||f==mnm||f==mnu)&&(_n(xx)||_t(xx)-tA)&&(_n(yx)||_t(yx)-tA)&&!mtc_(xx,yx);A mx=o?fnd(xx,zR):0,my=o?fnd(yx,zR):0;x=x1(zR);P(!x,I(mx,mr(mx))I(my,mr(my))z(y(0)))y=y(y1(zR));P(!y,I(mx,mr(mx))I(my,mr(my))z(x(0)))   //mx my: 0N where a key is missing on that side (none is when the keys match)
   I(o,                                                         //a missing key takes the verb's identity (only a missing one: a null value stays)
    A u=f==mnm||f==mnu?(xtF||ytF?af(WF):az(WL)):ai(f==mul||f==dvd);x=K("{$[|/^z;@[x;&^z;:;y];x]}",x,_R(u),mx);P(!x,mr(u);mr(my);z(y(0)))y=K("{$[|/^z;@[x;&^z;:;y];x]}",y,u,my);P(!y,z(x(0))))   //the identity atom at the missing positions only
   am(z,Nz(x(e2f(f,x,y)))))
@@ -49,7 +49,7 @@ A e2f(A2 f,A x,A y/*f01*/)_(U k=xtt<<1|ytt;P(k==3,f(x,y))
 AX(e8,/*01..1*/P(n==1,e1(x,*a))P(n==2,A y=*a;y(e2(x,y,a[1])))Ab8;C t[8];L m=-1;F(n,A y=b[i]=a[i];Ym(em(x,a,n))t[i]=ytP?0:ytt?1:ytA?2+!MINE(y):4;I(t[i]>1,L l=yN;P(m>=0&&m-l,el8(a,n))m=l))
  P(m<0,x8(a,n))F(n,I(t[i]==1,_r(a[i])+=m))A u=0;I(!m,u=x==LEN?emp(tG):n==2&&xtv&&xv<11?_R(a[!_N(a[1])]):emp(tA))//t[i] 0:pkdatm,1:refatm,2:tA(r=1),3:tA,4:other
  Fj(m,F(n,A y=a[i];I(t[i]==2,b[i]=yA[j])I(t[i]>2,b[i]=ii(y,j)))A z=x8(b,n);B(!z,I(u,u=u(0))F(n,A y=a[i];I(t[i]==1,yr-=m-j-1)I(t[i]==2,mrn(m-j-1,yA+j+1))))I(!j,u=LH(ti,zt,ts)?AN(0,an(m,TT[zt])):emp(tA))PSH(u,z))
- F(n,mr(t[i]-2||!m?a[i]:AZ(a[i])))u)   //an empty list gave none of its items out: released whole (AZ, the container only, leaked an empty list's prototype item, digest #8)
+ F(n,mr(t[i]-2||!m?a[i]:AZ(a[i])))u)   //An empty list gave none of its items out: released whole (AZ, the container only, leaked an empty list's prototype item, digest #8)
 
 Z A2(cs,/*01*/A z,v=yR,u=enl(yR);W(1,z=yR;y=x1(y);P(!y,mr(v);z(u(0)))B m=mtc_(y,z)||mtc_(y,v);z(0);B(m)PSH(u,yR))mr(v);y(u))
 Z A2(cf,/*01*/A z=yR,u;W(1,zR;u=x1(z);B(!u)P(mtc_(u,y)||mtc_(u,z),y(u(z)))z=z(u))y(z(u)))

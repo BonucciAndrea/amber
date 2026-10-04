@@ -108,12 +108,33 @@ amber> \\ (rebuilt with AMBER_NATIVE=1)
 simd: backend=avx2 n=400009 simd_add=1.51ms scalar_add=1.76ms ok=1
 ```
 
-**Multithreaded vector engine** (`src/parallel.{h,c}`): `par_add_i64/f64`, `par_mul_i64/f64`,
-`par_sum_i64/f64` split arrays **above 100,000 elements** (`PAR_THRESHOLD`) into one contiguous
-chunk per POSIX thread (`pthread_create`/`pthread_join`), each chunk processed by the SIMD
-kernels above; below the threshold it calls the SIMD kernel directly with no thread overhead.
-Thread count follows the same `AMBER_THREADS` env var `peach` already uses (default: online CPU
-count, capped at 64). Self-test + benchmark: `` `para 0 ``.
+**Threads** (`src/parallel.{h,c}`): a persistent pool of POSIX threads that stays up between
+calls. `par_run(t,fn,ctx)` runs `fn(ctx,i)` for `i` in `[0,t)`, `i==0` on the calling thread, and
+everything parallel goes through it. Thread count is `AMBER_THREADS` (default: online CPU count,
+capped at 64), the same knob `peach` uses; `par_thread_count(n)` gives 1 below `PAR_THRESHOLD`
+(32,768).
+
+What uses it (since 2.6.0), each with its own cut-off so small inputs never pay for a hand-off:
+
+- **Sort and grade** (`src/v.c`, from 32K): an MSD split on the top key bits, then each bucket
+  sorted LSD on its own thread. Skewed data falls back per pass.
+- **Find, `in`, the `aj` match** (`src/f.c`, `src/a.c`): the table is built once, the probes are
+  split over threads (32K probes; `aj` from 128K).
+- **Gather** `x@i` (`src/a.c`, from 64K indices).
+- **Distinct of ints** (`src/f.c`, from 256K): each thread keeps first-index tables for its slice,
+  the minimum wins, and the result comes out in first-appearance order.
+- **Group aggregates** (`src/o.c`, from 64K rows): count, int sum, min, max, first, last per
+  thread, merged in order. Float sum and avg add per 256K-row block, at most 32K groups, from 256K
+  rows, and only with 2+ threads, so one thread runs the old loop exactly.
+- **Float sum and dot** (`par_bsum_f64`, `par_bdot_f64`, from 1M): fixed 64K blocks whose sums
+  are then added in order, so the answer is the same at any thread count. Max and min
+  (`par_mm_f64`) always give the serial answer: a NaN or a zero result is redone serially.
+- **Fusion** (`src/b.c` compiles, `src/2.c` `fzrun` runs, from 2048 items): see
+  [AMBER.md §5a](AMBER.md#5a-fused-idioms-and-one-pass-kernels-since-210). Blocks of 512 are
+  split over threads; every element is made by the same kernel function the unfused verb calls,
+  so the bits match.
+
+The old `par_add/par_mul/par_sum` entry points are still there. Self-test + benchmark: `` `para 0 ``.
 
 **Bytecode disassembler + `\disasm`** (`src/vm.{h,c}`). Amber's interpreter (`src/b.c`) already
 compiles every expression to a flat opcode array + constant pool and runs it on a real stack

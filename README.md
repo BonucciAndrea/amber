@@ -12,7 +12,7 @@
 **A low-latency array language: columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-2.5.0-orange)
+![version](https://img.shields.io/badge/version-2.6.0-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
 ![tests](https://img.shields.io/badge/tests-1555%20K--suite%20cases-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
@@ -43,22 +43,28 @@ qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                        / vwap by symbo
 <a name="whats-new-240"></a>
 <a name="whats-new-242"></a>
 <a name="whats-new-250"></a>
-## What's new in 2.5.0
+<a name="whats-new-260"></a>
+## What's new in 2.6.0
 
-A long bug list worked through: crashes first, then wrong answers, then a pile of spots where Amber
-now answers like q (nulls in `sums`/`wavg`/`cov`, dicts with keys on one side, qSQL where-clauses
-and column names, `wj` vs `wj1`, JSON keys, date strands). Nothing got slower, and `cor`,
-`prev`/`next`, `differ` and same-key dict maths got a lot faster.
+Threads and fusion come in from the experimental branch. Sort, grade, find, `in`, distinct, gather,
+`aj`, group aggregates and float sums/max/min now spread over all cores once a vector is big, and
+`+ - * %`, comparisons and `abs` over float and int vectors run as one fused pass instead of one
+pass per verb. On a 14-core laptop that's about 1.6× over 2.5.0 across the benchmark set, up to
+4.6× on `find`. `AMBER_THREADS=1` turns the threads off.
 
-2.4.2 before it was a fix round from pull requests: one-cell table amends stopped rebuilding the
-table (~2 minutes to ~2 ms for 10,000 of them), dates sort by value, `ej` matches q. Details in the
+One thing to know: float sums of 1M+ items now add in fixed 64K blocks, so the last digits can
+differ from 2.5.0's straight sum, but they're the same at any thread count.
+
+2.5.0 before it was a long bug list worked through: crashes, wrong answers, and a pile of spots
+where Amber now answers like q (nulls in `sums`/`wavg`/`cov`, dicts with keys on one side, qSQL
+where-clauses and column names, `wj` vs `wj1`, JSON keys, date strands). Details in the
 [changelog](CHANGELOG.md).
 
 <a name="whats-new-220"></a>
 <a name="whats-new-older"></a>
 ## Earlier releases
 
-2.4.1, 2.4.0, 2.3.1, 2.3.0, 2.2.0 and everything before them are in
+2.4.2, 2.4.1, 2.4.0, 2.3.1, 2.3.0, 2.2.0 and everything before them are in
 [`CHANGELOG.md`](CHANGELOG.md), which is the single place release notes live.
 
 <a name="quickstart"></a>
@@ -207,9 +213,11 @@ Amber uses a terse array notation. A few things worth knowing:
   work. Since 2.0.0 this bare form also works inside a `.k` file loaded once the stdlib is up (the
   loader runs each file through the same rewriter the REPL uses); the `sel"…"` / `exq"…"` / `upd"…"`
   / `del"…"` string forms and the functional forms `qselect`/`qby`/`qwhere` still work too.
-* **`peach[f;y]` is real multi-core.** It forks `AMBER_THREADS` worker processes (default: the
-  online CPU count, detected via `sysconf`; `=1` forces serial), so heavy per-item work scales
-  across cores with no GIL and it won't oversubscribe a small box or leave a big one idle.
+* **`peach[f;y]` is real multi-core.** It runs on a pool of `AMBER_THREADS` threads (default: the
+  online CPU count; `=1` forces serial), so heavy per-item work scales across cores with no GIL.
+* **Big vectors use the threads on their own.** Since 2.6, sort, grade, find, `in`, distinct, gather,
+  group aggregates, float sums and fused float/int expressions split work over the same pool once
+  a vector gets big (32K items and up). Small vectors stay on one thread, no overhead.
 * **Grids preview Q-style.** `show t` prints the first `CROWS` rows (default 20) then `..`, with
   a dimmed `[N rows x M cols]` footer and ANSI syntax highlighting.
 * **Errors show a `^` caret** under the failing token plus a descriptive message; set
@@ -269,7 +277,7 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 | file | |
 |------|--|
 | `a`, `build.sh` | launcher (build-if-stale) and portable compile (gcc / clang) |
-| `src/*.c`, `src/*.h` | the interpreter, ngn/k core + Amber extensions (`src/p.c` the `([]…)` parser; `src/ar.c` Arrow; `src/arena.{h,c}` the HFT arena, 32-byte aligned; `src/diagnostic.{h,c}` the Rust-style formatter; the native `aj` kernel in `src/a.c`; `src/inspect.{h,c}` the `\v` inspector; `src/ast.{h,c}` the `\ast` visualiser; `src/trace.{h,c}` the `\trace` profiler; `src/fmtutil.{h,c}` and `src/ansi.h` shared formatting/colour helpers; `src/simd.{h,c}` AVX2/NEON/scalar kernels; `src/parallel.{h,c}` the pthreads vector engine; `src/vm.{h,c}` the bytecode disassembler behind `\disasm`; `src/csv.{h,c}` the native CSV parser behind `` `csvr``) |
+| `src/*.c`, `src/*.h` | the interpreter, ngn/k core + Amber extensions (`src/p.c` the `([]…)` parser; `src/ar.c` Arrow; `src/arena.{h,c}` the HFT arena, 32-byte aligned; `src/diagnostic.{h,c}` the Rust-style formatter; the native `aj` kernel in `src/a.c`; `src/inspect.{h,c}` the `\v` inspector; `src/ast.{h,c}` the `\ast` visualiser; `src/trace.{h,c}` the `\trace` profiler; `src/fmtutil.{h,c}` and `src/ansi.h` shared formatting/colour helpers; `src/simd.{h,c}` AVX2/NEON/scalar kernels; `src/parallel.{h,c}` the thread pool and its parallel kernels; `src/vm.{h,c}` the bytecode disassembler behind `\disasm`; `src/csv.{h,c}` the native CSV parser behind `` `csvr``) |
 | `amber.k` | the q vocabulary (auto-loaded) |
 | `repl.k` | the REPL, banner, grid rendering, `\grid`/`\clear`, help; CRLF-safe module loader; reads its input through `` `rdl`` (the native editor) and exposes the optional `ext.*` hooks |
 | `src/ln.{h,c}`, `src/lnk.c` | the native line editor (raw `termios`, history, Tab completion) and the `` `rdl`` verb that the REPL reads through, this is what replaced `rlwrap` |

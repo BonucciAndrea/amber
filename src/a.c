@@ -117,7 +117,7 @@ I tjk(A x){P(_t(x)-tA,0)U n=_n(x);P(!n,1)CO A*a=_V(x);UC t=_t(*a);B m=0,o=0;F(n,
 B tjs(A a,A b){I p=tjk(a),q=tjk(b);P(p<0||q<0,0)P(p==q||p==1||q==1,1)return p<2&&q<2;}
 A tjn(A x){I k=tjk(x);P(k==1,aL(0))P(k<2,_R(x))U n=_n(x);CO A*a=_V(x);A y=aL(n);L*RES v=_V(y);I(k==tnp,F(n,v[i]=*(L*)_V(a[i])))E(F(n,v[i]=(I)a[i]))return y;}
 A ucb(A);
-// amber 2.5 (exp): one slice of trade rows for the parallel aj (see the parallel branch in ajc). Same row
+// Amber 2.5 (exp): one slice of trade rows for the parallel aj (see the parallel branch in ajc). Same row
 // logic as ajc's serial loop, with this slice's own cursor cache.
 #define PAJ_BITS 12u
 #define PAJ_N (1u<<PAJ_BITS)
@@ -582,7 +582,7 @@ X1(csvxT,RC(C buf[1024];U n=MIN(xn,SZ buf-1);MC(buf,xC,n);buf[n]=0;x(al((L)csv_c
 // asserts the resulting table's shape/types/values/null-handling. Cleans up
 // the temp file whether the assertions pass or fail.
 A1(csv0T,
- // a name of this process's own: two test runs at once shared one file (digest #80)
+ // A name of this process's own: two test runs at once shared one file (digest #80)
  C P_[64];
 #if !defined(wasm)
  snprintf(P_,SZ P_,"/tmp/.amber_csv_selftest.%d.csv",(I)getpid());
@@ -668,7 +668,7 @@ ZN V oI(ambcn){CO I*p=a;L*r=c;F(n+3&-4,*r++=b[i]<m?p[b[i]]:NL)}
 ZN V o8(ambcn,L v){CO L*p=a;L*r=c;F(n+3&-4,*r++=b[i]<m?p[b[i]]:v)}
 ZN V oL(ambcn){o8(a,m,b,c,n,NL);}
 ZN V oF(ambcn){o8(a,m,b,c,n,NFL);}
-// amber 2.5 (exp): a big gather split across threads (see patch header). es: bytes per output item.
+// Amber 2.5 (exp): a big gather split across threads (see patch header). es: bytes per output item.
 #define PGAT_MIN (1u<<16)
 TD struct{V(*f)(ambcn);CO V*a;U m;CO U*b;C*c;U n,nt,es;}GJ;
 Z V gat_w(V*c_,int t){GJ*c=c_;U s=(U)(((W)c->n*t/c->nt)&~31ull),e=(U)t+1==c->nt?c->n:(U)(((W)c->n*(t+1)/c->nt)&~31ull);

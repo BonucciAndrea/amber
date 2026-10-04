@@ -8,8 +8,8 @@
 #define n1 -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
 #define p1  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
 enum {bu,  bv=32,bs=64,bg=80,bd=96,ba=112,bp,bm,bM,bx,bX,by,bY,bG,bS,bl,bL,bz,bj,bo,bP,bV,bc};      //opcodes
-#define bF (bu+31) //amber 2.5 (exp): fused float tree, bF j c p (the unused monad slot 31: no opcode moves)
-Z CO C di[]={[bF]=3,              [ba]= 1, 1, 3, 3, 3, 3, 3, 3, 2, 2, 1, 1, 1, 1, 0, 0, 2, 0},      //extra bytes after opcode (2-byte global/var index)
+#define bF (bu+31) //Amber 2.5 (exp): fused float tree, bF j c p (the unused monad slot 31: no opcode moves)
+Z CO C di[]={[bF]=3,              [ba]= 1, 1, 3, 3, 3, 3, 3, 3, 2, 2, 1, 1, 1, 1, 0, 0, 2, 0},      //Extra bytes after opcode (2-byte global/var index)
 ds[]={[bv]=n1,n1,n1,   p1,   p1,  [ba]= 1, 1,-1,-1,-1,-1,-1,-1, 1,-1, 1, 0,-1, 0, 1,-1, 0, 1},      //stack size delta
 ks[]={                            [ba]=-1,-1, 0, 0, 0, 0, 0, 0, 0, 0,-1, 1, 0, 0, 0, 0, 0, 0};      //stack size delta (coefficient for the next byte)
 #define BG (b+=2,b[-2]|(U)b[-1]<<8)                                                                 //read a 2-byte little-endian global/var index
@@ -127,16 +127,16 @@ Z NI I ixca(A*p,A x,A y,A z,UC d,B g){UC kd[8];L ix[8];I n=g&&ixgs?ixgn(p):0;P(n
  *p=m>255||g&&!m?ixag(p,x,y,z,d,kd,ix,m&255):ixas(x,y,z,d,kd,ix,m);return 0;}   //else 0
 Z NI __attribute__((cold)) V noupd(A*s){mr(*s);*s=err0("noupdate");}
 A fzop(CO UC*,A*,A*);
-// amber 2.5 (exp): the VM's start pinned to 64 bytes. Its dispatch loop's speed depended on where the linker happened
+// Amber 2.5 (exp): the VM's start pinned to 64 bytes. Its dispatch loop's speed depended on where the linker happened
 // to put it: a change anywhere else (one constant in src/2.c, here) moved run() 16 bytes and made nbody 7% slower, and
 // that alignment luck is the 5-8% nbody swing seen between builds since 2.3. Pinned, unrelated changes no longer move it.
 A run(A,CO A*,U)__attribute__((aligned(64)));
 AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,d--,es8(a,n))/*d: per-thread VM recursion depth (peach workers run the VM concurrently)*/P(n-xk,d--,er8(a,n))UC*b=_V(xy),c,nl=_n(xA[3]);A own=0,l[nl+*b++],*s=l+L(l);MS(l,0,SZ l);I(n,MC(l,a,8*n))//virtual machine
  W((c=*b++),S(c,                                                                                    //          |BYTES |          STACK        |         EFFECT
-  C16(bu,U(*s=v1[c-bu](*s)))                                                                        //monad     |bu+m  |.. x -> monads[m][x]   |
+  C16(bu,U(*s=v1[c-bu](*s)))                                                                        //Monad     |bu+m  |.. x -> monads[m][x]   |
   case bu+16:case bu+17:case bu+18:case bu+19:case bu+20:case bu+21:case bu+22:case bu+23:
   case bu+24:case bu+25:case bu+26:case bu+27:case bu+28:case bu+29:case bu+30:{U(*s=v1[c-bu](*s))}break;
-  C(bF,UC j=*b;A r=fzop(b,l,xA+OFF);b+=3;I(r,*--s=r;b+=j))                                          //fused     |bF,j,c,p|.. -> .. r       |when fzop takes it: PC+:j
+  C(bF,UC j=*b;A r=fzop(b,l,xA+OFF);b+=3;I(r,*--s=r;b+=j))                                          //Fused     |bF,j,c,p|.. -> .. r       |when fzop takes it: PC+:j
   C32(bv,A x=*s++;U(*s=x(v2[c-bv](x,*s))))                                                          //dyad      |bv+d  |.. y x -> dyads[d][x;y]|
   C16(bs,A*p=l+c%16;I(*p,mr(*p))*p=*s++)                                                            //set local |bs+i  |.. x -> ..             |locals[i]:x
   C16(bg,A*p=l+c%16,x=*p;U(*--s=x)xR)                                                               //get local |bg+i  |.. -> .. locals[i]     |
@@ -179,7 +179,7 @@ Z B cm(A x/*0*/){X(Rv(!xv)Ru(1)RS(P(xn-1,0)S s=su(*xI);U n=SL(s);n&&s[n-1]==':')
 // amber 2.3: two constants share a pool slot only if IDENTICAL. ~ calls -0.0 and
 // 0.0 (and any two NaNs) one value, so deduplicating on ~ turned {1%x*-0.0} into
 // 0w whenever a 0.0 literal came first. Floats must agree bit for bit, down lists.
-Z B cid(A x,A y)_(P(!mtc_(x,y),0)UC t=_t(x);P(_t(y)!=t,0)   //and of one type: a bit list was pooled with the equal int list (digest #36)
+Z B cid(A x,A y)_(P(!mtc_(x,y),0)UC t=_t(x);P(_t(y)!=t,0)   //And of one type: a bit list was pooled with the equal int list (digest #36)
 P(t==tf||t==tF,_t(y)==t&&!memcmp(_V(x),_V(y),(N)(t==tf?1:_n(x))*SZ(F)))
  P((t==tA||t==tm||t==tM)&&_t(y)==t,U m=_n(x)|!_n(x);F(m,P(!cid(_A(x)[i],_A(y)[i]),0))1)1)
 Z V cc(A x/*0*/,I o){U n=un,i=OFF;W(i<n&&!cid(x,ua),i++)I(i>=n,PSH(u,xR))M(i+bc-OFF)}              //append a "load constant" instruction
@@ -219,7 +219,7 @@ Z I cmpn(A m,A*c,A*k)_(P(!_tA(m)||_n(m)!=3,-1)A d=_A(m)[0];I op=d==LTN?0:d==GTN?
 // p is the rightmost local leaf: unless it holds a float vector bF does not even call fzrun, so scalar code
 // pays one test. If the tree's usual code is longer than a jump reaches, the bF is taken back out.
 Z B fzno,fzu;   //fzno: emit no fused code (the fallback being compiled, or the recompile after a limit); fzu: emitted some
-// is t a fusable tree? k counts operations, v variable leaves; r: t is the root, where < > = may stand too
+// Is t a fusable tree? k counts operations, v variable leaves; r: t is the root, where < > = may stand too
 Z B fzt(A t,I*k,I*v,B r){I(_tS(t),P(_n(t)!=1,0)++*v;return 1)P(numlit(t),1)P(!_tA(t)||_n(t)!=3,0)A d=_A(t)[0];
  P(d!=ADD&&d!=SUB&&d!=MUL&&d!=DVD&&d!=MNM&&d!=MXM&&!(r&&(d==LTN||d==GTN||d==EQL)),0)P(++*k>15,0)return fzt(_A(t)[1],k,v,0)&&fzt(_A(t)[2],k,v,0);}
 Z B fzp(A t,UC*p,I*np,A*d,I*pk){P(*np>60,0)
@@ -297,7 +297,7 @@ Z I cr(A x/*0*/,B r)_(I o=xo;                                                   
   Nr(n&1?*++a:au,1);F(n&~1,I d=(i&1?nb-1:p[i+1])-p[i];I(i&1,I j=(n&~1)-1;W(i<j&&d>255,d=p[j]-2-p[i];j-=2))P(d>255,lim=1;o)b[p[i]]=d)I(!r,M(bP))OK)
  I(n==2&&y==FIR,A z=xy;I(ztA&&zn==2,P(zx-REV<3u,Nr(zy,1);M(bu+zx-REV+LAS-au)I(!r,M(bP))OK)))        // *|x      recognized idioms
  {I f_=fus(x,r);P(f_!=-2,f_)}                                                                        // amber 2.1 fused idioms
- {I f_=fz(x,r);P(f_!=-2,f_)}                                                                         // amber 2.5 (exp) float fusion
+ {I f_=fz(x,r);P(f_!=-2,f_)}                                                                         // Amber 2.5 (exp) float fusion
  I p=0;F(n-1,A z=xA[n-1-i];I(z-GAP,Nr(z,1))E(p=1;cc(GAP,o)))I(p,Nr(xx,1);M(bp)M(n-1))               // x[y;]    projection
  J(y==MKL,n--;P(n>255u,lim=1;o)M(bl)M(n))                                                                 // (x;y)    list
  J(n==2&&ytu,M(bu+yv))                                                                              // +x       monad
@@ -310,11 +310,11 @@ Z A3(c3,/*000*/P(ADD<=x&&x<=MUL&&ytzZ&&ztzZ&&(ytt||ztt||yn==zn)&&MAX(xN,yN)<101,
 Z A1(cf,P(!xtA||!xn,x)P(xx==MKL,F(xn,A y=xa;YSA(x))qte(N(drp(1,x))))P(xn==2?c2(xx,xy):xn==3?c3(xx,xy,xz):0,qte(N(val(x))))A y=rsz(xn,au);F(xn,ya=cf(xa);xa=au;P(!ya,die("CF")))AO(xo,x(y)))
 Z I mxs(I i,I s)_(I r=s;W(1,UC c=MIN(bc,b[i++]);r=MAX(r,s);P(!c,r)s+=ds[c]+ks[c]*b[i];i+=di[c]+(c==bj)*b[i];I(c==bz,r=MAX(r,mxs(i+b[i-1],s))))r)//max stack
 Z B shy(A x/*0*/)_(!xtA?0:xn&&xx==GAP?shy(xA[xn-1]):xn==3&&cm(xx)&&_tSA(xy))                        //is last expr an assignment?
-// amber 2.5 (exp): one compile of the body: OK, a cr() error offset, -2 a size limit, -3 the global table full
+// Amber 2.5 (exp): one compile of the body: OK, a cr() error offset, -2 a size limit, -3 the global table full
 Z I cpl1(A y,B s,I k,CO I*l0){nb=1;MS(lu,-1,SZ lu);MC(l,l0,OFF*k);nl=k;fzu=0;I r=cr(y,!s);P(r-OK,r)P(gfull,-3)
  I o=0;I(s,cc(au,o))P(un>255||nb>MB-2||nl>L(l)-2,-2)M(bu)P(nb>MB-2||un>255-bc+OFF,-2)
  F(nl,I j=lu[i];I(j>=0&&b[j]==bg,b[j]=bd))I sx=mxs(1,0);P(sx>255,-2)*b=sx;*m=-1;return OK;}
-// compiled with float fusion first; if that hits a limit of the bytecode and fused code was emitted, compiled
+// Compiled with float fusion first; if that hits a limit of the bytecode and fused code was emitted, compiled
 // again without it, so fusion never turns a lambda that compiled before into a 'limit
 Z A3(cpl_,/*111*/I k=0,l0[16];I(z,k=zn;MC(l0,zV,OFF*k);z(0))y=Nx(cf(y));B s=shy(y);fzno=0;u=aA(OFF);ux=xR;uy=uz=uA[3]=au;I r=cpl1(y,s,k,l0);
  I(r!=OK&&fzu&&(r==-2||lim),mr(u);lim=0;fzno=1;u=aA(OFF);ux=xR;uy=uz=uA[3]=au;r=cpl1(y,s,k,l0);fzno=0)

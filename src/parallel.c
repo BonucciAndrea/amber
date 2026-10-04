@@ -160,7 +160,7 @@ static void par_run_spawn(int t, void (*fn)(void *ctx, int i), void *ctx) {
  * they are this job's. Workers spin a while after a job (kernels come in runs), then sleep on a condvar; the
  * word and pl_sleep are both seq_cst, so a publish never misses a worker on its way to sleep. */
 #define PL_SPIN 20000
-static pthread_mutex_t pl_busy = PTHREAD_MUTEX_INITIALIZER;   /* one par_run on the pool at a time */
+static pthread_mutex_t pl_busy = PTHREAD_MUTEX_INITIALIZER;   /* One par_run on the pool at a time */
 static pthread_mutex_t pl_m = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t pl_go = PTHREAD_COND_INITIALIZER, pl_fin = PTHREAD_COND_INITIALIZER;
 static int pl_n, pl_done, pl_sleep, pl_wait;
@@ -175,7 +175,7 @@ static inline void pl_relax(void) {
     __asm__ __volatile__("yield");
 #endif
 }
-/* take and run shares of job g (t shares) until there are none */
+/* Take and run shares of job g (t shares) until there are none */
 static void pl_take(uint64_t g, int t) {
     for (;;) {
         uint64_t c = __atomic_load_n(&pl_next, __ATOMIC_ACQUIRE);
@@ -189,7 +189,7 @@ static void pl_take(uint64_t g, int t) {
 }
 static void *pl_worker(void *arg) {
     int k = (int)(intptr_t)arg;
-    uint64_t seen = pl_g0[k];                                     /* not the word now: the job may be out already */
+    uint64_t seen = pl_g0[k];                                     /* Not the word now: the job may be out already */
     for (;;) {
         uint64_t w = 0; int s;
         for (s = 0; s < PL_SPIN; s++) {
@@ -209,7 +209,7 @@ static void *pl_worker(void *arg) {
     }
     return 0;
 }
-static void pl_atfork_child(void) {                               /* the child has none of the workers */
+static void pl_atfork_child(void) {                               /* The child has none of the workers */
     pl_n = 0; pl_done = 0; pl_sleep = 0; pl_wait = 0;
     pthread_mutex_init(&pl_busy, 0); pthread_mutex_init(&pl_m, 0);
     pthread_cond_init(&pl_go, 0); pthread_cond_init(&pl_fin, 0);
@@ -221,7 +221,7 @@ void par_run(int t, void (*fn)(void *ctx, int i), void *ctx) {
     if (pthread_mutex_trylock(&pl_busy)) { par_run_spawn(t, fn, ctx); return; }
     { static int at; if (!at) { at = 1; pthread_atfork(0, 0, pl_atfork_child); } }
     uint64_t g = __atomic_load_n(&pl_word, __ATOMIC_RELAXED) >> 8;
-    while (pl_n < t - 1) {                                        /* more workers, told the current generation */
+    while (pl_n < t - 1) {                                        /* More workers, told the current generation */
         pthread_t th; pthread_attr_t a; pthread_attr_init(&a); pthread_attr_setdetachstate(&a, PTHREAD_CREATE_DETACHED);
         pl_g0[pl_n + 1] = g;
         int r = pthread_create(&th, &a, pl_worker, (void *)(intptr_t)(pl_n + 1));
@@ -236,7 +236,7 @@ void par_run(int t, void (*fn)(void *ctx, int i), void *ctx) {
     __atomic_store_n(&pl_next, g << 16, __ATOMIC_RELAXED);
     __atomic_store_n(&pl_word, g << 8 | (uint64_t)t, __ATOMIC_SEQ_CST);
     if (__atomic_load_n(&pl_sleep, __ATOMIC_SEQ_CST)) { pthread_mutex_lock(&pl_m); pthread_cond_broadcast(&pl_go); pthread_mutex_unlock(&pl_m); }
-    pl_take(g, t);                                                /* the caller takes shares too */
+    pl_take(g, t);                                                /* The caller takes shares too */
     int s;
     for (s = 0; s < PL_SPIN && __atomic_load_n(&pl_done, __ATOMIC_ACQUIRE) < t; s++) pl_relax();
     if (__atomic_load_n(&pl_done, __ATOMIC_ACQUIRE) < t) {
@@ -285,7 +285,7 @@ static double pbs(const double *a, const double *b, size_t n) {
 double par_bsum_f64(const double *a, size_t n) { return pbs(a, 0, n); }
 double par_bdot_f64(const double *a, const double *b, size_t n) { return pbs(a, b, n); }
 
-static void pmm_job(void *c_, int i) {   /* blocks from the counter, as pbs_job: no thread waits on a slow slice */
+static void pmm_job(void *c_, int i) {   /* Blocks from the counter, as pbs_job: no thread waits on a slow slice */
     PBS *c = (PBS *)c_; (void)i;
     for (;;) {
         size_t k = __atomic_fetch_add(&c->next, 1, __ATOMIC_RELAXED);

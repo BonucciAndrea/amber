@@ -96,18 +96,18 @@ Z V*amal(N b)_(V*p=0;P(posix_memalign(&p,64,b),(V*)0)p)
 // there, which is exactly the vector the old code built. With no miss the
 // values are identical and only the storage width differs, as everywhere else
 // Amber narrows integers.
-// amber 2.5 (exp): the probe loop runs over [s,e), so it can be split across threads (fndrun below)
+// Amber 2.5 (exp): the probe loop runs over [s,e), so it can be split across threads (fndrun below)
 #define FNDP(PT,RT,LOOK) {CO PT*RES pb=(CO PT*)b;RT*RES rr=(RT*)z;for(U i=s;i<e;i++){L v=(L)pb[i];L k;LOOK;rr[i]=(RT)k;miss|=k<0;}}
 #define FNDW(LOOK) S4(wy,S4(wz,FNDP(G,G,LOOK),FNDP(G,H,LOOK),FNDP(G,I,LOOK),FNDP(G,L,LOOK)),S4(wz,FNDP(H,G,LOOK),FNDP(H,H,LOOK),FNDP(H,I,LOOK),FNDP(H,L,LOOK)), \
                                 S4(wz,FNDP(I,G,LOOK),FNDP(I,H,LOOK),FNDP(I,I,LOOK),FNDP(I,L,LOOK)),S4(wz,FNDP(L,G,LOOK),FNDP(L,H,LOOK),FNDP(L,I,LOOK),FNDP(L,L,LOOK)))
-// a probe job: the table (lut, or hk/hv), y's data b, the result z, and one miss flag per slice.
+// A probe job: the table (lut, or hk/hv), y's data b, the result z, and one miss flag per slice.
 // Workers only read the table and write their own [s,e) of z: no allocation, no refcounts.
 TD struct{CO V*b;V*z;U n,wy,wz,nt;I*lut;L lo;W rg;L*hk;I*hv;U sh;W msk;I miss[PAR_MAX_THREADS];}FJ;
 Z V fndL_lut(V*c_,int t){FJ*c=c_;CO V*b=c->b;V*z=c->z;U wy=c->wy,wz=c->wz,s=(U)((W)c->n*t/c->nt),e=(U)((W)c->n*(t+1)/c->nt);
  I*lut=c->lut;L lo=c->lo;W rg=c->rg;I miss=0;FNDW(W d=(W)v-(W)lo;k=d<rg?lut[d]:-1)c->miss[t]=miss;}
 Z V fndL_hash(V*c_,int t){FJ*c=c_;CO V*b=c->b;V*z=c->z;U wy=c->wy,wz=c->wz,s=(U)((W)c->n*t/c->nt),e=(U)((W)c->n*(t+1)/c->nt);
  L*hk=c->hk;I*hv=c->hv;U sh=c->sh;W msk=c->msk;I miss=0;FNDW(W j=((W)v*GOLD)>>sh;k=-1;W(1,B(hv[j]<0,)B(hk[j]==v,k=hv[j])j=(j+1)&msk))c->miss[t]=miss;}
-#define PFND_MIN (1u<<15)   //below this many probes thread start-up costs more than it saves
+#define PFND_MIN (1u<<15)   //Below this many probes thread start-up costs more than it saves
 Z I fndrun(FJ*c,V(*fn)(V*,int))_(int nt=c->n<PFND_MIN?1:par_thread_count(c->n);c->nt=(U)nt;I(nt<2,fn(c,0))E(par_run(nt,fn,c))I m=0;F(nt,m|=c->miss[i])m)
 Z A fndL(A x,A y,B srt)_(
  P(srt,0)
@@ -307,10 +307,10 @@ Z NI A unqF(A x){
 // (a bitmap over its range when that fits 8 MB, else a hash sized to the key
 // COUNT) and each element of x costs one probe writing one byte. Integer and
 // symbol keys only; anything else returns () and amber.k falls back.
-// amber 2.5 (exp): membC's probe loops over [s,e), split across threads like fndL's (fndrun)
+// Amber 2.5 (exp): membC's probe loops over [s,e), split across threads like fndL's (fndrun)
 TD struct{CO V*a;G*r;U n,wv,nt;W*bm;L lo;W rg;W*tab;U sh;W msk;B has0;}MJ;
 #define MSLICE MJ*c=c_;CO V*a=c->a;G*RES r=c->r;U wv=c->wv,s=(U)((W)c->n*t/c->nt),e=(U)((W)c->n*(t+1)/c->nt);
-#define MBM(T) {CO T*RES p=(CO T*)a;for(U i=s;i<e;i++){W q=(W)(L)p[i]-(W)lo;r[i]=q<rg&&((bm[q>>6]>>(q&63))&1);}}   //one loop per width: no width test per element
+#define MBM(T) {CO T*RES p=(CO T*)a;for(U i=s;i<e;i++){W q=(W)(L)p[i]-(W)lo;r[i]=q<rg&&((bm[q>>6]>>(q&63))&1);}}   //One loop per width: no width test per element
 Z V memb_bm(V*c_,int t){MSLICE W*bm=c->bm;L lo=c->lo;W rg=c->rg;S4(wv,MBM(G),MBM(H),MBM(I),MBM(L))}
 #define MHS(T) {CO T*RES p=(CO T*)a;for(U i=s;i<e;i++){W k=(W)(L)p[i]+1;if(!k){r[i]=has0;continue;}W j=(k*GOLD)>>sh;while(tab[j]&&tab[j]!=k)j=(j+1)&msk;r[i]=!!tab[j];}}
 Z V memb_hash(V*c_,int t){MSLICE W*tab=c->tab;U sh=c->sh;W msk=c->msk;B has0=c->has0;S4(wv,MHS(G),MHS(H),MHS(I),MHS(L))}
@@ -450,7 +450,7 @@ X2(fnd,
  Rm(i1(xx,N(fnd(xy,y))))
  RM(en(y))
  RE(x=gZ(xR);x(fnd(x,y)))
- // the rank of x's first item says whether y is one item or a list of them; when the items differ in rank, y may be
+ // The rank of x's first item says whether y is one item or a list of them; when the items differ in rank, y may be
  // one of them all the same, so it is looked for whole first ((1;"ab")?"ab" is 1, it was 0N 0N). An x of one rank
  // never matches there, so it is only a scan more on these two paths (digest #29)
  RA(U k=urnk(x),l=urnk(y);I(k-l-1,F(xn,P(mtc_(xa,y),y(az(i)))))P(k<l+1,r2f(fnd,x,y))P(k>l+1,er(y))
@@ -458,10 +458,10 @@ X2(fnd,
     R_(F(xN,A z=ii(x,i);I m=mtc_(z,y);z(0);P(m,y(az(i))))y(az(NL))))0)
  RB(x=cG(xR);x(fnd(x,y)))
  // a char haystack with a number, or a number haystack with a char, is 'type, as in q (issue #20, row 12)
- // digest #7: bits looked for are widened to bytes first (read as ints they gave wrong rows and read past the end)
+ // Digest #7: bits looked for are widened to bytes first (read as ints they gave wrong rows and read past the end)
  RGC(P(fmx(y,xtC),et(y))YB(fnd(x,cG(y)))F(256,t[i]=NL)UC*a=xV;U n=xn;F(n,t[a[n-1-i]]=n-1-i)fndGx(y))
  R5(tH,tI,tL,tF,tS,
-  // digest #30: an empty general list gets what the byte haystack gives it (0#,!0). Each-right asks the
+  // Digest #30: an empty general list gets what the byte haystack gives it (0#,!0). Each-right asks the
   // empty list's char prototype, and a char against numbers is 'type (issue #20, row 12)
   P(ytA&&!yn,A g=aG(0);A r=fnd(g,y);mr(g);r)
   P(xt!=tS&&(ytC||ytc),et(y))

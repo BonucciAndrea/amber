@@ -196,7 +196,7 @@ t[`byBare;     . qrw"select sum sz by sym from trades"; . qrw"select sum sz by s
 tqa[`aggName;    "select last px by sym from trades"; cols; `sym`px];
 tqa[`aggNameSum; "select sum sz by sym from trades";  cols; `sym`sz];
 tqa[`aggNameWide;"select wavg[sz;px] by sym from trades"; cols; `sym`sz];   / q names it by the first argument (digest #56)
-/ digest #56 #61: q's column names and repeats; an atom beside a list is extended, as update
+/ Digest #56 #61: q's column names and repeats; an atom beside a list is extended, as update
 tqa[`nameRepeats;"select max px, min px, 2*px, sum px*sz from trades"; cols; `px`px1`x`px2];
 tqa[`selectExtend;"select px, s:sum sz from trades"; {(+x)`s}; 6#21];
 / within[x;(lo;hi)] -- inclusive, and the reason time-range queries now run.

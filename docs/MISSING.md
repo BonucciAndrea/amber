@@ -25,7 +25,7 @@ Native `date` / `time` / `timestamp` types with literal syntax (`2026.07.30`,
 (`time+time`, `date-date`→days, `date+n`, comparisons), string casts `"D"$`/`"T"$`/`"P"$`,
 and accessors `year`/`month`/`day`/`dow`/`thh`/`tmm`/`tss`. Columns keep numeric storage
 so `xasc`/`s#` work unchanged.
-- **Since 2.5:** a strand like `2026.01.01 2026.01.02` is a list; arithmetic outside the cases
+- **Since 2.5:** A strand like `2026.01.01 2026.01.02` is a list; arithmetic outside the cases
   above is `'type`. There's no null date, so `date+0N` is `'domain` for now.
 - **Still missing:** `month`/`minute`/`second`/`timespan`/`datetime` as distinct types,
   `m` month-literals, and the dotted `t.hh` accessor form (Amber uses `thh t`).
@@ -48,7 +48,7 @@ inside a **`.k` script** loaded once the stdlib is up (the loader runs each file
   or a table. (The where-clause form was always implemented; this list used to say
   otherwise. The multi-column list form returned one value per column instead of
   one per row and is fixed.)
-- **Since 2.5:** where-clauses cascade (`where sym=`a, n=max n` is the biggest n among the a's),
+- **Since 2.5:** Where-clauses cascade (`where sym=`a, n=max n` is the biggest n among the a's),
   columns get q's names (`v v1`, `x`), and `select n, s:sum n` stretches `s`, as `update` does.
 - Still missing: the general functional forms `?[t;where;by;select]` /
   `![t;where;by;cols]`, and correlated subqueries. Note that `?` at arity 3+ is
@@ -164,13 +164,12 @@ Amber text via `` `k``, inverted by `eval`) and `protect` (like `.Q.trp`). Amber
   `vs`/`sv` for base-N and temporal, `md5`, `.Q.btoa` (base64).
 
 ## 12. Concurrency & performance ops: partial
-`peach` is real **multi-core** (forks `AMBER_THREADS` worker processes, C kernel), and `ts`
-(`\ts`) times an expression.
-- **Still missing:** q-style secondary threads (`-s`), a *parallel* `.Q.fc` (Amber's is a
-  sequential fallback), map-reduce over on-disk partitions, and compression. `peach` currently
-  shipped each worker's result back as **text** (`` `k``) until 1.9.3; it now uses the binary
-  serialiser (§11), which cut
-  that transfer cost.
+`peach` is real **multi-core** (a pool of `AMBER_THREADS` threads), and `ts` (`\ts`) times an
+expression. **Since 2.6:** Big vectors use the same threads inside primitives (sort, find, `in`,
+distinct, gather, group aggregates, float sums, fused expressions), which is roughly what q's `-s`
+secondary threads buy you. `AMBER_THREADS` is the knob.
+- **Still missing:** a *parallel* `.Q.fc` (Amber's is a sequential fallback), map-reduce over
+  on-disk partitions, and compression.
 
 ## 13. Console / environment niceties: partial
 `\ts` (via `ts`) and number formatting `.Q.f`/`.Q.fmt` are done.

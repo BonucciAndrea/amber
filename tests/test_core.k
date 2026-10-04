@@ -460,7 +460,7 @@ t[`dictMissLonger;(`a`b!(1 2 3;3))+`a`c!(5;6 7);`a`b`c!(6 7 8;3;6 7)]
 t[`dictDateAdd;@'.((,`a)!,2026.07.30)+(,`a)!,1;,`d]
 t[`dictDateAddValue;2026.07.31=*.((,`a)!,2026.07.30)+(,`a)!,1;1]
 t[`dictTyped;((`a!1.5)+`b!2.5;(`a`b!1 2)-`b`c!10 20);(`a`b!1.5 2.5;`a`b`c!1 -8 -20)]
-/ a dict with no keys on one side gives the other one, as q and ngn/k (it was 'length, digest #24)
+/ A dict with no keys on one side gives the other one, as q and ngn/k (it was 'length, digest #24)
 t[`dictEmptyUntyped;((`a`b!1 2)+()!();((1 2;3 4)!5 6)+()!();(()!())-`a`b!1 2;(()!())+()!());(`a`b!1 2;(1 2;3 4)!5 6;`a`b!-1 -2;()!())]
 t[`dictEmptyTyped;(`a`b!1 2)+(0#`)!!0;`a`b!1 2]
 t[`dictEmptyVals;(((0#`)!())-`a`b!1 2;(`a`b!1 2)+(0#`)!());(`a`b!-1 -2;`a`b!1 2)]   / empty values () filled nothing: `a`b!(!0;!0)
@@ -573,16 +573,16 @@ t[`charMinMaxScan;(&\"bac";|\"bac";&':"bac";|':"bac";"z"&\"bac");("baa";"bbc";"b
 / ---- JSON: floats outside the int range, infinities, NaN ----
 t[`jsonBigFloat;(`j@1e20;`j@-1e20;`j@1e22;`j@1.5;`j@3.0;`j@-2.0);("1e20";"-1e20";"1e22";"1.5";,"3";"-2")]
 t[`jsonInfNan;(`j@0w;`j@-0w;`j@0n;`j@1.0 0w -0w 0n);("null";"null";"null";"[1,null,null,null]")]
-/ digest #7: bits looked for are widened to bytes (they were read as ints: wrong rows, reads past the end)
+/ Digest #7: bits looked for are widened to bytes (they were read as ints: wrong rows, reads past the end)
 t[`findBits;((,1)?0101010101B;(,0)?0101b;1 0?0101b;(,1)?0#01b);(0N 0 0N 0 0N 0 0N 0 0N 0;0 0N 0 0N;1 0 1 0;!0)]
 t[`exceptBits;(0101010101B^1;11B^1;0101010101B^0;11B^0);(00000b;0#01b;11111b;11b)]
-/ digest #6: > leaves stdin, stdout and stderr open (a failed write with no stderr to report it on looped or crashed)
+/ Digest #6: > leaves stdin, stdout and stderr open (a failed write with no stderr to report it on looped or crashed)
 t[`closeStdHandles;(7#.[{[d]>0};,0;{x}];7#.[{[d]>1};,0;{x}];7#.[{[d]>2};,0;{x}]);3#,"'domain"]
-t[`aimRange;(7#.[{[d]`aim[!5]};,0;{x}];7#.[{[d]`aim[1000+!3]};,0;{x}]);2#,"'length"]   / digest #11: a range is its items, not its two stored ends (read as addresses)
-t[`modBigFloat;(7!1e19;5!-0w;5!0w;7!-7.0;7!8.5;1%3!-0.0);(3.0;0n;0n;0.0;1.5;-0w)]   / digest #15: the float remainder is exact, 0 to x (infinities: 0n)
-t[`findEmptyGeneric;(-8!1.0 2.0?();-8!1000000 2?();5#.[{[d]1.0 2.0?"a"};,0;{x}]);(-8!1 2?();-8!1 2?();"'type")]   / digest #30
-t[`literalPoolType;(4_5#(-8!0110B;0 1 1 0)0;4_5#{(-8!0110B;0 1 1 0)}[]0);2#,,0x03]   / digest #36: a bit list stays a bit list next to an equal int list
-t[`dropSqueeze;({4_5#-8!-1_(0;1;())}[];(0 1)~-1_(0;1;());-1_(1;"a";2.5));(,0x04;1b;(1;"a"))]   / digest #28: a negative drop squeezes in place too
+t[`aimRange;(7#.[{[d]`aim[!5]};,0;{x}];7#.[{[d]`aim[1000+!3]};,0;{x}]);2#,"'length"]   / Digest #11: a range is its items, not its two stored ends (read as addresses)
+t[`modBigFloat;(7!1e19;5!-0w;5!0w;7!-7.0;7!8.5;1%3!-0.0);(3.0;0n;0n;0.0;1.5;-0w)]   / Digest #15: the float remainder is exact, 0 to x (infinities: 0n)
+t[`findEmptyGeneric;(-8!1.0 2.0?();-8!1000000 2?();5#.[{[d]1.0 2.0?"a"};,0;{x}]);(-8!1 2?();-8!1 2?();"'type")]   / Digest #30
+t[`literalPoolType;(4_5#(-8!0110B;0 1 1 0)0;4_5#{(-8!0110B;0 1 1 0)}[]0);2#,,0x03]   / Digest #36: a bit list stays a bit list next to an equal int list
+t[`dropSqueeze;({4_5#-8!-1_(0;1;())}[];(0 1)~-1_(0;1;());-1_(1;"a";2.5));(,0x04;1b;(1;"a"))]   / Digest #28: a negative drop squeezes in place too
 t[`jsonNegZero;1%(`j?"-0";`j?"[-0,-0.0,0]");(-0w;-0w -0w 0w)]   / -0 keeps its sign
 t[`jsonLiterals;`j?"[1,null,2]";(1.0;0n;2.0)]
 t[`jsonRoundTrip;`j?`j@1e20 -1.5 2.0;1e20 -1.5 2.0]
@@ -691,10 +691,10 @@ t[`keyedPlusAtom;((+(,`a)!,1 2 3)!4 5 6)+1;(+(,`a)!,1 2 3)!5 6 7]
 t[`dictMixedRankL;*"\n"\.[.:;,"((1 2;3 4)!5 6)+`a`b!1 2";{x}];"'domain"]
 
 / a dict with no keys is not checked: two empty ones still add, as group counts from ()!() do
-t[`temporalStrand;(2026.01.01 2026.01.02;12:00:00.000 13:00:00.000;#2026.01.01 2026.01.02 2026.01.03;1+2026.01.01 2026.01.02;5#.[.:;,"2026.01.01 12:00:00.000";{x}])~(2026.01.01+0 1;12:00:00.000+0 3600000;3;2026.01.02+0 1;"'type");1]   / digest #65: a strand of one kind is a list, as q
-t[`groupMixedRank;(=(1;"ab");=(1 2;1);=(1;"ab";1);(1;"ab")?"ab";((1;"ab")!10 20)"ab";5#.[?;(("ab";"cd");1);{x}]);((1;"ab")!(,0;,1);(1 2;1)!(,0;,1);(1;"ab")!(0 2;,1);1;20;"'rank")]   / digest #29: as q
+t[`temporalStrand;(2026.01.01 2026.01.02;12:00:00.000 13:00:00.000;#2026.01.01 2026.01.02 2026.01.03;1+2026.01.01 2026.01.02;5#.[.:;,"2026.01.01 12:00:00.000";{x}])~(2026.01.01+0 1;12:00:00.000+0 3600000;3;2026.01.02+0 1;"'type");1]   / Digest #65: a strand of one kind is a list, as q
+t[`groupMixedRank;(=(1;"ab");=(1 2;1);=(1;"ab";1);(1;"ab")?"ab";((1;"ab")!10 20)"ab";5#.[?;(("ab";"cd");1);{x}]);((1;"ab")!(,0;,1);(1 2;1)!(,0;,1);(1;"ab")!(0 2;,1);1;20;"'rank")]   / Digest #29: as q
 t[`dictEmptyBoth;`k@((()!())+#'=0#`;(#'=0#`)+()!());"(()!();(0#`)!!0)"]
-/ digest #23 #25 #26: a key on one side passes its value through; x's repeated keys stay
+/ Digest #23 #25 #26: a key on one side passes its value through; x's repeated keys stay
 t[`dictOneSide;((`a`b!1 2)|`c!,1 2;(`a`b!(1 2 3;3))|`a`c!(5;6 7);(`a`b!0x0102)|`b`c!0x0304;(`a`b!0x0102)&`b`c!0x0304);(`a`b`c!(1;2;1 2);`a`b`c!(5 5 5;3;6 7);`a`b`c!0x010304;`a`b`c!0x010204)]
 t[`dictRepeatKey;((`a`a!1 2)+`a!10;(`a`a!1 2)*`b!3);(`a`a!11 2;`a`a`b!1 2 3)]
 t[`dictEachJoin;(`a`b!1 2),'(1 2!3 4);(`a;`b;1;2)!1 2 3 4]
@@ -797,7 +797,7 @@ t[`strandMinusKinds;`k@'(1 -2-0.5<1;01b-0.5<1);("0 -3";"-1 0")]   / a spaced str
 tv[`strandMinusUses;"(\"abc\"@2-0.5<1;!3-0.5<1)";("b";0 1)]   / as an index and a count (2.4.1: 'type)
 t[`strandMinusIntKinds;`k@'(0N-0.5<1;1-0xef;0-1 0.5<1);("9223372036854775807";"18";"0 -1")]   / an int null wraps, hex is an int, a spaced strand after the - (2.4.1: floats)
 t[`strandMinusBigInt;ER"99999999999999999999-0.5";"'limit"]   / an int literal past 64 bits is 'limit, as on its own (2.4.1 read it as a float here)
-/ digest #27: temporal arithmetic outside the documented cases is 'type (issue #18), a null int 'domain, x:y is y
+/ Digest #27: temporal arithmetic outside the documented cases is 'type (issue #18), a null int 'domain, x:y is y
 t[`temporalKept;(2026.07.30+1;1+2026.07.30;2026.07.30-1;2026.07.30-2026.07.29;10:00:00.000+00:00:01.000;2026.07.30&2026.07.29;2026.07.30<2026.07.31)~(2026.07.31;2026.07.31;2026.07.29;1;10:00:01.000;2026.07.29;1);1]
 t[`temporalType;ER'("2026.07.30+2.3";"2026.07.30*2";"2026.07.30%2";"2!2026.07.30";"2026.07.30+2026.07.30");5#,"'type"]
 t[`temporalNull;ER"2026.07.30+0N";"'domain"]

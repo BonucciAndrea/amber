@@ -282,7 +282,7 @@ A wsmC(A x){
  if(_t(p)==tF&&_t(q)==tF){F r=par_bdot_f64((CO F*)_V(p),(CO F*)_V(q),n);mr(x);return af(r);}
  // ints: only a 64-bit list can hold 0N, so two narrower ones are k's +/x*y and one is widened; a null on either side gives 0N, so
  // amber.k's wsum knows to take the pairs instead (an int 0N*y wraps, it doesn't stay null) - digest #43
- if(LH(tB,_t(p),tL)&&LH(tB,_t(q),tL)){I(_t(p)!=tL&&_t(q)!=tL,A wp=_R(p),wq=_R(q);mr(x);return K2("{+/x*y}",wp,wq);)   //no null possible: k's own fused +/x*y
+ if(LH(tB,_t(p),tL)&&LH(tB,_t(q),tL)){I(_t(p)!=tL&&_t(q)!=tL,A wp=_R(p),wq=_R(q);mr(x);return K2("{+/x*y}",wp,wq);)   //No null possible: k's own fused +/x*y
   A wp=_t(p)==tL?_R(p):cL(_R(p)),wq=_t(q)==tL?_R(q):cL(_R(q));mr(x);P(!wp||!wq,mr(wp);mr(wq);0)
   CO L*RES wa=_V(wp),*RES wb=_V(wq);W w0=0,w1=0;I wz=0;U i=0;
   for(;i+2<=n;i+=2){L a0=wa[i],a1=wa[i+1],b0=wb[i],b1=wb[i+1];wz|=(a0==NL)|(a1==NL)|(b0==NL)|(b1==NL);w0+=(W)a0*(W)b0;w1+=(W)a1*(W)b1;}

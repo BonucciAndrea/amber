@@ -121,7 +121,7 @@ static void pool_init(int nw_total) {
         P.gen = 0; P.active = 0; P.ready = 0; P.shutdown = 0; P.nth = 0;
         P.th = (pthread_t *)malloc(sizeof(pthread_t) * (want ? want : 1));
         if (P.th) {
-            /* digest #5: a worker gets the main thread's stack size. The VM allows every thread the same
+            /* Digest #5: a worker gets the main thread's stack size. The VM allows every thread the same
              * depth (2048), and the default for other threads can be far smaller (512 KB on macOS), so
              * deep recursion in a worker crashed the process where the main thread ran it fine. */
             pthread_attr_t at; int ha = pthread_attr_init(&at) == 0;

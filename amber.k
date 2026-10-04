@@ -38,7 +38,8 @@ idiv:{$[(`I~@y)&~^`i`I?@x;$[#y;$[&/~^x,y;$[&/9007199254740992>{x|-x}x,y;_x%y;idi
 div:{$[(@x)in`f`F;fdiv0[x;$[`i~@y;$[^y;0n;y];`I~@y;@[`f$y;&^y;:;0n];y]];(@y)in`f`F;idiv[x;rnd0 y];idiv[x;y]]}   / as q: an int by a float divisor rounds it; a float dividend floors as a float
 rnd0:{r:{s:(x>0)-x<0;s*_0.5+x*s};$[`f~@x;$[^x;0N;r x];@[r@[x;&^x;:;0.0];&^x;:;0N]]}   / round half away from zero, as q's `long$ of a float
 fdiv0:{q:x%y;r:`f$_q;$[`f~@q;$[(^q)|^_q;0n;r];@[r;&^q;:;0n]]}   / floor of a float quotient through an int, kept a float, as q does
-xbar:{r:x*idiv[y;x];$[`i~@x;$[`I~@y;$[^x;xbn[x;y;r];0N=&/y;xbn[x;y;r];r];xbn[x;y;r]];xbn[x;y;r]]}   / a null width or value gives a null (0N*0N wraps to 0); ints with no null: just the product
+xbar:{r:xbi[x;y];$[|/`f`F=(@x),@y;`f$r;r]}   / a float width or value gives floats, as q (digest #67)
+xbi:{r:x*idiv[y;x];$[`i~@x;$[`I~@y;$[^x;xbn[x;y;r];0N=&/y;xbn[x;y;r];r];xbn[x;y;r]];xbn[x;y;r]]}   / a null width or value gives a null (0N*0N wraps to 0); ints with no null: just the product
 xbn:{[x;y;r]m:(^x)|^y;$[~|/m;r;(@r)in`i`f;$[(`f~@r)|(`f~@x)|`f~@y;0n;0N];@[r;&m;:;$[`I~@r;0N;0n]]]}
 xlog:{(`ln y)%`ln x}
 xexp:{[x;y]$[~y=_y;`exp y*`ln x;[e:$[y<0;-y;y];r:*{0<x[2]}{(x[0]*$[2!x[2];x[1];1.0];x[1]*x[1];_x[2]%2)}/(1.0;1.0*x;e);r:$[y<0;1%r;r];$[(x=_x)&(~y<0)&(r=_r)&9007199254740992.0>$[r<0;0-r;r];_r;r]]]} / x xexp y = x^y; fast squaring for integer y, exp/ln for fractional. An integer base to a non-negative integer power comes back as an INTEGER while the squaring is still exact (below 2^53); past that, or for a fractional/negative exponent, it stays a float. Load euler.k to get the exact bignum answer beyond 2^53.
@@ -57,7 +58,8 @@ avgn:{v:x@&~^x;$[#v;(+/0.0+v)%#v;0n]}
 / fused dot (`wsm) when both sides are float vectors: no product vector is
 / built, so the 80MB temporary `+/x*y` writes and re-reads never exists.
 / wsum, wavg: a pair with a null is skipped (its weight too). `wsm gives NaN for floats or 0N for ints when one is in
-wsum:{$[(`F=@x)&`F=@y;$[^r:`wsm(x;y);wsp[x;y];r];(`I=@x)&`I=@y;$[0N=r:`wsm(x;y);wsp[x;y];r];`hnl[x]|`hnl y;wsp[x;y];+/x*y]}
+wsum:{r:wsi[x;y];$[`i~@r;`f$r;r]}   / a float, as q (ints gave an int, digest #67)
+wsi:{$[(`F=@x)&`F=@y;$[^r:`wsm(x;y);wsp[x;y];r];(`I=@x)&`I=@y;$[0N=r:`wsm(x;y);wsp[x;y];r];`hnl[x]|`hnl y;wsp[x;y];+/x*y]}
 wavg:{$[(`F=@x)&`F=@y;$[^r:(`wsm(x;y))%+/x;wvp[x;y];r];(`I=@x)&`I=@y;$[0N=r:`wsm(x;y);wvp[x;y];r%+/x];`hnl[x]|`hnl y;wvp[x;y];(+/x*y)%+/x]}
 wsp:{m:&~(^x)|^y;+/x[m]*y m}   / (an int 0N*y wraps, so the pairs go before the product)
 wvp:{m:&~(^x)|^y;(+/x[m]*y m)%+/x m}
@@ -73,7 +75,7 @@ pdr:{$[(|/^x)||/^y;[m:&~(^x)|^y;(x m;y m)];(x;y)]}
 cov:{$[cvk[x;y];[r:`cvm(x;y);r[0]%r 3];[p:pdr[x;y];x:p 0;y:p 1;avg(x-avg x)*y-avg y]]}
 scov:{$[cvk[x;y];[r:`cvm(x;y);r[0]%-1+r 3];[p:pdr[x;y];n:#x:p 0;y:p 1;(n*avg(x-avg x)*y-avg y)%-1+n]]}
 cor:{$[cvk[x;y];[r:`cvm(x;y);r[0]%sqrt r[1]*r 2];[p:pdr[x;y];a:p[0]-avg p 0;b:p[1]-avg p 1;(avg a*b)%sqrt avg[a*a]*avg b*b]]}
-med:{$[0=#x;0n;[a:x@<x;n:#a;m:_n%2;$[2!n;0.0+a m;avg a@m-1 0]]]}
+med:{$[isat x;0.0+x;0=#x;0n;[a:x@<x;n:#a;m:_n%2;$[2!n;0.0+a m;avg a@m-1 0]]]}
 all:{$[#x;~|/x=0;1]}   / all of an empty list is 1, as q
 any:{~&/x=0}
 sums:{$[`F=@x;$[^*|r:+\x;+\0.0^x;r];`I=@x;$[`hnl x;+\0^x;+\x];+\nid[x;0;0.0]]}   / a null adds 0; floats: the last sum is NaN only if a NaN is in
@@ -81,7 +83,7 @@ prds:{$[`F=@x;$[^*|r:*\x;*\1.0^x;r];`I=@x;$[`hnl x;*\1^x;*\x];*\nid[x;1;1.0]]}
 mins:{&\nid[x;9223372036854775807;0w]}                                       / mins 0n 1.0 is 0w 1.0, as q
 maxs:{|\nid[x;-9223372036854775807;-0w]}
 deltas:{$[#x;x-0,-1_x;x]}
-ratios:{$[#x;x%1,-1_x;x]}
+ratios:{$[#x;x%1,-1_x;0#0.0]}   / empty: an empty float list, as q (digest #67)
 differ:{$[isat x;1b;~#x;x=x;|/`I`S`C=@x;1b,~(1_x)=-1_x;`F=@x;1b,~((1_x)=-1_x)|(^1_x)&^-1_x;@[~~':x;0;:;1b]]}   / the first item always differs, a null too; typed lists compare shifted (NaN matches NaN, as ~)
 prev:{$[isat x;x;-1_(,x@#x),x]}   / an atom comes back as is, as q; the null is the list's own (x@#x), not 0N
 next:{$[isat x;x;1_x,,x@#x]}

@@ -795,6 +795,11 @@ t[`strandMinusKinds;`k@'(1 -2-0.5<1;01b-0.5<1);("0 -3";"-1 0")]   / a spaced str
 tv[`strandMinusUses;"(\"abc\"@2-0.5<1;!3-0.5<1)";("b";0 1)]   / as an index and a count (2.4.1: 'type)
 t[`strandMinusIntKinds;`k@'(0N-0.5<1;1-0xef;0-1 0.5<1);("9223372036854775807";"18";"0 -1")]   / an int null wraps, hex is an int, a spaced strand after the - (2.4.1: floats)
 t[`strandMinusBigInt;ER"99999999999999999999-0.5";"'limit"]   / an int literal past 64 bits is 'limit, as on its own (2.4.1 read it as a float here)
+/ digest #27: temporal arithmetic outside the documented cases is 'type (issue #18), a null int 'domain, x:y is y
+t[`temporalKept;(2026.07.30+1;1+2026.07.30;2026.07.30-1;2026.07.30-2026.07.29;10:00:00.000+00:00:01.000;2026.07.30&2026.07.29;2026.07.30<2026.07.31)~(2026.07.31;2026.07.31;2026.07.29;1;10:00:01.000;2026.07.29;1);1]
+t[`temporalType;ER'("2026.07.30+2.3";"2026.07.30*2";"2026.07.30%2";"2!2026.07.30";"2026.07.30+2026.07.30");5#,"'type"]
+t[`temporalNull;ER"2026.07.30+0N";"'domain"]
+t[`temporalAmend;@[2#2026.07.30;0;:;2026.08.01]~(2026.08.01;2026.07.30);1]
 t[`strandMinusDate;((1-2024.01.01)~1976.01.02;(`i$1-12:00:00.000)~-43199999);11b]   / an int minus a date or a time (2.4.1: the int read as a float and its bits used, 1976.01.01 and -12:00:00.000, -43200000 ms)
 
 / ---- assigning a table's cell by row amends just that column ----
@@ -1018,7 +1023,7 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[645]
+hexpect[649]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

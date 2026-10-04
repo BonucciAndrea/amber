@@ -184,7 +184,15 @@ Z AM_TLS_IE U f;//0=dex,1=add,2=sub,3=mul,4=dvd,5=mod,6=mnm,7=mxm,8=ltn,9=gtn,10
 Z L tval(A x)_(UC k=_t(x);k==tdt||k==ttm?(L)(I)x:k==tnp?*(L*)_V(x):gl_(x))
 Z A tmk(UC k,L w)_(k==tdt?adt((I)w):k==ttm?atm((I)w):k==tnp?antp(w):az(w))
 // v2 convention: consume y, leave x for the caller (bv opcode releases x; bV borrows a constant x).
-Z A tari(A x,A y,U op)_(UC ka=_t(x),kb=_t(y);B qa=ka>=tdt,qb=kb>=tdt;L va=tval(x),vb=tval(y);mr(y);
+// Only the documented cases (issue #18): a temporal plus or minus an int (either side), one minus the same
+// kind (an int), time plus time, & | of the same kind, comparisons. Anything else is 'type: tari read any other
+// operand's low bits, so date+2.3 or date*2 were silent nonsense, and % ! returned x as it was. A null int is 'domain:
+// there is no null date, time or timestamp to give (date+0N was the date). x:y is y (it gave x) - digest #27
+Z A tari(A x,A y,U op)_(UC ka=_t(x),kb=_t(y);B qa=ka>=tdt,qb=kb>=tdt;P(!op,y)
+ I(op<8,B ia=ka==ti||ka==tl,ib=kb==ti||kb==tl;
+  B ok=qa&&qb?((op==2||op==6||op==7)&&ka==kb)||(op==1&&ka==ttm&&kb==ttm):(op==1||op==2)&&(qa?ib:ia);P(!ok,et(y))
+  P(!(qa&&qb)&&(qa?tval(y):tval(x))==NL,ed(y)))
+ L va=tval(x),vb=tval(y);mr(y);
  P(op>=8,ai((I)(op==8?va<vb:op==9?va>vb:va==vb)))
  L vv=op==1?va+vb:op==2?va-vb:op==3?va*vb:op==6?MIN(va,vb):op==7?MAX(va,vb):va;
  UC rk=(qa&&qb)?(op==2?0:ka):(qa?ka:kb);

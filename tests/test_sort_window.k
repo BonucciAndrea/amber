@@ -151,9 +151,10 @@ t[`msumEmpty; #msum[3;0#0.0]; 0]
 t[`mminEmpty; #mmin[3;0#0];   0]
 
 / ---- nulls are ABSENT, not contagious: 0n must not poison the whole tail ----
+/ (mmin and mmax take 0n as the smallest value, as & and | do: q's answers)
 t[`msumNull; msum[2;1 0n 3 4.0]; 1 1 3 7.0]
 t[`mavgNull; mavg[2;1 0n 3 4.0]; 1 1 3 3.5]
-t[`mminNull; mmin[2;1 0n 3 4.0]; 1 1 3 3.0]
+t[`mminNull; mmin[2;1 0n 3 4.0]; 1 0n 0n 3.0]
 t[`mmaxNull; mmax[2;1 0n 3 4.0]; 1 1 3 4.0]
 t[`mAllNull; ^*mavg[2;0n 0n];    1b]
 
@@ -277,7 +278,37 @@ t[`msumBool;    msum[2;1011b];         1 1 1 2]
 t[`msumHugeW;   msum[4294967297;1 2 3];   1 3 6]
 t[`mcountHugeW; mcount[4294967296;1 2 3]; 1 2 3]
 t[`mminHugeW;   mmin[4294967296;3 1 2];   3 1 1]
+/ mmin is null when its window holds a null, mmax when the window is all
+/ null, and -0W (-0w) then in the first w-1 points, as q's (x-1)|':/y gives
+t[`mmaxNullL;   mmax[3;0N 0N 0N 0N 1];      (1+0N;1+0N;0N;0N;1)]
+t[`mmaxNullF;   mmax[3;0n 0n 0n 0n 1.0];    -0w -0w 0n 0n 1.0]
+t[`mmaxNullMix; mmax[2;0n 5 0n 0n 3.0];     -0w 5 5 0n 3.0]
+t[`mminNullF;   mmin[2;0n 1 0n 3 4.0];      0n 0n 0n 0n 3.0]
+t[`mminNullL;   mmin[3;3 1 0N 4 5 6 7];     3 1 0N 0N 0N 4 5]
+t[`mminNullF3;  mmin[3;0n 0n 1.0];          0n 0n 0n]
+/ a window of 0 or less, or an atom, gives x back, as q's (x-1)&':/y does;
+/ a dict is taken by its values
+t[`mminW0;      mmin[0;1 2];                1 2]
+t[`mmaxW0;      mmax[0;1 2.0];              1 2.0]
+t[`mminWNeg;    mmin[-1;1 2 3 4 5];         1 2 3 4 5]
+t[`mmaxWNeg;    mmax[-2;3 1 2.0];           3 1 2.0]
+t[`mminDict;    mmin[2;`a`b`c!3 1 2];       `a`b`c!3 1 1]
+t[`mmaxDict;    mmax[2;`a`b`c!3 1 2];       `a`b`c!3 3 2]
+t[`mminAtom;    mmin[2;5];                  5]
+t[`mmaxAtom;    mmax[0;5.0];                5.0]
+t[`mmaxHugeW;   mmax[4294967296;0N 0N 1];   (1+0N;1+0N;1)]
+/ a dict, table or keyed table goes through the kernel too: nulls, and the
+/ -0W (-0w) of an all-null window in the first w-1 points, as q
+t[`mminTabN;    mmin[2;+`a`b!(1 0N 3;4 0n 6.0)];    +`a`b!(1 0N 0N;4 0n 0n)]
+t[`mmaxTabN;    mmax[2;+`a`b!(0N 0N 3;0n 0n 6.0)];  +`a`b!((1+0N;0N;3);-0w 0n 6.0)]
+t[`mminDictN;   mmin[2;`a`b`c!1 0N 3];              `a`b`c!1 0N 0N]
+t[`mmaxDictN;   mmax[2;`a`b`c!0N 0N 1];             `a`b`c!(1+0N;0N;1)]
+t[`mmaxDictNF;  mmax[2;`a`b`c!0n 0n 1.0];           `a`b`c!-0w 0n 1.0]
+t[`mminKeyN;    mmin[2;(+(,`k)!,1 2 3)!+`a`b!(1 0N 3;4 0n 6.0)];   (+(,`k)!,1 2 3)!+`a`b!(1 0N 0N;4 0n 0n)]
+t[`mmaxKeyN;    mmax[2;(+(,`k)!,1 2 3)!+`a`b!(0N 0N 3;0n 0n 6.0)]; (+(,`k)!,1 2 3)!+`a`b!((1+0N;0N;3);-0w 0n 6.0)]
+t[`mminDictE;   mmin[2;(0#`)!0#0];                  (0#`)!0#0]
+t[`mmaxDictE;   mmax[2;(0#`)!0#0.0];                (0#`)!0#0.0]
 
-hexpect[370]
+hexpect[394]
 hreport"AMBER SORT / WINDOW DIFFERENTIAL"
 $[FAILN;`exit 1;]

@@ -18,8 +18,9 @@
 / monotonic index deque, which makes them O(n) *independent of the window* --
 / the K definitions below were O(n*w) AND built one index vector plus one slice
 / per element.  Nulls (0n) are treated as absent rather than poisoning every
-/ later element, which is what q does; on null-free input the results are
-/ identical to the K definitions.
+/ later element, which is what q does, but mmin/mmax take a null as the
+/ smallest value, as & and | do (q's (x-1)&':/y); on null-free input the
+/ results are identical to the K definitions.
 / .
 / Each wrapper keeps its original K definition as mXXXK and falls back to it
 / whenever the kernel declines the input (unsupported type, w<1, an atom); a
@@ -32,14 +33,14 @@ mwt:{[f;w;x]$[`M~@x;+(!+x)!f[w]'.+x;(!x)!f[w;. x]]}      / a table by its column
 mcount:{[w;x]$[~`A~@r:`mw(6;w;x);r;(@x)in`m`M;mwt[mcount;w;x];msumK[w;~^x]]}   / window count of non-nulls
 mavgK:{[w;x]msumK[w;x]%mcount[w;x]}                      / moving average
 mvarK:{[w;x]m:mavgK[w;x:0.0+x];(mavgK[w;x*x])-m*m}       / moving variance (population), of floats as q's
-mminK:{[w;x]{[w;x;j]&/x@(0|1+j-w)+!(1+j)&w}[w;x]'!#x}    / moving min  (window)
-mmaxK:{[w;x]{[w;x;j]|/x@(0|1+j-w)+!(1+j)&w}[w;x]'!#x}    / moving max  (window)
+mminK:{[w;x]$[(w<1)|isat x;x;{[w;x;j]&/x@(0|1+j-w)+!(1+j)&w}[w;x]'!#x]}   / moving min; w<1 or an atom: x, as q
+mmaxK:{[w;x]$[(w<1)|isat x;x;{[w;x;j]|/x@(0|1+j-w)+!(1+j)&w}[w;x]'!#x]}   / moving max
 msum:{[w;x]$[~`A~@r:`mw(0;w;x);r;(@x)in`m`M;mwt[msum;w;x];msumK[w;x]]}   / O(n) running difference
 mavg:{[w;x]$[~`A~@r:`mw(1;w;x);r;(@x)in`m`M;mwt[mavg;w;x];mavgK[w;x]]}
 mvar:{[w;x]$[~`A~@r:`mw(2;w;x);r;(@x)in`m`M;mwt[mvar;w;x];mvarK[w;x]]}
 mdev:{[w;x]$[~`A~@r:`mw(3;w;x);r;(@x)in`m`M;mwt[mdev;w;x];sqrt mvarK[w;x]]}   / moving standard deviation
-mmin:{[w;x]$[`A~@r:`mw(4;w;x);mminK[w;x];r]}             / O(n) monotonic deque
-mmax:{[w;x]$[`A~@r:`mw(5;w;x);mmaxK[w;x];r]}
+mmin:{[w;x]$[~`A~@r:`mw(4;w;x);r;(@x)in`m`M;mwt[mmin;w;x];mminK[w;x]]}   / O(n) van Herk
+mmax:{[w;x]$[~`A~@r:`mw(5;w;x);r;(@x)in`m`M;mwt[mmax;w;x];mmaxK[w;x]]}
 mprd:{[w;x]exp msum[w;log 0.0+x]}                        / moving product
 / moving weighted / correlation helpers
 dot:{+/x*y}                                              / vector dot product

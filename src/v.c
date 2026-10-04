@@ -178,13 +178,15 @@ X1(imn,RC(imn(ucb(x)))RF(imn(of1(x)))RE(Lij x(0);az(NL*(i==j)))R_(fir(N(asc(x)))
 // the vector: it is neither added to the running sum nor counted, so
 //     msum -> the sum of the non-null members of the window (0 if all null)
 //     mavg -> sum / count-of-non-nulls, or 0n when the window is all null
-//     mmin/mmax -> the extreme of the non-null members, 0n when there are none
 //     mcount -> the count of the non-null members
 // which is what q does and what the prefix-sum version could not do (one 0n
 // anywhere made every later element 0n). The int null 0N is absent too:
-// mavg/mvar/mdev read it as 0n, the integer sums skip it. The sums and
-// counts of an int list are ints (q: msum of a long list is long). On
-// null-free input every result is identical to the K definitions it replaces.
+// mavg/mvar/mdev read it as 0n, the integer sums skip it. mmin/mmax take a null as the smallest
+// value, as `&` and `|` do (and q's (x-1)&':/y): mmin is null when the window
+// holds one, mmax only when the window is all null, and in the first w-1 points
+// mmax gives -0W/-0w there instead, as q's |': seeds them. The sums and counts
+// of an int list are ints (q: msum of a long list is long). On null-free input
+// every result is identical to the K definitions it replaces.
 enum{MWSUM,MWAVG,MWVAR,MWDEV,MWMIN,MWMAX,MWCNT};
 // Numerical hygiene for the running difference. Adding and later subtracting
 // the same double is not exactly reversible, so over millions of elements the
@@ -269,7 +271,8 @@ MWDQ(G,G,0) MWDQ(H,H,0) MWDQ(I,I,0) MWDQ(L,L,0) MWDQ(F,F,v!=v)
 // extremes (a push pops every back entry that does not strictly beat it), and
 // every combine here keeps its newer operand on a tie -- which is what decides
 // 0.0 against -0.0. NaN is the one case it does not model (the deque skips it
-// as absent): a float column with a NaN is reported and redone by the deque.
+// as absent): a float column with a NaN is reported, and mmax is redone by the
+// deque, mmin patched where a window holds the NaN.
 #define MWVH(NM,T,GT,IDV,CHK)                                                  \
 Z I NM(CO T*RES p,T*RES r,N n,N w,T*RES suf){                                  \
   N m=w<n?w:n;I bad=0;for(N j=0;j<=m;j++)suf[j]=IDV;                           \
@@ -341,13 +344,20 @@ A mwC(A x){
      case tL: bad=mx?mvmaxL(p,r,n,(N)w,sf):mvminL(p,r,n,(N)w,sf);break;
      default: bad=mx?mvmaxF(p,r,n,(N)w,sf):mvminF(p,r,n,(N)w,sf);break;}
    mr(sa);
-   if(bad){
+   if(bad&&mx){
      // plain n-entry scratch from the bucket allocator (recycled after the first
      // call): measured faster than a masked ring for the deque's access pattern.
      N mk=(N)-1;
      A dqa=an((U)n,tI);U*RES dq=(U*)_V(dqa);
-     mx?mwmaxF(p,r,n,(N)w,dq,mk):mwminF(p,r,n,(N)w,dq,mk);
+     mwmaxF(p,r,n,(N)w,dq,mk);
      mr(dqa);}
+   // mmin: a window holding a 0n is 0n (the windows without one were exact)
+   if(bad&&!mx){CO F*RES q=p;F*RES o=r;N l=0;B s=0;
+     for(N i=0;i<n;i++){if(q[i]!=q[i])l=i,s=1;if(s&&i-l<(N)w)o[i]=NF;}}
+   // mmax: an all-null window in the first w-1 points is -0W/-0w, as in q
+   if(mx&&(t==tL||t==tF)){N e=(N)w-1<n?(N)w-1:n;
+     if(t==tL){L*RES o=r;for(N i=0;i<e;i++)if(o[i]==NL)o[i]=-WL;}
+     else{F*RES o=r;for(N i=0;i<e;i++)if(o[i]!=o[i])o[i]=-WF;}}
  }
  if(ce)mr(ce);
  return x(y);}

@@ -365,6 +365,9 @@ X2(fnd,
  // digest #7: bits looked for are widened to bytes first (read as ints they gave wrong rows and read past the end)
  RGC(P(fmx(y,xtC),et(y))YB(fnd(x,cG(y)))F(256,t[i]=NL)UC*a=xV;U n=xn;F(n,t[a[n-1-i]]=n-1-i)fndGx(y))
  R5(tH,tI,tL,tF,tS,
+  // digest #30: an empty general list gets what the byte haystack gives it (0#,!0). Each-right asks the
+  // empty list's char prototype, and a char against numbers is 'type (issue #20, row 12)
+  P(ytA&&!yn,A g=aG(0);A r=fnd(g,y);mr(g);r)
   P(xt!=tS&&(ytC||ytc),et(y))
   YmMA(r2f(fnd,x,y))
   YE(fnd(x,gZ(y)))

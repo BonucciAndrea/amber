@@ -418,6 +418,15 @@ t[`mmSecInts;(mm -361815000 -5415123 361815000 0N;sec -361815000 -5415123 361815
 t[`mmSecNested;(mm (-5415123 0;0);sec (-5415123 0;0);mm `a`b!(-5415123;0);mm `a`b!(-5415123 0;0);mm (0N 0;0);hh (0N 0;0);hh `a`b!(0N -5415123;0));((-30 0;0);(-15 0;0);`a`b!-30 0;`a`b!(-30 0;0);(0N 0;0);(0N 0;0);`a`b!(0N -1;0))]   / lists of lists and dicts, item by item
 t[`mmSecFrac;(mm -0.5;sec -0.5;mm -0.5 60000.5;sec -1500.5;hh -0.5);(0;0;0 1;-1;0)]   / a fraction of a ms below 0 is no minute, not 59
 t[`mmSecRagged;(mm (5415123 0;,0);mm (5415123 0;-5415123 0 1);mm `a`b!(5415123 0;,0);sec (5415123 0;,0N));((30 0;,0);(30 0;-30 0 0);`a`b!(30 0;,0);(15 0;,0N))]   / lists of lists of any lengths
+/ the time accessors take a general list of times, as a strand of times is (digest #65; they were 'type, in tnum0)
+t[`timeAccessorsList;(hh 01:00:00.000 02:30:00.000;mm 01:00:00.000 02:30:00.000;sec 01:00:00.000 02:30:15.000;hh (01:00:00.000;02:30:00.000);mm 0-(01:30:00.000;00:30:00.000);milli 01:00:00.123 02:30:00.456;minute 01:00:00.000 02:30:00.000;second 01:00:00.000 02:30:00.000);(1 2;0 30;0 15;1 2;-30 -30;123 456;60 150;3600 9000)]
+t[`timeAccessorsMixed;(.[milli;,(01:00:00.000;2026.01.01);{(x?"\n")#x}];.[hh;,(01:00:00.000;3600000);{(x?"\n")#x}]);2#,"'type"]   / one kind only: times with dates or ints stay 'type
+tavc:0   / counts calls of the lambdas in timeAccessorsVerbs
+t[`timeAccessorsVerbs;(.[hh;,(+;-);{(x?"\n")#x}];.[milli;,(+;-);{(x?"\n")#x}];.[second;,(::;-:);{(x?"\n")#x}];.[mm;,(+);{(x?"\n")#x}];.[mm;,({x};{y});{(x?"\n")#x}];.[mm;,(+;+);{(x?"\n")#x}];.[hh;,({tavc+:1;x};{tavc+:1;x});{(x?"\n")#x}]);7#,"'type"]   / `u and `v are verb types in Amber, not q's minute and second
+t[`timeAccessorsVerbsUncalled;tavc;0]   / hh never calls the lambdas above
+t[`timeAccessorsNested;(hh `a`b!01:00:00.000 02:30:00.000;mm (01:30:00.000;(02:00:00.000;03:00:00.000));hh `a`b!(01:00:00.000;(02:00:00.000;03:00:00.000));mm 0#,(::);hh 0#,(::);.[mm;,(01:30:00.000;(02:00:00.000;3600000));{(x?"\n")#x}]);(`a`b!1 2;(30;0 0);`a`b!(1;2 3);!0;!0;"'type")]   / dicts and lists of lists item by item, as q; an empty list is !0
+t[`timeAccessorsDeep;(mm (01:30:00.000 02:00:00.000;,03:00:00.000);.[milli;,(01:00:00.000;(2026.01.01;2026.01.02));{(x?"\n")#x}];.[hh;,`a`b!(01:00:00.000;(2026.01.01;2026.01.02));{(x?"\n")#x}]);((30 0;,0);"'type";"'type")]   / lists of any lengths; one kind at every depth
+t[`timeAccessorsDates;(milli 2026.01.01 2026.02.01;sec 2026.01.01 2026.02.01;minute 2026.01.01 2026.02.01;second 2026.01.01 2026.02.01;mm `a`b!(2026.01.01;2026.02.01);hh 2026.01.01 2026.02.01;milli 2026.01.01);(497 528;9 9;0 0;9 9;`a`b!0 0;0 0;497)]   / a list of dates is read as its days, as a date atom is (q: 'hh, 'ss; `mm$ gives the month)
 t[`minute;minute hms[9;30;15];570]
 t[`second;second hms[9;30;15];34215]
 t[`milli;milli hms[9;30;15]+123;123]

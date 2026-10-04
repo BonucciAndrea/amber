@@ -346,12 +346,18 @@ hms:{[h;m;s]1000*s+(60*m)+3600*h}                  / build a time from h m s
 / Deliberately NOT the nanosecond tags (`p timestamp, `n timespan): `i$ would
 / truncate them, and a silently wrong hour is worse than an error. There is no
 / `j$ cast in this dialect -- it raises -- so there is nothing wider to use.
-tnum0:{$[|/(@x)=`t`T`d`D`u`U`v`V;`i$x;x]}
+/ (`u and `v are Amber's verb types, not q's minute and second; Amber has no typed list of times or dates.) A general list
+/ of times, as a strand of times is (01:00:00.000 02:30:00.000), or of dates, takes `i$ too, and one that holds lists or dicts
+/ of them goes item by item, a dict by its values, if all the atoms in it are of one kind, times or dates (tnumk finds their
+/ types); an empty one is !0; one that mixes kinds, or times and ints, at any depth stays as it was.
+tnumk:{$[`m~@x;tnumk@.x;`A~@x;[t:@'x;i:t in`A`m;?(?t@&~i),$[|/i;,/tnumk'x@&i;0#`]];,@x]}   / into general lists and dicts only: no list per atom
+tnumc:{$[`m~@x;(!x)!tnumc@.x;`A~@x;$[&/(@'x)in`t`d;`i$x;tnumc'x];`i$x]}
+tnum0:{$[(@x)in`t`d;`i$x;~(@x)in`A`m;x;~#x;$[`A~@x;!0;x];[k:tnumk x;$[(1=#k)&&/k in`t`d;tnumc x;x]]]}
 / hh mm sec: as q's `hh$ `mm$ `ss$, a negative time keeps its sign (hh -1, mm -30 for -01:30:00.000): tpart takes the units
 / of u ms and their remainder by m, both toward zero; a null stays null. hh of a time, an int or an int vector takes `hh
 / (src/w.c), one pass in C; mm and sec of a number or a numeric list none below 0 take the floor as before (the same there, in fewer passes).
 tpart:{[u;m;x]n:^x;(0N*n)+(~n)*(1-2*x<0)*m!_(x|-x)%u}   / nulls by arithmetic, so a list of lists or a dict of them too
-hh:{$[|/`t`i`I=@x;`hh x;tpart[3600000;24]tnum0 x]}  / hour of day      (q time.hh)
+hh:{x:tnum0 x;$[|/`i`I=@x;`hh x;tpart[3600000;24;x]]}   / hour of day      (q time.hh)
 mm:{x:tnum0 x;$[$[(@x)in`i`I`f`F;&/~x<0;0];60!_x%60000;tpart[60000;60;x]]}   / minute of hour   (q time.mm)
 sec:{x:tnum0 x;$[$[(@x)in`i`I`f`F;&/~x<0;0];60!_x%1000;tpart[1000;60;x]]}    / second of minute (q time.ss; ss=string-search)
 milli:{1000!tnum0 x}                               / millisecond      (q time.ms)

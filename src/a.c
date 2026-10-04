@@ -29,7 +29,7 @@
 #define _POSIX_C_SOURCE 199309L
 #endif
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
-#include <stdlib.h>   // getenv (qdiag): undeclared it returned an int, a cut-off pointer
+#include <stdlib.h>   // malloc/free for the parallel kernels (exp); getenv (qdiag)
 #include"ext.h"// amber 1.9.5: out-of-tree verb registry (see src/ext.h)
 #include"arena.h"
 #include"diagnostic.h"
@@ -117,6 +117,22 @@ I tjk(A x){P(_t(x)-tA,0)U n=_n(x);P(!n,1)CO A*a=_V(x);UC t=_t(*a);B m=0,o=0;F(n,
 B tjs(A a,A b){I p=tjk(a),q=tjk(b);P(p<0||q<0,0)P(p==q||p==1||q==1,1)return p<2&&q<2;}
 A tjn(A x){I k=tjk(x);P(k==1,aL(0))P(k<2,_R(x))U n=_n(x);CO A*a=_V(x);A y=aL(n);L*RES v=_V(y);I(k==tnp,F(n,v[i]=*(L*)_V(a[i])))E(F(n,v[i]=(I)a[i]))return y;}
 A ucb(A);
+// amber 2.5 (exp): one slice of trade rows for the parallel aj (see the parallel branch in ajc). Same row
+// logic as ajc's serial loop, with this slice's own cursor cache.
+#define PAJ_BITS 12u
+#define PAJ_N (1u<<PAJ_BITS)
+#define PAJ_H(b) ((U)(((W)(b)*0x9E3779B97F4A7C15ull)>>(64u-PAJ_BITS)))
+#define PAJ_MIN (1u<<17)
+TD struct{CO L*qt,*tt,*gb,*ge;L*m;U n,nq,np;L*cb[PAR_MAX_THREADS];L*ck[PAR_MAX_THREADS];U*cc[PAR_MAX_THREADS];}AJ;
+Z V ajrows(V*c_,int t){AJ*c=c_;CO L*RES qt=c->qt,*RES tt=c->tt,*RES gb=c->gb,*RES ge=c->ge;L*RES m=c->m;U nq=c->nq;
+ U s=(U)((W)c->n*t/c->np),e=(U)((W)c->n*(t+1)/c->np);L*RES cbase=c->cb[t],*RES ckey=c->ck[t];U*RES ccur=c->cc[t];
+ MS(cbase,0xff,(N)PAJ_N*SZ(L));
+ for(U i=s;i<e;i++){L b=gb[i],en=ge[i],key=tt[i];
+  if(b==NL||en==NL||en<=b||(U)en>nq){m[i]=NL;continue;}
+  U lo=(U)b,hi=(U)en,h=PAJ_H(b),j;
+  if(cbase[h]==b&&ckey[h]<=key){U cur=ccur[h],lim=hi-cur>AMGALLOP?cur+AMGALLOP:hi;j=cur;while(j<lim&&qt[j]<=key)j++;if(j==lim&&lim<hi)j=amub(qt,lim,hi,key);}
+  else j=amub(qt,lo,hi,key);
+  m[i]=j>lo?(L)(j-1):NL;cbase[h]=b;ckey[h]=key;ccur[h]=j;}}
 A ajc(A x){
  P(_t(x)-tA||_n(x)-4,et(x))
  A*e=(A*)_V(x);P(!tjs(e[0],e[1]),et(x))P(_N(e[2])-_N(e[1])||_N(e[3])-_N(e[1]),el(x))   //a slice per trade row
@@ -166,6 +182,12 @@ A ajc(A x){
  // reaches the reset at all. Measured before this change: 41.5 KB of RSS
  // permanently per aj call, constant in row count; 200k joins reached 5 GB.
  // Two stores on the slab fast path, so it costs nothing.
+ {int np=nt<PAJ_MIN?1:par_thread_count(nt);
+  I(np>1,AJ c={.qt=qt,.tt=tt,.gb=gb,.ge=ge,.m=m,.n=nt,.nq=nq,.np=(U)np};B ok=1;
+   F(np,c.cb[i]=malloc((N)PAJ_N*SZ(L));c.ck[i]=malloc((N)PAJ_N*SZ(L));c.cc[i]=malloc((N)PAJ_N*SZ(U));I(!c.cb[i]||!c.ck[i]||!c.cc[i],ok=0))
+   I(ok,par_run(np,ajrows,&c))
+   F(np,free(c.cb[i]);free(c.ck[i]);free(c.cc[i]))
+   I(ok,mr(QT);mr(TT);mr(GB);mr(GE);return x(out);))}   //parallel: done; else the serial loop below
  ArenaMark ajmk=arena_mark();
  L*RES cbase=(L*)arena_alloc((N)AJC_N*SZ(L));   // slice base occupying the slot
  L*RES ckey =(L*)arena_alloc((N)AJC_N*SZ(L));   // that group's last probed key
@@ -646,6 +668,13 @@ ZN V oI(ambcn){CO I*p=a;L*r=c;F(n+3&-4,*r++=b[i]<m?p[b[i]]:NL)}
 ZN V o8(ambcn,L v){CO L*p=a;L*r=c;F(n+3&-4,*r++=b[i]<m?p[b[i]]:v)}
 ZN V oL(ambcn){o8(a,m,b,c,n,NL);}
 ZN V oF(ambcn){o8(a,m,b,c,n,NFL);}
+// amber 2.5 (exp): a big gather split across threads (see patch header). es: bytes per output item.
+#define PGAT_MIN (1u<<16)
+TD struct{V(*f)(ambcn);CO V*a;U m;CO U*b;C*c;U n,nt,es;}GJ;
+Z V gat_w(V*c_,int t){GJ*c=c_;U s=(U)(((W)c->n*t/c->nt)&~31ull),e=(U)t+1==c->nt?c->n:(U)(((W)c->n*(t+1)/c->nt)&~31ull);
+ if(e>s)c->f(c->a,c->m,c->b+s,c->c+(N)s*c->es,e-s);}
+Z V gat(V(*f)(ambcn),U es,CO V*a,U m,CO U*b,V*c,U n){int nt=n<PGAT_MIN?1:par_thread_count(n);
+ if(nt<2){f(a,m,b,c,n);return;}GJ j={f,a,m,b,(C*)c,n,(U)nt,es};par_run(nt,gat_w,&j);}
 A2(i1,/*01*/P(y==GAP||y==au,xR)
  X(Rt(y(xR))
    RE(x=gZ(xR);x(i1(x,y)))
@@ -666,7 +695,7 @@ A2(i1,/*01*/P(y==GAP||y==au,xR)
         RI(U n=yn;
          X(RA(A z=aA(n);F(n,za=io(x,yi))y(0);I(!n,zx=mkn(io(x,0)))sqz(z))
            RB(x=cG(xR);x(i1(x,y)))
-           R_(C t=xt;B k=t-tG<3u&&maxfU(yV,yn)>=xn;A z=an(n,k?tL:t);My(G(&iG,iH,iI,oL,oF,iC,iS,oG,oH,oI)[7*k+t-tG](xV,xn,yV,zV,n))z))0))0))0)
+           R_(C t=xt;B k=t-tG<3u&&maxfU(yV,yn)>=xn;A z=an(n,k?tL:t);My(U q_=7*k+t-tG;gat(G(&iG,iH,iI,oL,oF,iC,iS,oG,oH,oI)[q_],(U)"\1\2\4\10\10\1\4\10\10\10"[q_],xV,xn,yV,zV,n))z))0))0))0)
 Z A3(i2,/*001*/C b=ytT||y==GAP||y==au;x=Nz(i1(x,yR));P(!b,x(x1(z)))x(l2f(dot,x,aA1(z))))
 Z AX(i8,A y=*a;P(n==1,i1(x,y))P(n==2,y(_2(x,y,a[1])))a++;n--;C b=ytT||y==GAP||y==au;x=i1(x,y);P(!x,mrn(n,a);x)P(!b,x(i8(x,a,n)))x(l2f(dot,x,aV(tA,n,a))))
 L iw(A x/*0*/,U w,L i)_(S4(w,_(xg),_(xh),_(xi),_(xl))0)
@@ -884,8 +913,8 @@ Z A1(prnT,P(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);U n=_n(x);W t0=1,t1=1,t2=1,t3=1;
  for(;i<n;i++){L v0=p[i];t0*=(W)(v0==NL?1:v0);}x(az((L)(t0*t1*t2*t3))))K1("{*/x}",x))
 Z A1(hnlT,I hz=0;I(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);F(_n(x),hz|=p[i]==NL))J(!_tP(x)&&_t(x)==tF,CO F*RES p=_V(x);F(_n(x),hz|=p[i]!=p[i]))x(ai(hz)))
 Z A1(sumnT,P(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);U n=_n(x);W t=0;F(n,L v=p[i];t+=(W)(v==NL?0:v))x(az((L)t)))K1("{+/x}",x))
-ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl"};
- G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggC,sumnT,ejxC,cvmC,prnT,hnlT,ed)[fI((V*)s,L(s),v)](x))
+ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl","abs"};
+ G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,ed)[fI((V*)s,L(s),v)](x))
 /* ---- tacit trains: hook (f g) and fork (f g h) --------------------------
  * A general list of length 2 or 3 whose every element is a function becomes a
  * TRAIN when it is applied: (f g) is a hook, (f g h) a fork (APL/J/BQN rules).

@@ -1,4 +1,6 @@
-#include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+#include"a.h"
+#include <stdlib.h>   // amber 2.5 (exp): malloc/calloc/qsort/free for the parallel kernels
+#include"parallel.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include"arena.h"
 
 // amber: NaN-aware float compare for `~` (match).
@@ -212,6 +214,46 @@ enum{GA_SUM,GA_CNT,GA_MIN,GA_MAX,GA_AVG,GA_FST,GA_LST};
 // below 0.0), and give back the winner's own bits. The plain < and > skipped NaNs, so a
 // group min ignored the NaN &/ returns, and an all-NaN group came out as 0w/-0w.
 #define GA_OF(i) o1(((CO L*)vp)[i])
+// ---- amber 2.5 (exp): parallel gagg for the exactly-combinable ops, see patch notes / gaggC
+#define PGAG_MIN (1u<<16)
+#define PGAG_CELLS (1u<<22)        //threads x key range: the private tables' total size cap
+TD struct{CO V*kp,*vp;CO UC*mp;U wk,wv,nt;N n;I code;B vf;L lo;W rg;L*cnt,*acc;I*fst,*lst;}GQ;
+Z V gq1(V*c_,int t){GQ*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;W rg=c->rg;L*cnt=c->cnt+(N)t*rg,*acc=c->acc+(N)t*rg;
+ I*fst=c->fst+(N)t*rg,*lst=c->lst+(N)t*rg;CO V*vp=c->vp;U wv=c->wv;B vf=c->vf;I code=c->code;L lo=c->lo;
+ for(N i=s;i<e;i++){if(c->mp&&!c->mp[i])continue;W q=(W)GARD(c->wk,c->kp,i)-(W)lo;
+  if(!cnt[q])fst[q]=(I)i;lst[q]=(I)i;cnt[q]++;
+  S(code,
+   C(GA_SUM,L d=GARD(wv,vp,i);I(d!=NL,acc[q]=(L)((W)acc[q]+(W)d)))
+   C(GA_MIN,I(vf,F d=((CO F*)vp)[i];I(d==d,L t_=GA_OF(i);I(t_<acc[q],acc[q]=t_)))E(L t_=GARD(wv,vp,i);I(t_!=NL&&t_<acc[q],acc[q]=t_)))
+   C(GA_MAX,I(vf,F d=((CO F*)vp)[i];I(d==d,L t_=GA_OF(i);I(t_>acc[q],acc[q]=t_)))E(L t_=GARD(wv,vp,i);I(t_!=NL&&t_>acc[q],acc[q]=t_)))
+   D())}}
+Z I gq_cmp(CO V*a,CO V*b){I x_=*(CO I*)a,y_=*(CO I*)b;return(x_>y_)-(x_<y_);}
+// fills the group tables as the serial loop would; -1: not taken (wrong op, range too wide, or no memory)
+NI Z I gagg_par(I code,CO V*kp,U wk,CO V*vp,U wv,B vf,CO UC*mp,N n,L lo,W rg,B direct,L gmn,L gmx,int nt,
+ L**pgk,I**pgf,F**paf,L**pal,L**pgc,U*pcap,U*png){
+ P(!(code==GA_CNT||code==GA_SUM&&!vf||code==GA_MIN||code==GA_MAX||code==GA_FST||code==GA_LST),-1)
+ P(!direct||(W)nt*rg>PGAG_CELLS,-1)
+ N cells=(N)nt*(N)rg;GQ c={.kp=kp,.vp=vp,.mp=mp,.wk=wk,.wv=wv,.nt=(U)nt,.n=n,.code=code,.vf=vf,.lo=lo,.rg=rg};
+ c.cnt=calloc(cells,SZ(L));c.acc=malloc(cells*SZ(L));c.fst=malloc(cells*SZ(I));c.lst=malloc(cells*SZ(I));
+ I r=-1;if(!c.cnt||!c.acc||!c.fst||!c.lst)goto out;
+ {L a0=code==GA_MIN?(vf?gmn:WL):code==GA_MAX?(vf?gmx:NL+1):0;F(cells,c.acc[i]=a0)}
+ par_run(nt,gq1,&c);
+ // combine per slot in thread order, then order the groups by first row
+ {U ng=0;I*ord=malloc((N)rg*SZ(I)*2);if(!ord)goto out;I*first=ord+rg;   //ord: (first row, slot) pairs packed as two Is
+  TD struct{I f,s;}FS;FS*fs=(FS*)ord;
+  for(W q=0;q<rg;q++){I fr=-1;for(int w=0;w<nt;w++)if(c.cnt[(N)w*rg+q]){fr=c.fst[(N)w*rg+q];break;}if(fr>=0){fs[ng].f=fr;fs[ng].s=(I)q;ng++;}}
+  qsort(fs,ng,SZ(FS),gq_cmp);   //by first row (unique per slot), so the serial first-appearance order
+  U cap=*pcap;if(ng>cap){L*gk=realloc(*pgk,ng*SZ(L));I*gf=realloc(*pgf,ng*SZ(I));F*af=realloc(*paf,ng*SZ(F));L*al_=realloc(*pal,ng*SZ(L));L*gc=realloc(*pgc,ng*SZ(L));
+   if(gk)*pgk=gk;if(gf)*pgf=gf;if(af)*paf=af;if(al_)*pal=al_;if(gc)*pgc=gc;if(!gk||!gf||!af||!al_||!gc){free(ord);goto out;}*pcap=ng;}
+  L*gk=*pgk;I*gf=*pgf;F*af=*paf;L*al_=*pal;L*gc=*pgc;
+  for(U g=0;g<ng;g++){W q=(W)fs[g].s;gk[g]=lo+(L)q;af[g]=0;L cn=0,ac=code==GA_MIN?(vf?gmn:WL):code==GA_MAX?(vf?gmx:NL+1):0;I fr=-1,ls=-1;
+   for(int w=0;w<nt;w++){N j=(N)w*rg+q;if(!c.cnt[j])continue;cn+=c.cnt[j];I(fr<0,fr=c.fst[j])ls=c.lst[j];
+    S(code,C(GA_SUM,ac=(L)((W)ac+(W)c.acc[j]))C(GA_MIN,I(c.acc[j]<ac,ac=c.acc[j]))C(GA_MAX,I(c.acc[j]>ac,ac=c.acc[j]))D())}
+   gc[g]=cn;al_[g]=ac;gf[g]=code==GA_LST?ls:fr;I(code==GA_MIN,af[g]=WF)I(code==GA_MAX,af[g]=-WF)}
+  *png=ng;free(ord);r=0;}
+ out:
+ free(c.cnt);free(c.acc);free(c.fst);free(c.lst);
+ return r;}
 A1(gaggC,P(_t(x)-tA||(_n(x)-3&&_n(x)-4),et(x))A*e=_A(x);A op=e[0],k=e[1],v=e[2],m=_n(x)==4?e[3]:0;
  I code=-1;
  I(_ts(op),S nm=su(_v(op));code=!strcmp(nm,"sum")?GA_SUM:!strcmp(nm,"count")?GA_CNT:!strcmp(nm,"min")?GA_MIN:!strcmp(nm,"max")?GA_MAX:!strcmp(nm,"avg")?GA_AVG:!strcmp(nm,"first")?GA_FST:!strcmp(nm,"last")?GA_LST:-1)
@@ -271,3 +313,99 @@ A1(gaggC,P(_t(x)-tA||(_n(x)-3&&_n(x)-4),et(x))A*e=_A(x);A op=e[0],k=e[1],v=e[2],
 #undef GA_GROW
 #undef GA_ADD
 #undef GA_OF
+// ---- 2.5 (exp): float sum and avg by group in parallel, from PGAF_MIN (256K) rows on a direct key range. The rows are cut
+// into nb fixed blocks -- nb set by n and the key range only, never by the thread count -- each block keeps its own
+// per-group count, first row and float sum (skipping NaN, as gaggC), and the blocks are added in order: one answer for
+// any thread count from 2 up (last-bit different from gaggC's single running sum). One thread, or more than 32K groups,
+// stays on gaggC: there the blocks cost more than they save (up to 10% on one thread, nothing gained at 100K groups).
+// Group order: first row, as gaggC.
+#define PGAF_MIN (1u<<18)
+#define PGAF_CELLS (1u<<20)
+TD struct{I f,s;}GFS;   //(first row, slot), sorted by first row, which is unique per slot
+TD struct{CO V*kp;CO F*vp;CO UC*mp;U wk;N n,bs,nb;L lo;W rg;L*cnt;F*sum;I*fst;N next;}GF;
+Z V gf1(V*c_,int t){GF*c=c_;(V)t;
+ for(;;){N b=__atomic_fetch_add(&c->next,1,__ATOMIC_RELAXED);if(b>=c->nb)break;
+  N s=b*c->bs;N e=s+c->bs<c->n?s+c->bs:c->n;W rg=c->rg;L*cnt=c->cnt+b*rg;F*sm=c->sum+b*rg;I*fst=c->fst+b*rg;L lo=c->lo;
+  for(N i=s;i<e;i++){if(c->mp&&!c->mp[i])continue;W q=(W)GARD(c->wk,c->kp,i)-(W)lo;
+   if(!cnt[q])fst[q]=(I)i;F d=c->vp[i];if(d==d){sm[q]+=d;cnt[q]++;}else cnt[q]+=(L)1<<40;}}}   //a NaN row still makes its group: high count bits
+// (keys ; sums or averages ; first rows), or 0 when not taken
+// the key range on nt threads (each a slice, then the min of the mins and max of the maxes)
+TD struct{CO V*kp;U wk;N n;int nt;L mn[64],mx[64];}GMM;
+Z V gmm1(V*c_,int t){GMM*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;L a=GARD(c->wk,c->kp,s),b=a;
+ switch(c->wk){case 0:{CO G*p=c->kp;for(N i=s;i<e;i++){L v=p[i];if(v<a)a=v;if(v>b)b=v;}}break;
+  case 1:{CO H*p=c->kp;for(N i=s;i<e;i++){L v=p[i];if(v<a)a=v;if(v>b)b=v;}}break;
+  case 2:{CO I*p=c->kp;for(N i=s;i<e;i++){L v=p[i];if(v<a)a=v;if(v>b)b=v;}}break;
+  default:{CO L*p=c->kp;for(N i=s;i<e;i++){L v=p[i];if(v<a)a=v;if(v>b)b=v;}}}
+ c->mn[t]=a;c->mx[t]=b;}
+Z V gmmP(CO V*kp,U wk,N n,int nt,L*lo,L*hi){GMM c={.kp=kp,.wk=wk,.n=n,.nt=nt>64?64:nt};par_run(c.nt,gmm1,&c);
+ *lo=c.mn[0];*hi=c.mx[0];for(int t=1;t<c.nt;t++){if(c.mn[t]<*lo)*lo=c.mn[t];if(c.mx[t]>*hi)*hi=c.mx[t];}}
+Z A gaggF(I code,A k,UC kt,U wk,CO F*vp,CO UC*mp,N n,L lo,W rg,int nt){
+ N nb=(n+(((N)1<<18)-1))>>18;N cap=PGAF_CELLS/(N)rg;   //256K-row blocks: enough rows per group that a block's table pays for itself
+if(cap<2)return 0;if(nb>cap)nb=cap;N bs=(n+nb-1)/nb;nb=(n+bs-1)/bs;
+ N cells=nb*(N)rg;GF c={.kp=_V(k),.vp=vp,.mp=mp,.wk=wk,.n=n,.bs=bs,.nb=nb,.lo=lo,.rg=rg,.next=0};
+ c.cnt=calloc(cells,SZ(L));c.sum=calloc(cells,SZ(F));c.fst=malloc(cells*SZ(I));A r=0;
+ if(c.cnt&&c.sum&&c.fst){int t=nt>(int)nb?(int)nb:nt;par_run(t,gf1,&c);
+  // per slot: total count, sum and first row (blocks are in row order: the first block holding the slot has its
+  // first row); then the groups in first-row order from a bitmap over the rows -- a qsort of 100k groups cost more
+  // than the aggregation
+  L*tc=calloc((N)rg,SZ(L));F*ts=malloc((N)rg*SZ(F));I*tf=malloc((N)rg*SZ(I));W*bm=calloc((n+63)>>6,SZ(W));
+  if(tc&&ts&&tf&&bm){U ng=0;
+   for(W q=0;q<rg;q++){F sm=0;L cn=0;I f=-1;for(N b=0;b<nb;b++){N j=b*rg+q;L cj=c.cnt[j];if(cj){if(f<0)f=c.fst[j];sm+=c.sum[j];cn+=cj;}}
+    ts[q]=sm;tc[q]=cn;tf[q]=f;if(f>=0){bm[(W)f>>6]|=1ull<<((W)f&63);ng++;}}
+   A ky=an(ng,kt);A vl=an(ng,tF);A fr=an(ng,tI);U g=0;
+   for(W w=0;w<(n+63)>>6;w++){W bb=bm[w];while(bb){W p=(w<<6)|(W)__builtin_ctzll(bb);bb&=bb-1;W q=(W)GARD(wk,c.kp,p)-(W)lo;L key=lo+(L)q;
+     if(wk==0)_G(ky)[g]=(G)key;else if(wk==1)_H(ky)[g]=(H)key;else if(wk==2)_I(ky)[g]=(I)key;else _L(ky)[g]=key;
+     _F(vl)[g]=code==GA_AVG?ts[q]/(F)(tc[q]&(((L)1<<40)-1)):ts[q];_I(fr)[g]=(I)p;g++;}}
+   r=aV(tA,3,A(ky,vl,fr));}
+  free(tc);free(ts);free(tf);free(bm);}
+ free(c.cnt);free(c.sum);free(c.fst);return r;}
+// ---- amber 2.5 (exp): `gagg comes here first. The parallel aggregation (gagg_par) has its own entry point rather
+// than a branch in gaggC: inside gaggC it made GCC compile the serial loop 3-10% slower even where it is never taken.
+// gaggT takes what gagg_par does exactly -- count, int sum, min, max, first, last over a direct key range, n at least
+// PGAG_MIN, more than one thread, no bit mask -- checked as gaggC checks it, and builds the result as gaggC does;
+// everything else, and anything gagg_par declines, goes to gaggC as it always went.
+A gaggT(A x){
+ P(_t(x)-tA||(_n(x)-3&&_n(x)-4),gaggC(x))
+ A*e=_A(x);A op=e[0],k=e[1],v=e[2],m=_n(x)==4?e[3]:0;
+ P(_tP(k)||_n(k)<PGAG_MIN,gaggC(x))
+ I code=-1;
+ I(_ts(op),S nm=su(_v(op));code=!strcmp(nm,"sum")?GA_SUM:!strcmp(nm,"count")?GA_CNT:!strcmp(nm,"min")?GA_MIN:!strcmp(nm,"max")?GA_MAX:!strcmp(nm,"avg")?GA_AVG:!strcmp(nm,"first")?GA_FST:!strcmp(nm,"last")?GA_LST:-1)
+ J(_tz(op),code=(I)gl_(op))
+ P(!(code==GA_SUM||code==GA_AVG||code==GA_CNT||code==GA_MIN||code==GA_MAX||code==GA_FST||code==GA_LST),gaggC(x))
+ UC kt=_t(k);P(!(kt==tG||kt==tH||kt==tI||kt==tL||kt==tS),gaggC(x))
+ N n=_n(k);int nt=par_thread_count(n);
+ U wk=kt==tG?0:kt==tH?1:(kt==tI||kt==tS)?2:3;
+ UC vt=code==GA_CNT?tL:_t(v);B vf=vt==tF;
+ if(nt>1&&(code==GA_SUM||code==GA_AVG)&&vf&&!_tP(v)&&_n(v)==n&&(W)n>=PGAF_MIN&&!(m&&(_tP(m)||(_t(m)!=tG&&_t(m)!=tB)||_n(m)!=n))){   //floats: the blocked path
+  A mw=m&&_t(m)==tB?cG(_R(m)):0;CO UC*mp_=mw?_V(mw):m?_V(m):0;   //a bit mask is widened to bytes, as gaggC does
+  CO V*kp=_V(k);L lo=GARD(wk,kp,0),hi=lo;N sd=n/4096;for(N i=0;i<n;i+=sd){L t=GARD(wk,kp,i);if(t<lo)lo=t;if(t>hi)hi=t;}   //4096 keys first: if they
+  if((W)hi-(W)lo<((W)1<<15))gmmP(kp,wk,n,nt,&lo,&hi);   //already span too much, so does the column, and the full scan is skipped
+  W rg=(W)hi-(W)lo+1;   //the key range on all threads: a serial pass cost ~8ms at 10M, wasted when the range is too wide
+  if(rg&&rg<=((W)1<<15)&&rg<=8*(W)n+1024){A z_=gaggF(code,k,kt,wk,_V(v),mp_,n,lo,rg,nt);if(z_){if(mw)mr(mw);return x(z_);}}
+  if(mw)mr(mw);}
+ P(code==GA_SUM&&vf||code==GA_AVG,gaggC(x))
+ P(nt<2,gaggC(x))
+ I(code!=GA_CNT&&code!=GA_FST&&code!=GA_LST,P(_tP(v)||!(vt==tG||vt==tH||vt==tI||vt==tL||vt==tF)||_n(v)!=n,gaggC(x)))
+ I(code==GA_FST||code==GA_LST,P(_tP(v)||_N(v)!=n,gaggC(x)))
+ P(m&&(_tP(m)||_t(m)!=tG||_n(m)!=n),gaggC(x))
+ U wv=vt==tG?0:vt==tH?1:vt==tI?2:3;
+ L gmn,gmx;{F w=WF;L b;MC(&b,&w,SZ b);gmn=o1(b);w=-WF;MC(&b,&w,SZ b);gmx=o1(b);}
+ CO V*kp=_V(k),*vp=code==GA_CNT?0:_V(v);CO UC*mp=m?_V(m):0;
+ L lo=GARD(wk,kp,0),hi=lo;F(n,L t=GARD(wk,kp,i);I(t<lo,lo=t)I(t>hi,hi=t))
+ W rg=(W)hi-(W)lo+1;B direct=rg&&rg<=((W)1<<22)&&rg<=8*(W)n+1024;
+ P(!direct||(W)nt*rg>PGAG_CELLS,gaggC(x))
+ U cap=(U)MIN((W)n,rg),ng=0;
+ L*gk=malloc((N)cap*SZ(L));I*gf=malloc((N)cap*SZ(I));F*af=malloc((N)cap*SZ(F));L*al_=malloc((N)cap*SZ(L));L*gc=malloc((N)cap*SZ(L));
+ I r=gk&&gf&&af&&al_&&gc?gagg_par(code,kp,wk,vp,wv,vf,mp,n,lo,rg,direct,gmn,gmx,nt,&gk,&gf,&af,&al_,&gc,&cap,&ng):-1;
+ P(r,free(gk);free(gf);free(af);free(al_);free(gc);gaggC(x))
+ A ky=an(ng,kt);S4(wk,F(ng,_G(ky)[i]=(G)gk[i]),F(ng,_H(ky)[i]=(H)gk[i]),F(ng,_I(ky)[i]=(I)gk[i]),F(ng,_L(ky)[i]=gk[i]))
+ A fr=aV(tI,ng,gf);A vl;
+ S(code,
+  C(GA_SUM,vl=aV(tL,ng,al_))
+  C(GA_MIN,I(vf,F(ng,al_[i]=o0(al_[i]))vl=aV(tF,ng,al_))E(vl=aV(tL,ng,al_)))
+  C(GA_MAX,I(vf,F(ng,al_[i]=o0(al_[i]))vl=aV(tF,ng,al_))E(vl=aV(tL,ng,al_)))
+  C(GA_CNT,vl=aV(tL,ng,gc))
+  D(vl=i1(v,_R(fr))))
+ free(gk);free(gf);free(af);free(al_);free(gc);
+ P(!vl,mr(ky);mr(fr);x(0))
+ return x(aV(tA,3,A(ky,vl,fr)));}

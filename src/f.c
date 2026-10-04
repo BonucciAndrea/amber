@@ -1,6 +1,7 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include"arena.h"
 #include"simd.h"
+#include"parallel.h"
 I rnk(A x/*0*/){X(RA(I v=rnk(xx);P(v<0,v)F(xn,P(v-rnk(xa),-1))v+1)RmM(rnk(xy))RT_A(1)R_(0))}//-1 for mixed rank
 U urnk(A x/*0*/){X(RA(urnk(xx)+1)RmM(urnk(xy))RT_A(1)R_(0))}//assuming unirank
 
@@ -95,9 +96,19 @@ Z V*amal(N b)_(V*p=0;P(posix_memalign(&p,64,b),(V*)0)p)
 // there, which is exactly the vector the old code built. With no miss the
 // values are identical and only the storage width differs, as everywhere else
 // Amber narrows integers.
-#define FNDP(PT,RT,LOOK) {CO PT*RES pb=(CO PT*)b;RT*RES rr=(RT*)zV;for(U i=0;i<n;i++){L v=(L)pb[i];L k;LOOK;rr[i]=(RT)k;miss|=k<0;}}
+// amber 2.5 (exp): the probe loop runs over [s,e), so it can be split across threads (fndrun below)
+#define FNDP(PT,RT,LOOK) {CO PT*RES pb=(CO PT*)b;RT*RES rr=(RT*)z;for(U i=s;i<e;i++){L v=(L)pb[i];L k;LOOK;rr[i]=(RT)k;miss|=k<0;}}
 #define FNDW(LOOK) S4(wy,S4(wz,FNDP(G,G,LOOK),FNDP(G,H,LOOK),FNDP(G,I,LOOK),FNDP(G,L,LOOK)),S4(wz,FNDP(H,G,LOOK),FNDP(H,H,LOOK),FNDP(H,I,LOOK),FNDP(H,L,LOOK)), \
                                 S4(wz,FNDP(I,G,LOOK),FNDP(I,H,LOOK),FNDP(I,I,LOOK),FNDP(I,L,LOOK)),S4(wz,FNDP(L,G,LOOK),FNDP(L,H,LOOK),FNDP(L,I,LOOK),FNDP(L,L,LOOK)))
+// a probe job: the table (lut, or hk/hv), y's data b, the result z, and one miss flag per slice.
+// Workers only read the table and write their own [s,e) of z: no allocation, no refcounts.
+TD struct{CO V*b;V*z;U n,wy,wz,nt;I*lut;L lo;W rg;L*hk;I*hv;U sh;W msk;I miss[PAR_MAX_THREADS];}FJ;
+Z V fndL_lut(V*c_,int t){FJ*c=c_;CO V*b=c->b;V*z=c->z;U wy=c->wy,wz=c->wz,s=(U)((W)c->n*t/c->nt),e=(U)((W)c->n*(t+1)/c->nt);
+ I*lut=c->lut;L lo=c->lo;W rg=c->rg;I miss=0;FNDW(W d=(W)v-(W)lo;k=d<rg?lut[d]:-1)c->miss[t]=miss;}
+Z V fndL_hash(V*c_,int t){FJ*c=c_;CO V*b=c->b;V*z=c->z;U wy=c->wy,wz=c->wz,s=(U)((W)c->n*t/c->nt),e=(U)((W)c->n*(t+1)/c->nt);
+ L*hk=c->hk;I*hv=c->hv;U sh=c->sh;W msk=c->msk;I miss=0;FNDW(W j=((W)v*GOLD)>>sh;k=-1;W(1,B(hv[j]<0,)B(hk[j]==v,k=hv[j])j=(j+1)&msk))c->miss[t]=miss;}
+#define PFND_MIN (1u<<15)   //below this many probes thread start-up costs more than it saves
+Z I fndrun(FJ*c,V(*fn)(V*,int))_(int nt=c->n<PFND_MIN?1:par_thread_count(c->n);c->nt=(U)nt;I(nt<2,fn(c,0))E(par_run(nt,fn,c))I m=0;F(nt,m|=c->miss[i])m)
 Z A fndL(A x,A y,B srt)_(
  P(srt,0)
  P(!(xtH||xtI||xtL||xtS),0)   // amber 2.1: symbol vectors too (interned 32-bit ids, compared by value)
@@ -118,7 +129,7 @@ Z A fndL(A x,A y,B srt)_(
    I*lut=amal((N)rg*SZ(I));P(!lut,mr(z);0)
    MS(lut,0xff,(N)rg*SZ(I));
    for(U i=m;i--;)lut[(W)RD(wx,a,i)-(W)lo]=(I)i;
-   FNDW(W d=(W)v-(W)lo;k=d<rg?lut[d]:-1)
+   FJ c={.b=b,.z=zV,.n=n,.wy=wy,.wz=wz,.lut=lut,.lo=lo,.rg=rg};miss=fndrun(&c,fndL_lut);
    free(lut);)
  E(W cap=16,need=2*mm;U lg;W(cap<need,cap<<=1;)
    {W c=cap;lg=0;W(c>1,c>>=1;lg++)}
@@ -128,7 +139,7 @@ Z A fndL(A x,A y,B srt)_(
    MS(hv,0xff,(N)cap*SZ(I));
    for(U i=m;i--;){L v=RD(wx,a,i);W j=((W)v*GOLD)>>sh;
      W(1,B(hv[j]<0,hk[j]=v;hv[j]=(I)i)B(hk[j]==v,hv[j]=(I)i)j=(j+1)&msk)}
-   FNDW(W j=((W)v*GOLD)>>sh;k=-1;W(1,B(hv[j]<0,)B(hk[j]==v,k=hv[j])j=(j+1)&msk))
+   FJ c={.b=b,.z=zV,.n=n,.wy=wy,.wz=wz,.hk=hk,.hv=hv,.sh=sh,.msk=msk};miss=fndrun(&c,fndL_hash);
    free(hk);free(hv);)
  y(0);
  P(!miss,z)
@@ -296,6 +307,17 @@ Z NI A unqF(A x){
 // (a bitmap over its range when that fits 8 MB, else a hash sized to the key
 // COUNT) and each element of x costs one probe writing one byte. Integer and
 // symbol keys only; anything else returns () and amber.k falls back.
+// amber 2.5 (exp): membC's probe loops over [s,e), split across threads like fndL's (fndrun)
+TD struct{CO V*a;G*r;U n,wv,nt;W*bm;L lo;W rg;W*tab;U sh;W msk;B has0;}MJ;
+#define MSLICE MJ*c=c_;CO V*a=c->a;G*RES r=c->r;U wv=c->wv,s=(U)((W)c->n*t/c->nt),e=(U)((W)c->n*(t+1)/c->nt);
+#define MBM(T) {CO T*RES p=(CO T*)a;for(U i=s;i<e;i++){W q=(W)(L)p[i]-(W)lo;r[i]=q<rg&&((bm[q>>6]>>(q&63))&1);}}   //one loop per width: no width test per element
+Z V memb_bm(V*c_,int t){MSLICE W*bm=c->bm;L lo=c->lo;W rg=c->rg;S4(wv,MBM(G),MBM(H),MBM(I),MBM(L))}
+#define MHS(T) {CO T*RES p=(CO T*)a;for(U i=s;i<e;i++){W k=(W)(L)p[i]+1;if(!k){r[i]=has0;continue;}W j=(k*GOLD)>>sh;while(tab[j]&&tab[j]!=k)j=(j+1)&msk;r[i]=!!tab[j];}}
+Z V memb_hash(V*c_,int t){MSLICE W*tab=c->tab;U sh=c->sh;W msk=c->msk;B has0=c->has0;S4(wv,MHS(G),MHS(H),MHS(I),MHS(L))}
+#undef MBM
+#undef MHS
+#undef MSLICE
+Z V membrun(MJ*c,V(*fn)(V*,int)){int nt=c->n<PFND_MIN?1:par_thread_count(c->n);c->nt=(U)nt;I(nt<2,fn(c,0))E(par_run(nt,fn,c))}
 A1(membC,P(_t(x)-tA||_n(x)-2,et(x))A v=_A(x)[0],y=_A(x)[1];
  B va=_tz(v);UC vt=va?tl:_t(v),yt_=_t(y);
  P(_tP(y)||!(yt_==tH||yt_==tI||yt_==tL||yt_==tS)||!(va||vt==tH||vt==tI||vt==tL||vt==tS),x(emp(tA)))
@@ -307,19 +329,87 @@ A1(membC,P(_t(x)-tA||_n(x)-2,et(x))A v=_A(x)[0],y=_A(x)[1];
  A z=an(n,tG);G*RES r=_V(z);
  I(rg&&rg<=BMDOM,N nb=(N)((rg+63)>>6);W*bm=amal(nb*SZ(W));P(!bm,mr(z);x(emp(tA)))MS(bm,0,nb*SZ(W));
   F(m,W s=(W)RD(wy,b,i)-(W)lo;bm[s>>6]|=1ull<<(s&63))
-  F(n,W s=(W)RD(wv,a,i)-(W)lo;r[i]=s<rg&&((bm[s>>6]>>(s&63))&1))
+  {MJ c={.a=a,.r=r,.n=n,.wv=wv,.bm=bm,.lo=lo,.rg=rg};membrun(&c,memb_bm);}
   free(bm);)
  E(W cap=16,need=2*(W)m;U lg;W(cap<need,cap<<=1;){W c=cap;lg=0;W(c>1,c>>=1;lg++)}U sh=64-lg;W msk=cap-1;
   W*tab=amal((N)cap*SZ(W));P(!tab,mr(z);x(emp(tA)))MS(tab,0,(N)cap*SZ(W));B has0=0;
   F(m,L t=RD(wy,b,i);W k=(W)t+1;I(!k,has0=1;continue)W j=(k*GOLD)>>sh;W(tab[j]&&tab[j]!=k,j=(j+1)&msk)tab[j]=k)
-  F(n,L t=RD(wv,a,i);W k=(W)t+1;I(!k,r[i]=has0;continue)W j=(k*GOLD)>>sh;W(tab[j]&&tab[j]!=k,j=(j+1)&msk)r[i]=!!tab[j])
+  {MJ c={.a=a,.r=r,.n=n,.wv=wv,.tab=tab,.sh=sh,.msk=msk,.has0=has0};membrun(&c,memb_hash);}
   free(tab);)
  x(va?({A r_=ai(r[0]);mr(z);r_;}):z))
+
+#include <stdlib.h>   // malloc calloc qsort: undeclared they return a cut-off int
+#include <string.h>
+// ---- 2.5 (exp): parallel distinct of an int vector, the serial answer exactly ----------------------------
+// Per thread, the first index of each value in its slice: a uint32 table over [lo,hi] when the range is small
+// (PDQ_LUT), else a hash map capped at PDQ_CAP keys (more and the whole call gives up: return 0, serial runs).
+// The minimum over the threads is the value's first index in the vector; the values are written out in the
+// order of those indices (a bitmap over n for the table, a sort of the few keys for the hash), which is the
+// first-seen order the serial unqLUT/unqBM/unqHASH give.
+#define PDQ_MIN (1u<<18)
+#define PDQ_LUT (1u<<20)
+#define PDQ_CAP (1u<<16)
+typedef struct{const void*pa;uint32_t pn,wx;int nt;int64_t lo,mn[64],mx[64];uint64_t rg;uint32_t*fi;
+ uint64_t*hk[64];uint32_t*hv[64];uint32_t hcnt[64],h0[64];int stop;}PDQ;
+static inline int64_t pdq_rd(const void*p,uint32_t w,uint64_t i){
+ return w==1?(int64_t)((const int16_t*)p)[i]:w==2?(int64_t)((const int32_t*)p)[i]:((const int64_t*)p)[i];}
+static void pdq_rng(uint32_t n,int nt,int i,uint64_t*lo,uint64_t*hi){uint64_t ch=n/(uint64_t)nt;*lo=i*ch;*hi=i==nt-1?n:*lo+ch;}
+#define PDQ_LOOP(T,BODY) {const T*p=(const T*)c->pa;for(uint64_t j=lo;j<hi;j++){int64_t v=(int64_t)p[j];BODY}}
+#define PDQ_W(BODY) switch(c->wx){case 1:PDQ_LOOP(int16_t,BODY)break;case 2:PDQ_LOOP(int32_t,BODY)break;default:PDQ_LOOP(int64_t,BODY)}
+static void pdq_mm(void*c_,int i){PDQ*c=c_;uint64_t lo,hi;pdq_rng(c->pn,c->nt,i,&lo,&hi);
+ int64_t a0=pdq_rd(c->pa,c->wx,lo),b0=a0;PDQ_W(if(v<a0)a0=v;if(v>b0)b0=v;)c->mn[i]=a0;c->mx[i]=b0;}
+static void pdq_lut(void*c_,int i){PDQ*c=c_;uint64_t lo,hi;pdq_rng(c->pn,c->nt,i,&lo,&hi);
+ uint32_t*f=c->fi+(uint64_t)i*c->rg;memset(f,0xff,c->rg*4);uint64_t seen=0,rg=c->rg;int64_t base=c->lo;
+ PDQ_W(uint64_t s=(uint64_t)(v-base);if(f[s]==0xffffffffu){f[s]=(uint32_t)j;if(++seen==rg)break;})}
+static void pdq_lmin(void*c_,int i){PDQ*c=c_;uint64_t ch=c->rg/(uint64_t)c->nt,lo=i*ch,hi=i==c->nt-1?c->rg:lo+ch;
+ for(int k=1;k<c->nt;k++){const uint32_t*g=c->fi+(uint64_t)k*c->rg;for(uint64_t s=lo;s<hi;s++)if(g[s]<c->fi[s])c->fi[s]=g[s];}}
+#define PDQ_GOLD 0x9E3779B97F4A7C15ull
+static void pdq_hash(void*c_,int i){PDQ*c=c_;uint64_t lo,hi;pdq_rng(c->pn,c->nt,i,&lo,&hi);
+ uint32_t cap=PDQ_CAP*2,lg=17,used=0;uint64_t*k_=calloc(cap,8);uint32_t*v_=malloc((size_t)cap*4);c->hk[i]=k_;c->hv[i]=v_;c->h0[i]=0xffffffffu;
+ if(!k_||!v_){c->stop=1;return;}
+ PDQ_W(uint64_t k=(uint64_t)v+1;if(!k){if(c->h0[i]==0xffffffffu)c->h0[i]=(uint32_t)j;continue;}
+  uint64_t s=(k*PDQ_GOLD)>>(64-lg);while(k_[s]&&k_[s]!=k)s=(s+1)&(cap-1);
+  if(!k_[s]){if(++used>PDQ_CAP||(used&1023)==0&&__atomic_load_n(&c->stop,__ATOMIC_RELAXED)){c->stop=1;break;}k_[s]=k;v_[s]=(uint32_t)j;})
+ c->hcnt[i]=used;}
+typedef struct{uint32_t ix;int64_t v;}PDQE;
+static int pdq_cmp(const void*a,const void*b){uint32_t p=((const PDQE*)a)->ix,q=((const PDQE*)b)->ix;return p<q?-1:p>q;}
+static A pdq_out(A x,uint32_t m,PDQE*e){A z=an(m,xt);void*r=zV;uint32_t w=xw-3;
+ for(uint32_t j=0;j<m;j++){int64_t v=e[j].v;if(w==1)((int16_t*)r)[j]=(int16_t)v;else if(w==2)((int32_t*)r)[j]=(int32_t)v;else((int64_t*)r)[j]=v;}return z;}
+static A unqP(A x){uint32_t n=xn,wx=xw-3;int nt=par_thread_count(n);if(nt<2||n>=0xffffffffu)return 0;if(nt>64)nt=64;
+ PDQ*c=calloc(1,sizeof(PDQ));if(!c)return 0;c->pa=xV;c->pn=n;c->wx=wx;c->nt=nt;
+ par_run(nt,pdq_mm,c);int64_t lo=c->mn[0],hi=c->mx[0];for(int k=1;k<nt;k++){if(c->mn[k]<lo)lo=c->mn[k];if(c->mx[k]>hi)hi=c->mx[k];}
+ uint64_t rg=(uint64_t)hi-(uint64_t)lo+1;A z=0;c->lo=lo;c->rg=rg;
+ if(rg&&rg<=PDQ_LUT&&rg*(uint64_t)nt*4<=((uint64_t)64<<20)){
+  c->fi=malloc(rg*(uint64_t)nt*4);
+  if(c->fi){par_run(nt,pdq_lut,c);par_run(nt,pdq_lmin,c);
+   uint64_t nw=((uint64_t)n+63)>>6;uint64_t*bm=calloc(nw,8);
+   if(bm){uint32_t m=0;for(uint64_t s=0;s<rg;s++){uint32_t f=c->fi[s];if(f!=0xffffffffu){bm[f>>6]|=1ull<<(f&63);m++;}}
+    z=an(m,xt);void*r=zV;uint32_t k=0;
+    for(uint64_t w=0;w<nw;w++){uint64_t b=bm[w];while(b){uint64_t p=(w<<6)|(uint64_t)__builtin_ctzll(b);b&=b-1;int64_t v=pdq_rd(xV,wx,p);
+     if(wx==1)((int16_t*)r)[k]=(int16_t)v;else if(wx==2)((int32_t*)r)[k]=(int32_t)v;else((int64_t*)r)[k]=v;k++;}}
+    free(bm);}
+   free(c->fi);}}
+ else{par_run(nt,pdq_hash,c);
+  if(!c->stop){uint64_t tot=1;for(int k=0;k<nt;k++)tot+=c->hcnt[k];
+   uint64_t gc=16;while(gc<tot*2)gc<<=1;uint32_t glg=__builtin_ctzll(gc);uint64_t*gk=calloc(gc,8);uint32_t*gv=malloc(gc*4);PDQE*e=malloc(tot*sizeof(PDQE));
+   if(gk&&gv&&e){uint32_t m=0,z0=0xffffffffu;
+    for(int k=0;k<nt;k++){if(c->h0[k]<z0)z0=c->h0[k];uint64_t*hk=c->hk[k];uint32_t*hv=c->hv[k];
+     for(uint32_t s=0;s<PDQ_CAP*2;s++)if(hk[s]){uint64_t key=hk[s],g=(key*PDQ_GOLD)>>(64-glg);while(gk[g]&&gk[g]!=key)g=(g+1)&(gc-1);
+      if(!gk[g]){gk[g]=key;gv[g]=hv[s];}else if(hv[s]<gv[g])gv[g]=hv[s];}}
+    for(uint64_t g=0;g<gc;g++)if(gk[g]){e[m].ix=gv[g];e[m].v=(int64_t)(gk[g]-1);m++;}
+    if(z0!=0xffffffffu){e[m].ix=z0;e[m].v=-1;m++;}
+    qsort(e,m,sizeof(PDQE),pdq_cmp);z=pdq_out(x,m,e);}
+   free(gk);free(gv);free(e);}
+  for(int k=0;k<nt;k++){free(c->hk[k]);free(c->hv[k]);}}
+ free(c);return z;}
+#undef PDQ_W
+#undef PDQ_LOOP
 
 A unqL(A x){
  if(!(xtH||xtI||xtL))return xtF?unqF(x):0;
  U n=xn,wx=xw-3;
  if(n<2||wx>3)return 0;
+ I(n>=PDQ_MIN,A z_=unqP(x);I(z_,return z_;))   //2.5 (exp): parallel, the same answer; 0 when it declines
  CO V*a=xV;
  L lo=RD(wx,a,0),hi=lo;
  for(U i=1;i<n;i++){L v=RD(wx,a,i);if(v<lo)lo=v;if(v>hi)hi=v;}

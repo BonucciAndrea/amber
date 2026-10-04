@@ -13,7 +13,7 @@ sqrt:{%x}
 floor:{_x}
 ceiling:{-_-x}
 signum:{(x>0)-x<0}
-abs:{x*signum x}
+abs:{`abs x}
 exp:{`exp x}
 log:{`ln x}
 sin:{`sin x}

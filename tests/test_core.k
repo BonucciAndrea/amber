@@ -691,6 +691,7 @@ t[`keyedPlusAtom;((+(,`a)!,1 2 3)!4 5 6)+1;(+(,`a)!,1 2 3)!5 6 7]
 t[`dictMixedRankL;*"\n"\.[.:;,"((1 2;3 4)!5 6)+`a`b!1 2";{x}];"'domain"]
 
 / a dict with no keys is not checked: two empty ones still add, as group counts from ()!() do
+t[`temporalStrand;(2026.01.01 2026.01.02;12:00:00.000 13:00:00.000;#2026.01.01 2026.01.02 2026.01.03;1+2026.01.01 2026.01.02;5#.[.:;,"2026.01.01 12:00:00.000";{x}])~(2026.01.01+0 1;12:00:00.000+0 3600000;3;2026.01.02+0 1;"'type");1]   / digest #65: a strand of one kind is a list, as q
 t[`groupMixedRank;(=(1;"ab");=(1 2;1);=(1;"ab";1);(1;"ab")?"ab";((1;"ab")!10 20)"ab";5#.[?;(("ab";"cd");1);{x}]);((1;"ab")!(,0;,1);(1 2;1)!(,0;,1);(1;"ab")!(0 2;,1);1;20;"'rank")]   / digest #29: as q
 t[`dictEmptyBoth;`k@((()!())+#'=0#`;(#'=0#`)+()!());"(()!();(0#`)!!0)"]
 / digest #23 #25 #26: a key on one side passes its value through; x's repeated keys stay
@@ -1024,7 +1025,7 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[650]
+hexpect[651]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

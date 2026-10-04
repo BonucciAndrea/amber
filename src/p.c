@@ -102,6 +102,9 @@ Z A pTmp(){S p=s;if(!C09(*p))return 0;W a=0;S q=p;while(C09(*q)){a=10*a+(W)(*q-'
    if(mi>59||sc>59){tbad=1;return 0;}s=q2;return antp((L)((W)days*86400000000000ULL+3600000000000ULL*hh+60000000000ULL*mi+1000000000ULL*sc+ns));}
   s=q2;return adt((I)days);}
  return 0;}
+//a strand of temporal literals of one kind (2026.01.01 2026.01.02) is a list of them, as q; it was 'type, the second
+//applied to the first. Another kind, or anything else after the space, ends it (digest #65)
+Z A pTms(A a){A z=0;UC k=_t(a);for(;*s==' ';){S o=s;while(*s==' ')s++;A b=pTmp();if(!b){s=o;tbad=0;break;}if(_t(b)!=k){mr(b);s=o;break;}if(!z){z=emp(tA);PSH(z,MKL);PSH(z,a);}PSH(z,b);}return z?z:a;}   //as (d1;d2) parses: MKL and the items
 // amber 2.0.0: identifiers usable INFIX like a verb -- `x in y`, `t lj kt`,
 // `1 within 2 3`, `"/" sv parts` -- as well as the bracket form in[x;y].  ngn/k
 // already treats every unicode-named identifier (pt's `c>>7` branch) as an infix
@@ -156,7 +159,7 @@ Z A pt(C*v)_(C c=*s;                                                            
  P(C09(c)&&s[1]==':',B u=s[2]==':';s+=2+u;U i=20+c-'0';P(i>25,ep0())*v=1;Lt(tv-u)|i)
  P(c=='0'&&s[1]=='x',s+=2;p1(p0x()))
  P(num(s)&&(c-'-'||s==s0||s==ppe||(!id1(s[-1])&&!strchr(")]}\"",s[-1]))),   //ppe: just past a lambda's [params], whose ] is no noun (digest #40)
-  A tlit=pTmp();P(tlit,tlit)P(tbad,tbad=0;ep0())
+  A tlit=pTmp();P(tlit,pTms(tlit))P(tbad,tbad=0;ep0())
   B d=0,f=1;S p=s;c=*p;W(1,S q=p;p=pw(p);B(!f&&p==q||!num(p))f=0;p+=*p=='-';c=*p;B(!CA9(c))W(CA9(c)||c=='.'||c==':',d|=!!strchr(".nwef",c);c=*++p))p1(d?pF():pZ()))
  P(c>>7,S p=s;A x=N(pP());*v=1;AO(p-s0,x))
  U i=si("'/\\",c);P(i<3,c=*++s;B h=c==':';s+=h;*v=1;aw+i+3*h)i=si(vc,c);P(i>19,GAP)

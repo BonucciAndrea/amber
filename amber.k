@@ -74,7 +74,7 @@ cov:{$[cvk[x;y];[r:`cvm(x;y);r[0]%r 3];[p:pdr[x;y];x:p 0;y:p 1;avg(x-avg x)*y-av
 scov:{$[cvk[x;y];[r:`cvm(x;y);r[0]%-1+r 3];[p:pdr[x;y];n:#x:p 0;y:p 1;(n*avg(x-avg x)*y-avg y)%-1+n]]}
 cor:{$[cvk[x;y];[r:`cvm(x;y);r[0]%sqrt r[1]*r 2];[p:pdr[x;y];a:p[0]-avg p 0;b:p[1]-avg p 1;(avg a*b)%sqrt avg[a*a]*avg b*b]]}
 med:{$[0=#x;0n;[a:x@<x;n:#a;m:_n%2;$[2!n;0.0+a m;avg a@m-1 0]]]}
-all:{~|/x=0}
+all:{$[#x;~|/x=0;1]}   / all of an empty list is 1, as q
 any:{~&/x=0}
 sums:{$[`F=@x;$[^*|r:+\x;+\0.0^x;r];`I=@x;$[`hnl x;+\0^x;+\x];+\nid[x;0;0.0]]}   / a null adds 0; floats: the last sum is NaN only if a NaN is in
 prds:{$[`F=@x;$[^*|r:*\x;*\1.0^x;r];`I=@x;$[`hnl x;*\1^x;*\x];*\nid[x;1;1.0]]}
@@ -82,9 +82,9 @@ mins:{&\nid[x;9223372036854775807;0w]}                                       / m
 maxs:{|\nid[x;-9223372036854775807;-0w]}
 deltas:{$[#x;x-0,-1_x;x]}
 ratios:{$[#x;x%1,-1_x;x]}
-differ:{~~':x}
-prev:{$[isat x;x;-1_0N,x]}   / an atom comes back as is, as q
-next:{$[isat x;x;1_x,0N]}
+differ:{$[isat x;1b;~#x;x=x;|/`I`S`C=@x;1b,~(1_x)=-1_x;`F=@x;1b,~((1_x)=-1_x)|(^1_x)&^-1_x;@[~~':x;0;:;1b]]}   / the first item always differs, a null too; typed lists compare shifted (NaN matches NaN, as ~)
+prev:{$[isat x;x;-1_(,x@#x),x]}   / an atom comes back as is, as q; the null is the list's own (x@#x), not 0N
+next:{$[isat x;x;1_x,,x@#x]}
 
 / ---- ranking / ordering ----------------------------------------------------
 rank:{<<x}
@@ -141,7 +141,9 @@ cols:{$[iskeyed x;(!!x),!.x;!x]}
 keys:{$[iskeyed x;!!x;0#`]}
 rows:{+. x}
 atr:{[t;i]+(cols t)!{y@x}[i]'. t}
-xkey:{[k;t]k:k,();$[0=#k;unkey t;[d:+t;(+k#d)!+(except[cols t;k])#d]]}   / () xkey t -> unkey (q idiom)
+/ a column the table lacks is an error named after it, as q (xasc added a column of nulls, xdesc ignored it)
+hasc:{[c;t]m:c@&~in[c;cols t];$[#m;`err@$*m;0]}
+xkey:{[k;t]k:k,();hasc[k;t];$[0=#k;unkey t;[d:+t;(+k#d)!+(except[cols t;k])#d]]}   / () xkey t -> unkey (q idiom)
 unkey:{$[iskeyed x;+(+!x),+.x;x]}
 xcolall:{[nm;t]+nm!. t}
 xcols:{[c;t]c:c,();+(c,except[cols t;c])#+t}
@@ -153,8 +155,8 @@ xcols:{[c;t]c:c,();+(c,except[cols t;c])#+t}
 / the DISTINCT ids), which is the collation `<` on a symbol vector gives and the
 / one ajsorted's contiguity note assumes.  Descending is the same sort with
 / complemented keys, which reproduces `>`'s "ties in ascending index order".
-xasc:{[c;t]c:c,();o:`xs(value c#+t;0b);o:$[#o;o;<+(+t)c];t:t@o;d:+t;+d,(1#c)!`sa'd@1#c}
-xdesc:{[c;t]c:c,();o:`xs(value c#+t;1b);o:$[#o;o;>+(+t)c];t@o}
+xasc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;0b);o:$[#o;o;<+(+t)c];t:t@o;d:+t;+d,(1#c)!`sa'd@1#c}
+xdesc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;1b);o:$[#o;o;>+(+t)c];t@o}
 meta:{d:+unkey x;xkey[`c;+`c`t`a!(!d;{@*x}'value d;{`at x}'value d)]}
 insert:{[t;r]t,r}
 
@@ -269,7 +271,7 @@ qEXACT:9007199254740992.0
 qgrp:{[t;b]d:+t;bc:d b;g:$[1=#b;=*bc;qcard[bc]<qEXACT;=qenc bc;=rows[b#+t]];iv:value g;(bc@\:*:'iv;iv)}
 qby:{[t;b;a]b:b,();r:qgrp[t;b];kt:+b!r 0;iv:r 1;subs:atr[t]'iv;vt:+(!a)!{[t;subs;f]$[#subs;f'subs;qby0[f;0#t]]}[t;subs]'value a;kt!vt}
 qby0:{[f;e]r:.[f;,e;{`qby0err}];$[`qby0err~r;();(@r)in`i`f`c`s`d`t`n;0#,r;()]}   / no groups: a column typed by its aggregate's result (q); a plain column stays ()
-xgroup:{[k;t]k:k,();r:qgrp[t;k];kt:+k!r 0;vc:except[cols t;k];+(+kt),vc!{[t;iv;c]((+t)c)@/:iv}[t;r 1]'vc}
+xgroup:{[k;t]k:k,();r:qgrp[t;k];kt:+k!r 0;vc:except[cols t;k];kt!+vc!{[t;iv;c]((+t)c)@/:iv}[t;r 1]'vc}   / keyed by k, as q
 ungroup:{[x]t:unkey x;d:+t;v:value d;m:{`A=@x}'v;cnt:#:'*v@&m;+(!d)!{[cnt;m;c]$[m;raze c;raze cnt#'c]}[cnt]'[m;v]}
 / fbymc: is g a PER-COLUMN group spec -- (sym;ex) rather than one vector?  q lets
 / `fby` group on several columns, and `=` on such a list groups the COLUMNS, not
@@ -303,7 +305,7 @@ trim:{ltrim rtrim x}
 ss:{[s;p]$[(#s)<#p;!0;&{[s;p;i]p~(#p)#i_s}[s;p]'!1+(#s)-#p]}
 ssr:{[s;f;t]t/f\s}
 sv:{x/y}
-vs:{x\y}
+vs:{$[(`C=@y)&0=#y;,y;x\y]}   / x vs "" is one empty field, as q
 lk1:{[s;p]$[~#p;~#s;"*"=*p;$[#s;lk1[s;1_p]|lk1[1_s;p];lk1[s;1_p]];~#s;0;("?"=*p)|(*p)=*s;lk1[1_s;1_p];0]}
 like:{[x;p]$[`C=@x;lk1[x;p];lk1[;p]'x]}
 

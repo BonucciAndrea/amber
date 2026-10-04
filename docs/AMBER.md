@@ -344,7 +344,7 @@ directly, exactly as `test.k` and every script under `examples/` already do.
 | `qwhere[t;mask]`     | `select from t where mask`                     |
 | `qselect[t;a]`       | `select …` (`a` = `name!func` computed columns)|
 | `qby[t;b;a]`         | `select … by b` → **keyed table**              |
-| `xgroup[k;t]`        | `` `k xgroup t`` (nested value columns)         |
+| `xgroup[k;t]`        | `` `k xgroup t`` (keyed by k, nested values)    |
 | `ungroup x`          | flatten nested columns                          |
 | `fby[(f;d);g]`       | `(f;d) fby g`, where `g` may be one column, a list of columns, or a table; works inside a where-clause |
 | `insert[t;r]`        | append rows                                     |

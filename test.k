@@ -50,6 +50,11 @@ t[`deltas;deltas 1 3 6 10;1 2 3 4]
 t[`differ;differ 1 1 2 2 3;10101b]
 t[`prev;prev 1 2 3;0N 1 2]
 t[`next;next 1 2 3;2 3 0N]
+/ digest #48: the null is the list's own; #49 all of empty; #50 differ's first item; #51 x vs ""
+t[`prevNextTyped;(next `a`b;next 1.5 2.5;prev 1.5 2.5;prev "ab";prev[!0]);(`b`;2.5 0n;0n 1.5;" a";!0)]
+t[`allEmpty;(all 0#0;all 1 2;all 1 0;all 0#0.0;any 0#0);1 1 0 1 0]
+t[`differNull;(differ 0N 0N 1;differ 0.0 -0.0 0n 0n 1.0;differ `a`a`b;differ (1;1;`a);differ 5);(101b;10101b;101b;101b;1b)]
+t[`vsEmpty;("," vs "";"," vs "a,b");(,"";(,"a";,"b"))]
 t[`reverse;reverse 1 2 3;3 2 1]
 t[`rotate;rotate[2;1 2 3 4 5];3 4 5 1 2]
 t[`rotateWhole;(rotate[3;1 2 3];rotate[0;1 2 3];rotate[-3;1 2 3]);3#,1 2 3]   / digest #47: was ::
@@ -313,6 +318,9 @@ t[`fbyTable;fby[(sum;1 2 3 4 5);([]s:`a`b`a`b`a;e:`X`X`Y`Y`X)];6 2 3 4 6]
 / ... and a general list that genuinely has one item per datum is NOT flipped
 t[`fbyListSame;fby[(sum;10 20);(`a`b;`a`b)];30 30]
 t[`xgroupUngroup;ungroup xgroup[`s;st];+`s`v!(`a`a`a`b`b;1 3 5 2 4)]
+t[`xgroupKeyed;xgroup[`k;+`k`a!(1 2 1;10 20 30)];(+(,`k)!,1 2)!+(,`a)!,(10 30;,20)]   / digest #57: keyed, as q
+/ digest #52: a column the table lacks is an error named after it
+t[`tableFnMissing;{.[x;(`a;+`k`v!(-1 -2;3 4));{2#x}]}'(xasc;xdesc;xkey);3#,"'a"]
 
 / ---- strings ----
 t[`lower;lower"HeLLo";"hello"]

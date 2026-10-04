@@ -195,7 +195,10 @@ t[`byBare;     . qrw"select sum sz by sym from trades"; . qrw"select sum sz by s
 / the same); it used to come back as x0 whatever it was computed from.
 tqa[`aggName;    "select last px by sym from trades"; cols; `sym`px];
 tqa[`aggNameSum; "select sum sz by sym from trades";  cols; `sym`sz];
-tqa[`aggNameWide;"select wavg[sz;px] by sym from trades"; cols; `sym`x0];
+tqa[`aggNameWide;"select wavg[sz;px] by sym from trades"; cols; `sym`sz];   / q names it by the first argument (digest #56)
+/ digest #56 #61: q's column names and repeats; an atom beside a list is extended, as update
+tqa[`nameRepeats;"select max px, min px, 2*px, sum px*sz from trades"; cols; `px`px1`x`px2];
+tqa[`selectExtend;"select px, s:sum sz from trades"; {(+x)`s}; 6#21];
 / within[x;(lo;hi)] -- inclusive, and the reason time-range queries now run.
 t[`within;      within[10 20 30 40.0;(20;30)]; 0 1 1 0];
 t[`withinQuery; . qrw"select from trades where within[px;(20;40)]"; . qrw"select from trades where (~px<20)&~px>40"];
@@ -310,6 +313,6 @@ tq[`whereLocalAnd;    "select from trades where sym=`a, px>25";       ([]sym:`a`
 tq[`execNegLead;      "exec -1+sz from trades";                       0 1 2 3 4 5];
 tqa[`updNegLead;      "update d:-1+sz from trades"; {(+x)`d};         0 1 2 3 4 5];
 
-hexpect[174]
+hexpect[176]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

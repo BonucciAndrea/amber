@@ -329,6 +329,16 @@ Z V gf1(V*c_,int t){GF*c=c_;(V)t;
   for(N i=s;i<e;i++){if(c->mp&&!c->mp[i])continue;W q=(W)GARD(c->wk,c->kp,i)-(W)lo;
    if(!cnt[q])fst[q]=(I)i;F d=c->vp[i];if(d==d){sm[q]+=d;cnt[q]++;}else cnt[q]+=(L)1<<40;}}}   //a NaN row still makes its group: high count bits
 // (keys ; sums or averages ; first rows), or 0 when not taken
+// the key range on nt threads (each a slice, then the min of the mins and max of the maxes)
+TD struct{CO V*kp;U wk;N n;int nt;L mn[64],mx[64];}GMM;
+Z V gmm1(V*c_,int t){GMM*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;L a=GARD(c->wk,c->kp,s),b=a;
+ switch(c->wk){case 0:{CO G*p=c->kp;for(N i=s;i<e;i++){L v=p[i];if(v<a)a=v;if(v>b)b=v;}}break;
+  case 1:{CO H*p=c->kp;for(N i=s;i<e;i++){L v=p[i];if(v<a)a=v;if(v>b)b=v;}}break;
+  case 2:{CO I*p=c->kp;for(N i=s;i<e;i++){L v=p[i];if(v<a)a=v;if(v>b)b=v;}}break;
+  default:{CO L*p=c->kp;for(N i=s;i<e;i++){L v=p[i];if(v<a)a=v;if(v>b)b=v;}}}
+ c->mn[t]=a;c->mx[t]=b;}
+Z V gmmP(CO V*kp,U wk,N n,int nt,L*lo,L*hi){GMM c={.kp=kp,.wk=wk,.n=n,.nt=nt>64?64:nt};par_run(c.nt,gmm1,&c);
+ *lo=c.mn[0];*hi=c.mx[0];for(int t=1;t<c.nt;t++){if(c.mn[t]<*lo)*lo=c.mn[t];if(c.mx[t]>*hi)*hi=c.mx[t];}}
 Z A gaggF(I code,A k,UC kt,U wk,CO F*vp,CO UC*mp,N n,L lo,W rg,int nt){
  N nb=(n+(((N)1<<18)-1))>>18;N cap=PGAF_CELLS/(N)rg;   //256K-row blocks: enough rows per group that a block's table pays for itself
 if(cap<2)return 0;if(nb>cap)nb=cap;N bs=(n+nb-1)/nb;nb=(n+bs-1)/bs;
@@ -366,10 +376,12 @@ A gaggT(A x){
  N n=_n(k);int nt=par_thread_count(n);
  U wk=kt==tG?0:kt==tH?1:(kt==tI||kt==tS)?2:3;
  UC vt=code==GA_CNT?tL:_t(v);B vf=vt==tF;
- if((code==GA_SUM||code==GA_AVG)&&vf&&!_tP(v)&&_n(v)==n&&(W)n>=PGAF_MIN&&!(m&&(_tP(m)||(_t(m)!=tG&&_t(m)!=tB)||_n(m)!=n))){   //floats: the blocked path
+ if(nt>1&&(code==GA_SUM||code==GA_AVG)&&vf&&!_tP(v)&&_n(v)==n&&(W)n>=PGAF_MIN&&!(m&&(_tP(m)||(_t(m)!=tG&&_t(m)!=tB)||_n(m)!=n))){   //floats: the blocked path
   A mw=m&&_t(m)==tB?cG(_R(m)):0;CO UC*mp_=mw?_V(mw):m?_V(m):0;   //a bit mask is widened to bytes, as gaggC does
-  CO V*kp=_V(k);L lo=GARD(wk,kp,0);L hi=lo;for(N i=0;i<n;i++){L t=GARD(wk,kp,i);if(t<lo)lo=t;if(t>hi)hi=t;}W rg=(W)hi-(W)lo+1;
-  if(nt>1&&rg&&rg<=((W)1<<15)&&rg<=8*(W)n+1024){A z_=gaggF(code,k,kt,wk,_V(v),mp_,n,lo,rg,nt);if(z_){if(mw)mr(mw);return x(z_);}}
+  CO V*kp=_V(k);L lo=GARD(wk,kp,0),hi=lo;N sd=n/4096;for(N i=0;i<n;i+=sd){L t=GARD(wk,kp,i);if(t<lo)lo=t;if(t>hi)hi=t;}   //4096 keys first: if they
+  if((W)hi-(W)lo<((W)1<<15))gmmP(kp,wk,n,nt,&lo,&hi);   //already span too much, so does the column, and the full scan is skipped
+  W rg=(W)hi-(W)lo+1;   //the key range on all threads: a serial pass cost ~8ms at 10M, wasted when the range is too wide
+  if(rg&&rg<=((W)1<<15)&&rg<=8*(W)n+1024){A z_=gaggF(code,k,kt,wk,_V(v),mp_,n,lo,rg,nt);if(z_){if(mw)mr(mw);return x(z_);}}
   if(mw)mr(mw);}
  P(code==GA_SUM&&vf||code==GA_AVG,gaggC(x))
  P(nt<2,gaggC(x))

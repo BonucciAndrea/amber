@@ -338,10 +338,78 @@ A1(membC,P(_t(x)-tA||_n(x)-2,et(x))A v=_A(x)[0],y=_A(x)[1];
   free(tab);)
  x(va?({A r_=ai(r[0]);mr(z);r_;}):z))
 
+#include <stdlib.h>   // malloc calloc qsort: undeclared they return a cut-off int
+#include <string.h>
+// ---- 2.5 (exp): parallel distinct of an int vector, the serial answer exactly ----------------------------
+// Per thread, the first index of each value in its slice: a uint32 table over [lo,hi] when the range is small
+// (PDQ_LUT), else a hash map capped at PDQ_CAP keys (more and the whole call gives up: return 0, serial runs).
+// The minimum over the threads is the value's first index in the vector; the values are written out in the
+// order of those indices (a bitmap over n for the table, a sort of the few keys for the hash), which is the
+// first-seen order the serial unqLUT/unqBM/unqHASH give.
+#define PDQ_MIN (1u<<18)
+#define PDQ_LUT (1u<<20)
+#define PDQ_CAP (1u<<16)
+typedef struct{const void*pa;uint32_t pn,wx;int nt;int64_t lo,mn[64],mx[64];uint64_t rg;uint32_t*fi;
+ uint64_t*hk[64];uint32_t*hv[64];uint32_t hcnt[64],h0[64];int stop;}PDQ;
+static inline int64_t pdq_rd(const void*p,uint32_t w,uint64_t i){
+ return w==1?(int64_t)((const int16_t*)p)[i]:w==2?(int64_t)((const int32_t*)p)[i]:((const int64_t*)p)[i];}
+static void pdq_rng(uint32_t n,int nt,int i,uint64_t*lo,uint64_t*hi){uint64_t ch=n/(uint64_t)nt;*lo=i*ch;*hi=i==nt-1?n:*lo+ch;}
+#define PDQ_LOOP(T,BODY) {const T*p=(const T*)c->pa;for(uint64_t j=lo;j<hi;j++){int64_t v=(int64_t)p[j];BODY}}
+#define PDQ_W(BODY) switch(c->wx){case 1:PDQ_LOOP(int16_t,BODY)break;case 2:PDQ_LOOP(int32_t,BODY)break;default:PDQ_LOOP(int64_t,BODY)}
+static void pdq_mm(void*c_,int i){PDQ*c=c_;uint64_t lo,hi;pdq_rng(c->pn,c->nt,i,&lo,&hi);
+ int64_t a0=pdq_rd(c->pa,c->wx,lo),b0=a0;PDQ_W(if(v<a0)a0=v;if(v>b0)b0=v;)c->mn[i]=a0;c->mx[i]=b0;}
+static void pdq_lut(void*c_,int i){PDQ*c=c_;uint64_t lo,hi;pdq_rng(c->pn,c->nt,i,&lo,&hi);
+ uint32_t*f=c->fi+(uint64_t)i*c->rg;memset(f,0xff,c->rg*4);uint64_t seen=0,rg=c->rg;int64_t base=c->lo;
+ PDQ_W(uint64_t s=(uint64_t)(v-base);if(f[s]==0xffffffffu){f[s]=(uint32_t)j;if(++seen==rg)break;})}
+static void pdq_lmin(void*c_,int i){PDQ*c=c_;uint64_t ch=c->rg/(uint64_t)c->nt,lo=i*ch,hi=i==c->nt-1?c->rg:lo+ch;
+ for(int k=1;k<c->nt;k++){const uint32_t*g=c->fi+(uint64_t)k*c->rg;for(uint64_t s=lo;s<hi;s++)if(g[s]<c->fi[s])c->fi[s]=g[s];}}
+#define PDQ_GOLD 0x9E3779B97F4A7C15ull
+static void pdq_hash(void*c_,int i){PDQ*c=c_;uint64_t lo,hi;pdq_rng(c->pn,c->nt,i,&lo,&hi);
+ uint32_t cap=PDQ_CAP*2,lg=17,used=0;uint64_t*k_=calloc(cap,8);uint32_t*v_=malloc((size_t)cap*4);c->hk[i]=k_;c->hv[i]=v_;c->h0[i]=0xffffffffu;
+ if(!k_||!v_){c->stop=1;return;}
+ PDQ_W(uint64_t k=(uint64_t)v+1;if(!k){if(c->h0[i]==0xffffffffu)c->h0[i]=(uint32_t)j;continue;}
+  uint64_t s=(k*PDQ_GOLD)>>(64-lg);while(k_[s]&&k_[s]!=k)s=(s+1)&(cap-1);
+  if(!k_[s]){if(++used>PDQ_CAP||(used&1023)==0&&__atomic_load_n(&c->stop,__ATOMIC_RELAXED)){c->stop=1;break;}k_[s]=k;v_[s]=(uint32_t)j;})
+ c->hcnt[i]=used;}
+typedef struct{uint32_t ix;int64_t v;}PDQE;
+static int pdq_cmp(const void*a,const void*b){uint32_t p=((const PDQE*)a)->ix,q=((const PDQE*)b)->ix;return p<q?-1:p>q;}
+static A pdq_out(A x,uint32_t m,PDQE*e){A z=an(m,xt);void*r=zV;uint32_t w=xw-3;
+ for(uint32_t j=0;j<m;j++){int64_t v=e[j].v;if(w==1)((int16_t*)r)[j]=(int16_t)v;else if(w==2)((int32_t*)r)[j]=(int32_t)v;else((int64_t*)r)[j]=v;}return z;}
+static A unqP(A x){uint32_t n=xn,wx=xw-3;int nt=par_thread_count(n);if(nt<2||n>=0xffffffffu)return 0;if(nt>64)nt=64;
+ PDQ*c=calloc(1,sizeof(PDQ));if(!c)return 0;c->pa=xV;c->pn=n;c->wx=wx;c->nt=nt;
+ par_run(nt,pdq_mm,c);int64_t lo=c->mn[0],hi=c->mx[0];for(int k=1;k<nt;k++){if(c->mn[k]<lo)lo=c->mn[k];if(c->mx[k]>hi)hi=c->mx[k];}
+ uint64_t rg=(uint64_t)hi-(uint64_t)lo+1;A z=0;c->lo=lo;c->rg=rg;
+ if(rg&&rg<=PDQ_LUT&&rg*(uint64_t)nt*4<=((uint64_t)64<<20)){
+  c->fi=malloc(rg*(uint64_t)nt*4);
+  if(c->fi){par_run(nt,pdq_lut,c);par_run(nt,pdq_lmin,c);
+   uint64_t nw=((uint64_t)n+63)>>6;uint64_t*bm=calloc(nw,8);
+   if(bm){uint32_t m=0;for(uint64_t s=0;s<rg;s++){uint32_t f=c->fi[s];if(f!=0xffffffffu){bm[f>>6]|=1ull<<(f&63);m++;}}
+    z=an(m,xt);void*r=zV;uint32_t k=0;
+    for(uint64_t w=0;w<nw;w++){uint64_t b=bm[w];while(b){uint64_t p=(w<<6)|(uint64_t)__builtin_ctzll(b);b&=b-1;int64_t v=pdq_rd(xV,wx,p);
+     if(wx==1)((int16_t*)r)[k]=(int16_t)v;else if(wx==2)((int32_t*)r)[k]=(int32_t)v;else((int64_t*)r)[k]=v;k++;}}
+    free(bm);}
+   free(c->fi);}}
+ else{par_run(nt,pdq_hash,c);
+  if(!c->stop){uint64_t tot=1;for(int k=0;k<nt;k++)tot+=c->hcnt[k];
+   uint64_t gc=16;while(gc<tot*2)gc<<=1;uint32_t glg=__builtin_ctzll(gc);uint64_t*gk=calloc(gc,8);uint32_t*gv=malloc(gc*4);PDQE*e=malloc(tot*sizeof(PDQE));
+   if(gk&&gv&&e){uint32_t m=0,z0=0xffffffffu;
+    for(int k=0;k<nt;k++){if(c->h0[k]<z0)z0=c->h0[k];uint64_t*hk=c->hk[k];uint32_t*hv=c->hv[k];
+     for(uint32_t s=0;s<PDQ_CAP*2;s++)if(hk[s]){uint64_t key=hk[s],g=(key*PDQ_GOLD)>>(64-glg);while(gk[g]&&gk[g]!=key)g=(g+1)&(gc-1);
+      if(!gk[g]){gk[g]=key;gv[g]=hv[s];}else if(hv[s]<gv[g])gv[g]=hv[s];}}
+    for(uint64_t g=0;g<gc;g++)if(gk[g]){e[m].ix=gv[g];e[m].v=(int64_t)(gk[g]-1);m++;}
+    if(z0!=0xffffffffu){e[m].ix=z0;e[m].v=-1;m++;}
+    qsort(e,m,sizeof(PDQE),pdq_cmp);z=pdq_out(x,m,e);}
+   free(gk);free(gv);free(e);}
+  for(int k=0;k<nt;k++){free(c->hk[k]);free(c->hv[k]);}}
+ free(c);return z;}
+#undef PDQ_W
+#undef PDQ_LOOP
+
 A unqL(A x){
  if(!(xtH||xtI||xtL))return xtF?unqF(x):0;
  U n=xn,wx=xw-3;
  if(n<2||wx>3)return 0;
+ I(n>=PDQ_MIN,A z_=unqP(x);I(z_,return z_;))   //2.5 (exp): parallel, the same answer; 0 when it declines
  CO V*a=xV;
  L lo=RD(wx,a,0),hi=lo;
  for(U i=1;i<n;i++){L v=RD(wx,a,i);if(v<lo)lo=v;if(v>hi)hi=v;}

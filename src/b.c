@@ -47,15 +47,15 @@ NI I ixck(A x,A y,U k,A z,B asg){I r=0;if(x&&k<_N(y)&&!_tP(x)&&(_t(x)==tm||_t(x)
 //a dict or table (x) at level k, below where ixwk went (a list of indices, an elided level or a list of keys above,
 //or the walk stopped short): at the last level a list of keys needs a list value of its count, and a table's column,
 //assigned with : (asg), one of its row count (any other verb gets the whole column, so only its result has to fit);
-//a table's row is an int in range; an elided level on a dict adds the key :: with the first value nulled, so that is
-//what is indexed. A key or a list of keys above the last level is not looked up, and nothing below it is checked: the
+//a table's row is an int in range; an elided level on a dict is every key, as when indexing, so every value is
+//indexed. A key or a list of keys above the last level is not looked up, and nothing below it is checked: the
 //assignment finds it, and the check would find it a second time
 Z I ixkd(A x,A y,U k,A z,B asg){A ks=_x(x),vs=_y(x);B last=k+1>=_N(y),tb=_t(x)==tM,own=!_tA(y);I r=0;L rows=0;
  if(_t(ks)!=tS||tb&&!_N(vs))return 0;   //symbol keys only (every table's), and a table with columns
  A q=own?ii(y,k):_A(y)[k];B zlist=!_tP(z)&&_tT(z);   //q: borrowed from y, or made from a typed y
  if(last&&!tb){if(_t(q)==tS&&zlist&&_N(z)!=_N(q)&&ixone(y,k))r=2;I(own,mr(q))return r;}   //a dict's last level: any key may be set; a list of keys needs a value of its count
  if(tb)rows=_N(_A(vs)[0]);
- if(q==au){if(!last&&!tb&&_N(vs)){A v=ii(vs,0);r=ixck(v,y,k+1,z,asg);mr(v);}}   //an elided level adds the key :: with the first value nulled (as ngn/k), and indexes that: so only the first value's shape counts
+ if(q==au){if(!last&&!tb)for(U j=0;j<_N(vs)&&!r;j++){A v=ii(vs,j);r=ixck(v,y,k+1,z,asg);mr(v);}}   //an elided level on a dict is every key (a8), so every value is indexed
  else if(_t(q)==ts){
   if(last){if(tb&&asg&&zlist&&_N(z)!=(U)rows&&ixone(y,k)){r=2;I(_N(ks)==1&&!fI(_I(ks),1,_v(q)),r=0)}}}   //a table's column needs the row count (for :), unless it is the only column, which may take another
  else if(_t(q)==tS);   //a list of keys: not looked up above the last level, nor a table's list of columns at it

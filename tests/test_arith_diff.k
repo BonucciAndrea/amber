@@ -20,7 +20,7 @@ R2:7+!N
 B1:H1>500
 B2:H2>300
 S:0N 0N,3 4 5
-sh:{"  ",($@x)," ",$x}
+sh:{"  ",($@x)," ",$[(@x)in`A`m`M;`k x;$x]}   / general lists, dicts and tables through `k: $x of one is not a string, which `0: refused (digest #78)
 p:{`0:sh x}
 / ---- subtraction: every width pairing, atom/vector, ranges, floats, nulls --
 p L1-L2; p H1-H2; p G1-G2; p I1-I2; p F1-F2
@@ -30,7 +30,7 @@ p F1-2.5; p 2.5-F1; p H1-2.5; p 2.5-H1
 p R1-3; p 3-R1; p R2-R1; p R1-L2
 p B1-B2; p B1-1; p 1-B1; p H1-B2
 p S-1; p 1-S; p S-S; p S-0N; p 0N-S
-p 5-3; p 5-3.5; p 5.5-3; p 0N-3; p 3-0N; p 0W-1; p -0W-1
+p 5-3; p 5-3.5; p 5.5-3; p 0N-3; p 3-0N; p 9223372036854775807-1; p -9223372036854775807-1   / the long range ends written out: 0W is no literal here (digest #78)
 p (-128+!5)-(1+!5)                 / narrow overflow: bytes below -128
 p (-32768+!5)-(1+!5)
 p (-2147483648+!5)-(1+!5)
@@ -58,7 +58,7 @@ p 1000!H
 p G1+G2; p H1+H2; p I1+I2; p L1+L2; p (100#127)+100#1; p (100#32767)+100#1; p (100#2147483647)+100#1
 p 5+G1; p 300+H1; p 100000+I1; p S+1; p R1+5; p B1+B2
 / ---- reductions and scans over narrow types --------------------------------
-p +/G1; p +/H1; p +/I1; p +/L1; p +/F1; p |/F1; p &/F1; p |/H1; p &/H1
-p +/B1; p +\G1; p +\H1; p -/H1; p */H1; p |/0n 1 2; p &/1 0n 2; p |/0#0.0
-p +/0.0 -0.0; p |/-0.0 0.0; p &/-0.0 0.0
-p +/1000#-0.0
+p[+/G1]; p[+/H1]; p[+/I1]; p[+/L1]; p[+/F1]; p[|/F1]; p[&/F1]; p[|/H1]; p[&/H1]
+p[+/B1]; p[+\G1]; p[+\H1]; p[-/H1]; p[*/H1]; p[|/0n 1 2]; p[&/1 0n 2]; p[|/0#0.0]
+p[+/0.0 -0.0]; p[|/-0.0 0.0]; p[&/-0.0 0.0]
+p[+/1000#-0.0]

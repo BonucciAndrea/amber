@@ -339,6 +339,10 @@ with `./amber file.k` does not go through that per-line rewrite, so bare qSQL su
 there. Use the `sel"…"`/`exq"…"`/`upd"…"`/`del"…"` string forms, or call `qwhere`/`qselect`/`qby`
 directly, exactly as `test.k` and every script under `examples/` already do.
 
+**Inside a lambda.** the string forms (and bare qSQL, which turns into them) only see globals, so
+`{[x] sel"select from t where n>x"}` can't see `x`. use the functional forms there, they take locals fine:
+`{[x] qwhere[t;t[`n]>x]}`.
+
 | function             | q analogue                                     |
 |----------------------|------------------------------------------------|
 | `qwhere[t;mask]`     | `select from t where mask`                     |

@@ -339,12 +339,16 @@ with `./amber file.k` does not go through that per-line rewrite, so bare qSQL su
 there. Use the `sel"…"`/`exq"…"`/`upd"…"`/`del"…"` string forms, or call `qwhere`/`qselect`/`qby`
 directly, exactly as `test.k` and every script under `examples/` already do.
 
+**Inside a lambda.** the string forms (and bare qSQL, which turns into them) only see globals, so
+`{[x] sel"select from t where n>x"}` can't see `x`. use the functional forms there, they take locals fine:
+`{[x] qwhere[t;t[`n]>x]}`.
+
 | function             | q analogue                                     |
 |----------------------|------------------------------------------------|
 | `qwhere[t;mask]`     | `select from t where mask`                     |
 | `qselect[t;a]`       | `select …` (`a` = `name!func` computed columns)|
 | `qby[t;b;a]`         | `select … by b` → **keyed table**              |
-| `xgroup[k;t]`        | `` `k xgroup t`` (nested value columns)         |
+| `xgroup[k;t]`        | `` `k xgroup t`` (keyed by k, nested values)    |
 | `ungroup x`          | flatten nested columns                          |
 | `fby[(f;d);g]`       | `(f;d) fby g`, where `g` may be one column, a list of columns, or a table; works inside a where-clause |
 | `insert[t;r]`        | append rows                                     |
@@ -391,6 +395,7 @@ Every join is a function; call it in bracket form `lj[t;kt]` or, since 2.0.0, **
 | `aj0[c;x;y]`         | as‑of, `y`’s time   | like `aj` but result time is `y`’s      |
 | `asof[t;d]`          | as‑of lookup        | single as‑of row for the dict `d`       |
 | `wj[w;c;t;q;aggs]`   | **window** join     | aggregate `q` over a window per `t` row |
+| `wj1[w;c;t;q;aggs]`  | window join, inside | like wj, but only the quotes inside the window (wj also counts the one in force at its start, as q) |
 
 `c` is `` `key…`time``: the last name is the ordering (time) column, the rest are exact‑match keys.
 
@@ -913,6 +918,7 @@ attributes `sa `ua `pa `ga (set sorted/unique/parted/grouped)   `at (get)  [kern
            ascending value sorts (asc, x@<x, `srt, xasc) return `s-flagged results (2.1)
 kernels    `memb (membership) `gagg (group aggregate) `srt (value sort) `mw (windows)
            `xs (multi-column grade) `aj `wjb `ajs (as-of join)  [2.1: see section 5a]
+           `ejx (the rows of an equi-join; amber.k's ej uses it)
 moving     mcount msum mavg mprd mvar mdev mmin mmax   (std.k, O(n) prefix)
 math       dot mmu (matrix multiply)                   (std.k)
 parse/ser  parse eval reval ser deser protect          (std.k; text serialise)

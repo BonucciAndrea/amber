@@ -79,17 +79,19 @@ trade:+`sym`time`px!(`a`b`a;3 4 9;100 200 300)
 quote:+`sym`time`bid`ask!(`a`a`b`a;1 5 2 8;10 11 20 12;15 16 25 18)
 t[`wjClast;&/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`b;last;`bid)])[`b]=10 20 12;1b]
 t[`wjCmax; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`m;max;`ask)])[`m]=15 25 18;1b]
-t[`wjCmin; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`m;min;`bid)])[`m]=10 20 12;1b]
-t[`wjCsum; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`s;sum;`bid)])[`s]=10 20 12;1b]
-t[`wjCcnt; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`n;count;`bid)])[`n]=1 1 1;1b]
-t[`wjCavg; &/1e-9>abs(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`a;avg;`bid)])[`a]-10 20 12;1b]
+t[`wjCmin; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`m;min;`bid)])[`m]=10 20 11;1b]   / q's wj: the quote in force at the window start counts (digest #68)
+t[`wjCsum; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`s;sum;`bid)])[`s]=10 20 23;1b]
+t[`wjCcnt; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`n;count;`bid)])[`n]=1 1 2;1b]
+t[`wjCavg; &/1e-9>abs(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`a;avg;`bid)])[`a]-10 20 11.5;1b]
 t[`wjCnogrp;&/(+wj[(trade[`time]-2;trade`time);,`time;trade;quote;,(`m;max;`bid)])[`m]=20 20 12;1b]
 / C wj agrees with interpreted wjK on random data (bit-exact reducers)
 gentq 400
 wAGG:((`hi;max;`ask);(`lo;min;`bid);(`nq;count;`bid))
 wCr:+wj[(trades[`time]-60000;trades`time);`sym`time;trades;quotes;wAGG]
-wKr:+wjK[(trades[`time]-60000;trades`time);`sym`time;trades;quotes;wAGG]
+wKr:+wjK[1b;(trades[`time]-60000;trades`time);`sym`time;trades;quotes;wAGG]
 t[`wjCK;&/{[a;b;c]&/(a[c]=b c)|(^a[c])&^b c}[wCr;wKr]'`hi`lo`nq;1b]
+wC1:+wj1[(trades[`time]-60000;trades`time);`sym`time;trades;quotes;wAGG];wK1:+wjK[0b;(trades[`time]-60000;trades`time);`sym`time;trades;quotes;wAGG]
+t[`wj1CK;&/{[a;b;c]&/(a[c]=b c)|(^a[c])&^b c}[wC1;wK1]'`hi`lo`nq;1b]   / wj1 too (digest #68)
 / ---- C-kernel EMA ----
 t[`ema0;ema[0.5;1 2 3 4];1.0 1.5 2.25 3.125]
 t[`ema1;ema[1.0;1 2 3];1.0 2 3]

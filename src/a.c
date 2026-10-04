@@ -29,7 +29,7 @@
 #define _POSIX_C_SOURCE 199309L
 #endif
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
-#include <stdlib.h>   // amber 2.5 (exp): malloc/free for the parallel kernels
+#include <stdlib.h>   // malloc/free for the parallel kernels (exp); getenv (qdiag)
 #include"ext.h"// amber 1.9.5: out-of-tree verb registry (see src/ext.h)
 #include"arena.h"
 #include"diagnostic.h"
@@ -107,6 +107,15 @@ U amub(CO L*RES a,U lo,U hi,L key){
 A tkey(A x,B f)_(I(_t(x)==tE,x=gZ(x))P(!f,cL(x))x=cF(x);   //a lazy range (!n as a time column) is expanded first: cL kept it a 2-item range
  P(!x,0)U n=_n(x);A y=aL(n);CO W*RES s=_V(x);L*RES d=_V(y);
  F(n,W b=s[i];b=b==1ull<<63?0:b;d[i]=b<<1>0xffe0000000000000ull?NL+1:(L)(b>>63?b^0x7fffffffffffffffull:b))x(y))
+// A time column of dates, times or timestamps (a generic list) goes to the joins as its numbers (days, ms or
+// ns: their order). tjk is what a time column is to them: tdt, ttm or tnp for a generic list of that kind
+// alone; 1 for an empty generic list; -1 for a generic list holding one among items of other kinds (or ::),
+// whose items would be read by their addresses; 0 for anything else. tjs: 'type (0) when one of two time
+// columns is temporal and the other is not of its kind (an empty generic list goes with any), or either
+// mixes, as in q. tjn: a time column as the kernels read it, a new reference.
+I tjk(A x){P(_t(x)-tA,0)U n=_n(x);P(!n,1)CO A*a=_V(x);UC t=_t(*a);B m=0,o=0;F(n,UC u=_t(a[i]);m|=u==tdt||u==ttm||u==tnp;o|=u!=t)P(!m,0)return o?-1:t;}
+B tjs(A a,A b){I p=tjk(a),q=tjk(b);P(p<0||q<0,0)P(p==q||p==1||q==1,1)return p<2&&q<2;}
+A tjn(A x){I k=tjk(x);P(k==1,aL(0))P(k<2,_R(x))U n=_n(x);CO A*a=_V(x);A y=aL(n);L*RES v=_V(y);I(k==tnp,F(n,v[i]=*(L*)_V(a[i])))E(F(n,v[i]=(I)a[i]))return y;}
 A ucb(A);
 // amber 2.5 (exp): one slice of trade rows for the parallel aj (see the parallel branch in ajc). Same row
 // logic as ajc's serial loop, with this slice's own cursor cache.
@@ -126,8 +135,9 @@ Z V ajrows(V*c_,int t){AJ*c=c_;CO L*RES qt=c->qt,*RES tt=c->tt,*RES gb=c->gb,*RE
   m[i]=j>lo?(L)(j-1):NL;cbase[h]=b;ckey[h]=key;ccur[h]=j;}}
 A ajc(A x){
  P(_t(x)-tA||_n(x)-4,et(x))
- A*e=(A*)_V(x);B f=_t(e[0])==tF||_t(e[1])==tF;
- B c_=_t(e[0])==tC;A QT=N(tkey(ucb(_R(e[0])),f)),TT=N(tkey(c_?ucb(_R(e[1])):_R(e[1]),f)),GB=N(tkey(_R(e[2]),0)),GE=N(tkey(_R(e[3]),0));   //float times as floats (tkey), char times as unsigned bytes (ucb)
+ A*e=(A*)_V(x);P(!tjs(e[0],e[1]),et(x))P(_N(e[2])-_N(e[1])||_N(e[3])-_N(e[1]),el(x))   //a slice per trade row
+ A q0=tjn(e[0]),t0=tjn(e[1]);B f=_t(q0)==tF||_t(t0)==tF;
+ B c_=_t(q0)==tC;A QT=N(tkey(ucb(q0),f),mr(t0);x(0)),TT=N(tkey(c_?ucb(t0):t0,f),mr(QT);x(0)),GB=N(tkey(_R(e[2]),0),mr(QT);mr(TT);x(0)),GE=N(tkey(_R(e[3]),0),mr(QT);mr(TT);mr(GB);x(0));   //float times as floats (tkey), char times as unsigned bytes (ucb)
  CO L*RES qt=_V(QT),*RES tt=_V(TT),*RES gb=_V(GB),*RES ge=_V(GE);
  U nt=_n(TT),nq=_n(QT);
  // On a 32-bit target (wasm32) size_t is 32 bits, so nt*sizeof(L) can wrap.
@@ -267,7 +277,7 @@ A ajsC(A x){
  U ng=_t(gcs)==tA?_n(gcs):0;
  A*gc=ng?(A*)_V(gcs):0;
  P(_tP(tcol)||_t(tcol)>=tM,x(al(0)))                // an atom or a dict: not a column, so not known sorted
- U n=_n(tcol);
+ U n=_N(tcol);                                    // _N: a lazy range's length, not its two ends
  P(n<2,x(al(1)))                                  // 0 or 1 row is trivially ordered
  // ---- pass 1: run boundaries -------------------------------------------
  // chg[r] = "row r starts a new group". The type switch is hoisted OUT of the
@@ -295,7 +305,12 @@ A ajsC(A x){
   case tH: AJS_ORD(H) break;
   case tI: AJS_ORD(I) break;
   case tL: AJS_ORD(L) break;
+  case tE: break;                                  // a range (!n, a+!n) rises
   case tF: {CO F*RES p=_V(tcol);for(U r=1;r<n;r++)if(!chg[r]&&ajs_fk(p[r])<ajs_fk(p[r-1]))return x(al(0));} break;   //the join's order: a NaN no longer hides an unsorted run
+  case tA: {CO A*RES p=_V(tcol);UC k=_t(*p);   //dates, times or timestamps of one kind (tjk): by their numbers, as the joins read them
+   I(k==tnp,L v=*(L*)_V(*p);for(U r=1;r<n;r++){A y=p[r];P(_t(y)-tnp,x(al(0)))L u=*(L*)_V(y);if(!chg[r]&&u<v)return x(al(0));v=u;})
+   J(k==tdt||k==ttm,I v=(I)*p;for(U r=1;r<n;r++){A y=p[r];P(_t(y)-k,x(al(0)))I u=(I)y;if(!chg[r]&&u<v)return x(al(0));v=u;})
+   E(return x(al(0));)} break;
   default: return x(al(0));                        // unknown ordering column: sort
  }
  #undef AJS_ORD
@@ -567,7 +582,13 @@ X1(csvxT,RC(C buf[1024];U n=MIN(xn,SZ buf-1);MC(buf,xC,n);buf[n]=0;x(al((L)csv_c
 // asserts the resulting table's shape/types/values/null-handling. Cleans up
 // the temp file whether the assertions pass or fail.
 A1(csv0T,
- CO C*P_="/tmp/.amber_csv_selftest.csv";
+ // a name of this process's own: two test runs at once shared one file (digest #80)
+ C P_[64];
+#if !defined(wasm)
+ snprintf(P_,SZ P_,"/tmp/.amber_csv_selftest.%d.csv",(I)getpid());
+#else
+ snprintf(P_,SZ P_,"/tmp/.amber_csv_selftest.csv");
+#endif
  CO C*body="sym,px,qty,note\nAAPL,187.5,100,\"a note, with a comma\"\nMSFT,410.2,50,plain\nGOOG,138.9,,\"a \"\"quoted\"\" word\"\n";
  FILE*fp=fopen(P_,"wb");B ok=!!fp;I(fp,fwrite(body,1,strlen(body),fp);fclose(fp))
  // Delegate the actual shape/value/null-handling assertions to the real,
@@ -581,8 +602,8 @@ A1(csv0T,
  // to the bare global `t` here would clobber test.k's own harness function
  // (also named `t`), breaking every t[...] assertion that runs after this
  // self-test in the same session. Hit and fixed via the full regression run.
- CO C*chk="_ct:`csvr \"/tmp/.amber_csv_selftest.csv\";"
-   "((#_ct)=3)&(_ct[`sym]~`AAPL`MSFT`GOOG)&(_ct[`px]~187.5 410.2 138.9)&(_ct[`qty]~100 50 0N)&((@_ct[`note])=`S)";
+ C chk[512];snprintf(chk,SZ chk,"_ct:`csvr \"%s\";"
+   "((#_ct)=3)&(_ct[`sym]~`AAPL`MSFT`GOOG)&(_ct[`px]~187.5 410.2 138.9)&(_ct[`qty]~100 50 0N)&((@_ct[`note])=`S)",P_);
  // evs() returns 0 (not `au`) on a parse/compile/eval error -- check
  // truthiness of r itself, not identity against `au`, before touching it.
  A r=ok?evs(chk,0):0;ok=ok&&r&&tru(r);I(r,mr(r))
@@ -788,6 +809,7 @@ Z B xskey(A c,CO I*RES ix,W*RES k,N n,U*nbo,int desc){
  // across the vector before the complement, so they still are.
  if(desc)for(N i=0;i<n;i++)k[i]=~k[i];
  return 1;}
+A kys(A,A*,U*);
 A xsC(A x){
  P(_t(x)-tA||_n(x)-2,x(emp(tA)))
  A*e=(A*)_V(x);A CS=e[0];
@@ -798,6 +820,15 @@ A xsC(A x){
  N n=_n(cv[0]);
  P(!n||n!=(N)(U)(I)n,x(emp(tA)))                // grade indices are 32-bit
  F(nc,P(_tP(cv[i])||_n(cv[i])-(U)n,x(emp(tA))))
+ // A generic column of dates, times or timestamps (ints or floats among them too) sorts as grade orders it:
+ // by its keys (o.c kys), after its items' kinds when it holds more than one. Such columns are swapped for
+ // their keys and the sort is asked again; a generic column of anything else is left to the K path. Each
+ // column orders as < on it does: a leading "row class" key used to copy the K path's row grade, where a
+ // row of one int squeezed to an int list and sorted after every generic row (digest #58)
+ {B g=0;F(nc,g|=_t(cv[i])==tA)I(g,A b[2*XS_MAXCOL+1],kd[XS_MAXCOL];U m=1,w=0;
+  F(nc,A q=cv[i],d=0;U s=0;kd[i]=0;I(_t(q)-tA,b[m++]=_R(q);continue)A k=kys(q,&d,&s);I(!k,mrn(m-1,b+1);return x(emp(tA));)w|=s;I(d,b[m++]=kd[i]=d)b[m++]=k)
+  U o=1;(V)w;
+  P(m-o>XS_MAXCOL,mrn(m-o,b+o);x(emp(tA)))return x(xsC(aV(tA,2,A(aV(tA,m-o,b+o),_R(e[1]))))));}
  int desc=tru(_R(e[1]));
  ArenaMark mk=arena_mark();
  I*cur=(I*)arena_alloc(n*SZ(I)),*alt=(I*)arena_alloc(n*SZ(I));
@@ -863,7 +894,8 @@ Z A1(qga,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=4;x)//amber: `g gro
 // runtime, returning the PREVIOUS setting so a caller can restore it. Needed by
 // anything that deliberately provokes errors it then catches (tests/harness.k,
 // std.k's protect); see the note above amdiag in e.c.
-Z A1(qdiag,I(amdiag<0,amdiag=1)I v=amdiag;I(_tz(x),amdiag=!!gl_(x))x(0);ai(v))
+Z A1(qdiag,I(amdiag<0,amdiag=({S dgev=getenv("AMBER_DIAG");!dgev||*dgev!='0';}))   //unset: from $AMBER_DIAG, as eD resolves it (it was 1, so AMBER_DIAG=0 lost: digest #77)
+ I v=amdiag;I(_tz(x),amdiag=!!gl_(x))x(0);ai(v))
 // amber: `srt x -- SORT (not grade). Takes the counting-sort path in src/v.c
 // when the value range is small relative to n, and otherwise reproduces the
 // previous K definition of asc verbatim, so semantics (collation, the `s
@@ -873,9 +905,16 @@ Z A1(qat,UC a=(_tP(x)||!LH(tG,_t(x),tS))?0:_at(x);x(0);a?({C b[2]={"\0supg"[a],0
 ZN AX(ext,P(n-xK,er8(a,n))V*f=(V*)(x&-1ull>>16);S(n,R(1,((A1*)f)(a[0]))R(2,((A2*)f)(a[0],a[1]))R(3,((A3*)f)(a[0],a[1],a[2]))R(4,((A4*)f)(a[0],a[1],a[2],a[3]))R_(en8(a,n)))0)
 // `sumn x: +/x with the int null counted as 0, in one pass (amber.k's q-style sum). Only a 64-bit int
 // vector can hold 0N; anything else is +/ as it is. Wraps like +/ (unsigned adds).
+// `prn x: */x with the int null counted as 1 (amber.k's q-style prd), four lanes (int products wrap the same in any
+// order). `hnl x: might x hold a null - a scan of a 64-bit int or float list, 0 at once for anything else (a narrower
+// int list can't hold 0N). Both digest #43
+Z A1(prnT,P(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);U n=_n(x);W t0=1,t1=1,t2=1,t3=1;U i=0;
+ for(;i+4<=n;i+=4){L v0=p[i],v1=p[i+1],v2_=p[i+2],v3=p[i+3];t0*=(W)(v0==NL?1:v0);t1*=(W)(v1==NL?1:v1);t2*=(W)(v2_==NL?1:v2_);t3*=(W)(v3==NL?1:v3);}
+ for(;i<n;i++){L v0=p[i];t0*=(W)(v0==NL?1:v0);}x(az((L)(t0*t1*t2*t3))))K1("{*/x}",x))
+Z A1(hnlT,I hz=0;I(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);F(_n(x),hz|=p[i]==NL))J(!_tP(x)&&_t(x)==tF,CO F*RES p=_V(x);F(_n(x),hz|=p[i]!=p[i]))x(ai(hz)))
 Z A1(sumnT,P(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);U n=_n(x);W t=0;F(n,L v=p[i];t+=(W)(v==NL?0:v))x(az((L)t)))K1("{+/x}",x))
-ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","abs"};
- G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,kabs,ed)[fI((V*)s,L(s),v)](x))
+ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl","abs"};
+ G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,ed)[fI((V*)s,L(s),v)](x))
 /* ---- tacit trains: hook (f g) and fork (f g h) --------------------------
  * A general list of length 2 or 3 whose every element is a function becomes a
  * TRAIN when it is applied: (f g) is a hook, (f g h) a fork (APL/J/BQN rules).
@@ -941,9 +980,31 @@ AA(a8,/*10..0*/A x=*a,y=a[1];
     I(ytZC&&n==4,A z=a[2],u=a[3];P(xtZ&&ztv&&utzZ&&(0xcf&1<<zv),ara(x,y,z,u))P(xtC&&z==av&&utcC,cC(N(ara(x,y,z,u)))))Yt(et(x))mRn(n-1,a+1);nsq++;A r_=f8(AP1,a,n);nsq--;r_?sqz(r_):0)
    Rm(A z=Nx(fnd(xx,yR));ZT(P(LH(tG,zt,tL)&&(n==3||n==4&&(_tt(a[3])||_tT(a[3])&&_N(a[3])==zn)||n==5&&_tt(a[3])&&(_tt(a[4])||_tT(a[4])&&_N(a[4])==zn)),dam(x,y,cL(z),a,n))z(0);mRn(n-1,a+1);f8(AP1,a,n))x=mut(x);I(ztl,z=mut(z);F(zN,I(zl==NL,zl=xN;PSH(xx,ztt?yR:ii(y,i));PSH(xy,ie(a[2],xy)))))
     Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);xy=au;xy=Nx(z(a8(b,n)));x)
-   RM(Ab8;AC(b,a,n);YsS(*b=flp(x);flp(N(a8(b,n))))*b=blw(x);sqz(N(a8(b,n))))
+   RM(Ab8;AC(b,a,n);YsS(*b=flp(x);flp(N(a8(b,n))))B e=!xN;*b=blw(e?_R(x):x);A p=e?_R(*_A(*b)):0;A u=a8(b,n);P(!u,e?(mr(p),x(0)):0)P(!e,sqz(u))   //p: the prototype of an empty table's rows, its null row
+    B m=_tA(u)&&!_n(u)&&_tm(ux)&&mtc_(ux,p);mr(p);m?u(x):x(sqz(u)))   //no amend reached the null row: the table as it was (one that did comes back a table already)
    RU(mRn(n-1,a+1);x(USQ(x8(a+1,n-1))))
    R_(et(x)))0)
+//ixst (with ixwk, b.c): .[x;y;f;z] at the places in y that ixwk found (kd), as a8 does it but without looking them up
+//again (from a table's row on, and where the walk stopped short below the first level, d8 does it, as d4's projection
+//does; from a key to add above the last level, a8; and from a list of keys above the last level, dam, at the places
+//the check found). An item on the way is taken out of its list, so it is amended in place. z 0: .[x;y;f], f of one argument
+Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z);
+Z A rbl(A),d3(A,A,A),a5(A,A,A,A,A);
+A ixst(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z/*10....00*/)_(UC t=kd[k];P(!t,ixsl(x,y,kd,ix,k,m,f,z))
+ P(t==3,A w=k?drp(k,yR):yR;x=USQ(z?d8(A8(x,w,f,z),4):d8(A8(x,w,f),3));mr(w);x)   //d8, not d4: a symbol below the first level names a global
+ P(t==9,A s=_A(y)[k],p=(A)ix[k],v=prj(DOT,(A[]){GAP,drp(k+1,yR)},2);B tb=_t(x)==tM;I(tb,x=flp(x))U n=z?5:4;A b[5]={x,s,v,f,z};   //keys above the last level:
+  x=LH(tG,_t(p),tL)&&(n==4?_tt(f)||_tT(f)&&_N(f)==_n(p):_tt(f)&&(_tt(z)||_tT(z)&&_N(z)==_n(p)))?dam(x,s,cL(p),b,n):(mr(p),a8(b,n));mr(v);P(!x,0)tb?flp(x):x)   //as a8 does (Rm), the find from ixwk
+ P(t==6,U j=(U)ix[k+1];x=mut(x);xy=mut(xy);A c=_A(xy)[j];_A(xy)[j]=au;c=ixsl(c,y,kd,ix,k,k+1,f,z);P(!c,x(0))_A(xy)[j]=c;   //a row then a column: that column
+  F(_n(xy),A*p=_A(xy)+i;I(_tA(*p),*p=rbl(*p)))x)   //amended at the row, as d4 does it (tca)
+ P(t>6,I(t==8,x=flp(x))x=mut(x);A s=_tA(y)?_A(y)[k]:ii(y,k);PSH(xx,_R(s));PSH(xy,ie(av,xy));A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z);P(!v,x(0))xy=v;t==8?flp(x):x)   //a key to add,
+  //then an index into its value, the first value nulled (as for d4's projection, ie gives the nulled first value for :), which keeps its count
+ P(t>3,I(t==5,x=flp(x))x=mut(x);A s=_tA(y)?_A(y)[k]:ii(y,k),v=prj(DOT,(A[]){GAP,drp(k+1,yR)},2);PSH(xx,_R(s));PSH(xy,ie(v,xy));   //a key to add above the last level:
+  A w=xy;xy=au;w=z?a8(A8(w,az(ix[k]),v,f,z),5):a8(A8(w,az(ix[k]),v,f),4);mr(v);P(!w,x(0))xy=w;t==5?flp(x):x)   //the rest as a8 does it (d4's projection), without finding the key again
+ I(t==2,x=flp(x))x=mut(x);I(ix[k]==_N(xx),A s=_tt(y)?y:_tA(y)?_A(y)[k]:ii(y,k);PSH(xx,_R(s));PSH(xy,ie(f,xy)))   //a key not there (the last level): added, as a8 does
+ A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z);P(!v,x(0))xy=v;t==2?flp(x):x)   //a column: in the table flipped to a dict
+Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z)_(U i=(U)ix[k];I(_t(x)==tE,x=gZ(x))P(_t(x)==tM,x=ixsl(blw(x),y,kd,ix,k,m,f,z);x?sqz(x):0)x=mut(x);
+ P(k+1==m,set(x,i,Nx(z&&f==av?_R(z):USQ(z?_8(f,A8(ii(x,i),_R(z)),2):_8(f,A8(ii(x,i)),1)))))   //the item at the last place: f applied to it (: needs not read it)
+ A w;I(_t(x)==tA,w=_A(x)[i];_A(x)[i]=au)E(w=ii(x,i))w=ixst(w,y,kd,ix,k+1,m,f,z);P(!w,x(0))set(x,i,w))
 Z A3(a3,/*100*/a8(A8(x,y,z),3))
 A4(a4,/*1000*/a8(A8(x,y,z,u),4))
 Z A a5(A x,A y,A z,A u,A v/*10000*/)_(a8(A8(x,y,z,u,v),5))
@@ -951,8 +1012,8 @@ Z A a5(A x,A y,A z,A u,A v/*10000*/)_(a8(A8(x,y,z,u,v),5))
 //column for a name). It made a list of every row and a table of it again, which keeps each column's values but drops
 //its attribute (so only without one; one inside a column that is a table is kept, as by t[c;i]:y) and builds each
 //generic column again item by item, as psh does: rbl
-Z U tci(A x,A y/*00*/)_(P(!xtM||!ytA||yn<2||!_tz(*yA)||!_ts(yA[1])||!_tS(xx),0)F(_n(xy),A c=_A(xy)[i];P(_at(c)||!_tT(c)&&!_tM(c),0))
- U j=fI(_I(xx),_n(xx),_v(yA[1]));j<_n(xx)?j+1:0)
+U tcc(A x,A s/*00*/)_(P(!_tS(xx),0)F(_n(xy),A c=_A(xy)[i];P(_at(c)||!_tT(c)&&!_tM(c),0))U j=fI(_I(xx),_n(xx),_v(s));j<_n(xx)?j+1:0)   //column s of t, +1 (0: not this way)
+Z U tci(A x,A y/*00*/)_(P(!xtM||!ytA||yn<2||!_tz(*yA)||!_ts(yA[1]),0)tcc(x,yA[1]))
 Z A1(rbl,A y=enl(_R(*xA));F(xn-1,PSH(y,_R(xA[i+1])))x(y))
 Z A d3(A,A,A);Z A tca(A x,A y,A z,A u,U n,U j/*10000.*/)_(A w=aA(yn-1);*_A(w)=_R(*yA);F(yn-2,_A(w)[i+1]=_R(yA[i+2]))
  x=mut(x);xy=mut(xy);A c=_A(xy)[j];_A(xy)[j]=au;c=n==4?d4(c,w,z,u):d3(c,w,z);mr(w);P(!c,x(0))_A(xy)[j]=c;F(_n(xy),A*p=_A(xy)+i;I(_tA(*p),*p=rbl(*p)))x)
@@ -960,13 +1021,17 @@ Z A3(d3,/*100*/U m=yN;P(y==au||!m,z1(x))P(m==1,y=fir(yR);y(a3(x,y,z)))U j=tci(x,
 A4(d4,/*1000*/U m=yN;P(y==au||!m,x(z2(x,uR)))P(m==1,y=fir(yR);y(a4(x,y,z,u)))U j=tci(x,y);P(j,tca(x,y,z,u,4,j-1))A v=prj(DOT,(A[]){GAP,drp(1,yR)},2);y=fir(yR);A r=y(a5(x,y,v,z,u));mr(v);r)
 Z AA(d8_,/*10..0*/A x=*a,y=a[1],z=a[2];P(n==4,d4(x,y,z,a[3]))P(n==3,d3(x,y,z))en(x))
 AA(d8,/*10..0*/A x=*a;
-I ixck(A,A,U,A);   //b.c: is .[`v;i;f;y] sure to fail on its index or count? (then v is not touched)
- X(RsS(P(ray_rc_sync,mr(*a);err0("noupdate"))A*p=gp(x);P(!p,0){I e_=n==4?ixck(*p,a[1],0,a[3]):0;P(e_,e_==1?ei0():el0())}I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;*p=_R(N(d8_(b,n))))// amend-by-name of a global: not from a peach worker (b.c bS)
+I ixwk(A,A,A,B,B,UC*,L*),ixck(A,A,U,A,B),ixgn(A*);   //b.c: is .[`v;i;f;y] sure to fail on its index, count or type? (then v is not touched) If not, where can ixst assign? (.[`v;i;f] is not checked)
+ //while run assigns a global (ixgs): as before (ixck, d4) in an assignment by d4, and refused if ixst is assigning this one
+ X(RsS(P(ray_rc_sync,mr(*a);err0("noupdate"))A*p=gp(x);P(!p,0)I g_=ixgn(p);P(g_>1&&n>2,et0())UC kd[8];L ix[8];
+   I w_=n==3||n==4?g_?n<4?0:*p&&_t(*p)==tm&&!_tMT(_y(*p))?-3:-ixck(*p,a[1],0,a[3],a[2]==av):ixwk(*p,a[1],n==4?a[3]:au,n==4&&a[2]==av,0,kd,ix):0;P(n==4&&w_<0,w_==-1?ei0():w_==-2?el0():et0())I(w_<0,w_=0)I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;*p=_R(N(w_?ixst(*b,a[1],kd,ix,0,(U)w_,a[2],n==4?a[3]:0):n==4&&_tA(a[1])&&_n(a[1])==1?a4(*b,*_A(a[1]),a[2],a[3]):d8_(b,n))))// amend-by-name of a global: not from a peach worker (b.c bS)
    RU(n==3?try(x,a[1],a[2]):er(x))
    R_(d8_(a,n)))0)
 ZN A ki(A*p,S s)_(*p=evs(s,0);P(!*p,0)PSH(cns,*p))   //a name that does not evaluate (a missing formatter): its error, not die
-A k1(A*p,S s,A x)_(I(!*p,ki(p,s))P(!*p,x(0))_1(*p,x))
-A k2(A*p,S s,A x,A y)_(I(!*p,ki(p,s))P(!*p,mr(y);x(0))_2(*p,x,y))
-A k8(A*p,S s,CO A*a,U n)_(I(!*p,ki(p,s))P(!*p,mrn(n,(A*)a);0)n?_8(*p,a,n):*p)
+//k1 k2 k8: the lambda is compiled on first use under the parse lock in a peach scope, so two workers reaching
+//it first do not both compile it and push it to cns at once (digest #10); outside peach plk does nothing
+A k1(A*p,S s,A x)_(I(!*p,plk(1);I(!*p,ki(p,s))plk(0))P(!*p,x(0))_1(*p,x))
+A k2(A*p,S s,A x,A y)_(I(!*p,plk(1);I(!*p,ki(p,s))plk(0))P(!*p,mr(y);0)_2(*p,x,y))   //x borrowed on every path, as _2 borrows it (digest #9)
+A k8(A*p,S s,CO A*a,U n)_(I(!*p,plk(1);I(!*p,ki(p,s))plk(0))P(!*p,mrn(n,(A*)a);0)n?_8(*p,a,n):*p)
 AA(no8,/*10..0*/en(*a))
 A2(no2,/*01*/y(en0()))//amber 2.1: unused fused-verb dyad slots

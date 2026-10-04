@@ -1,5 +1,6 @@
 #include"a.h" // Amber parser - GNU AGPLv3 - see LICENSE and NOTICE
-Z S s0,s;Z U k;Z A pb(A,C);Z A pe(A,C*);Z A ps();                                                   //parser state (s:current pointer, s0:start of source, k:implicit arg counter)
+#include"csv.h"   //csv_float: numbers read as a CSV cell reads them
+Z S s0,s,ppe;Z U k;Z A pb(A,C);Z A pe(A,C*);Z A ps();                                                   //parser state (s:current pointer, s0:start of source, k:implicit arg counter)
 U si(S s,C v)_(strchrnul(s,v)-(C*)s)                                                                //find char (string index)
 B id0(UC c)_(CAz(c)|(c|1)==0xd1)                                                                    //is identifier start char?
 Z B id1(C c)_(id0(c)|C09(c))                                                                        //is identifier char?
@@ -16,31 +17,31 @@ Z L plN(S*p)_(S t=*p+(**p=='-');L v=pl(p);W(*t=='0'&&C09(t[1]),t++)I n=*p-t;I(n>
 // propagates that as a full-range long. Feeding it straight into the int
 // exponent accumulator (`e+=pl(&s)`) is signed overflow -- undefined
 // behaviour reachable from a malformed literal such as `1.5e` or `1.5each`,
-// found by tests/fuzz.py under UBSan. Both the mantissa and the exponent are
-// now normalised before use: a no-digit mantissa reads as 0, and the exponent
-// is accumulated in L and clamped before it is narrowed to I.
+// found by tests/fuzz.py under UBSan. pf now reads the exponent itself, saturating,
+// and no longer calls pl.
 //
 // amber 2.2: an exponent outside the power table's range used to return EARLY,
-// before `*p=s`, so the parse cursor was never advanced past it. `1e-309` left
-// `e-309` sitting in the input and the whole literal died with 'value; `1e309`
-// did the same. Every SUBNORMAL double was therefore unwritable as a literal --
-// which is a round-trip hole, not only a nuisance: std.k's text ser/deser is
-// `k followed by eval, so a table holding one serialised to text that could not
-// be read back.
+// before `*p=s`, so `1e-309` left `e-309` in the input ('value) and every
+// subnormal double was unwritable as a literal -- a round-trip hole, since std.k's
+// text ser/deser is `k followed by eval. The cursor now always moves past the
+// literal.
 //
-// Both returns now advance the cursor, and the small-exponent case scales in
-// two steps (v/1e308 then /1e(-e-308)) instead of answering 0, so a subnormal
-// parses to its actual value. Below about 1e-616 the result genuinely is 0.
-Z L pfu(S*p)_(S s=*p;W u=0;I e=0;W(C09(*s),I(!e&&(u<922337203685477580ull||u==922337203685477580ull&&*s<'8'),u=10*u+(W)(*s-'0'))E(e++)s++)*p=s;L v=(L)u;C c=*s;P(c=='w',(*p)++;WFL)P(c=='n',(*p)++;v^NFL)P(c=='N'&&!v,(*p)++;NFL)   //integer digits past the mantissa count in the exponent (pu wrapped them)
-  //parse float unsigned
- Z F t[309];I(!*t,*t=1;F(308,t[i+1]=10*t[i]))
- I(c=='.',c=*++s;W(C09(c),I((W)v<(1ull<<63)/10,v=(L)(10*(W)v+(W)(c-'0'));e--)c=*++s))
- I(c=='e',s++;L d=pl(&s);I(d==NL,d=0)d+=e;e=(I)MAX(-700ll,MIN(400ll,d)))
- *p=s;   //the range checks hold for e from the digits too: a long fraction read t[e] past its end, and so would more than 327 integer digits now that they count in e
- I(e>308,return v?WFL:0;)   //0e400 is 0.0, as in q (ngn/k: 'value)
- I(e<-308,I(e<-616,return 0;)F r_=((F)v/t[308])/t[-e-308];return *(L*)&r_;)
- *(L*)A(e<0?v/t[-e]:v*t[e]))
-L pf(S*p)_(B m=**p=='-';(*p)+=m;L u=pfu(p),v=(*p)[-1]=='N'?u:(L)((W)m<<63)|u;(*p)+=**p=='f';v)  //parse float (the null 0N has no sign: -0N is 0n, as in ngn/k)
+// pf scans the literal (digits, `.` and digits, `e` and an exponent) and builds its
+// significand and exponent as it goes; csv_cl (src/csv.h) converts them exactly, inline,
+// where Clinger's fast path takes them (one IEEE multiply or divide, or none), and pfs
+// otherwise, out of line: the Eisel-Lemire method (csv_fast). Of a literal of more than
+// 19 digits the significand keeps the first 19, and csv_span (src/csv.c) decides from
+// them where it can; csv_float otherwise, which is exact too. So a literal, `F$ and
+// a CSV cell with the same digits give the same double, and a float printed and read
+// back is the same float. (pf was pf and pfu; it is one function now, which calls
+// nothing on its common paths, so it needs no stack frame: pfs takes the rest.)
+Z W pfn(S s,S t)_(W u=0;I e=0;W(s<t,I(!e&&(u<922337203685477580ull||u==922337203685477580ull&&*s<'8'),u=10*u+(W)(*s-'0'))E(e=1)s++)u)   //0n's payload: the integer digits, as they were read before
+Z NI L pfs(S b,S s,W w,L x,W g,L n)_(F v;I(n<20?!csv_fast(w,x,&v):!csv_span(w,x,&v),v=csv_float(b,s));L r;MC(&r,&v,8);r|g)   //the rest of pf, out of line so that pf needs no stack frame: at most 19 digits that Clinger's path cannot take (the Eisel-Lemire method), more than 19 (w the first 19, or 0 when csv_float reads them all), or no fast path built
+L pf(S*p)_(W g=(W)(**p=='-')<<63;S b=*p+!!g,s=b;W w=0;W(C09(*s),w=10*w+(W)(*s-'0');s++)L x=0,i=s-b,n=i;   //parse float: g the sign, w the first 19 digits, n the count of all, x the exponent; i the integer digits (past 19 w wraps)
+ C c=*s;P(c=='w',*p=s+1+(s[1]=='f');g|WFL)P(c=='n',*p=s+1+(s[1]=='f');g|(pfn(b,s)^NFL))P(c=='N'&&!(n>19?pfn(b,s):w),*p=s+1+(s[1]=='f');NFL)   //the null 0N has no sign: -0N is 0n, as in ngn/k
+ I(c=='.',S f=++s;W(C09(*s)&&s-f<19-i,w=10*w+(W)(*s-'0');s++)x=f-s;W(C09(*s),s++)n+=s-f;c=*s)   //fraction digits past the 19th only count
+ I(c=='e',B q=*++s=='-';s+=q;L d=0;W(C09(*s),I(d<1000000000000000ll,d=10*d+*s-'0')s++)x+=q?-d:d)   //an exponent with no digits counts as 0; it saturates far past any offset the digits can make up for
+ *p=s+(*s=='f');F v;P(n<20&&csv_cl(w,x,&v),L r;MC(&r,&v,8);r|g)pfs(b,s,i>19?0:w,x,g,n))   //exact in one step, else pfs; the bits through memcpy (a pointer cast can lose them under -fno-signed-zeros)
 Z A pV(C t,TY(pl)*f)_(L a[1<<9];U n=0;A x=0;                                                  //parse ints or floats (in chunks of 512)
  W(1,S q=s;W(*q-'0'<2u,q++)                                                                     //a boolean token (01b) in the strand: its bits
    I(q>s&&*q=='b'&&!CA9(q[1])&&q[1]-'.',F(q-s,I(n==L(a),A c_=aV(t,n,a);x=x?cat11(x,c_):c_;n=0)F b=s[i]-'0';a[n++]=t==tF?*(L*)&b:s[i]-'0')s=q+1)
@@ -71,7 +72,7 @@ Z A pS(C c)_(pSw(c,0))
 Z A0(pP,I a[8];U n=0;                                                                               //parse dot-separated path of identifiers
  W(1,P(n>=L(a),ez0())A y=str0(ps());a[n++]=us(yV);y(0);B(*s-'.'||!id0(s[1]))++s)
  aV(tS,n,a))
-Z A0(pp,P(*s-'[',au)A x=N(pSw(';',1));s=pw(s);P(*s-']'||!xn,ep(x))P(xN>8,ez(x))s++;x)                          //parse parameter list
+Z A0(pp,P(*s-'[',au)A x=N(pSw(';',1));s=pw(s);P(*s-']'||!xn,ep(x))P(xN>8,ez(x))s++;ppe=s;x)                          //parse parameter list
 Z S pws(S s)_(W(*s==32||*s==10,s++)s)                                                               //skip spaces and newlines
 Z A amkl(CO A*e,U n)_(A x=aA1(MKL);F(n,PSH(x,e[i]))x)                                                //make-list node (e0;e1;..)
 Z A amcg(C end,U*np)_(I nm[256];A ex[256];U n=0;s=pws(s);                                            //parse `name:expr;..` group up to end -> (names ! (e0;e1;..))
@@ -101,6 +102,9 @@ Z A pTmp(){S p=s;if(!C09(*p))return 0;W a=0;S q=p;while(C09(*q)){a=10*a+(W)(*q-'
    if(mi>59||sc>59){tbad=1;return 0;}s=q2;return antp((L)((W)days*86400000000000ULL+3600000000000ULL*hh+60000000000ULL*mi+1000000000ULL*sc+ns));}
   s=q2;return adt((I)days);}
  return 0;}
+//a strand of temporal literals of one kind (2026.01.01 2026.01.02) is a list of them, as q; it was 'type, the second
+//applied to the first. Another kind, or anything else after the space, ends it (digest #65)
+Z A pTms(A a){A z=0;UC k=_t(a);for(;*s==' ';){S o=s;while(*s==' ')s++;A b=pTmp();if(!b){s=o;tbad=0;break;}if(_t(b)!=k){mr(b);s=o;break;}if(!z){z=emp(tA);PSH(z,MKL);PSH(z,a);}PSH(z,b);}return z?z:a;}   //as (d1;d2) parses: MKL and the items
 // amber 2.0.0: identifiers usable INFIX like a verb -- `x in y`, `t lj kt`,
 // `1 within 2 3`, `"/" sv parts` -- as well as the bracket form in[x;y].  ngn/k
 // already treats every unicode-named identifier (pt's `c>>7` branch) as an infix
@@ -154,8 +158,8 @@ Z A pt(C*v)_(C c=*s;                                                            
   I((infixkw(p,s-p)||am_infix_dyad(p,s-p))&&*s!=':'&&!isparm(p,s-p)&&!am_name_nonfn(p,s-p),*v=1)AO(p-s0,x))
  P(C09(c)&&s[1]==':',B u=s[2]==':';s+=2+u;U i=20+c-'0';P(i>25,ep0())*v=1;Lt(tv-u)|i)
  P(c=='0'&&s[1]=='x',s+=2;p1(p0x()))
- P(num(s)&&(c-'-'||s==s0||(!id1(s[-1])&&!strchr(")]}\"",s[-1]))),
-  A tlit=pTmp();P(tlit,tlit)P(tbad,tbad=0;ep0())
+ P(num(s)&&(c-'-'||s==s0||s==ppe||(!id1(s[-1])&&!strchr(")]}\"",s[-1]))),   //ppe: just past a lambda's [params], whose ] is no noun (digest #40)
+  A tlit=pTmp();P(tlit,pTms(tlit))P(tbad,tbad=0;ep0())
   B d=0,f=1;S p=s;c=*p;W(1,S q=p;p=pw(p);B(!f&&p==q||!num(p))f=0;p+=*p=='-';c=*p;B(!CA9(c))W(CA9(c)||c=='.'||c==':',d|=!!strchr(".nwef",c);c=*++p))p1(d?pF():pZ()))
  P(c>>7,S p=s;A x=N(pP());*v=1;AO(p-s0,x))
  U i=si("'/\\",c);P(i<3,c=*++s;B h=c==':';s+=h;*v=1;aw+i+3*h)i=si(vc,c);P(i>19,GAP)

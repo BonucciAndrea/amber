@@ -602,8 +602,9 @@ amber_value amber_make_table(const char *const *names,
         return 0;
     }
     nm = (A)amber_from_symbols(names, ncols);
+    if (!nm) { capi_err_set("'limit: allocation failed"); return 0; }
     cv = aA((U)(ncols ? ncols : 0));
-    if (!nm || !cv) { capi_err_set("'limit: allocation failed"); return 0; }
+    if (!cv) { mr(nm); capi_err_set("'limit: allocation failed"); return 0; }   /* nm no longer leaks (digest #9) */
     slot = (A *)_V(cv);
     for (i = 0; i < ncols; i++) slot[i] = _R((A)cols[i]);
     /* `+names!cols` -- flip a dictionary into a table.  Expressed in K rather
@@ -628,8 +629,9 @@ amber_value amber_make_dict(const char *const *keys,
         return 0;
     }
     kv_ = (A)amber_from_symbols(keys, n);
+    if (!kv_) { capi_err_set("'limit: allocation failed"); return 0; }
     vv  = aA((U)(n ? n : 0));
-    if (!kv_ || !vv) { capi_err_set("'limit: allocation failed"); return 0; }
+    if (!vv) { mr(kv_); capi_err_set("'limit: allocation failed"); return 0; }   /* kv_ no longer leaks (digest #9) */
     slot = (A *)_V(vv);
     for (i = 0; i < n; i++) slot[i] = _R((A)vals[i]);
     res = K2("{x!y}", kv_, vv);          /* borrows kv_, consumes vv */

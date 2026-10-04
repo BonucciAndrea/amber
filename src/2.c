@@ -70,7 +70,10 @@ Z A modzZ(L m,A y,U f)_(P(!m,y)
  // amber 2.4.1: a shared y was copied by mut() and then masked, two passes; mask into a new vector
  P(yt==t&&!MINE(y),A z=an(yn,t);S4(w,F(zn,zg=yg&(G)m),F(zn,zh=yh&(H)m),F(zn,zi=yi&(I)m),F(zn,zl=yl&m))y(z))
  y=mut(N(ct(t,y)));F(3-w,m|=m<<(8<<w+i))L*p=yV;F((yn<<w)+31>>5,Fj(4,*p++&=m))y)
-Z A modzf(L n,A y,U f)_(P(!n,y)P(n<0,en(y))A u=az(n);u(K2("{y-x*(-x)!_y}",u,y)))
+// digest #15: the float remainder from fmod (exact), then made non-negative. It was {y-x*(-x)!_y}, whose _y
+// saturates past 2^63 (7!1e19 was 7.8e17) and makes 0w 0N (5!-0w was -0w; now 0n, as q). -0.0 stays -0.0.
+Z F fmz(F v,F m)_(F r=__builtin_fmod(v,m);P(r<0,r+m)W u;MC(&u,&r,8);P(u<<1,r)MC(&u,&v,8);P(!(u<<1),v)0.0)   //an exact multiple: 0.0, -0.0 only from y -0.0 itself (as before); on bits: the build has -fno-signed-zeros
+Z A modzf(L n,A y,U f)_(P(!n,y)P(n<0,en(y))F m=(F)n;P(ytf,F v=*yF;y(af(fmz(v,m))))A z=MINE(y)?y:aF(yn);_at(z)=0;CO F*p=yF;F*q=zF;F(yn,q[i]=fmz(p[i],m))y-z?y(z):z)
 Z A mmmzZ(L v,A y,U f)_(C t=tZ(v),u=tG+yw-3;I(u<t||u-yt,y=ct(t,y))E(t=u)U n=yn;A z=MINE(y)?y:an(n,t);_at(z)=0;C w=t-tG;n+=31>>w;L m=-(f==7);v^=m;
  S4(w,F(n&~31,zg=m^MIN(v,m^yg)),F(n&~15,zh=m^MIN(v,m^yh)),F(n&~7,zi=m^MIN(v,m^yi)),F(n&~3,zl=m^MIN(v,m^yl)))y-z?y(z):z)
 Z A mmmZZ(A x,A y,U f)_(C w=xw-3;P(w<yw-3,x=ct(tG+yw-3,xR);x(mmmZZ(x,y,f)))y=ct(tG+w,y);U n=yn;A z=MINE(y)?y:an(n,tG+w);_at(z)=0;n+=31>>w;L m=-(f==7);
@@ -342,7 +345,15 @@ Z AM_TLS_IE U f;//0=dex,1=add,2=sub,3=mul,4=dvd,5=mod,6=mnm,7=mxm,8=ltn,9=gtn,10
 Z L tval(A x)_(UC k=_t(x);k==tdt||k==ttm?(L)(I)x:k==tnp?*(L*)_V(x):gl_(x))
 Z A tmk(UC k,L w)_(k==tdt?adt((I)w):k==ttm?atm((I)w):k==tnp?antp(w):az(w))
 // v2 convention: consume y, leave x for the caller (bv opcode releases x; bV borrows a constant x).
-Z A tari(A x,A y,U op)_(UC ka=_t(x),kb=_t(y);B qa=ka>=tdt,qb=kb>=tdt;L va=tval(x),vb=tval(y);mr(y);
+// Only the documented cases (issue #18): a temporal plus or minus an int (either side), one minus the same
+// kind (an int), time plus time, & | of the same kind, comparisons. Anything else is 'type: tari read any other
+// operand's low bits, so date+2.3 or date*2 were silent nonsense, and % ! returned x as it was. A null int is 'domain:
+// there is no null date, time or timestamp to give (date+0N was the date). x:y is y (it gave x) - digest #27
+Z A tari(A x,A y,U op)_(UC ka=_t(x),kb=_t(y);B qa=ka>=tdt,qb=kb>=tdt;P(!op,y)
+ I(op<8,B ia=ka==ti||ka==tl,ib=kb==ti||kb==tl;
+  B ok=qa&&qb?((op==2||op==6||op==7)&&ka==kb)||(op==1&&ka==ttm&&kb==ttm):(op==1||op==2)&&(qa?ib:ia);P(!ok,et(y))
+  P(!(qa&&qb)&&(qa?tval(y):tval(x))==NL,ed(y)))
+ L va=tval(x),vb=tval(y);mr(y);
  P(op>=8,ai((I)(op==8?va<vb:op==9?va>vb:va==vb)))
  L vv=op==1?va+vb:op==2?va-vb:op==3?va*vb:op==6?MIN(va,vb):op==7?MAX(va,vb):va;
  UC rk=(qa&&qb)?(op==2?0:ka):(qa?ka:kb);
@@ -370,7 +381,7 @@ A2(gtu,P((xtc||xtC)&&(ytc||ytC),A u=ucb(xR);u(gtn(u,ucb(y))))gtn(x,y))
 A cub(A x/*1*/)_(P(!x,0)P(xti,ac((C)xv))P(LH(tG,xt,tL),A y=an(xn,tC);S4(xw-3,F(xn,yc=(C)xg),F(xn,yc=(C)xh),F(xn,yc=(C)xi),F(xn,yc=(C)xl))x(y))K1("{`c$x}",x))                                                            //unsigned bytes (as ucb gives) back to chars
 A2(mnu,P((xtc||xtC)&&(ytc||ytC),A u=ucb(xR);cub(u(mnm(u,ucb(y)))))mnm(x,y))                     //the verb &: of two chars, the lesser as unsigned bytes, a char (with a number: numeric, as ever)
 A2(mxu,P((xtc||xtC)&&(ytc||ytC),A u=ucb(xR);cub(u(mxm(u,ucb(y)))))mxm(x,y))                     //the verb |
-A2(dex,y)A2(sub,U o=f;f=2;x=ari(x,y);f=o;x)X2(exc,RMT(ytm||rnk(x)<0?ed(y):ytt?exc(x,rsz(xN,y)):xN-yN?el(y):am(xR,y))Rs(x=rsz(yN,x);x(exc(x,y)))Rilc(/* amber 1.9.3: `!` with a negative integer left argument is the
+A2(dex,y)A2(sub,U o=f;f=2;x=ari(x,y);f=o;x)X2(exc,RMT(ytm?ed(y):ytt?exc(x,rsz(xN,y)):xN-yN?el(y):am(xR,y))Rs(x=rsz(yN,x);x(exc(x,y)))Rilc(/* amber 1.9.3: `!` with a negative integer left argument is the
  * q-family system-verb slot -- -8!x serialises to a byte vector and -9!y
  * deserialises it (src/ser.c). Only -8 and -9, and only on a genuine
  * integer atom, are intercepted; every other left argument (negative ones

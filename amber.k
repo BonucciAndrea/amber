@@ -27,8 +27,8 @@ value:{. x}
 first:{*x}
 last:{*|x}
 reverse:{|x}
-distinct:{?x}
-group:{=x}
+distinct:{$[isat x;`err"type";?x]}   / an atom: 'type as q (?5 is a random deal)
+group:{$[isat x;`err"type";=x]}     / =5 is the unit matrix
 where:{&x}
 flip:{+x}
 count:{#x}
@@ -38,7 +38,8 @@ idiv:{$[(`I~@y)&~^`i`I?@x;$[#y;$[&/~^x,y;$[&/9007199254740992>{x|-x}x,y;_x%y;idi
 div:{$[(@x)in`f`F;fdiv0[x;$[`i~@y;$[^y;0n;y];`I~@y;@[`f$y;&^y;:;0n];y]];(@y)in`f`F;idiv[x;rnd0 y];idiv[x;y]]}   / as q: an int by a float divisor rounds it; a float dividend floors as a float
 rnd0:{r:{s:(x>0)-x<0;s*_0.5+x*s};$[`f~@x;$[^x;0N;r x];@[r@[x;&^x;:;0.0];&^x;:;0N]]}   / round half away from zero, as q's `long$ of a float
 fdiv0:{q:x%y;r:`f$_q;$[`f~@q;$[(^q)|^_q;0n;r];@[r;&^q;:;0n]]}   / floor of a float quotient through an int, kept a float, as q does
-xbar:{r:x*idiv[y;x];$[`i~@x;$[`I~@y;$[^x;xbn[x;y;r];0N=&/y;xbn[x;y;r];r];xbn[x;y;r]];xbn[x;y;r]]}   / a null width or value gives a null (0N*0N wraps to 0); ints with no null: just the product
+xbar:{r:xbi[x;y];$[|/`f`F=(@x),@y;`f$r;r]}   / a float width or value gives floats, as q (digest #67)
+xbi:{r:x*idiv[y;x];$[`i~@x;$[`I~@y;$[^x;xbn[x;y;r];0N=&/y;xbn[x;y;r];r];xbn[x;y;r]];xbn[x;y;r]]}   / a null width or value gives a null (0N*0N wraps to 0); ints with no null: just the product
 xbn:{[x;y;r]m:(^x)|^y;$[~|/m;r;(@r)in`i`f;$[(`f~@r)|(`f~@x)|`f~@y;0n;0N];@[r;&m;:;$[`I~@r;0N;0n]]]}
 xlog:{(`ln y)%`ln x}
 xexp:{[x;y]$[~y=_y;`exp y*`ln x;[e:$[y<0;-y;y];r:*{0<x[2]}{(x[0]*$[2!x[2];x[1];1.0];x[1]*x[1];_x[2]%2)}/(1.0;1.0*x;e);r:$[y<0;1%r;r];$[(x=_x)&(~y<0)&(r=_r)&9007199254740992.0>$[r<0;0-r;r];_r;r]]]} / x xexp y = x^y; fast squaring for integer y, exp/ln for fractional. An integer base to a non-negative integer power comes back as an INTEGER while the squaring is still exact (below 2^53); past that, or for a fractional/negative exponent, it stays a float. Load euler.k to get the exact bignum answer beyond 2^53.
@@ -49,34 +50,43 @@ round:{[d;x]p:*/d#10;(_0.5+x*p)%p}
 / on an int or float list a null takes the verb's identity, so it changes nothing (avg leaves it out)
 nid:{[x;i;f]$[`I=@x;$[0N=&/x;i^x;x];`F=@x;$[^&/x;f^x;x];x]}           / x with its nulls filled by i (ints) or f (floats); one &/ finds whether there are any (0N is the least int, and &/ takes NaN as the least float)
 sum:{$[0=#x;$[`F=@x;0.0;0];`F=@x;$[^s:+/x;+/0.0^x;s];`I=@x;`sumn x;+/nid[x;0;0.0]]}   / sum 0N 1 is 1; a float sum is NaN only when a NaN is in it; empty: keep the float type
-prd:{$[0=#x;$[`F=@x;1.0;1];*/x]}       / empty: keep the float type
+prd:{$[0=#x;$[`F=@x;1.0;1];`F=@x;$[^r:*/x;*/1.0^x;r];`I=@x;`prn x;*/nid[x;1;1.0]]}   / nulls skipped; empty: keep the float type
 min:{$[`I=@x;$[0N=m:&/x;&/9223372036854775807^x;m];`F=@x;$[^m:&/x;&/0w^x;m];&/x]}   / min 0N 5 is 5; all nulls: the largest int (q 0W); no nulls: just &/
 max:{$[`I=@x;$[0N=m:|/x;-9223372036854775807;m];`F=@x;$[^m:|/x;-0w;m];|/x]}   / a null is the least, so |/ skips it unless all are null (then -0W, -0w)
 avg:{$[`I=@x;$[0N=&/x;avgn x;(+/0.0+x)%#x];`F=@x;$[^s:+/x;avgn x;s%#x];(+/0.0+x)%#x]}   / the non-null items, summed as floats, like q (an int64 +/ can wrap); none: 0n
 avgn:{v:x@&~^x;$[#v;(+/0.0+v)%#v;0n]}
 / fused dot (`wsm) when both sides are float vectors: no product vector is
 / built, so the 80MB temporary `+/x*y` writes and re-reads never exists.
-wsum:{$[(`F=@x)&`F=@y;`wsm(x;y);+/x*y]}
-wavg:{(wsum[x;y])%+/x}
+/ wsum, wavg: a pair with a null is skipped (its weight too). `wsm gives NaN for floats or 0N for ints when one is in
+wsum:{r:wsi[x;y];$[`i~@r;`f$r;r]}   / a float, as q (ints gave an int, digest #67)
+wsi:{$[(`F=@x)&`F=@y;$[^r:`wsm(x;y);wsp[x;y];r];(`I=@x)&`I=@y;$[0N=r:`wsm(x;y);wsp[x;y];r];`hnl[x]|`hnl y;wsp[x;y];+/x*y]}
+wavg:{$[(`F=@x)&`F=@y;$[^r:(`wsm(x;y))%+/x;wvp[x;y];r];(`I=@x)&`I=@y;$[0N=r:`wsm(x;y);wvp[x;y];r%+/x];`hnl[x]|`hnl y;wvp[x;y];(+/x*y)%+/x]}
+wsp:{m:&~(^x)|^y;+/x[m]*y m}   / (an int 0N*y wraps, so the pairs go before the product)
+wvp:{m:&~(^x)|^y;(+/x[m]*y m)%+/x m}
 var:{avg{x*x}x-avg x}
 dev:{sqrt var x}
-svar:{(n*var x)%-1+n:#x}
+svar:{$[`F=@x;$[^s:+/x;svp x;[n:#x;(n*avg{x*x}x-s%n)%-1+n]];`hnl x;svp x;(n*var x)%-1+n:#x]}   / n counts the non-nulls; floats: var's own sum
+svp:{v:x@&~^x;n:#v;(n*var v)%-1+n}
 sdev:{sqrt svar x}
-cov:{avg[x*y]-avg[x]*avg y}
-scov:{(n*cov[x;y])%-1+n:#x}
-cor:{cov[x;y]%dev[x]*dev y}
-med:{$[0=#x;0n;[a:x@<x;n:#a;m:_n%2;$[2!n;0.0+a m;avg a@m-1 0]]]}
-all:{~|/x=0}
+/ cov, scov, cor: pairs with a null dropped, then centred (avg[x*y]-avg[x]*avg y lost digits far from 0);
+/ `cvm gives (sxy;sxx;syy;n) for int and float lists, anything else takes the k way
+cvk:{(|/`F`I=@x)&|/`F`I=@y}
+pdr:{$[(|/^x)||/^y;[m:&~(^x)|^y;(x m;y m)];(x;y)]}
+cov:{$[cvk[x;y];[r:`cvm(x;y);r[0]%r 3];[p:pdr[x;y];x:p 0;y:p 1;avg(x-avg x)*y-avg y]]}
+scov:{$[cvk[x;y];[r:`cvm(x;y);r[0]%-1+r 3];[p:pdr[x;y];n:#x:p 0;y:p 1;(n*avg(x-avg x)*y-avg y)%-1+n]]}
+cor:{$[cvk[x;y];[r:`cvm(x;y);r[0]%sqrt r[1]*r 2];[p:pdr[x;y];a:p[0]-avg p 0;b:p[1]-avg p 1;(avg a*b)%sqrt avg[a*a]*avg b*b]]}
+med:{$[isat x;0.0+x;0=#x;0n;[a:x@<x;n:#a;m:_n%2;$[2!n;0.0+a m;avg a@m-1 0]]]}
+all:{$[#x;~|/x=0;1]}   / all of an empty list is 1, as q
 any:{~&/x=0}
-sums:{+\x}
-prds:{*\x}
+sums:{$[`F=@x;$[^*|r:+\x;+\0.0^x;r];`I=@x;$[`hnl x;+\0^x;+\x];+\nid[x;0;0.0]]}   / a null adds 0; floats: the last sum is NaN only if a NaN is in
+prds:{$[`F=@x;$[^*|r:*\x;*\1.0^x;r];`I=@x;$[`hnl x;*\1^x;*\x];*\nid[x;1;1.0]]}
 mins:{&\nid[x;9223372036854775807;0w]}                                       / mins 0n 1.0 is 0w 1.0, as q
 maxs:{|\nid[x;-9223372036854775807;-0w]}
 deltas:{$[#x;x-0,-1_x;x]}
-ratios:{$[#x;x%1,-1_x;x]}
-differ:{~~':x}
-prev:{-1_0N,x}
-next:{1_x,0N}
+ratios:{$[#x;x%1,-1_x;0#0.0]}   / empty: an empty float list, as q (digest #67)
+differ:{$[isat x;1b;~#x;x=x;|/`I`S`C=@x;1b,~(1_x)=-1_x;`F=@x;1b,~((1_x)=-1_x)|(^1_x)&^-1_x;@[~~':x;0;:;1b]]}   / the first item always differs, a null too; typed lists compare shifted (NaN matches NaN, as ~)
+prev:{$[isat x;x;-1_(,x@#x),x]}   / an atom comes back as is, as q; the null is the list's own (x@#x), not 0N
+next:{$[isat x;x;1_x,,x@#x]}
 
 / ---- ranking / ordering ----------------------------------------------------
 rank:{<<x}
@@ -86,7 +96,7 @@ asc:{`srt x}
 desc:{x@>x}
 xrank:{_y*x%#y:<<y}
 xprev:{y[(!#y)-x]}
-rotate:{$[0=#y;y;n:(#y)!x;(n_y),n#y]}
+rotate:{$[0=#y;y;0=n:(#y)!x;y;(n_y),n#y]}   / a multiple of the count: y as is
 
 / ---- membership / set ops --------------------------------------------------
 / x in y : which elements of x are members of y.
@@ -100,6 +110,7 @@ rotate:{$[0=#y;y;n:(#y)!x;(n_y),n#y]}
 /   1 2 3 except 2  ->  !0    where q gives  1 3
 / q accepts an atom on the right of all four, so this is parity as well as a fix.
 isatm:{"a"<*$@x}                                  / type symbol lowercase -> atom
+isat:{("a"<*$@x)&~`m=@x}                          / an atom, not a dict
 in:{y:$[isatm y;,y;y];r:`memb(x;y);$[`A~@r;~^y?x;r]}   / 2.1: one-pass C membership; K fallback for other types
 / 2.1: fused group aggregates. `gagg (src/o.c) does acc[group]op=v in ONE pass
 / with the same first-appearance key order as =k; each wrapper keeps the
@@ -117,10 +128,11 @@ glast:{[k;v]r:`gagg(`last;k;v);$[#r;(r 0)!r 1;{[v;i]*|v i}[v]'=k]}
 / verbs are never infix here (see the REPL's \h note), so it is within[t;(a;b)],
 / not  t within (a;b).
 within:{[x;r](~x<r[0])&~x>r[1]}
-except:{x@&~in[x;y]}
+except:{$[cxk[x;y];x;x@&~in[x;y]]}   / chars against numbers share nothing: x as it is, as q (digest #64)
+cxk:{c:`c`C;n:`i`I`f`F;((|/c=@x)&|/n=@y)|(|/n=@x)&|/c=@y}
 inter:{x@&in[x;y]}
 union:{?x,y}
-raze:{,/x}
+raze:{$[isat x;,x;,/x]}
 sublist:{n:(abs x)&#y;$[x<0;(0-n)#y;n#y]}
 cross:{,/x,/:\:y}
 
@@ -132,7 +144,9 @@ cols:{$[iskeyed x;(!!x),!.x;!x]}
 keys:{$[iskeyed x;!!x;0#`]}
 rows:{+. x}
 atr:{[t;i]+(cols t)!{y@x}[i]'. t}
-xkey:{[k;t]k:k,();$[0=#k;unkey t;[d:+t;(+k#d)!+(except[cols t;k])#d]]}   / () xkey t -> unkey (q idiom)
+/ a column the table lacks is an error named after it, as q (xasc added a column of nulls, xdesc ignored it)
+hasc:{[c;t]m:c@&~in[c;cols t];$[#m;`err@$*m;0]}
+xkey:{[k;t]k:k,();hasc[k;t];$[0=#k;unkey t;[d:+t;(+k#d)!+(except[cols t;k])#d]]}   / () xkey t -> unkey (q idiom)
 unkey:{$[iskeyed x;+(+!x),+.x;x]}
 xcolall:{[nm;t]+nm!. t}
 xcols:{[c;t]c:c,();+(c,except[cols t;c])#+t}
@@ -144,8 +158,9 @@ xcols:{[c;t]c:c,();+(c,except[cols t;c])#+t}
 / the DISTINCT ids), which is the collation `<` on a symbol vector gives and the
 / one ajsorted's contiguity note assumes.  Descending is the same sort with
 / complemented keys, which reproduces `>`'s "ties in ascending index order".
-xasc:{[c;t]c:c,();o:`xs(value c#+t;0b);o:$[#o;o;<+(+t)c];t:t@o;d:+t;+d,(1#c)!`sa'd@1#c}
-xdesc:{[c;t]c:c,();o:`xs(value c#+t;1b);o:$[#o;o;>+(+t)c];t@o}
+xsg:{[cs;d]{[d;o;v]o@$[d;>v o;<v o]}[d]/[!#*cs;|cs]}   / each column's own order, the last key first (stable); the rows' grade squeezed one-item rows (digest #58)
+xasc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;0b);o:$[#o;o;xsg[(+t)c;0b]];t:t@o;d:+t;+d,(1#c)!`sa'd@1#c}
+xdesc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;1b);o:$[#o;o;xsg[(+t)c;1b]];t@o}
 meta:{d:+unkey x;xkey[`c;+`c`t`a!(!d;{@*x}'value d;{`at x}'value d)]}
 insert:{[t;r]t,r}
 
@@ -166,8 +181,11 @@ lj:{[t;kt]p:jprobe[keys kt;+!kt;+t];i:(p 0)?p 1;vt:value kt;vc:cols vt;j:$[|/vc 
 ij:{[t;kt]kc:keys kt;kd:+!kt;td:+t;yc:kd kc;xc:td kc;p:$[1=#kc;(*yc;*xc);qcard[yc,'xc]<qEXACT;[e:qenc yc,'xc;n:#*yc;(n#e;n _ e)];(rows[!kt];+. kc#td)];i:(p 0)?p 1;j:&~^i;+(+atr[t;j]),(cols value kt)!{y@x}[i@j]'value value kt}
 gc:{[t;n;ot;c]$[in[c;cols t];(+t)c;n#0#(+ot)c]}
 uj:{[x;y]c:distinct cols[x],cols y;+c!{[x;y;c]gc[x;#x;y;c],gc[y;#y;x;c]}[x;y]'c}
-pj:{[t;kt]p:jprobe[keys kt;+!kt;+t];i:(#p 0)^(p 0)?p 1;vt:value kt;vc:cols vt;+(+t),vc!{[i;t;vt;c]z:$[`F~@vt c;0.0;0];a:$[c in !+t;(+t)c;z];r:a+z^((vt c),z)@i;$[|/^a;@[r;&^a;:;*0#r];r]}[i;t;vt]'vc}
-ej:{[c;x;y]c:c,();p:jprobe[c;c#+y;+x];$[(!#y)~(p 0)?p 0;[i:(p 0)?p 1;j:&~^i;+(+atr[x;j]),{y@x}[i@j]'c_+y];ejm[c;x;y;p]]}   / every matching row of y, in order (keys encoded as lj/ij do); unique keys in y: at most one match per row, found as ij finds it
+/ pj: a column t has gets kt's matching values added (0 where none); one t lacks just takes them, with a zero of its
+/ own type where nothing matches (0+"xy" was ints, a nested column broke); key columns must agree in type (digest #45)
+pj:{[t;kt]kc:keys kt;td:+t;$[&/(@'(+!kt)kc)=@'td kc;0;`err"type"];p:jprobe[kc;+!kt;td];i:(#p 0)^(p 0)?p 1;vt:value kt;vc:cols vt;+td,vc!{[i;t;vt;c]v:vt c;$[c in !t;[z:$[`F~@v;0.0;0];a:t c;r:a+z^(v,z)@i;$[|/^a;@[r;&^a;:;*0#r];r]];pjn[v;i]]}[i;td;vt]'vc}
+pjn:{[v;i]$[`F~@v;0.0^(v,0.0)@i;`I~@v;0^(v,0)@i;`C~@v;(v,`c$0)@i;`A~@v;(v,,0#*v)@i;(v,*0#v)@i]}
+ej:{[c;x;y]c:c,();p:jprobe[c;c#+y;+x];$[#r:`ejx p;+(+atr[x;r 0]),{y@x}[r 1]'c_+y;(!#y)~(p 0)?p 0;[i:(p 0)?p 1;j:&~^i;+(+atr[x;j]),{y@x}[i@j]'c_+y];ejm[c;x;y;p]]}   / every matching row of y, in order (keys encoded as lj/ij do); `ejx (src/w.c) finds them in one hash pass over y's keys; other keys: unique ones found as ij finds them, else grouped
 ejm:{[c;x;y;p]g:=p 0;i:(#g)^(!g)?p 1;n:(#'. g),0;+(+x@&n i),c_+y@,/((. g),,!0)i}   / repeated keys: group y's keys and repeat each row of x for each of its matches
 
 / ---- asof join (aj/aj0) : y must contain matching + time cols -----------------
@@ -187,16 +205,16 @@ ejm:{[c;x;y;p]g:=p 0;i:(#g)^(!g)?p 1;n:(#'. g),0;+(+x@&n i),c_+y@,/((. g),,!0)i}
 / how xasc happens to collate symbols.  It errs towards 0b (sort it) for anything
 / it cannot prove, so a false 1b -- the only answer that could corrupt a join --
 / is not reachable.
-ajsorted:{[c;t]c:c,();tc:*|c;g:-1_c;d:+t;gc:value g#d;g0:*gc;`ajs(gc;$[`A~@d tc;tjnum d tc;d tc];$[1=#gc;in[`at g0;`s`p];0b])}
+ajsorted:{[c;t]c:c,();tc:*|c;g:-1_c;d:+t;gc:value g#d;g0:*gc;`ajs(gc;d tc;$[1=#gc;in[`at g0;`s`p];0b])}
 / ajord: xasc only when it will actually change something.  Marks the result `s
 / so the attribute survives for callers that inspect it (meta/`at).
 ajord:{[c;t]$[ajsorted[c;t];t;xasc[c;t]]}
 ajmK:{[c;x;y]c:c,();g:-1_c;tc:*|c;yt:tjnum(+y)tc;xt:tjnum(+x)tc;yg:$[#g;=rows[g#+y];(,0)!,!#y];xg:$[#g;=rows[g#+x];(,0)!,!#x];{[yt;xt;yg;xg;acc;gk]yi:yg gk;xi:xg gk;b:(yt yi)'(xt xi);@[acc;xi;:;(yi,0N)@b]}[yt;xt;yg;xg]/[(#x)#0N;!xg]}  / pure-K reference
-tjnum:{$[`~k:tjk x;0#0;k in`d`t`n;`i$x;x]}  / a column of dates, times or timestamps as their numbers (days, ms, ns), which is what the C kernels compare
+tjnum:{$[`~k:tjk x;0#0;k in`d`t`n;`i$x;x]}  / a column of dates, times or timestamps as their numbers (days, ms, ns), as the kernels read it (for wjK and ajmK, the pure-K paths)
 tjk:{$[`A~@x;$[#x;$[(1=#?t)&(*t:@'x)in`d`t`n;*t;`A];`];@x]}  / a time column's kind: `d `t `n when every item is a date, a time or a timestamp; ` for an empty generic list
 tjmx:{[x;k]$[`A~k;|/(@'x)in`d`t`n;0b]}  / a generic column holding a date, time or timestamp among items of other kinds (or ::)
 tjsame:{[a;b]p:tjk a;q:tjk b;$[tjmx[a;p]|tjmx[b;q];`err"type";(p~q)|(`~p)|`~q;::;(p in`d`t`n)|q in`d`t`n;`err"type";::]}  / 'type when one side is temporal and the other is not the same kind
-ajm:{[c;x;y]c:c,();g:-1_c;tc:*|c;a:(+y)tc;e:(+x)tc;$[(`A~@a)|`A~@e;[tjsame[a;e];a:tjnum a;e:tjnum e];];b:wjbnd[g;x;y];`aj(a;e;b 0;b 1)}  / the temporal checks only for a generic column: typed ones go straight to the kernel
+ajm:{[c;x;y]c:c,();g:-1_c;tc:*|c;b:wjbnd[g;x;y];`aj((+y)tc;(+x)tc;b 0;b 1)}
 aj:{[c;x;y]c:c,();y:ajord[c;y];m:ajm[c;x;y];vc:except[cols y;c];+(+x),vc!{[m;yd;c](yd c)@m}[m;+y]'vc}
 aj0:{[c;x;y]c:c,();y:ajord[c;y];m:ajm[c;x;y];vc:except[cols y;-1_c];+(+x),vc!{[m;yd;c](yd c)@m}[m;+y]'vc}
 asof:{[t;d]c:!d;g:-1_c;tc:*|c;td:+t;msk:$[#g;&/({[td;d;c]td[c]=d c}[td;d]'g);(#t)#1b];i:&msk&~td[tc]>d tc;$[#i;(except[cols t;c])#t[i@*|&m=|/m:td[tc]i];()]}  / the latest at or before: the last row whose time is the greatest
@@ -223,8 +241,11 @@ wjbndK:{[g;t;q]gdi:=rows[g#+q];bas:*:'value gdi;len:#:'value gdi;ix:(!gdi)?rows[
 / side's run boundaries and probes once per trade row, allocating nothing
 / per row; it returns () if it cannot handle the input, and we fall back.
 wjbnd:{[g;t;q]$[#g;[b:`wjb(value g#+q;value g#+t);$[#b;b;wjbndK[g;t;q]]];((#t)#0;(#t)#(#q))]}
-wjK:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;ub:{$[(@x)in`c`C;256!`i$x;x]};qt:ub tjnum qd tc;w:$[`C=@qd tc;ub'w;w];qg:$[#g;=rows[g#+q];(,0)!,!#q];tg:$[#g;rows[g#+t];(#t)#0];res:{[qt;qg;tg;w0;w1;qd;aggs;i]gk:tg i;p:$[in[gk;!qg];qg gk;0#0];sel:$[#p;{[gt;p;lo;hi]a:$[^lo;-1;(`F~@gt)|`f~@lo;-1++/gt<lo;gt'lo-1];p@(a+1)+!0|(gt'hi)-a}[qt p;p;w0 i;w1 i];0#0];{[qd;sel;a](a 1)(qd a 2)@sel}[qd;sel]'aggs}[qt;qg;tg;tjnum[w 0];tjnum[w 1];qd;aggs]'!#t;+(+t),(aggs[;0])!+res}
-wj:{[w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;tg:|/`A~/:@:'(qd tc;w 0;w 1);$[tg;[tjsame[qd tc;w 0];tjsame[qd tc;w 1]];];cs:wjcode'aggs[;1];$[|/cs<0;wjK[w;c;t;q;aggs];[b:wjbnd[g;t;q];v:qd aggs[;2];u:&(cs in 2 3)&`C=@:'v;v:@[v;u;{256!`i$x}];r:`wj($[tg;tjnum qd tc;qd tc];v;cs;$[tg;tjnum w 0;w 0];$[tg;tjnum w 1;w 1];b 0;b 1);r:@[r;u;:;{[f;x]`c$@[x;&(x<0)|x>255;:;f]}'[(255 0)cs[u]-2;r u]];+(+t),(aggs[;0])!r]]}
+wjK:{[m;w;c;t;q;aggs]$[&/(#t)=#:'w;::;`err"length"];c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;ub:{$[(@x)in`c`C;256!`i$x;x]};qt:qd tc;$[(`A~@qt)|(`A~@w 0)|`A~@w 1;[tjsame[qt;w 0];tjsame[qt;w 1];qt:tjnum qt;w:tjnum'w];::];qt:ub qt;w:$[`C=@qd tc;ub'w;w];qg:$[#g;=rows[g#+q];(,0)!,!#q];tg:$[#g;rows[g#+t];(#t)#0];res:{[m;qt;qg;tg;w;qd;aggs;i]gk:tg i;p:$[in[gk;!qg];qg gk;0#0];sel:$[#p;{[m;gt;p;lo;hi]s:$[^lo;0;m;0|$[(`F~@gt)|`f~@lo;-1++/~gt>lo;gt'lo];1+$[(`F~@gt)|`f~@lo;-1++/gt<lo;gt'lo-1]];p@s+!0|1+(gt'hi)-s}[m;qt p;p;w[0]i;w[1]i];0#0];{[qd;sel;a](a 1)(qd a 2)@sel}[qd;sel]'aggs}[m;qt;qg;tg;w;qd;aggs]'!#t;+(+t),(aggs[;0])!+res}
+/ wj counts the quote in force at the window's start, as q's; wj1 only the quotes inside the window (digest #68)
+wj:{[w;c;t;q;aggs]wjm[1b;w;c;t;q;aggs]}
+wj1:{[w;c;t;q;aggs]wjm[0b;w;c;t;q;aggs]}
+wjm:{[m;w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;cs:wjcode'aggs[;1];$[|/cs<0;wjK[m;w;c;t;q;aggs];[b:wjbnd[g;t;q];v:qd aggs[;2];u:&(cs in 2 3)&`C=@:'v;v:@[v;u;{256!`i$x}];r:`wj(qd tc;v;cs;w 0;w 1;b 0;b 1;m);r:@[r;u;:;{[f;x]`c$@[x;&(x<0)|x>255;:;f]}'[(255 0)cs[u]-2;r u]];+(+t),(aggs[;0])!r]]}
 
 / ---- qSQL-style select / group-by --------------------------------------------
 qwhere:{[t;m]t@&m}
@@ -233,7 +254,7 @@ qwhere:{[t;m]t@&m}
 / dict `a`b!(210.0;6) and flipping it raised 'length -- the single-aggregate
 / case only appeared to work because the each-result happened to be a 1-item
 / list whose single item was the atom. (),x leaves genuine vectors untouched.
-qselect:{[t;a]+(!a)!{[t;f](),f t}[t]'value a}
+qselect:{[t;a]v:{[t;f]f t}[t]'value a;m:~isat'v;+(!a)!$[|/m;{[n;x]$[isat x;n#x;x]}[#v@*&m]'v;,:'v]}   / an atom beside a list is extended to it, as update does (digest #61); all atoms: one row
 / ---- raw-column grouping: the qSQL fast path --------------------------------
 / qby/xgroup/ij used to group with  =rows[cols#+t] .  rows:{+. x} flips the
 / column dict into ONE BOXED K OBJECT PER ROW, so a 10M-row group-by allocated
@@ -260,7 +281,7 @@ qEXACT:9007199254740992.0
 qgrp:{[t;b]d:+t;bc:d b;g:$[1=#b;=*bc;qcard[bc]<qEXACT;=qenc bc;=rows[b#+t]];iv:value g;(bc@\:*:'iv;iv)}
 qby:{[t;b;a]b:b,();r:qgrp[t;b];kt:+b!r 0;iv:r 1;subs:atr[t]'iv;vt:+(!a)!{[t;subs;f]$[#subs;f'subs;qby0[f;0#t]]}[t;subs]'value a;kt!vt}
 qby0:{[f;e]r:.[f;,e;{`qby0err}];$[`qby0err~r;();(@r)in`i`f`c`s`d`t`n;0#,r;()]}   / no groups: a column typed by its aggregate's result (q); a plain column stays ()
-xgroup:{[k;t]k:k,();r:qgrp[t;k];kt:+k!r 0;vc:except[cols t;k];+(+kt),vc!{[t;iv;c]((+t)c)@/:iv}[t;r 1]'vc}
+xgroup:{[k;t]k:k,();r:qgrp[t;k];kt:+k!r 0;vc:except[cols t;k];kt!+vc!{[t;iv;c]((+t)c)@/:iv}[t;r 1]'vc}   / keyed by k, as q
 ungroup:{[x]t:unkey x;d:+t;v:value d;m:{`A=@x}'v;cnt:#:'*v@&m;+(!d)!{[cnt;m;c]$[m;raze c;raze cnt#'c]}[cnt]'[m;v]}
 / fbymc: is g a PER-COLUMN group spec -- (sym;ex) rather than one vector?  q lets
 / `fby` group on several columns, and `=` on such a list groups the COLUMNS, not
@@ -294,7 +315,7 @@ trim:{ltrim rtrim x}
 ss:{[s;p]$[(#s)<#p;!0;&{[s;p;i]p~(#p)#i_s}[s;p]'!1+(#s)-#p]}
 ssr:{[s;f;t]t/f\s}
 sv:{x/y}
-vs:{x\y}
+vs:{$[(`C=@y)&0=#y;,y;x\y]}   / x vs "" is one empty field, as q
 lk1:{[s;p]$[~#p;~#s;"*"=*p;$[#s;lk1[s;1_p]|lk1[1_s;p];lk1[s;1_p]];~#s;0;("?"=*p)|(*p)=*s;lk1[1_s;1_p];0]}
 like:{[x;p]$[`C=@x;lk1[x;p];lk1[;p]'x]}
 

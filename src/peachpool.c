@@ -5,6 +5,7 @@
 #include "peachpool.h"
 #include <pthread.h>
 #include <stdlib.h>
+#include <sys/resource.h>
 
 /* ---- one live job at a time --------------------------------------------
  * peach dispatches are serialised: only the parent thread publishes a job,
@@ -120,10 +121,19 @@ static void pool_init(int nw_total) {
         P.gen = 0; P.active = 0; P.ready = 0; P.shutdown = 0; P.nth = 0;
         P.th = (pthread_t *)malloc(sizeof(pthread_t) * (want ? want : 1));
         if (P.th) {
+            /* digest #5: a worker gets the main thread's stack size. The VM allows every thread the same
+             * depth (2048), and the default for other threads can be far smaller (512 KB on macOS), so
+             * deep recursion in a worker crashed the process where the main thread ran it fine. */
+            pthread_attr_t at; int ha = pthread_attr_init(&at) == 0;
+            if (ha) { struct rlimit rl; size_t ss = (size_t)8 << 20;
+                if (getrlimit(RLIMIT_STACK, &rl) == 0 && rl.rlim_cur != RLIM_INFINITY && rl.rlim_cur > ss) ss = (size_t)rl.rlim_cur;
+                if (ss > ((size_t)64 << 20)) ss = (size_t)64 << 20;
+                if (pthread_attr_setstacksize(&at, ss)) { pthread_attr_destroy(&at); ha = 0; } }
             for (int i = 0; i < want; i++) {
-                if (pthread_create(&P.th[i], 0, worker, (void *)(long)i) == 0) P.nth++;
+                if (pthread_create(&P.th[i], ha ? &at : 0, worker, (void *)(long)i) == 0) P.nth++;
                 else break;               /* run with however many we got */
             }
+            if (ha) pthread_attr_destroy(&at);
         }
         /* Wait until every spawned worker has parked before returning, so the
          * first dispatch cannot outrun a still-starting worker. */

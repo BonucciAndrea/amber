@@ -79,11 +79,14 @@ Z A mkcol(S fmt,CO V*data,CO UC*valid,L n){A c;C f=fmt?*fmt:'l';
      C('b',c=an(n,tG);I(data,MC(_V(c),data,n)))
      C('C',c=an(n,tG);I(data,MC(_V(c),data,n)))
      D(c=aL(n);I(data,MC(_V(c),data,8*n))))
- I(valid,F(n,I(!(valid[i>>3]>>(i&7)&1),S(f,C('i',((I*)_V(c))[i]=1<<31)C('l',((L*)_V(c))[i]=NL)C('g',((F*)_V(c))[i]=NF)D()))))
+ // a null int32 cell: the column goes 64-bit with 0N, as int32 has no null (1<<31 was an ordinary number: digest #35)
+ I(valid&&f=='i',B nu=0;F(n,I(!(valid[i>>3]>>(i&7)&1),nu=1;break))I(nu,c=cL(c)))
+ I(valid,F(n,I(!(valid[i>>3]>>(i&7)&1),S(f,C('i',((L*)_V(c))[i]=NL)C('l',((L*)_V(c))[i]=NL)C('g',((F*)_V(c))[i]=NF)D()))))
  return c;}
 
 // arrow.import: x=(schemaAddr; arrayAddr) -> (names; cols).  Copies buffers, then releases the Arrow structs.
 A arrowImport(A x){
+ I(!_tP(x)&&_t(x)==tE,x=gZ(x))   //a range: its items, not its two stored ends (digest #11)
  P(_n(x)-2,el(x))
  A lv=N(cL(_R(x)));L pa=((CO L*)_V(lv))[0],pb=((CO L*)_V(lv))[1];mr(lv);
  struct ArrowSchema*sc=(V*)pa;struct ArrowArray*ar=(V*)pb;

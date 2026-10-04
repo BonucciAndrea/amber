@@ -22,19 +22,109 @@ Z B tlc(CO UC*b)_(W(*b==bj,b+=2+b[1])!*b)                                       
 // allocation for the whole dispatch loop), though the check itself never fires.
 // A failed indexed assignment (a[i]:v, a[i]+:v) used to lose the variable: d4 amends it in place
 // and its result, 0 on an error, was stored back. So check first what can be checked without
-// touching it: for a list, each int index in range, level by level, and for one level of int
-// indices, a list value of the same count. 0: go ahead (d4 decides the rest); 1: 'index; 2: 'length.
+// touching it: for a list, each int index in range, level by level, and where every level above
+// the last is a single index, a list value of the last level's count. 0: go ahead (d4 decides the rest); 1: 'index; 2: 'length;
+// 3: 'type. Dicts and tables with symbol keys are checked by ixkd, a level at a time like a list.
 Z L ixe(A q,U j){UC t=_t(q);CO V*d=_V(q);return t==tL?((CO L*)d)[j]:t==tI?((CO I*)d)[j]:t==tH?((CO H*)d)[j]:t==tG?((CO G*)d)[j]:t==tE?*(CO L*)d+(L)j:((CO UC*)d)[j>>3]>>(j&7)&1;}//item j of an int list, without boxing it
-NI I ixck(A x,A y,U k,A z){I r=0;if(!x||k>=_N(y)||_tP(x)||!_tT(x))return 0;U n=_N(x);B one=_N(y)==1;
- if(!_tP(y)&&LH(tE,_t(y),tL)){L v=ixe(y,k);if(v<0||v>=(L)n)return 1;if(one)return 0;A w=ii(x,(U)v);r=ixck(w,y,k+1,z);mr(w);return r;}   //y an int list: an int index per level
+Z I ixkd(A x,A y,U k,A z,B asg);
+Z B ixone(A y,U k){if(!_tA(y))return 1;F(k,A q=_A(y)[i];if(q==au||!_tt(q))return 0)return 1;}   //levels 0..k-1 each a single index, so the value at level k is z itself
+NI I ixck(A x,A y,U k,A z,B asg){I r=0;if(x&&k<_N(y)&&!_tP(x)&&(_t(x)==tm||_t(x)==tM))return ixkd(x,y,k,z,asg);
+ if(x&&y!=au&&k<_N(y)&&(_t(x)!=ts&&LH(ti,_t(x),ts)||LH(tdt,_t(x),tnp)))return 3;   //an index into a number, char or temporal atom (:: as the index is the whole value); a symbol atom names a global, which the assignment amends
+ if(!x||k>=_N(y)||_tP(x)||!_tT(x))return 0;U n=_N(x);B one=_N(y)==1;
+ if(!_tP(y)&&LH(tE,_t(y),tL)){L v=ixe(y,k);if(v<0||v>=(L)n)return 1;if(one)return 0;A w=ii(x,(U)v);r=ixck(w,y,k+1,z,asg);mr(w);return r;}   //y an int list: an int index per level
  A q=_tA(y)?_R(_A(y)[k]):ii(y,k);
- if(q==au){if(!one)for(U j=0;j<n&&!r;j++){A v=ii(x,j);r=ixck(v,y,k+1,z);mr(v);}}
- else if(_tz(q)){L v=gl_(q);if(v<0||v>=(L)n)r=1;else if(!one){A w=ii(x,(U)v);r=ixck(w,y,k+1,z);mr(w);}}
+ B dn=k+1<_N(y);   //a level below to check: else no item is built
+ if(q==au){if(dn)for(U j=0;j<n&&!r;j++){A v=ii(x,j);r=ixck(v,y,k+1,z,asg);mr(v);}}
+ else if(_tz(q)){L v=gl_(q);if(v<0||v>=(L)n)r=1;else if(dn){A w=ii(x,(U)v);r=ixck(w,y,k+1,z,asg);mr(w);}}
  else if(!_tP(q)&&LH(tE,_t(q),tL)){U m=_N(q);
   if(one&&m&&_t(q)!=tB){L lo=_t(q)==tE?ixe(q,0):minfZ(WL,q),hi=_t(q)==tE?ixe(q,m-1):maxfZ(NL,q);if(lo<0||hi>=(L)n)r=1;}   //one level: the vector min/max, not a type switch per item
-  else for(U j=0;j<m&&!r;j++){L v=ixe(q,j);if(v<0||v>=(L)n)r=1;else if(!one){A w=ii(x,(U)v);r=ixck(w,y,k+1,z);mr(w);}}
-  if(!r&&one&&!_tP(z)&&_tT(z)&&_N(z)!=m)r=2;}
+  else for(U j=0;j<m&&!r;j++){L v=ixe(q,j);if(v<0||v>=(L)n)r=1;else if(dn){A w=ii(x,(U)v);r=ixck(w,y,k+1,z,asg);mr(w);}}
+  if(!r&&(one||k+1==_N(y)&&ixone(y,k))&&!_tP(z)&&_tT(z)&&_N(z)!=m)r=2;}
+ else if(_t(q)==ts||_t(q)==tS&&_N(q))r=3;   //a symbol indexes no list
  mr(q);return r;}
+//a dict or table (x) at level k, below where ixwk went (a list of indices, an elided level or a list of keys above,
+//or the walk stopped short): at the last level a list of keys needs a list value of its count, and a table's column,
+//assigned with : (asg), one of its row count (any other verb gets the whole column, so only its result has to fit);
+//a table's row is an int in range; an elided level on a dict adds the key :: with the first value nulled, so that is
+//what is indexed. A key or a list of keys above the last level is not looked up, and nothing below it is checked: the
+//assignment finds it, and the check would find it a second time
+Z I ixkd(A x,A y,U k,A z,B asg){A ks=_x(x),vs=_y(x);B last=k+1>=_N(y),tb=_t(x)==tM,own=!_tA(y);I r=0;L rows=0;
+ if(_t(ks)!=tS||tb&&!_N(vs))return 0;   //symbol keys only (every table's), and a table with columns
+ A q=own?ii(y,k):_A(y)[k];B zlist=!_tP(z)&&_tT(z);   //q: borrowed from y, or made from a typed y
+ if(last&&!tb){if(_t(q)==tS&&zlist&&_N(z)!=_N(q)&&ixone(y,k))r=2;I(own,mr(q))return r;}   //a dict's last level: any key may be set; a list of keys needs a value of its count
+ if(tb)rows=_N(_A(vs)[0]);
+ if(q==au){if(!last&&!tb&&_N(vs)){A v=ii(vs,0);r=ixck(v,y,k+1,z,asg);mr(v);}}   //an elided level adds the key :: with the first value nulled (as ngn/k), and indexes that: so only the first value's shape counts
+ else if(_t(q)==ts){
+  if(last){if(tb&&asg&&zlist&&_N(z)!=(U)rows&&ixone(y,k)){r=2;I(_N(ks)==1&&!fI(_I(ks),1,_v(q)),r=0)}}}   //a table's column needs the row count (for :), unless it is the only column, which may take another
+ else if(_t(q)==tS);   //a list of keys: not looked up above the last level, nor a table's list of columns at it
+ else if(tb&&_tz(q)){L v=gl_(q);if(v<0||v>=rows)r=1;else if(k+2==_N(y)&&_tA(y)&&_t(_A(y)[k+1])==tS){A w=ii(x,(U)v);r=ixck(w,y,k+1,z,asg);mr(w);}}   //a row: built only for a list of columns at the
+ else if(tb&&!_tP(q)&&LH(tE,_t(q),tL)){U m=_N(q);for(U i=0;i<m&&!r;i++){L v=ixe(q,i);if(v<0||v>=rows)r=1;}}   //last level (its count); else there is nothing more to check in it. Rows: their range
+ I(own,mr(q))return r;}
+//The check and then the assignment (d4) each looked up every key and column on the way down, so where every level of y
+//is one index that is there -- an int in range of a list or of a table's rows, or a key of a dict of symbol keys or a
+//column of a table, which may also be one to add -- ixwk walks y down x once, which checks it, and records in kd what
+//each level is (0 list, 1 key, 2 column, 3 row, 4 key or 5 column to add above the last level, 7 or 8 when only an index
+//into a list follows, 6 a row then its column, 9 a list of keys above the last level)
+//and in ix its place (for 6, the column's in the next; for 9, the find of the keys), and ixst (a.c) assigns there without
+//looking anything up again: from a row on, and from a key to add above the last level, as d4 and a8 do it from there;
+//from a list of keys, as a8 does with its find (dam). Where the walk stops short (a list of ints, an elided level, an
+//index into something else, or below the first level a symbol or a symbol list, which names a global), the check (ixck)
+//goes on from that level, and the assignment is made from there (3, d8), or by d4 at the first level. Below where the walk
+//went, the check looks no key up (ixkd): each key is found once. >0: the levels walked, for ixst; 0: d4; <0: -(ixck's error)
+U tcc(A,A);
+//A dict whose values are not a list is one an amend has taken them out of (ixst, or a8), and is amending: a symbol at a
+//level below names a global, amended by name, which names this variable again (v:`a`b!(`v;1 2); v[`a;`b]:9). Refused
+//('type) before it is touched, as the amend failed on it, which then freed it, and the caller again. gl: x is a global's
+//value, assigned in run (ixca): where the walk meets a symbol below the first level, 0, so d4 assigns it (as before);
+//and +256 where an amend by name can follow ixst's places (a key to add or a list of keys, or the walk stopped short
+//above the last level), so that ixca keeps the global's place while ixst assigns it
+I ixwk(A x,A y,A z,B asg,B gl,UC*kd,L*ix){if(!x)return 0;if(_t(x)==tm&&!_tMT(_y(x)))return -3;UC ry=_t(y);B at=ry>tm,ty=LH(tE,ry,tL);U m=at?1:_N(y),k=0;I a=-1;   //a: the first level with a key to add
+ if(y==au||!m||m>8||!at&&!ty&&ry!=tA&&ry!=tS)return -ixck(x,y,0,z,asg);A v=x;
+ for(;k<m;k++){B last=k+1==m;A s=at?y:ty?0:_tA(y)?_A(y)[k]:ii(y,k),w=0;L j=ty?ixe(y,k):_tz(s)?gl_(s):-1;UC t=_tP(v)?0:_t(v);   //s: borrowed, or a packed symbol
+  if(t&&t<tM&&!(k&&t==tS)){
+   if(last&&!ty&&!_tP(s)&&LH(tE,_t(s),tL)&&_t(s)!=tB){U c=_N(s);I r=0;   //a list of ints at the last level, as ixck checks it: in range, and a list value of its count
+    if(c){L lo=_t(s)==tE?ixe(s,0):minfZ(WL,s),hi=_t(s)==tE?ixe(s,c-1):maxfZ(NL,s);I(lo<0||hi>=(L)_N(v),r=-1)}
+    I(!r&&!_tP(z)&&_tT(z)&&_N(z)!=c,r=-2)I(v!=x,mr(v))P(r,r)P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;return (I)k+1;}   //d8 there (3)
+   if(j<0||j>=(L)_N(v))break;kd[k]=0;ix[k]=j;I(!last,w=ii(v,(U)j))}
+  else if((t==tm||t==tM)&&_t(_x(v))==tS&&(t==tm||_N(_y(v)))){A ks=_x(v),vs=_y(v);
+   if(!ty&&_t(s)==ts&&a<0){A f=fnd(ks,_R(s));j=gl_(f);mr(f);
+    if(j<0||j>=(L)_N(ks)){j=_N(ks);if(!last){kd[k]=t==tm?4:5;ix[k]=j;I(a<0,a=(I)k)   //a key not there, which the assignment adds: above the last level with the
+      if(t==tM||!_N(vs)){I(v!=x,mr(v))return a+1|gl<<8;}w=ii(vs,0);}}   //first value nulled, so the check goes on in the first value (a table's: nothing more to check)
+    if(!w){if(t==tM&&last&&asg&&!_tP(z)&&_tT(z)&&_N(z)!=_N(_A(vs)[0])&&!(_N(ks)==1&&!j))break;   //a column assigned with : needs the row count
+     kd[k]=t==tm?1:2;ix[k]=j;I(!last,w=ii(vs,(U)j))}}
+   else if(t==tM&&(ty||_tz(s))){if(j<0||j>=(L)_N(_A(vs)[0])||!last&&!(k+2==m&&_tA(y)&&_t(_A(y)[k+1])==ts))break;kd[k]=3;ix[k]=j;
+    if(!last){U c=tcc(v,_A(y)[k+1]);I(c,kd[k]=6;ix[k+1]=c-1)}k++;break;}   //a row then a column that d4 would amend on its own (tca, a.c): 6, which ixst does so
+   else if(!last&&a<0&&!ty&&_t(s)==tS){A f=fnd(ks,_R(s));I r=0;B tb=t==tM;A e=k+2==m&&_tz(_A(y)[k+1])?_A(y)[k+1]:0;   //a list of keys above the last level: found
+    P(_t(vs)==tM&&(k+2==m||_A(y)[k+1]!=au),I(v!=x,mr(v))kd[k]=9;ix[k]=(L)f;(I)(k+1|gl<<8))   //once, and its places (f) passed to ixst (9). Values that are dicts of the
+    F(_N(s),L q=ixe(f,i);B kin=q>=0&&q<(L)_N(ks);A u=_tA(vs)&&(kin||!tb&&_N(vs))?_A(vs)[kin?q:0]:0;   //same keys (held as a table): only an elided level in them is checked
+     if(e&&u&&!_tP(u)&&_tT(u)){L g=gl_(e);I(g<0||g>=(L)_N(u),r=1)}   //one int into a list below: its range, as ixck checks it, without taking the list
+     else I(kin||!tb&&_N(vs),u=ii(vs,kin?(U)q:0);r=ixck(u,y,k+1,z,asg);mr(u))I(r,break))
+    I(v!=x,mr(v))P(r,mr(f);-r)kd[k]=9;ix[k]=(L)f;return (I)(k+1|gl<<8);}   //as ixkd checks it: a missing key above the last level adds it, the first value nulled
+   else if(t==tM&&s==au){I(v!=x,mr(v))P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;return (I)(k+1|(gl&&k+1<m)<<8);}   //every row of a table: nothing to check (ixkd), so not called
+   else break;}
+  else break;
+  if(last){k++;break;}if(v!=x)mr(v);v=w;}
+ if(k==m||k&&(kd[k-1]==3||kd[k-1]==6)){I(v!=x,mr(v))P(a>=0&&k==m&&a+2==(I)m&&!kd[a+1],kd[a]+=3;a+2)return a<0?(I)k:a+1|gl<<8;}   //7, 8: a key to add, then one index into a list
+ I r=ixck(v,y,k,z,asg);B sy=gl&&k&&(_ts(v)||_tS(v));I(v!=x,mr(v))P(r,-r)P(sy,0)P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;return (I)(k+1|(gl&&k+1<m)<<8);}   //stopped short below the first level: d8 from there (3)
+A ixst(A,A,CO UC*,CO L*,U,U,A,A);
+//x[y]f:z (f dyads[d]) in run, the variable at p: ixca checks it (ixwk) and assigns it (by ixst where ixwk walked y, else
+//as before), in one call, so what ixwk found stays in its frame: in run's frame it changed how run's whole loop was
+//compiled, and made every bytecode a few percent slower; kept per thread between two calls, it cost a lookup each.
+//f#y, f_y, f@y and f.y call f, which may be an item of x and see or set the variable while ixst has items out of it, so
+//# _ @ and . go as before: ixck checks, and d4 assigns.
+//A global (g) is run's variable while it is assigned, which an amend by name (d8, a.c) in the assignment meets: a symbol
+//below names a global, which may name the variable again, directly or through other globals (v:(1;(2;`v)); v[1;1;1;0]:9).
+//So it is assigned as before (d4) where the walk meets a symbol (ixwk), and the global's place is kept, innermost first,
+//in ixgs while it is assigned by d4 (m), or by ixst where an amend by name can follow it (ixwk's +256). An amend by
+//name, or run's of a global, while one is assigned by d4 is made as before (by d4), and one of a global that ixst is
+//assigning, which has items out of it, is refused ('type) before it is touched. Only one thread (no peach) assigns a global
+Z struct ixg{A*p;struct ixg*n;B m;}*ixgs;
+I ixgn(A*p){I r=0;for(struct ixg*q=ixgs;q;q=q->n){if(q->p==p&&!q->m)return 2;r|=q->m;}return r;}   //2: refused; 1: by d4
+Z A ixas(A x,A y,A z,UC d,CO UC*kd,CO L*ix,I m)_(m?ixst(x,y,kd,ix,0,(U)m,av+d,z):_tA(y)&&_n(y)==1?a4(x,*_A(y),av+d,z):d4(x,y,av+d,z))   //one level: what d4 does, without taking it out of y
+Z NI A ixag(A*p,A x,A y,A z,UC d,CO UC*kd,CO L*ix,I m){struct ixg e={p,ixgs,!m};ixgs=&e;x=ixas(x,y,z,d,kd,ix,m);ixgs=e.n;return x;}   //a global, kept in ixgs while assigned
+Z NI I ixca(A*p,A x,A y,A z,UC d,B g){UC kd[8];L ix[8];I n=g&&ixgs?ixgn(p):0;P(n>1,3)
+ I m=n||d==14||d==15||d==18||d==19?_t(x)==tm&&!_tMT(_y(x))?-3:-ixck(x,y,0,z,!d):ixwk(x,y,z,!d,g,kd,ix);P(m<0,-m)   //ixck's error, and *p untouched;
+ *p=m>255||g&&!m?ixag(p,x,y,z,d,kd,ix,m&255):ixas(x,y,z,d,kd,ix,m);return 0;}   //else 0
 Z NI __attribute__((cold)) V noupd(A*s){mr(*s);*s=err0("noupdate");}
 A fzop(CO UC*,A*,A*);
 // amber 2.5 (exp): the VM's start pinned to 64 bytes. Its dispatch loop's speed depended on where the linker happened
@@ -59,7 +149,7 @@ AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,d--,es8(a,n))/*d: per-thread VM recursio
   C6(bm,bM,bx,bX,by,bY,A*p=(c&1?gv:l)+BG,x=*p;I(__builtin_expect(c&1&&ray_rc_sync,0),noupd(s);goto l)  //          |      |                       |
    U(x,*s=ev(*s))A y=*s++;                                                                           //          |      |                       |
    I(c==bm||c==bM,y=v2[*b++](x,y);U(y,*--s=0)*p=x(y))                                               //mod asgn  |bm,i,d|.. x -> ..             |vars[i]:dyads[d][vars[i];x]
-   E(UC d_=*b++;I e_=ixck(x,y,0,*s);x=e_?e_==1?ei0():el0():(*p=d4(x,y,av+d_,*s));mr(*s);I(c==bx||c==bX,mr(y);U(x,*s=0)s++)                              //ind asgn  |bx,i,d|.. z y -> ..           |vars[i]:  .[vars[i];y;dyads[d];z]
+   E(UC d_=*b++;I e_=ixca(p,x,y,*s,d_,c&1);x=e_?e_==1?ei0():e_==2?el0():et0():*p;mr(*s);I(c==bx||c==bX,mr(y);U(x,*s=0)s++)                  //ind asgn  |bx,i,d|.. z y -> ..           |vars[i]:  .[vars[i];y;dyads[d];z]
                                     E(U(x,*s=y(0))U(*s=dot(x,y)))))                                 //ind asgn  |by,i,d|.. z y -> .. r         |vars[i]:r:.[vars[i];y;dyads[d];z]
   C(bG,A x=*--s=gv[BG];U(x,ev0())xR)                                                                //get global|bG,i,i|.. -> .. globals[i]    |
   // amber 2.3: a peach dispatch runs this VM on several threads at once, and a
@@ -89,7 +179,8 @@ Z B cm(A x/*0*/){X(Rv(!xv)Ru(1)RS(P(xn-1,0)S s=su(*xI);U n=SL(s);n&&s[n-1]==':')
 // amber 2.3: two constants share a pool slot only if IDENTICAL. ~ calls -0.0 and
 // 0.0 (and any two NaNs) one value, so deduplicating on ~ turned {1%x*-0.0} into
 // 0w whenever a 0.0 literal came first. Floats must agree bit for bit, down lists.
-Z B cid(A x,A y)_(P(!mtc_(x,y),0)UC t=_t(x);P(t==tf||t==tF,_t(y)==t&&!memcmp(_V(x),_V(y),(N)(t==tf?1:_n(x))*SZ(F)))
+Z B cid(A x,A y)_(P(!mtc_(x,y),0)UC t=_t(x);P(_t(y)!=t,0)   //and of one type: a bit list was pooled with the equal int list (digest #36)
+P(t==tf||t==tF,_t(y)==t&&!memcmp(_V(x),_V(y),(N)(t==tf?1:_n(x))*SZ(F)))
  P((t==tA||t==tm||t==tM)&&_t(y)==t,U m=_n(x)|!_n(x);F(m,P(!cid(_A(x)[i],_A(y)[i]),0))1)1)
 Z V cc(A x/*0*/,I o){U n=un,i=OFF;W(i<n&&!cid(x,ua),i++)I(i>=n,PSH(u,xR))M(i+bc-OFF)}              //append a "load constant" instruction
 Z B lim;//cr: an expression exceeds a limit of the bytecode ('limit rather than 'compile)

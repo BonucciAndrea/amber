@@ -39,6 +39,9 @@ Z L fLL(CO V*a,U n,L v)_(             U i=fL(a,n,v);i<n?i:NL)
 // (fL, as before); a zero or NaN needle scans for any of its spellings.
 #define AMNW(w) (((W)(w)<<1)>0xffe0000000000000ull)
 Z U fFs(CO L*a,U n,L v)_(U i=0;P(!v,W(i<n&&AMNZ(a[i]),i++)i)P(AMNW(v),W(i<n&&!AMNW(a[i]),i++)i)fL(a,n,v))
+// fFL pinned to 64 bytes: its loop ran at about half speed where it crossed a 4 KB boundary (Apple cores), so a
+// change anywhere before f.c moved float find and distinct by up to 88% (digest #82)
+Z L fFL(CO V*,U,L)__attribute__((aligned(64)));
 Z L fFL(CO V*a,U n,L v)_(             U i=fFs(a,n,AMNF(v));i<n?i:NL)
 
 //amber: binary search on a sorted(`s#) vector -> O(log n) find; returns index or NL
@@ -379,16 +382,24 @@ X2(fnd,
  Rm(i1(xx,N(fnd(xy,y))))
  RM(en(y))
  RE(x=gZ(xR);x(fnd(x,y)))
- RA(U k=urnk(x),l=urnk(y);P(k<l+1,r2f(fnd,x,y))P(k>l+1,er(y))
+ // the rank of x's first item says whether y is one item or a list of them; when the items differ in rank, y may be
+ // one of them all the same, so it is looked for whole first ((1;"ab")?"ab" is 1, it was 0N 0N). An x of one rank
+ // never matches there, so it is only a scan more on these two paths (digest #29)
+ RA(U k=urnk(x),l=urnk(y);I(k-l-1,F(xn,P(mtc_(xa,y),y(az(i)))))P(k<l+1,r2f(fnd,x,y))P(k>l+1,er(y))
   X(RA(F(xn,P(mtc_(xa,y),y(az(i))))y(az(NL)))
     R_(F(xN,A z=ii(x,i);I m=mtc_(z,y);z(0);P(m,y(az(i))))y(az(NL))))0)
  RB(x=cG(xR);x(fnd(x,y)))
  // a char haystack with a number, or a number haystack with a char, is 'type, as in q (issue #20, row 12)
- RGC(P(fmx(y,xtC),et(y))F(256,t[i]=NL)UC*a=xV;U n=xn;F(n,t[a[n-1-i]]=n-1-i)fndGx(y))
+ // digest #7: bits looked for are widened to bytes first (read as ints they gave wrong rows and read past the end)
+ RGC(P(fmx(y,xtC),et(y))YB(fnd(x,cG(y)))F(256,t[i]=NL)UC*a=xV;U n=xn;F(n,t[a[n-1-i]]=n-1-i)fndGx(y))
  R5(tH,tI,tL,tF,tS,
+  // digest #30: an empty general list gets what the byte haystack gives it (0#,!0). Each-right asks the
+  // empty list's char prototype, and a char against numbers is 'type (issue #20, row 12)
+  P(ytA&&!yn,A g=aG(0);A r=fnd(g,y);mr(g);r)
   P(xt!=tS&&(ytC||ytc),et(y))
   YmMA(r2f(fnd,x,y))
   YE(fnd(x,gZ(y)))
+  YB(fnd(x,cG(y)))
   P(xt==TT[yt]||xtZ&&ytzZ,
    // amber 2.3: SORTED only. `p (parted) was also sent here, but parted means
    // equal values are contiguous, not that they are ordered: `pa 3 3 1 1 2 found

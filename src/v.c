@@ -17,10 +17,12 @@
  #define VSIMD
  #define VSIMDR(...)
 #endif
+Z NI A flB(A x,A y,U m,L n)_(Fj(n|!n,A z=yA[j]=an(m,tG);U k=j>>3,b=j&7;F(m,zg=_G(xa)[k]>>b&1))x(0);I(!n,yx=mkn(yx))y)   //flip of bit lists: bit j of each list, into bytes (out of line: inlined in flp, it slowed the other flips)
 X1(flp,Rt(enl(enl(x)))R_(enl(x))RM(A y=kv(&x);am(x,y))RB(flp(cG(x)))
- Rm(A y=kv(&x);Y(RA(I(yn>1,L n=cfm(yA,yn);P(n<0,x(el(y)))F(yn,A z=ya;I(ztt,y=mut(y);ya=rsz(n,z))))aM(x,y))RT_A(aM(x,e1f(enl,y)))R_(x(en(y))))0)
+ Rm(A y=kv(&x);Y(RA(I(yn>1,L n=cfm(yA,yn);P(n<0,x(el(y)))F(yn,A z=ya;I(ztt,y=mut(y);ya=rsz(n,z))))aM(x,yn&&_tt(yx)?enl(y):y))RT_A(aM(x,e1f(enl,y)))R_(x(en(y))))0)
  RA(U m=xn;L n=cfm(xA,m|!m);P(n==-1,enl(x))P(n<0,el(x))C t=_t(xx);I(t<tM&&t-tE,F(m,A y=xa;B(yt-t,t=0)))E(t=0)A y=aA(n);
-  P(!t,F(n|!n,A z=aA(m);Fj(m,zA[j]=ii(xA[j],i))I(!zn,zx=mkn(zx))ya=sqz(z))x(0);I(!yn,yx=mkn(yx))y)
+  P(!t,F(n|!n,A z=aA(m);Fj(m|!m,zA[j]=ii(xA[j],i))I(!zn,zx=mkn(zx))ya=sqz(z))x(0);I(!yn,yx=mkn(yx))y)
+  P(t==tB,flB(x,y,m,n))
   U w=Tw[t]-3;Fj(n|!n,A z=yA[j]=an(m,t);S4(w,F(m,zg=_G(xa)[j]),F(m,zh=_H(xa)[j]),F(m,zi=_I(xa)[j]),F(m|!m,zl=_L(xa)[j])I(TR(t),I(!m,zx=mkn(_R(zx)))yA[j]=sqz(mRa(z)))))
   x(0);I(!n,yx=mkn(yx))y))
 // amber: this fills a packed multi-lane counter (w selects 1/2/4/8-byte lanes),
@@ -43,7 +45,9 @@ V tilV(V*p,L v,L n,U w){L*RES a=p;W k=(W)G(0x101010101010101ll,0x1000100010001ll
  // reason).
  L m=(n-1>>3-w)+4&-4;
  VSIMD for(L i=0;i<m;i++)a[i]=(L)(q+(W)i*d);}
-X1(til,RA(K1("{x@'!#'x}",x))Ril(L n=gl(x);I(n==NL,n=0)P((n<0?-n:n)>>32,ez0())aE(MIN(0ll,n),MAX(0ll,n)))REBGHIL(K1("{(*a)#'&'x#'1_a:|*\\|x,1}",x))RmM(x(_R(xx)))Ro(val(x))RS(gns(_v(jS(x))))Rs(gns(xv))R_(et(x)))
+Z NI A tlm(A x)_(F(xn,A y=xa;I(ytm,x=mut(x);xa=y(_R(yy))))x)   //dict items to their values, for til's odometer (out of line: inlined, til read the thread-local refcount flag for every list)
+Z NI A tld(A x)_(B d=0;F(xn,A y=xa;d|=_T(_t0(y)?x:y)==tm)d?tlm(x):x)   //any dict items of x to their values: a test, out of line and frameless so that til's own code is as before (an atom item reads x's own header: no branch per item)
+X1(til,RA(K1("{x@'!#'x}",tld(x)))Ril(L n=gl(x);I(n==NL,n=0)P((n<0?-n:n)>>32,ez0())aE(MIN(0ll,n),MAX(0ll,n)))REBGHIL(K1("{(*a)#'&'x#'1_a:|*\\|x,1}",x))RmM(x(_R(xx)))Ro(val(x))RS(gns(_v(jS(x))))Rs(gns(xv))R_(et(x)))
 X1(whr,Ril(whr(enl(x)))RA(P(!xn,x(an(0,tI)))K1("{$[`A~@x;(,&#'*'x),,'/x@\\:!0|/#'x:o'x;,&x]}",x))Rm(A y=kv(&x);x(x1(Nx(whr(y)))))RE(whr(gZ(x)))R_(et(x))
  RB(U m=xn,n=addfB(xV,m);A y=aI(n);I*r=yV;Mx(F(m+7>>3,C v=xg;I(i+1==n_&&m&7,v&=(1<<(m&7))-1)W(v,U j=CTZ(v);v&=~(1<<j);*r++=i<<3|j)))Q(r-yI==n);y)
  RGHIL(I w=xw-3;
@@ -70,8 +74,11 @@ A1(typ,x(as(TS[xt])))
 A1(len,x(az(xN)))
 U _N(A x/*0*/){X(RE(Lij j-i)RT_E(xn)Rm(_N(xy))RM(_N(_x(xy)))R_(1))}
 Y2(fil,RmMA(e2f(fil,x,y))Rt(P(yt>=tdt,et(y))YU(y-au?y:xR)fir(fil(x,enl(y))))R_(K2("{@[y;&^y;:;x]}",x,y)))
+//chars against ints or floats share no item: except removes nothing, as 2.3.1, ngn/k and q (find of one in the
+//other is 'type since issue #20 row 12, and except inherited it - digest #64)
+Z B cxn(UC a,UC b)_(B ca=a==tC||a==tc,cb=b==tC||b==tc,na=a==tB||LH(tG,a,tF)||a==ti||a==tl||a==tf,nb=b==tB||LH(tG,b,tF)||b==ti||b==tl||b==tf;ca&&nb||na&&cb)
 X2(crt,Rt(P(LH(tdt,xt,tnp),et(y))fil(x,y))R_(en(y))
- RT(I v=rnk(y);P(!v,crt(x,enl(y)))
+ RT(P(cxn(xt,yt),y(xR))I v=rnk(y);P(!v,crt(x,enl(y)))
   P(v>0&&rnk(x)==v,I(xtE&&ytE,Lij L k=*yL,l=yL[1];P(k<=i,y(0);aE(MAX(i,l),MAX(j,l)))P(j<=l,y(0);aE(i,MIN(j,k))))K2("{x@&^y?x}",x,y))
   K2("{x@&~(!0),x~\\:y}/",x,y)))
 B tru(A x/*1*/)_(B v=xtU?x!=au:xtt?!!gl_(x):!!xN;x(0);v)

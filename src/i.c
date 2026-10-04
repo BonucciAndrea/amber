@@ -61,7 +61,7 @@ Z A fwm(I f,S s,N n)_(ftruncate(f,n);V*p=mmap(0,n,PROT_READ|PROT_WRITE,MAP_SHARE
 Z X2(fw,Ril(I f=gl_(x);My(x=(f<3||!S_ISREG(fm(f))?fws:fwm)(f,yV,yn))x)R_(I f=N(o(xR,O_RDWR|O_CREAT|O_TRUNC));A z=v1c(ai(f),y);I(f>2,close(f))z))                   // write
 ZN A dle()_(C*e=dlerror();I(e,os(e);os("\n"))eo0())
 A1(opn,Xz(x)ai(N(o(x,O_RDWR|O_CREAT))))                                                                                     // <s
-A cls(L n)_(close(n);au)                                                                                                    // >i
+A cls(L n)_(P(n>=0&&n<3,ed0())P(close(n)<0,eo0())au)   /*digest #6: stdin/out/err stay open (an error with no stderr to report it looped), and a bad close is an error*/                                                                                                    // >i
 A1(u0c,spl(N(u1c(x))))                                                                                                      // 0:x
 X1(u1c,RA(P(xn-2,el(x))P(!_tZ(xy),et(x))P(_n(xy)-2,el(x))A y=kv(&x);N i=gl(ii(y,0)),n=gl(ii(y,1));fr(x,i,n))R_(fr(x,0,-1))) // 1:x
 A1(u2c,en(x))                                                                                                               // 2:x
@@ -123,10 +123,9 @@ A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);
  {A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}                 // no threads in the wasm sandbox
 #else
  if(nw<2||n<2||ray_rc_sync){A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}
- // Warm the lazily-initialised float format/parse tables (src/s.c I5/P5,
- // src/p.c powers) on THIS parent thread, so no worker is ever the first to
- // touch them and race on their one-time build.
- {C wb[64];L wd;F wv=1.5;MC(&wd,&wv,8);sf(wb,wd);S ws="1.5";pf(&ws);}
+ // Warm the lazily-initialised float format tables (src/s.c I5/P5) on THIS parent thread,
+ // so no worker is ever the first to touch them and race on their one-time build.
+ {C wb[64];L wd;F wv=1.5;MC(&wd,&wv,8);sf(wb,wd);}
  A r=peach_pool(fn,dat,n,nw);
  mr(fn);mr(dat);
  // re-raise the error the failing worker hit ('noupdate, 'type, ...), which is
@@ -208,7 +207,7 @@ Z U wjfwd_ub(CO L*RES a,U cur,U hi,L key){U lim=hi-cur>AMGALLOP?cur+AMGALLOP:hi,
 #define WJC_N    (1u<<WJC_BITS)
 #define WJC_H(b) ((U)(((W)(b)*0x9E3779B97F4A7C15ull)>>(64u-WJC_BITS)))
 Z V wjbounds(CO L*RES T,U nq,CO L*RES W0,CO L*RES W1,CO L*RES GB,CO L*RES GE,U nt,U*RES LO,U*RES HI,
-              L*RES cbase,L*RES ck0,L*RES ck1,U*RES clo_,U*RES chi_){
+              L*RES cbase,L*RES ck0,L*RES ck1,U*RES clo_,U*RES chi_,B pv){
  MS(cbase,0xff,(N)WJC_N*SZ(L));       // -1: no real slice base is negative
  F(nt,
    L b=GB[i],en=GE[i];
@@ -218,7 +217,10 @@ Z V wjbounds(CO L*RES T,U nq,CO L*RES W0,CO L*RES W1,CO L*RES GB,CO L*RES GE,U n
      lo=wjfwd_lb(T,clo_[g],h,k0);hi=wjfwd_ub(T,chi_[g],h,k1))
    E(lo=amlb(T,(U)b,h,k0);hi=amub(T,(U)b,h,k1))
    I(hi<lo,hi=lo)                      // inverted window -> empty, never a wrapped count
-   LO[i]=lo;HI[i]=hi;
+   // pv, q's wj: from the quote in force at the window's start, the last one at or before it (the last of a run at
+   // that very time), or the group's first if there is none; lo is the first one inside, which is wj1 (digest #68)
+   U s=lo;I(pv,I(s<h&&T[s]==k0,W(s+1<h&&T[s+1]==k0,s++))E(I(s>(U)b,s--)))
+   LO[i]=s;HI[i]=hi<s?s:hi;
    cbase[g]=b;ck0[g]=k0;ck1[g]=k1;clo_[g]=lo;chi_[g]=hi;)}
 // Pass 2, float column -> float result. c: 0=first 1=last 2=min 3=max 4=sum 5=avg.
 Z V wjrFF(CO F*RES p,CO U*RES LO,CO U*RES HI,U nt,I c,F*RES o){
@@ -270,19 +272,26 @@ Z V wjrLF(CO L*RES p,CO U*RES LO,CO U*RES HI,U nt,F*RES o){
    o[i]=b>a?r/(F)(b-a):NF;}}
 // Pass 2, count: source-independent, it is just the window width.
 Z V wjrCNT(CO U*RES LO,CO U*RES HI,U nt,L*RES o){F(nt,o[i]=(L)(HI[i]-LO[i]))}
-A ucb(A);
+A ucb(A),tjn(A);B tjs(A,A);
 A wjc(A x){
- P(_t(x)-tA||_n(x)-7,et(x))
- A*e=(A*)_V(x);
+ P(_t(x)-tA||_n(x)-7&&_n(x)-8,et(x))
+ A*e=(A*)_V(x);B pv=_n(x)==8&&tru(e[7]);   //pv: q's wj, from the quote in force at the window's start (digest #68)
+ P(!tjs(e[0],e[3])||!tjs(e[0],e[4]),et(x))   //dates, times and timestamps as their numbers (a.c tjn), against bounds of their kind
+ P(_t(e[1])-tA||_N(e[2])-_n(e[1]),et(x))      //a code per column
+ // Two windows and a slice per trade row, as q's 'length: wjbounds reads all four as far as the first
+ // window goes (_N: a lazy range's length, not its two ends).
+ U nw=_N(e[3]);P(_N(e[4])-nw||_N(e[5])-nw||_N(e[6])-nw,el(x))
  P(!_n(e[1]),x(emp(tA)))
  // normalise all integer inputs to 64-bit long (columns/times/bounds may be squeezed to G/H/I widths)
  // times (quotes and window bounds) as keys: float times compare as floats (a.c tkey)
- B f=_t(e[0])==tF||_t(e[3])==tF||_t(e[4])==tF;
- B c_=_t(e[0])==tC;A QT=N(tkey(ucb(_R(e[0])),f)),CD=N(tkey(_R(e[2]),0)),W0A=N(tkey(c_?ucb(_R(e[3])):_R(e[3]),f)),W1A=N(tkey(c_?ucb(_R(e[4])):_R(e[4]),f)),GBA=N(tkey(_R(e[5]),0)),GEA=N(tkey(_R(e[6]),0));   //float times as floats, char times as unsigned bytes
+ A q0=tjn(e[0]),w0=tjn(e[3]),w1=tjn(e[4]);B f=_t(q0)==tF||_t(w0)==tF||_t(w1)==tF;
+ B c_=_t(q0)==tC;A QT=N(tkey(ucb(q0),f),mr(w0);mr(w1);x(0)),CD=N(tkey(_R(e[2]),0),mr(QT);mr(w0);mr(w1);x(0)),W0A=N(tkey(c_?ucb(w0):w0,f),mr(QT);mr(CD);mr(w1);x(0)),
+   W1A=N(tkey(c_?ucb(w1):w1,f),mr(QT);mr(CD);mr(W0A);x(0)),GBA=N(tkey(_R(e[5]),0),mr(QT);mr(CD);mr(W0A);mr(W1A);x(0)),GEA=N(tkey(_R(e[6]),0),mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);x(0));   //on a failed key, what was taken goes back   //float times as floats, char times as unsigned bytes
  // Raw contiguous primitive column pointers, extracted ONCE before any loop.
  CO L*RES T=_V(QT),*RES W0=_V(W0A),*RES W1=_V(W1A),*RES GB=_V(GBA),*RES GE=_V(GEA),*RES cod=_V(CD);
  U nt=_n(W0A),na=_n(e[1]),nq=_n(QT);
  A*QC=(A*)_V(e[1]);
+ F(na,P(cod[i]-6&&_N(QC[i])-nq,mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);el(x)))   //a column read has an item per quote (count reads none)
  // The two bounds vectors are the kernel's ONLY workspace and are bump-allocated
  // from the thread-local arena exactly once, before the column loop -- no heap,
  // no per-row or per-column allocation. They are bracketed with
@@ -301,7 +310,7 @@ A wjc(A x){
  U*RES cl=(U*)arena_alloc((N)WJC_N*SZ(U));
  U*RES ch=(U*)arena_alloc((N)WJC_N*SZ(U));
  P(!LO||!HI||!cb||!c0||!c1||!cl||!ch,arena_release(wjmk);mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);eo(x))
- wjbounds(T,nq,W0,W1,GB,GE,nt,LO,HI,cb,c0,c1,cl,ch);
+ wjbounds(T,nq,W0,W1,GB,GE,nt,LO,HI,cb,c0,c1,cl,ch,pv);
  A res=aA(na);A*R=(A*)_V(res);
  for(U a=0;a<na;a++){
   A col=QC[a];I c=(I)cod[a];
@@ -309,7 +318,7 @@ A wjc(A x){
   // loop over rows or elements.
   B isf=_t(col)==tF,flo=(c==5)||(isf&&c!=6);
   A out=flo?aF(nt):aL(nt);
-  A colL=(isf||c==6)?0:N(cL(_R(col)));   // count never reads the column at all
+  A colL=(isf||c==6)?0:N(tkey(_R(col),0));   // count never reads the column at all; tkey(,0): cL, a range expanded
   if(c==6)                       wjrCNT(LO,HI,nt,(L*)_V(out));
   else if(isf)                   wjrFF((CO F*)_V(col),LO,HI,nt,c,(F*)_V(out));
   else if(c==5)                  wjrLF((CO L*)_V(colL),LO,HI,nt,(F*)_V(out));
@@ -561,12 +570,14 @@ Z A plotBare(A x){
 //   7 names   list of char vectors, for the legend (or ())
 //   8 cols    256-colour codes, one per series (or () for the default palette)
 //   9 styles  0 line, 1 scatter, 2 step, 3 area, one per series (or ())
+//a lazy range as its items: cL hands one back unchanged, and its two stored words are its ends (digest #59)
+Z A rgx(A x)_(!_tP(x)&&_t(x)==tE?gZ(x):x)
 Z A plotSpec(A x){
  A*e=(A*)_V(x);
  A ysL=e[0];P(_t(ysL)-tA||!_n(ysL),et(x))
  U ns=_n(ysL);if(ns>PLTMAXS)ns=PLTMAXS;
  A xsL=e[1];B hasx=_t(xsL)==tA&&_n(xsL)>=ns;
- A optA=N(cL(_R(e[2]))),limA=N(cF(_R(e[3])));
+ A optA=N(cL(rgx(_R(e[2])))),limA=N(cF(_R(e[3])));
  if(!optA||!limA||_n(optA)<6||_n(limA)<4){if(optA)mr(optA);if(limA)mr(limA);return et(x);}
  CO L*opt=(CO L*)_V(optA);CO F*lim=(CO F*)_V(limA);
  I W=(I)opt[0],H=(I)opt[1];B grid=opt[2]!=0,axis=opt[3]!=0,leg=opt[4]!=0;
@@ -582,7 +593,7 @@ Z A plotSpec(A x){
  if(W<8)W=8;if(W>400)W=400;if(H<2)H=2;if(H>120)H=120;
  I pw=2*W,ph=4*H;
  A title=e[4],xlab=e[5],ylab=e[6],names=e[7];
- A colA=N(cL(_R(e[8]))),styA=N(cL(_R(e[9])));
+ A colA=N(cL(rgx(_R(e[8])))),styA=N(cL(rgx(_R(e[9]))));
  CO L*cols=colA&&_n(colA)>=ns?(CO L*)_V(colA):0;
  CO L*stys=styA&&_n(styA)>=ns?(CO L*)_V(styA):0;
  Z CO L DFC[PLTMAXS]={39,208,78,203,141,179,45,211,116,222,99,150};

@@ -56,6 +56,34 @@ Z A grdm(A x/*1*/,A1 f)_(A y=kv(&x);x(x1(Nx(f(y)))))
 Z V mrg(A x/*0*/,I*p,I*q,I*b,I*d,I k){I*r=p-q+b;W(1,I(qA(xA[*p],xA[*b])<k,*r++=*p++;P(p==q))E(*r++=*b++;B(b==d)))MC(r,p,q-p<<2);}//merge(k=1),mergeR(k=0)
 Z V cis(A x/*0*/,I*p,N n,I*r){F(n,I j=0,k=i,v=p[i];A y=xA[v];W(j<k,I m=j+k>>1;I(qA(y,xA[r[m]])<0,k=m)E(j=m+1))memmove(r+j+1,r+j,i-j<<2);r[j]=v)}//copying_insertionsort
 Z V cms(A x/*0*/,I*p,N n,I*r){P(n<17,cis(x,p,n,r);)N m=n/2;cms(x,p+m,n-m,r+m);cms(x,p,m,p+m);mrg(x,p+m,p+2*m,r+m,r+n,1);}//copying_mergesort
+// A generic list of dates, times or timestamps (with ints or floats among them, such as a 0N for a missing one)
+// is graded by keys, in qA's order: by kind (d f i n t, as TS spells them), then by value, each kind's keys
+// through the stable counting or radix grade, where ascA's merge sort would call qA (and read a timestamp's
+// boxed nanoseconds) for every comparison. kK reads the items once: their keys (*k) and kinds (*c), and the
+// kinds there as bits; 0 when an item is of another kind or none is temporal (with nothing allocated when
+// that shows before the first temporal item).
+Z I kT(UC t)_(t==tdt?0:t==tf?1:t==ti||t==tl?2:t==tnp?3:t==ttm?4:-1)
+Z L kV(A y,UC t)_(t==tnp?*(L*)_V(y):t==tdt||t==ttm?(L)(I)y:t==tf?o1(*(L*)_V(y)):gl_(y))
+Z A kG(A k)_(A g=cntgrd(k);I(!g,g=rdxg(k))mr(k);g)
+Z U kK(A x,A*k,A*c){N n=xn;CO A*a=xA;U m=0;N p=0;I h=0;W(p<n&&(h=kT(_t(a[p])))>=0&&!(1u<<h&25u),p++)P(p==n||h<0,0)A K=aL((U)n),C_=aG((U)n);L*RES v=_L(K);UC*RES g=_V(C_);
+ F(n,A y=a[i];UC t=_t(y);I j=kT(t);I(j<0,mr(K);mr(C_);return 0;)g[i]=(UC)j;m|=1u<<j;v[i]=kV(y,t))
+ *k=K;*c=C_;return m;}
+Z A kGr(A k,A c,U m){P(!(m&m-1),kG(_R(k)))N n=_n(k);CO L*RES v=_L(k);CO UC*RES g=_V(c);U s[5]={0},o[5],t=0;F(n,s[g[i]]++)F(5,o[i]=t;t+=s[i])
+ A K=aL((U)n),p=aI((U)n),z=aI((U)n);L*RES w=_L(K);I*RES q=_I(p);
+ F(n,U j=o[g[i]]++;w[j]=v[i];q[j]=(I)i)
+ F(5,U b=o[i]-s[i];I(s[i],A h=kG(aV(tL,s[i],w+b));P(!h,mr(K);mr(p);mr(z);0)Fj(s[i],zI[b+j]=q[b+_I(h)[j]])mr(h)))
+ mr(K);mr(p);return z;}
+// and for xasc (a.c xsC): such a list's keys, *c its kinds when it holds more than one (else 0), and *s the
+// kinds there as bits (d f i n t); 0 for any other list
+A kys(A x,A*c,U*s){A k,g;U m=_t(x)==tA&&xn?kK(x,&k,&g):0;P(!m,0)*s=m;I(m&m-1,*c=g)E(*c=0;mr(g))return k;}
+Z A ascT(A x){A k,c;U m=kK(x,&k,&c);P(!m,0)A z=kGr(k,c,m);mr(k);mr(c);return z;}
+// For = and ?: in grade order, the items equal to one another (~) are a run of one kind and one key, which is
+// found from the keys without reading the items again; each item is named by its group's first index (the
+// run's first, as the grade is stable): grpI groups those names (in order of first appearance, indices
+// ascending) and the first indices are the distinct items, as the K paths for generic lists find them.
+Z A frT(A x){A k,c;U m=kK(x,&k,&c);P(!m,0)A g=kGr(k,c,m);P(!g,mr(k);mr(c);0)N n=xn;CO I*RES p=_I(g);CO L*RES v=_L(k);CO UC*RES t=_V(c);
+ A u=aI((U)n);I*RES r=_I(u);I f=p[0];r[f]=f;for(N j=1;j<n;j++){I i=p[j],h=p[j-1];I(v[i]!=v[h]||t[i]!=t[h],f=i)r[i]=f;}
+ mr(g);mr(k);mr(c);return u;}
 A1(ascA,N n=xn;A z=aI(n);I*p=zI;tilV(p,0,n,2);P(n<17,cis(x,p,n,p);x(z))N m=n/2;A y=aI(n-m);I*t=yI;cms(x,p+m,n-m,t);cms(x,p,m,p+n-m);mrg(x,t,t+n-m,p+n-m,p+n,0);x(y(z)))
 // The pre-batch-2 grade, kept verbatim as the fallback for every case rdxg()
 // declines (an exotic width, or an arena that could not supply scratch): the
@@ -65,7 +93,7 @@ A1(ascA,N n=xn;A z=aI(n);I*p=zI;tilV(p,0,n,2);P(n<17,cis(x,p,n,p);x(z))N m=n/2;A
 // order-preserving copy of the vector -- exactly the two costs rdxg() removes.
 Z A1(ascB,P(xtF,asc(of1(x)))
  x=N(K1("{x-&/x}",x));N n=xn;A y=aC(n),z=aI(n),u=aI(n);Mx(My(u=ascZ(xV,yV,zV,uV,n,(1ll<<xw)+7>>3)==zV?u(z):z(u)))u)
-X1(asc,Rt(opn(x))Rm(grdm(x,asc))RM(K1("{(!#x){x@<y x}/|.+x}",x))RS(asc(str(x)))RA(P(xn-(I)xn,ez(x))ascA(x))RE(Lij x(0);aE(0,j-i))
+X1(asc,Rt(opn(x))Rm(grdm(x,asc))RM(K1("{(!#x){x@<y x}/|.+x}",x))RS(asc(str(x)))RA(P(xn-(I)xn,ez(x))A g=xn>1?ascT(x):0;g?x(g):ascA(x))RE(Lij x(0);aE(0,j-i))
  RGC(P(xn-(I)xn,ez(x))N n=xn;I c[257]={};B u=xtC;I*b=c+(u?1:129),*d=c+(u?0:128);F(n,b[u?(UC)xg:xg]++)F(256,c[i+1]+=c[i])A y=aI(n);Mx(F(n,yI[d[u?(UC)xg:xg]++]=i))ct(tZ(n-1),y))//chars sort as unsigned bytes
  // amber batch 2: 16/32/64-bit integers and IEEE-754 doubles go through the
  // key-carrying LSD radix in src/v.c -- one sequential pass per SIGNIFICANT key
@@ -126,6 +154,9 @@ Z A grpI(A x){
 // (one value each, as find and ~ take them); every other double kept bit for bit.
 // A copy; the caller still emits the original doubles.
 Z A fcanon(A x)_(U n=xn;A y=aF(n);CO W*RES p=(CO W*)xV;W*RES q=(W*)yV;F(n,W v=p[i];q[i]=v==0x8000000000000000ull?0:v<<1>0xffe0000000000000ull?0x7ff8000000000000ull:v)y)   //one key for both zeros, and one for every NaN, as find matches them
+// = and ? of a generic list of dates, times or timestamps, through frT; 0 for any other list
+Z A grpT(A x){A u=frT(x);P(!u,0)A d=grpI(u);mr(u);P(!d,0)A v=kv(&d);return am(i1(x,d),v);}
+Z A unqT(A x){A u=frT(x);P(!u,0)N m=0;I*RES r=_I(u);F(xn,I(r[i]==(I)i,r[m++]=(I)i))A j=aV(tI,(U)m,r);mr(u);return i1(x,j);}
 Z A cSI(A);// amber 2.0.0: symbol<->int-id reinterpret (defined just below), used by grp's tS fast path
 X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x))
  // amber 2.0.0: group a SYMBOL vector by its interned 4-byte id (tS is stored as
@@ -150,13 +181,13 @@ X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x
   {A g_=grpI(x);P(g_,x(g_))}   /* O(n) counting group; 0 = range too wide, sort instead */
   K1("{$[x;x[*'g]!g@:<g:(&~(~*s)=':s:x i)_i:<x;x!0#,!0]}",x))
  RF(P(!xn,K1("{x!0#,!0}",x))K2("{x[*'g]!g@:<g:(&1,~(1_s)=(-1)_s:y i)_i:<y}",x,fcanon(x)))   //floats: 2.3.0's canonical keys (first spelling, indices in order)
- R(tA,K1("{$[#x;{b:~x~':x i:<x;i:i@<i+(#x)*-1++\\b;g:(&b)_i;g:g@<g;x[*'g]!g}x;x!0#,!0]}",x))   //generic lists (which may hold floats): ~ joins -0.0 with 0.0 (and NaNs), which grade keeps apart, so the indices are sorted within each run of matching items (one grade, by run then index)
+ R(tA,I(xn>1,A z=grpT(x);P(z,x(z)))K1("{$[#x;{b:~x~':x i:<x;i:i@<i+(#x)*-1++\\b;g:(&b)_i;g:g@<g;x[*'g]!g}x;x!0#,!0]}",x))   //generic lists (which may hold floats): ~ joins -0.0 with 0.0 (and NaNs), which grade keeps apart, so the indices are sorted within each run of matching items (one grade, by run then index)
  R3(tE,tL,tM,K1("{$[#x;x[*'g]!g@:<g:(&~x~':x i)_i:<x;x!0#,!0]}",x)))
 Z A1(cSI,Q(xtS||xtI)C t=tS^tI^xt;MINE(x)?(_at(x)=0,AT(t,x)):x(aV(t,xn,xV)))
 X1(unq,RM(K1("{$[#x;x@i@<i:&/'.=+.+x;x]}",x))   /*a table: its distinct rows, first seen first (issue #19); as q*/Rm(unq(val(x)))RE(x)RS(cSI(unq(cSI(x))))Ril(rndF(gl(x)))R_(et(x))RB(unq(cG(x)))
  RGC(C a[256]={},r[256],t=xt;U n=0;Mx(F(xn,UC v=xg;I(!a[v],a[v]=1;r[n++]=v)))aV(t,n,r))
  R5(tA,tH,tI,tL,tF,P(xn<2,x)
-  {A u_=unqL(x);P(u_,x(u_))}                 /*amber: C hash/LUT distinct, 0 = not handled*/
+  {A u_=xtA?unqT(x):unqL(x);P(u_,x(u_))}     /*amber: C hash/LUT distinct (or, for a generic list, unqT), 0 = not handled*/
   P(xn<<xw-3<pg&&!xtA,K1("{x@&(x?x)=!#x}",x))
   P(xtF,K2("{x@i@<i@:&@[;0;:;1]@~=':y@i:<y}",x,fcanon(x)))   //long float vectors: 2.3.0's canonical keys, which keep the first spelling
   K1("{b:@[;0;:;1]@~~':x@i:<x;o:(#x)*-1++\\b;j:(|&\\|i+o)[w]-o w:&b;x@j@<j}",x)))   //each run of matching items keeps its least index (not the first in grade order: -0.0 and 0.0 match); a min-scan from the right, each run offset by n times its number

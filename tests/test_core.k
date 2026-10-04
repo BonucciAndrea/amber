@@ -460,8 +460,8 @@ t[`dictMissLonger;(`a`b!(1 2 3;3))+`a`c!(5;6 7);`a`b`c!(6 7 8;3;6 7)]
 t[`dictDateAdd;@'.((,`a)!,2026.07.30)+(,`a)!,1;,`d]
 t[`dictDateAddValue;2026.07.31=*.((,`a)!,2026.07.30)+(,`a)!,1;1]
 t[`dictTyped;((`a!1.5)+`b!2.5;(`a`b!1 2)-`b`c!10 20);(`a`b!1.5 2.5;`a`b`c!1 -8 -20)]
-/ a dict with untyped empty keys fills nothing ('length, as 2.3.1); typed empty keys fill, as in q
-t[`dictEmptyUntyped;*"\n"\.[.:;,"(`a`b!1 2)+()!()";{x}];"'length"]
+/ a dict with no keys on one side gives the other one, as q and ngn/k (it was 'length, digest #24)
+t[`dictEmptyUntyped;((`a`b!1 2)+()!();((1 2;3 4)!5 6)+()!();(()!())-`a`b!1 2;(()!())+()!());(`a`b!1 2;(1 2;3 4)!5 6;`a`b!-1 -2;()!())]
 t[`dictEmptyTyped;(`a`b!1 2)+(0#`)!!0;`a`b!1 2]
 t[`dictEmptyVals;(((0#`)!())-`a`b!1 2;(`a`b!1 2)+(0#`)!());(`a`b!-1 -2;`a`b!1 2)]   / empty values () filled nothing: `a`b!(!0;!0)
 
@@ -573,6 +573,17 @@ t[`charMinMaxScan;(&\"bac";|\"bac";&':"bac";|':"bac";"z"&\"bac");("baa";"bbc";"b
 / ---- JSON: floats outside the int range, infinities, NaN ----
 t[`jsonBigFloat;(`j@1e20;`j@-1e20;`j@1e22;`j@1.5;`j@3.0;`j@-2.0);("1e20";"-1e20";"1e22";"1.5";,"3";"-2")]
 t[`jsonInfNan;(`j@0w;`j@-0w;`j@0n;`j@1.0 0w -0w 0n);("null";"null";"null";"[1,null,null,null]")]
+/ digest #7: bits looked for are widened to bytes (they were read as ints: wrong rows, reads past the end)
+t[`findBits;((,1)?0101010101B;(,0)?0101b;1 0?0101b;(,1)?0#01b);(0N 0 0N 0 0N 0 0N 0 0N 0;0 0N 0 0N;1 0 1 0;!0)]
+t[`exceptBits;(0101010101B^1;11B^1;0101010101B^0;11B^0);(00000b;0#01b;11111b;11b)]
+/ digest #6: > leaves stdin, stdout and stderr open (a failed write with no stderr to report it on looped or crashed)
+t[`closeStdHandles;(7#.[{[d]>0};,0;{x}];7#.[{[d]>1};,0;{x}];7#.[{[d]>2};,0;{x}]);3#,"'domain"]
+t[`aimRange;(7#.[{[d]`aim[!5]};,0;{x}];7#.[{[d]`aim[1000+!3]};,0;{x}]);2#,"'length"]   / digest #11: a range is its items, not its two stored ends (read as addresses)
+t[`modBigFloat;(7!1e19;5!-0w;5!0w;7!-7.0;7!8.5;1%3!-0.0);(3.0;0n;0n;0.0;1.5;-0w)]   / digest #15: the float remainder is exact, 0 to x (infinities: 0n)
+t[`findEmptyGeneric;(-8!1.0 2.0?();-8!1000000 2?();5#.[{[d]1.0 2.0?"a"};,0;{x}]);(-8!1 2?();-8!1 2?();"'type")]   / digest #30
+t[`literalPoolType;(4_5#(-8!0110B;0 1 1 0)0;4_5#{(-8!0110B;0 1 1 0)}[]0);2#,,0x03]   / digest #36: a bit list stays a bit list next to an equal int list
+t[`dropSqueeze;({4_5#-8!-1_(0;1;())}[];(0 1)~-1_(0;1;());-1_(1;"a";2.5));(,0x04;1b;(1;"a"))]   / digest #28: a negative drop squeezes in place too
+t[`jsonNegZero;1%(`j?"-0";`j?"[-0,-0.0,0]");(-0w;-0w -0w 0w)]   / -0 keeps its sign
 t[`jsonLiterals;`j?"[1,null,2]";(1.0;0n;2.0)]
 t[`jsonRoundTrip;`j?`j@1e20 -1.5 2.0;1e20 -1.5 2.0]
 
@@ -680,7 +691,14 @@ t[`keyedPlusAtom;((+(,`a)!,1 2 3)!4 5 6)+1;(+(,`a)!,1 2 3)!5 6 7]
 t[`dictMixedRankL;*"\n"\.[.:;,"((1 2;3 4)!5 6)+`a`b!1 2";{x}];"'domain"]
 
 / a dict with no keys is not checked: two empty ones still add, as group counts from ()!() do
-t[`dictEmptyBoth;`k@((()!())+#'=0#`;(#'=0#`)+()!());"(()!0#,!0;(0#`)!!0)"]
+t[`temporalStrand;(2026.01.01 2026.01.02;12:00:00.000 13:00:00.000;#2026.01.01 2026.01.02 2026.01.03;1+2026.01.01 2026.01.02;5#.[.:;,"2026.01.01 12:00:00.000";{x}])~(2026.01.01+0 1;12:00:00.000+0 3600000;3;2026.01.02+0 1;"'type");1]   / digest #65: a strand of one kind is a list, as q
+t[`groupMixedRank;(=(1;"ab");=(1 2;1);=(1;"ab";1);(1;"ab")?"ab";((1;"ab")!10 20)"ab";5#.[?;(("ab";"cd");1);{x}]);((1;"ab")!(,0;,1);(1 2;1)!(,0;,1);(1;"ab")!(0 2;,1);1;20;"'rank")]   / digest #29: as q
+t[`dictEmptyBoth;`k@((()!())+#'=0#`;(#'=0#`)+()!());"(()!();(0#`)!!0)"]
+/ digest #23 #25 #26: a key on one side passes its value through; x's repeated keys stay
+t[`dictOneSide;((`a`b!1 2)|`c!,1 2;(`a`b!(1 2 3;3))|`a`c!(5;6 7);(`a`b!0x0102)|`b`c!0x0304;(`a`b!0x0102)&`b`c!0x0304);(`a`b`c!(1;2;1 2);`a`b`c!(5 5 5;3;6 7);`a`b`c!0x010304;`a`b`c!0x010204)]
+t[`dictRepeatKey;((`a`a!1 2)+`a!10;(`a`a!1 2)*`b!3);(`a`a!11 2;`a`a`b!1 2 3)]
+t[`dictEachJoin;(`a`b!1 2),'(1 2!3 4);(`a;`b;1;2)!1 2 3 4]
+t[`dictSameKeys;((`a`b!1 2)+`a`b!10 20;(`a`b!1 2)|`a`b!0 5;(`a`b!1 2.0)%`a`b!2 4);(`a`b!11 22;`a`b!1 5;`a`b!0.5 0.5)]
 
 / ---- an error with a computed message reads its text before releasing it ----
 t[`errComputedText;*"\n"\.[{`err "ab",x};,"cd";{x}];"'abcd"]
@@ -779,6 +797,11 @@ t[`strandMinusKinds;`k@'(1 -2-0.5<1;01b-0.5<1);("0 -3";"-1 0")]   / a spaced str
 tv[`strandMinusUses;"(\"abc\"@2-0.5<1;!3-0.5<1)";("b";0 1)]   / as an index and a count (2.4.1: 'type)
 t[`strandMinusIntKinds;`k@'(0N-0.5<1;1-0xef;0-1 0.5<1);("9223372036854775807";"18";"0 -1")]   / an int null wraps, hex is an int, a spaced strand after the - (2.4.1: floats)
 t[`strandMinusBigInt;ER"99999999999999999999-0.5";"'limit"]   / an int literal past 64 bits is 'limit, as on its own (2.4.1 read it as a float here)
+/ digest #27: temporal arithmetic outside the documented cases is 'type (issue #18), a null int 'domain, x:y is y
+t[`temporalKept;(2026.07.30+1;1+2026.07.30;2026.07.30-1;2026.07.30-2026.07.29;10:00:00.000+00:00:01.000;2026.07.30&2026.07.29;2026.07.30<2026.07.31)~(2026.07.31;2026.07.31;2026.07.29;1;10:00:01.000;2026.07.29;1);1]
+t[`temporalType;ER'("2026.07.30+2.3";"2026.07.30*2";"2026.07.30%2";"2!2026.07.30";"2026.07.30+2026.07.30");5#,"'type"]
+t[`temporalNull;ER"2026.07.30+0N";"'domain"]
+t[`temporalAmend;@[2#2026.07.30;0;:;2026.08.01]~(2026.08.01;2026.07.30);1]
 t[`strandMinusDate;((1-2024.01.01)~1976.01.02;(`i$1-12:00:00.000)~-43199999);11b]   / an int minus a date or a time (2.4.1: the int read as a float and its bits used, 1976.01.01 and -12:00:00.000, -43200000 ms)
 
 / ---- assigning a table's cell by row amends just that column ----
@@ -869,7 +892,140 @@ t[`amendKeepHeapIndexWide;{f:{L8[4294967296;`a]:7};L8::(1 2;3 4);r:{.[x;,0;{`err
 G1:1 2 3;N1.v:4 5 6
 t[`amendByNameListRefused;{r:{.[x;,0;{`err}]}'20#({.[,`G1;,5;:;9]};{.[`N1`v;,0 1;:;7 8 9]});(?r;G1;N1.v;. "1+1")}[];(,`err;1 2 3;4 5 6;2)]   / the name was released twice
 
-hexpect[535]
+/ ---- float literals, `F$ and JSON numbers are correctly rounded (issue #5) ----
+/ fb gives a float's 64 bits, high byte first, so these check the exact double read
+fb:{8#|-8!x}
+t[`floatRound1e308;fb 1e308;0x7fe1ccf385ebc8a0]
+t[`floatRoundTieEven;fb 9007199254740993.0;0x4340000000000000]   / 2^53+1, halfway: ties to even
+t[`floatRoundMax;fb 1.7976931348623157e308;0x7fefffffffffffff]   / the largest double, not 0w
+t[`floatRound1em308;fb 1e-308;0x000730d67819e8d2]
+t[`floatRoundSubMax;fb `F$"2.2250738585072011e-308";0x000fffffffffffff]   / the largest subnormal
+t[`floatRoundSubMin;fb 5e-324;0x0000000000000001]
+t[`floatRoundHalfMinUp;fb `F$"2.4703282292062328e-324";0x0000000000000001]   / just over half the smallest subnormal
+t[`floatRoundHalfMinDown;fb `F$"2.4703282292062327e-324";0x0000000000000000]
+t[`floatRound2e53Exact;fb 1801439850948199.0;0x431999999999999c]   / below 2^53, but its digits with the .0 are not: the old reader rounded twice
+t[`floatRoundBig;fb 4.3501401714533576e18;0x43ce2f66b80d512f]
+/ more than 780 significant digits: the ones past that still decide a tie (here the digit 801 places after the point)
+t[`floatRoundLongTie;fb `F$"9007199254740993.",800#"0";0x4340000000000000]
+t[`floatRoundLongSticky;fb `F$"9007199254740993.",(800#"0"),"1";0x4340000000000001]
+t[`floatRoundLongInt;fb `F$"9007199254740993",(790#"0"),"1e-791";0x4340000000000001]
+t[`floatRoundEmptyExp;(1.5e;1e-);1.5 1.0]   / an exponent with no digits counts as 0, as before
+/ JSON numbers go through the same reader
+t[`jsonRound;fb'`j?"[0.3,2.5e-5,0.123456789]";(0x3fd3333333333333;0x3efa36e2eb1c432d;0x3fbf9add3739635f)]
+t[`jsonRoundMax;fb `j?"1.7976931348623157e308";0x7fefffffffffffff]
+t[`jsonRoundSub;fb `j?"5e-324";0x0000000000000001]   / was 'parse (q: these bits too)
+t[`jsonRoundHuge;`j?"[1e309,-1e309,1e-400]";(0w;-0w;0.0)]   / were 'parse; q: 0w -0w 0
+t[`jsonRoundExp;`j?"-0.5E+2";-50.0]
+te[`jsonRoundNoExpDigits;"`j?\"[1e,2]\""]   / an exponent needs a digit, as in q
+te[`jsonRoundTwoSigns;"`j?\"1e+-5\""]   / one sign, as in q (the old reader read about 1e-5)
+t[`floatRoundLongOffset;fb `F$"0.",(400000#"0"),"17976931348623157e400309";0x7fefffffffffffff]   / a long exponent against a long offset (17 digits)
+t[`floatRoundLongDigitsOffset;fb `F$"0.",(200000#"0"),(26#"1"),"e200030";0x45f6704f4fab27ec]   / 26 digits, past Clinger's step: decided from the first 19 digits, with the long exponent and the long offset summed
+t[`floatRoundHugeExp;`k@(1e9999999999999999999;1e-9999999999999999999;`F$"1e9999999999999999999";`F$"-1e-9999999999999999999");"0w 0.0 0w -0.0"]   / an exponent past 64 bits saturates (it wrapped, reading backwards)
+t[`jsonRoundInRange;`j?"1000e-310";1e-307]   / was 'parse: only the exponent was past 308
+t[`jsonRoundLong;fb'`j?"[3.1000000000114159265358979,-0.1000000000000000055511151231257827021181583404541015625,0.000000000000000000000000123456789012345678901]";(0x4008cccccccd3137;0xbfb999999999999a;0x3ac31aa094e075f3)]   / more than 19 digits: decided by the first 19
+t[`jsonRoundLongTie;fb'`j?"[9007199254740993.0000000000000000000,9007199254740993.000000000000000000001]";(0x4340000000000000;0x4340000000000001)]   / 2^53+1 in 35 and 37 digits: a tie (to even), and just past one
+t[`floatRound20Nines;fb `F$"9999999999999999999.9";0x43e158e460913d00]   / 20 digits: the first 19, plus one, make 10^19
+
+/ ---- flip: an atom value is enlisted; bit lists; empty lists of tables (upstream ngn/k 7bf994cd) ----
+t[`flipAtom;`k@+(,`a)!,{x};"+(,`a)!,,{x}"]
+t[`flipCols;`k@+`a`b!(1 2;3 4);"+`a`b!(1 2;3 4)"]
+t[`flipEmptyTable;(`k@([]);#!+([]);#. +([]));("+(0#`)!0#,::";0;0)]   / ([]) stays as it was (ngn/k enlists the empty values here)
+t[`flipEmptyTables;(`k@+0#,(+`a`b!(1 2;3 4));`k@+0#,,`a`b!1 2);("(0#,`a`b!0N 0N;0#,`a`b!0N 0N)";",0#,`a`b!0N 0N")]   / empty lists of tables: the prototype was read before it was set; empty lists of dicts, as in ngn/k
+t[`flipBits;(+(01B;01B);+(101B;010B));((0 0;1 1);(1 0;0 1;1 0))]   / lists of bit booleans, read as bits
+t[`flipBits8;*+8#,11B;8#1]   / each column was read as 8-byte words of the lists
+
+/ ---- odometer of a list of dicts uses their values (upstream ngn/k d99849c6) ----
+t[`tilDicts;!(`a`b!1 2;`c`d!3 4);(1 1 2 2;3 4 3 4)]
+t[`tilLists;!(1 2;3 4);(1 1 2 2;3 4 3 4)]
+t[`tilDictLast;!(,1;,2;,3;,4;5 6;`a`b!7 8);(1 1 1 1;2 2 2 2;3 3 3 3;4 4 4 4;5 5 6 6;7 8 7 8)]   / a dict after the first four items
+t[`tilAtomDict;.[!:;,(1;`a`b!3 4);{`e}];`e]   / an atom item still fails, with a dict beside it
+t[`tilKeyed;`k@!((+(,`k)!,1 2)!+(,`v)!,3 4;1 2);"(+(,`v)!,3 3 4 4;1 2 1 2)"]   / a keyed table uses its value table
+
+/ ---- an empty general list whose prototype is a dict stays a list, not a table (upstream ngn/k d99849c6) ----
+t[`takeEmptyDictFirst;`k@'(0#((,`a)!,0;0);0#(1 2!3 4;0);0#(`a`b!1 2;`c`d!3 4));("0#,(,`a)!,0N";"0#,1 2!0N 0N";"0#,`a`b!0N 0N")]   / these were empty tables, the second with int columns
+t[`takeEmptyDictShape;*0#(`a`b!(0;0 0);0N);`a`b!(0N;0N 0N)]
+t[`takeEmptyTable;`k@'(0#(`a`b!1 2;`a`b!3 4);0#,`a`b!1 2);("+`a`b!(!0;!0)";"+`a`b!(!0;!0)")]
+t[`dropEmptyDictFirst;`k@2_((,`a)!,0;1 2);"0#,(,`a)!,0N"]
+/ reshaping such a list is 'nyi, as reshaping a table is (it read a table as rows of a list: crashes, heap addresses, a loop)
+t[`reshapeEmptyDicts;4#.[.:;,"2 0#0#(`a`b!1 2;0)";{x}];"'nyi"]
+t[`reshapeDroppedDicts;4#.[.:;,"2 0N#2_(`a`b!1 2;3)";{x}];"'nyi"]
+t[`reshapeAmendedDicts;4#.[.:;,"2 2#@[(`a`b!1 2;0);1;:;`a`b!3 4]";{x}];"'nyi"]
+t[`reshapeMixedDicts;4#.[.:;,"1 0#(1 2!3 4;`a`b!(1;`c`d!3 4))";{x}];"'nyi"]
+/ an amend of an empty table that reaches no row gives the table back; one that reaches the null row (an elided index, :: anywhere in it) makes the table from what it gives
+t[`amendEmptyTable;`k@'(@[0#+`a`b!(1 2;3 4);!0;:;()];.[0#+`a`b!(1 2;3 4);(!0;`a);:;()];@[0#+`a`d!(1 2;(`x`y!1 2;`x`y!3 4));!0;:;()]);("+`a`b!(!0;!0)";"+`a`b!(!0;!0)";"+`a`d!(!0;+`x`y!(!0;!0))")]
+t[`amendEmptyElided;`k@'(@[0#+`a`b!(1 2;3 4);::;{x,`c!9}];@[0#+`a`b!(1 2;3 4);::;{1#x}];@[0#+`a`b!(1 2;3 4);(!0;::);{x,`c!9}]);("+`a`b`c!(!0;!0;!0)";"+(,`a)!,!0";"+`a`b`c!(!0;!0;!0)")]
+/ an @ amend of an empty table at rows and then columns is 'type, as in ngn/k (2.4.1 gave the table)
+t[`amendEmptyMixed;5#.[.:;,"@[0#+`a`b!(1 2;3 4);(!0;`a);{x}]";{x}];"'type"]
+
+/ ---- take of keys from a dict whose keys are lists or a table (upstream ngn/k 5f50f8e3, d3b72007) ----
+t[`takeListKey;4#.[.:;,"(1 2)#(1 2;3 4)!5 6";{x}];"'nyi"]   / one list key, not a list of them (it gave 1 2!5, two keys and one value)
+t[`takeListKeys;(1 2;3 4)#(1 2;3 4)!5 6;(1 2;3 4)!5 6]
+t[`takeSymKeys;`a`c#`a`b`c!1 2 3;`a`c!1 3]
+t[`takeEmptyDict;`k@'(`a`b#()!();1 2#()!();(,`a)#()!();(0#`)#()!());("`a`b!\"\"";"1 2!\"\"";"(,`a)!\"\"";"(0#`)!\"\"")]   / the empty dict ()!() takes any keys, as on 2.4.1 (ngn/k: 'nyi)
+/ a keyed table's keys are a table: reshape or a key list one rank down is 'nyi (they crashed)
+t[`reshapeKeyed;4#.[.:;,"2 2#((+(,`k)!,1 2)!+(,`v)!,3 4)";{x}];"'nyi"]
+t[`reshapeKeyedNull;4#.[.:;,"0N 2#((+(,`k)!,1 2)!+(,`v)!,3 4)";{x}];"'nyi"]
+t[`reshapeKeyedEmpty;4#.[.:;,"2 0#=0#,`a`b!1 2";{x}];"'nyi"]
+t[`takeKeyedSyms;4#.[.:;,"(,`x)#((+(,`k)!,1 2)!+(,`v)!,3 4)";{x}];"'nyi"]
+/ keys of the other kind (chars against numbers): the lookup is 'type, as find is since 2.4.0, and the take passes it up (it crashed, even under a trap)
+t[`takeKeysCharsNums;(5#.[{"ab"#x};,1 2!3 4;{x}];5#.[{1 2#x};,"xy"!3 4;{x}]);("'type";"'type")]
+/ a failed lookup releases only the dict: the key list belongs to the caller (shared here, used again)
+t[`takeKeysFailShared;{k:"ab",();k2:1 2,!0;r:{5#.[#;(x;y);{x}]}[k]'4#,1 2!3 4;r2:{5#.[#;(x;y);{x}]}[k2]'4#,((1 2;3 4);(5 6;7 8))!9 10;(r;r2;k;k2)}[];(4#,"'type";4#,"'rank";"ab";1 2)]
+
+/ ---- a failed assignment below a dict key, to a table, or into an atom leaves the variable ----
+t[`amendKeepDictIndex;(IA["D1:`a`b!(1 2;3 4)";"D1[`a;7]:9"];IA["D2:`a`b!(1 2;3 4)";"D2[`a`b;5]:9"];IA["D3:`a`b!(1 2;3 4)";"D3[`a;7]+:9"]);3#,(`err;`a`b!(1 2;3 4))]
+t[`amendKeepDictElided;IA["D4:`a`b!(1 2;3 4)";"D4[;5]:9"];(`err;`a`b!(1 2;3 4))]
+t[`amendKeepDictLength;(IA["D5:`a`b!(1 2;3 4)";"D5[`a`b]:1 2 3"];IA["D6:`a`b!(1 2;3 4)";"D6[`a;0 1]:7 8 9"]);2#,(`err;`a`b!(1 2;3 4))]
+t[`amendKeepSymbolIndex;IA["D7:`a`b!(1 2;3 4)";"D7[`a;`x]:9"];(`err;`a`b!(1 2;3 4))]   / a symbol indexes no list: 'type
+t[`amendKeepTableLength;(IA["T1:+`a`b!(1 2;3 4)";"T1[`a]:5 6 7"];IA["T2:+`a`b!(1 2;3 4)";"T2[`c]:5 6 7"]);2#,(`err;+`a`b!(1 2;3 4))]
+t[`amendKeepTableIndex;(IA["T3:+`a`b!(1 2;3 4)";"T3[5]:`a`b!9 9"];IA["T4:+`a`b!(1 2;3 4)";"T4[`a;5]:9"];IA["T5:+`a`b!(1 2;3 4)";"T5[5;`a]:9"]);3#,(`err;+`a`b!(1 2;3 4))]
+t[`amendKeepAtom;(IA["V1:5";"V1[0]:9"];IA["V2:`a`b!(1;2)";"V2[`a;0]:9"]);((`err;5);(`err;`a`b!1 2))]   / an index into an atom: 'type
+t[`amendKeepTemporalAtom;(IA["V6:2020.01.01";"V6[0]:9"];IA["D22:`a`b!(2020.01.01;2)";"D22[`a;0]:9"]);((`err;2020.01.01);(`err;`a`b!(2020.01.01;2)))]
+t[`amendKeepListDeepLength;IA["L1:(1 2;3 4)";"L1[0;0 1]:7 8 9"];(`err;(1 2;3 4))]
+t[`amendDictStillWorks;(IA["D8:`a`b!(1 2;3 4)";"D8[`z;0]:9"];IA["D9:`a`b!(1 2;3 4)";"D9[`c]:5 6 7"];IA["D0:`a`b!(1 2;3 4)";"D0[`a;0]:9"]);((::;`a`b`z!(1 2;3 4;9 0N));(::;`a`b`c!(1 2;3 4;5 6 7));(::;`a`b!(9 2;3 4)))]
+t[`amendTableStillWorks;(IA["T6:+`a`b!(1 2;3 4)";"T6[`a]:9"];IA["T7:+`a`b!(1 2;3 4)";"T7[0;`a]:9"];IA["T8:+`a`b!(1 2;3 4)";"T8[`z;0]:9"]);((::;+`a`b!(9 9;3 4));(::;+`a`b!(9 2;3 4));(::;+`a`b`z!(1 2;3 4;9 0N)))]
+t[`amendTablesBelowList;(IA["L2:(+`a`b!(1 2;3 4);+`a`b!(1 2;3 4))";"L2[0 1;`c]:(5 6;7 8)"];IA["T10:+`a!,1 2 3";"T10[`a]:7 8"]);((::;(+`a`b`c!(1 2;3 4;5 6);+`a`b`c!(1 2;3 4;7 8)));(::;+(,`a)!,7 8))]   / a column below a list index; the only column may take another count
+t[`amendByNameKeepDict;(IA["D11:`a`b!(1 2;3 4)";".[`D11;(`a;7);:;9]"];IA["T9:+`a`b!(1 2;3 4)";".[`T9;,`a;:;7 8 9]"];IA["V3:5";".[`V3;,0;:;9]"]);((`err;`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;5))]   / by name too
+t[`amendByNameWhole;(IA["V4:5";".[`V4;::;:;9]"];IA["V5:5";".[`V5;::;+;1]"]);((9;9);(6;6))]   / :: as the index replaces the whole value
+t[`amendTableOtherVerbs;(IA["T11:+`a`b!(1 2;3 4)";"T11[`a]~:5 6 7"];IA["T12:+`a`b!(1 2;3 4)";".[`T12;,`a;{y@x};10 20 30]"];IA["T13:+`a`b!(1 2;3 4)";".[`T13;,`c;{2#y};5 6 7]"];IA["D12:`x!,+`a`b!(1 2;3 4)";"D12[`x;`a]~:5 6 7"]);((::;+`a`b!(0 0;3 4));2#,+`a`b!(20 30;3 4);2#,+`a`b`c!(1 2;3 4;5 6);(::;(,`x)!,+`a`b!(0 0;3 4)))]   / a verb other than : gets the whole column, so only its result needs the row count
+t[`amendEmptySymbolIndex;(IA["L3:1 2 3";"L3[0#`]:9"];IA["D13:`a`b!(1 2;3 4)";"D13[`a;0#`]:9"]);((::;1 2 3);(::;`a`b!(1 2;3 4)))]   / no symbols, nothing to assign
+t[`amendDictElidedFirst;(IA["D14:`a`b!(1 2;,3)";"D14[;1]:9"];IA["D15:`a`b!(1 2;`x)";"D15[;0]:9"];IA["D16:`x`y!(`a`b!(1 2;,3);0)";"D16[`x;;1]:9"]);((::;(`a;`b;::)!(1 2;,3;0N 9));(::;(`a;`b;::)!(1 2;`x;9 0N));(::;`x`y!((`a;`b;::)!(1 2;,3;0N 9);0)))]   / an elided level adds the key :: with the first value nulled, as in ngn/k: only the first value's shape counts
+t[`amendDictMissingKey;(IA["D19:`a`b!(1 2 3;4 5)";"D19[`z;2]:9"];IA["D20:`a`b!(1 2 3;4 5)";"D20[`z;5]:9"];IA["D21:`a`b!(4 5;1 2 3)";"D21[`z`b;2]:9"]);((::;`a`b`z!(1 2 3;4 5;0N 0N 9));(`err;`a`b!(1 2 3;4 5));(`err;`a`b!(4 5;1 2 3)))]   / a missing key is added with the first value nulled, and that is what is indexed
+XS:1 2 3
+t[`amendThroughSymbol;{r:IA["D18:`a`b!(1 2;`XS)";"D18[`b;0]:9"];(r;XS)}[];((::;`a`b!(1 2;9 2 3));9 2 3)]   / a symbol atom at a level names a global, which the assignment amends (as in ngn/k), so it is not refused
+
+/ ---- an assignment along one index per level is checked and made in one walk: the same values as before ----
+t[`amendWalkNested;(IA["W1:`a`b!(1 2;`x`y!(3 4;5 6))";"W1[`b;`y;1]:9"];IA["W2:`a`b!(1 2;`x`y!(3 4;5 6))";"W2[`b;`x;0]+:10"];IA["W3:(1 2;(3;4 5))";"W3[1;1;0]:9"];IA["W12:`a`b!(1 2;`x`y!(3 4;5 6))";".[`W12;(`b;`x;0);-:]"]);((::;`a`b!(1 2;`x`y!(3 4;5 9)));(::;`a`b!(1 2;`x`y!(13 4;5 6)));(::;(1 2;(3;9 5)));2#,`a`b!(1 2;`x`y!(-3 4;5 6)))]
+t[`amendWalkNewKey;(IA["W4:`a`b!(1 2;3 4)";"W4[`z]+:1"];IA["W5:`a`b!(1 2;3 4)";"W5[`z],:`q"];IA["W6:+`a`b!(1 2;3 4)";"W6[`z]+:1"];IA["W7:`a`b!(1 2;3 4)";".[`W7;`z;+;1]"];IA["W11:(`a`b!(1 2;3 4);5)";"W11[0;`z;1]:9"]);((::;`a`b`z!(1 2;3 4;1 1));(::;`a`b`z!(1 2;3 4;,`q));(::;+`a`b`z!(1 2;3 4;1 1));2#,`a`b`z!(1 2;3 4;1 1);(::;(`a`b`z!(1 2;3 4;0N 9);5)))]   / a key that is not there is added, with the first value nulled
+t[`amendWalkTable;(IA["W8:+`a`b!(1 2;3 4)";"W8[`a;1]+:1.5"];IA["W9:+`a`b!(1 2;3 4)";"W9[1;`a]:9"];IA["W10:`a`b!(`x`y!1 2;`x`y!3 4)";"W10[`a;`x]:9"];IA["W13:+`a`b!(1 2;3 4)";"W13[0;`b]:5 6 7"]);((::;+`a`b!((1;3.5);3 4));(::;+`a`b!(1 9;3 4));(::;`a`b!+`x`y!(9 3;2 4));(::;+`a`b!(1 2;(5 6 7;4))))]   / a dict whose values are dicts of the same keys holds them as a table; a row then a column amends that column
+t[`amendWalkShared;{p:(1 2;3 4);q:p 1;p[1;0]:9;d:`a`b!(1 2;3 4);e:d`a;d[`a;0]:9;s:+`a`b!(1 2;3 4);u:s`a;s[`a;0]:9;(p;q;d;e;s;u)}[];((1 2;9 4);3 4;`a`b!(9 2;3 4);1 2;+`a`b!(9 2;3 4);1 2)]   / an item amended in place is not one held elsewhere
+t[`amendWalkResult;{p:(1 2;3 4);r:p[1;0]+:5;(r;p)}[];(8;(1 2;8 4))]
+
+/ ---- where the walk stops short below a key, or meets a list of keys above the last level, the assignment goes on from there: the same values as before, and where it fails (X6, Y8, Y9) the same error, with the variable now kept ----
+t[`amendWalkStopShort;(IA["X1:`a`b`c!(1 2 3;4 5 6;7 8 9)";"X1[`c;0 1]:5 6"];IA["X2:`a`b`c!(1 2 3;4 5 6;7 8 9)";"X2[`c;]:5"];IA["X3:+`a`b!(1 2 3;4 5 6)";"X3[`b;0 1]:7 8"];IA["X5:`a`b`c!(1 2 3;4 5 6;7 8 9)";".[`X5;(`c;0 1);:;5 6]"];IA["X6:`a`b`c!(1 2 3;4 5 6;7 8 9)";"X6[`c;0 1 5]:5"]);((::;`a`b`c!(1 2 3;4 5 6;5 6 9));(::;`a`b`c!(1 2 3;4 5 6;5 5 5));(::;+`a`b!(1 2 3;7 8 6));2#,`a`b`c!(1 2 3;4 5 6;5 6 9);(`err;`a`b`c!(1 2 3;4 5 6;7 8 9)))]
+XH:1 2 3
+t[`amendWalkStopSymbol;{r:IA["X4:`a`b!(1 2;`XH)";"X4[`b;0 1]:7 8"];(r;XH)}[];((::;`a`b!(1 2;7 8 3));7 8 3)]   / below a key, a symbol names a global, which is amended by name
+t[`amendWalkKeyList;(IA["Y1:`a`b`c!(1 2 3;4 5 6;7 8 9)";"Y1[`b`c;0]:7 8"];IA["Y2:`a`b`c!(1 2 3;4 5 6;7 8 9)";"Y2[`b`b;0]+:1"];IA["Y3:`a`b`c!(1 2 3;4 5 6;7 8 9)";"Y3[`b`z;0]:7"];IA["Y4:+`a`b!(!5;!5)";"Y4[`a`b;0]:7"];IA["Y5:`a`b!(`x`y!(1 2;3 4);`x`y!(5 6;7 8))";"Y5[`a;`x`y;0]:9"];IA["Y6:`a`b`c!(1 2 3;4 5 6;7 8 9)";".[`Y6;(`b`c;0);-:]"];IA["Y7:`x`y!(`a`b!(1 2;3 4);`a`b!(5 6;7 8))";"Y7[`x`y;`b]:(7 8;9 9)"];IA["Y8:`a`b`c!(1 2 3;4 5 6;7 8 9)";"Y8[`b`c;0 9]:7"];IA["Y9:`a`b!(`x`y!(1 2;3 4);`x`y!(5 6;7 8))";"Y9[`a;`x`y;5]:9"]);((::;`a`b`c!(1 2 3;7 5 6;8 8 9));(::;`a`b`c!(1 2 3;6 5 6;7 8 9));(::;`a`b`c`z!(1 2 3;7 5 6;7 8 9;7 0N 0N));(::;+`a`b!(7 1 2 3 4;7 1 2 3 4));(::;`a`b!+`x`y!((9 2;5 6);(9 4;7 8)));2#,`a`b`c!(1 2 3;-4 5 6;-7 8 9);(::;`x`y!+`a`b!((1 2;5 6);(7 8;9 9)));(`err;`a`b`c!(1 2 3;4 5 6;7 8 9));(`err;`a`b!+`x`y!((1 2;5 6);(3 4;7 8))))]   / found once, at the places the check found; a key not there is added, as before
+t[`amendFunctionInVariable;({r:IA["F1:(1;(2;{FR::F1[1;0];x>1}))";"F1[1;1]#:1 2 3"];(r;FR)}[];{r:IA["F3:(1;(2;{FR::F3[1;0];x>1}))";"F3[1;1]_:1 2 3"];(r;FR)}[];IA["F2:(0;(1;(2;{F2[1;0]:5;x>1})))";"F2[1;1;1]#:1 2 3"]);(((::;(1;(2;2 3)));2);((::;(1;(2;,1)));2);(::;(0;(1;(2;2 3)))))]   / f#y and f_y call f, here an item of the variable, which sees the variable whole, and may amend it
+XW:`a`b!(1 2;3 4)
+t[`amendSelfByName;{r:{.[.:;,x;{`err}]}'("SV1:`a`b!(`SV1;1 2);SV1[`a;`b]:9";"SV2:`a`b!(`SV2;1 2);SV2[`a;`a]:9";"SG:`a`b!(`SV3;5 6);SV3:`a`b!(`SG;1 2);SV3[`a;`a;`b]:9";"SV4:`a`b!(`SV4;1 2);SV4[`a;`z]:9");XW[`a;0]:9;(r;{.[.:;,x;{`lost}]}'("SV1";"SV2";"SV3";"SG";"SV4");XW;+/!1000)}[];(4#`err;(`lost;`lost;`lost;::;`lost);`a`b!(9 2;3 4);499500)]   / a symbol below a key names a global, amended by name, that names the variable again, which the assignment has half amended: 'type and the variable lost, as on main (which then freed it twice; the missing key it added, to a dict it could not print)
+
+t[`amendSelfBelowStop;{r:{.[.:;,x;{`err}]}'("SD1:(0;((`SD1;0);(`SD1;1)));SD1[1;0 1;0;1]:9";"SD2:(0;`a`b!(`SD2;`SD2));SD2[1;`a`b;1]:9";"SD3:(0;+`a`b!(`SD3`SD3;1 2));SD3[1;0;`a;1]:9";"SD4:(0;((`SD4;0);(`SD4;1)));SD4[1;;0;1]:9");XW[`a;0]:8;(r;{.[.:;,x;{`lost}]}'("SD1";"SD2";"SD3";"SD4");XW;+/!1000)}[];(4#`err;4#`lost;`a`b!(8 2;3 4);499500)]   / an amend by name below where the walk stopped (a list of indices, an elided level, a list of keys, a row) that names the variable, which the assignment has items out of: 'type before it is touched, and the variable lost; on main it read freed memory or crashed
+
+/ ---- `ejx (y's keys;x's keys): the rows of an equi-join, (rows of x;rows of y) ----
+/ Each row of x in order, with every row of y that has its key, in y's order (amber.k's
+/ ej). Keys compare as find does: -0.0 is 0.0, NaN is NaN, null is null, integers of any
+/ width by value. y with a repeated key takes another path, with more than four rows to a
+/ key in ejxRepeats. Keys it does not take (chars here) give () and ej's K path.
+t[`ejxUnique;`ejx(`a`b`c;`c`d`a`c);(0 2 3;2 0 2)]
+t[`ejxRepeats;`ejx(1 2 1 1 1 1 2;1 3 2);(0 0 0 0 0 2 2;0 2 3 4 5 1 6)]
+t[`ejxFloat;`ejx(0.0 0n 1.5;-0.0 0n 2.0 0.0);(0 1 3;0 1 0)]
+t[`ejxWide;`ejx(5000000000 -7 0N;0N 3 5000000000 -7);(0 2 3;2 0 1)]
+t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
+t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
+t[`ejxOther;`ejx("ab";"ba");()]
+
+hexpect[651]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

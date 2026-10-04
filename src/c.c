@@ -36,7 +36,7 @@ A1(sqz,P(!xtA,x)U n=xn;A y=xx;C t=yt;
        I a=0;F(n,I v=xi;a|=v^v>>31)t=tZ(a);P(t==tI,x)
        A y=an(n,t);G(&cGI,cHI)[t-tG](yV,xV,n);x(y))
    R3(tf,tc,ts,F(n,P(_t(xa)-t,x))sqzA(x,TT[t]))
-   Rm(F(n,P(_t(xa)-tm||!mtc_(yx,_x(xa)),x))y=aM(_R(yx),e1f(rs0,_R(yy)));F(n,PSH(y,_R(xa)))x(y))
+   Rm(P(!n,x)F(n,P(_t(xa)-tm||!mtc_(yx,_x(xa)),x))y=aM(_R(yx),blw(e1f(rs0,_R(yy))));F(n,PSH(y,_R(xa)))x(y))
    R_(x))0)
 X1(blw,RA(x)Rt(aA1(x))Rm(et(x))R_(U n=xN;A y=aA(n);F(n|!n,ya=ii(x,i))x(0);I(!n,yx=mkn(yx))y))
 A1(gZ,Lij x(0);P(i<0,x=az(i);x(add(x,gZ(aE(0,j-i)))))C t=MAX(tZ(i),tZ(j-1));x=an(j-i,t);tilV(xV,i,j-i,t-tG);x)

@@ -23,7 +23,7 @@ G:100!H
 NX:@[X;3 7 11;:;0n]                 / with NaNs
 ZX:@[X;5;:;-0.0]                    / with a negative zero
 S1:`$'"s",/:$100!H
-sh:{"  ",($@x)," ",$x}
+sh:{"  ",($@x)," ",$[(@x)in`A`m`M;`k x;$x]}   / general lists, dicts and tables through `k: $x of one is not a string, which `0: refused (digest #78)
 p:{`0:sh x}
 pk:{`0:`k x}                          / dicts and tables: the REPL formatter
 / ---- fused reductions --------------------------------------------------------
@@ -84,7 +84,7 @@ glast[G;X]~{[v;i]*|v i}[X]'=G
 gsum[100000!H;X]~{[v;i]+/v i}[X]'=100000!H
 (sel"select sum px by sym from T")~qby[T;`sym;(,`px)!,{sum x`px}]
 (sel"select sum px,avg sz by sym from T")~qby[T;`sym;`px`sz!({sum x`px};{avg x`sz})]
-(sel"select min px,max px,count px by g from T")~qby[T;`g;`px`px`px!({min x`px};{max x`px};{count x`px})]
+(sel"select min px,max px,count px by g from T")~qby[T;`g;`px`px1`px2!({min x`px};{max x`px};{count x`px})]
 (sel"select sum px by sym,g from T")~qby[T;`sym`g;(,`px)!,{sum x`px}]
 (sel"select sum px by sym from T where sz>250")~qby[qwhere[T;T[`sz]>250];`sym;(,`px)!,{sum x`px}]
 
@@ -132,10 +132,10 @@ p[(noat desc FN)~noat FN@idesc FN]
 p[(noat desc FW)~noat FW@idesc FW]
 p[(noat desc L1)~noat L1@idesc L1]
 p[(noat asc asc FN)~noat asc FN]
-p[(noat asc |asc FN)~noat asc FN]
+p[(noat asc[|asc FN])~noat asc FN]   / asc applied to the reversal (asc |x is a max of asc and x: digest #78)
 p[asc 0#0.0]; p[asc ,1.5]; p[asc 1.5 0.5]; p[asc 100#,1.5]
 p[asc (0n;0w;-0w;0.0;-0.0;1.5;-1.5)]
-p[asc (0W;0;1;-1;0N)]
+p[asc (9223372036854775807;0;1;-1;0N)]
 p[desc (0n;0w;-0w;0.0;-0.0;1.5;-1.5)]
 p[asc "zyxabc"]
 p[`at asc FN]; p[`at asc FW]; p[`at asc 0.5+`f$!100]

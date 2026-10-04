@@ -445,6 +445,9 @@ Z X1(fndGx,
  R3(tH,tI,tL,fndGxW(x)))
 // does a needle (a generic list, at any depth) hold a number for a char haystack (c), or a char for a number one?
 Z B fmx(A x,B c)_(P(xtA,F(xn,P(fmx(xa,c),1))0)c?LH(tE,xt,tF)||LH(ti,xt,tf):xtC||xtc)
+// amber 2.7: find in an empty general list: nothing is there, so 0N. The rank test below read the empty list's
+// placeholder slot and called an atom the wrong rank: ()?`a was 'rank. A list y keeps its old answer, one 0N.
+Z A fnd0(A y)_(P(_tt(y),y(az(NL)))U n=_N(y);A z=aL(n);F(n,zL[i]=NL)y(z))
 X2(fnd,
  R_(et(y))
  Rm(i1(xx,N(fnd(xy,y))))
@@ -453,7 +456,7 @@ X2(fnd,
  // The rank of x's first item says whether y is one item or a list of them; when the items differ in rank, y may be
  // one of them all the same, so it is looked for whole first ((1;"ab")?"ab" is 1, it was 0N 0N). An x of one rank
  // never matches there, so it is only a scan more on these two paths (digest #29)
- RA(U k=urnk(x),l=urnk(y);I(k-l-1,F(xn,P(mtc_(xa,y),y(az(i)))))P(k<l+1,r2f(fnd,x,y))P(k>l+1,er(y))
+ RA(U k=urnk(x),l=urnk(y);I(k-l-1,F(xn,P(mtc_(xa,y),y(az(i)))))P(k<l+1,r2f(fnd,x,y))P(k>l+1,xn?er(y):fnd0(y))
   X(RA(F(xn,P(mtc_(xa,y),y(az(i))))y(az(NL)))
     R_(F(xN,A z=ii(x,i);I m=mtc_(z,y);z(0);P(m,y(az(i))))y(az(NL))))0)
  RB(x=cG(xR);x(fnd(x,y)))

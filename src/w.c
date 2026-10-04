@@ -67,7 +67,7 @@ Z A3(ls2,/*010*/Y(Ril(ns(x,gl(y),zR))RU(y(ws(x,y,zR)))R_(et(y)))0)
 Z A3(lf2,/*010*/Y(Ril(nf(x,gl(y),zR))RU(y(wf(x,y,zR)))R_(et(y)))0)
 Z AX(ls8,/*01..1*/A y=*a;P(n==2,A z=a[1];z(ls2(x,y,z)))Y(Ril(nS(x,gl(y),a+1,n-1))RU(y(wS(x,y,a+1,n-1))))et8(a,n))
 Z AX(lf8,/*01..1*/A y=*a;P(n==2,A z=a[1];z(lf2(x,y,z)))Y(Ril(nF(x,gl(y),a+1,n-1))RU(y(wF(x,y,a+1,n-1))))et8(a,n))
-X1(raz,RA(U n=0;F(xn,n+=_N(xa))A y=xx;y=ytT&&!ytA?AN(0,an(n,ytE?tG:yt)):aA0(n);F(xn,y=Nx(cat10(y,xa)))x(y))Rm(raz(val(x)))R_(x))
+X1(raz,RA(P(xn==1&&!_tP(xx)&&_t(xx)<tM,A r=_R(xx);x(r))U n=0;   /*2.7: raze of one list is that list, as q*/ F(xn,n+=_N(xa))A y=xx;y=ytT&&!ytA?AN(0,an(n,ytE?tG:yt)):aA0(n);F(xn,y=Nx(cat10(y,xa)))x(y))Rm(raz(val(x)))R_(x))
 A ucb(A),cub(A);
 #define MMC (xtv&&xv-6<2u)                   //& |: of chars only, unsigned, a char back, as the verb does with two chars (issue #17)
 #define CA (xtv&&xv<11&&xv&&xv-5&&xv-8>1u)  //+ - * % & | =: f/ f\ read chars as ints, as the verb does with a number

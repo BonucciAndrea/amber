@@ -56,7 +56,9 @@ Z A0(pC,C a[1<<9];U n=0;C c=*++s;A x=0;                                         
  W(c&&c-'"',I(n==L(a),A c_=aV(tC,n,a);x=x?cat11(x,c_):c_;n=0)I(c=='\\',c=*++s;B(!c)U i=fG("tnr0",4,c);I(i<4,c="\t\n\r"[i]))a[n++]=c;c=*++s)
  P(!c,x?x(ep0()):ep0())s++;A c_=aV(tC,n,a);x?cat11(x,c_):c_)
 Z A0(p0x,S p=s;W(CA9(*p),p++)A x=N(unhC(s,p-s));s=p;x)                                              //parse 0x string
-Z A0(ps,S p=s;C c=*s;I(id0(c),s=pID(s))J(c>>7,W(*++s<-64)s+=*s==':')aCm(p,s))                       //parse symbol
+// amber 2.7: `:path/to/file is one symbol, as in q: after `: come letters, digits and . / _ - :
+Z B pfh(C d)_(CA9(d)||d=='.'||d=='/'||d=='_'||d=='-'||d==':')
+Z A0(ps,S p=s;C c=*s;I(id0(c),s=pID(s))J(c>>7,W(*++s<-64)s+=*s==':')J(c==':',W(pfh(*++s)))aCm(p,s))  //parse symbol
 // amber 2.2: `w` says whether whitespace may PRECEDE an item.
 // A parameter list may: `{[a; b]x}` and `{[ a;b]x}` are ordinary spellings and
 // used to be a bare syntax error pointing at the whole lambda, which is a

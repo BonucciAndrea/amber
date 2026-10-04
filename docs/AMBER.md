@@ -478,6 +478,33 @@ Since 2.3 an attribute gets checked when you set it, like q: `` `sa`` on unsorte
 `'s-fail` (same idea for `'u-fail`, `'p-fail`). Writing into the vector in place drops it.
 Before that, `s[0]:9000` on a sorted `s` kept `` `s``, and `s?9000` said `0N`.
 
+### Setting them the q way (since 2.7.0)
+
+```q
+`s#1 2 3          / sorted        `s#3 1 2 is 's-fail
+`u#`a`b`c         / unique        `u#1 1 2 is 'u-fail
+`p#1 1 2 2        / parted        `p#1 2 1 is 'p-fail (q says 'u-fail there; we kept the clearer name)
+`g#`a`b`a         / grouped       anything goes
+`#x               / take it off
+attr x            / `s `u `p `g, or ` for none
+```
+
+It works the way kdb+ 4.1 does, checked case by case against q.exe: every list can carry one (dates,
+times, chars, bools and general lists too), an atom is `'type`, `` `p `` on a general list is `'type`.
+Some table and dict rules:
+
+* `` `s#t `` wants the whole table in row order. The table is `` `s `` and its first column gets
+  `` `s `` (one column) or `` `p `` (more). `` `u `` `` `p `` `` `g `` on a table or dict is `'type`.
+* `` `s#d `` on a dict (or keyed table) checks the keys and makes lookups step: `` (`s#1 3 5!`a`b`c) 4 ``
+  is `` `b ``, the value at the last key not above 4. Below the first key you get a null.
+* What keeps one is what q keeps: `asc` gives `` `s ``, `distinct` keeps `` `s `` and turns `` `u ``/`` `g ``
+  into `` `u ``, and anything that hands back the same list (`(count x)#x`, `x,()`, `raze enlist x`).
+  `reverse`, appends, indexing, arithmetic and amends drop it.
+* `` update `g#a from t `` and `` select `s#a from t `` work, and the column keeps its name.
+
+`tests/test_attr.k` has 508 of these cases with q's answers written in, and the session fuzzer ran
+12,000 random ones against q with no difference.
+
 ### Why it makes search faster
 
 Amber’s find (`?`) and membership (`in`) on integer vectors are an **O(n) linear scan**
@@ -819,6 +846,37 @@ callback drops the refcount when the consumer finishes. `arrow.import (schemaAdd
 translating format strings and validity bitmaps (→ `0N`/`0n`/null). Numeric widths, ranges
 and symbol (utf8) columns round-trip exactly. Structs live in `a.h`, logic in `ar.c`.
 
+## 9e. On disk: splayed and partitioned tables (since 2.7.0)
+
+Binary column files that map straight into memory, laid out the way q lays out a database:
+
+```q
+`:db/t/ set t                                   / splay t: db/t/<col> per column, db/t/.d, symbols in db/sym
+t2:get `:db/t                                   / back, mapped: a 10M-row table loads in ~6 ms
+`:f set 1 2 3                                   / one value, one file
+Q.dpft[`:hdb;2026.01.02;`sym;`trade]            / one day of trade, sorted by sym with `p on it
+\l hdb                                          / map the whole database (or loaddb "hdb")
+select sum sz by sym from trade where date=2026.01.02
+```
+
+* **Columns.** A file is a 4 KB header then the data, page-aligned, so a numeric column is one
+  `mmap` and its pages come in as a query reads them. Writes go to a temp file and get renamed, so
+  a reader never sees half a file, and a map is private: changing the vector in Amber never
+  touches the disk. Symbols are stored as indexes into the database's `sym` file (it only grows).
+  Anything nested goes in as `-8!` bytes.
+* **Partitioned tables.** `\l db` (or `loaddb`) finds `db/<date or int>/<table>/` and defines each
+  table as a small dict naming its partitions. Nothing is read until a query asks.
+  `select`/`exec` keep only the partitions the where-clause allows on the partition column, then
+  map only the columns the query names. Grouped by the partition column, a query runs per
+  partition and the results get stacked, so `select sum sz by date from trade` over 10 days of
+  1M rows is ~6 ms. `update`/`delete` on one is `'par`, as q. `ptab[`trade;()]` gives the whole
+  thing as one table.
+* **Older files.** `dset`/`dget`, `splay`/`dload` and `partsave`/`partload` still work, now on
+  the binary format, and they still read the text files Amber wrote before 2.7.
+
+Two things to know: the partition column is built only when the query uses it, and a select
+spanning many partitions copies the columns it needs into one table (q maps them in place).
+
 ## 10. Strings
 
 `lower upper ltrim rtrim trim ss ssr sv vs like`
@@ -965,7 +1023,7 @@ parse/ser  parse eval reval ser deser protect          (std.k; text serialise)
 cast       long int float char sym bool cast           (std.k)
 parallel   peach (multi-core, thread pool)              (std.k) ; ts (\ts timing)
 .z/.Q/.j/.h  z.p z.d z.t … · Q.f Q.dd Q.trp Q.s … · j.j j.k (JSON) · h.ht (HTML)  (sys.k)
-on-disk    dset dget splay dload partsave partload parts   (hdb.k, text-serialised)
+on-disk    set get dset dget splay dload loaddb ptab Q.en Q.dpft partsave partload parts   (hdb.k, binary, mapped)
 ipc/tick   hopen hclose hsend hrecv hsync · u.def u.sub u.pub u.get u.end  (ipc.k)
 arrow      arrow.export arrow.import                    (Arrow C Data Interface)
 ```
@@ -982,10 +1040,10 @@ form, a large slice of q's system vocabulary:
 * **`sys.k`**: the `.z` clocks/handlers (`z.p z.P z.n z.d z.D z.t z.T z.z`; `z.pg z.ps z.po
   z.pc z.ts z.exit` are stubs), `.Q` utilities (`Q.f Q.fmt Q.s Q.ty Q.qt Q.id Q.dd Q.gc Q.w
   Q.fc Q.trp`), `.j` JSON (`j.j`/`j.k`), a minimal `.h` HTML renderer, and `plot`/`candle`.
-* **`hdb.k`**: on‑disk data: `dset`/`dget` (value ↔ file), `splay`/`dload` (splayed table ↔
-  directory, one file per column with a `.d`), `partsave`/`partload`/`parts` (value‑partitioned
-  database with `par.txt`). Storage is portable Amber text read back with `eval`: human‑readable
-  and version‑independent, but not memory‑mapped.
+* **`hdb.k`**: on‑disk data, binary and memory‑mapped since 2.7 (see §9e): `set`/`get`,
+  `dset`/`dget` (value ↔ file), `splay`/`dload` (splayed table ↔ directory, one file per column with
+  a `.d`), `Q.en`/`Q.dpft`/`loaddb`/`ptab` (partitioned databases), and the older
+  `partsave`/`partload`/`parts`. Text files from before 2.7 still read.
 * **`ipc.k`**: raw‑socket messaging (`hopen hclose hsend hrecv hsync`, a text protocol rather than the
   q binary wire) and an in‑process tickerplant (`u.def u.sub u.pub u.get u.end`).
 

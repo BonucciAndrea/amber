@@ -27,7 +27,7 @@ value:{. x}
 first:{*x}
 last:{*|x}
 reverse:{|x}
-distinct:{$[isat x;`err"type";?x]}   / An atom: 'type as q (?5 is a random deal)
+distinct:{$[isat x;`err"type";[a:`at x;r:?x;$[a~`s;`s#r;in[a;`u`g];`u#r;`#r]]]}   / An atom: 'type as q (?5 is a random deal); q's attributes: `s stays, `u and `g give `u
 group:{$[isat x;`err"type";=x]}     / =5 is the unit matrix
 where:{&x}
 flip:{+x}
@@ -111,7 +111,7 @@ rotate:{$[0=#y;y;0=n:(#y)!x;y;(n_y),n#y]}   / A multiple of the count: y as is
 / q accepts an atom on the right of all four, so this is parity as well as a fix.
 isatm:{"a"<*$@x}                                  / type symbol lowercase -> atom
 isat:{("a"<*$@x)&~`m=@x}                          / An atom, not a dict
-in:{y:$[isatm y;,y;y];r:`memb(x;y);$[`A~@r;~^y?x;r]}   / 2.1: one-pass C membership; K fallback for other types
+in:{y:$[isatm y;,y;y];$[0=#y;$[isat x;0b;(#x)#0b];[r:`memb(x;y);$[`A~@r;~^y?x;r]]]}   / 2.1: one-pass C membership; K fallback for other types
 / 2.1: fused group aggregates. `gagg (src/o.c) does acc[group]op=v in ONE pass
 / with the same first-appearance key order as =k; each wrapper keeps the
 / portable K definition as its fallback for shapes the kernel declines.
@@ -131,7 +131,7 @@ within:{[x;r](~x<r[0])&~x>r[1]}
 except:{$[cxk[x;y];x;x@&~in[x;y]]}   / Chars against numbers share nothing: x as it is, as q (digest #64)
 cxk:{c:`c`C;n:`i`I`f`F;((|/c=@x)&|/n=@y)|(|/n=@x)&|/c=@y}
 inter:{x@&in[x;y]}
-union:{?x,y}
+union:{distinct x,y}
 raze:{$[isat x;,x;,/x]}
 sublist:{n:(abs x)&#y;$[x<0;(0-n)#y;n#y]}
 cross:{,/x,/:\:y}
@@ -161,6 +161,8 @@ xcols:{[c;t]c:c,();+(c,except[cols t;c])#+t}
 xsg:{[cs;d]{[d;o;v]o@$[d;>v o;<v o]}[d]/[!#*cs;|cs]}   / Each column's own order, the last key first (stable); the rows' grade squeezed one-item rows (digest #58)
 xasc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;0b);o:$[#o;o;xsg[(+t)c;0b]];t:t@o;d:+t;+d,(1#c)!`sa'd@1#c}
 xdesc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;1b);o:$[#o;o;xsg[(+t)c;1b]];t@o}
+fills:{$[0=#x;x;x@|\(!#x)*~^x]}                    / each null takes the last value before it, as q
+attr:{`at x}                                         / q's attr: `s `u `p `g, or ` for none
 meta:{d:+unkey x;xkey[`c;+`c`t`a!(!d;{@*x}'value d;{`at x}'value d)]}
 insert:{[t;r]t,r}
 
@@ -216,7 +218,7 @@ tjmx:{[x;k]$[`A~k;|/(@'x)in`d`t`n;0b]}  / a generic column holding a date, time 
 tjsame:{[a;b]p:tjk a;q:tjk b;$[tjmx[a;p]|tjmx[b;q];`err"type";(p~q)|(`~p)|`~q;::;(p in`d`t`n)|q in`d`t`n;`err"type";::]}  / 'type when one side is temporal and the other is not the same kind
 ajm:{[c;x;y]c:c,();g:-1_c;tc:*|c;b:wjbnd[g;x;y];`aj((+y)tc;(+x)tc;b 0;b 1)}
 aj:{[c;x;y]c:c,();y:ajord[c;y];m:ajm[c;x;y];vc:except[cols y;c];+(+x),vc!{[m;yd;c](yd c)@m}[m;+y]'vc}
-aj0:{[c;x;y]c:c,();y:ajord[c;y];m:ajm[c;x;y];vc:except[cols y;-1_c];+(+x),vc!{[m;yd;c](yd c)@m}[m;+y]'vc}
+aj0:{[c;x;y]c:c,();y:ajord[c;y];m:ajm[c;x;y];vc:except[cols y;-1_c];+(+x),vc!{[m;yd;xd;tc;c]v:(yd c)@m;$[c~tc;?[^v;xd c;v];v]}[m;+y;+x;*|c]'vc}   / a row with no quote keeps its own time, as q
 asof:{[t;d]c:!d;g:-1_c;tc:*|c;td:+t;msk:$[#g;&/({[td;d;c]td[c]=d c}[td;d]'g);(#t)#1b];i:&msk&~td[tc]>d tc;$[#i;(except[cols t;c])#t[i@*|&m=|/m:td[tc]i];()]}  / the latest at or before: the last row whose time is the greatest
 
 / ---- window join wj : w=(begins;ends) aligned to t rows -----------------------
@@ -279,7 +281,8 @@ qEXACT:9007199254740992.0
 / from indexing the raw columns with each group's first row (`*:'`) -- one
 / gather per by-column, instead of a flip over every row in the table.
 qgrp:{[t;b]d:+t;bc:d b;g:$[1=#b;=*bc;qcard[bc]<qEXACT;=qenc bc;=rows[b#+t]];iv:value g;(bc@\:*:'iv;iv)}
-qby:{[t;b;a]b:b,();r:qgrp[t;b];kt:+b!r 0;iv:r 1;subs:atr[t]'iv;vt:+(!a)!{[t;subs;f]$[#subs;f'subs;qby0[f;0#t]]}[t;subs]'value a;kt!vt}
+qks:{[r]$[iskeyed r;[k:keys r;xkey[k;xasc[k;unkey r]]];r]}   / a grouped result in key order, as q gives it
+qby:{[t;b;a]b:b,();r:qgrp[t;b];kt:+b!r 0;iv:r 1;subs:atr[t]'iv;vt:+(!a)!{[t;subs;f]$[#subs;f'subs;qby0[f;0#t]]}[t;subs]'value a;qks kt!vt}
 qby0:{[f;e]r:.[f;,e;{`qby0err}];$[`qby0err~r;();(@r)in`i`f`c`s`d`t`n;0#,r;()]}   / no groups: a column typed by its aggregate's result (q); a plain column stays ()
 xgroup:{[k;t]k:k,();r:qgrp[t;k];kt:+k!r 0;vc:except[cols t;k];kt!+vc!{[t;iv;c]((+t)c)@/:iv}[t;r 1]'vc}   / Keyed by k, as q
 ungroup:{[x]t:unkey x;d:+t;v:value d;m:{`A=@x}'v;cnt:#:'*v@&m;+(!d)!{[cnt;m;c]$[m;raze c;raze cnt#'c]}[cnt]'[m;v]}
@@ -317,7 +320,7 @@ ssr:{[s;f;t]t/f\s}
 sv:{x/y}
 vs:{$[(`C=@y)&0=#y;,y;x\y]}   / x vs "" is one empty field, as q
 lk1:{[s;p]$[~#p;~#s;"*"=*p;$[#s;lk1[s;1_p]|lk1[1_s;p];lk1[s;1_p]];~#s;0;("?"=*p)|(*p)=*s;lk1[1_s;1_p];0]}
-like:{[x;p]$[`C=@x;lk1[x;p];lk1[;p]'x]}
+like:{[x;p]$[`C=@x;lk1[x;p];`s=@x;lk1[$x;p];lk1[;p]'$[`S=@x;$x;x]]}   / symbols match by name, as q
 
 / ---- temporal : time-of-day held as milliseconds since midnight (like q time)
 / q's  time.minute / time.hh / time.ss  become  minute t / hh t / ss t  in Amber.

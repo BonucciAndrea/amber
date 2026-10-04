@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.7.0
+
+Tables on disk, and attributes that behave like q's.
+
+- **On disk**: binary column files that map into memory (`src/dsk.c`), `` `:db/t/ set t `` / `get`, a
+  sym file per database, `Q.en`, `Q.dpft`, and `\l db` (or `loaddb`) for partitioned databases.
+  `select`/`exec` prune partitions, map only the columns they use, and group by the partition column
+  per partition. A 10M-row table loads in ~6 ms. `dset`/`splay`/`partsave` write the new format and
+  still read the old text files.
+- **Attributes**: `` `s#x `u#x `p#x `g#x `#x `` and `attr`, the way kdb+ 4.1 does them on lists,
+  tables, dicts and keyed tables, sorted dicts look up by steps, and what keeps an attribute matches q.
+  Checked against q.exe: 508 fixed cases and 12,000 random ones. An unparted `` `p# `` is still
+  `'p-fail` (q says `'u-fail`).
+- `` `:path `` symbols are file handles, as in q.
+- Fixes on the way: `` x in () `` and `` ()?`a `` were `'rank`; copying an empty general list could free
+  junk (`'UNMAP`); nested qSQL (`` exec a from update ... from t ``) now works; `update` with no
+  where-clause keeps the new column's attribute.
+
 ## 2.6.0
 
 Threads and fusion come in from the experimental branch. Big vectors now use all the cores, and

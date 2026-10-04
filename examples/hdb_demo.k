@@ -17,7 +17,7 @@ gentq 2000
 hr:{`0:"";`0:"== ",x," ",(56-#x)#"=";}
 
 hr"on-disk data (hdb.k)"
-/ text serialization suits modest tables; use a small slice here
+/ a small slice is plenty to show it (since 2.7 the files are binary and mapped)
 st:25#trades
 x:splay["/tmp/amber_db/trades";st]
 `0:"splayed & reloaded, rows match: ",$st~dload"/tmp/amber_db/trades"

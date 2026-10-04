@@ -8,7 +8,7 @@
 / ============================================================================
 
 / ---- parsing helpers ------------------------------------------------------
-qsplit:{[s;kw]i:ss[s;kw];$[#i;(trim(*i)#s;trim((*i)+#kw)_s;1b);(trim s;"";0b)]}   / split on first kw
+qsplit:{[s;kw]$[0=#s;:(s;"";0b);];i:ss[s;kw];m:~qsmask s;d:+\(m*in[s;"([{"])-m*in[s;")]}"];i:i@&0=d i;$[#i;(trim(*i)#s;trim((*i)+#kw)_s;1b);(trim s;"";0b)]}   / split on the first kw outside brackets and strings (a nested select keeps its own where)
 / split on kw, also matching kw with its leading space stripped at position 0 --
 / needed for `select by sym from t`, where the by-clause IS the whole
 / select-part and so has no space in front of it to match " by " against.
@@ -19,7 +19,7 @@ qcut:{[s]d:sums(s="[")-s="]";b:0,&(s=",")&d=0;trim'{$[#x;$[","=*x;1_x;x];x]}'b _
 qname:{[s]d:sums(s="[")-s="]";i:&(s=":")&d=0;$[#i;(trim(*i)#s;trim(1+*i)_s);("";trim s)]}  / name:expr
 qword:{((x>64)&x<91)|((x>96)&x<123)|((x>47)&x<58)|x=95}                            / word-char mask
 qsimple:{(0<#x)&&/qword 0+x}                                                       / is a bare identifier
-qidsub:{[cols;s]$[0=#s;s;,/{[cols;t;f]$[f&in[`$t;cols];"(x`",t,")";t]}[cols]'[bnd _ s;(qword 0+s)bnd:&differ qword 0+s]]}
+qidsub:{[cols;s]$[0=#s;s;,/{[cols;t;f]$[f&in[`$t;cols];"(x`",t,")";f&(t~,"i");"(!#x)";t]}[cols]'[bnd _ s;(qword 0+s)bnd:&differ qword 0+s]]}   / a bare i is the row number, as q's virtual column
 qfn:{[cols;e]. "{[x]",qidsub[cols;e],"}"}                                          / expr string -> 1-arg fn
 / NB the all-true mask is built as ~(#t)#0b, NOT (#t)#1b. A take of a scalar is kept in
 / Amber's compact constant form, and the fused C group-aggregate (`gagg, src/o.c) rejects a
@@ -63,8 +63,8 @@ qnorm:{[s]trim(" "/qdec'"\n"\s)}
 / qnms numbers the repeats as q does: v v1 v2, x x1 (they were two columns called v, or x0 x1, digest #56)
 qnm:{[C;i;it]p:qname it;$[#p 0;`$p 0;qcn[C;p 1]]}
 qnms:{[C;it]n:qnm[C]'[!#it;it];{[n;i]k:+/n[i]=i#n;$[k;`$($n i),$k;n i]}[n]'!#n}
-qcn:{[C;e]e:trim e;$[0=#e;`err"parse";"("=*e;qcn[C;qpin[e;"(";")"]];"`"=*e;`x;"\""=*e;`x;~qword 0+*e;$[("-"=*e)&(1<#e)&~(e 1)<"0";$[(e 1)>"9";qcn[C;1_e];`x];qcn[C;1_e]];qcnw[C;e]]}
-qcnw:{[C;e]w:qword 0+e;n:*(&~w),#e;t:n#e;r:trim n_e;c:*t;$[in[`$t;C];`$t;~(c<"0")|c>"9";`x;~qfnw t;`$t;0=#r;`$t;"["=*r;qcn[C;*qscut qpin[r;"[";"]"]];qcn[C;r]]}
+qcn:{[C;e]e:trim e;$[0=#e;`err"parse";"("=*e;qcn[C;qpin[e;"(";")"]];(2<#e)&("`"=*e)&("#"=e 2)&in[e 1;"supg"];qcn[C;3_e];"`"=*e;`x;"\""=*e;`x;~qword 0+*e;$[("-"=*e)&(1<#e)&~(e 1)<"0";$[(e 1)>"9";qcn[C;1_e];`x];qcn[C;1_e]];qcnw[C;e]]}
+qcnw:{[C;e]w:qword 0+e;n:*(&~w),#e;t:n#e;r:trim n_e;c:*t;$[in[`$t;C];`$t;~(c<"0")|c>"9";`x;t~,"i";`x;~qfnw t;`$t;0=#r;`$t;"["=*r;qcn[C;*qscut qpin[r;"[";"]"]];qcn[C;r]]}
 qfnw:{v:.[{.x};,`$x;{`qlfail}];$[`qlfail~v;0;|/"opqruvwx"=*$@v]}   / Does the word name a function
 qpin:{[e;o;c]d:+\(e=o)-e=c;j:*(&d=0),#e;1_j#e}   / The text inside the bracket e starts with
 / by-clause item -> the name its group column gets.  Explicit "name:expr" wins;
@@ -110,7 +110,7 @@ qsagg:{[C;e]w:" "vs trim e;$[2=#w;$[(in[`$w 0;qsimp])&in[`$w 1;C];(`$w 0;`$w 1);
 / the by-branch of sel, split out so sel itself stays under the bytecode limit.
 / u is the UNFILTERED table and m the where-mask: the fused path hands the mask
 / to `gagg and never builds the filtered table; the generic path filters first.
-qselby:{[u;m;byp;it;d]r:qbyx[u;byp];sg:qsagg[cols r 0]'{(qname x)1}'it;fa:$[&/{0<#x}'sg;qaggf[r 0;r 1;(!d)!sg;m];()];$[#fa;fa;[t:qwhere[r 0;m];qby[qproj[t;(r 1),(,/qrefs[cols t]'{(qname x)1}'it)];r 1;d]]]}
+qselby:{[u;m;byp;it;d]r:qbyx[u;byp];sg:qsagg[cols r 0]'{(qname x)1}'it;fa:$[&/{0<#x}'sg;qaggf[r 0;r 1;(!d)!sg;m];()];$[#fa;qks fa;[t:qwhere[r 0;m];qby[qproj[t;(r 1),(,/qrefs[cols t]'{(qname x)1}'it)];r 1;d]]]}
 / gag1: one select-list item -> one fused result triple (head;values;first-row-indices).
 / (agg;col)        -> a single `gagg pass, as before.
 / (wavg|wsum;w;c)  -> two `gagg sum passes over the same keys and mask, so the group order
@@ -164,7 +164,13 @@ qselall:{[u;m;hw;r3]$[r3 2;[r:qbyx[qflt[u;m;hw];r3 1];nk:except[cols r 0;r 1];qb
 / `select .. by .. where ..` copied every column of every selected row and then
 / threw the copy away.
 qsel0:{[u;m;hw;selp;r3;C]$[(selp~,"*")|0=#selp;qselall[u;m;hw;r3];[it:qcut selp;d:(qnms[C;it])!{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;qselby[u;m;r3 1;it;d];qselect[qflt[u;m;hw];d]]]]}
-sel:{[s]s:qnorm s;s:$[(6#s)~"select";trim 6_s;s];b:qbrk s;s:b 1;r:qsplit[s;" where "];wh:$[r 2;r 1;""];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r3:qsplit0[r2 0;" by "];u:. r2 1;qlim[qsel0[u;qmask[u;wh];r 2;r3 0;r3;cols u];b 0]}
+sel:{[s]s:qnorm s;s:$[(6#s)~"select";trim 6_s;s];b:qbrk s;s:b 1;r:qsplit[s;" where "];wh:$[r 2;r 1;""];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r3:qsplit0[r2 0;" by "];dz:"distinct "~9#r3 0;r3:$[dz;@[r3;0;:;trim 9_r3 0];r3];u:. qtry r2 1;r:$[qpt u;qpsel[u;r3;wh;b 0];qlim[qsel0[u;qmask[u;wh];r 2;r3 0;r3;cols u];b 0]];$[dz;?r;r]}   / select distinct: the distinct rows, as q
+qrun:{[u;wh;r3;lim]qlim[qsel0[u;qmask[u;wh];0<#wh;r3 0;r3;cols u];lim]}   / select on a table in hand (hdb.k runs it per partition)
+
+/ A table on disk split in partitions (hdb.k's loaddb) is a dict that only names its partitions. select and exec
+/ hand it to qpsel and qpexec (hdb.k): they keep the partitions the where-clause allows and map only the columns
+/ the query names.
+qpt:{[u]$[`m~@u;in[`amberpt;!u];0]}
 
 / ---- exec  (return one column / expression, not a table) ------------------
 / exec splits its select-list the SAME way select does (qcut, honouring brackets):
@@ -172,17 +178,30 @@ sel:{[s]s:qnorm s;s:$[(6#s)~"select";trim 6_s;s];b:qbrk s;s:b 1;r:qsplit[s;" whe
 /   many      -> a dict name!(vectors)     exec px,ask from t -> `px`ask!(..;..)
 / so `exec a,b` yields two named columns (q semantics) instead of joining them into
 / one vector, which is what lets `plot exec px,ask ...` draw a line per column.
-exq:{[s]s:qnorm s;s:$[(4#s)~"exec";trim 4_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];r2:qsplit[r 0;" from "];u:. r2 1;t:qwhere[u;qmask[u;wh]];C:cols u;it:qcut trim r2 0;v:{[C;t;e]qfn[C;(qname e)1]t}[C;t]'it;$[1=#it;*v;(qnms[C;it])!v]}
+exq:{[s]s:qnorm s;s:$[(4#s)~"exec";trim 4_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];r2:qsplit[r 0;" from "];u:. qtry r2 1;pq:$[qpt u;qpexec[u;r2 0;wh];(u;wh)];u:pq 0;wh:pq 1;eb:qsplit0[r2 0;" by "];$[eb 2;qexby[u;wh;eb];[t:$[#wh;qwhere[u;qmask[u;wh]];u];C:cols u;it:qcut trim r2 0;v:{[C;t;e]qfn[C;(qname e)1]t}[C;t]'it;$[1=#it;*v;(qnms[C;it])!v]]]}
+/ exec e by b: a dict from the groups to e, as q (through select, then the key column and the value column)
+qexby:{[u;wh;eb]r:qrun[u;wh;(eb 0;eb 1;1b);""];k:+key r;v:+value r;$[1=#!k;k@*!k;key r]!$[1=#!v;v@*!v;value r]}
 
 / ---- update  (add / replace columns; optional where and by) ---------------
 qasg:{[t;idx;nm;v]@[$[in[nm;cols t];(+t)nm;(#t)#qnull v];idx;:;v]}
 qasgby:{[t;nm;f;gi]{[t;f;c;iv]@[c;iv;:;f atr[t;iv]]}[t;f]/[$[in[nm;cols t];(+t)nm;(#t)#qnull f atr[t;*gi]];gi]}
-upd:{[s]s:qnorm s;s:$[(6#s)~"update";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];r2:qsplit[r 0;" from "];r3:qsplit[r2 0;" by "];t:. r2 1;C:cols t;it:qcut r3 0;nm:qnms[C;it];fns:{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;[gi:value(=rows[{(x 1)#+x 0}qbyx[t;r3 1]]);+((+t),nm!{[t;gi;n;f]qasgby[t;n;f;gi]}[t;gi]'[nm;fns])];[m:qmask[t;wh];idx:&m;sub:qwhere[t;m];+((+t),nm!{[t;idx;sub;n;f]qasg[t;idx;n;f sub]}[t;idx;sub]'[nm;fns])]]}
+upd:{[s]s:qnorm s;s:$[(6#s)~"update";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];r2:qsplit[r 0;" from "];r3:qsplit[r2 0;" by "];t:. qtry r2 1;$[qpt t;`err"par";];C:cols t;it:qcut r3 0;nm:qnms[C;it];fns:{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;[gi:value(=rows[{(x 1)#+x 0}qbyx[t;r3 1]]);+((+t),nm!{[t;gi;n;f]qasgby[t;n;f;gi]}[t;gi]'[nm;fns])];0=#wh;+((+t),nm!{[t;f]v:f t;$[isat v;(#t)#v;v]}[t]'fns);[m:qmask[t;wh];idx:&m;sub:qwhere[t;m];+((+t),nm!{[t;idx;sub;n;f]qasg[t;idx;n;f sub]}[t;idx;sub]'[nm;fns])]]}   / no where: each column is the value itself, attribute and all
 
 / ---- delete  (rows via where, or named columns) ---------------------------
-del:{[s]s:qnorm s;s:$[(6#s)~"delete";trim 6_s;s];b:$[(5#s)~"from ";("";trim 5_s);2#qsplit[s;" from "]];colp:trim b 0;rw:qsplit[b 1;" where "];t:. trim rw 0;wh:$[rw 2;rw 1;""];$[#colp;+(except[cols t;`$'{(qname x)1}'qcut colp])#+t;qwhere[t;~qmask[t;wh]]]}
+del:{[s]s:qnorm s;s:$[(6#s)~"delete";trim 6_s;s];b:$[(5#s)~"from ";("";trim 5_s);2#qsplit[s;" from "]];colp:trim b 0;rw:qsplit[b 1;" where "];t:. qtry trim rw 0;$[qpt t;`err"par";];wh:$[rw 2;rw 1;""];$[#colp;+(except[cols t;`$'{(qname x)1}'qcut colp])#+t;qwhere[t;~qmask[t;wh]]]}
 
 / ---- functional form ------------------------------------------------------
+/ q's ?[t;c;b;a] (select) and ![t;c;b;a] (update, delete) over parse trees: a symbol is a column (or a global),
+/ a one-item list like enlist`a is that item as a value, (f;x;y) applies f. c's clauses cascade, each on the
+/ rows the last kept; b is 0b (no groups), 1b (distinct) or a dict of names to trees; a is () or a dict.
+qfv:{in[@x;`o`p`q`r`u`v`w`x]}
+qfe:{[t;e]$[`s~@e;$[in[e;cols t];(+t)e;e~`i;!#t;. e];(`S~@e)&1=#e;*e;(`A~@e)&0<#e;$[qfv[*e];(*e) . qfe[t]'1_e;1=#e;*e;e];e]}
+qfi:{[t;c]{[t;i;w]i@&qfe[t i;w]}[t]/[!#t;c]}
+qfa:{[t;a]v:qfe[t]'value a;k:!a;$[&/isat'v;+k!,'v;+k!{[l;x]$[isat x;l#x;x]}[#t]'v]}
+qfby:{[t;b;a]bk:!b;t2:+(+t),bk!qfe[t]'value b;$[0=#a;[nk:except[cols t;bk];qby[t2;bk;nk!qlastf'nk]];qby[t2;bk;(!a)!{[e]{[e;x]qfe[x;e]}[e]}'value a]]}
+qfsel:{[t;c;b;a]t:$[`s~@t;. t;t];t:$[0=#c;t;t qfi[t;c]];$[(b~0b)|b~();$[0=#a;t;qfa[t;a]];b~1b;?$[0=#a;t;qfa[t;a]];qfby[t;b;a]]}
+qfub:{[t;idx;b;a]k:+(!b)!qfe[t idx]'value b;gi:idx@value(=rows k);+((+t),(!a)!{[t;gi;n;e]qasgby[t;n;{[e;x]qfe[x;e]}[e];gi]}[t;gi]'[!a;value a])}
+qfupd:{[t;c;b;a]t:$[`s~@t;. t;t];idx:$[0=#c;!#t;qfi[t;c]];$[`S~@a;$[0=#a;t@except[!#t;idx];+(except[cols t;a])#+t];(b~0b)|b~();+((+t),(!a)!{[t;idx;n;e]qasg[t;idx;n;qfe[t idx;e]]}[t;idx]'[!a;value a]);qfub[t;idx;b;a]]}
 qexec:{[t;w;b;d]t:$[0=#w;t;qwhere[t;w]];$[0=#b;$[0=#d;t;qselect[t;d]];qby[t;b,();d]]}
 
 / ---- bare qSQL rewriter ----------------------------------------------------

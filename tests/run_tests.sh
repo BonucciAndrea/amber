@@ -74,7 +74,7 @@ chmod +x amber a 2>/dev/null || true
 
 # test-euler.k goes LAST: euler.k deliberately redefines xexp, so loading it
 # earlier would leak the bignum override into every suite after it.
-SUITES="test.k test-fin.k test-ext.k tests/test_core.k tests/test_matrix.k tests/test_qsql.k tests/test_infix.k tests/test_sort_window.k tests/test_chart.k tests/test_globals.k examples/peach_verify.k test-euler.k"
+SUITES="test.k test-fin.k test-ext.k tests/test_core.k tests/test_matrix.k tests/test_qsql.k tests/test_attr.k tests/test_disk.k tests/test_infix.k tests/test_sort_window.k tests/test_chart.k tests/test_globals.k examples/peach_verify.k test-euler.k"
 for s in $SUITES; do say "$s"; run_k ./amber "$s" native; done
 
 # peach is the thread-pool primitive: run its verifier again with the pool

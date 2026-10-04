@@ -136,6 +136,17 @@ What uses it (since 2.6.0), each with its own cut-off so small inputs never pay 
 
 The old `par_add/par_mul/par_sum` entry points are still there. Self-test + benchmark: `` `para 0 ``.
 
+**On-disk columns** (`src/dsk.c`, since 2.7.0): `` `wcol(path;value;domain;attr) `` writes one column
+file and `` `rcol path `` / `` `rcol(path;syms) `` maps it back. A file is a 4096-byte header ("AMBC",
+version, kind, type, attribute, count, payload bytes, sym-file size) and then the payload on a page
+boundary. Kind 0 is the raw payload of a B/G/H/I/L/F/C vector and loads through `mfw` (m.c): an anonymous
+page for Amber's header with the file mapped right after it, private and copy-on-write. Kind 1 is a
+symbol column as int32 indexes into the database's `sym` file; kind 2 is any other value as `-8!`
+bytes; kind 3 is a list of dates, times or timestamps as int64. Writers go to `name.tmp` and rename,
+so a reader holding the old map keeps old data. Everything above that (splay, the sym file, `set`/
+`get`, `Q.dpft`, `loaddb`, partition pruning in `select`) is k in `hdb.k`; `` `fsz `` and `` `ldir `` are
+the two file-system helpers it uses.
+
 **Bytecode disassembler + `\disasm`** (`src/vm.{h,c}`). Amber's interpreter (`src/b.c`) already
 compiles every expression to a flat opcode array + constant pool and runs it on a real stack
 VM (`cr()`/`cpl()`/`run()`); the AST is never walked directly at eval time. Rather than bolt on

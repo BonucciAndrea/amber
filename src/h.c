@@ -15,7 +15,7 @@ A rsz(L n,A x/*1*/)_(
    RM(A y=kv(&x),z=az(n);aM(x,Nx(z(r2(RSH,z,y)))))
    Rm(A y=kv(&x);x=Ny(rsz(n,x));y=Nx(rsz(n,y));am(x,y))
    RE(Lij P(n>j-i||n<i-j,rsz(n,gZ(x)))x(0);n>=0?aE(i,i+n):aE(j+n,j))
-   R_(P(n==NL,x)P(!xn,rsz(n,enl(fir(x))))
+   R_(P(n==NL||n==(L)xn||n==-(L)xn,x)P(!xn,rsz(n,enl(fir(x))))   //2.7: taking all of it is it, attribute and all, as in q
       I r=n<0;n*=1-2*r;P((W)n-(U)n,ez(x))A y=an(n,xt);N w=MAX(0,xw-3),m=xn<<w,k=n%xn<<w,l=n<<w;
       XB(cycB(yV,xV,r?m-k:0,m,l);x(y))                                        //bits: cycled bit by bit (it was 'nyi)
       I(!r,MC(yV,xV,MIN(m,l)))J(l<=m,MC(yV,xV+m-l,l))E(MC(yV,xV+m-k,k);MC(yV+k,xV,m-k))
@@ -25,9 +25,13 @@ Z A chp(L n,A x/*1*/)_(P(n<0,ed(x))XmM(en(x))L m=(xn+n-1)/n;A y=aA(m);F(m|!m,ya=
 Z A2(rsh,/*01*/XE(x=gZ(xR);x(rsh(x,y)))YE(rsh(x,gZ(y)))YmM(en(y))Yt(rsh(x,enl(y)))Q(xtZ);N r=xn;P(!r,fir(y))P(r>256,ez(y))x=Ny(cL(xR));L s[r];MC(s,xV,r<<3);x(0);
  I(r==2,P(*s==NL,chp(s[1],y))P(s[1]==NL,A u=az(*s);u(K2("{$[(0<x)&~x!#y;(x;(-x)!#y)#y;((-x)!(#y)*!x)_y]}",u,y))))P(r==1&&*s==NL,y)I(!yn,y=enl(fir(y)))
  L m=1;F(r,L d=s[r-1-i];P(d<0,ed(y))P(__builtin_mul_overflow(m,MAX(1ll,d),&m)||m>>32,ez(y)))y=N(rsz(m,y));F(r-1,L d=s[r-1-i];I(d,y=N(chp(MAX(1ll,d),y)))E(y=N(e1f(rs0,N(chp(1,y))))))rsz(*s,y))
-X2(hsh,/*01*/Ril(rsz(gl_(x),y))RU(flt(x,y,1))RT(P(ytm,A k=xR,i=fnd(yx,xR);P(!i,mr(k);y(0))P(_tA(yx)&&_n(yx)&&_tt(i),mr(k);mr(i);en(y))A u=i1(yy,i);P(!u,mr(k);y(0))y(aV(yt,2,A(k,u))))P(ytM&&xtS,A k=xR,u=i1(y,xR);P(!u,mr(k);y(0))y(aV(yt,2,A(k,u))))XZ(rsh(x,y))et(y))R_(et(y)))   //dict: i1's lookup, inline; x one rank below list keys is one key, which find gives as an atom: 'nyi (not for (), as in `a`b#()!()); k: x's second reference, taken with the first (one read of the thread-local refcount flag)
-A drp(L n,A x/*1*/)_(X(Rm(A y=kv(&x);am(Ny(drp(n,x)),Nx(drp(n,y))))RM(A y=kv(&x);aM(x,Nx(e2f(und,az(n),y))))Rt(er(x))RE(Lij x(0);W d=n<0?0-(W)n:(W)n;d=MIN(d,(W)(j-i));n<0?aE(i,j-(L)d):aE(i+(L)d,j))   //drop at most the count: i+n and j+n could overflow
- R_(P(n==NL,rs0(x))L m=xn;n=MAX(-m,MIN(m,n));P(-n<(W)m&&MINE(x),I(xtA,mrn(-n,xA+m+n);return sqz(AN(m+n,x)))AN(m+n,x))x(slc(x,MAX(0ll,n),m+MIN(0ll,n)))))0)   //In place, a general list is squeezed too, as the copy path does (digest #28)
+A qattrs(C,A);//a.c
+Z X2(hsh0,/*01*/Ril(rsz(gl_(x),y))RU(flt(x,y,1))RT(P(ytm,A k=xR,i=fnd(yx,xR);P(!i,mr(k);y(0))P(_tA(yx)&&_n(yx)&&_tt(i),mr(k);mr(i);en(y))A u=i1(yy,i);P(!u,mr(k);y(0))y(aV(yt,2,A(k,u))))P(ytM&&xtS,A k=xR,u=i1(y,xR);P(!u,mr(k);y(0))y(aV(yt,2,A(k,u))))XZ(rsh(x,y))et(y))R_(et(y)))   //dict: i1's lookup, inline; x one rank below list keys is one key, which find gives as an atom: 'nyi (not for (), as in `a`b#()!()); k: x's second reference, taken with the first (one read of the thread-local refcount flag)
+// amber 2.7: `s#x `u#x `p#x `g#x set an attribute and `#x takes it off, as in q (a.c's qattrs). q reads these
+// four letters (and the empty symbol) as attributes even on a table or dict with a column or key of that name.
+A hsh(A x,A y){I(_t0(x)==ts,S s=su(_v(x));I(!*s||(!s[1]&&(*s=='s'||*s=='u'||*s=='p'||*s=='g')),return qattrs(*s,y);))return hsh0(x,y);}
+A drp(L n,A x/*1*/)_(P(!_tP(x)&&_tT(x)&&!_n(x)&&xt!=tE,x)X(   /*2.7: nothing to drop: the list itself, as in q*/ Rm(A y=kv(&x);am(Ny(drp(n,x)),Nx(drp(n,y))))RM(A y=kv(&x);aM(x,Nx(e2f(und,az(n),y))))Rt(er(x))RE(Lij x(0);W d=n<0?0-(W)n:(W)n;d=MIN(d,(W)(j-i));n<0?aE(i,j-(L)d):aE(i+(L)d,j))   //drop at most the count: i+n and j+n could overflow
+ R_(P(n==NL,rs0(x))L m=xn;n=MAX(-m,MIN(m,n));P(-n<(W)m&&MINE(x),_at(x)=0;I(xtA,mrn(-n,xA+m+n);return sqz(AN(m+n,x)))AN(m+n,x))   /*2.7: the attribute goes, as in q*/x(slc(x,MAX(0ll,n),m+MIN(0ll,n)))))0)   //In place, a general list is squeezed too, as the copy path does (digest #28)
 Z A rmv(A x/*1*/,L i)_(XB(rmv(cG(x),i))X(RT_E(P(i>=(W)xn,x)A y=an(xn-1,xt);U w=xw-3;MC(yV,xV,i<<w);MC(yV+(i<<w),xV+(i+1<<w),xn-i-1<<w);I(xtA,I(!yn,yx=mkn(_R(xx)))y=sqz(mRa(y)))x(y))
  RM(A y=kv(&x);y=Nx(y(l2f(und,y,az(i))));aM(x,y))RE(rmv(gZ(x),i))R_(et(x)))0)
 Z A2(cut,/*01*/Q(xtZ)Q(ytMT)K2("{y$[|/0<':x,#y;`err\"domain\";x+!'1_-':x,#y]}",x,y))
@@ -54,7 +58,7 @@ A2(cat10,
  Ymt(psh(x,yR))
  P(xtM||ytM,P(!yN,x)P(!xN,x(yR))P(xtT||ytT,x=N(blw(x));y=Nx(blw(yR));cat11(x,y))P(!xtM||!ytM,et(x))P(!mtc_(xx,yx),ed(x))A z=e2f(cat,xy,_R(yy));x(z?aM(_R(xx),z):0))Q(0);0)
 A2(cat11,y(cat10(x,y)))
-A2(cat,/*01*/cat11(xR,y))
+A2(cat,/*01*/P(!_tP(x)&&_t(x)==tm&&_at(x)==1,y(et0()))P(!_tP(x)&&_t(x)==tA&&!_n(x)&&!_tP(y)&&_t(y)<tM,y)   /*2.7: (),y is y*/cat11(xR,y))   //2.7: a dict made `s takes no more keys, as in q ('type)
 A2(psh,/*11*/Q(xtMT);U n=xN;P(!n,enl(x(y)))
  P(xtE,psh(gZ(x),y))   //a range has no room to push into: its items do (sup below keeps it a range, so it looped)
  P(xtG&&yti&&yv==(G)yv||xtC&&ytc,apc(x,yv))
@@ -75,11 +79,16 @@ Z A insL(A x,L i,L j,A y/*1ij0*/)_(
  A z=an(xn-j+i+yn,xt);U w=xw-3;MC(zV,xV,(W)i<<w);MC(zV+(i<<w),yV,(W)yn<<w);MC(zV+(i+yn<<w),xV+((W)j<<w),(W)(xn-j)<<w);
  I(xtR,I(!zn,zx=emp(tC))I(MINE(x),mrn(j-i,xA+i);AZ(x))E(mRn(i,xA);mRn(xn-j,xA+j))I(MINE(y),AZ(y))E(mRa(y))z=sqz(z))
  x(z))
+// a q condition: booleans (ints of 0 and 1 here), with y and z each an atom or as long as it
+Z B vc01(A x,A y,A z){U n;P(_tP(x)||!LH(tB,_t(x),tL),0)n=_n(x);P(!(_tP(y)||_tt(y)||_N(y)==n)||!(_tP(z)||_tt(z)||_N(z)==n),0)
+ UC t=_t(x);F(n,L v=t==tB?(L)(((CO UC*)_V(x))[i>>3]>>(i&7)&1):t==tG?(L)((CO G*)_V(x))[i]:t==tH?(L)((CO H*)_V(x))[i]:t==tI?(L)((CO I*)_V(x))[i]:((CO L*)_V(x))[i];P(v!=0&&v!=1,0))return 1;}
 A3(ins3,/*100*/
+ P(vc01(x,y,z),K("{[c;a;b]b:$[isat b;(#c)#b;b];$[(#c)=#b;;`err\"length\"];w:&c;@[b;w;:;$[isat a;a;(#c)=#a;a w;`err\"length\"]]}",x,_R(y),_R(z)))   //2.7: q's vector conditional ?[c;a;b] when c is booleans
  Xmt(et(x))
  Zmt(z=enl(zR);z(ins3(x,y,z)))
  XM(P(!ztM,et(x))P(!mtc_(xx,zx),ed(x))y=prj(QUE,A8((A)GAP,yR,GAP),3);A u=Nx(y(e2(y,xy,_R(zy))));x(aM(_R(xx),u)))
  P(xtZ&&ztZ&&xt-zt,zR;N(sup(&x,&z));z(ins3(x,y,z)))
  P(xt-zt,z=blw(zR);z(ins3(blw(x),y,z)))
  Y(Ril(L i=gl_(y);insL(x,i,i,z))REGHIL(P(yn-2,el(x))insL(x,gl_(ii(y,0)),gl_(ii(y,1)),z))R_(et(x)))0)
-AA(ins,/*10..0*/P(n==3,ins3(*a,a[1],a[2]))en(*a))
+AA(ins,/*10..0*/P(n==3,ins3(*a,a[1],a[2]))P(n==4,K("{[t;c;b;a]qfsel[t;c;b;a]}",*a,_R(a[1]),_R(a[2]),_R(a[3])))en(*a))   //2.7: ?[t;c;b;a], q's functional select (qsql.k)
+AA(bng,/*10..0*/P(n==4,K("{[t;c;b;a]qfupd[t;c;b;a]}",*a,_R(a[1]),_R(a[2]),_R(a[3])))no8(a,n))   //2.7: ![t;c;b;a], q's functional update and delete

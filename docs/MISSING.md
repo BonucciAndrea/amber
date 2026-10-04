@@ -86,15 +86,15 @@ sort (`asc`, `x@<x`) never changes an item, and may list equal zeros or NaNs in 
 still ascending by value. `&` and `|` of two equal zeros give `0.0`.
 
 ## 4. On-disk data (HDB): partial (`hdb.k`)
-Amber now has a **text-serialised** on-disk layer: `dset`/`dget` (value ↔ single file),
-`splay`/`dload` (splayed table ↔ directory, one file per column plus a `.d`), and
-`partsave`/`partload`/`parts` (**value-partitioned** database, one splayed dir per partition
-value, with `par.txt`). Files are portable Amber text read back with `eval`, so they are
-human-readable and version-independent.
-- **Still missing:** true **date-partitioned** on-disk format, **memory-mapping** (data is fully
-  read into RAM, not mapped), `.Q.dpft` (save in the partitioned layout), `.Q.en` (enumerate
-  syms), `.Q.chk`, `.Q.ind`, `.Q.fs`/`.Q.fsn` (chunked file streaming), on-disk `aj` over
-  partitions, and a binary (not text) on-disk encoding.
+**Since 2.7:** Binary column files that map straight into memory, in q's layout: `` `:db/t/ set t ``
+and `get`, a `sym` file per database, `Q.en`, `Q.dpft`, and `\l db` (or `loaddb`) for date- or
+int-partitioned databases. `select`/`exec` prune partitions on the partition column, map only the
+columns they use, and run per partition when grouped by it. The older `dset`/`splay`/`partsave`
+names write the binary format too and still read the old text files (AMBER.md §9e).
+- **Still missing:** `.Q.chk`, `.Q.ind`, `.Q.fs`/`.Q.fsn` (chunked file streaming), segmented
+  databases (`par.txt` across disks), compression, on-disk `aj` over partitions, and map-reduce for
+  aggregates that span partitions without grouping by the partition column (those copy the
+  columns they need into one table first).
 
 ## 5. IPC & the tick architecture: partial (`ipc.k`)
 Amber now ships `hopen`/`hclose`/`hsend`/`hrecv`/`hsync` (raw-socket messaging) and an

@@ -675,10 +675,13 @@ Z V gat_w(V*c_,int t){GJ*c=c_;U s=(U)(((W)c->n*t/c->nt)&~31ull),e=(U)t+1==c->nt?
  if(e>s)c->f(c->a,c->m,c->b+s,c->c+(N)s*c->es,e-s);}
 Z V gat(V(*f)(ambcn),U es,CO V*a,U m,CO U*b,V*c,U n){int nt=n<PGAT_MIN?1:par_thread_count(n);
  if(nt<2){f(a,m,b,c,n);return;}GJ j={f,a,m,b,(C*)c,n,(U)nt,es};par_run(nt,gat_w,&j);}
+// amber 2.7: a dict made `s (q's `s#d) looks up by steps: the value at the last key not above y, null below the
+// first key. bin does numbers; other keys (symbols, by name) count the keys not above y.
+Z A dstep(A k,A y)_(UC t=_t(k);P(LH(tB,t,tL)||t==tF,bin(k,y))K2("{[k;v]{[k;v]-1++/~v<k}[k]'v}",_R(k),y))
 A2(i1,/*01*/P(y==GAP||y==au,xR)
  X(Rt(y(xR))
    RE(x=gZ(xR);x(i1(x,y)))
-   Rm(i1(xy,N(fnd(xx,y))))
+   Rm(i1(xy,N(_at(x)==1&&_t(xx)!=tM?dstep(xx,y):fnd(xx,y))))
    RM(Y(RsS(x=flp(xR);x(i1(x,y)))RA(r2(AP1,x,y))RmM(A z=kv(&y);am(y,Ny(i1(x,z))))R_(B d=ytmt;y=N(l2f(i1,xy,y));(d?am:aM)(_R(xx),y)))0)
    R_(Y(Rilc(io(x,gl(y)))
         RmM(A z=kv(&y);am(y,Ny(i1(x,z))))
@@ -890,6 +893,40 @@ Z A1(qpa,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)P(_at(x)==3,x)L e=atcnt(x,310);P(e<
 UC atok(A x,UC a)_(P(a<1||a>3||_tP(x)||!LH(tG,_t(x),tS),a==4)P(a==1,atcnt(x,308)==0)
  A u=unq(_R(x));P(!u,0)U k=_N(u);mr(u);P(a==2,k==_n(x))L e=atcnt(x,310);e>=0&&(L)_n(x)-e==(L)k)
 Z A1(qga,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=4;x)//amber: `g grouped
+// ---- amber 2.7: q's `s#x `u#x `p#x `g#x, and `#x to take the attribute off --------------------------------
+// The same answers as kdb+ 4.1 (checked case by case against q.exe, see docs/AMBER.md): every list may carry
+// one, an atom is 'type; `s needs the order sort uses, `u no repeats, `p equal items next to each other ('p-fail,
+// where q says 'u-fail); a general list is ordered as < orders it and cannot be `p. `s#t needs the whole table
+// in row order: the table is `s and its first column `s (a one-column table) or `p. `s# on a dict or a keyed
+// table checks the keys and makes the lookup a step function (the last key not above the probe, as bin finds).
+Z A atset(A x,UC a)_(x=mut(x);_at(x)=a;x)
+Z A atchk(UC c,A y){   //y a list (not B, not general): the checks `sa `ua `pa make; 0 and an error when it fails
+ S(c,C('s',y=qsa(y))C('u',y=qua(y))C('p',y=qpa(y))C('g',y=qga(y)))return y;}
+Z A atlist(UC c,A y){
+ UC t=_t(y),a=c=='s'?1:c=='u'?2:c=='p'?3:4;
+ P(t==tE,atlist(c,gZ(y)))
+ P(LH(tG,t,tS),atchk(c,y))
+ I(t==tB,A g=cG(_R(y));P(!g,y(0))g=atchk(c,g);P(!g,y(0))mr(g);return atset(y,a);)
+ I(t==tA,I k=tjk(y);
+  I(k==tdt||k==ttm||k==tnp,A l=tjn(y);P(!l,y(0))l=atchk(c,l);P(!l,y(0))mr(l);return atset(y,a);)   //dates and times: by their values
+  P(c=='p',y(et0()))
+  I(c=='s',A r=K1("{(!#x)~<x}",_R(y));P(!r,y(0))B ok=gl(r);P(!ok,y(err0("s-fail"))))
+  I(c=='u',A u=unq(_R(y));P(!u,y(0))U k=_N(u);mr(u);P(k!=_n(y),y(err0("u-fail"))))
+  return atset(y,a);)
+ return y(et0());}
+Z A atkeys(A y,UC lone){   //the keys of a sorted dict or keyed table: a list `s, a table in row order
+ P(_t(y)!=tM,atlist('s',y))
+ A r=K1("{v:. +x;o:`xs(v;0b);o:$[#o;o;{[o;v]o@<v o}/[!#x;|v]];o~!#x}",_R(y));P(!r,y(0))B ok=gl(r);P(!ok,y(err0("s-fail")))
+ A d=_A(y)[1];U n=_n(d);P(!n||(n==1&&_N(_A(d)[0])<2),atset(y,1))   //a one-column table of 0 or 1 rows: no column attribute, as q
+ A c0=atlist(n==1&&lone?'s':'p',_R(_A(d)[0]));P(!c0,y(0))
+ A v=aA(n);F(n,_A(v)[i]=i?_R(_A(d)[i]):c0)A z=aV(tM,2,A(_R(_A(y)[0]),v));mr(y);_at(z)=1;return z;}
+A qattrs(C c,A y){
+ UC t=_t(y);
+ P(_tP(y)||_tt(y),y(et0()))
+ I(!c,P(t==tE,y)return atset(y,0);)   //`#x
+ I(t==tM,P(c!='s',y(et0()))return atkeys(y,1);)
+ I(t==tm,P(c!='s',y(et0()))A k=atkeys(_R(_A(y)[0]),_t(_A(y)[0])==tM);P(!k,y(0))A z=aV(tm,2,A(k,_R(_A(y)[1])));mr(y);_at(z)=1;return z;)
+ return atlist((UC)c,y);}
 // amber: `diag 0 / `diag 1 -- turn the Rust-style stderr diagnostic off/on at
 // runtime, returning the PREVIOUS setting so a caller can restore it. Needed by
 // anything that deliberately provokes errors it then catches (tests/harness.k,
@@ -901,7 +938,7 @@ Z A1(qdiag,I(amdiag<0,amdiag=({S dgev=getenv("AMBER_DIAG");!dgev||*dgev!='0';}))
 // previous K definition of asc verbatim, so semantics (collation, the `s
 // attribute, every non-integer type) are unchanged.
 Z A1(qsrt,srtC(x))
-Z A1(qat,UC a=(_tP(x)||!LH(tG,_t(x),tS))?0:_at(x);x(0);a?({C b[2]={"\0supg"[a],0};sym(b);}):as(0))//amber: get attribute
+Z A1(qat,UC a=(_tP(x)||_tt(x)||_t(x)==tE)?0:_at(x);x(0);a?({C b[2]={"\0supg"[a],0};sym(b);}):as(0))//amber: get attribute
 ZN AX(ext,P(n-xK,er8(a,n))V*f=(V*)(x&-1ull>>16);S(n,R(1,((A1*)f)(a[0]))R(2,((A2*)f)(a[0],a[1]))R(3,((A3*)f)(a[0],a[1],a[2]))R(4,((A4*)f)(a[0],a[1],a[2],a[3]))R_(en8(a,n)))0)
 // `sumn x: +/x with the int null counted as 0, in one pass (amber.k's q-style sum). Only a 64-bit int
 // vector can hold 0N; anything else is +/ as it is. Wraps like +/ (unsigned adds).
@@ -913,8 +950,8 @@ Z A1(prnT,P(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);U n=_n(x);W t0=1,t1=1,t2=1,t3=1;
  for(;i<n;i++){L v0=p[i];t0*=(W)(v0==NL?1:v0);}x(az((L)(t0*t1*t2*t3))))K1("{*/x}",x))
 Z A1(hnlT,I hz=0;I(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);F(_n(x),hz|=p[i]==NL))J(!_tP(x)&&_t(x)==tF,CO F*RES p=_V(x);F(_n(x),hz|=p[i]!=p[i]))x(ai(hz)))
 Z A1(sumnT,P(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);U n=_n(x);W t=0;F(n,L v=p[i];t+=(W)(v==NL?0:v))x(az((L)t)))K1("{+/x}",x))
-ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl","abs"};
- G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,ed)[fI((V*)s,L(s),v)](x))
+ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl","abs","wcol","rcol","fsz","ldir"};
+ G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,wcolT,rcolT,fszT,ldirT,ed)[fI((V*)s,L(s),v)](x))
 /* ---- tacit trains: hook (f g) and fork (f g h) --------------------------
  * A general list of length 2 or 3 whose every element is a function becomes a
  * TRAIN when it is applied: (f g) is a hook, (f g h) a fork (APL/J/BQN rules).

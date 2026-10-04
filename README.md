@@ -12,7 +12,7 @@
 **A low-latency array language: columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-2.6.0-orange)
+![version](https://img.shields.io/badge/version-2.7.0-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
 ![tests](https://img.shields.io/badge/tests-1555%20K--suite%20cases-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
@@ -44,27 +44,28 @@ qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                        / vwap by symbo
 <a name="whats-new-242"></a>
 <a name="whats-new-250"></a>
 <a name="whats-new-260"></a>
-## What's new in 2.6.0
+<a name="whats-new-270"></a>
+## What's new in 2.7.0
 
-Threads and fusion come in from the experimental branch. Sort, grade, find, `in`, distinct, gather,
-`aj`, group aggregates and float sums/max/min now spread over all cores once a vector is big, and
-`+ - * %`, comparisons and `abs` over float and int vectors run as one fused pass instead of one
-pass per verb. On a 14-core laptop that's about 1.6× over 2.5.0 across the benchmark set, up to
-4.6× on `find`. `AMBER_THREADS=1` turns the threads off.
+Tables on disk, the q way. `` `:db/t/ set t `` splays a table into binary column files that map
+straight into memory (a 10M-row table loads in ~6 ms), `Q.dpft` saves a partition, and `\l db` maps
+a whole date-partitioned database. `select` on it skips the partitions the where-clause rules out,
+reads only the columns it uses, and runs per partition when you group by date. Old text files still
+load.
 
-One thing to know: float sums of 1M+ items now add in fixed 64K blocks, so the last digits can
-differ from 2.5.0's straight sum, but they're the same at any thread count.
+Attributes work like q now too: `` `s#x ``, `` `u#x ``, `` `p#x ``, `` `g#x ``, `` `#x `` and `attr`,
+on lists, tables and dicts, checked against q.exe case by case, including sorted dicts that look up
+by steps. Details in [AMBER.md §9 and §9e](docs/AMBER.md).
 
-2.5.0 before it was a long bug list worked through: crashes, wrong answers, and a pile of spots
-where Amber now answers like q (nulls in `sums`/`wavg`/`cov`, dicts with keys on one side, qSQL
-where-clauses and column names, `wj` vs `wj1`, JSON keys, date strands). Details in the
-[changelog](CHANGELOG.md).
+2.6.0 before it brought threads and fusion: sort, find, `in`, distinct, group sums and float sums use
+every core once a vector is big, and float/int arithmetic inside a lambda runs as one fused pass.
+Details in the [changelog](CHANGELOG.md).
 
 <a name="whats-new-220"></a>
 <a name="whats-new-older"></a>
 ## Earlier releases
 
-2.4.2, 2.4.1, 2.4.0, 2.3.1, 2.3.0, 2.2.0 and everything before them are in
+2.5.0, 2.4.2, 2.4.1, 2.4.0, 2.3.1, 2.3.0, 2.2.0 and everything before them are in
 [`CHANGELOG.md`](CHANGELOG.md), which is the single place release notes live.
 
 <a name="quickstart"></a>
@@ -277,7 +278,7 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 | file | |
 |------|--|
 | `a`, `build.sh` | launcher (build-if-stale) and portable compile (gcc / clang) |
-| `src/*.c`, `src/*.h` | the interpreter, ngn/k core + Amber extensions (`src/p.c` the `([]…)` parser; `src/ar.c` Arrow; `src/arena.{h,c}` the HFT arena, 32-byte aligned; `src/diagnostic.{h,c}` the Rust-style formatter; the native `aj` kernel in `src/a.c`; `src/inspect.{h,c}` the `\v` inspector; `src/ast.{h,c}` the `\ast` visualiser; `src/trace.{h,c}` the `\trace` profiler; `src/fmtutil.{h,c}` and `src/ansi.h` shared formatting/colour helpers; `src/simd.{h,c}` AVX2/NEON/scalar kernels; `src/parallel.{h,c}` the thread pool and its parallel kernels; `src/vm.{h,c}` the bytecode disassembler behind `\disasm`; `src/csv.{h,c}` the native CSV parser behind `` `csvr``) |
+| `src/*.c`, `src/*.h` | the interpreter, ngn/k core + Amber extensions (`src/p.c` the `([]…)` parser; `src/ar.c` Arrow; `src/arena.{h,c}` the HFT arena, 32-byte aligned; `src/diagnostic.{h,c}` the Rust-style formatter; the native `aj` kernel in `src/a.c`; `src/inspect.{h,c}` the `\v` inspector; `src/ast.{h,c}` the `\ast` visualiser; `src/trace.{h,c}` the `\trace` profiler; `src/fmtutil.{h,c}` and `src/ansi.h` shared formatting/colour helpers; `src/simd.{h,c}` AVX2/NEON/scalar kernels; `src/parallel.{h,c}` the thread pool and its parallel kernels; `src/dsk.c` the on-disk column files; `src/vm.{h,c}` the bytecode disassembler behind `\disasm`; `src/csv.{h,c}` the native CSV parser behind `` `csvr``) |
 | `amber.k` | the q vocabulary (auto-loaded) |
 | `repl.k` | the REPL, banner, grid rendering, `\grid`/`\clear`, help; CRLF-safe module loader; reads its input through `` `rdl`` (the native editor) and exposes the optional `ext.*` hooks |
 | `src/ln.{h,c}`, `src/lnk.c` | the native line editor (raw `termios`, history, Tab completion) and the `` `rdl`` verb that the REPL reads through, this is what replaced `rlwrap` |
@@ -306,9 +307,8 @@ O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 ## Roadmap
 
 Amber covers a large slice of q. [docs/MISSING.md](docs/MISSING.md) is an honest map of what's next;
-top picks: wiring the `` `g`` grouped attribute into the C find path; **attribute preservation
-through ops** (keep/drop by q's per-op rules); the missing atom types
-(`short`/`real`/`byte`/`guid`); a true partitioned / memory-mapped HDB; and **live REPL syntax
+top picks: wiring the `` `g`` grouped attribute into the C find path; map-reduce for queries that
+span partitions; the missing atom types (`short`/`real`/`byte`/`guid`); and **live REPL syntax
 highlighting** (colouring tokens *as you type*, which needs `repl.k`'s raw-keystroke input loop
 rewritten).
 

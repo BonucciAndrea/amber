@@ -213,7 +213,7 @@ t[`qrwfInString;qrwf"y:\"select px from t\"";  "y:\"select px from t\""]
 
 / select ... by <symbol column> uses the 2.0.0 symbol-grouping fast path;
 / keys are first-appearance order (c,a,b) and aggregates are correct
-t[`selectBySymGroup; sel"select s:sum v by k from ([]k:`c`a`b`a`c; v:1 2 3 4 5)"; ([k:`c`a`b] s:6 6 3)]
+t[`selectBySymGroup; sel"select s:sum v by k from ([]k:`c`a`b`a`c; v:1 2 3 4 5)"; ([k:`a`b`c] s:6 3 6)]   / groups in key order, as q (2.7)
 
 / ---- amber 2.2: select[...] -- q's sorted and limited select --------------
 / Order is q's: where, then by/select, then sort, then limit.  A sort spec is
@@ -261,8 +261,8 @@ t[`qscutNested;    qscut"2;>f[a;b]"; (,"2";">f[a;b]")]
 t[`selAllIdentity;  (sel"select from st")~st; 1]
 t[`selStarIdentity; (sel"select * from st")~st; 1]
 t[`selWhereStill;   sel"select from st where sz>25"; st@&(st`sz)>25]
-t[`selByNoWhere;    sel"select s:sum px by sym from st"; ([sym:`c`a`b] s:9.0 5 7)]
-t[`selByWhere;      sel"select s:sum px by sym from st where sz>15"; ([sym:`c`b`a] s:9.0 7 4)]
+t[`selByNoWhere;    sel"select s:sum px by sym from st"; ([sym:`a`b`c] s:5.0 7 9)]
+t[`selByWhere;      sel"select s:sum px by sym from st where sz>15"; ([sym:`a`b`c] s:4.0 7 9)]
 
 / ---- fby inside a WHERE-CLAUSE -------------------------------------------
 / docs/MISSING.md claimed this was not implemented. It always was: qidsub

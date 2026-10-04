@@ -65,7 +65,8 @@ X1(whr,Ril(whr(enl(x)))RA(P(!xn,x(an(0,tI)))K1("{$[`A~@x;(,&#'*'x),,'/x@\\:!0|/#
              {H*r=yV;S4(w,F(m,Fj(xg,*r++=i)),F(m,Fj(xh,*r++=i)),F(m,Fj(xi,*r++=i)),F(m,Fj(xl,*r++=i)))},
              {I*r=yV;S4(w,F(m,Fj(xg,*r++=i)),F(m,Fj(xh,*r++=i)),F(m,Fj(xi,*r++=i)),F(m,Fj(xl,*r++=i)))},))y))
 X1(rev,Rm(A y=kv(&x);am(rev(x),rev(y)))RM(A y=kv(&x);aM(x,e1f(rev,y)))Rt(x)RE(rev(gZ(x)))RB(cB(rev(cG(x))))
- R_(P(xn<2,x)P(TR(xt),x=mut(x);U n=xn;F(n>>1,SW(xl,xL[n-1-i]))x)   //items that are references keep the swaps: mut() takes the references
+ R_(P(xn<2,_at(x)?mut(x):x)P(TR(xt),x=mut(x);   /*2.7: a reversed list has no attribute, as in q, even one item long*/
+ U n=xn;F(n>>1,SW(xl,xL[n-1-i]))x)   //items that are references keep the swaps: mut() takes the references
   U n=xn;I w=xw-3;A z=an(n,xt);   //amber 2.4.1: one reversed copy into a new vector, bytes 8 at a time; was a copy then pairwise swaps
   S4(w,{CO G*RES p=xV;G*RES r=zV;U k=n>>3;F(k,W u;MC(&u,p+n-8*(i+1),8);u=__builtin_bswap64(u);MC(r+8*i,&u,8))F(n-8*k,r[8*k+i]=p[n-1-8*k-i])},
        {CO H*RES p=xV;H*RES r=zV;F(n,r[i]=p[n-1-i])},
@@ -924,12 +925,13 @@ A rdxsrt(A x){
 // trusted now that setting it checks the data and every in-place write drops it
 // (m.c mut/aa, 2.c), so this is q's rule: sorting sorted data costs nothing.
 Z A srtUC(A x,B d){U n=xn,c[256]={0};CO UC*p=xV;F(n,c[p[i]]++)A z=an(n,tC);UC*r=zV;F(256,U k=d?255-i:i;MS(r,k,c[k]);r+=c[k])_at(z)=!d;return x(z);}//chars: a counting sort as unsigned bytes
+I tjk(A);
 A1(srtC,UC t=_t(x);
  I(!_tP(x)&&LH(tG,t,tS)&&_at(x)==1,return x)
  I(!_tP(x)&&t==tC,return srtUC(x,0))
- I(!_tP(x)&&LH(tG,t,tS)&&t-tC,A c=cntsrt(x);I(c,return x(c))
-                        c=rdxsrt(x);I(c,return x(c)))
- A g=asc(xR);P(!g,x(0))A r=i1(x,g);x(0);P(!r,0)I(!_tP(r)&&LH(tG,_t(r),tC),_at(r)=1)r)
+ I(!_tP(x)&&LH(tG,t,tS)&&t-tC,A c=cntsrt(x);I(c,_at(c)=1;return x(c))
+                        c=rdxsrt(x);I(c,_at(c)=1;return x(c)))
+ A g=asc(xR);P(!g,x(0))A r=i1(x,g);x(0);P(!r,0)I(!_tP(r)&&(LH(tG,_t(r),tS)||_t(r)==tA&&tjk(r)>1),_at(r)=1)r)   //dates and times too   //2.7: syms too, as q's asc (sort and find share one collation)
 A1(srtdC,UC t=_t(x);
  I(!_tP(x)&&t==tC,return srtUC(x,1))
  I(!_tP(x)&&LH(tG,t,tS)&&t-tC,A c=cntsrt(x);I(c,A r=rev(x(c));P(!r,0)I(!_tP(r),_at(r)=0)return r;)

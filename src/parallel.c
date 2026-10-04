@@ -285,20 +285,29 @@ static double pbs(const double *a, const double *b, size_t n) {
 double par_bsum_f64(const double *a, size_t n) { return pbs(a, 0, n); }
 double par_bdot_f64(const double *a, const double *b, size_t n) { return pbs(a, b, n); }
 
-static void pmm_job(void *c_, int i) {
-    PBS *c = (PBS *)c_;
-    size_t ch = c->n / (size_t)c->t, lo = (size_t)i * ch, hi = i == c->t - 1 ? c->n : lo + ch;
-    int s = 0;
-    c->mm[i] = c->mx ? simd_max_f64(c->a + lo, hi - lo, &s) : simd_min_f64(c->a + lo, hi - lo, &s);
-    c->nan[i] = s;
+static void pmm_job(void *c_, int i) {   /* blocks from the counter, as pbs_job: no thread waits on a slow slice */
+    PBS *c = (PBS *)c_; (void)i;
+    for (;;) {
+        size_t k = __atomic_fetch_add(&c->next, 1, __ATOMIC_RELAXED);
+        if (k >= c->nb) break;
+        size_t lo = k * PBS_BLOCK, m = c->n - lo < PBS_BLOCK ? c->n - lo : PBS_BLOCK;
+        int s = 0;
+        c->part[k] = c->mx ? simd_max_f64(c->a + lo, m, &s) : simd_min_f64(c->a + lo, m, &s);
+        if (s) __atomic_store_n(&c->nan[0], 1, __ATOMIC_RELAXED);
+    }
 }
 double par_mm_f64(const double *a, size_t n, int mx, int *sawnan) {
     int t = n < PBS_MIN ? 1 : par_thread_count(n);
     if (t < 2) return mx ? simd_max_f64(a, n, sawnan) : simd_min_f64(a, n, sawnan);
-    PBS c; c.a = a; c.b = 0; c.n = n; c.mx = mx; c.t = t;
+    PBS c; c.a = a; c.b = 0; c.n = n; c.mx = mx; c.t = t; c.nb = (n + PBS_BLOCK - 1) / PBS_BLOCK; c.next = 0; c.nan[0] = 0;
+    double stack[512];
+    c.part = c.nb <= 512 ? stack : (double *)malloc(c.nb * sizeof(double));
+    if (!c.part) return mx ? simd_max_f64(a, n, sawnan) : simd_min_f64(a, n, sawnan);
+    if ((size_t)t > c.nb) t = (int)c.nb;
     par_run(t, pmm_job, &c);
-    double r = c.mm[0]; int s = c.nan[0];
-    for (int i = 1; i < t; i++) { s |= c.nan[i]; if (mx ? c.mm[i] > r : c.mm[i] < r) r = c.mm[i]; }
+    double r = c.part[0]; int s = c.nan[0];
+    for (size_t k = 1; k < c.nb; k++) if (mx ? c.part[k] > r : c.part[k] < r) r = c.part[k];
+    if (c.part != stack) free(c.part);
     if (s || r == 0.0) return mx ? simd_max_f64(a, n, sawnan) : simd_min_f64(a, n, sawnan);   /* NaN rules, zero's sign */
     *sawnan = 0;
     return r;

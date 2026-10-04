@@ -313,6 +313,42 @@ A1(gaggC,P(_t(x)-tA||(_n(x)-3&&_n(x)-4),et(x))A*e=_A(x);A op=e[0],k=e[1],v=e[2],
 #undef GA_GROW
 #undef GA_ADD
 #undef GA_OF
+// ---- 2.5 (exp): float sum and avg by group in parallel, from PGAF_MIN (256K) rows on a direct key range. The rows are cut
+// into nb fixed blocks -- nb set by n and the key range only, never by the thread count -- each block keeps its own
+// per-group count, first row and float sum (skipping NaN, as gaggC), and the blocks are added in order: one answer for
+// any thread count from 2 up (last-bit different from gaggC's single running sum). One thread, or more than 32K groups,
+// stays on gaggC: there the blocks cost more than they save (up to 10% on one thread, nothing gained at 100K groups).
+// Group order: first row, as gaggC.
+#define PGAF_MIN (1u<<18)
+#define PGAF_CELLS (1u<<20)
+TD struct{I f,s;}GFS;   //(first row, slot), sorted by first row, which is unique per slot
+TD struct{CO V*kp;CO F*vp;CO UC*mp;U wk;N n,bs,nb;L lo;W rg;L*cnt;F*sum;I*fst;N next;}GF;
+Z V gf1(V*c_,int t){GF*c=c_;(V)t;
+ for(;;){N b=__atomic_fetch_add(&c->next,1,__ATOMIC_RELAXED);if(b>=c->nb)break;
+  N s=b*c->bs;N e=s+c->bs<c->n?s+c->bs:c->n;W rg=c->rg;L*cnt=c->cnt+b*rg;F*sm=c->sum+b*rg;I*fst=c->fst+b*rg;L lo=c->lo;
+  for(N i=s;i<e;i++){if(c->mp&&!c->mp[i])continue;W q=(W)GARD(c->wk,c->kp,i)-(W)lo;
+   if(!cnt[q])fst[q]=(I)i;F d=c->vp[i];if(d==d){sm[q]+=d;cnt[q]++;}else cnt[q]+=(L)1<<40;}}}   //a NaN row still makes its group: high count bits
+// (keys ; sums or averages ; first rows), or 0 when not taken
+Z A gaggF(I code,A k,UC kt,U wk,CO F*vp,CO UC*mp,N n,L lo,W rg,int nt){
+ N nb=(n+(((N)1<<18)-1))>>18;N cap=PGAF_CELLS/(N)rg;   //256K-row blocks: enough rows per group that a block's table pays for itself
+if(cap<2)return 0;if(nb>cap)nb=cap;N bs=(n+nb-1)/nb;nb=(n+bs-1)/bs;
+ N cells=nb*(N)rg;GF c={.kp=_V(k),.vp=vp,.mp=mp,.wk=wk,.n=n,.bs=bs,.nb=nb,.lo=lo,.rg=rg,.next=0};
+ c.cnt=calloc(cells,SZ(L));c.sum=calloc(cells,SZ(F));c.fst=malloc(cells*SZ(I));A r=0;
+ if(c.cnt&&c.sum&&c.fst){int t=nt>(int)nb?(int)nb:nt;par_run(t,gf1,&c);
+  // per slot: total count, sum and first row (blocks are in row order: the first block holding the slot has its
+  // first row); then the groups in first-row order from a bitmap over the rows -- a qsort of 100k groups cost more
+  // than the aggregation
+  L*tc=calloc((N)rg,SZ(L));F*ts=malloc((N)rg*SZ(F));I*tf=malloc((N)rg*SZ(I));W*bm=calloc((n+63)>>6,SZ(W));
+  if(tc&&ts&&tf&&bm){U ng=0;
+   for(W q=0;q<rg;q++){F sm=0;L cn=0;I f=-1;for(N b=0;b<nb;b++){N j=b*rg+q;L cj=c.cnt[j];if(cj){if(f<0)f=c.fst[j];sm+=c.sum[j];cn+=cj;}}
+    ts[q]=sm;tc[q]=cn;tf[q]=f;if(f>=0){bm[(W)f>>6]|=1ull<<((W)f&63);ng++;}}
+   A ky=an(ng,kt);A vl=an(ng,tF);A fr=an(ng,tI);U g=0;
+   for(W w=0;w<(n+63)>>6;w++){W bb=bm[w];while(bb){W p=(w<<6)|(W)__builtin_ctzll(bb);bb&=bb-1;W q=(W)GARD(wk,c.kp,p)-(W)lo;L key=lo+(L)q;
+     if(wk==0)_G(ky)[g]=(G)key;else if(wk==1)_H(ky)[g]=(H)key;else if(wk==2)_I(ky)[g]=(I)key;else _L(ky)[g]=key;
+     _F(vl)[g]=code==GA_AVG?ts[q]/(F)(tc[q]&(((L)1<<40)-1)):ts[q];_I(fr)[g]=(I)p;g++;}}
+   r=aV(tA,3,A(ky,vl,fr));}
+  free(tc);free(ts);free(tf);free(bm);}
+ free(c.cnt);free(c.sum);free(c.fst);return r;}
 // ---- amber 2.5 (exp): `gagg comes here first. The parallel aggregation (gagg_par) has its own entry point rather
 // than a branch in gaggC: inside gaggC it made GCC compile the serial loop 3-10% slower even where it is never taken.
 // gaggT takes what gagg_par does exactly -- count, int sum, min, max, first, last over a direct key range, n at least
@@ -325,11 +361,18 @@ A gaggT(A x){
  I code=-1;
  I(_ts(op),S nm=su(_v(op));code=!strcmp(nm,"sum")?GA_SUM:!strcmp(nm,"count")?GA_CNT:!strcmp(nm,"min")?GA_MIN:!strcmp(nm,"max")?GA_MAX:!strcmp(nm,"avg")?GA_AVG:!strcmp(nm,"first")?GA_FST:!strcmp(nm,"last")?GA_LST:-1)
  J(_tz(op),code=(I)gl_(op))
- P(!(code==GA_SUM||code==GA_CNT||code==GA_MIN||code==GA_MAX||code==GA_FST||code==GA_LST),gaggC(x))
+ P(!(code==GA_SUM||code==GA_AVG||code==GA_CNT||code==GA_MIN||code==GA_MAX||code==GA_FST||code==GA_LST),gaggC(x))
  UC kt=_t(k);P(!(kt==tG||kt==tH||kt==tI||kt==tL||kt==tS),gaggC(x))
- N n=_n(k);int nt=par_thread_count(n);P(nt<2,gaggC(x))
+ N n=_n(k);int nt=par_thread_count(n);
  U wk=kt==tG?0:kt==tH?1:(kt==tI||kt==tS)?2:3;
- UC vt=code==GA_CNT?tL:_t(v);B vf=vt==tF;P(code==GA_SUM&&vf,gaggC(x))
+ UC vt=code==GA_CNT?tL:_t(v);B vf=vt==tF;
+ if((code==GA_SUM||code==GA_AVG)&&vf&&!_tP(v)&&_n(v)==n&&(W)n>=PGAF_MIN&&!(m&&(_tP(m)||(_t(m)!=tG&&_t(m)!=tB)||_n(m)!=n))){   //floats: the blocked path
+  A mw=m&&_t(m)==tB?cG(_R(m)):0;CO UC*mp_=mw?_V(mw):m?_V(m):0;   //a bit mask is widened to bytes, as gaggC does
+  CO V*kp=_V(k);L lo=GARD(wk,kp,0);L hi=lo;for(N i=0;i<n;i++){L t=GARD(wk,kp,i);if(t<lo)lo=t;if(t>hi)hi=t;}W rg=(W)hi-(W)lo+1;
+  if(nt>1&&rg&&rg<=((W)1<<15)&&rg<=8*(W)n+1024){A z_=gaggF(code,k,kt,wk,_V(v),mp_,n,lo,rg,nt);if(z_){if(mw)mr(mw);return x(z_);}}
+  if(mw)mr(mw);}
+ P(code==GA_SUM&&vf||code==GA_AVG,gaggC(x))
+ P(nt<2,gaggC(x))
  I(code!=GA_CNT&&code!=GA_FST&&code!=GA_LST,P(_tP(v)||!(vt==tG||vt==tH||vt==tI||vt==tL||vt==tF)||_n(v)!=n,gaggC(x)))
  I(code==GA_FST||code==GA_LST,P(_tP(v)||_N(v)!=n,gaggC(x)))
  P(m&&(_tP(m)||_t(m)!=tG||_n(m)!=n),gaggC(x))

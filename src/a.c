@@ -880,9 +880,16 @@ Z A1(qat,UC a=(_tP(x)||!LH(tG,_t(x),tS))?0:_at(x);x(0);a?({C b[2]={"\0supg"[a],0
 ZN AX(ext,P(n-xK,er8(a,n))V*f=(V*)(x&-1ull>>16);S(n,R(1,((A1*)f)(a[0]))R(2,((A2*)f)(a[0],a[1]))R(3,((A3*)f)(a[0],a[1],a[2]))R(4,((A4*)f)(a[0],a[1],a[2],a[3]))R_(en8(a,n)))0)
 // `sumn x: +/x with the int null counted as 0, in one pass (amber.k's q-style sum). Only a 64-bit int
 // vector can hold 0N; anything else is +/ as it is. Wraps like +/ (unsigned adds).
+// `prn x: */x with the int null counted as 1 (amber.k's q-style prd), four lanes (int products wrap the same in any
+// order). `hnl x: might x hold a null - a scan of a 64-bit int or float list, 0 at once for anything else (a narrower
+// int list can't hold 0N). Both digest #43
+Z A1(prnT,P(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);U n=_n(x);W t0=1,t1=1,t2=1,t3=1;U i=0;
+ for(;i+4<=n;i+=4){L v0=p[i],v1=p[i+1],v2_=p[i+2],v3=p[i+3];t0*=(W)(v0==NL?1:v0);t1*=(W)(v1==NL?1:v1);t2*=(W)(v2_==NL?1:v2_);t3*=(W)(v3==NL?1:v3);}
+ for(;i<n;i++){L v0=p[i];t0*=(W)(v0==NL?1:v0);}x(az((L)(t0*t1*t2*t3))))K1("{*/x}",x))
+Z A1(hnlT,I hz=0;I(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);F(_n(x),hz|=p[i]==NL))J(!_tP(x)&&_t(x)==tF,CO F*RES p=_V(x);F(_n(x),hz|=p[i]!=p[i]))x(ai(hz)))
 Z A1(sumnT,P(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);U n=_n(x);W t=0;F(n,L v=p[i];t+=(W)(v==NL?0:v))x(az((L)t)))K1("{+/x}",x))
-ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx"};
- G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggC,sumnT,ejxC,ed)[fI((V*)s,L(s),v)](x))
+ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl"};
+ G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggC,sumnT,ejxC,cvmC,prnT,hnlT,ed)[fI((V*)s,L(s),v)](x))
 /* ---- tacit trains: hook (f g) and fork (f g h) --------------------------
  * A general list of length 2 or 3 whose every element is a function becomes a
  * TRAIN when it is applied: (f g) is a hook, (f g h) a fork (APL/J/BQN rules).

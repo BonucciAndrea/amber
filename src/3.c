@@ -279,8 +279,40 @@ A wsmC(A x){
  A*a=_A(x);A p=a[0],q=a[1];U n=_n(p);
  if(_n(q)!=n) return et(x);
  if(_t(p)==tF&&_t(q)==tF){F r=simd_dot_f64((CO F*)_V(p),(CO F*)_V(q),n);mr(x);return af(r);}
- if(_t(p)==tL&&_t(q)==tL){L r=simd_dot_i64((CO int64_t*)_V(p),(CO int64_t*)_V(q),n);mr(x);return al(r);}
+ // ints: only a 64-bit list can hold 0N, so two narrower ones are k's +/x*y and one is widened; a null on either side gives 0N, so
+ // amber.k's wsum knows to take the pairs instead (an int 0N*y wraps, it doesn't stay null) - digest #43
+ if(LH(tB,_t(p),tL)&&LH(tB,_t(q),tL)){I(_t(p)!=tL&&_t(q)!=tL,A wp=_R(p),wq=_R(q);mr(x);return K2("{+/x*y}",wp,wq);)   //no null possible: k's own fused +/x*y
+  A wp=_t(p)==tL?_R(p):cL(_R(p)),wq=_t(q)==tL?_R(q):cL(_R(q));mr(x);P(!wp||!wq,mr(wp);mr(wq);0)
+  CO L*RES wa=_V(wp),*RES wb=_V(wq);W w0=0,w1=0;I wz=0;U i=0;
+  for(;i+2<=n;i+=2){L a0=wa[i],a1=wa[i+1],b0=wb[i],b1=wb[i+1];wz|=(a0==NL)|(a1==NL)|(b0==NL)|(b1==NL);w0+=(W)a0*(W)b0;w1+=(W)a1*(W)b1;}
+  for(;i<n;i++){L a0=wa[i],b0=wb[i];wz|=(a0==NL)|(b0==NL);w0+=(W)a0*(W)b0;}
+  mr(wp);mr(wq);return al(wz?NL:(L)(w0+w1));}
  return et(x);}
+
+// `cvm (x;y) -- cov, scov and cor's sums in one kernel: (sxy;sxx;syy;n), centred, over the pairs with no
+// null, in two fused passes and no temporaries. amber.k's cov was avg[x*y]-avg[x]*avg y, which lost digits
+// far from 0 and kept the values whose partner was null (digest #43 #46). Floats or ints on either side; a
+// narrower int list is widened first (it can't hold a null). Four lanes, as the sums above.
+#define CVNF(v) ((v)!=(v))
+#define CVNL(v) ((v)==NL)
+#define CVM(NM,TX,TY,NX,NY) Z V NM(CO TX*RES cpa,CO TY*RES cpb,U n,F*cvo){F cvs[4]={0},cvt[4]={0};W cvc[4]={0};U i=0,m4=n&~(U)3; \
+ for(;i<m4;i+=4)for(I j=0;j<4;j++){TX a_=cpa[i+j];TY b_=cpb[i+j];I k_=!(NX(a_)||NY(b_));cvs[j]+=k_?(F)a_:0.;cvt[j]+=k_?(F)b_:0.;cvc[j]+=k_;} \
+ for(;i<n;i++){TX a_=cpa[i];TY b_=cpb[i];I k_=!(NX(a_)||NY(b_));cvs[0]+=k_?(F)a_:0.;cvt[0]+=k_?(F)b_:0.;cvc[0]+=k_;} \
+ W cn=cvc[0]+cvc[1]+cvc[2]+cvc[3];F mxa=((cvs[0]+cvs[1])+(cvs[2]+cvs[3]))/(F)cn,mxb=((cvt[0]+cvt[1])+(cvt[2]+cvt[3]))/(F)cn; \
+ F sab[4]={0},saa[4]={0},sbq[4]={0};i=0; \
+ for(;i<m4;i+=4)for(I j=0;j<4;j++){TX a_=cpa[i+j];TY b_=cpb[i+j];I k_=!(NX(a_)||NY(b_));F da=k_?(F)a_-mxa:0.,db=k_?(F)b_-mxb:0.;sab[j]+=da*db;saa[j]+=da*da;sbq[j]+=db*db;} \
+ for(;i<n;i++){TX a_=cpa[i];TY b_=cpb[i];I k_=!(NX(a_)||NY(b_));F da=k_?(F)a_-mxa:0.,db=k_?(F)b_-mxb:0.;sab[0]+=da*db;saa[0]+=da*da;sbq[0]+=db*db;} \
+ cvo[0]=(sab[0]+sab[1])+(sab[2]+sab[3]);cvo[1]=(saa[0]+saa[1])+(saa[2]+saa[3]);cvo[2]=(sbq[0]+sbq[1])+(sbq[2]+sbq[3]);cvo[3]=(F)cn;}
+CVM(cvmFF,F,F,CVNF,CVNF) CVM(cvmFL,F,L,CVNF,CVNL) CVM(cvmLF,L,F,CVNL,CVNF) CVM(cvmLL,L,L,CVNL,CVNL)
+A cvmC(A x){
+ if(_t(x)!=tA||_n(x)!=2) return et(x);
+ A*a=_A(x);A p=a[0],q=a[1];
+ if(_tP(p)||_tP(q)||!(_t(p)==tF||LH(tB,_t(p),tL))||!(_t(q)==tF||LH(tB,_t(q),tL))) return et(x);
+ U n=_n(p);if(_n(q)!=n) return el(x);
+ p=_t(p)==tF||_t(p)==tL?_R(p):cL(_R(p));q=_t(q)==tF||_t(q)==tL?_R(q):cL(_R(q));mr(x);P(!p||!q,mr(p);mr(q);0)
+ A r=an(4,tF);F*o=(F*)_V(r);B fp=_t(p)==tF,fq=_t(q)==tF;
+ I(fp&&fq,cvmFF(_V(p),_V(q),n,o))J(fp,cvmFL(_V(p),_V(q),n,o))J(fq,cvmLF(_V(p),_V(q),n,o))E(cvmLL(_V(p),_V(q),n,o))
+ mr(p);mr(q);return r;}
 
 // ---- amber 2.1: fused reduction over a dyad -- +/x*y, +/x=y, +/x<y, +/x>y ----
 // The compiler (src/b.c fus()) turns `+/ (x DYAD y)` into fredC(dyad;x;y).

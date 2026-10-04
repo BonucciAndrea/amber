@@ -25,6 +25,15 @@ t[`wsum;wsum[1 2 3;10 20 30];140]
 t[`wavg;wavg[10 20 30;1 2 3];7%3.0]
 t[`cor;0.0001>abs 1.0-cor[1 2 3;2 4 6];1]
 t[`cov;0.0001>abs cov[1 2 3;1 2 3]-2%3.0;1]
+/ digest #43: the q-named stats skip nulls (a pair with one, for the two-list ones); #46: cov is centred
+t[`sumsNull;   (sums 1 0n 2;sums 1 0N 2;prds 2 0n 3;prds 2 0N 3);   (1 1 3.0;1 1 3;2 2 6.0;2 2 6)]
+t[`prdNull;    (prd 2 0n 3;prd 2 0N 3;prd 2 0N 3 2147483648);     (6.0;6;6*2147483648)]
+t[`wsumNull;   (wsum[1 2 3.0;1 0n 2];wsum[1 2 3;1 0N 2];wsum[1 2 3;1 0n 2];wsum[1 2 3+2147483648;1 0N 2]);   (7.0;7;7.0;7+3*2147483648)]
+t[`wavgNull;   (wavg[1 2 3;1 0n 2];wavg[1 2 3;1 0N 2];wavg[1 2 3.0;4 5 6.0]);   (1.75;1.75;32%6)]
+t[`svarNull;   (svar 1 2 0n;sdev 1 2 0n);   (0.5;sqrt 0.5)]
+t[`covNull;    (cov[1 2 3;1 2 0n];scov[1 2 3;1 2 0n];cor[1 2 3;1 2 0n];cov[1 2 3 0n;0n 2 3 4]);   (0.25;0.5;1.0;0.25)]
+t[`covFar;     (cov[10000000000+0 1 2.0;0 0 1.0];1e-10>abs cor[10000000000+0 1 2.0;0 0 1.0]-sqrt 0.75);   (1%3;1b)]
+t[`covKinds;   (cov[1 2 3 4.0;2 4 6 9.0];scov[1 2 3 4;2 4 6 9];cov[(1;2;3.0);1 2 3.0]);   (2.875;11.5%3;2%3)]
 t[`signum;signum -3 0 5;-1 0 1]
 t[`abs;abs -3 4 -5;3 4 5]
 t[`floor;floor 2.7 -2.3;2 -3]
@@ -43,6 +52,9 @@ t[`prev;prev 1 2 3;0N 1 2]
 t[`next;next 1 2 3;2 3 0N]
 t[`reverse;reverse 1 2 3;3 2 1]
 t[`rotate;rotate[2;1 2 3 4 5];3 4 5 1 2]
+t[`rotateWhole;(rotate[3;1 2 3];rotate[0;1 2 3];rotate[-3;1 2 3]);3#,1 2 3]   / digest #47: was ::
+/ digest #38: an atom does what q does, not what the k primitive does
+t[`listFnAtom;(prev 5;next 5;raze 5;5#.[distinct;,5;{x}];5#.[group;,5;{x}];distinct `a`b!1 1);(5;5;,5;"'type";"'type";,1)]
 
 / ---- ordering / set ----
 t[`asc;asc 3 1 2;1 2 3]

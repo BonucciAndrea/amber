@@ -27,8 +27,8 @@ value:{. x}
 first:{*x}
 last:{*|x}
 reverse:{|x}
-distinct:{?x}
-group:{=x}
+distinct:{$[isat x;`err"type";?x]}   / an atom: 'type as q (?5 is a random deal)
+group:{$[isat x;`err"type";=x]}     / =5 is the unit matrix
 where:{&x}
 flip:{+x}
 count:{#x}
@@ -49,34 +49,42 @@ round:{[d;x]p:*/d#10;(_0.5+x*p)%p}
 / on an int or float list a null takes the verb's identity, so it changes nothing (avg leaves it out)
 nid:{[x;i;f]$[`I=@x;$[0N=&/x;i^x;x];`F=@x;$[^&/x;f^x;x];x]}           / x with its nulls filled by i (ints) or f (floats); one &/ finds whether there are any (0N is the least int, and &/ takes NaN as the least float)
 sum:{$[0=#x;$[`F=@x;0.0;0];`F=@x;$[^s:+/x;+/0.0^x;s];`I=@x;`sumn x;+/nid[x;0;0.0]]}   / sum 0N 1 is 1; a float sum is NaN only when a NaN is in it; empty: keep the float type
-prd:{$[0=#x;$[`F=@x;1.0;1];*/x]}       / empty: keep the float type
+prd:{$[0=#x;$[`F=@x;1.0;1];`F=@x;$[^r:*/x;*/1.0^x;r];`I=@x;`prn x;*/nid[x;1;1.0]]}   / nulls skipped; empty: keep the float type
 min:{$[`I=@x;$[0N=m:&/x;&/9223372036854775807^x;m];`F=@x;$[^m:&/x;&/0w^x;m];&/x]}   / min 0N 5 is 5; all nulls: the largest int (q 0W); no nulls: just &/
 max:{$[`I=@x;$[0N=m:|/x;-9223372036854775807;m];`F=@x;$[^m:|/x;-0w;m];|/x]}   / a null is the least, so |/ skips it unless all are null (then -0W, -0w)
 avg:{$[`I=@x;$[0N=&/x;avgn x;(+/0.0+x)%#x];`F=@x;$[^s:+/x;avgn x;s%#x];(+/0.0+x)%#x]}   / the non-null items, summed as floats, like q (an int64 +/ can wrap); none: 0n
 avgn:{v:x@&~^x;$[#v;(+/0.0+v)%#v;0n]}
 / fused dot (`wsm) when both sides are float vectors: no product vector is
 / built, so the 80MB temporary `+/x*y` writes and re-reads never exists.
-wsum:{$[(`F=@x)&`F=@y;`wsm(x;y);+/x*y]}
-wavg:{(wsum[x;y])%+/x}
+/ wsum, wavg: a pair with a null is skipped (its weight too). `wsm gives NaN for floats or 0N for ints when one is in
+wsum:{$[(`F=@x)&`F=@y;$[^r:`wsm(x;y);wsp[x;y];r];(`I=@x)&`I=@y;$[0N=r:`wsm(x;y);wsp[x;y];r];`hnl[x]|`hnl y;wsp[x;y];+/x*y]}
+wavg:{$[(`F=@x)&`F=@y;$[^r:(`wsm(x;y))%+/x;wvp[x;y];r];(`I=@x)&`I=@y;$[0N=r:`wsm(x;y);wvp[x;y];r%+/x];`hnl[x]|`hnl y;wvp[x;y];(+/x*y)%+/x]}
+wsp:{m:&~(^x)|^y;+/x[m]*y m}   / (an int 0N*y wraps, so the pairs go before the product)
+wvp:{m:&~(^x)|^y;(+/x[m]*y m)%+/x m}
 var:{avg{x*x}x-avg x}
 dev:{sqrt var x}
-svar:{(n*var x)%-1+n:#x}
+svar:{$[`F=@x;$[^s:+/x;svp x;[n:#x;(n*avg{x*x}x-s%n)%-1+n]];`hnl x;svp x;(n*var x)%-1+n:#x]}   / n counts the non-nulls; floats: var's own sum
+svp:{v:x@&~^x;n:#v;(n*var v)%-1+n}
 sdev:{sqrt svar x}
-cov:{avg[x*y]-avg[x]*avg y}
-scov:{(n*cov[x;y])%-1+n:#x}
-cor:{cov[x;y]%dev[x]*dev y}
+/ cov, scov, cor: pairs with a null dropped, then centred (avg[x*y]-avg[x]*avg y lost digits far from 0);
+/ `cvm gives (sxy;sxx;syy;n) for int and float lists, anything else takes the k way
+cvk:{(|/`F`I=@x)&|/`F`I=@y}
+pdr:{$[(|/^x)||/^y;[m:&~(^x)|^y;(x m;y m)];(x;y)]}
+cov:{$[cvk[x;y];[r:`cvm(x;y);r[0]%r 3];[p:pdr[x;y];x:p 0;y:p 1;avg(x-avg x)*y-avg y]]}
+scov:{$[cvk[x;y];[r:`cvm(x;y);r[0]%-1+r 3];[p:pdr[x;y];n:#x:p 0;y:p 1;(n*avg(x-avg x)*y-avg y)%-1+n]]}
+cor:{$[cvk[x;y];[r:`cvm(x;y);r[0]%sqrt r[1]*r 2];[p:pdr[x;y];a:p[0]-avg p 0;b:p[1]-avg p 1;(avg a*b)%sqrt avg[a*a]*avg b*b]]}
 med:{$[0=#x;0n;[a:x@<x;n:#a;m:_n%2;$[2!n;0.0+a m;avg a@m-1 0]]]}
 all:{~|/x=0}
 any:{~&/x=0}
-sums:{+\x}
-prds:{*\x}
+sums:{$[`F=@x;$[^*|r:+\x;+\0.0^x;r];`I=@x;$[`hnl x;+\0^x;+\x];+\nid[x;0;0.0]]}   / a null adds 0; floats: the last sum is NaN only if a NaN is in
+prds:{$[`F=@x;$[^*|r:*\x;*\1.0^x;r];`I=@x;$[`hnl x;*\1^x;*\x];*\nid[x;1;1.0]]}
 mins:{&\nid[x;9223372036854775807;0w]}                                       / mins 0n 1.0 is 0w 1.0, as q
 maxs:{|\nid[x;-9223372036854775807;-0w]}
 deltas:{$[#x;x-0,-1_x;x]}
 ratios:{$[#x;x%1,-1_x;x]}
 differ:{~~':x}
-prev:{-1_0N,x}
-next:{1_x,0N}
+prev:{$[isat x;x;-1_0N,x]}   / an atom comes back as is, as q
+next:{$[isat x;x;1_x,0N]}
 
 / ---- ranking / ordering ----------------------------------------------------
 rank:{<<x}
@@ -86,7 +94,7 @@ asc:{`srt x}
 desc:{x@>x}
 xrank:{_y*x%#y:<<y}
 xprev:{y[(!#y)-x]}
-rotate:{$[0=#y;y;n:(#y)!x;(n_y),n#y]}
+rotate:{$[0=#y;y;0=n:(#y)!x;y;(n_y),n#y]}   / a multiple of the count: y as is
 
 / ---- membership / set ops --------------------------------------------------
 / x in y : which elements of x are members of y.
@@ -100,6 +108,7 @@ rotate:{$[0=#y;y;n:(#y)!x;(n_y),n#y]}
 /   1 2 3 except 2  ->  !0    where q gives  1 3
 / q accepts an atom on the right of all four, so this is parity as well as a fix.
 isatm:{"a"<*$@x}                                  / type symbol lowercase -> atom
+isat:{("a"<*$@x)&~`m=@x}                          / an atom, not a dict
 in:{y:$[isatm y;,y;y];r:`memb(x;y);$[`A~@r;~^y?x;r]}   / 2.1: one-pass C membership; K fallback for other types
 / 2.1: fused group aggregates. `gagg (src/o.c) does acc[group]op=v in ONE pass
 / with the same first-appearance key order as =k; each wrapper keeps the
@@ -120,7 +129,7 @@ within:{[x;r](~x<r[0])&~x>r[1]}
 except:{x@&~in[x;y]}
 inter:{x@&in[x;y]}
 union:{?x,y}
-raze:{,/x}
+raze:{$[isat x;,x;,/x]}
 sublist:{n:(abs x)&#y;$[x<0;(0-n)#y;n#y]}
 cross:{,/x,/:\:y}
 

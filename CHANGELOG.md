@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.7.1
+
+qSQL gets a lot faster: a 96-command benchmark had the slow spots, and they're gone.
+
+- **Way faster**: `select distinct` (7.5 s to 20 ms on 10M rows), `like` on symbols (2.7 s to 86 ms),
+  `update ... by` (5.4 s to ~0.3 s), `select by k`, `count i by k`, functional `?[...]`/`![...]`,
+  `deltas`/`ratios` (they turned floats into a general list), `0^x` on floats, `group` of symbols (4x),
+  `within` in one pass, and a select with no where-clause no longer builds a mask the size of the table.
+- **Fixed**: `update ... by ... where ...` ignored the where-clause.
+
 ## 2.7.0
 
 Tables on disk, and attributes that behave like q's.

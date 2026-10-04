@@ -167,7 +167,10 @@ X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x
  // order are byte-identical to the old result.  Measured on 1M rows / 100 groups:
  // ~670 ms -> ~15 ms.  cSI flips tS<->tI on the same payload; we group the ids,
  // then flip the dict's int keys back to symbols.
- RS(P(!xn,K1("{x!0#,!0}",x))A r=grp(cSI(x));A v=kv(&r);am(cSI(r),v))
+ // amber 2.7: short symbols are packed ids spread over a huge range, so grouping the ids hashed every row
+ // (246 ms on 10M rows of 10 symbols). Dense codes first: the distinct symbols (first-seen order), each row's
+ // index in them, and the codes grouped by their small range (~70 ms). The keys come out in the same order.
+ RS(P(!xn,K1("{x!0#,!0}",x))A u=unq(_R(x));P(!u,x(0))A k=fnd(u,x);P(!k,mr(u);0)A d=grp(k);P(!d,mr(u);0)A v=kv(&d);mr(d);am(u,v))
  // amber item 7, REVERTED after measurement. The "optimisation" here was to
  // hoist the group payload pointers into an rp[256] array before the scatter,
  // on the theory that `_I(r[v])` was a dependent load. It is not: A is an

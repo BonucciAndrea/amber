@@ -28,7 +28,7 @@ qfn:{[cols;e]. "{[x]",qidsub[cols;e],"}"}                                       
 / clause never fused, while the same query WITH a where clause did. ~(#t)#0b is materialised,
 / ~-identical to (#t)#1b, and fuses. (Verified: gagg with (#t)#1b -> 0 rows; with ~(#t)#0b,
 / K=K or 0<1+!#t -> the correct rows.)
-qmask:{[t;w]$[0=#w;~(#t)#0b;1=#c:qcut w;qfn[cols t;*c]t;&/qloc[cols t]'1_c;&/{[t;c]qfn[cols t;c]t}[t]'c;qcas[t;c]]}   / Where -> boolean mask
+qmask:{[t;w]$[0=#w;();1=#c:qcut w;qfn[cols t;*c]t;&/qloc[cols t]'1_c;&/{[t;c]qfn[cols t;c]t}[t]'c;qcas[t;c]]}   / Where -> boolean mask
 / Several constraints cascade, as q's do: each one sees only the rows the earlier ones kept (and only the columns it
 / names), so  where sym=`a, n=max n  is the largest n among the a's. They were all run on the whole table (digest #39).
 / A constraint that only looks at its own row (columns, literals, data globals, comparisons, in/within/like...) gives
@@ -105,18 +105,19 @@ qsimp:`sum`avg`min`max`count`first`last
 / and one divide, instead of dropping the whole query onto the per-group path. Without this,
 / one weighted average in the select list de-optimised every other aggregate beside it.
 qwagg:`wavg`wsum
-qsagg:{[C;e]w:" "vs trim e;$[2=#w;$[(in[`$w 0;qsimp])&in[`$w 1;C];(`$w 0;`$w 1);()];3=#w;$[(in[`$w 1;qwagg])&(in[`$w 0;C])&in[`$w 2;C];(`$w 1;`$w 0;`$w 2);()];()]}
+qsagg:{[C;e]w:" "vs trim e;$[2=#w;$[(in[`$w 0;qsimp])&in[`$w 1;C];(`$w 0;`$w 1);(w~("count";,"i"))&0<#C;(`count;*C);()];3=#w;$[(in[`$w 1;qwagg])&(in[`$w 0;C])&in[`$w 2;C];(`$w 1;`$w 0;`$w 2);()];()]}
 / the by-branch of sel, split out so sel itself stays under the bytecode limit
 / the by-branch of sel, split out so sel itself stays under the bytecode limit.
 / u is the UNFILTERED table and m the where-mask: the fused path hands the mask
 / to `gagg and never builds the filtered table; the generic path filters first.
-qselby:{[u;m;byp;it;d]r:qbyx[u;byp];sg:qsagg[cols r 0]'{(qname x)1}'it;fa:$[&/{0<#x}'sg;qaggf[r 0;r 1;(!d)!sg;m];()];$[#fa;qks fa;[t:qwhere[r 0;m];qby[qproj[t;(r 1),(,/qrefs[cols t]'{(qname x)1}'it)];r 1;d]]]}
+qselby:{[u;m;byp;it;d]r:qbyx[u;byp];sg:qsagg[cols r 0]'{(qname x)1}'it;fa:$[(&/{0<#x}'sg)&~(0<#m)&~|/m;qaggf[r 0;r 1;(!d)!sg;m];()];$[#fa;qks fa;[t:$[#m;qwhere[r 0;m];r 0];qby[qproj[t;(r 1),(,/qrefs[cols t]'{(qname x)1}'it)];r 1;d]]]}
 / gag1: one select-list item -> one fused result triple (head;values;first-row-indices).
 / (agg;col)        -> a single `gagg pass, as before.
 / (wavg|wsum;w;c)  -> two `gagg sum passes over the same keys and mask, so the group order
 /                     matches, then divide for wavg. Returns () if either pass declines,
 /                     which keeps the existing "cannot fuse -> fall back" contract.
-gag1:{[d;k;m;p]$[2=#p;`gagg(p 0;k;d p 1;m);[wv:d p 1;a:`gagg(`sum;k;wv*d p 2;m);$[(p 0)~`wsum;a;$[0=#a;();[b:`gagg(`sum;k;wv;m);$[0=#b;();(a 0;(a 1)%b 1;a 2)]]]]]]}
+qgg:{[o;k;v;m]$[#m;`gagg(o;k;v;m);`gagg(o;k;v)]}   / an empty mask is every row (no where-clause)
+gag1:{[d;k;m;p]$[2=#p;qgg[p 0;k;d p 1;m];[wv:d p 1;a:qgg[`sum;k;wv*d p 2;m];$[(p 0)~`wsum;a;$[0=#a;();[b:qgg[`sum;k;wv;m];$[0=#b;();(a 0;(a 1)%b 1;a 2)]]]]]]}
 qaggf:{[t;b;sg;m]d:+t;bc:d b;k:$[1=#b;*bc;qcard[bc]<qEXACT;qenc bc;()];$[0=#k;();[rs:gag1[d;k;m]'sg;$[&/value[{0<#x}'rs];[fr:(*value[rs])2;(+b!bc@\:fr)!+{v:x 1;$[`I=@v;`i$v;v]}'rs];()]]]}
 
 
@@ -155,7 +156,9 @@ qlim:{[r;sp]$[0=#sp;r;iskeyed r;[k:keys r;xkey[k;qlim1[unkey r;sp]]];qlim1[r;sp]
 / query that asked for the table.
 qflt:{[u;m;hw]$[hw;qwhere[u;m];u]}
 / qselall: `select from t` / `select * from t`, with or without a by-clause.
-qselall:{[u;m;hw;r3]$[r3 2;[r:qbyx[qflt[u;m;hw];r3 1];nk:except[cols r 0;r 1];qby[r 0;r 1;nk!qlastf'nk]];qflt[u;m;hw]]}
+qselall:{[u;m;hw;r3]$[r3 2;[r:qbyx[qflt[u;m;hw];r3 1];nk:except[cols r 0;r 1];fa:$[#nk;qlastby[r 0;r 1;nk];()];$[#fa;qks fa;qby[r 0;r 1;nk!qlastf'nk]]];qflt[u;m;hw]]}
+/ select by k from t: the last row of each group in one gagg pass over the row numbers, every other column read there
+qlastby:{[t;b;nk]d:+t;bc:d b;k:$[1=#b;*bc;qcard[bc]<qEXACT;qenc bc;()];$[0=#k;();[g:`gagg(`last;k;0+!#t);$[#g;(+b!bc@\:g 2)!+nk#+t@g 1;()]]]}
 / qsel0: the select-list branch.  The filtered table is built ONLY here, and
 / only on the no-by path: the by path (qselby) takes the UNFILTERED table plus
 / the mask, so the fused group aggregate reads the raw columns and never
@@ -164,7 +167,8 @@ qselall:{[u;m;hw;r3]$[r3 2;[r:qbyx[qflt[u;m;hw];r3 1];nk:except[cols r 0;r 1];qb
 / `select .. by .. where ..` copied every column of every selected row and then
 / threw the copy away.
 qsel0:{[u;m;hw;selp;r3;C]$[(selp~,"*")|0=#selp;qselall[u;m;hw;r3];[it:qcut selp;d:(qnms[C;it])!{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;qselby[u;m;r3 1;it;d];qselect[qflt[u;m;hw];d]]]]}
-sel:{[s]s:qnorm s;s:$[(6#s)~"select";trim 6_s;s];b:qbrk s;s:b 1;r:qsplit[s;" where "];wh:$[r 2;r 1;""];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r3:qsplit0[r2 0;" by "];dz:"distinct "~9#r3 0;r3:$[dz;@[r3;0;:;trim 9_r3 0];r3];u:. qtry r2 1;r:$[qpt u;qpsel[u;r3;wh;b 0];qlim[qsel0[u;qmask[u;wh];r 2;r3 0;r3;cols u];b 0]];$[dz;?r;r]}   / select distinct: the distinct rows, as q
+sel:{[s]s:qnorm s;s:$[(6#s)~"select";trim 6_s;s];b:qbrk s;s:b 1;r:qsplit[s;" where "];wh:$[r 2;r 1;""];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r3:qsplit0[r2 0;" by "];dz:"distinct "~9#r3 0;r3:$[dz;@[r3;0;:;trim 9_r3 0];r3];u:. qtry r2 1;r:$[qpt u;qpsel[u;r3;wh;b 0];qlim[qsel0[u;qmask[u;wh];r 2;r3 0;r3;cols u];b 0]];$[dz;qdst r;r]}
+qdst:{[r]$[iskeyed r;?r;[c:cols r;$[0=#r;r;1=#c;+c!,?(+r)c 0;+c!(qgrp[r;c])0]]]}   / distinct rows, in first-seen order   / select distinct: the distinct rows, as q
 qrun:{[u;wh;r3;lim]qlim[qsel0[u;qmask[u;wh];0<#wh;r3 0;r3;cols u];lim]}   / select on a table in hand (hdb.k runs it per partition)
 
 / A table on disk split in partitions (hdb.k's loaddb) is a dict that only names its partitions. select and exec
@@ -184,8 +188,10 @@ qexby:{[u;wh;eb]r:qrun[u;wh;(eb 0;eb 1;1b);""];k:+key r;v:+value r;$[1=#!k;k@*!k
 
 / ---- update  (add / replace columns; optional where and by) ---------------
 qasg:{[t;idx;nm;v]@[$[in[nm;cols t];(+t)nm;(#t)#qnull v];idx;:;v]}
-qasgby:{[t;nm;f;gi]{[t;f;c;iv]@[c;iv;:;f atr[t;iv]]}[t;f]/[$[in[nm;cols t];(+t)nm;(#t)#qnull f atr[t;*gi]];gi]}
-upd:{[s]s:qnorm s;s:$[(6#s)~"update";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];r2:qsplit[r 0;" from "];r3:qsplit[r2 0;" by "];t:. qtry r2 1;$[qpt t;`err"par";];C:cols t;it:qcut r3 0;nm:qnms[C;it];fns:{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;[gi:value(=rows[{(x 1)#+x 0}qbyx[t;r3 1]]);+((+t),nm!{[t;gi;n;f]qasgby[t;n;f;gi]}[t;gi]'[nm;fns])];0=#wh;+((+t),nm!{[t;f]v:f t;$[isat v;(#t)#v;v]}[t]'fns);[m:qmask[t;wh];idx:&m;sub:qwhere[t;m];+((+t),nm!{[t;idx;sub;n;f]qasg[t;idx;n;f sub]}[t;idx;sub]'[nm;fns])]]}   / no where: each column is the value itself, attribute and all
+qasgby:{[t;nm;f;gi;rc;w]tp:$[#rc;qproj[t;rc];t];gv:{[t;f;iv]v:f atr[t;iv];$[isat v;(#iv)#v;v]}[tp;f]'gi;rv:raze gv;ri:raze gi;$[~w;rv@<ri;[c:$[in[nm;cols t];(+t)nm;(#t)#qnull[*gv]];$[#gi;@[c;ri;:;rv];c]]]}   / each group once; every row: back in row order, else one scatter into the column
+/ update ... by: the groups of the rows the where-clause keeps (all of them without one), each expression once per group
+qupby:{[t;wh;byp;nm;fns;it]m:qmask[t;wh];w:0<#m;ix:$[w;&m;()];gi:{(qgrp[x 0;x 1])1}qbyx[$[w;t ix;t];byp];gi:$[w;ix@gi;gi];+((+t),nm!{[t;gi;w;n;f;e]qasgby[t;n;f;gi;qrefs[cols t;(qname e)1];w]}[t;gi;w]'[nm;fns;it])}
+upd:{[s]s:qnorm s;s:$[(6#s)~"update";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];r2:qsplit[r 0;" from "];r3:qsplit[r2 0;" by "];t:. qtry r2 1;$[qpt t;`err"par";];C:cols t;it:qcut r3 0;nm:qnms[C;it];fns:{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;qupby[t;wh;r3 1;nm;fns;it];0=#wh;+((+t),nm!{[t;f]v:f t;$[isat v;(#t)#v;v]}[t]'fns);[m:qmask[t;wh];idx:&m;sub:qwhere[t;m];+((+t),nm!{[t;idx;sub;n;f]qasg[t;idx;n;f sub]}[t;idx;sub]'[nm;fns])]]}   / no where: each column is the value itself, attribute and all
 
 / ---- delete  (rows via where, or named columns) ---------------------------
 del:{[s]s:qnorm s;s:$[(6#s)~"delete";trim 6_s;s];b:$[(5#s)~"from ";("";trim 5_s);2#qsplit[s;" from "]];colp:trim b 0;rw:qsplit[b 1;" where "];t:. qtry trim rw 0;$[qpt t;`err"par";];wh:$[rw 2;rw 1;""];$[#colp;+(except[cols t;`$'{(qname x)1}'qcut colp])#+t;qwhere[t;~qmask[t;wh]]]}
@@ -196,12 +202,13 @@ del:{[s]s:qnorm s;s:$[(6#s)~"delete";trim 6_s;s];b:$[(5#s)~"from ";("";trim 5_s)
 / rows the last kept; b is 0b (no groups), 1b (distinct) or a dict of names to trees; a is () or a dict.
 qfv:{in[@x;`o`p`q`r`u`v`w`x]}
 qfe:{[t;e]$[`s~@e;$[in[e;cols t];(+t)e;e~`i;!#t;. e];(`S~@e)&1=#e;*e;(`A~@e)&0<#e;$[qfv[*e];(*e) . qfe[t]'1_e;1=#e;*e;e];e]}
-qfi:{[t;c]{[t;i;w]i@&qfe[t i;w]}[t]/[!#t;c]}
+qfi:{[t;c]{[t;i;w]i@&qfe[t i;w]}[t]/[&qfe[t;*c];1_c]}
 qfa:{[t;a]v:qfe[t]'value a;k:!a;$[&/isat'v;+k!,'v;+k!{[l;x]$[isat x;l#x;x]}[#t]'v]}
-qfby:{[t;b;a]bk:!b;t2:+(+t),bk!qfe[t]'value b;$[0=#a;[nk:except[cols t;bk];qby[t2;bk;nk!qlastf'nk]];qby[t2;bk;(!a)!{[e]{[e;x]qfe[x;e]}[e]}'value a]]}
+qfsg:{[t;e]$[(`A~@e)&2=#e;[f:*e;c:e 1;$[(`s~@c)&in[c;cols t];$[f~sum;(`sum;c);f~avg;(`avg;c);f~min;(`min;c);f~max;(`max;c);f~count;(`count;c);f~first;(`first;c);f~last;(`last;c);()];(c~`i)&f~count;(`count;*cols t);()]];()]}
+qfby:{[t;b;a]bk:!b;t2:+(+t),bk!qfe[t]'value b;sg:$[0<#a;qfsg[t]'value a;()];fa:$[(0<#sg)&&/{0<#x}'sg;qaggf[t2;bk;(!a)!sg;()];()];$[#fa;:qks fa;];$[0=#a;[nk:except[cols t;bk];qby[t2;bk;nk!qlastf'nk]];qby[t2;bk;(!a)!{[e]{[e;x]qfe[x;e]}[e]}'value a]]}
 qfsel:{[t;c;b;a]t:$[`s~@t;. t;t];t:$[0=#c;t;t qfi[t;c]];$[(b~0b)|b~();$[0=#a;t;qfa[t;a]];b~1b;?$[0=#a;t;qfa[t;a]];qfby[t;b;a]]}
 qfub:{[t;idx;b;a]k:+(!b)!qfe[t idx]'value b;gi:idx@value(=rows k);+((+t),(!a)!{[t;gi;n;e]qasgby[t;n;{[e;x]qfe[x;e]}[e];gi]}[t;gi]'[!a;value a])}
-qfupd:{[t;c;b;a]t:$[`s~@t;. t;t];idx:$[0=#c;!#t;qfi[t;c]];$[`S~@a;$[0=#a;t@except[!#t;idx];+(except[cols t;a])#+t];(b~0b)|b~();+((+t),(!a)!{[t;idx;n;e]qasg[t;idx;n;qfe[t idx;e]]}[t;idx]'[!a;value a]);qfub[t;idx;b;a]]}
+qfupd:{[t;c;b;a]t:$[`s~@t;. t;t];idx:$[0=#c;!#t;qfi[t;c]];$[`S~@a;$[0=#a;t@&~@[(#t)#0b;idx;:;1b];+(except[cols t;a])#+t];((b~0b)|b~())&0=#c;+((+t),(!a)!{[t;e]v:qfe[t;e];$[isat v;(#t)#v;v]}[t]'value a);(b~0b)|b~();+((+t),(!a)!{[t;idx;n;e]qasg[t;idx;n;qfe[t idx;e]]}[t;idx]'[!a;value a]);qfub[t;idx;b;a]]}
 qexec:{[t;w;b;d]t:$[0=#w;t;qwhere[t;w]];$[0=#b;$[0=#d;t;qselect[t;d]];qby[t;b,();d]]}
 
 / ---- bare qSQL rewriter ----------------------------------------------------

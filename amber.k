@@ -82,8 +82,8 @@ sums:{$[`F=@x;$[^*|r:+\x;+\0.0^x;r];`I=@x;$[`hnl x;+\0^x;+\x];+\nid[x;0;0.0]]}  
 prds:{$[`F=@x;$[^*|r:*\x;*\1.0^x;r];`I=@x;$[`hnl x;*\1^x;*\x];*\nid[x;1;1.0]]}
 mins:{&\nid[x;9223372036854775807;0w]}                                       / mins 0n 1.0 is 0w 1.0, as q
 maxs:{|\nid[x;-9223372036854775807;-0w]}
-deltas:{$[#x;x-0,-1_x;x]}
-ratios:{$[#x;x%1,-1_x;0#0.0]}   / empty: an empty float list, as q (digest #67)
+deltas:{$[#x;x-(0*1#x),-1_x;x]}   / the zero in front has x's type: 0, before floats made a general list (576 ms on 10M)
+ratios:{$[#x;x%(,1.0),0.0+-1_x;0#0.0]}   / empty: an empty float list, as q (digest #67); floats all through (1, before floats was a general list)
 differ:{$[isat x;1b;~#x;x=x;|/`I`S`C=@x;1b,~(1_x)=-1_x;`F=@x;1b,~((1_x)=-1_x)|(^1_x)&^-1_x;@[~~':x;0;:;1b]]}   / The first item always differs, a null too; typed lists compare shifted (NaN matches NaN, as ~)
 prev:{$[isat x;x;-1_(,x@#x),x]}   / An atom comes back as is, as q; the null is the list's own (x@#x), not 0N
 next:{$[isat x;x;1_x,,x@#x]}
@@ -127,7 +127,7 @@ glast:{[k;v]r:`gagg(`last;k;v);$[#r;(r 0)!r 1;{[v;i]*|v i}[v]'=k]}
 / missing, so those queries died on an undefined name.  Bracket form only: user
 / verbs are never infix here (see the REPL's \h note), so it is within[t;(a;b)],
 / not  t within (a;b).
-within:{[x;r](~x<r[0])&~x>r[1]}
+within:{[x;r]$[isat x;(~x<r[0])&~x>r[1];[w:`wtn(x;r);$[isat w;(~x<r[0])&~x>r[1];w]]]}   / one C pass for numbers (2.7)
 except:{$[cxk[x;y];x;x@&~in[x;y]]}   / Chars against numbers share nothing: x as it is, as q (digest #64)
 cxk:{c:`c`C;n:`i`I`f`F;((|/c=@x)&|/n=@y)|(|/n=@x)&|/c=@y}
 inter:{x@&in[x;y]}
@@ -320,7 +320,7 @@ ssr:{[s;f;t]t/f\s}
 sv:{x/y}
 vs:{$[(`C=@y)&0=#y;,y;x\y]}   / x vs "" is one empty field, as q
 lk1:{[s;p]$[~#p;~#s;"*"=*p;$[#s;lk1[s;1_p]|lk1[1_s;p];lk1[s;1_p]];~#s;0;("?"=*p)|(*p)=*s;lk1[1_s;1_p];0]}
-like:{[x;p]$[`C=@x;lk1[x;p];`s=@x;lk1[$x;p];lk1[;p]'$[`S=@x;$x;x]]}   / symbols match by name, as q
+like:{[x;p]$[`C=@x;lk1[x;p];`s=@x;lk1[$x;p];`S=@x;[u:?x;(lk1[;p]'$u)@u?x];lk1[;p]'x]}   / symbols match by name, as q: each distinct name once
 
 / ---- temporal : time-of-day held as milliseconds since midnight (like q time)
 / q's  time.minute / time.hh / time.ss  become  minute t / hh t / ss t  in Amber.

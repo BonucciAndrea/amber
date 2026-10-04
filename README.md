@@ -12,7 +12,7 @@
 **A low-latency array language: columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-2.7.0-orange)
+![version](https://img.shields.io/badge/version-2.7.1-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
 ![tests](https://img.shields.io/badge/tests-1555%20K--suite%20cases-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
@@ -52,6 +52,9 @@ straight into memory (a 10M-row table loads in ~6 ms), `Q.dpft` saves a partitio
 a whole date-partitioned database. `select` on it skips the partitions the where-clause rules out,
 reads only the columns it uses, and runs per partition when you group by date. Old text files still
 load.
+
+2.7.1 makes qSQL a lot faster where it was slow (`select distinct`, `like` on symbols, `update ... by`,
+`select by`, the functional forms) and fixes `update ... by ... where`.
 
 Attributes work like q now too: `` `s#x ``, `` `u#x ``, `` `p#x ``, `` `g#x ``, `` `#x `` and `attr`,
 on lists, tables and dicts, checked against q.exe case by case, including sorted dicts that look up

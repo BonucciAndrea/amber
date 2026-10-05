@@ -74,7 +74,7 @@ sdev:{sqrt svar x}
 cvk:{(|/`F`I=@x)&|/`F`I=@y}
 pdr:{$[(|/^x)||/^y;[m:&~(^x)|^y;(x m;y m)];(x;y)]}
 cov:{$[cvk[x;y];[r:`cvm(x;y);r[0]%r 3];[p:pdr[x;y];x:p 0;y:p 1;avg(x-avg x)*y-avg y]]}
-scov:{$[cvk[x;y];[r:`cvm(x;y);r[0]%-1+r 3];[p:pdr[x;y];n:#x:p 0;y:p 1;(n*avg(x-avg x)*y-avg y)%-1+n]]}
+scov:{$[cvk[x;y];[r:`cvm(x;y);r[0]%0|-1+r 3];[p:pdr[x;y];n:#x:p 0;y:p 1;(n*avg(x-avg x)*y-avg y)%-1+n]]}   / no pair or one: 0n, as q (0|: 0%0, not 0%-1, which is -0.0)
 cor:{$[cvk[x;y];[r:`cvm(x;y);r[0]%sqrt r[1]*r 2];[p:pdr[x;y];a:p[0]-avg p 0;b:p[1]-avg p 1;(avg a*b)%sqrt avg[a*a]*avg b*b]]}
 med:{$[isat x;0.0+x;0=#x;0n;[a:x@<x;n:#a;m:_n%2;$[2!n;0.0+a m;avg a@m-1 0]]]}
 all:{$[#x;~|/x=0;1]}   / All of an empty list is 1, as q

@@ -124,6 +124,12 @@ t[`qexecAgg;     (qexec[trades;();();(,`t)!,{sum x`px}])`t;  ,210.0];
 t[`qwhereMask;   #qwhere[trades;trades[`px]>25];             4];
 t[`qselectDict;  cols qselect[trades;(,`t)!,{sum x`px}];     ,`t];
 t[`qbyGroups;    #qby[trades;`sym;(,`t)!,{sum x`px}];        3];
+/ functional update-by (digest #73 item 94): each row gets its group's value, as q's ![t;c;b;a]
+t[`fupdBy;       (+![trades;();(,`sym)!,`sym;(,`m)!,(max;`sz)])`m;          6 4 6 4 5 6];
+t[`fupdByWhere;  (+![trades;,(>;`px;25);(,`sym)!,`sym;(,`m)!,(max;`sz)])`m; 0N 0N 6 4 5 6];
+t[`fupdByTwo;    (+![mt;();`a`b!`a`b;(,`s)!,(sum;`v)])`s;                  60 20 30 40 60];
+t[`fupdByUnif;   (+![mt;();(,`a)!,`a;(,`s)!,(sums;`v)])`s;                 10 30 30 70 80];
+t[`fupdByOld;    (+![trades;,(>;`px;25);(,`sym)!,`sym;(,`sz)!,(count;`i)])`sz; 1 2 2 1 1 2];
 
 / ==================== 8. the rewriter itself (qrw) ==========================
 t[`qrwSelect;    qrw"select from trades";     "sel\"select from trades\""];
@@ -366,6 +372,6 @@ tqa[`iByStrKey;   "select c:count n by s like \"i*\" from TS where i>0"; CL; `s`
 T5:([]sym:`a`b`a; n:1 2 1)
 t[`iFuncDistinct;   ?[T5;,(>;`i;-1);1b;()];                         ([]sym:`a`b; n:1 2)]
 
-hexpect[214]
+hexpect[219]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

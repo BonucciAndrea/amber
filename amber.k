@@ -111,7 +111,9 @@ rotate:{$[0=#y;y;0=n:(#y)!x;y;(n_y),n#y]}   / A multiple of the count: y as is
 / q accepts an atom on the right of all four, so this is parity as well as a fix.
 isatm:{"a"<*$@x}                                  / type symbol lowercase -> atom
 isat:{("a"<*$@x)&~`m=@x}                          / An atom, not a dict
-in:{y:$[isatm y;,y;y];$[0=#y;$[isat x;0b;(#x)#0b];[r:`memb(x;y);$[`A~@r;$[`A~@y;inA[x;y];~^y?x];r]]]}   / 2.1: one-pass C membership; K fallback for other types
+in:{$[`M=@y;inT[x;y];`m=@y;in[x;. y];[y:$[isatm y;,y;y];$[0=#y;$[isat x;0b;(#x)#0b];[r:`memb(x;y);$[`A~@r;$[`A~@y;inA[x;y];~^y?x];r]]]]]}   / 2.1: one-pass C membership; K fallback for other types. A dict y: its values, as q
+/ x in a table y: x a table (its rows) or a dict (one row), matched by column name, as q; other columns are 'mismatch
+inT:{[x;y]c:!y;$[~|/`M`m=@x;`err"nyi";~(c@<c)~k@<k:!x;`err"mismatch";~^(+y c)?$[`M=@x;+x c;x c]]}
 / x in a general list y: y?x is 'rank for an x (or an item of x) of lower rank than y's items; that is not found, as q:
 / (1 2;3) in (1 2;3 4) is 1 0 (digest #53). Strings in strings (all items vectors) keep the one find
 inA:{[x;y]k:rk y;l:rk x;$[(k<2)|l=k-1;~^y?x;l<k-1;|/x~/:y;(k=2)&&/(@'x)in`I`F`C`S;~^y?x;|/x~/:y;1b;inA[;y]'x]}
@@ -132,11 +134,11 @@ glast:{[k;v]r:`gagg(`last;k;v);$[#r;(r 0)!r 1;{[v;i]*|v i}[v]'=k]}
 / verbs are never infix here (see the REPL's \h note), so it is within[t;(a;b)],
 / not  t within (a;b).
 within:{[x;r]$[isat x;(~x<r[0])&~x>r[1];[w:`wtn(x;r);$[isat w;(~x<r[0])&~x>r[1];w]]]}   / one C pass for numbers (2.7)
-except:{$[cxk[x;y];x;`A~@x;[m:&~in[@'x;cxt y];x@&~@[(#x)#0b;m;:;$[#m;ini[x m;y];!0]]];x@&~ini[x;y]]}   / Chars against numbers share nothing: x as it is, as q; in a general x, only items that can match are looked for (digest #64)
+except:{y:$[`m=@y;. y;y];$[cxk[x;y];x;`A~@x;[m:&~in[@'x;cxt y];x@&~@[(#x)#0b;m;:;$[#m;ini[x m;y];!0]]];x@&~ini[x;y]]}   / Chars against numbers share nothing: x as it is, as q; in a general x, only items that can match are looked for (digest #64)
 cxk:{c:`c`C;n:`i`I`f`F;((|/c=@x)&|/n=@y)|(|/n=@x)&|/c=@y}
 cxt:{c:`c`C;n:`i`I`f`F;$[|/c=@x;n;|/n=@x;c;0#`]}   / the types that share no item with x
 inter:{x@&ini[x;y]}
-ini:{y:$[isatm y;,y;y];r:in[x;y];a:(isat r)&~isat x;$[(`A~@r)|a&(rk x)=rk y;{|/x~/:y}[;y]'x;a;`err"type";r]}   / a flag per item of x: one found only in parts ((1 2;3) in (3;5) is (0 0;1)) is not in y
+ini:{y:$[`m=@y;. y;isatm y;,y;y];r:in[x;y];a:(isat r)&~isat x;$[(`A~@r)|a&(rk x)=rk y;{|/x~/:y}[;y]'x;a;`err"type";r]}   / a flag per item of x: one found only in parts ((1 2;3) in (3;5) is (0 0;1)) is not in y
 / in gives one flag for a list x one item of y (1 2 3 in (1 2;3)): 'type, as q's where 1b; x found whole among items of its own rank (#29) goes item by item, as q
 union:{distinct x,y}
 raze:{$[isat x;,x;,/x]}

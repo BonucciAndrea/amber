@@ -82,6 +82,8 @@ t[`interExceptGeneric;(inter[(1 2;3);(1 2;5 6)];inter[(1 2;3);(3;5)];except[(1 2
 t[`interExceptOneItem;{$[`e~*r:.[x;y;{(`e;*"\n"\x)}];r 1;r]}'[(except;inter;except;except;except;except);((1 2 3;(1 2;3));(1 2;(1 2;3));("ab";("ab";"cd"));((1;"a");("ab";"cd"));((1 2;3);,(1 2;3));((1;"a");("ab";1)))];6#,"'type"]   / x one item of y: 'type, as q (where 1b)
 t[`interExceptWholeItem;(except[(1 2;3 4);(1 2;(1 2;3 4))];inter[(1 2;3 4);(1 2;(1 2;3 4))]);(,3 4;,1 2)]   / x found whole (#29) still goes item by item, as q
 t[`interExceptTypedY;(except[(1 2;3 4);1 2 3];inter[(1 2;3);1 2 3]);((1 2;3 4);,3)]   / a general x against a typed y: item by item too (2.7.2: nested garbage; q: 'type)
+t[`inTableRows;{$[`C~@r:.[in;x;{x}];*"\n"\r;r]}'((+`a`b!(1 2;3 4);+`a`b!(1 5;3 6));(+`a`b!(1 2;3 4);+`b`a!(3 4;1 2));(`a`b!1 3;+`a`b!(1 2;3 4));(`b`a!3 1;+`a`b!(1 2;3 4));(`a`b!1 4;+`a`b!(1 2;3 4));(+(,`b)!,3 9;(+(,`a)!,1 2)!+(,`b)!,3 4);(+`a`b!(1 2;3 4);+`a`c!(1 2;3 4));(1;`a`b!1 2);(5;`a`b!1 2));(10b;11b;1b;1b;0b;10b;"'mismatch";1b;0b)]   / rows by column name; a dict y: its values, as q (digest #101: was 'nyi)
+t[`exceptInterTable;(except[(1;"a");`x`y!1 2];except[1 2 3;`a`b!"ab"];except[+`a`b!(1 2;3 4);+`a`b!(1 5;3 6)];inter[+`a`b!(1 2;3 4);+`a`b!(1 5;3 6)];except[1 2 3;`a`b!1 2];inter[1 2 3;`a`b!1 2];except[(1;`a);`a`b!(1;`x)]);(,"a";1 2 3;+`a`b!(,2;,4);+`a`b!(,1;,3);,3;1 2;,`a)]   / as q (digest #101: was 'nyi)
 t[`union;union[1 2 3;3 4 5];1 2 3 4 5]
 t[`sublistPos;sublist[3;1 2 3 4 5];1 2 3]
 t[`sublistCap;sublist[9;1 2 3];1 2 3]

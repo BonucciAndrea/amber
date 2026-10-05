@@ -134,10 +134,11 @@ glast:{[k;v]r:`gagg(`last;k;v);$[#r;(r 0)!r 1;{[v;i]*|v i}[v]'=k]}
 / verbs are never infix here (see the REPL's \h note), so it is within[t;(a;b)],
 / not  t within (a;b).
 within:{[x;r]$[isat x;(~x<r[0])&~x>r[1];[w:`wtn(x;r);$[isat w;(~x<r[0])&~x>r[1];w]]]}   / one C pass for numbers (2.7)
-except:{y:$[`m=@y;. y;y];$[cxk[x;y];x;`A~@x;[m:&~in[@'x;cxt y];x@&~@[(#x)#0b;m;:;$[#m;ini[x m;y];!0]]];x@&~ini[x;y]]}   / Chars against numbers share nothing: x as it is, as q; in a general x, only items that can match are looked for (digest #64)
+except:{y:$[`m=@y;. y;y];$[cxk[x;y];x;`A~@x;[m:&~in[@'x;cxt y];ixg[x;&~@[(#x)#0b;m;:;$[#m;ini[x m;y];!0]]]];x@&~ini[x;y]]}   / Chars against numbers share nothing: x as it is, as q; in a general x, only items that can match are looked for (digest #64)
 cxk:{c:`c`C;n:`i`I`f`F;((|/c=@x)&|/n=@y)|(|/n=@x)&|/c=@y}
 cxt:{c:`c`C;n:`i`I`f`F;$[|/c=@x;n;|/n=@x;c;0#`]}   / the types that share no item with x
-inter:{x@&ini[x;y]}
+inter:{ixg[x;&ini[x;y]]}
+ixg:{$[(`A~@x)&0=#y;();x y]}   / x at y; none of a general x is (), as q (x@!0 keeps the prototype of x's first item, as ngn/k: 0#,0N 0N)
 ini:{y:$[`m=@y;. y;isatm y;,y;y];r:in[x;y];a:(isat r)&~isat x;$[(`A~@r)|a&(rk x)=rk y;{|/x~/:y}[;y]'x;a;`err"type";r]}   / a flag per item of x: one found only in parts ((1 2;3) in (3;5) is (0 0;1)) is not in y
 / in gives one flag for a list x one item of y (1 2 3 in (1 2;3)): 'type, as q's where 1b; x found whole among items of its own rank (#29) goes item by item, as q
 union:{distinct x,y}

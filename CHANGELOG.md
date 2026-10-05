@@ -10,6 +10,8 @@ qSQL uses the threads now, and group-by on symbols got a lot quicker on one thre
 - **One thread**: `select sum sz by sym` 72 ms to 17, `max px, min px by sym` 104 to 35, `dev px by sym`
   116 to 79 (`dev`/`var` by group are fused now), `distinct sym` 19 to 8.
 - **Fixed**: in 2.7.1 a by-query with no where-clause took the slow path.
+- **Build**: `-fwrapv`, like ngn/k, so int maths that overflows wraps as k says (`0N*0N` is 0) instead of
+  being undefined behaviour in C. No speed lost (58 benchmarks, about 1% faster overall).
 
 ## 2.7.1
 

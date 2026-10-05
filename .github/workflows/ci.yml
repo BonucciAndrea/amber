@@ -96,7 +96,7 @@ jobs:
           set -e
           mkdir -p o/c99
           for f in src/*.c; do
-            "$CC" -std=c99 -Isrc -w -O1 -pthread -c "$f" -o "o/c99/$(basename "${f%.c}").o"
+            "$CC" -std=c99 -Isrc -fwrapv -w -O1 -pthread -c "$f" -o "o/c99/$(basename "${f%.c}").o"
           done
           "$CC" -std=c99 -pthread -o o/c99/amber o/c99/*.o -lm -ldl
           o/c99/amber --version

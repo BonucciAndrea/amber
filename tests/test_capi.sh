@@ -63,7 +63,7 @@ if [ "$DO_SAN" = 1 ]; then
   mkdir -p o/capisan
   for f in src/*.c ext/*.c; do
     [ -e "$f" ] || continue
-    $CC -fsigned-char -g -O1 -w -pthread -fPIC -DAMBER_SHARED $SAN -fno-omit-frame-pointer \
+    $CC -fsigned-char -fwrapv -g -O1 -w -pthread -fPIC -DAMBER_SHARED $SAN -fno-omit-frame-pointer \
         -c "$f" -o "o/capisan/$(basename "${f%.c}").o" || exit 1
   done
   # No export map on the sanitizer build: ASan needs its own interceptor symbols
@@ -71,9 +71,9 @@ if [ "$DO_SAN" = 1 ]; then
   # property of the shipped artefact, not something under test here.
   SOFLAGS="-shared"
   [ "$SOEXT" = dylib ] && SOFLAGS="-dynamiclib -install_name @rpath/libamber_san.dylib"
-  $CC -fsigned-char -g -O1 -w -pthread -fPIC $SAN $SOFLAGS \
+  $CC -fsigned-char -fwrapv -g -O1 -w -pthread -fPIC $SAN $SOFLAGS \
       -o "o/capisan/libamber_san.$SOEXT" o/capisan/*.o -lm -ldl 2>/dev/null \
-   || $CC -fsigned-char -g -O1 -w -pthread -fPIC $SAN $SOFLAGS \
+   || $CC -fsigned-char -fwrapv -g -O1 -w -pthread -fPIC $SAN $SOFLAGS \
       -o "o/capisan/libamber_san.$SOEXT" o/capisan/*.o -lm || exit 1
 
   if $CC -w -g -O1 -std=c99 -Isrc $SAN -o o/capisan/test_capi tests/test_capi.c \

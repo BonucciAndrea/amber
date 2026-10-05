@@ -60,7 +60,9 @@ done
 # on this CPU family).
 # -ffp-contract=off (2.3): with -march=native GCC fused a*b+c into one FMA, so ema/mvar/
 # mdev gave different last bits from the portable build. Same answers on both now.
-F="-Isrc -fsigned-char -fno-math-errno -fno-signed-zeros -ffp-contract=off -fno-stack-protector -fomit-frame-pointer -w -O3 -pthread"
+# -fwrapv: int maths wraps on overflow (0N*0N is 0), as in k. Without it that's
+# undefined behaviour in C and the compiler may assume it never happens. ngn/k builds the same way.
+F="-Isrc -fsigned-char -fwrapv -fno-math-errno -fno-signed-zeros -ffp-contract=off -fno-stack-protector -fomit-frame-pointer -w -O3 -pthread"
 LTOTAG=""
 if printf 'int main(){return 0;}' | "$CC" -flto -x c - -o .ltocheck 2>/dev/null; then F="$F -flto"; LTOTAG=" -flto"; fi
 rm -f .ltocheck

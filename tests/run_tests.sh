@@ -192,10 +192,10 @@ if [ "$ASAN" = 1 ]; then
   # whole suite (peach included) is clean under AMBER_THREADS with it.
   SAN="-fsanitize=address,undefined -fno-sanitize=object-size"
   for f in src/*.c; do
-    $CC -fsigned-char -g -O1 -w -pthread $SAN \
+    $CC -fsigned-char -fwrapv -g -O1 -w -pthread $SAN \
         -fno-omit-frame-pointer -c "$f" -o "o/san/$(basename "${f%.c}").o" || exit 1
   done
-  $CC -fsigned-char -g -O1 -w -pthread $SAN \
+  $CC -fsigned-char -fwrapv -g -O1 -w -pthread $SAN \
       -o o/san/amber o/san/*.o -lm -ldl || exit 1
   LK=1; [ "$(uname)" = Darwin ] && LK=0   # macOS ASan stops at startup with detect_leaks=1 (digest #81)
   export ASAN_OPTIONS=detect_leaks=$LK UBSAN_OPTIONS=print_stacktrace=1
@@ -235,10 +235,10 @@ if [ "$TSAN" = 1 ]; then
   mkdir -p o/tsan
   CC="${CC:-cc}"
   for f in src/*.c; do
-    $CC -fsigned-char -g -O1 -w -pthread -fsanitize=thread \
+    $CC -fsigned-char -fwrapv -g -O1 -w -pthread -fsanitize=thread \
         -fno-omit-frame-pointer -c "$f" -o "o/tsan/$(basename "${f%.c}").o" || exit 1
   done
-  $CC -fsigned-char -g -O1 -w -pthread -fsanitize=thread \
+  $CC -fsigned-char -fwrapv -g -O1 -w -pthread -fsanitize=thread \
       -o o/tsan/amber o/tsan/*.o -lm -ldl || exit 1
   export TSAN_OPTIONS="halt_on_error=0 report_signal_unsafe=0 exitcode=99"
   for s in $SUITES; do

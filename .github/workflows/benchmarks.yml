@@ -279,8 +279,14 @@ jobs:
       # ---------------------------------------------------------------
       # 12b. On PRs: sticky comment
       # ---------------------------------------------------------------
-      - name: Post sticky PR comment
+      # A PR from a fork gets a read-only token whatever `permissions:` says, so the comment
+      # can only go on PRs from this repo. Every PR gets the table on the run's summary page.
+      - name: Benchmark table on the run summary
         if: github.event_name == 'pull_request'
+        run: cat bench/comparative_results.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Post sticky PR comment
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
         uses: marocchino/sticky-pull-request-comment@v2
         with:
           header: comparative-benchmarks

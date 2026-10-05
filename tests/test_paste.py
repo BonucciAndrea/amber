@@ -18,13 +18,21 @@ def run(paste_lines):
     p = subprocess.Popen(["./a"], cwd=ROOT, stdin=s, stdout=s, stderr=s,
                          env={**os.environ, "TERM": "xterm", "AMBER_NO_RLWRAP": "1"})
     os.close(s)
-    time.sleep(1.2)                       # let the banner + stdlib load settle
+    # wait for the prompt: the editor goes raw with TCSAFLUSH, which drops anything typed before it
+    out = b""
+    t0 = time.time()
+    while b"amber>" not in out and time.time() - t0 < 20:
+        r, _, _ = select.select([m], [], [], 0.1)
+        if r:
+            try: d = os.read(m, 65536)
+            except OSError: break
+            if not d: break
+            out += d
     os.write(m, payload.encode())
     time.sleep(0.6)                       # let the paste fold to the placeholder
     os.write(m, b"\r")                    # Enter on the UNEDITED placeholder runs the batch
     time.sleep(0.8)
     os.write(m, b"\\\\\n")                # then \\ to exit
-    out = b""
     t0 = time.time()
     while time.time() - t0 < 6:
         r, _, _ = select.select([m], [], [], 0.3)

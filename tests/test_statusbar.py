@@ -50,6 +50,10 @@ RELEASE = ESC + b"[r"
 # pty test costs far more than the 15 seconds it saves. Lower it by hand with
 # AMBER_TEST_IDLE=0.15 if you are iterating locally.
 IDLE = float(os.environ.get('AMBER_TEST_IDLE', '0.25'))
+# BOOT: the ceiling on waiting for the first prompt. The line editor goes raw with TCSAFLUSH, which
+# drops anything typed before that, so typing early loses the command. The wait ends as soon as the
+# prompt shows, so a big ceiling costs nothing; 2.4 s was too short for a slow macOS runner.
+BOOT = float(os.environ.get('AMBER_TEST_BOOT', '20'))
 
 def reader(fd, sink, poll=0.03, stop_on_eof=True):
     """Return wait(t, until=None): read fd into sink until the stream is quiet."""
@@ -84,7 +88,7 @@ def drive(cmds, rows=24, cols=100, settle=4.0):
     os.close(s)
     out = bytearray()
     drain = reader(m, out.extend, poll=0.1)                          # read CONTINUOUSLY so no byte is missed
-    drain(2.4, until=lambda: b'amber>' in bytes(out))                               # banner + stdlib load (slow on CI runners)
+    drain(BOOT, until=lambda: b'amber>' in bytes(out))                               # banner + stdlib load (slow on CI runners)
     for b, dt in cmds:
         try: os.write(m, b)
         except OSError: break
@@ -185,7 +189,7 @@ try:
     os.close(s)
     screen = pyte.Screen(100, 24); stream = pyte.ByteStream(screen)
     pump = reader(m, stream.feed, poll=0.08, stop_on_eof=False)
-    pump(1.6, until=lambda: any('amber>' in l for l in screen.display))
+    pump(BOOT, until=lambda: any('amber>' in l for l in screen.display))
     os.write(m, b"6*7\r"); pump(0.8)
     disp = screen.display
     check(any(l.strip().startswith("╭") for l in disp[18:22]), "[pyte] box top on a footer row")
@@ -274,7 +278,7 @@ try:
         os.close(s)
         sc = pyte.Screen(C0, R0); st = pyte.ByteStream(sc)
         pump = reader(m, st.feed, poll=0.08, stop_on_eof=False)
-        pump(1.8, until=lambda: any('amber>' in l for l in sc.display))
+        pump(BOOT, until=lambda: any('amber>' in l for l in sc.display))
         for c in cmds: os.write(m, c); pump(0.4)
         for (rr, cc) in steps:
             fcntl.ioctl(m, termios.TIOCSWINSZ, struct.pack("HHHH", rr, cc, 0, 0))
@@ -344,7 +348,7 @@ try:
         os.close(s)
         sc = pyte.Screen(cols, rows); st = pyte.ByteStream(sc)
         pump = reader(m, st.feed, stop_on_eof=False)
-        pump(2.2, until=lambda: any('amber>' in l for l in sc.display))
+        pump(BOOT, until=lambda: any('amber>' in l for l in sc.display))
         return m, p, sc, st, pump
 
     def barms(sc):
@@ -411,7 +415,7 @@ try:
         os.close(s2)
         acc = bytearray()
         drain2 = reader(m2, acc.extend)
-        drain2(2.2, until=lambda: b'amber>' in bytes(acc))
+        drain2(BOOT, until=lambda: b'amber>' in bytes(acc))
         touched = set()
         for ch in b"abc":
             acc.clear()
@@ -458,7 +462,7 @@ try:
         os.close(sl)
         sc = pyte.Screen(cols, rows); st = pyte.ByteStream(sc)
         pump = reader(m, st.feed)
-        pump(2.2, until=lambda: any('amber>' in l for l in sc.display))
+        pump(BOOT, until=lambda: any('amber>' in l for l in sc.display))
         return m, pr, sc, pump
 
     m, pr, sc, pump = utf8_sess()

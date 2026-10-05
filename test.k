@@ -427,6 +427,19 @@ t[`timeAccessorsVerbsUncalled;tavc;0]   / hh never calls the lambdas above
 t[`timeAccessorsNested;(hh `a`b!01:00:00.000 02:30:00.000;mm (01:30:00.000;(02:00:00.000;03:00:00.000));hh `a`b!(01:00:00.000;(02:00:00.000;03:00:00.000));mm 0#,(::);hh 0#,(::);.[mm;,(01:30:00.000;(02:00:00.000;3600000));{(x?"\n")#x}]);(`a`b!1 2;(30;0 0);`a`b!(1;2 3);!0;!0;"'type")]   / dicts and lists of lists item by item, as q; an empty list is !0
 t[`timeAccessorsDeep;(mm (01:30:00.000 02:00:00.000;,03:00:00.000);.[milli;,(01:00:00.000;(2026.01.01;2026.01.02));{(x?"\n")#x}];.[hh;,`a`b!(01:00:00.000;(2026.01.01;2026.01.02));{(x?"\n")#x}]);((30 0;,0);"'type";"'type")]   / lists of any lengths; one kind at every depth
 t[`timeAccessorsDates;(milli 2026.01.01 2026.02.01;sec 2026.01.01 2026.02.01;minute 2026.01.01 2026.02.01;second 2026.01.01 2026.02.01;mm `a`b!(2026.01.01;2026.02.01);hh 2026.01.01 2026.02.01;milli 2026.01.01);(497 528;9 9;0 0;9 9;`a`b!0 0;0 0;497)]   / a list of dates is read as its days, as a date atom is (q: 'hh, 'ss; `mm$ gives the month)
+/ the date accessors take dates, timestamps and raw days only (digest #104): an int 0N is the null day, as q's `year$0Nd is 0Ni
+/ (year 0N was -25252734927764555, dow 0N `Fri); a time, a float, text or a list of dates and ints is 'type, as q's `year$
+t[`dateAccessorsNull;(year 0N;month 0N;day 0N;dow 0N;year 0 0N 366;dow 0 0N 1;dparts 0N;month `a`b!0N 59);(0N;0N;0N;`;2000 0N 2001;`Sat``Sun;0N 0N 0N;`a`b!0N 2)]
+t[`dateAccessorsType;(.[year;,(2026.01.01;5);{(x?"\n")#x}];.[year;,01:00:00.000;{(x?"\n")#x}];.[month;,1.5;{(x?"\n")#x}];.[dow;,`a;{(x?"\n")#x}];.[day;,"abc";{(x?"\n")#x}];.[year;,(2026.01.01;01:00:00.000);{(x?"\n")#x}];.[dparts;,(1 2;2026.01.01);{(x?"\n")#x}]);7#,"'type"]
+t[`dateAccessorsMixed;(year (2026.01.01;2026.01.01D23:00:00);dow (2026.03.04;2026.03.04D23:00:00);day ((2026.03.04;2026.01.01);`a`b!(2026.03.05;2026.03.06));year ());(2026 2026;`Wed`Wed;(4 1;`a`b!5 6);!0)]   / dates with timestamps, item by item
+/ in a list of dates or timestamps an int 0N or :: is the null day: D,0N makes one, prev, next and indexing out of range put :: in
+/ (they were 'type with the check, wrong years on 2.7.2; q 0N 2026 and 2026 0N); a list of ints with :: is raw days
+DAD:2026.01.01 2027.01.01
+t[`dateAccessorsNullItems;(year DAD,0N;year prev DAD;year DAD@0 5;dow next DAD;month next 2026.03.04D01:00 2027.05.06D01:00;dow `a`b!(2026.03.04;0N);year ((2026.01.01;0N);::);year (0N;::);year (1 2;::);year DAD@5 6;dow DAD@5 6;year (::;::);year `a`b!(::;::));(2026 2027 0N;0N 2026;2026 0N;`Fri`;5 0N;`a`b!`Wed`;(2026 0N;0N);0N 0N;(2000 2000;0N);0N 0N;``;0N 0N;`a`b!0N 0N)]
+/ a table goes column by column, a keyed table on its value, as q's `year$ (a table was 'type with the check, a keyed table 'nyi on 2.7.2)
+DAT:+`d`p!(DAD;2026.01.01D01:00 2027.03.01D01:00)
+t[`dateAccessorsTables;(year DAT;month DAT;dow DAT;year 0#DAT;.[year;,+`d`x!(DAD;1.5 2.5);{(x?"\n")#x}]);(+`d`p!(2026 2027;2026 2027);+`d`p!(1 1;1 3);+`d`p!(`Thu`Fri;`Thu`Mon);+`d`p!(!0;!0);"'type")]
+t[`dateAccessorsKeyed;(.[year;,(+(,`k)!,1 2)!DAT;{(x?"\n")#x}];.[day;,(+(,`k)!,1 2)!+(,`d)!,DAD;{(x?"\n")#x}]);((+(,`k)!,1 2)!+`d`p!(2026 2027;2026 2027);(+(,`k)!,1 2)!+(,`d)!,1 1)]   / the key is kept, as q's
 t[`minute;minute hms[9;30;15];570]
 t[`second;second hms[9;30;15];34215]
 t[`milli;milli hms[9;30;15]+123;123]

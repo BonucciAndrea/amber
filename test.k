@@ -75,6 +75,7 @@ t[`rank;rank 30 10 20;2 0 1]
 t[`distinct;distinct 1 1 2 3 3;1 2 3]
 t[`inMem;in[3 5;1 2 3 4];10b]
 t[`inCharInt;*"\n"\.[in;(97;"abc");{x}];"'type"]   / a char and a number are 'type, as in q (issue #20, row 12)
+t[`inSymInt;(in[``;0];except[``;0];in[`b`;0];in[0 5 1000000;`$("";"a")];inter[`$("";"a");0]);(00b;``;00b;000b;0#`)]   / a symbol is not a number: the null symbol is not 0 (digest #100: was 11b)
 t[`except;except[1 2 3 4;2 4];1 3]
 t[`inter;inter[1 2 3 4;2 4 6];2 4]
 t[`inGeneric;((1 2;3) in (1 2;3 4);3 in (1 2;3 4);1 2 in (1 2;3);(1;`a) in (1 2;`a);("ab";"c") in ("ab";"cd"));(10b;0b;1b;0b;10b)]   / an item of lower rank than y's items is not found, as q (digest #53)

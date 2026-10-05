@@ -62,6 +62,7 @@ t[`rotateWhole;(rotate[3;1 2 3];rotate[0;1 2 3];rotate[-3;1 2 3]);3#,1 2 3]   / 
 / Digest #38: an atom does what q does, not what the k primitive does
 t[`negAfterParams;({[x]-1+x}0 1 2;{[x]-x}0 1 2;{[x;y]-1+x+y}[1;2];{[x]-1.5*x}2);(-1 0 1;0 -1 -2;2;-3.0)]   / Digest #40: was -(1+x)
 t[`exceptCharNum;(1 2 3^"a";"ab"^1;(1 2 3)^,"a";except[1 2 3;"a"];except["ab";1 2];"abc"^"b";1 2 3^2);(1 2 3;"ab";1 2 3;1 2 3;"ab";"ac";1 3)]   / Digest #64: nothing removed, as q and ngn/k
+t[`exceptMixed;(except[(1;2.5);"a"];except[(0;" ");0];except[(1;"a";`b);"a"];except[(1;"a");1 2];except[(1;"a";2);1];except[(1;`a;2);1];except[("ab";"c");0];except[(`a;"a");0];except[(1 2;"a");1]);((1;2.5);," ";(1;`b);,"a";("a";2);(`a;2);("ab";"c");(`a;"a");(1 2;"a"))]   / digest #64: was 'type
 t[`jsonKeys;(`j@1 2!3 4;`j@(1.5 2)!3 4;`j@`a`b!3 4;`j@("ab";"cd")!3 4;5#.[`j@;,(1 2;3 4)!3 4;{x}]);("{\"1\":3,\"2\":4}";"{\"1.5\":3,\"2\":4}";"{\"a\":3,\"b\":4}";"{\"ab\":3,\"cd\":4}";"'type")]   / Digest #60: number keys as strings, list keys 'type, as q
 t[`listFnAtom;(prev 5;next 5;raze 5;5#.[distinct;,5;{x}];5#.[group;,5;{x}];distinct `a`b!1 1);(5;5;,5;"'type";"'type";,1)]
 

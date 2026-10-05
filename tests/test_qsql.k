@@ -372,6 +372,16 @@ tqa[`iByStrKey;   "select c:count n by s like \"i*\" from TS where i>0"; CL; `s`
 T5:([]sym:`a`b`a; n:1 2 1)
 t[`iFuncDistinct;   ?[T5;,(>;`i;-1);1b;()];                         ([]sym:`a`b; n:1 2)]
 
-hexpect[219]
+/ ---- digest #73 item 95: a bare distinct is q's distinct flag, not a column; with by it is q's distinct function ----
+DT:([]sym:`a`b`a`a;n:1 2 1 3;m:5 6 5 7)
+tq[`selDistinctBare;  "select distinct from DT";              ([]sym:`a`b`a;n:1 2 3;m:5 6 7)];
+tq[`selDistinctWhere; "select distinct from DT where n<3";    ([]sym:`a`b;n:1 2;m:5 6)];
+tq[`selDistinctCols;  "select distinct sym from DT where n>1"; ([]sym:`b`a)];
+tq[`selDistinctBy;    "select distinct by sym from DT";       ((+(,`sym)!,`a`b)!+`n`m!(3 2;7 6))];
+tq[`selDistinctColBy; "select distinct n,m by sym from DT";   ((+(,`sym)!,`a`b)!+`n`m!((1 3;,2);(5 5 7;,6)))];
+tq[`selDistinctNamedBy; "select distinct x:n by sym from DT";  ((+(,`sym)!,`a`b)!+(,`x)!,(1 3;,2))];
+tq[`selDistinctExprBy;  "select distinct x:n+1 by sym from DT"; ((+(,`sym)!,`a`b)!+(,`x)!,(2 4;,3))];
+
+hexpect[226]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

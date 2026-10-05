@@ -230,6 +230,13 @@ t[`mktLimit;(.[{`mkt x};,2147483648;{(x?"\n")#x}];`i$`mkt -2147483648);("'limit"
 t[`litDateLimit;TL'("5881610.07.12";"9999999.12.31";"100000000.01.01";"18446744073709551616.01.01");4#`$"'limit"]
 t[`litDateTop;TL'("5881610.07.11";"00000000000000000002026.07.30");2147483647 9707]
 t[`mkdLimit;(.[{`mkd x};,2147483648;{(x?"\n")#x}];.[{`mkd x};,-2147483649;{(x?"\n")#x}];`i$`mkd -2147483648);("'limit";"'limit";-2147483648)]
+/ a timestamp is 64 bits of nanoseconds: a literal past 2292.04.10D23:47:16.854775807, or before 1707.09.22D00:12:43.145224192
+/ (0N's), is 'limit, as "P"$ (digest #93; it wrapped: 2300.01.01D00:00:00.000 read as 1715.06.13D00:25:26.290448384)
+t[`litStampLimit;TL'("2300.01.01D00:00:00.000";"2292.04.10D23:47:16.854775808";"1707.09.22D00:12:43.145224191";"5881610.07.11D00:00:00";"2000.01.01D18446744073709551617:00:00");5#`$"'limit"]
+t[`litStampTop;TL'("2292.04.10D23:47:16.854775807";"1707.09.22D00:12:43.145224193";"1707.09.22D00:12:43.145224192";"2000.01.01D2562047:47:16.854775807");9223372036854775807 -9223372036854775807 0N 9223372036854775807]
+/ a minute, second, month or day of 20 digits is 'parse, as in "T"$, "D"$ and "P"$ (it wrapped: 10:18446744073709551617:00.000 read as 10:01:00.000)
+t[`litFieldDigits;TL'("10:18446744073709551617:00.000";"10:00:18446744073709551617.000";"2000.01.01D10:18446744073709551617:00";"2000.01.01D10:00:18446744073709551617";"2000.18446744073709551617.01";"2000.01.18446744073709551617";"2000.18446744073709551617.01D00:00");7#`$"'parse"]
+t[`litFieldZeros;TL'("10:0000000000000000000000001:00.000";"0002000.0000000000000000000001.0000000000000000000002";"2000.01.01D0000000000000000000000001:00");36060000 1 3600000000000]
 / `mkd, `mkt and `mkp take an int atom: of anything else they read its bits (issue #62)
 t[`mkTemporalType;ER'("`mkd {x}";"`mkt 5.5";"`mkp 0x05";"`mkd 1 2");4#,"'type"]
 / "T"$, "D"$ and "P"$ read the text as the literal reader does, and refuse text that is not a time, a date or a timestamp,
@@ -1197,7 +1204,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
-hexpect[766]
+hexpect[770]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

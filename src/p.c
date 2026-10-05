@@ -93,17 +93,21 @@ Z L ymd2days(L y,L m,L d){L wy=y-(m<=2);L era=(wy>=0?wy:wy-399)/400;L yoe=wy-era
 // seconds below 60 (hours are not limited: 99:00:00.000 is a time, and a timestamp's 24:00 is the next
 // day). A literal that fails is 'parse; before, 2026.02.29 read as 2026.03.01. A time is 32 bits of milliseconds,
 // so one past 596:31:23.647 is 'limit (issue #62; it wrapped, 1000:00:00.000 read as -193:02:47.296), and a date is 32 bits
-// of days, so one past 5881610.07.11 is 'limit, as "D"$ (it wrapped: 100000000.01.01 read as -5832990.07.06). tbad: 1 'parse, 2 'limit.
-Z C tbad;Z B dok(W y,W m,W d){if(m<1||m>12||d<1)return 0;W n=m==2?28+(y%4==0&&(y%100!=0||y%400==0)):30+((m+(m>7))&1);return d<=n;}
+// of days, so one past 5881610.07.11 is 'limit, as "D"$ (it wrapped: 100000000.01.01 read as -5832990.07.06), and a timestamp
+// 64 bits of nanoseconds, so one past 2292.04.10D23:47:16.854775807 is 'limit, as "P"$ (it wrapped: 2300.01.01D00:00:00.000 read
+// as 1715.06.13D00:25:26.290448384). tdd holds a field at 1e15 or more, as "T"$, "D"$ and "P"$ do (tdg), so a minute, second, month,
+// day or a timestamp's hour of 20 digits does not wrap (10:18446744073709551617:00.000 read as 10:01:00.000). tbad: 1 'parse, 2 'limit.
+Z C tbad;Z W tdd(W v,C c){return v<(W)1e15?10*v+(W)(c-'0'):v;}Z B dok(W y,W m,W d){if(m<1||m>12||d<1)return 0;W n=m==2?28+(y%4==0&&(y%100!=0||y%400==0)):30+((m+(m>7))&1);return d<=n;}
 Z A pTmp(){S p=s;if(!C09(*p))return 0;W a=0;S q=p;while(C09(*q)){a=10*a+(W)(*q-'0');q++;}
- if(*q==':'){S e=q++;W mi=0;while(C09(*q)){mi=10*mi+(W)(*q-'0');q++;}W sc=0,ms=0;
-  if(*q==':'){q++;while(C09(*q)){sc=10*sc+(W)(*q-'0');q++;}if(*q=='.'){q++;I nd=0;while(C09(*q)&&nd<3){ms=10*ms+(W)(*q-'0');q++;nd++;}while(nd<3){ms*=10;nd++;}while(C09(*q))q++;}}
+ if(*q==':'){S e=q++;W mi=0;while(C09(*q)){mi=tdd(mi,*q);q++;}W sc=0,ms=0;
+  if(*q==':'){q++;while(C09(*q)){sc=tdd(sc,*q);q++;}if(*q=='.'){q++;I nd=0;while(C09(*q)&&nd<3){ms=10*ms+(W)(*q-'0');q++;nd++;}while(nd<3){ms*=10;nd++;}while(C09(*q))q++;}}
   if(mi>59||sc>59){tbad=1;return 0;}S z=p;W(z<e-1&&*z=='0',z++)if(e-z>19||a>596||3600000*a+60000*mi+1000*sc+ms>2147483647){tbad=2;return 0;}s=q;return atm((I)(3600000*a+60000*mi+1000*sc+ms));}
- if(*q=='.'){S q2=q+1;if(!C09(*q2))return 0;W mo=0;while(C09(*q2)){mo=10*mo+(W)(*q2-'0');q2++;}if(*q2!='.')return 0;q2++;if(!C09(*q2))return 0;W dy=0;while(C09(*q2)){dy=10*dy+(W)(*q2-'0');q2++;}
-  W y=0;S r=p;W(r<q,y=y<(W)1e15?10*y+(W)(*r-'0'):y;r++)if(!dok(y,mo,dy)){tbad=1;return 0;}S z=p;W(z<q-1&&*z=='0',z++)if(q-z>19||a>9999999){tbad=2;return 0;}L days=ymd2days((L)a,(L)mo,(L)dy);   //y: the year held at 1e15 as "D"$ holds it (a wraps past 64 bits)
-  if(*q2=='D'){q2++;W hh=0;while(C09(*q2)){hh=10*hh+(W)(*q2-'0');q2++;}if(*q2!=':')return 0;q2++;W mi=0;while(C09(*q2)){mi=10*mi+(W)(*q2-'0');q2++;}W sc=0,ns=0;
-   if(*q2==':'){q2++;while(C09(*q2)){sc=10*sc+(W)(*q2-'0');q2++;}if(*q2=='.'){q2++;I nd=0;while(C09(*q2)&&nd<9){ns=10*ns+(W)(*q2-'0');q2++;nd++;}while(nd<9){ns*=10;nd++;}while(C09(*q2))q2++;}}
-   if(mi>59||sc>59){tbad=1;return 0;}s=q2;return antp((L)((W)days*86400000000000ULL+3600000000000ULL*hh+60000000000ULL*mi+1000000000ULL*sc+ns));}
+ if(*q=='.'){S q2=q+1;if(!C09(*q2))return 0;W mo=0;while(C09(*q2)){mo=tdd(mo,*q2);q2++;}if(*q2!='.')return 0;q2++;if(!C09(*q2))return 0;W dy=0;while(C09(*q2)){dy=tdd(dy,*q2);q2++;}
+  W y=0;S r=p;W(r<q,y=tdd(y,*r);r++)if(!dok(y,mo,dy)){tbad=1;return 0;}S z=p;W(z<q-1&&*z=='0',z++)if(q-z>19||a>9999999){tbad=2;return 0;}L days=ymd2days((L)a,(L)mo,(L)dy);   //y: the year held at 1e15 as "D"$ holds it (a wraps past 64 bits)
+  if(*q2=='D'){q2++;W hh=0;while(C09(*q2)){hh=tdd(hh,*q2);q2++;}if(*q2!=':')return 0;q2++;W mi=0;while(C09(*q2)){mi=tdd(mi,*q2);q2++;}W sc=0,ns=0;
+   if(*q2==':'){q2++;while(C09(*q2)){sc=tdd(sc,*q2);q2++;}if(*q2=='.'){q2++;I nd=0;while(C09(*q2)&&nd<9){ns=10*ns+(W)(*q2-'0');q2++;nd++;}while(nd<9){ns*=10;nd++;}while(C09(*q2))q2++;}}
+   if(mi>59||sc>59){tbad=1;return 0;}__int128 t=(__int128)days*86400000000000ll+(__int128)hh*3600000000000ll+60000000000ll*(L)mi+1000000000ll*(L)sc+(L)ns;
+   if(t-(L)t){tbad=2;return 0;}s=q2;return antp((L)t);}
   if(days-(I)days){tbad=2;return 0;}s=q2;return adt((I)days);}
  return 0;}
 //A strand of temporal literals of one kind (2026.01.01 2026.01.02) is a list of them, as q; it was 'type, the second
@@ -206,7 +210,7 @@ A pk(S*p,C c)_(P(!ray_rc_sync,pk_(p,c))plk(1);A x=pk_(p,c);plk(0);x)            
 // a date a sign on its year, a timestamp a date alone; past the range of the type 'limit. Blanks around the text (spaces, tabs,
 // carriage returns, as pw skips) are skipped, as q skips them. Out of line and after the parser, so the parser's hot loops keep
 // their place in the binary.
-Z B tdg(S*p,W*v)_(S s=*p;W u=0;W(C09(*s),u=u<(W)1e15?10*u+(W)(*s-'0'):u;s++)*v=u;B n=s>*p;*p=s;n)   //digits: 1 if any; their value, held at 1e15 or more past it
+Z B tdg(S*p,W*v)_(S s=*p;W u=0;W(C09(*s),u=tdd(u,*s);s++)*v=u;B n=s>*p;*p=s;n)   //digits: 1 if any; their value, held at 1e15 or more past it (tdd)
 Z B ttx(S*p,W*h,W*m,W*c,W*f)_(S s=*p;*m=*c=*f=0;P(!tdg(&s,h),1)I(*s==':',s++;P(!tdg(&s,m),1)I(*s==':',s++;P(!tdg(&s,c),1)))   //H[:M[:S]][.f]: f in ns; 1 if bad
  I(*s=='.',s++;W k=0;W(C09(*s),I(k<9,*f=10**f+(W)(*s-'0'))k++;s++)W(k<9,*f*=10;k++))*p=s;*m>59||*c>59)
 Z B tdx(S*p,L*d)_(S s=*p;B n=*s=='-';s+=n;W y,m,e;P(!tdg(&s,&y)||*s-'.',1)s++;P(!tdg(&s,&m)||*s-'.',1)s++;P(!tdg(&s,&e),1)L Y=n?-(L)y:(L)y;   //[-]Y.M.D: days; 1 if bad

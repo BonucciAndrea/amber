@@ -353,8 +353,8 @@ tq[`colInString;  "select from TS where s like \"*n\"";              TS@,0];
 tqa[`iInSym;      "select from trades where sym=`i"; NR;              0];
 tqa[`iInSyms;     "select from trades where sym in `i`b"; NR;         2];
 tqa[`iInPathSym;  "select from trades where sym=`:i"; NR;             0];
-/ a by-expression over i alone is named g0 (the hidden column has no name to give), and leaves i alone
-tqa[`iByExprKey;  "select c:count sz by i mod 2 from trades"; {(cols x;value(+value x)`c)}; (`g0`c;3 3)];
+/ a by-expression over i alone is named x, as q (the hidden column has no name to give), and leaves i alone
+tqa[`iByExprKey;  "select c:count sz by i mod 2 from trades"; {(cols x;value(+value x)`c)}; (`x`c;3 3)];
 tq[`iByExprSum;   "exec sum i by i mod 2 from trades";                0 1!6 9];
 tqa[`iUpdByExpr;  "update j:sum i by i mod 2 from trades"; {(+x)`j};  6 9 6 9 6 9];
 / a table's own columns are never dropped, whatever they are called
@@ -386,6 +386,36 @@ tq[`selDistinctColBy; "select distinct n,m by sym from DT";   ((+(,`sym)!,`a`b)!
 tq[`selDistinctNamedBy; "select distinct x:n by sym from DT";  ((+(,`sym)!,`a`b)!+(,`x)!,(1 3;,2))];
 tq[`selDistinctExprBy;  "select distinct x:n+1 by sym from DT"; ((+(,`sym)!,`a`b)!+(,`x)!,(2 4;,3))];
 
-hexpect[228]
+/ ---- a by key named like a column is the key's values, but the aggregates still read the column, as q ----
+tq[`byNameAgg;    "select s:sum sz by sz:sz mod 2 from trades";      (+(,`sz)!,0 1)!+(,`s)!,12 9];
+tq[`byNameFused;  "select s:sum sz,p:max px by sz:sz mod 2 from trades where px>15"; (+(,`sz)!,0 1)!+`s`p!(12 8;60 50.0)];
+tq[`byNameOther;  "select s:sum sz by sym:sz mod 2 from trades";     (+(,`sym)!,0 1)!+(,`s)!,12 9];
+tq[`byNameLast;   "select by sz:sz mod 2 from trades";                (+(,`sz)!,0 1)!+`sym`px!(`a`c;60 50.0)];
+tq[`byNameExec;   "exec sum sz by sz:sz mod 2 from trades";          0 1!12 9];
+tqa[`byIKey;      "select c:count sz by i from trades"; CL;          `x`c];
+tqa[`byIAll;      "select by i from trades"; CL;                      `x`sym`px`sz];
+tq[`byTwoSame;    "select s:sum sz by sz mod 2,sz mod 3 from trades"; (+`sz`sz1!(0 0 0 1 1 1;0 1 2 0 1 2))!+(,`s)!,6 4 2 3 1 5];
+tq[`byNamedKeeps; "select s:sum sz by sz mod 2,sz:sz mod 3 from trades"; (+`sz1`sz!(0 0 0 1 1 1;0 1 2 0 1 2))!+(,`s)!,6 4 2 3 1 5];
+tq[`byBareKeeps;  "select s:sum px by sz mod 2,sz from trades";      (+`sz1`sz!(0 0 0 1 1 1;2 4 6 1 3 5))!+(,`s)!,20 40 60 10 30 50.0];
+/ key names: a given or bare one is numbered after an earlier given or bare one, as q; a derived one after any
+/ given or bare one, or an earlier name, past the table's columns
+TN:([]sym:`a`b`a`b;n:1 2 3 4;m:5 6 7 8)
+tqa[`byNmSymSym;  "select sum m by sym,sym from TN"; CL;              `sym`sym1`m];
+tqa[`byNmBare2;   "select sum m by n,n from TN"; CL;                  `n`n1`m];
+tqa[`byNmGiven2;  "select sum m by a:n mod 2,a:n mod 3 from TN"; CL;  `a`a1`m];
+tqa[`byNmDerBare; "select sum m by n mod 2,n from TN"; CL;            `n1`n`m];
+tqa[`byNmDerGiven; "select sum m by n mod 2,n:n mod 3 from TN"; CL;   `n1`n`m];
+tqa[`byNmDer2;    "select sum m by n mod 2,n mod 3 from TN"; CL;      `n`n1`m];
+tqa[`byNmI2;      "select sum m by i,i mod 2 from TN"; CL;            `x`x1`m];
+tqa[`byNmThree;   "select sum m by n mod 2,n,n:n mod 3 from TN"; CL;  `n2`n`n1`m];
+TN1:([]sym:`a`b`a`b;n:1 2 3 4;m:5 6 7 8;n1:9 8 7 6)
+tqa[`byNmSkipCol; "select sum m by n mod 2,n from TN1"; CL;           `n2`n`m];
+tqa[`byNmKeepCol; "select by n mod 2,n from TN1"; CL;                 `n2`n`sym`m`n1];
+tqa[`selNmPlace;  "select sum n,n from TN"; CL;                     `n`n1];
+tqa[`updNmPlace;  "update sum n,n from TN"; {(+x)`n};                 4#10];
+tv[`byFunc;       "?[trades;();(,`sz)!,(mod;`sz;2);(,`s)!,(sum;`sz)]"; (+(,`sz)!,0 1)!+(,`s)!,12 9];
+tv[`byFuncTwo;    "?[trades;();`a`b!((mod;`sz;2);(mod;`sz;3));(,`s)!,(sum;`sz)]"; (+`a`b!(0 0 0 1 1 1;0 1 2 0 1 2))!+(,`s)!,6 4 2 3 1 5];
+
+hexpect[252]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

@@ -73,6 +73,13 @@ qnorm:{[s]trim(" "/qdec'"\n"\s)}
 / qnms numbers the repeats as q does: v v1 v2, x x1 (they were two columns called v, or x0 x1, digest #56)
 qnm:{[C;i;it]p:qname it;$[#p 0;`$p 0;qcn[C;p 1]]}
 qnms:{[C;it]n:qnm[C]'[!#it;it];{[n;i]k:+/n[i]=i#n;$[k;`$($n i),$k;n i]}[n]'!#n}
+/ qnmd numbers repeated by-key names (select items keep qnms's numbering by place, as q). A given name (a:...) or a bare column keeps its
+/ name unless an earlier given or bare one took it (sym sym1, a a1, as q). A derived name (n mod 2 is n) is
+/ numbered when it meets a given or bare name anywhere in the list or any earlier name, skipping the names in X
+/ (a by's table columns): n mod 2,n is n1 n, n mod 2,n mod 3 is n n1 (q names derived ones x x1 from the parse).
+qnmv:{[n;it]{[n;e]p:qname e;(0=#p 0)&~n~`$p 1}'[n;it]}   / is each name derived
+qnmc:{[b;o]c:`$($b),/:$1+!1+#o;*c@&~in[c;o]}   / b numbered past the names o
+qnmd:{[X;n;dv]n:{[dv;n;i]$[dv i;n;in[n i;n@&(~dv)&(!#n)<i];@[n;i;:;qnmc[n i;n@&(~dv)&(!#n)<i]];n]}[dv]/[n;!#n];{[X;dv;n;i]$[~dv i;n;[o:n@&(~dv)|(!#n)<i;$[in[n i;o];@[n;i;:;qnmc[n i;o,X]];n]]]}[X;dv]/[n;!#n]}
 qcn:{[C;e]e:trim e;$[0=#e;`err"parse";"("=*e;qcn[C;qpin[e;"(";")"]];(2<#e)&("`"=*e)&("#"=e 2)&in[e 1;"supg"];qcn[C;3_e];"`"=*e;`x;"\""=*e;`x;~qword 0+*e;$[("-"=*e)&(1<#e)&~(e 1)<"0";$[(e 1)>"9";qcn[C;1_e];`x];qcn[C;1_e]];qcnw[C;e]]}
 qcnw:{[C;e]w:qword 0+e;n:*(&~w),#e;t:n#e;r:trim n_e;c:*t;$[in[`$t;C];`$t;~(c<"0")|c>"9";`x;t~,"i";`x;~qfnw t;`$t;0=#r;`$t;"["=*r;qcn[C;*qscut qpin[r;"[";"]"]];qcn[C;r]]}
 qfnw:{v:.[{.x};,`$x;{`qlfail}];$[`qlfail~v;0;|/"opqruvwx"=*$@v]}   / Does the word name a function
@@ -81,7 +88,7 @@ qpin:{[e;o;c]d:+\(e=o)-e=c;j:*(&d=0),#e;1_j#e}   / The text inside the bracket e
 / a bare column keeps its own name; an expression over exactly one column takes
 / that column's name (so `by time:1m xbar time` and `by minbar[1;time]` both
 / produce a `time` column, as q does); anything wider falls back to g0, g1, …
-qbyn:{[C;i;it]p:qname it;$[#p 0;`$p 0;qsimple p 1;`$p 1;[r:qrefs[C;p 1];$[(1=#r)&~r~,qI;*r;`$"g",$i]]]}   / by i mod 2 is g0: the hidden i is not a name
+qbyn:{[C;i;it]p:qname it;$[#p 0;`$p 0;qsimple p 1;$[(p[1]~,"i")&in[qI;C];`x;`$p 1];[r:qrefs[C;p 1];$[r~,qI;`x;1=#r;*r;`$"g",$i]]]}   / by i and by i mod 2 are x, as q: the hidden i is not a name
 / qbyx: resolve a by-clause into (table; group-column-names).
 / qbc used to turn every by item into a SYMBOL of its own source text, so
 / `by time:minbar[1;time]` grouped on a column literally called
@@ -92,7 +99,14 @@ qbyn:{[C;i;it]p:qname it;$[#p 0;`$p 0;qsimple p 1;`$p 1;[r:qrefs[C;p 1];$[(1=#r)
 / uses and appended to the table under the name qbyn gives it; grouping then
 / runs on real columns.  A bare column name computes to itself, so the common
 / `by sym` path is unchanged.
-qbyx:{[t;byp]C:cols t;it:qcut byp;ex:{(qname x)1}'it;nm:qbyn[C]'[!#it;it];v:{[t;C;e]qfn[C;e]t}[t;C]'ex;(+((+t),nm!v);nm)}
+/ A computed key goes in under a hidden name, [n;i] (i its place), so by n:n mod 2 leaves the column n for
+/ the aggregates to read, as q's, and a key and a value of one name (exec sum i by i mod 2: both x) group
+/ and sort apart; qbyr gives the result's key its name back. The third item is the names, numbered by qnmd;
+/ the fourth the given and bare ones, which select by with no columns leaves out of the value columns, as q.
+/ qbyh is the hidden names.
+qbyx:{[t;byp]C:cols t;it:qcut byp;ex:{(qname x)1}'it;nm:qbyn[C]'[!#it;it];dv:qnmv[nm;it];nm:qnmd[C;nm;dv];v:{[t;C;e]qfn[C;e]t}[t;C]'ex;hn:qbyh[nm;{[n;e]e~$n}'[nm;ex]];(+((+t),hn!v);hn;nm;nm@&~dv)}
+qbyh:{[nm;b]{[n;b;i]$[b;n;`$"[",($n),";",($i),"]"]}'[nm;b;!#nm]}   / b: the key is the column of its name
+qbyr:{[r;x]$[(x 1)~x 2;r;iskeyed r;(+(x 2)!. +!r)!. r;r]}   / the by-result's key under the names qbyn gave
 qnull:{$[in[@x;`I`i];0N;in[@x;`F`f];0n;in[@x;`S`s];`;in[@x;`C`c];" ";0N]}
 / qrefs: the column names an expression actually mentions.  Same tokenisation
 / qidsub uses to REWRITE identifiers into x`col, so the set returned here is
@@ -120,7 +134,7 @@ qsagg:{[C;e]w:" "vs trim e;$[2=#w;$[(in[`$w 0;qsimp])&in[`$w 1;C];(`$w 0;`$w 1);
 / the by-branch of sel, split out so sel itself stays under the bytecode limit.
 / u is the UNFILTERED table and m the where-mask: the fused path hands the mask
 / to `gagg and never builds the filtered table; the generic path filters first.
-qselby:{[u;m;byp;it;d]r:qbyx[u;byp];sg:qsagg[cols r 0]'{(qname x)1}'it;fa:$[~&/{0<#x}'sg;();$[#m;|/m;1];qaggf[r 0;r 1;(!d)!sg;m];()];$[#fa;qks fa;[t:$[#m;qwhere[r 0;m];r 0];qby[qproj[t;(r 1),(,/qrefs[cols t]'{(qname x)1}'it)];r 1;d]]]}
+qselby:{[u;m;byp;it;d]r:qbyx[u;byp];sg:qsagg[cols r 0]'{(qname x)1}'it;fa:$[~&/{0<#x}'sg;();$[#m;|/m;1];qaggf[r 0;r 1;(!d)!sg;m];()];qbyr[;r]$[#fa;qks fa;[t:$[#m;qwhere[r 0;m];r 0];qby[qproj[t;(r 1),(,/qrefs[cols t]'{(qname x)1}'it)];r 1;d]]]}
 / gag1: one select-list item -> one fused result triple (head;values;first-row-indices).
 / (agg;col)        -> a single `gagg pass, as before.
 / (wavg|wsum;w;c)  -> two `gagg sum passes over the same keys and mask, so the group order
@@ -173,7 +187,7 @@ qlim:{[r;sp]$[0=#sp;r;iskeyed r;[k:keys r;xkey[k;qlim1[unkey r;sp]]];qlim1[r;sp]
 / query that asked for the table.
 qflt:{[u;m;hw]$[hw;qwhere[u;m];u]}
 / qselall: `select from t` / `select * from t`, with or without a by-clause.
-qselall:{[u;m;hw;r3]$[r3 2;[r:qbyx[qflt[u;m;hw];r3 1];nk:except[cols r 0;r 1];fa:$[#nk;qlastby[r 0;r 1;nk];()];$[#fa;qks fa;qby[r 0;r 1;nk!qlastf'nk]]];qflt[u;m;hw]]}
+qselall:{[u;m;hw;r3]$[r3 2;[r:qbyx[qflt[u;m;hw];r3 1];nk:except[cols r 0;(r 1),r 3];fa:$[#nk;qlastby[r 0;r 1;nk];()];qbyr[;r]$[#fa;qks fa;qby[r 0;r 1;nk!qlastf'nk]]];qflt[u;m;hw]]}
 / select by k from t: the last row of each group in one gagg pass over the row numbers, every other column read there
 qlastby:{[t;b;nk]d:+t;bc:d b;k:$[1=#b;*bc;qcard[bc]<qEXACT;qenc bc;()];$[0=#k;();[g:`gagg(`last;k;0+!#t);$[#g;(+b!bc@\:g 2)!+nk#+t@g 1;()]]]}
 / qsel0: the select-list branch.  The filtered table is built ONLY here, and
@@ -222,7 +236,7 @@ qfe:{[t;e]$[`s~@e;$[in[e;cols t];(+t)e;e~`i;$[in[qI;cols t];(+t)qI;!#t];. e];(`S
 qfi:{[t;c]{[t;i;w]i@&qfe[t i;w]}[t]/[&qfe[t;*c];1_c]}
 qfa:{[t;a]v:qfe[t]'value a;k:!a;$[&/isat'v;+k!,'v;+k!{[l;x]$[isat x;l#x;x]}[#t]'v]}
 qfsg:{[t;e]$[(`A~@e)&2=#e;[f:*e;c:e 1;$[(`s~@c)&in[c;cols t];$[f~sum;(`sum;c);f~avg;(`avg;c);f~min;(`min;c);f~max;(`max;c);f~count;(`count;c);f~first;(`first;c);f~last;(`last;c);()];(c~`i)&f~count;(`count;*cols t);()]];()]}
-qfby:{[t;b;a]bk:!b;t2:+(+t),bk!qfe[t]'value b;sg:$[0<#a;qfsg[t]'value a;()];fa:$[(0<#sg)&&/{0<#x}'sg;qaggf[t2;bk;(!a)!sg;()];()];$[#fa;:qks fa;];$[0=#a;[nk:except[cols t;bk];qby[t2;bk;nk!qlastf'nk]];qby[t2;bk;(!a)!{[e]{[e;x]qfe[x;e]}[e]}'value a]]}
+qfby:{[t;b;a]bk:!b;h:qbyh[bk;bk~'value b];x:(();h;bk);t2:+(+t),h!qfe[t]'value b;sg:$[0<#a;qfsg[t]'value a;()];fa:$[(0<#sg)&&/{0<#x}'sg;qaggf[t2;h;(!a)!sg;()];()];$[#fa;:qbyr[qks fa;x];];qbyr[;x]$[0=#a;[nk:except[cols t;bk];qby[t2;h;nk!qlastf'nk]];qby[t2;h;(!a)!{[e]{[e;x]qfe[x;e]}[e]}'value a]]}   / computed keys hidden as qbyx's
 qfhi:{$[`s~@x;x~`i;`S~@x;in[`i;x];`m~@x;qfhi@. x;(`A~@x)&0<#x;|/qfhi'x;0]}   / does a parse tree name i
 qfsel:{[t;c;b;a]t:$[`s~@t;. t;t];k:qik[qfhi(c;b;a);t];t:qai[k;t];t:$[0=#c;t;t qfi[t;c]];qdi[k]$[(b~0b)|b~();$[0=#a;t;qfa[t;a]];b~1b;?qdi[k]$[0=#a;t;qfa[t;a]];qfby[t;b;a]]}
 qfub:{[t;idx;b;a]k:+(!b)!qfe[t idx]'value b;gi:idx@value(=rows k);+((+t),(!a)!{[t;gi;w;n;e]qasgby[t;n;{[e;x]qfe[x;e]}[e];gi;();w]}[t;gi;(#idx)<#t]'[!a;value a])}

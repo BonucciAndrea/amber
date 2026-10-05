@@ -1067,7 +1067,11 @@ t[`rangeKeyPrint5;`k@(5+!1)!,2;"(,5)!,2"]
 t[`rangeKeyRoundTrip;(. `k@(!1)!,2)~(!1)!,2;1]
 t[`rangeKeyTwo;`k@(!2)!3 4;"0 1!3 4"]
 
-hexpect[682]
+/ ---- an empty generic list joined to an empty list keeps its prototype; only () gives way (2.7) ----
+t[`joinEmptyGenericProto;`k@'((0#,1 2),0#,"ab";(0#,,0N),0#,,();(0#,1 2),();(),0#,"ab");("0#,0N 0N";"0#,,0N";"0#,0N 0N";"0#,\"  \"")]
+t[`joinEmptyGenericDictCmp;`k@'(((0#,1 2)!())=(0#`)!!0;((0#,1 2)!0#0n)<(0#`)!!0);2#,"(0#`)!!0"]
+
+hexpect[684]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

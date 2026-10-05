@@ -15,7 +15,7 @@ qsplit:{[s;kw]$[0=#s;:(s;"";0b);];i:ss[s;kw];m:~qsmask s;d:+\(m*in[s;"([{"])-m*i
 qsplit0:{[s;kw]$[(s~*i:qsplit[s;kw])&((#kw)-1)<#s;$[(1_kw)~(-1+#kw)#s;("";trim(-1+#kw)_s;1b);i];i]}
 / last-of-each-column aggregation, used for a `by` with no explicit projection
 qlastf:{[c]{[c;x]last x c}[c]}
-qcut:{[s]d:sums(s="[")-s="]";b:0,&(s=",")&d=0;trim'{$[#x;$[","=*x;1_x;x];x]}'b _ s}  / comma-split at depth 0
+qcut:{[s]c:qblank s;d:+\in[c;"([{"]-in[c;")]}"];b:0,&(c=",")&d=0;trim'{$[#x;$[","=*x;1_x;x];x]}'b _ s}  / comma-split at depth 0, outside strings
 qname:{[s]b:qblank s;d:+\in[b;"([{"]-in[b;")]}"];i:&(b=":")&d=0;$[#i;(trim(*i)#s;trim(1+*i)_s);("";trim s)]}  / name:expr (a : in a string, a `symbol or brackets is not the name's)
 qword:{((x>64)&x<91)|((x>96)&x<123)|((x>47)&x<58)|x=95}                            / word-char mask
 qsimple:{(0<#x)&&/qword 0+x}                                                       / is a bare identifier

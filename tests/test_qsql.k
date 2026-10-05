@@ -470,6 +470,16 @@ tq[`colonSymExBy;  "exec n by f=`:b from TC";                         01b!(1 3;,
 tq[`colonLambda;   "exec {x:1;x+y}[n;n] from TC";                     2 3 4];
 tq[`colonNamed;    "exec a:f=`:b from TC";                            010b];
 
-hexpect[294]
+/ a comma inside ( ), { } or a string does not split an item or a constraint
+TM:([]n:1 2 3 4)
+tq[`commaParenWh;  "select from TM where n in (1,2)";                 ([]n:1 2)];
+tq[`commaParenEx;  "exec (,\"ab\";n) from TM where n>2";               (,"ab";3 4)];
+tq[`commaLambda;   "exec {x,y}[n;n] from TM where n>3";               4 4];
+tqa[`commaParenBy; "select c:count n by g:(n mod 2) from TM where n in (1,2,3)"; {value(+value x)`c}; 1 2];
+TL:([]s:("a,b";"cd"); n:1 2)
+tq[`commaStrWh;    "select from TL where s like \"a,b\"";             TL@,0];
+tq[`commaStrCas;   "select from TL where s like \"a,b\", n>0";        TL@,0];
+
+hexpect[300]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

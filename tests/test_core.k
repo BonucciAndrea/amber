@@ -1032,7 +1032,15 @@ t[`trainLeftArgKept;{a:1+!3;{.[{(-;{`b+x})[x;2]};,x;{x}]}[a]'!3;{.[{(+;-;{`b+y})
 t[`trainHeapIntArg;({#?{(+;-) 0N+0*x}'!x}2000;{#?{[v;i](+;-) v}[x]'!200}2000000000000000000);1 1]
 t[`trainHeapIntErr;({#?{[v;i].[{(+;{`b+x}) x};,v;{x}]}[x]'!200}0N;#?{.[{({`a+x};{`b+x}) x};,0N;{x}]}'!100);1 1]
 
-hexpect[655]
+/ ---- ?[c;a;b] with c of 0s and 1s is q's vector conditional, with no library loaded ----
+tv[`vcondAtoms;"?[1 0 1;1;9]";1 9 1]
+tv[`vcondList;"?[1 0 1;1 2 3;9]";1 9 3]
+tv[`vcondEmpty;"?[!0;0;0]";!0]
+tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
+/ the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
+tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
+
+hexpect[660]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

@@ -565,7 +565,9 @@ amber_value amber_make_list(const amber_value *items, long long n) {
     A *slot;
     long long i;
     if (n < 0 || (!items && n)) return 0;
-    vec = aA((U)n);
+    /* aA0 for n == 0: an empty general list keeps its prototype in slot 0,
+       which sqz and its free read; aA leaves it unset (digest #98). */
+    vec = n ? aA((U)n) : aA0(0);
     if (!vec) return 0;
     slot = (A *)_V(vec);
     for (i = 0; i < n; i++) slot[i] = _R((A)items[i]);
@@ -603,7 +605,7 @@ amber_value amber_make_table(const char *const *names,
     }
     nm = (A)amber_from_symbols(names, ncols);
     if (!nm) { capi_err_set("'limit: allocation failed"); return 0; }
-    cv = aA((U)(ncols ? ncols : 0));
+    cv = ncols ? aA((U)ncols) : aA0(0);   /* () has its prototype in slot 0 (digest #98) */
     if (!cv) { mr(nm); capi_err_set("'limit: allocation failed"); return 0; }   /* nm no longer leaks (digest #9) */
     slot = (A *)_V(cv);
     for (i = 0; i < ncols; i++) slot[i] = _R((A)cols[i]);
@@ -630,7 +632,7 @@ amber_value amber_make_dict(const char *const *keys,
     }
     kv_ = (A)amber_from_symbols(keys, n);
     if (!kv_) { capi_err_set("'limit: allocation failed"); return 0; }
-    vv  = aA((U)(n ? n : 0));
+    vv  = n ? aA((U)n) : aA0(0);         /* () has its prototype in slot 0 (digest #98) */
     if (!vv) { mr(kv_); capi_err_set("'limit: allocation failed"); return 0; }   /* kv_ no longer leaks (digest #9) */
     slot = (A *)_V(vv);
     for (i = 0; i < n; i++) slot[i] = _R((A)vals[i]);

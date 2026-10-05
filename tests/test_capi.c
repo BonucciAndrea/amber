@@ -184,6 +184,30 @@ static void t_tables(void) {
 }
 
 /* ---- 5. pushing data back in -------------------------------------------- */
+/* An empty list keeps its prototype in slot 0.  Freeing (1;"ab") leaves a
+   long in that slot of its block, and a value made next may reuse the block:
+   free two, as amber_make_dict and _table take one for their keys. */
+static void seed(void) {
+    amber_release(amber_eval_str("(1;\"ab\")"));
+    amber_release(amber_eval_str("(1;\"ab\")"));
+}
+
+/* Does v (owned; released here) match the k expression want? */
+static int matches(amber_value v, const char *want) {
+    char src[64];
+    amber_value r;
+    int ok = 0, m;
+    if (!v) return 0;
+    m = amber_set_global("tempty", v) == 0;
+    amber_release(v);
+    if (!m) return 0;
+    snprintf(src, sizeof src, "tempty~%s", want);
+    r = amber_eval_str(src);
+    m = r && amber_to_int(r, &ok) == 1 && ok;
+    amber_release(r);
+    return m;
+}
+
 static void t_push(void) {
     static const long long src[4] = { 11, 22, 33, 44 };
     static const double px[4] = { 1.0, 2.0, 3.0, 4.0 };
@@ -222,6 +246,16 @@ static void t_push(void) {
 
     res = amber_get_global("definitelyNotDefined");
     CK(res == 0);
+
+    /* (), (0#`)!() and +(0#`)!() whatever their blocks held (digest #98) */
+    seed();
+    res = amber_make_list(NULL, 0);
+    CK(res != 0 && amber_type(res) == AMBER_T_LIST && amber_count(res) == 0);
+    CK(matches(res, "()"));
+    seed();
+    CK(matches(amber_make_dict(NULL, NULL, 0), "(0#`)!()"));
+    seed();
+    CK(matches(amber_make_table(NULL, NULL, 0), "+(0#`)!()"));
 }
 
 /* ---- 6. calling a function by name -------------------------------------- */

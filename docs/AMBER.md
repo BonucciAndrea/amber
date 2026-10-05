@@ -279,6 +279,8 @@ Assigning to a table's columns:
 - `` t[`px]:v `` or `` @[t;`px;f] ``: an atom fills every row (an empty table stays empty); a list or dict
   must have the row count, unless every column is replaced (`` t[`px]:7 8 `` on a one-column table gives
   two rows).
+- `` .[t;(::;`px);:;v] `` amends every row; with no rows the table is kept when `v` is an atom or empty,
+  else `'length`.
 
 Table / keyed‑table toolkit (all in `amber.k`):
 

@@ -1086,12 +1086,16 @@ Z U tci(A x,A y/*00*/)_(P(!xtM||!ytA||yn<2||!_tz(*yA)||!_ts(yA[1]),0)tcc(x,yA[1]
 Z A1(rbl,A y=enl(_R(*xA));F(xn-1,PSH(y,_R(xA[i+1])))x(y))
 Z A d3(A,A,A);Z A tca(A x,A y,A z,A u,U n,U j/*10000.*/)_(A w=aA(yn-1);*_A(w)=_R(*yA);F(yn-2,_A(w)[i+1]=_R(yA[i+2]))
  x=mut(x);xy=mut(xy);A c=_A(xy)[j];_A(xy)[j]=au;c=n==4?d4(c,w,z,u):d3(c,w,z);mr(w);P(!c,x(0))_A(xy)[j]=c;F(_n(xy),A*p=_A(xy)+i;I(_tA(*p),*p=rbl(*p)))x)
+//.[t;(::;c),p;f(;y)] amends each row of t: with none, the rows made nothing to squeeze back, and the result was (),
+//losing the table (q keeps it, as update does). The table, as it is, where f and y are atoms or empty: a list or dict
+//with items is 'length, as before
+Z B tnr(A x,A y,A z,A u/*0000*/)_(xtM&&ytA&&*yA==au&&!xN&&(_tt(z)||!_N(z))&&(!u||_tt(u)||!_N(u)))
 //an amend at more than one level amends each item at the first with the rest of the indices, by a projection of a
 //function that does what . does there (dt3, dt4), but for a symbol list, which is data (. takes it as a name), and so
 //are its items (s: x is such a list, and ds3, ds4 do its items)
 Z A ds3(A,A,A),ds4(A,A,A,A);
-Z __attribute__((always_inline)) inline A d3s(A x,A y,A z,B s/*100.*/)_(U m=yN;P(y==au||!m,z1(x))P(m==1,y=fir(yR);y(a3(x,y,z)))U j=tci(x,y);P(j,tca(x,y,z,0,3,j-1))A u=s?prj(ax(ds3,3),(A[]){GAP,drp(1,yR)},2):prj_(ax(dt3,3),(A[]){GAP,drp(1,yR)},2);y=fir(yR);y(u(a4(x,y,u,z))))
-Z __attribute__((always_inline)) inline A d4s(A x,A y,A z,A u,B s/*1000.*/)_(U m=yN;P(y==au||!m,x(z2(x,uR)))P(m==1,y=fir(yR);y(a4(x,y,z,u)))U j=tci(x,y);P(j,tca(x,y,z,u,4,j-1))A v=s?prj(ax(ds4,4),(A[]){GAP,drp(1,yR)},2):prj_(ax(dt4,4),(A[]){GAP,drp(1,yR)},2);y=fir(yR);A r=y(a5(x,y,v,z,u));mr(v);r)
+Z __attribute__((always_inline)) inline A d3s(A x,A y,A z,B s/*100.*/)_(U m=yN;P(y==au||!m,z1(x))P(m==1,y=fir(yR);y(a3(x,y,z)))U j=tci(x,y);P(j,tca(x,y,z,0,3,j-1))P(tnr(x,y,z,0),x)A u=s?prj(ax(ds3,3),(A[]){GAP,drp(1,yR)},2):prj_(ax(dt3,3),(A[]){GAP,drp(1,yR)},2);y=fir(yR);y(u(a4(x,y,u,z))))
+Z __attribute__((always_inline)) inline A d4s(A x,A y,A z,A u,B s/*1000.*/)_(U m=yN;P(y==au||!m,x(z2(x,uR)))P(m==1,y=fir(yR);y(a4(x,y,z,u)))U j=tci(x,y);P(j,tca(x,y,z,u,4,j-1))P(tnr(x,y,z,u),x)A v=s?prj(ax(ds4,4),(A[]){GAP,drp(1,yR)},2):prj_(ax(dt4,4),(A[]){GAP,drp(1,yR)},2);y=fir(yR);A r=y(a5(x,y,v,z,u));mr(v);r)
 Z A3(d3,/*100*/d3s(x,y,z,0))
 A4(d4,/*1000*/d4s(x,y,z,u,0))
 Z __attribute__((cold)) A3(d3t,/*100*/d3s(x,y,z,1))   //s a constant in each, so d3, d4 inline prj_ as they did prj(DOT,..); a symbol list's

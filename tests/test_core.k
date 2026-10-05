@@ -1041,6 +1041,10 @@ t[`tableAtomColumnsEmpty;({t:+(,`a)!,!0;t[`a]:9;t}[];{t:0#+`a`b!(1 2;3 4);t[`a`b
 tv[`tableAtomColumnsTypesEmpty;"@[0#+`a`b!(1 2;`x`y);`a`b;:;(9;`q)]";+`a`b!(!0;0#`)]
 t[`tableAtomColumnsNone;({t:+(0#`)!();t[0#`]:9;t}[];@[+(0#`)!();0#`;:;9];@[+(0#`)!();0#`;{x}];IA["TN1:+(0#`)!()";"TN1[0#`]:9"]);(+(0#`)!();+(0#`)!();+(0#`)!();(::;+(0#`)!()))]   / no column: the table as it was
 t[`tableListColumnStill;({t:+(,`a)!,1 2 3;t[`a]:7 8;t}[];{t:+(,`a)!,1 2 3;t[`a]:,9;t}[];{t:+`a`b!(1 2 3;4 5 6);t[`a]:9;t}[];{t:+(,`a)!,1 2 3;t[`b]:9;t}[];{t:+`a`b!(1 2 3;4 5 6);t[`a`b]:(9;10 11);t}[]);(+(,`a)!,7 8;+(,`a)!,,9;+`a`b!(9 9 9;4 5 6);+`a`b!(1 2 3;9 9 9);+`a`b!(9 9;10 11))]   / as before
+TE:0#+`a`b!(1 2;3 4)
+t[`tableElidedEmpty;(.[TE;(::;`a);:;9];.[TE;(::;`a);{x}];.[TE;(::;`a;0);:;9];{t:TE;t[;`a]:9;t}[];.[(TE;1);(0;::;`a);:;9];.[`x`y!(TE;1);(`x;::;`a);:;9];.[+`a`b!(1 2;3 4);(::;`a);:;9]);(TE;TE;TE;TE;(TE;1);`x`y!(TE;1);+`a`b!(9 9;3 4))]   / every row of an empty table: the table, not ()
+t[`tableElidedEmptyAtoms;(.[TE;(::;`a);:;`x];.[TE;(::;`a);:;!0];.[TE;(::;`a);+;()];.[TE;(::;`a);:;0#TE];.[TE;(::;`a);!0];{t:TE;t[;`a]:"x";t}[]);6#,TE]   / f and y atoms or empty
+t[`tableElidedEmptyLength;{*"\n"\.[.:;,x;{x}]}'(".[TE;(::;`a);:;1 2]";".[TE;(::;`a);+;,1]";".[TE;(::;`a);:;`a!1]";".[TE;(::;`a);1 2]";".[TE;(::;`a);(1 2);9]";"{t:TE;t[;`a]:1 2;t}[]";".[(TE;1);(0;::;`a);:;1 2]";".[+`a`b!(1 2;3 4);(::;`a);:;1 2 3]");8#,"'length"]   / a list or dict with items: 'length, as before
 
 / ---- a failed assignment below a dict key, to a table, or into an atom leaves the variable ----
 t[`amendKeepDictIndex;(IA["D1:`a`b!(1 2;3 4)";"D1[`a;7]:9"];IA["D2:`a`b!(1 2;3 4)";"D2[`a`b;5]:9"];IA["D3:`a`b!(1 2;3 4)";"D3[`a;7]+:9"]);3#,(`err;`a`b!(1 2;3 4))]
@@ -1172,7 +1176,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
-hexpect[751]
+hexpect[754]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

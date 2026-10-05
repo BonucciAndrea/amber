@@ -496,6 +496,15 @@ tq[`tabInStrBs;    "exec (\"a\\\\\";\"x\ty\";\"b\\\\\") from TT";      ("a\\";"x
 tq[`tabInString;   "exec \"x\ty\" from TT";                           "x\ty"];
 t[`tabSel;         .[sel;,"select\tn from TT where\tn>1";{x}];       ([]n:,2)];
 
-hexpect[310]
+/ a bracket or ; inside a "string" does not end a bare query at the prompt or in a file (qendx)
+TQS:([]s:("a;b";"cd"); n:1 2)
+tq[`strParen;      "select n,\")\" from TQS";                           ([]n:1 2;x:"))")];
+tq[`strBrack;      "select n,\"]\" from TQS";                           ([]n:1 2;x:"]]")];
+tq[`strBrace;      "select n,\"}\" from TQS";                           ([]n:1 2;x:"}}")];
+tq[`strSemi;       "select from TQS where s like \"a;b\"";              1#TQS];
+tq[`strEscQuote;   "exec \"a\\\")\" from TQS";                          "a\")"];
+tq[`strEnd;        "(exec s from TQS where s like \"a;b\"),,\"x)\"";    ("a;b";"x)")];
+
+hexpect[316]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

@@ -24,6 +24,9 @@ show select sum px by sym from t
 show select from t where px>250
 `0:"E:"
 show exec sum px from t
+u:([]s:("a;b";"cd"); n:1 2)
+`0:"S:",`k@select n,")" from u
+`0:"L:",`k@exec s from u where s like "a;b"
 K
 # The driver loads the stdlib first, THEN loads the query file (so qrwf exists
 # when bsl() rewrites it) -- exactly how a real session or launcher behaves.
@@ -41,6 +44,8 @@ check "400" "group-by select rewrote and ran"   # sum px for sym a = 100+300
 check "600" "group-by select sym b"             # sum px for sym b = 200+400
 check "300" "where-clause select rewrote and ran"
 check "1000" "exec rewrote and ran"             # sum of all px
+check 'S:+`n`x!(1 2;"))")' "a ) in a string does not end the query"
+check 'L:,"a;b"' "a ; in a string does not end the query"
 
 # A non-qSQL script must be evaluated verbatim (no false-positive rewrite).
 cat > "$tmp/plain.k" <<'K'

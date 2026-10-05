@@ -266,7 +266,7 @@ qpre:" ([{;:,=<>+-*%!&|^~?@."
 qbig:1000000
 qesc:{,/{$[x="\\";"\\\\";$[x="\"";"\\\"";,x]]}'x}                                 / escape \ and " for a "…" literal
 qsmask:{[t]p:&t="\"";e:(0,-1_{y&~x}\t="\\")p;o:-1_{y|~x}\0,e;q:@[(#t)#0b;p@&~e&o;:;1b];1=2!0,-1_sums q}   / 1b where inside a "…" literal (a " after an odd run of \ is escaped, inside a string only: ,\"ab" opens one)
-qendx:{[t;p]b:p_t;n:#b;op:(b="(")|(b="[")|b="{";cl:(b=")")|(b="]")|b="}";dep:sums op-cl;dB:0,-1_dep;ns:(dep<0)|(b=";")&dB=0;p+min((!n)*ns)+n*~ns}  / end of the expr starting at p
+qendx:{[t;p]b:p_@[t;&qsmask t;:;" "];n:#b;op:(b="(")|(b="[")|b="{";cl:(b=")")|(b="]")|b="}";dep:sums op-cl;dB:0,-1_dep;ns:(dep<0)|(b=";")&dB=0;p+min((!n)*ns)+n*~ns}  / end of the expr starting at p (brackets and ; in "strings" do not count)
 / is a valid keyword start at p?  The keyword must be followed by a space -- or,
 / for `select` only, by the "[" of a sorted/limited select[n;>c].  The other
 / three keywords take no bracket in q, so admitting one for them would only let

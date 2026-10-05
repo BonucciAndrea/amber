@@ -480,6 +480,12 @@ TL:([]s:("a,b";"cd"); n:1 2)
 tq[`commaStrWh;    "select from TL where s like \"a,b\"";             TL@,0];
 tq[`commaStrCas;   "select from TL where s like \"a,b\", n>0";        TL@,0];
 
-hexpect[300]
+/ a backslash outside a string escapes nothing: ,\"ab" is join-scan over a string
+TN:([]n:1 2 3)
+tq[`bsJoinScan;    "select n,c:count[,\\\"ab\"] from TN where n>1";   ([]n:2 3;c:2 2)];
+tq[`bsJoinScanEx;  "exec count[,\\\"ab\"] from TN where n>1";         2];
+tq[`bsJoinScanCm;  "exec n from TN where n>count[,\\\"a/\"]  / two";  ,3];
+
+hexpect[303]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

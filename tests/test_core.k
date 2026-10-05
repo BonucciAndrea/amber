@@ -1025,7 +1025,14 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[651]
+/ ---- a train (a list of two or three functions) whose element fails passes the error on: the hook or fork applied the next element to the error (a crash) ----
+t[`trainElementError;{*"\n"\.[.:;,x;{x}]}'("({`a+x};{`b+x})@!0";"({`a+x};{`b+x}) 2";"({`b+x};-;+) 5";"(+;-;{`b+x}) 5";"(-;{`b+x})[1;2]";"({`b+y};-;+)[1;2]";"(+;-;{`b+y})[1;2]");7#,"'type"]
+/ ---- a train owns its arguments as _1/_2 do: a failing element must not free the borrowed left argument (hook or fork); a heap int argument (0N, a long) was freed by the hook-or-index test ----
+t[`trainLeftArgKept;{a:1+!3;{.[{(-;{`b+x})[x;2]};,x;{x}]}[a]'!3;{.[{(+;-;{`b+y})[x;2]};,x;{x}]}[a]'!3;a}[];1 2 3]
+t[`trainHeapIntArg;({#?{(+;-) 0N+0*x}'!x}2000;{#?{[v;i](+;-) v}[x]'!200}2000000000000000000);1 1]
+t[`trainHeapIntErr;({#?{[v;i].[{(+;{`b+x}) x};,v;{x}]}[x]'!200}0N;#?{.[{({`a+x};{`b+x}) x};,0N;{x}]}'!100);1 1]
+
+hexpect[655]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

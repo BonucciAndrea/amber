@@ -316,6 +316,56 @@ tq[`whereLocalAnd;    "select from trades where sym=`a, px>25";       ([]sym:`a`
 tq[`execNegLead;      "exec -1+sz from trades";                       0 1 2 3 4 5];
 tqa[`updNegLead;      "update d:-1+sz from trades"; {(+x)`d};         0 1 2 3 4 5];
 
-hexpect[178]
+/ ---- the virtual column i is the row's index in the table, not among the rows a where-clause or a group kept, as q ----
+tq[`iExecWhere;   "exec i from trades where sym=`b";                  1 3];
+tq[`iCascade;     "select from trades where sym=`a, i>1";             ([]sym:`a`a; px:30 60.0; sz:3 6)];
+tq[`iSelWhere;    "select n:i from trades where px>25";               ([]n:2 3 4 5)];
+tq[`iSelAll;      "select from trades where i<2";                     ([]sym:`a`b; px:10 20.0; sz:1 2)];
+tqa[`iBy;         "select c:i by sym from trades"; {(+value x)`c};    (0 2 5;1 3;,4)];
+tq[`iUpdate;      "update j:i from trades where px>35";               ([]sym:`a`b`a`b`c`a; px:10 20 30 40 50 60.0; sz:1 2 3 4 5 6; j:0N 0N 0N 3 4 5)];
+tqa[`iUpdateBy;   "update j:first i by sym from trades where px>15"; {(+x)`j}; 0N 1 2 1 4 2];
+tq[`iDelete;      "delete from trades where sym=`b, i=1";             ([]sym:`a`a`b`c`a; px:10 30 40 50 60.0; sz:1 3 4 5 6)];
+tq[`iFby;         "select from trades where px>15, i>(count;i) fby sym"; ([]sym:`b`c`a; px:40 50 60.0; sz:4 5 6)];
+t[`iFunctional;   ?[trades;,(=;`sym;,`b);0b;(,`x)!,`i];               ([]x:1 3)]
+tq[`iExecByAll;   "exec by sym from trades where i>0";                `a`b`c!+`px`sz!(60 40 50.0;6 4 5)];
+tq[`iEmptyExec;   "exec i from none where px>0";                      !0];
+tqa[`iEmptyUpd;   "update j:i from none where px>0"; CL;              `sym`px`sz`j];
+tqa[`iEmptyBy;    "select c:i by sym from none"; CL;                  `sym`c];
+TI:([]i:5 6 7; n:1 2 3)
+tq[`iOwnColumn;   "exec i from TI where n>1";                         6 7];
+TA:([]amberi:`x`y`z; n:1 2 3)
+tq[`iAmberiCol;   "select from TA";                                   TA];
+tq[`iAmberiColI;  "select from TA where i>0";                         1_TA];
+/ words inside "strings" and `symbols are not columns, nor the virtual i
+TS:([]s:("in";"out";"ix"); n:1 2 3)
+tq[`iInString;    "select from TS where s like \"i*\"";              TS 0 2];
+tq[`colInString;  "select from TS where s like \"*n\"";              TS@,0];
+tqa[`iInSym;      "select from trades where sym=`i"; NR;              0];
+tqa[`iInSyms;     "select from trades where sym in `i`b"; NR;         2];
+tqa[`iInPathSym;  "select from trades where sym=`:i"; NR;             0];
+/ a by-expression over i alone is named g0 (the hidden column has no name to give), and leaves i alone
+tqa[`iByExprKey;  "select c:count sz by i mod 2 from trades"; {(cols x;value(+value x)`c)}; (`g0`c;3 3)];
+tq[`iByExprSum;   "exec sum i by i mod 2 from trades";                0 1!6 9];
+tqa[`iUpdByExpr;  "update j:sum i by i mod 2 from trades"; {(+x)`j};  6 9 6 9 6 9];
+/ a table's own columns are never dropped, whatever they are called
+TQ:+(`n;`$"(i)")!(1 2 3;10 20 30)
+tq[`iOwnHidden;   "select from TQ";                                   TQ];
+tq[`iOwnHiddenW;  "delete from TQ where n=1";                         1_TQ];
+/ a quote after an escaped backslash ends the string
+tq[`bsString;     "exec (\"\\\\\";sz) from trades where sz>4";           ("\\";5 6)];
+TB:([]s:("a\\";"b";"c";"d\\"); n:1 2 3 4)
+tq[`bsStringI;    "select m:(\"\\\\\"=last'[s])|i=1 from TB";        ([]m:1 1 0 1)];
+tq[`bsString3;    "exec (\"a\\\\\\\"b\";i) from TB where n>2";        ("a\\\"b";2 3)];
+tqa[`iInPathSym2; "select from trades where sym=`:db/i"; NR;          0];
+tqa[`iInPathSym3; "select from trades where sym=`:db/x-i_n.i"; NR;    0];
+tqa[`colInPathSym; "select from trades where sym=`:a/sz"; NR;         0];
+tqa[`iInPathSym4; "select from trades where sym=`:i:j"; NR;           0];
+/ an i inside a string is not a reference to the hidden column, so the key keeps its column's name
+tqa[`iByStrKey;   "select c:count n by s like \"i*\" from TS where i>0"; CL; `s`c];
+/ the functional distinct drops the hidden column before it looks for equal rows
+T5:([]sym:`a`b`a; n:1 2 1)
+t[`iFuncDistinct;   ?[T5;,(>;`i;-1);1b;()];                         ([]sym:`a`b; n:1 2)]
+
+hexpect[214]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

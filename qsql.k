@@ -19,7 +19,17 @@ qcut:{[s]d:sums(s="[")-s="]";b:0,&(s=",")&d=0;trim'{$[#x;$[","=*x;1_x;x];x]}'b _
 qname:{[s]d:sums(s="[")-s="]";i:&(s=":")&d=0;$[#i;(trim(*i)#s;trim(1+*i)_s);("";trim s)]}  / name:expr
 qword:{((x>64)&x<91)|((x>96)&x<123)|((x>47)&x<58)|x=95}                            / word-char mask
 qsimple:{(0<#x)&&/qword 0+x}                                                       / is a bare identifier
-qidsub:{[cols;s]$[0=#s;s;,/{[cols;t;f]$[f&in[`$t;cols];"(x`",t,")";f&(t~,"i");"(!#x)";t]}[cols]'[bnd _ s;(qword 0+s)bnd:&differ qword 0+s]]}   / a bare i is the row number, as q's virtual column
+qidsub:{[cols;s]$[0=#s;s;,/{[cols;t;f]$[f&in[`$t;cols];"(x`",t,")";f&(t~,"i");$[in[qI;cols];"(x qI)";"(!#x)"];t]}[cols]'[bnd _ s;w bnd:&differ w:qword 0+qblank s]]}   / a bare i is the row number, as q's virtual column; words in "strings" and `symbols are left alone
+/ q's i numbers the rows of the TABLE, not the rows a where-clause or a group kept: a query that names a bare i
+/ gets the row numbers as a hidden column qI, which the where-clauses and groups then cut with the others;
+/ qidsub and qrefs read i as that column and qdi drops it from the answer (i was !#x of the cut table, so
+/ exec i from t where sym=`b was 0 1, not 1 3). A query without an i never gets the column, nor does a table
+/ with a column i or qI of its own, and qdi drops only what qai added. qI is not a word, so no query can name it.
+qI:`$"(i)"
+qhi:{[s]b:qblank s;w:qword 0+b;bd:&differ w;|/(w bd)&(bd _ b)~\:,"i"}   / does the query name a bare i
+qik:{[h;u]$[istable u;h&~|/in[`i,qI;!u];0]}   / does the query get the column: it names i, and the table has no column i (or qI) of its own
+qai:{[k;u]$[k;+(+u),(,qI)!,!#u;u]}
+qdi:{[k;r]$[~k;r;iskeyed r;(!r)!qdi[k]@. r;istable r;$[in[qI;!r];+(except[!r;qI])#+r;r];r]}
 qfn:{[cols;e]. "{[x]",qidsub[cols;e],"}"}                                          / expr string -> 1-arg fn
 / NB the all-true mask is built as ~(#t)#0b, NOT (#t)#1b. A take of a scalar is kept in
 / Amber's compact constant form, and the fused C group-aggregate (`gagg, src/o.c) rejects a
@@ -36,8 +46,8 @@ qmask:{[t;w]$[0=#w;();1=#c:qcut w;qfn[cols t;*c]t;&/qloc[cols t]'1_c;&/{[t;c]qfn
 qcas:{[t;c]C:cols t;i:qcw[t;C;!#t;*c];i:{[t;C;i;e]qcw[t;C;i;e]}[t;C]/[i;1_c];@[~(#t)#1b;i;:;1b]}
 qcw:{[t;C;i;e]r:qrefs[C;e];v:qfn[C;e]$[#r;+r!(+t)[r]@\:i;t i];$[isat v;$[v;i;0#i];i@&v]}   / The rows of i that e keeps
 qlw:`in`within`like`not`null`abs`neg`floor`ceiling`signum`string`lower`upper`mod`div`xbar
-qlwd:{[C;w]s:`$w;c:*w;$[in[s;C]|in[s;qlw];1;(~(c<"0")|c>"9")&~|/w="_";1;[v:.[{.x};,s;{`qlfail}];$[`qlfail~v;0;~|/"opqruvwx"=*$@v]]]}   / A word that keeps a row to itself
-qblank:{[e]s:e;q:qsmask s;s:@[s;&q|s="\"";:;" "];w:qword 0+s;rid:+\~~':w;bt:&s="`";p:1+bt;p:p@&p<#s;p:p@&w p;s:@[s;bt;:;" "];@[s;&w&in[rid;rid p];:;" "]}   / strings and `symbols blanked
+qlwd:{[C;w]s:`$w;c:*w;$[in[s;C]|in[s;qlw]|(s~`i)&in[qI;C];1;(~(c<"0")|c>"9")&~|/w="_";1;[v:.[{.x};,s;{`qlfail}];$[`qlfail~v;0;~|/"opqruvwx"=*$@v]]]}   / A word that keeps a row to itself
+qblank:{[e]s:e;q:qsmask s;s:@[s;&q|s="\"";:;" "];w:qword 0+s;c:w|in[s;".:/-"];rid:+\~~':w;rc:+\~~':c;bt:&s="`";p:1+bt;p:p@&p<#s;pc:p@&":"=s p;p:p@&w p;s:@[s;bt;:;" "];@[s;&(w&in[rid;rid p])|c&in[rc;rc pc];:;" "]}   / strings and `symbols blanked (a `: symbol takes in . / _ - :, as Amber's pfh; a plain one is a word, _ and all, where Amber stops at _)
 qloc:{[C;e]s:qblank e;w:qword 0+s;b:&~~':w;tk:b _ s;ok:&/1,qlwd[C]'tk@&w b;oi:&~w|s=" ";o:s oi;ok&:&/1,in[o;"=<>~+-*%&|$,.()"];nsi:&~s=" ";mp:oi@&in[o;"*|&,<>=+"];ok&&/1,{[s;w;nsi;p]j:nsi?p;$[j=0;0;[q:nsi j-1;c:s q;$[w q;1;c=")";1;(|/c="<>")&|/(s p)="=>";1;0]]]}[s;w;nsi]'mp}   / No aggregate, adverb or monadic first/where/count
 / qdec: drop a trailing K comment from a query string.
 / A "/" that STARTS a token -- at the beginning of the string, or preceded by a
@@ -50,7 +60,7 @@ qloc:{[C;e]s:qblank e;w:qword 0+s;b:&~~':w;tk:b _ s;ok:&/1,qlwd[C]'tk@&w b;oi:&~
 / query died with E0105.  Stripping here fixes it for the bare form and the
 / sel"…" / exq"…" / upd"…" / del"…" string forms alike.  The adverb "/" always
 / follows its verb with no space, so it is never mistaken for a comment.
-qdec:{[s]$[0=#s;s;[q:(s="\"")&~0,-1_s="\\";ins:1=2!0,-1_sums q;ws:1,-1_(s=" ")|s="\t";i:&(s="/")&ws&~ins;$[#i;trim(*i)#s;s]]]}
+qdec:{[s]$[0=#s;s;[ins:qsmask s;ws:1,-1_(s=" ")|s="\t";i:&(s="/")&ws&~ins;$[#i;trim(*i)#s;s]]]}
 / qnorm: what every qSQL entry point runs on its argument before parsing it --
 / strip each line's comment, then fold the lines into one.  The clause splitters
 / look for " from " / " where " / " by " WITH their spaces, so a query broken
@@ -71,7 +81,7 @@ qpin:{[e;o;c]d:+\(e=o)-e=c;j:*(&d=0),#e;1_j#e}   / The text inside the bracket e
 / a bare column keeps its own name; an expression over exactly one column takes
 / that column's name (so `by time:1m xbar time` and `by minbar[1;time]` both
 / produce a `time` column, as q does); anything wider falls back to g0, g1, …
-qbyn:{[C;i;it]p:qname it;$[#p 0;`$p 0;qsimple p 1;`$p 1;[r:qrefs[C;p 1];$[1=#r;*r;`$"g",$i]]]}
+qbyn:{[C;i;it]p:qname it;$[#p 0;`$p 0;qsimple p 1;`$p 1;[r:qrefs[C;p 1];$[(1=#r)&~r~,qI;*r;`$"g",$i]]]}   / by i mod 2 is g0: the hidden i is not a name
 / qbyx: resolve a by-clause into (table; group-column-names).
 / qbc used to turn every by item into a SYMBOL of its own source text, so
 / `by time:minbar[1;time]` grouped on a column literally called
@@ -87,7 +97,7 @@ qnull:{$[in[@x;`I`i];0N;in[@x;`F`f];0n;in[@x;`S`s];`;in[@x;`C`c];" ";0N]}
 / qrefs: the column names an expression actually mentions.  Same tokenisation
 / qidsub uses to REWRITE identifiers into x`col, so the set returned here is
 / exactly the set of columns the compiled aggregate can reach.
-qrefs:{[C;s]$[0=#s;0#`;[m:qword 0+s;bnd:&differ m;tk:bnd _ s;fl:m bnd;sy:`$'tk;?sy@&fl&{[C;y]in[y;C]}[C]'sy]]}
+qrefs:{[C;s]$[0=#s;0#`;[m:qword 0+qblank s;bnd:&differ m;tk:bnd _ s;fl:m bnd;sy:`$'tk;sy:$[in[qI;C];@[sy;&sy=`i;:;qI];sy];?sy@&fl&{[C;y]in[y;C]}[C]'sy]]}
 / qproj: narrow a table to `cs` before a group-by.  qby materialises one
 / sub-table per group (atr), which indexes EVERY column it is handed -- on a
 / wide table that copied dozens of columns per group that no aggregate ever
@@ -174,7 +184,7 @@ qlastby:{[t;b;nk]d:+t;bc:d b;k:$[1=#b;*bc;qcard[bc]<qEXACT;qenc bc;()];$[0=#k;()
 / `select .. by .. where ..` copied every column of every selected row and then
 / threw the copy away.
 qsel0:{[u;m;hw;selp;r3;C]$[(selp~,"*")|0=#selp;qselall[u;m;hw;r3];[it:qcut selp;d:(qnms[C;it])!{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;qselby[u;m;r3 1;it;d];qselect[qflt[u;m;hw];d]]]]}
-sel:{[s]s:qnorm s;s:$[(6#s)~"select";trim 6_s;s];b:qbrk s;s:b 1;r:qsplit[s;" where "];wh:$[r 2;r 1;""];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r3:qsplit0[r2 0;" by "];dz:"distinct "~9#r3 0;r3:$[dz;@[r3;0;:;trim 9_r3 0];r3];u:. qtry r2 1;r:$[qpt u;qpsel[u;r3;wh;b 0];qlim[qsel0[u;qmask[u;wh];r 2;r3 0;r3;cols u];b 0]];$[dz;qdst r;r]}
+sel:{[s]s:qnorm s;s:$[(6#s)~"select";trim 6_s;s];b:qbrk s;s:b 1;r:qsplit[s;" where "];wh:$[r 2;r 1;""];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r3:qsplit0[r2 0;" by "];dz:"distinct "~9#r3 0;r3:$[dz;@[r3;0;:;trim 9_r3 0];r3];u:. qtry r2 1;k:qik[qhi s;u];u:qai[k;u];r:qdi[k]$[qpt u;qpsel[u;r3;wh;b 0];qlim[qsel0[u;qmask[u;wh];r 2;r3 0;r3;cols u];b 0]];$[dz;qdst r;r]}
 qdst:{[r]$[iskeyed r;?r;[c:cols r;$[0=#r;r;1=#c;+c!,?(+r)c 0;+c!(qgrp[r;c])0]]]}   / distinct rows, in first-seen order   / select distinct: the distinct rows, as q
 qrun:{[u;wh;r3;lim]qlim[qsel0[u;qmask[u;wh];0<#wh;r3 0;r3;cols u];lim]}   / select on a table in hand (hdb.k runs it per partition)
 
@@ -189,33 +199,34 @@ qpt:{[u]$[`m~@u;in[`amberpt;!u];0]}
 /   many      -> a dict name!(vectors)     exec px,ask from t -> `px`ask!(..;..)
 / so `exec a,b` yields two named columns (q semantics) instead of joining them into
 / one vector, which is what lets `plot exec px,ask ...` draw a line per column.
-exq:{[s]s:qnorm s;s:$[(4#s)~"exec";trim 4_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];r2:qsplit[r 0;" from "];u:. qtry r2 1;pq:$[qpt u;qpexec[u;r2 0;wh];(u;wh)];u:pq 0;wh:pq 1;eb:qsplit0[r2 0;" by "];$[eb 2;qexby[u;wh;eb];[t:$[#wh;qwhere[u;qmask[u;wh]];u];C:cols u;it:qcut trim r2 0;v:{[C;t;e]qfn[C;(qname e)1]t}[C;t]'it;$[1=#it;*v;(qnms[C;it])!v]]]}
+exq:{[s]s:qnorm s;s:$[(4#s)~"exec";trim 4_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];r2:qsplit[r 0;" from "];u:. qtry r2 1;k:qik[qhi s;u];u:qai[k;u];pq:$[qpt u;qpexec[u;r2 0;wh];(u;wh)];u:pq 0;wh:pq 1;eb:qsplit0[r2 0;" by "];$[eb 2;qexby[k;u;wh;eb];[t:$[#wh;qwhere[u;qmask[u;wh]];u];C:cols u;it:qcut trim r2 0;v:{[C;t;e]qfn[C;(qname e)1]t}[C;t]'it;$[1=#it;*v;(qnms[C;it])!v]]]}
 / exec e by b: a dict from the groups to e, as q (through select, then the key column and the value column)
-qexby:{[u;wh;eb]r:qrun[u;wh;(eb 0;eb 1;1b);""];k:+key r;v:+value r;$[1=#!k;k@*!k;key r]!$[1=#!v;v@*!v;value r]}
+qexby:{[h;u;wh;eb]r:qdi[h]qrun[u;wh;(eb 0;eb 1;1b);""];k:+key r;v:+value r;$[1=#!k;k@*!k;key r]!$[1=#!v;v@*!v;value r]}
 
 / ---- update  (add / replace columns; optional where and by) ---------------
 qasg:{[t;idx;nm;v]@[$[in[nm;cols t];(+t)nm;(#t)#qnull v];idx;:;v]}
 qasgby:{[t;nm;f;gi;rc;w]tp:$[#rc;qproj[t;rc];t];gv:{[t;f;iv]v:f atr[t;iv];$[isat v;(#iv)#v;v]}[tp;f]'gi;rv:raze gv;ri:raze gi;$[~w;rv@<ri;[c:$[in[nm;cols t];(+t)nm;(#t)#qnull[*gv]];$[#gi;@[c;ri;:;rv];c]]]}   / each group once; every row: back in row order, else one scatter into the column
 / update ... by: the groups of the rows the where-clause keeps (all of them without one), each expression once per group
 qupby:{[t;wh;byp;nm;fns;it]m:qmask[t;wh];w:0<#m;ix:$[w;&m;()];gi:{(qgrp[x 0;x 1])1}qbyx[$[w;t ix;t];byp];gi:$[w;ix@gi;gi];+((+t),nm!{[t;gi;w;n;f;e]qasgby[t;n;f;gi;qrefs[cols t;(qname e)1];w]}[t;gi;w]'[nm;fns;it])}
-upd:{[s]s:qnorm s;s:$[(6#s)~"update";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];r2:qsplit[r 0;" from "];r3:qsplit[r2 0;" by "];t:. qtry r2 1;$[qpt t;`err"par";];C:cols t;it:qcut r3 0;nm:qnms[C;it];fns:{[C;e]qfn[C;(qname e)1]}[C]'it;$[r3 2;qupby[t;wh;r3 1;nm;fns;it];0=#wh;+((+t),nm!{[t;f]v:f t;$[isat v;(#t)#v;v]}[t]'fns);[m:qmask[t;wh];idx:&m;sub:qwhere[t;m];+((+t),nm!{[t;idx;sub;n;f]qasg[t;idx;n;f sub]}[t;idx;sub]'[nm;fns])]]}   / no where: each column is the value itself, attribute and all
+upd:{[s]s:qnorm s;s:$[(6#s)~"update";trim 6_s;s];r:qsplit[s;" where "];wh:$[r 2;r 1;""];r2:qsplit[r 0;" from "];r3:qsplit[r2 0;" by "];t:. qtry r2 1;k:qik[qhi s;t];t:qai[k;t];$[qpt t;`err"par";];C:cols t;it:qcut r3 0;nm:qnms[C;it];fns:{[C;e]qfn[C;(qname e)1]}[C]'it;qdi[k]$[r3 2;qupby[t;wh;r3 1;nm;fns;it];0=#wh;+((+t),nm!{[t;f]v:f t;$[isat v;(#t)#v;v]}[t]'fns);[m:qmask[t;wh];idx:&m;sub:qwhere[t;m];+((+t),nm!{[t;idx;sub;n;f]qasg[t;idx;n;f sub]}[t;idx;sub]'[nm;fns])]]}   / no where: each column is the value itself, attribute and all
 
 / ---- delete  (rows via where, or named columns) ---------------------------
-del:{[s]s:qnorm s;s:$[(6#s)~"delete";trim 6_s;s];b:$[(5#s)~"from ";("";trim 5_s);2#qsplit[s;" from "]];colp:trim b 0;rw:qsplit[b 1;" where "];t:. qtry trim rw 0;$[qpt t;`err"par";];wh:$[rw 2;rw 1;""];$[#colp;+(except[cols t;`$'{(qname x)1}'qcut colp])#+t;qwhere[t;~qmask[t;wh]]]}
+del:{[s]s:qnorm s;s:$[(6#s)~"delete";trim 6_s;s];b:$[(5#s)~"from ";("";trim 5_s);2#qsplit[s;" from "]];colp:trim b 0;rw:qsplit[b 1;" where "];t:. qtry trim rw 0;k:qik[qhi s;t];t:qai[k;t];$[qpt t;`err"par";];wh:$[rw 2;rw 1;""];qdi[k]$[#colp;+(except[cols t;`$'{(qname x)1}'qcut colp])#+t;qwhere[t;~qmask[t;wh]]]}
 
 / ---- functional form ------------------------------------------------------
 / q's ?[t;c;b;a] (select) and ![t;c;b;a] (update, delete) over parse trees: a symbol is a column (or a global),
 / a one-item list like enlist`a is that item as a value, (f;x;y) applies f. c's clauses cascade, each on the
 / rows the last kept; b is 0b (no groups), 1b (distinct) or a dict of names to trees; a is () or a dict.
 qfv:{in[@x;`o`p`q`r`u`v`w`x]}
-qfe:{[t;e]$[`s~@e;$[in[e;cols t];(+t)e;e~`i;!#t;. e];(`S~@e)&1=#e;*e;(`A~@e)&0<#e;$[qfv[*e];(*e) . qfe[t]'1_e;1=#e;*e;e];e]}
+qfe:{[t;e]$[`s~@e;$[in[e;cols t];(+t)e;e~`i;$[in[qI;cols t];(+t)qI;!#t];. e];(`S~@e)&1=#e;*e;(`A~@e)&0<#e;$[qfv[*e];(*e) . qfe[t]'1_e;1=#e;*e;e];e]}
 qfi:{[t;c]{[t;i;w]i@&qfe[t i;w]}[t]/[&qfe[t;*c];1_c]}
 qfa:{[t;a]v:qfe[t]'value a;k:!a;$[&/isat'v;+k!,'v;+k!{[l;x]$[isat x;l#x;x]}[#t]'v]}
 qfsg:{[t;e]$[(`A~@e)&2=#e;[f:*e;c:e 1;$[(`s~@c)&in[c;cols t];$[f~sum;(`sum;c);f~avg;(`avg;c);f~min;(`min;c);f~max;(`max;c);f~count;(`count;c);f~first;(`first;c);f~last;(`last;c);()];(c~`i)&f~count;(`count;*cols t);()]];()]}
 qfby:{[t;b;a]bk:!b;t2:+(+t),bk!qfe[t]'value b;sg:$[0<#a;qfsg[t]'value a;()];fa:$[(0<#sg)&&/{0<#x}'sg;qaggf[t2;bk;(!a)!sg;()];()];$[#fa;:qks fa;];$[0=#a;[nk:except[cols t;bk];qby[t2;bk;nk!qlastf'nk]];qby[t2;bk;(!a)!{[e]{[e;x]qfe[x;e]}[e]}'value a]]}
-qfsel:{[t;c;b;a]t:$[`s~@t;. t;t];t:$[0=#c;t;t qfi[t;c]];$[(b~0b)|b~();$[0=#a;t;qfa[t;a]];b~1b;?$[0=#a;t;qfa[t;a]];qfby[t;b;a]]}
+qfhi:{$[`s~@x;x~`i;`S~@x;in[`i;x];`m~@x;qfhi@. x;(`A~@x)&0<#x;|/qfhi'x;0]}   / does a parse tree name i
+qfsel:{[t;c;b;a]t:$[`s~@t;. t;t];k:qik[qfhi(c;b;a);t];t:qai[k;t];t:$[0=#c;t;t qfi[t;c]];qdi[k]$[(b~0b)|b~();$[0=#a;t;qfa[t;a]];b~1b;?qdi[k]$[0=#a;t;qfa[t;a]];qfby[t;b;a]]}
 qfub:{[t;idx;b;a]k:+(!b)!qfe[t idx]'value b;gi:idx@value(=rows k);+((+t),(!a)!{[t;gi;n;e]qasgby[t;n;{[e;x]qfe[x;e]}[e];gi]}[t;gi]'[!a;value a])}
-qfupd:{[t;c;b;a]t:$[`s~@t;. t;t];idx:$[0=#c;!#t;qfi[t;c]];$[`S~@a;$[0=#a;t@&~@[(#t)#0b;idx;:;1b];+(except[cols t;a])#+t];((b~0b)|b~())&0=#c;+((+t),(!a)!{[t;e]v:qfe[t;e];$[isat v;(#t)#v;v]}[t]'value a);(b~0b)|b~();+((+t),(!a)!{[t;idx;n;e]qasg[t;idx;n;qfe[t idx;e]]}[t;idx]'[!a;value a]);qfub[t;idx;b;a]]}
+qfupd:{[t;c;b;a]t:$[`s~@t;. t;t];k:qik[qfhi(c;b;a);t];t:qai[k;t];idx:$[0=#c;!#t;qfi[t;c]];qdi[k]$[`S~@a;$[0=#a;t@&~@[(#t)#0b;idx;:;1b];+(except[cols t;a])#+t];((b~0b)|b~())&0=#c;+((+t),(!a)!{[t;e]v:qfe[t;e];$[isat v;(#t)#v;v]}[t]'value a);(b~0b)|b~();+((+t),(!a)!{[t;idx;n;e]qasg[t;idx;n;qfe[t idx;e]]}[t;idx]'[!a;value a]);qfub[t;idx;b;a]]}
 qexec:{[t;w;b;d]t:$[0=#w;t;qwhere[t;w]];$[0=#b;$[0=#d;t;qselect[t;d]];qby[t;b,();d]]}
 
 / ---- bare qSQL rewriter ----------------------------------------------------
@@ -228,7 +239,7 @@ qkfn:("sel";"exq";"upd";"del")
 qpre:" ([{;:,=<>+-*%!&|^~?@."
 qbig:1000000
 qesc:{,/{$[x="\\";"\\\\";$[x="\"";"\\\"";,x]]}'x}                                 / escape \ and " for a "…" literal
-qsmask:{[t]q:(t="\"")&~0,-1_t="\\";1=2!0,-1_sums q}                              / 1b where inside a "…" literal
+qsmask:{[t]q:(t="\"")&~0,-1_{y&~x}\t="\\";1=2!0,-1_sums q}                      / 1b where inside a "…" literal (a " after an odd run of \ is escaped)
 qendx:{[t;p]b:p_t;n:#b;op:(b="(")|(b="[")|b="{";cl:(b=")")|(b="]")|b="}";dep:sums op-cl;dB:0,-1_dep;ns:(dep<0)|(b=";")&dB=0;p+min((!n)*ns)+n*~ns}  / end of the expr starting at p
 / is a valid keyword start at p?  The keyword must be followed by a space -- or,
 / for `select` only, by the "[" of a sorted/limited select[n;>c].  The other

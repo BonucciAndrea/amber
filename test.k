@@ -231,6 +231,13 @@ WQ8:+`sym`time`p!(5#`a;1 3 5 7 9;10 20 30 40 50);WT8:+`sym`time!(,`a;,5)
 WF8:{[j;a;b]r:+j[(,a;,b);`sym`time;WT8;WQ8;((`n;#:;`p);(`s;sum;`p))];(r[`n]0;r[`s]0)}
 t[`wjPrevailing;(WF8[wj]'[4 3 0 10 0;6 6 6 12 0];WF8[wj1]'[4 3 0 10 0;6 6 6 12 0]);((2 50;2 50;3 60;1 50;0 0);(1 30;2 50;3 60;0 0;0 0))]   / q's answers
 t[`wjPrevailingRun;{[j](+j[(,3;,6);`sym`time;WT8;+`sym`time`p!(5#`a;1 3 3 5 9;10 20 25 30 50);,(`s;{+/x};`p)])[`s]0}'(wj;wj1);55 75]   / A run at the start time: wj from its last
+/ a window ending before the quote in force at its start is empty in wj, kernel and K alike: q's answers (q's wj1 is 'domain on (6;2) and (5;2))
+WQ9:+`sym`time`p!(`a`a`b`b;0 5 1 4;10 20 1 2);WT9:+`sym`time!(`a`a`a`a`a`b`b;7#0);WW9:(6 6 3 -3 0 5 5;2 5 1 -1 5 2 4)
+WF9:{[j;a]r:+j[WW9;`sym`time;WT9;WQ9;a];r`n`s}
+t[`wjEmptyWindow;(WF9[wj;((`n;count;`p);(`s;sum;`p))];WF9[wj;((`n;#:;`p);(`s;{+/x};`p))];WF9[wj1;((`n;count;`p);(`s;sum;`p))]);((0 1 1 0 2 0 1;0 20 10 0 30 0 2);(0 1 1 0 2 0 1;0 20 10 0 30 0 2);(0 0 0 0 2 0 0;0 0 0 0 30 0 0))]
+WT10:+`sym`time!(`a`b`a`b`a`b`a`b`a;!9);WW10:(0 2 3 5 6 5 6 6 7;-1 0 1 2 2 4 5 6 9)
+WF10:{[j;a]r:+j[WW10;`sym`time;WT10;WQ9;a];r`n`s}
+t[`wjEmptyWindowSorted;(WF10[wj;((`n;count;`p);(`s;sum;`p))];WF10[wj;((`n;#:;`p);(`s;{+/x};`p))]);2#,(0 0 1 0 0 1 1 1 1;0 0 10 0 0 2 20 2 20)]   / time-ordered rows with inverted windows, through the kernel's cursor cache: kernel and K give q's answers
 t[`wjCharHigh;{q:+`sym`time`bid!(`a`a`a;`c$65 200 210;10 20 30);t:+`sym`time!(`a`a;`c$66 201);w:(`c$64 199;t`time);((+wj1[w;`sym`time;t;q;,(`mx;max;`bid)])`mx;(+wj1[w;`sym`time;t;q;,(`n;count;`bid)])`n)}[];(10 20;1 1)]   / wj's kernel reads char times unsigned too (as q's wj1)
 t[`wjCharFallback;{q:+`sym`time`bid!(`a`a`a;`c$65 128 200;10 20 30);t:+`sym`time!(,`a;,`c$200);w:(,`c$128;t`time);s:(+wj[w;`sym`time;t;q;,(`s;sum;`bid)])`s;v:(+wj[w;`sym`time;t;q;,(`v;{x};`bid)])`v;(s;v)}[];(,50;,20 30)]   / wj's fallback in K reads char times unsigned too, as the kernel
 t[`ajCharTradeNumQuotes;(+aj[`sym`time;+`sym`time!(,`a;,`c$250);+`sym`time`v!(`a`a`a;1 100 200;1 2 3)])`v;,0N]   / a char trade time against number quote times stays signed, as ' and ajmK read it

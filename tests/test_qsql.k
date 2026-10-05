@@ -314,6 +314,10 @@ t[`qaggGrouped; value sel"select mxf:max f, mnf:min f, af:avg f, sf:sum f, s:sum
 / ---- an empty grouped select keeps each column's type (from its aggregate, as q) ----
 t[`byEmptySum;  @(.(sel"select sum px by sym from ft where px>1000"))`px; `F]
 t[`byEmptyLast; @(.(sel"select by sym from ft where px>1000"))`px; `F]
+/ an empty temporal column has no type to keep (it's a general list): max, min and sum of it stay (), not ints (A112)
+TT:([]sym:`a`b;n:1 2;d:10:00:00.000 11:00:00.000)
+t[`byEmptyTemporal;  (.(sel"select mx:max d, mn:min d, s:sum d by sym from TT where n>5"))@/:`mx`mn`s; (();();())]
+t[`byEmptyTemporal0; `k@(.(sel"select mx:max d, c:count d, l:last n by sym from 0#TT"))@/:`mx`c`l; "(();!0;!0)"]
 
 / ---- digest #39: constraints cascade, as q's (each sees the rows the earlier ones kept); #40: a leading minus ----
 tq[`whereCascade;     "select from trades where sym=`a, px=max px";   ([]sym:,`a; px:,60.0; sz:,6)];
@@ -382,6 +386,6 @@ tq[`selDistinctColBy; "select distinct n,m by sym from DT";   ((+(,`sym)!,`a`b)!
 tq[`selDistinctNamedBy; "select distinct x:n by sym from DT";  ((+(,`sym)!,`a`b)!+(,`x)!,(1 3;,2))];
 tq[`selDistinctExprBy;  "select distinct x:n+1 by sym from DT"; ((+(,`sym)!,`a`b)!+(,`x)!,(2 4;,3))];
 
-hexpect[226]
+hexpect[228]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

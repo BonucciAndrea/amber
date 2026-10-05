@@ -439,6 +439,27 @@ TD:0#([]sym:`a`b`a;n:1 2 3;d:2026.01.01 2026.01.02 2026.01.03)
 tv[`fupdByUnifTemporal; "(+![TD;();(,`sym)!,`sym;(,`n)!,(sums;`n)])`n";   !0];
 t[`fupdByNoRow;      (+![trades;,(>;`px;100);(,`sym)!,`sym;(,`m)!,(max;`sz)])`m;   6#0N];
 
-hexpect[270]
+/ ---- qSQL on a keyed table runs on its rows, as q's: select (no columns, no by), update and delete keep the key ----
+KT:([s:`a`b`c]n:1 2 3;m:4 5 6)
+tq[`ktSelect;     "select from KT where n>1";                         ([s:`b`c]n:2 3;m:5 6)];
+tq[`ktSelCols;    "select n from KT";                                 ([]n:1 2 3)];
+tq[`ktSelBy;      "select sum n by b:m>4 from KT";                    ([b:0 1]n:1 5)];
+tq[`ktSelLimit;   "select[2] from KT";                                ([s:`a`b]n:1 2;m:4 5)];
+tq[`ktExec;       "exec n from KT where m>4";                         2 3];
+tq[`ktUpdate;     "update n:10 from KT where s=`b";                   ([s:`a`b`c]n:1 10 3;m:4 5 6)];
+tq[`ktUpdKey;     "update s:`z from KT where n=1";                    ([s:`z`b`c]n:1 2 3;m:4 5 6)];
+tq[`ktUpdBy;      "update n:sum n by m>4 from KT";                    ([s:`a`b`c]n:1 5 5;m:4 5 6)];
+tq[`ktDelete;     "delete from KT where n=2";                         ([s:`a`c]n:1 3;m:4 6)];
+tq[`ktDelCol;     "delete m from KT";                                 ([s:`a`b`c]n:1 2 3)];
+tq[`ktDelKey;     "delete s from KT";                                 ([]n:1 2 3;m:4 5 6)];
+tv[`ktFsel;       "?[KT;,(>;`n;1);0b;()]";                            ([s:`b`c]n:2 3;m:5 6)];
+tv[`ktFselCols;   "?[KT;();0b;(,`n)!,`n]";                            ([]n:1 2 3)];
+te[`ktFdistinct;  "?[KT;();1b;()]"];
+tv[`ktFdistCols;  "?[KT;();1b;(,`n)!,`n]";                            ([]n:1 2 3)];
+tv[`ktFupd;       "![KT;();0b;(,`n)!,(*;`n;2)]";                      ([s:`a`b`c]n:2 4 6;m:4 5 6)];
+K2:([a:1 1 2;b:`x`y`x]v:10 20 30)
+tq[`ktTwoKeys;    "update v:v*2 from K2 where b=`x";                  ([a:1 1 2;b:`x`y`x]v:20 20 60)];
+
+hexpect[287]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

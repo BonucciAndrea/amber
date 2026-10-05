@@ -486,6 +486,16 @@ tq[`bsJoinScan;    "select n,c:count[,\\\"ab\"] from TN where n>1";   ([]n:2 3;c
 tq[`bsJoinScanEx;  "exec count[,\\\"ab\"] from TN where n>1";         2];
 tq[`bsJoinScanCm;  "exec n from TN where n>count[,\\\"a/\"]  / two";  ,3];
 
-hexpect[303]
+/ a tab next to a keyword is a space; a tab inside a string stays
+TT:([]sym:`a`b`a; n:1 2 1)
+tq[`tabSelect;     "select\tn from TT";                               ([]n:1 2 1)];
+tq[`tabWhere;      "select n from TT\twhere n>1";                     ([]n:,2)];
+tq[`tabExec;       "exec\tn from TT\twhere\tsym=`a";                  1 1];
+tqa[`tabBy;        "select c:count n\tby sym from TT"; {value(+value x)`c}; 2 1];
+tq[`tabInStrBs;    "exec (\"a\\\\\";\"x\ty\";\"b\\\\\") from TT";      ("a\\";"x\ty";"b\\")];
+tq[`tabInString;   "exec \"x\ty\" from TT";                           "x\ty"];
+t[`tabSel;         .[sel;,"select\tn from TT where\tn>1";{x}];       ([]n:,2)];
+
+hexpect[310]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

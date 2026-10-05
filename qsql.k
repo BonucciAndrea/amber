@@ -67,7 +67,9 @@ qdec:{[s]$[0=#s;s;[ins:qsmask s;ws:1,-1_(s=" ")|s="\t";i:&(s="/")&ws&~ins;$[#i;t
 / across lines for readability (a Grafana panel query, a query sent to amberd)
 / never matched and fell over on the first fragment.  Comments are removed line
 / by line first, so a comment can only ever eat the rest of its own line.
-qnorm:{[s]trim(" "/qdec'"\n"\s)}
+/ A tab outside a string is a space to them too, so  select<TAB>n from t  is a query (qtab; a tab inside a "…" stays).
+qnorm:{[s]trim(" "/qdec'"\n"\qtab s)}
+qtab:{[s]$[|/s="\t";@[s;&(s="\t")&~qsmask s;:;" "];s]}
 / Item -> column name, as q: an explicit name; else the first name in the expression, following a function to its
 / first argument and into brackets (sum px*sz is px, f[a;b] is a, (v+w)*2 is v); a number or literal first is x.
 / qnms numbers the repeats as q does: v v1 v2, x x1 (they were two columns called v, or x0 x1, digest #56)
@@ -290,7 +292,7 @@ qfind:{[t]sm:qsmask t;mins:qmin1[t;sm]'qkws;best:min mins;$[~best<qbig;();(best;
 / in a file loaded with \l was fine, which is the tell: one input, two paths,
 / two answers. Only lines that actually contain a qSQL keyword are touched, so
 / ` / ` used as an adverb anywhere else is left exactly as it was.
-qml:{[s]$[~|/{0<#ss[x;y]}[s]'qkws;s;|/s="\n";qnorm s;qdec s]}
+qml:{[s]$[~|/{0<#ss[x;y]}[s]'qkws;s;|/s="\n";qnorm s;qdec qtab s]}
 qrw:{[s]s:qml s;$[2>#s;s;[r:qfind s;$[0=#r;s;[p:r 0;ki:r 1;e:qendx[s;p];body:(e-p)#p_s;$[0<#ss[body;" from "];(p#s),qkfn[ki],"\"",(qesc body),"\"",qrw e_s;[L:p+#qkws ki;(L#s),qrw L_s]]]]]]}
 / qtry / qrwf: the SAME rewrite applied to a WHOLE .k file so bare qSQL works in
 / scripts, not just at the prompt -- the C loader bsl() calls qrwf before eval.

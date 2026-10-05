@@ -129,6 +129,8 @@ t[`fupdBy;       (+![trades;();(,`sym)!,`sym;(,`m)!,(max;`sz)])`m;          6 4 
 t[`fupdByWhere;  (+![trades;,(>;`px;25);(,`sym)!,`sym;(,`m)!,(max;`sz)])`m; 0N 0N 6 4 5 6];
 t[`fupdByTwo;    (+![mt;();`a`b!`a`b;(,`s)!,(sum;`v)])`s;                  60 20 30 40 60];
 t[`fupdByUnif;   (+![mt;();(,`a)!,`a;(,`s)!,(sums;`v)])`s;                 10 30 30 70 80];
+t[`fupdByI;      (+![+`sym`n!(`a`b`a`b;1 2 3 4);();(,`sym)!,`sym;(,`m)!,(+;`n;`i)])`m;        1 3 5 7];
+t[`fupdByIWhere; (+![+`sym`n!(`a`b`a`b;1 2 3 4);,(>;`n;1);(,`sym)!,`sym;(,`m)!,(+;`n;`i)])`m; 0N 3 5 7];
 t[`fupdByOld;    (+![trades;,(>;`px;25);(,`sym)!,`sym;(,`sz)!,(count;`i)])`sz; 1 2 2 1 1 2];
 
 / ==================== 8. the rewriter itself (qrw) ==========================
@@ -416,6 +418,27 @@ tqa[`updNmPlace;  "update sum n,n from TN"; {(+x)`n};                 4#10];
 tv[`byFunc;       "?[trades;();(,`sz)!,(mod;`sz;2);(,`s)!,(sum;`sz)]"; (+(,`sz)!,0 1)!+(,`s)!,12 9];
 tv[`byFuncTwo;    "?[trades;();`a`b!((mod;`sz;2);(mod;`sz;3));(,`s)!,(sum;`sz)]"; (+`a`b!(0 0 0 1 1 1;0 1 2 0 1 2))!+(,`s)!,6 4 2 3 1 5];
 
-hexpect[252]
+/ ---- update-by that groups no row types the column by its expression on no rows, and a value of another type
+/ into a column is 'type, as q (digest #73 item 109) ----
+tqa[`updByEmpty;     "update m:max sz by sym from none"; {(+x)`m};                 !0];
+tqa[`updByNoRow;     "update m:max sz by sym from trades where px>100"; {(+x)`m};  6#0N];
+tqa[`updByNoRowF;    "update m:avg sz by sym from trades where px>100"; {(+x)`m};  6#0n];
+tqa[`updByEmptyOld;  "update sz:avg sz by sym from none"; {(+x)`sz};               0#0n];
+tqe[`updByType;      "update sz:avg sz by sym from trades where px>25"];
+te[`fupdByType;      "![trades;,(>;`px;25);(,`sym)!,`sym;(,`sz)!,(avg;`sz)]"];
+tqa[`updBySameType;  "update sz:sum sz by sym from trades where px>25"; {(+x)`sz}; 1 2 9 4 5 9];
+tqe[`updByTypeAll;   "update sz:avg sz by sym from trades where sz>0"];
+tqe[`updByTypeCount; "update px:count px by sym from trades where sz>0"];
+tqa[`updByUnifEmpty; "update sz:sums sz by sym from none"; {(+x)`sz};          !0];
+tqa[`updByUnifNoRow; "update m:sums px by sym from trades where px>100"; {(+x)`m}; 6#,()];
+TG:0#([]sym:`a`b`a;n:1 2 3;g:(1 2;3 4;5 6);st:("ab";"cd";"ef"))
+tqa[`updByGenFirst;  "update st:first st by sym from TG"; {(+x)`st};             ()];
+tqa[`updByGenMax;    "update g:max g by sym from TG"; {(+x)`g};                  ()];
+tqa[`updByGenOther;  "update n:sums n by sym from TG"; {(+x)`n};                 !0];
+TD:0#([]sym:`a`b`a;n:1 2 3;d:2026.01.01 2026.01.02 2026.01.03)
+tv[`fupdByUnifTemporal; "(+![TD;();(,`sym)!,`sym;(,`n)!,(sums;`n)])`n";   !0];
+t[`fupdByNoRow;      (+![trades;,(>;`px;100);(,`sym)!,`sym;(,`m)!,(max;`sz)])`m;   6#0N];
+
+hexpect[270]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

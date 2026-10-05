@@ -69,6 +69,12 @@ t[`listFnAtomAsIs;{.[*x;1_x;{5#x}]}'((deltas;5);(ratios;2.0);(fills;0N);(fills;`
 t[`listFnOneItem;(asc@,5;deltas@,5;fills@,0N;sublist[2;,5];rotate[1;,5];xprev[1;,5];deltas `a!5);(,5;,5;,0N;,5;,5;,0N;(,`a)!,5)]   / a one-item list is not an atom
 t[`listFnAtomArgs;{5#.[*x;1_x;{x}]}'((rotate;1.5;,5);(rotate;`a;,5);(sublist;`a;5);(sublist;0n;5);(sublist;0N;5);(asc;{x});(iasc;+);(xrank;2;{x}));8#,"'type"]   / a bad count, a function: 'type, as q
 t[`listFnAtomFn;{.[*x;1_x;{5#x}]}'((flip;{x});(deltas;{x});(xprev;1;{x}));("'rank";{x};,-1)]   / as q: flip is 'rank, deltas returns it, xprev indexes it
+t[`listFnDict;{(fills `a`b`c!0N 3 1;deltas x;ratios x;prev x;differ `a`b`c!1 1 2;sums `a`b`c!1 0N 2;mins `a`b`c!0N 3 1)}`a`b`c!3 1 4;(`a`b`c!0N 3 1;`a`b`c!3 -2 3;`a`b`c!3.0,(1%3),4.0;`a`b`c!0N 3 1;`a`b`c!101b;`a`b`c!1 1 3;`a`b`c!9223372036854775807 3 1)]   / digest #103: by value, as q; was by position: 0N 0N 0N, 0 0 4, 'length, ,0N
+t[`listFnDictErr;{5#.[*x;1_x;{x}]}'((flip;`a`b`c!3 1 4);(next;`a`b!1 2);(rotate;1;`a`b`c!3 1 4);(xprev;1;`a`b!1 2);(rotate;1;(+(,`k)!,`x`y)!+(,`a)!,1 2));("'rank";"'type";"'type";"'type";"'type")]   / as q; was a table of one-row columns, ,0N, `b`c`a!1 4 3, 0N 0N, 'nyi
+t[`listFnTable;{(fills x;sums x;mins x;flip `a`b!(1;2 3))}@+`a`b!(0N 3 1;1 0N 2);(+`a`b!(0N 3 1;1 1 2);+`a`b!(0 3 4;1 1 3);+`a`b!(9223372036854775807 3 1;1 1 1);+`a`b!(1 1;2 3))]   / by column, as q; fills was a dict of tables
+t[`listFnKeyed;{(fills x;deltas fills x;differ x)}(+(,`k)!,`x`y`z)!+`a`b!(3 0N 4;1 1 2);((+(,`k)!,`x`y`z)!+`a`b!(3 3 4;1 1 2);(+(,`k)!,`x`y`z)!+`a`b!(3 0 1;1 0 1);(+(,`k)!,`x`y`z)!111b)]   / by the value table, as q; all were 'nyi
+t[`listFnNullFill;{(prds `a`b`c!x;maxs `a`b`c!x;prds@+`a`b!(x;1 0N 2);maxs@+`a`b!(x;1 0N 2))}0N 3 1;(`a`b`c!1 3 3;`a`b`c!-9223372036854775807 3 3;+`a`b!(1 3 3;1 1 2);+`a`b!(-9223372036854775807 3 3;1 1 2))]   / nulls filled in a dict or table, as q; were 0N 0N 0N, 0N 3 3 (dict)
+t[`listFnKeyedMore;{(ratios x;prev x;sums x;mins x;5#.[next;,x;{x}];5#.[xprev;(1;x);{x}])}(+(,`k)!,`x`y`z)!+`a`b!(3 0N 4;1 1 2);((+(,`k)!,`x`y`z)!+`a`b!(3.0 0n 0n;1.0 1.0 2.0);(+(,`k)!,`x`y`z)!+`a`b!(0N 3 0N;0N 1 1);(+(,`k)!,`x`y`z)!+`a`b!(3 3 7;1 2 4);(+(,`k)!,`x`y`z)!+`a`b!(3 3 3;1 1 1);"'type";"'type")]   / as q (xprev: q 'length); were 'length, 'nyi, 3 -9223372036854775805 .., 3 0N 0N, 'nyi, 'nyi
 
 / ---- ordering / set ----
 t[`asc;asc 3 1 2;1 2 3]

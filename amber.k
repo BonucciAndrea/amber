@@ -30,7 +30,7 @@ reverse:{|x}
 distinct:{$[isat x;`err"type";[a:`at x;r:?x;$[a~`s;`s#r;in[a;`u`g];`u#r;`#r]]]}   / An atom: 'type as q (?5 is a random deal); q's attributes: `s stays, `u and `g give `u
 group:{$[isat x;`err"type";=x]}     / =5 is the unit matrix
 where:{&x}
-flip:{$[1=#x;$[isat x;`err"rank";+x];+x]}
+flip:{$[`m~@x;$[`M~@!x;+x;&/isat'. x;`err"rank";+x];1=#x;$[isat x;`err"rank";+x];+x]}   / A dict of atoms: 'rank as q (+ makes one-row columns)
 count:{#x}
 mod:{y!x}
 idivv:{[x;y]x:$[`i~@x;(#y)#x;x];n:(^x)|^y;x0:0^x;y0:1^y;z:&y0=0;s:y0<0;x1:x0*1-2*s;y1:1|y0*1-2*s;q:_x1%y1;r:x1-q*y1;d:_r%y1;q:q+d;r:r-d*y1;q:q-r<0;r:x1-q*y1;q:q+~r<y1;q:@[q;z;:;_(x0 z)%0];@[q;&n;:;0N]}   / ints by an int vector, exactly: the float quotient, corrected by the exact (wrapped) remainder
@@ -48,6 +48,7 @@ round:{[d;x]p:*/d#10;(_0.5+x*p)%p}
 / ---- aggregations ----------------------------------------------------------
 / issue #14: the q-named aggregates skip nulls, as q's do (the k primitives +/ &/ |/ keep k's nulls):
 / on an int or float list a null takes the verb's identity, so it changes nothing (avg leaves it out)
+dcv:{[f;x]$[`m~@x;(!x)!f@. x;+(!+x)!f'. +x]}   / f of a dict's (or keyed table's) values under its keys, or of each column of a table, as q's list functions
 nid:{[x;i;f]$[`I=@x;$[0N=&/x;i^x;x];`F=@x;$[^&/x;f^x;x];x]}           / x with its nulls filled by i (ints) or f (floats); one &/ finds whether there are any (0N is the least int, and &/ takes NaN as the least float)
 sum:{$[0=#x;$[`F=@x;0.0;0];`F=@x;$[^s:+/x;+/0.0^x;s];`I=@x;`sumn x;+/nid[x;0;0.0]]}   / sum 0N 1 is 1; a float sum is NaN only when a NaN is in it; empty: keep the float type
 prd:{$[0=#x;$[`F=@x;1.0;1];`F=@x;$[^r:*/x;*/1.0^x;r];`I=@x;`prn x;*/nid[x;1;1.0]]}   / Nulls skipped; empty: keep the float type
@@ -78,15 +79,15 @@ cor:{$[cvk[x;y];[r:`cvm(x;y);r[0]%sqrt r[1]*r 2];[p:pdr[x;y];a:p[0]-avg p 0;b:p[
 med:{$[isat x;0.0+x;0=#x;0n;[a:x@<x;n:#a;m:_n%2;$[2!n;0.0+a m;avg a@m-1 0]]]}
 all:{$[#x;~|/x=0;1]}   / All of an empty list is 1, as q
 any:{~&/x=0}
-sums:{$[`F=@x;$[^*|r:+\x;+\0.0^x;r];`I=@x;$[`hnl x;+\0^x;+\x];+\nid[x;0;0.0]]}   / A null adds 0; floats: the last sum is NaN only if a NaN is in
-prds:{$[`F=@x;$[^*|r:*\x;*\1.0^x;r];`I=@x;$[`hnl x;*\1^x;*\x];*\nid[x;1;1.0]]}
-mins:{&\nid[x;9223372036854775807;0w]}                                       / mins 0n 1.0 is 0w 1.0, as q
-maxs:{|\nid[x;-9223372036854775807;-0w]}
-deltas:{$[$[1=#x;isat x;0b];x;#x;x-(0*1#x),-1_x;x]}   / the zero in front has x's type: 0, before floats made a general list (576 ms on 10M)
-ratios:{$[$[1=#x;isat x;0b];x;#x;x%(,1.0),0.0+-1_x;0#0.0]}   / empty: an empty float list, as q (digest #67); floats all through (1, before floats was a general list)
-differ:{$[isat x;1b;~#x;x=x;|/`I`S`C=@x;1b,~(1_x)=-1_x;`F=@x;1b,~((1_x)=-1_x)|(^1_x)&^-1_x;@[~~':x;0;:;1b]]}   / The first item always differs, a null too; typed lists compare shifted (NaN matches NaN, as ~)
-prev:{$[isat x;x;-1_(,x@#x),x]}   / An atom comes back as is, as q; the null is the list's own (x@#x), not 0N
-next:{$[isat x;x;1_x,,x@#x]}
+sums:{$[`F=@x;$[^*|r:+\x;+\0.0^x;r];`I=@x;$[`hnl x;+\0^x;+\x];|/`m`M=@x;dcv[sums;x];+\nid[x;0;0.0]]}   / A null adds 0; floats: the last sum is NaN only if a NaN is in
+prds:{$[`F=@x;$[^*|r:*\x;*\1.0^x;r];`I=@x;$[`hnl x;*\1^x;*\x];|/`m`M=@x;dcv[prds;x];*\nid[x;1;1.0]]}
+mins:{$[|/`m`M=@x;dcv[mins;x];&\nid[x;9223372036854775807;0w]]}   / mins 0n 1.0 is 0w 1.0, as q
+maxs:{$[|/`m`M=@x;dcv[maxs;x];|\nid[x;-9223372036854775807;-0w]]}
+deltas:{$[`m~@x;dcv[deltas;x];$[1=#x;isat x;0b];x;#x;x-(0*1#x),-1_x;x]}   / the zero in front has x's type: 0, before floats made a general list (576 ms on 10M)
+ratios:{$[`m~@x;dcv[ratios;x];$[1=#x;isat x;0b];x;#x;x%(,1.0),0.0+-1_x;0#0.0]}   / empty: an empty float list, as q (digest #67); floats all through (1, before floats was a general list)
+differ:{$[`m~@x;dcv[differ;x];isat x;1b;~#x;x=x;|/`I`S`C=@x;1b,~(1_x)=-1_x;`F=@x;1b,~((1_x)=-1_x)|(^1_x)&^-1_x;@[~~':x;0;:;1b]]}   / The first item always differs, a null too; typed lists compare shifted (NaN matches NaN, as ~)
+prev:{$[`m~@x;dcv[prev;x];isat x;x;-1_(,x@#x),x]}   / An atom comes back as is, as q; a dict or keyed table: by its values; the null is the list's own (x@#x), not 0N
+next:{$[`m~@x;`err"type";isat x;x;1_x,,x@#x]}   / A dict or keyed table: 'type as q
 
 / ---- ranking / ordering ----------------------------------------------------
 rank:{$[1=#x;$[isda x;`err"rank";<<x];<<x]}   / An atom: 'rank as q (<5 is 5; <`a opens a file); a function: the primitive's 'type; isda only when #x is 1
@@ -96,8 +97,8 @@ dsrt:{k:!x;v:. x;i:$[y;>v;<v];(k i)!v i}         / a dict sorted by value: its k
 asc:{$[`m~@x;dsrt[x;0];1=#x;$[isda x;`err"rank";`srt x];`srt x]}
 desc:{$[`m~@x;dsrt[x;1];1=#x;$[isda x;`err"rank";x@>x];x@>x]}
 xrank:{$[$[1=#y;isda y;0b];`err"rank";_y*x%#y:<<y]}
-xprev:{$[1=#y;$[isda y;`err"rank";y[(!#y)-x]];y[(!#y)-x]]}
-rotate:{$[0=#y;y;$[1=#y;isda y;0b];`err"rank";0=n:(#y)!x;y;(n_y),n#y]}   / A multiple of the count: y as is
+xprev:{$[`m~@y;`err"type";1=#y;$[isda y;`err"rank";y[(!#y)-x]];y[(!#y)-x]]}
+rotate:{$[`m~@y;`err"type";0=#y;y;$[1=#y;isda y;0b];`err"rank";0=n:(#y)!x;y;(n_y),n#y]}   / A multiple of the count: y as is; a dict or keyed table: 'type as q
 
 / ---- membership / set ops --------------------------------------------------
 / x in y : which elements of x are members of y.
@@ -163,7 +164,7 @@ xcols:{[c;t]c:c,();+(c,except[cols t;c])#+t}
 xsg:{[cs;d]{[d;o;v]o@$[d;>v o;<v o]}[d]/[!#*cs;|cs]}   / Each column's own order, the last key first (stable); the rows' grade squeezed one-item rows (digest #58)
 xasc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;0b);o:$[#o;o;xsg[(+t)c;0b]];t:t@o;d:+t;+d,(1#c)!`sa'd@1#c}
 xdesc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;1b);o:$[#o;o;xsg[(+t)c;1b]];t@o}
-fills:{$[$[1=#x;isat x;0=#x];x;x@|\(!#x)*~^x]}                    / each null takes the last value before it, as q
+fills:{$[|/`m`M=@x;dcv[fills;x];$[1=#x;isat x;0=#x];x;x@|\(!#x)*~^x]}   / each null takes the last value before it, as q; a dict by its values, a table by column
 attr:{`at x}                                         / q's attr: `s `u `p `g, or ` for none
 meta:{d:+unkey x;xkey[`c;+`c`t`a!(!d;{@*x}'value d;{`at x}'value d)]}
 insert:{[t;r]t,r}

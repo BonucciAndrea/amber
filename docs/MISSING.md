@@ -69,7 +69,14 @@ The primitives keep k's treatment, where the int null is just the smallest int:
 | `0N+1`, `0N-1`, `0N*2` | wrap: `-9223372036854775807`, `9223372036854775807`, `0` | `0N` |
 | `+/0N 1` | `-9223372036854775807` | (no `+/` in q; `sum` gives `1`) |
 | `&/0N 5` | `0N` (the null is the smallest) | `min` gives `5` |
-| `0^1.5 0n` | `(1.5;0)`: a fill of another type makes a generic list | `1.5 0f` |
+| `0.5^1 0N` | `(1;0.5)`: a fill of another type makes a generic list | `1 0.5` |
+
+Fill of floats is the exception (since 2.7.1): an int atom filling floats gives floats, as in q.
+`0^1.5 0n` is `1.5 0.0` (2.7.0 and ngn/k: `(1.5;0)`), `0^0n` is `0.0`, `0N^1.5 0n` leaves `0n`,
+a float item of a generic list is filled the same way (`0^(1;0n)` is `(1;0.0)`), and so are
+the float values of a dict or table. A char or symbol filling floats still makes a generic list
+(`` `a^1.5 0n `` is ``(1.5;`a)``). A null int atom becomes the fill (`0.5^0N` is `0.5`, as in k
+and q), and so does a null float atom filled by a symbol (`` `a^0n `` is `` `a ``, as in k; q: `'type`).
 
 Since 2.5 `sums prds prd wsum wavg svar sdev` skip nulls too, and `cov scov cor` drop a pair
 with a null. Still k: on a dict, `sum` and `min` count the null (`sum `a`b!0N 1` is

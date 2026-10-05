@@ -16,7 +16,7 @@ qsplit0:{[s;kw]$[(s~*i:qsplit[s;kw])&((#kw)-1)<#s;$[(1_kw)~(-1+#kw)#s;("";trim(-
 / last-of-each-column aggregation, used for a `by` with no explicit projection
 qlastf:{[c]{[c;x]last x c}[c]}
 qcut:{[s]d:sums(s="[")-s="]";b:0,&(s=",")&d=0;trim'{$[#x;$[","=*x;1_x;x];x]}'b _ s}  / comma-split at depth 0
-qname:{[s]d:sums(s="[")-s="]";i:&(s=":")&d=0;$[#i;(trim(*i)#s;trim(1+*i)_s);("";trim s)]}  / name:expr
+qname:{[s]b:qblank s;d:+\in[b;"([{"]-in[b;")]}"];i:&(b=":")&d=0;$[#i;(trim(*i)#s;trim(1+*i)_s);("";trim s)]}  / name:expr (a : in a string, a `symbol or brackets is not the name's)
 qword:{((x>64)&x<91)|((x>96)&x<123)|((x>47)&x<58)|x=95}                            / word-char mask
 qsimple:{(0<#x)&&/qword 0+x}                                                       / is a bare identifier
 qidsub:{[cols;s]$[0=#s;s;,/{[cols;t;f]$[f&in[`$t;cols];"(x`",t,")";f&(t~,"i");$[in[qI;cols];"(x qI)";"(!#x)"];t]}[cols]'[bnd _ s;w bnd:&differ w:qword 0+qblank s]]}   / a bare i is the row number, as q's virtual column; words in "strings" and `symbols are left alone

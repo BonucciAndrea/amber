@@ -1229,6 +1229,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
+hexpect[791]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

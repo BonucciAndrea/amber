@@ -124,6 +124,14 @@ t[`qexecAgg;     (qexec[trades;();();(,`t)!,{sum x`px}])`t;  ,210.0];
 t[`qwhereMask;   #qwhere[trades;trades[`px]>25];             4];
 t[`qselectDict;  cols qselect[trades;(,`t)!,{sum x`px}];     ,`t];
 t[`qbyGroups;    #qby[trades;`sym;(,`t)!,{sum x`px}];        3];
+/ functional update-by (digest #73 item 94): each row gets its group's value, as q's ![t;c;b;a]
+t[`fupdBy;       (+![trades;();(,`sym)!,`sym;(,`m)!,(max;`sz)])`m;          6 4 6 4 5 6];
+t[`fupdByWhere;  (+![trades;,(>;`px;25);(,`sym)!,`sym;(,`m)!,(max;`sz)])`m; 0N 0N 6 4 5 6];
+t[`fupdByTwo;    (+![mt;();`a`b!`a`b;(,`s)!,(sum;`v)])`s;                  60 20 30 40 60];
+t[`fupdByUnif;   (+![mt;();(,`a)!,`a;(,`s)!,(sums;`v)])`s;                 10 30 30 70 80];
+t[`fupdByI;      (+![+`sym`n!(`a`b`a`b;1 2 3 4);();(,`sym)!,`sym;(,`m)!,(+;`n;`i)])`m;        1 3 5 7];
+t[`fupdByIWhere; (+![+`sym`n!(`a`b`a`b;1 2 3 4);,(>;`n;1);(,`sym)!,`sym;(,`m)!,(+;`n;`i)])`m; 0N 3 5 7];
+t[`fupdByOld;    (+![trades;,(>;`px;25);(,`sym)!,`sym;(,`sz)!,(count;`i)])`sz; 1 2 2 1 1 2];
 
 / ==================== 8. the rewriter itself (qrw) ==========================
 t[`qrwSelect;    qrw"select from trades";     "sel\"select from trades\""];
@@ -222,6 +230,9 @@ t[`selectBySymGroup; sel"select s:sum v by k from ([]k:`c`a`b`a`c; v:1 2 3 4 5)"
 st:([]sym:`c`a`b`a`c`b; px:3.0 1 2 4 6 5; sz:30 10 20 40 60 50)
 t[`selLimit;      sel"select[3] from st";        3#st]
 t[`selLimitNeg;   sel"select[-2] from st";       -2#st]
+sh:2#st
+t[`selLimitPast;  sel"select[5] from sh";        sh]
+t[`selLimitPastNeg; sel"select[-3] from sh";     sh]
 t[`selLimitCols;  sel"select[3] sym,px from st"; 3#sel"select sym,px from st"]
 t[`selLimitZero;  sel"select[0] from st";        0#st]
 t[`selSortDesc;   sel"select[>px] from st";      st@>st`px]
@@ -305,6 +316,10 @@ t[`qaggGrouped; value sel"select mxf:max f, mnf:min f, af:avg f, sf:sum f, s:sum
 / ---- an empty grouped select keeps each column's type (from its aggregate, as q) ----
 t[`byEmptySum;  @(.(sel"select sum px by sym from ft where px>1000"))`px; `F]
 t[`byEmptyLast; @(.(sel"select by sym from ft where px>1000"))`px; `F]
+/ an empty temporal column has no type to keep (it's a general list): max, min and sum of it stay (), not ints (A112)
+TT:([]sym:`a`b;n:1 2;d:10:00:00.000 11:00:00.000)
+t[`byEmptyTemporal;  (.(sel"select mx:max d, mn:min d, s:sum d by sym from TT where n>5"))@/:`mx`mn`s; (();();())]
+t[`byEmptyTemporal0; `k@(.(sel"select mx:max d, c:count d, l:last n by sym from 0#TT"))@/:`mx`c`l; "(();!0;!0)"]
 
 / ---- digest #39: constraints cascade, as q's (each sees the rows the earlier ones kept); #40: a leading minus ----
 tq[`whereCascade;     "select from trades where sym=`a, px=max px";   ([]sym:,`a; px:,60.0; sz:,6)];
@@ -313,6 +328,191 @@ tq[`whereLocalAnd;    "select from trades where sym=`a, px>25";       ([]sym:`a`
 tq[`execNegLead;      "exec -1+sz from trades";                       0 1 2 3 4 5];
 tqa[`updNegLead;      "update d:-1+sz from trades"; {(+x)`d};         0 1 2 3 4 5];
 
-hexpect[176]
+/ ---- the virtual column i is the row's index in the table, not among the rows a where-clause or a group kept, as q ----
+tq[`iExecWhere;   "exec i from trades where sym=`b";                  1 3];
+tq[`iCascade;     "select from trades where sym=`a, i>1";             ([]sym:`a`a; px:30 60.0; sz:3 6)];
+tq[`iSelWhere;    "select n:i from trades where px>25";               ([]n:2 3 4 5)];
+tq[`iSelAll;      "select from trades where i<2";                     ([]sym:`a`b; px:10 20.0; sz:1 2)];
+tqa[`iBy;         "select c:i by sym from trades"; {(+value x)`c};    (0 2 5;1 3;,4)];
+tq[`iUpdate;      "update j:i from trades where px>35";               ([]sym:`a`b`a`b`c`a; px:10 20 30 40 50 60.0; sz:1 2 3 4 5 6; j:0N 0N 0N 3 4 5)];
+tqa[`iUpdateBy;   "update j:first i by sym from trades where px>15"; {(+x)`j}; 0N 1 2 1 4 2];
+tq[`iDelete;      "delete from trades where sym=`b, i=1";             ([]sym:`a`a`b`c`a; px:10 30 40 50 60.0; sz:1 3 4 5 6)];
+tq[`iFby;         "select from trades where px>15, i>(count;i) fby sym"; ([]sym:`b`c`a; px:40 50 60.0; sz:4 5 6)];
+t[`iFunctional;   ?[trades;,(=;`sym;,`b);0b;(,`x)!,`i];               ([]x:1 3)]
+tq[`iExecByAll;   "exec by sym from trades where i>0";                `a`b`c!+`px`sz!(60 40 50.0;6 4 5)];
+tq[`iEmptyExec;   "exec i from none where px>0";                      !0];
+tqa[`iEmptyUpd;   "update j:i from none where px>0"; CL;              `sym`px`sz`j];
+tqa[`iEmptyBy;    "select c:i by sym from none"; CL;                  `sym`c];
+TI:([]i:5 6 7; n:1 2 3)
+tq[`iOwnColumn;   "exec i from TI where n>1";                         6 7];
+TA:([]amberi:`x`y`z; n:1 2 3)
+tq[`iAmberiCol;   "select from TA";                                   TA];
+tq[`iAmberiColI;  "select from TA where i>0";                         1_TA];
+/ words inside "strings" and `symbols are not columns, nor the virtual i
+TS:([]s:("in";"out";"ix"); n:1 2 3)
+tq[`iInString;    "select from TS where s like \"i*\"";              TS 0 2];
+tq[`colInString;  "select from TS where s like \"*n\"";              TS@,0];
+tqa[`iInSym;      "select from trades where sym=`i"; NR;              0];
+tqa[`iInSyms;     "select from trades where sym in `i`b"; NR;         2];
+tqa[`iInPathSym;  "select from trades where sym=`:i"; NR;             0];
+/ a by-expression over i alone is named x, as q (the hidden column has no name to give), and leaves i alone
+tqa[`iByExprKey;  "select c:count sz by i mod 2 from trades"; {(cols x;value(+value x)`c)}; (`x`c;3 3)];
+tq[`iByExprSum;   "exec sum i by i mod 2 from trades";                0 1!6 9];
+tqa[`iUpdByExpr;  "update j:sum i by i mod 2 from trades"; {(+x)`j};  6 9 6 9 6 9];
+/ a table's own columns are never dropped, whatever they are called
+TQ:+(`n;`$"(i)")!(1 2 3;10 20 30)
+tq[`iOwnHidden;   "select from TQ";                                   TQ];
+tq[`iOwnHiddenW;  "delete from TQ where n=1";                         1_TQ];
+/ a quote after an escaped backslash ends the string
+tq[`bsString;     "exec (\"\\\\\";sz) from trades where sz>4";           ("\\";5 6)];
+TB:([]s:("a\\";"b";"c";"d\\"); n:1 2 3 4)
+tq[`bsStringI;    "select m:(\"\\\\\"=last'[s])|i=1 from TB";        ([]m:1 1 0 1)];
+tq[`bsString3;    "exec (\"a\\\\\\\"b\";i) from TB where n>2";        ("a\\\"b";2 3)];
+tqa[`iInPathSym2; "select from trades where sym=`:db/i"; NR;          0];
+tqa[`iInPathSym3; "select from trades where sym=`:db/x-i_n.i"; NR;    0];
+tqa[`colInPathSym; "select from trades where sym=`:a/sz"; NR;         0];
+tqa[`iInPathSym4; "select from trades where sym=`:i:j"; NR;           0];
+/ an i inside a string is not a reference to the hidden column, so the key keeps its column's name
+tqa[`iByStrKey;   "select c:count n by s like \"i*\" from TS where i>0"; CL; `s`c];
+/ the functional distinct drops the hidden column before it looks for equal rows
+T5:([]sym:`a`b`a; n:1 2 1)
+t[`iFuncDistinct;   ?[T5;,(>;`i;-1);1b;()];                         ([]sym:`a`b; n:1 2)]
+/ the same answers where i is read without the hidden column: count i, and-ed constraints, a where then items
+tq[`iCountWhere;  "exec count i from trades where px>25";             4];
+tq[`iCountBy;     "select c:count i by sym from trades where px>15";  ([sym:`a`b`c]c:2 2 1)];
+tq[`iAnded;       "select from trades where px>15, i<4";              ([]sym:`b`a`b; px:20 30 40.0; sz:2 3 4)];
+tq[`iExecItems;   "exec i,sz from trades where sym=`a";               `x`sz!(0 2 5;1 3 6)];
+t[`iFuncLater;    ?[trades;((>;`px;15);(<;`i;4));0b;()];              ([]sym:`b`a`b; px:20 30 40.0; sz:2 3 4)]
+t[`iFuncCount;    ?[trades;,(>;`px;25);0b;(,`n)!,(count;`i)];         ([]n:,4)]
+t[`iFuncUpd;      (+![trades;,(>;`px;35);0b;(,`j)!,`i])`j;            0N 0N 0N 3 4 5]
+
+/ ---- digest #73 item 95: a bare distinct is q's distinct flag, not a column; with by it is q's distinct function ----
+DT:([]sym:`a`b`a`a;n:1 2 1 3;m:5 6 5 7)
+tq[`selDistinctBare;  "select distinct from DT";              ([]sym:`a`b`a;n:1 2 3;m:5 6 7)];
+tq[`selDistinctWhere; "select distinct from DT where n<3";    ([]sym:`a`b;n:1 2;m:5 6)];
+tq[`selDistinctCols;  "select distinct sym from DT where n>1"; ([]sym:`b`a)];
+tq[`selDistinctBy;    "select distinct by sym from DT";       ((+(,`sym)!,`a`b)!+`n`m!(3 2;7 6))];
+tq[`selDistinctColBy; "select distinct n,m by sym from DT";   ((+(,`sym)!,`a`b)!+`n`m!((1 3;,2);(5 5 7;,6)))];
+tq[`selDistinctNamedBy; "select distinct x:n by sym from DT";  ((+(,`sym)!,`a`b)!+(,`x)!,(1 3;,2))];
+tq[`selDistinctExprBy;  "select distinct x:n+1 by sym from DT"; ((+(,`sym)!,`a`b)!+(,`x)!,(2 4;,3))];
+
+/ ---- a by key named like a column is the key's values, but the aggregates still read the column, as q ----
+tq[`byNameAgg;    "select s:sum sz by sz:sz mod 2 from trades";      (+(,`sz)!,0 1)!+(,`s)!,12 9];
+tq[`byNameFused;  "select s:sum sz,p:max px by sz:sz mod 2 from trades where px>15"; (+(,`sz)!,0 1)!+`s`p!(12 8;60 50.0)];
+tq[`byNameOther;  "select s:sum sz by sym:sz mod 2 from trades";     (+(,`sym)!,0 1)!+(,`s)!,12 9];
+tq[`byNameLast;   "select by sz:sz mod 2 from trades";                (+(,`sz)!,0 1)!+`sym`px!(`a`c;60 50.0)];
+tq[`byNameExec;   "exec sum sz by sz:sz mod 2 from trades";          0 1!12 9];
+tqa[`byIKey;      "select c:count sz by i from trades"; CL;          `x`c];
+tqa[`byIAll;      "select by i from trades"; CL;                      `x`sym`px`sz];
+tq[`byTwoSame;    "select s:sum sz by sz mod 2,sz mod 3 from trades"; (+`sz`sz1!(0 0 0 1 1 1;0 1 2 0 1 2))!+(,`s)!,6 4 2 3 1 5];
+tq[`byNamedKeeps; "select s:sum sz by sz mod 2,sz:sz mod 3 from trades"; (+`sz1`sz!(0 0 0 1 1 1;0 1 2 0 1 2))!+(,`s)!,6 4 2 3 1 5];
+tq[`byBareKeeps;  "select s:sum px by sz mod 2,sz from trades";      (+`sz1`sz!(0 0 0 1 1 1;2 4 6 1 3 5))!+(,`s)!,20 40 60 10 30 50.0];
+/ key names: a given or bare one is numbered after an earlier given or bare one, as q; a derived one after any
+/ given or bare one, or an earlier name, past the table's columns
+TN:([]sym:`a`b`a`b;n:1 2 3 4;m:5 6 7 8)
+tqa[`byNmSymSym;  "select sum m by sym,sym from TN"; CL;              `sym`sym1`m];
+tqa[`byNmBare2;   "select sum m by n,n from TN"; CL;                  `n`n1`m];
+tqa[`byNmGiven2;  "select sum m by a:n mod 2,a:n mod 3 from TN"; CL;  `a`a1`m];
+tqa[`byNmDerBare; "select sum m by n mod 2,n from TN"; CL;            `n1`n`m];
+tqa[`byNmDerGiven; "select sum m by n mod 2,n:n mod 3 from TN"; CL;   `n1`n`m];
+tqa[`byNmDer2;    "select sum m by n mod 2,n mod 3 from TN"; CL;      `n`n1`m];
+tqa[`byNmI2;      "select sum m by i,i mod 2 from TN"; CL;            `x`x1`m];
+tqa[`byNmThree;   "select sum m by n mod 2,n,n:n mod 3 from TN"; CL;  `n2`n`n1`m];
+TN1:([]sym:`a`b`a`b;n:1 2 3 4;m:5 6 7 8;n1:9 8 7 6)
+tqa[`byNmSkipCol; "select sum m by n mod 2,n from TN1"; CL;           `n2`n`m];
+tqa[`byNmKeepCol; "select by n mod 2,n from TN1"; CL;                 `n2`n`sym`m`n1];
+tqa[`selNmPlace;  "select sum n,n from TN"; CL;                     `n`n1];
+tqa[`updNmPlace;  "update sum n,n from TN"; {(+x)`n};                 4#10];
+tv[`byFunc;       "?[trades;();(,`sz)!,(mod;`sz;2);(,`s)!,(sum;`sz)]"; (+(,`sz)!,0 1)!+(,`s)!,12 9];
+tv[`byFuncTwo;    "?[trades;();`a`b!((mod;`sz;2);(mod;`sz;3));(,`s)!,(sum;`sz)]"; (+`a`b!(0 0 0 1 1 1;0 1 2 0 1 2))!+(,`s)!,6 4 2 3 1 5];
+
+/ ---- update-by that groups no row types the column by its expression on no rows, and a value of another type
+/ into a column is 'type, as q (digest #73 item 109) ----
+tqa[`updByEmpty;     "update m:max sz by sym from none"; {(+x)`m};                 !0];
+tqa[`updByNoRow;     "update m:max sz by sym from trades where px>100"; {(+x)`m};  6#0N];
+tqa[`updByNoRowF;    "update m:avg sz by sym from trades where px>100"; {(+x)`m};  6#0n];
+tqa[`updByEmptyOld;  "update sz:avg sz by sym from none"; {(+x)`sz};               0#0n];
+tqe[`updByType;      "update sz:avg sz by sym from trades where px>25"];
+te[`fupdByType;      "![trades;,(>;`px;25);(,`sym)!,`sym;(,`sz)!,(avg;`sz)]"];
+tqa[`updBySameType;  "update sz:sum sz by sym from trades where px>25"; {(+x)`sz}; 1 2 9 4 5 9];
+tqe[`updByTypeAll;   "update sz:avg sz by sym from trades where sz>0"];
+tqe[`updByTypeCount; "update px:count px by sym from trades where sz>0"];
+tqa[`updByUnifEmpty; "update sz:sums sz by sym from none"; {(+x)`sz};          !0];
+tqa[`updByUnifNoRow; "update m:sums px by sym from trades where px>100"; {(+x)`m}; 6#,()];
+TG:0#([]sym:`a`b`a;n:1 2 3;g:(1 2;3 4;5 6);st:("ab";"cd";"ef"))
+tqa[`updByGenFirst;  "update st:first st by sym from TG"; {(+x)`st};             ()];
+tqa[`updByGenMax;    "update g:max g by sym from TG"; {(+x)`g};                  ()];
+tqa[`updByGenOther;  "update n:sums n by sym from TG"; {(+x)`n};                 !0];
+TD:0#([]sym:`a`b`a;n:1 2 3;d:2026.01.01 2026.01.02 2026.01.03)
+tv[`fupdByUnifTemporal; "(+![TD;();(,`sym)!,`sym;(,`n)!,(sums;`n)])`n";   !0];
+t[`fupdByNoRow;      (+![trades;,(>;`px;100);(,`sym)!,`sym;(,`m)!,(max;`sz)])`m;   6#0N];
+
+/ ---- qSQL on a keyed table runs on its rows, as q's: select (no columns, no by), update and delete keep the key ----
+KT:([s:`a`b`c]n:1 2 3;m:4 5 6)
+tq[`ktSelect;     "select from KT where n>1";                         ([s:`b`c]n:2 3;m:5 6)];
+tq[`ktSelCols;    "select n from KT";                                 ([]n:1 2 3)];
+tq[`ktSelBy;      "select sum n by b:m>4 from KT";                    ([b:0 1]n:1 5)];
+tq[`ktSelLimit;   "select[2] from KT";                                ([s:`a`b]n:1 2;m:4 5)];
+tq[`ktExec;       "exec n from KT where m>4";                         2 3];
+tq[`ktUpdate;     "update n:10 from KT where s=`b";                   ([s:`a`b`c]n:1 10 3;m:4 5 6)];
+tq[`ktUpdKey;     "update s:`z from KT where n=1";                    ([s:`z`b`c]n:1 2 3;m:4 5 6)];
+tq[`ktUpdBy;      "update n:sum n by m>4 from KT";                    ([s:`a`b`c]n:1 5 5;m:4 5 6)];
+tq[`ktDelete;     "delete from KT where n=2";                         ([s:`a`c]n:1 3;m:4 6)];
+tq[`ktDelCol;     "delete m from KT";                                 ([s:`a`b`c]n:1 2 3)];
+tq[`ktDelKey;     "delete s from KT";                                 ([]n:1 2 3;m:4 5 6)];
+tv[`ktFsel;       "?[KT;,(>;`n;1);0b;()]";                            ([s:`b`c]n:2 3;m:5 6)];
+tv[`ktFselCols;   "?[KT;();0b;(,`n)!,`n]";                            ([]n:1 2 3)];
+te[`ktFdistinct;  "?[KT;();1b;()]"];
+tv[`ktFdistCols;  "?[KT;();1b;(,`n)!,`n]";                            ([]n:1 2 3)];
+tv[`ktFupd;       "![KT;();0b;(,`n)!,(*;`n;2)]";                      ([s:`a`b`c]n:2 4 6;m:4 5 6)];
+K2:([a:1 1 2;b:`x`y`x]v:10 20 30)
+tq[`ktTwoKeys;    "update v:v*2 from K2 where b=`x";                  ([a:1 1 2;b:`x`y`x]v:20 20 60)];
+
+/ a : inside a `symbol, a string or a lambda is not an item's name:expr
+TC:([]f:`:a`:b`:a; n:1 2 3)
+tq[`colonSymExec;  "exec f=`:b from TC";                              010b];
+tqa[`colonSymSel;  "select f=`:b from TC"; {(+x)@*cols x};           010b];
+tq[`colonStrItem;  "select n,\"a:b\" from TC";                        ([]n:1 2 3;x:"a:b")];
+tqa[`colonSymBy;   "select c:count n by f=`:b from TC"; {value(+value x)`c}; 2 1];
+tq[`colonSymExBy;  "exec n by f=`:b from TC";                         01b!(1 3;,2)];
+tq[`colonLambda;   "exec {x:1;x+y}[n;n] from TC";                     2 3 4];
+tq[`colonNamed;    "exec a:f=`:b from TC";                            010b];
+
+/ a comma inside ( ), { } or a string does not split an item or a constraint
+TM:([]n:1 2 3 4)
+tq[`commaParenWh;  "select from TM where n in (1,2)";                 ([]n:1 2)];
+tq[`commaParenEx;  "exec (,\"ab\";n) from TM where n>2";               (,"ab";3 4)];
+tq[`commaLambda;   "exec {x,y}[n;n] from TM where n>3";               4 4];
+tqa[`commaParenBy; "select c:count n by g:(n mod 2) from TM where n in (1,2,3)"; {value(+value x)`c}; 1 2];
+TL:([]s:("a,b";"cd"); n:1 2)
+tq[`commaStrWh;    "select from TL where s like \"a,b\"";             TL@,0];
+tq[`commaStrCas;   "select from TL where s like \"a,b\", n>0";        TL@,0];
+
+/ a backslash outside a string escapes nothing: ,\"ab" is join-scan over a string
+TN:([]n:1 2 3)
+tq[`bsJoinScan;    "select n,c:count[,\\\"ab\"] from TN where n>1";   ([]n:2 3;c:2 2)];
+tq[`bsJoinScanEx;  "exec count[,\\\"ab\"] from TN where n>1";         2];
+tq[`bsJoinScanCm;  "exec n from TN where n>count[,\\\"a/\"]  / two";  ,3];
+
+/ a tab next to a keyword is a space; a tab inside a string stays
+TT:([]sym:`a`b`a; n:1 2 1)
+tq[`tabSelect;     "select\tn from TT";                               ([]n:1 2 1)];
+tq[`tabWhere;      "select n from TT\twhere n>1";                     ([]n:,2)];
+tq[`tabExec;       "exec\tn from TT\twhere\tsym=`a";                  1 1];
+tqa[`tabBy;        "select c:count n\tby sym from TT"; {value(+value x)`c}; 2 1];
+tq[`tabInStrBs;    "exec (\"a\\\\\";\"x\ty\";\"b\\\\\") from TT";      ("a\\";"x\ty";"b\\")];
+tq[`tabInString;   "exec \"x\ty\" from TT";                           "x\ty"];
+t[`tabSel;         .[sel;,"select\tn from TT where\tn>1";{x}];       ([]n:,2)];
+
+/ a bracket or ; inside a "string" does not end a bare query at the prompt or in a file (qendx)
+TQS:([]s:("a;b";"cd"); n:1 2)
+tq[`strParen;      "select n,\")\" from TQS";                           ([]n:1 2;x:"))")];
+tq[`strBrack;      "select n,\"]\" from TQS";                           ([]n:1 2;x:"]]")];
+tq[`strBrace;      "select n,\"}\" from TQS";                           ([]n:1 2;x:"}}")];
+tq[`strSemi;       "select from TQS where s like \"a;b\"";              1#TQS];
+tq[`strEscQuote;   "exec \"a\\\")\" from TQS";                          "a\")"];
+tq[`strEnd;        "(exec s from TQS where s like \"a;b\"),,\"x)\"";    ("a;b";"x)")];
+
+hexpect[323]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

@@ -296,7 +296,8 @@ qEXACT:9007199254740992.0
 qgrp:{[t;b]d:+t;bc:d b;g:$[1=#b;=*bc;qcard[bc]<qEXACT;=qenc bc;=rows[b#+t]];iv:value g;(bc@\:*:'iv;iv)}
 qks:{[r]$[iskeyed r;[k:keys r;xkey[k;xasc[k;unkey r]]];r]}   / a grouped result in key order, as q gives it
 qby:{[t;b;a]b:b,();r:qgrp[t;b];kt:+b!r 0;iv:r 1;subs:atr[t]'iv;vt:+(!a)!{[t;subs;f]$[#subs;f'subs;qby0[f;0#t]]}[t;subs]'value a;qks kt!vt}
-qby0:{[f;e]r:.[f;,e;{`qby0err}];$[`qby0err~r;();(@r)in`i`f`c`s`d`t`n;0#,r;()]}   / no groups: a column typed by its aggregate's result (q); a plain column stays ()
+qby0:{[f;e]g:{[f;e]r:.[f;,e;{`qby0err}];$[`qby0err~r;();(@r)in`i`f`c`s`d`t`n;0#,r;()]}[f];r:g e;$[r~g@+{$[(`A=@x)&~#x;0#0.0;x]}'+e;r;()]}   / no groups: a column typed by its aggregate's result (q); a plain column stays ()
+/ An empty temporal column is a general list with no type left (`max` of it is -0W, an int): a type that changes when such columns are floats instead came from them, so the column stays ()
 xgroup:{[k;t]k:k,();r:qgrp[t;k];kt:+k!r 0;vc:except[cols t;k];kt!+vc!{[t;iv;c]((+t)c)@/:iv}[t;r 1]'vc}   / Keyed by k, as q
 ungroup:{[x]t:unkey x;d:+t;v:value d;m:{`A=@x}'v;cnt:#:'*v@&m;+(!d)!{[cnt;m;c]$[m;raze c;raze cnt#'c]}[cnt]'[m;v]}
 / fbymc: is g a PER-COLUMN group spec -- (sym;ex) rather than one vector?  q lets

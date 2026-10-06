@@ -15,8 +15,8 @@ qsplit:{[s;kw]$[0=#s;:(s;"";0b);];i:ss[s;kw];m:~qsmask s;d:+\(m*in[s;"([{"])-m*i
 qsplit0:{[s;kw]$[(s~*i:qsplit[s;kw])&((#kw)-1)<#s;$[(1_kw)~(-1+#kw)#s;("";trim(-1+#kw)_s;1b);i];i]}
 / last-of-each-column aggregation, used for a `by` with no explicit projection
 qlastf:{[c]{[c;x]last x c}[c]}
-qcut:{[s]c:qblank s;d:+\in[c;"([{"]-in[c;")]}"];b:0,&(c=",")&d=0;trim'{$[#x;$[","=*x;1_x;x];x]}'b _ s}  / comma-split at depth 0, outside strings
-qname:{[s]b:qblank s;d:+\in[b;"([{"]-in[b;")]}"];i:&(b=":")&d=0;$[#i;(trim(*i)#s;trim(1+*i)_s);("";trim s)]}  / name:expr (a : in a string, a `symbol or brackets is not the name's)
+qcut:{[s]$[~|/s=",";,trim s;[c:qblank s;d:+\((c="(")|(c="[")|c="{")-(c=")")|(c="]")|c="}";b:0,&(c=",")&d=0;trim'{$[#x;$[","=*x;1_x;x];x]}'b _ s]]}  / comma-split at depth 0, outside strings
+qname:{[s]$[~|/s=":";("";trim s);[c:qblank s;d:+\((c="(")|(c="[")|c="{")-(c=")")|(c="]")|c="}";i:&(c=":")&d=0;$[#i;(trim(*i)#s;trim(1+*i)_s);("";trim s)]]]}  / name:expr (a : in a string, a `symbol or brackets is not the name's)
 qword:{((x>64)&x<91)|((x>96)&x<123)|((x>47)&x<58)|x=95}                            / word-char mask
 qsimple:{(0<#x)&&/qword 0+x}                                                       / is a bare identifier
 qidsub:{[cols;s]$[0=#s;s;,/{[cols;t;f]$[f&in[`$t;cols];"(x`",t,")";f&(t~,"i");$[in[qI;cols];"(x qI)";"(!#x)"];t]}[cols]'[bnd _ s;w bnd:&differ w:qword 0+qblank s]]}   / a bare i is the row number, as q's virtual column; words in "strings" and `symbols are left alone
@@ -55,7 +55,7 @@ qcas:{[t;c]C:cols t;i:qcw[t;C;!#t;*c];i:{[t;C;i;e]qcw[t;C;i;e]}[t;C]/[i;1_c];@[~
 qcw:{[t;C;i;e]h:$[qhi e;~|/in[`i,qI;C];0];r:qrefs[C;e];v:qfn[$[h;C,qI;C];e]$[h;+(r,qI)!((+t)[r]@\:i),,i;#r;+r!(+t)[r]@\:i;t i];$[isat v;$[v;i;0#i];i@&v]}   / The rows of i that e keeps (an i in e reads i itself)
 qlw:`in`within`like`not`null`abs`neg`floor`ceiling`signum`string`lower`upper`mod`div`xbar
 qlwd:{[C;w]s:`$w;c:*w;$[in[s;C]|in[s;qlw]|s~`i;1;(~(c<"0")|c>"9")&~|/w="_";1;[v:.[{.x};,s;{`qlfail}];$[`qlfail~v;0;~|/"opqruvwx"=*$@v]]]}   / A word that keeps a row to itself
-qblank:{[e]s:e;q:qsmask s;s:@[s;&q|s="\"";:;" "];w:qword 0+s;c:w|in[s;".:/-"];rid:+\~~':w;rc:+\~~':c;bt:&s="`";p:1+bt;p:p@&p<#s;pc:p@&":"=s p;p:p@&w p;s:@[s;bt;:;" "];@[s;&(w&in[rid;rid p])|c&in[rc;rc pc];:;" "]}   / strings and `symbols blanked (a `: symbol takes in . / _ - :, as Amber's pfh; a plain one is a word, _ and all, where Amber stops at _)
+qblank:{[e]$[~|/(e="\"")|e="`";e;[s:e;q:qsmask s;s:@[s;&q|s="\"";:;" "];w:qword 0+s;rid:+\~~':w;bt:&s="`";p:1+bt;p:p@&p<#s;pc:p@&":"=s p;p:p@&w p;b:w&@[(1+#s)#0b;rid p;:;1b]rid;$[#pc;[c:w|(s=".")|(s=":")|(s="/")|s="-";rc:+\~~':c;b|:c&@[(1+#s)#0b;rc pc;:;1b]rc];];s:@[s;bt;:;" "];@[s;&b;:;" "]]]}   / strings and `symbols blanked (a `: symbol takes in . / _ - :, as Amber's pfh; a plain one is a word, _ and all, where Amber stops at _)
 qloc:{[C;e]s:qblank e;w:qword 0+s;b:&~~':w;tk:b _ s;ok:&/1,qlwd[C]'tk@&w b;oi:&~w|s=" ";o:s oi;ok&:&/1,in[o;"=<>~+-*%&|$,.()"];nsi:&~s=" ";mp:oi@&in[o;"*|&,<>=+"];ok&&/1,{[s;w;nsi;p]j:nsi?p;$[j=0;0;[q:nsi j-1;c:s q;$[w q;1;c=")";1;(|/c="<>")&|/(s p)="=>";1;0]]]}[s;w;nsi]'mp}   / No aggregate, adverb or monadic first/where/count
 / qdec: drop a trailing K comment from a query string.
 / A "/" that STARTS a token -- at the beginning of the string, or preceded by a
@@ -276,7 +276,7 @@ qkfn:("sel";"exq";"upd";"del")
 qpre:" ([{;:,=<>+-*%!&|^~?@."
 qbig:1000000
 qesc:{,/{$[x="\\";"\\\\";$[x="\"";"\\\"";,x]]}'x}                                 / escape \ and " for a "…" literal
-qsmask:{[t]p:&t="\"";e:(0,-1_{y&~x}\t="\\")p;o:-1_{y|~x}\0,e;q:@[(#t)#0b;p@&~e&o;:;1b];1=2!0,-1_sums q}   / 1b where inside a "…" literal (a " after an odd run of \ is escaped, inside a string only: ,\"ab" opens one)
+qsmask:{[t]p:&t="\"";$[0=#p;:(#t)#0b;];e:(0,-1_$[|/b:t="\\";{y&~x}\b;b])p;o:-1_{y|~x}\0,e;q:@[(#t)#0b;p@&~e&o;:;1b];1=2!0,-1_sums q}   / 1b where inside a "…" literal (a " after an odd run of \ is escaped, inside a string only: ,\"ab" opens one)
 qendx:{[t;p]b:p_@[t;&qsmask t;:;" "];n:#b;op:(b="(")|(b="[")|b="{";cl:(b=")")|(b="]")|b="}";dep:sums op-cl;dB:0,-1_dep;ns:(dep<0)|(b=";")&dB=0;p+min((!n)*ns)+n*~ns}  / end of the expr starting at p (brackets and ; in "strings" do not count)
 / is a valid keyword start at p?  The keyword must be followed by a space -- or,
 / for `select` only, by the "[" of a sorted/limited select[n;>c].  The other

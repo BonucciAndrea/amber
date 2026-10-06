@@ -258,13 +258,14 @@ t[`wjCharHigh;{q:+`sym`time`bid!(`a`a`a;`c$65 200 210;10 20 30);t:+`sym`time!(`a
 t[`wjCharFallback;{q:+`sym`time`bid!(`a`a`a;`c$65 128 200;10 20 30);t:+`sym`time!(,`a;,`c$200);w:(,`c$128;t`time);s:(+wj[w;`sym`time;t;q;,(`s;sum;`bid)])`s;v:(+wj[w;`sym`time;t;q;,(`v;{x};`bid)])`v;(s;v)}[];(,50;,20 30)]   / wj's fallback in K reads char times unsigned too, as the kernel
 t[`ajCharTradeNumQuotes;(+aj[`sym`time;+`sym`time!(,`a;,`c$250);+`sym`time`v!(`a`a`a;1 100 200;1 2 3)])`v;,0N]   / a char trade time against number quote times stays signed, as ' and ajmK read it
 t[`wjCharMax;{q:+`sym`time`c!(`a`a`a;1 2 3;"a",0x80,"b");t:+`sym`time!(,`a;,3);w:(,0;,3);((+wj[w;`sym`time;t;q;,(`m;max;`c)])`m;(+wj[w;`sym`time;t;q;,(`m;min;`c)])`m;(+wj[w;`sym`time;t;q;((`m;max;`c);(`k;{max x};`c))])`m)}[];(,0x80;,"a";,0x80)]   / min and max of a char column give chars, whatever else is aggregated
-t[`wjCharFirstMax;{q:+`sym`time`c!(`a`a`a;1 2 3;"a",0x80,"b");t:+`sym`time!(`a`a;3 0);w:(0 -5;3 0);r:+wj[w;`sym`time;t;q;((`f;first;`c);(`m;max;`c);(`n;min;`c))];(r`f;r`m;r`n)}[];(97 0N;0x8000;0x61ff)]   / the kernel keeps first as it was; min and max of chars give chars, an empty window the identity
-/ the kernel skips nulls in min and max, and in a float sum and avg, as q's: q's answers
+t[`wjCharFirstMax;{q:+`sym`time`c!(`a`a`a;1 2 3;"a",0x80,"b");t:+`sym`time!(`a`a;3 0);w:(0 -5;3 0);r:+wj[w;`sym`time;t;q;((`f;first;`c);(`m;max;`c);(`n;min;`c))];(r`f;r`m;r`n)}[];("a ";0x8000;0x61ff)]   / first, min and max of chars give chars; an empty window a blank for first, the identity for min and max
+/ the kernel skips nulls in min and max, and in a float sum and avg, as q's; first and last of chars or symbols are those items: q's answers
 WTN:+`g`time!(`g0`g0`g0`g1;0 5 9 3);WWN:((WTN`time)-2;(WTN`time)+1)
 WFN:{[c]a:((`m;min;`v);(`x;max;`v);(`s;sum;`v);(`a;avg;`v));q:+`g`time`v!(`g0`g0`g0`g0`g1;0 1 5 9 2;c);{[a;q;j]r:+j[WWN;`g`time;WTN;q;a];r`m`x`s`a}[a;q]'(wj;wj1)}
 t[`wjNullsInt;(WFN 0N 2 0N 0N 7)[;0 1];((2 2 9223372036854775807 7;2 2 -9223372036854775807 7);(2 9223372036854775807 9223372036854775807 7;2 -9223372036854775807 -9223372036854775807 7))]   / min and max; an int sum or avg still adds a 0N in, as on main
 t[`wjNullsFloat;WFN 0n 2.5 0n 0n 1.5;((2.5 2.5 0w 1.5;2.5 2.5 -0w 1.5;2.5 2.5 0 1.5;2.5 2.5 0n 1.5);(2.5 0w 0w 1.5;2.5 -0w -0w 1.5;2.5 0 0 1.5;2.5 0n 0n 1.5))]
 t[`wjNullsSparse;{v:0+!100;v[10 50]:0N;f:0.5*!100;f[10 50]:0n;q:+`g`time`v`f!(100#`a;!100;v;f);t:+`g`time!(`a`a;10 50);w:((t`time)-1;(t`time)+1);a:((`m;min;`v);(`fs;sum;`f);(`fm;min;`f);(`fa;avg;`f));{[w;t;q;a;j]r:+j[w;`g`time;t;q;a];r`m`fs`fm`fa}[w;t;q;a]'(wj;wj1)}[];2#,(9 49;10.0 50.0;4.5 24.5;5.0 25.0)]   / short windows far apart over a long column: only the windows with a null are reduced again
+t[`wjCharFirstLast;{t:+`g`time!(`g0`g0;0 5);q:+`g`time`v`s!(`g0`g0`g0;0 1 5;"xyz";`x`y`z);a:((`f;first;`v);(`l;last;`v);(`s;first;`s));w:(-2 3;-1 6);((+wj[(-2 3;1 6);`g`time;t;q;a])`f`l`s;(+wj[w;`g`time;t;q;a])`f`l`s;(+wj1[w;`g`time;t;q;a])`f`l`s)}[];(("xy";"yz";`x`y);(" y";" z";``y);(" z";" z";``z))]
 / the sortedness check given an atom where a column belongs: "not known sorted", not a crash
 t[`ajsAtom;(`ajs(();5;0b);`ajs((5;1 2);1 2;0b);`ajs((1 2;5);1 2;0b);`ajs(();3 2 1;0b));0 0 0 0]
 
@@ -637,6 +638,7 @@ AJW:((2026.07.30D09:00:00.000;2026.07.30D10:30:00.000);(2026.07.30D10:20:00.000;
 AJWT:+`ts`v!((2026.07.30D10:00:00.000;2026.07.30D11:00:00.000);1 2)
 AJWQ:+`ts`q!((2026.07.30D09:30:00.000;2026.07.30D10:15:00.000;2026.07.30D10:50:00.000);6 5 4)
 t[`wjStamps;       ((+wj1[AJW;`ts;AJWT;AJWQ;,(`c;count;`q)])`c;(+wj1[AJW;`ts;AJWT;AJWQ;,(`s;{+/x};`q)])`s);  (2 1;11 4)]   / {+/x}: wj's pure-K fallback
+t[`wjStampsFirstMin; (+wj[AJW;`ts;AJWT;AJWQ;((`f;first;`ts);(`l;last;`ts);(`m;min;`ts);(`x;max;`ts))])`f`l`m`x;  AJWQ[`ts]@(0 1;1 2;0 1;1 2)]   / temporals as themselves, not their numbers, their addresses or 'type
 / a temporal time column against one of another kind is 'type, as in q
 AJD:+`ts`v!((2026.07.30;2026.07.31);1 2)
 t[`ajMixedKinds;   *"\n"\.[aj;(`ts;AJD;AJQ);{x}];  "'type"]

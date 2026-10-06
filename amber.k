@@ -264,7 +264,10 @@ wjK:{[m;w;c;t;q;aggs]$[&/(#t)=#:'w;::;`err"length"];c:c,();g:-1_c;tc:*|c;q:ajord
 / wj counts the quote in force at the window's start, as q's; wj1 only the quotes inside the window (digest #68)
 wj:{[w;c;t;q;aggs]wjm[1b;w;c;t;q;aggs]}
 wj1:{[w;c;t;q;aggs]wjm[0b;w;c;t;q;aggs]}
-wjm:{[m;w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;cs:wjcode'aggs[;1];$[|/cs<0;wjK[m;w;c;t;q;aggs];[b:wjbnd[g;t;q];v:qd aggs[;2];u:&(cs in 2 3)&`C=@:'v;v:@[v;u;{256!`i$x}];r:`wj(qd tc;v;cs;w 0;w 1;b 0;b 1;m);r:@[r;u;:;{[f;x]`c$@[x;&(x<0)|x>255;:;f]}'[(255 0)cs[u]-2;r u]];+(+t),(aggs[;0])!r]]}
+/ The kernel reads numbers: chars go to it as their codes (min/max back to chars), first/last of chars, symbols,
+/ temporals or a generic column read the positions and index the column (an empty window: its null), and the other
+/ reducers over a column that is not ints, floats or chars go to wjK, as K's own min/max/sum/avg on its items
+wjm:{[m;w;c;t;q;aggs]c:c,();q:ajord[c;q];qd:+q;v:qd aggs[;2];k:@:'v;cs:wjcode'aggs[;1];p:(~k=`I)&~k=`F;cs:@[cs;&(1<cs)&(cs<6)&p&~k=`C;:;-1];$[|/cs<0;wjK[m;w;c;t;q;aggs];[b:wjbnd[-1_c;t;q];u:&(1<cs)&(cs<4)&`C=k;p:&(cs<2)&p;v:@[v;u;{256!`i$x}];r:`wj(qd@*|c;$[#p;@[v;p;:;(#p)#,!#q];v];cs;w 0;w 1;b 0;b 1;m);r:@[r;u;:;{[f;x]`c$@[x;&(x<0)|x>255;:;f]}'[(255 0)cs[u]-2;r u]];r:$[#p;@[r;p;:;{x@y}'[v p;r p]];r];+(+t),(aggs[;0])!r]]}
 
 / ---- qSQL-style select / group-by --------------------------------------------
 qwhere:{[t;m]t@&m}

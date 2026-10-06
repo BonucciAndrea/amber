@@ -54,6 +54,7 @@
 #define MAX(x,y) ({TY(x) x_=(x),y_=(y);x_>y_?x_:y_;})
 #define LH(x,y,z) ((y)-(x)<=(U)((z)-(x)))//between(low,high)
 #define C09(c) LH('0',c,'9')
+#define CBK(c) ((c)==32||(c)==9||(c)==13)//a blank, as q trims it: space, tab, CR
 #define CAz(c) LH('a',(c)|32,'z')
 #define CA9(c) (CAz(c)||C09(c))
 #define S4(i,a,b,c,d) S(i,C(0,a)C(1,b)C(2,c)D(d))

@@ -779,6 +779,11 @@ t[`jsonLongInt;(`j@3000000000;`j@(3000000000;1));("3000000000";"[3000000000,1]")
 / ---- a symbol that is not an identifier prints quoted, with its bytes as they are ----
 t[`symDigitFirst;`k@`$"1a";"`\"1a\""]
 t[`symUtf8;`k@`$`c$195 169;"`\"",(`c$195 169),"\""]
+
+/ ---- `$ trims the blanks (space, tab, CR) round the text, as q; a JSON key keeps them (#20 row 3) ----
+t[`symCastTrim;`$(" a ";" ";"\ta\r";"a b";"a\n");(`a;`;`a;`$"a b";`$"a\n")]
+t[`symCastTrimChar;`$" ";`]
+t[`symJsonKeyBlanks;`k@!`j?"{\" a \":1}";",`\" a \""]
 t[`symIdent;`k@`abc;"`abc"]
 t[`symList;`k@`$("1a";"b");"`\"1a\"`b"]
 tv[`symBack;"{x~. `k@x}@`$(\"1a\";\"a b\";\"\";\"a\";((`c$1),\"x\");(\"a\",`c$233))";1b]
@@ -1323,7 +1328,7 @@ tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 ppeV:5 6
 t[`ppeStale;?{."{[ab]ab}",x;."(ppeV-1)",x}'(!100)#\:" ";,4 5]
 
-hexpect[843]
+hexpect[846]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

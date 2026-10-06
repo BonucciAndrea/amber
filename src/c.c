@@ -28,8 +28,9 @@ Z B pov(S p,S e)_(B m=*p=='-';p+=m;W(*p=='0'&&C09(p[1]),p++)I n=e-p;n>19||n==19&
 Z X1(prsI,RmMA(e1f(prsI,x))Rc(prsI(enl(x)))RC(x=str0(x);S s=xV;P(!*s,x(_R(cn[tl])))L v=pl(&s);x(*s||pov(xV,s)?_R(cn[tl]):az(v)))R_(et(x)))
 Z X1(prsF,RmMA(e1f(prsF,x))Rc(prsF(enl(x)))RC(x=str0(x);S s=xV;P(!*s,x(_R(cn[tf])))L v=pf(&s);x(*s?_R(cn[tf]):aV(tf,1,&v)))R_(et(x)))
 A ptT(A),ptD(A),ptP(A);   //"T"$ "D"$ "P"$: the text as the literal reader reads it (p.c)
+Z X1(cSb,RmMA(e1f(cSb,x))RC(U i=0,n=xn;W(i<n&&CBK(xC[i]),i++)W(n>i&&CBK(xC[n-1]),n--)P(!i&&n==xn,cS(x))x(cS(aCn(xC+i,n-i))))Rc(cS(CBK(xv)?emp(tC):x))R_(cS(x)))//`$: blanks trimmed, as q
 Z Y2(pad,RmMA(e2f(pad,x,y))RC(K2("{y@(!x)+(x<0)*#y}",x,y))Rc(dlr(x,enl(y)))R_(et(y)))
-X2(dlr,Rs(I v=xv;P(v-(C)v,ed(y))G(&csti,cF,cC,cS,prsI,prsF,ed)[si("ifcsIF",v|'s'*!v)](y))Ril(pad(x,y))
+X2(dlr,Rs(I v=xv;P(v-(C)v,ed(y))G(&csti,cF,cC,cSb,prsI,prsF,ed)[si("ifcsIF",v|'s'*!v)](y))Ril(pad(x,y))
  Rc(C ch=xv;P(ch=='D'||ch=='d',ptD(y))P(ch=='T'||ch=='t',ptT(y))P(ch=='P'||ch=='p',ptP(y))et(y))R_(et(y)))
 X1(sqzZ,R_(x)/*RG(F(xn,P(xg&-2,x))cB(x))*/
  RH(F(xn,P(xh-(G)xh,x))cG(x))

@@ -48,10 +48,12 @@ Z U nkq(A k/*0*/)_(UC u=_t(k);P(_tP(k)||u==tS||u==tC,0)P(LH(tB,u,tF),2*_n(k))P(u
 Z V JK(A k/*1*/);
 //a keyed table is written as its unkeyed table (0!t), an array of rows, as q; table keys with other values are 'type, as q
 Z A jkt(A x/*0*/)_(A k=xx,v=xy;P(!_tM(v),et0())aM(cat(_x(k),_R(_x(v))),cat(_y(k),_R(_y(v)))))
-Z U nx(A x/*0*/){X(Ri(nl(xv))Rl(nl(*xL))Rc(C c=xv;nC(&c,1))Rf(F v=*xF;P(JI(v),nl((L)v))P(v-v!=0,4)C b[32];sf(b,*(L*)&v)-b)Rm(P(_tM(xx),A y=jkt(x);P(!y,jf=1;0)nX(y))nxe(xx)+nxe(xy)-1-!_N(xx)+nkq(xx))Ru(4)RC(nC(xC,xn))
- RMT_C(nxe(x))R_(A y=str(xR);P(!y,jf=1;0)nX(y)))}
+//a monadic verb is written as its text, "-:", as q and as a dyadic verb is (#83 Q4; it wrote true, which reads back as 1), so it takes
+//the default case with the other functions; :: is null
+Z U nx(A x/*0*/){X(Ri(nl(xv))Rl(nl(*xL))Rc(C c=xv;nC(&c,1))Rf(F v=*xF;P(JI(v),nl((L)v))P(v-v!=0,4)C b[32];sf(b,*(L*)&v)-b)Rm(P(_tM(xx),A y=jkt(x);P(!y,jf=1;0)nX(y))nxe(xx)+nxe(xy)-1-!_N(xx)+nkq(xx))RC(nC(xC,xn))
+ RMT_C(nxe(x))R_(P(x==au,4)A y=str(xR);P(!y,jf=1;0)nX(y)))}
 Z A Jx(A x/*0*/){X(Rm(P(_tM(xx),A y=jkt(x);I(y,JX(y))E(jf=1);x)*s++='{';F(xN,*s=',';s+=!!i;JK(ii(xx,i));*s++=':';JX(ii(xy,i)))*s++='}';x)Rf(F v=*xF;s=JI(v)?sl(s,(L)v):v-v!=0?MC(s,"null",4)+4:sf(s,*(L*)&v);x)Ri(s=sl(s,xv);x)
- Rl(Jl(*xL);x)Rc(C c=xv;JC(&c,1);x)RC(JC(xC,xn);x)Ru(P(!xv,s=MC(s,"null",4)+4;x)U n=4+!xv;MC(s,xv?"true":"false",n);s+=n;x)R_(I(xtMT,*s++='[';F(xN,I(i,*s++=',')JX(ii(x,i)))*s++=']')E(A y=str(xR);I(y,JX(y))E(jf=1))x))}
+ Rl(Jl(*xL);x)Rc(C c=xv;JC(&c,1);x)RC(JC(xC,xn);x)R_(I(xtMT,*s++='[';F(xN,I(i,*s++=',')JX(ii(x,i)))*s++=']')J(x==au,s=MC(s,"null",4)+4)E(A y=str(xR);I(y,JX(y))E(jf=1))x))}
 Z U nX(A x/*1*/)_(U n=nx(x);x(0);n)
 Z V JX(A x/*1*/){Jx(x);x(0);}
 Z V JK(A k/*1*/){B q=jkq(_t(k));I(q,*s++='"')JX(k);I(q,*s++='"')}

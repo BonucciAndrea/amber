@@ -1334,7 +1334,12 @@ t[`trainOfFunctions;((+;-)/[1;2];(+;-;*)[5;2];(-:;%:)@4);(0;-3;2.0)]
 t[`vcondLength;{*"\n"\.[{`k@. x};,x;{x}]}'("?[1 0 1;1 2;9]";"?[1 0 1;9;1 2]";"?[1 0 1;(1;2);9]";"?[0 1 1 0;1 2;5]";"?[!0;1 2;5]";"?[1 0 1;\"ab\";\"xyz\"]");6#,"'length"]
 tv[`vcondSpliceOther;"?[0 1 2;1 2;9]";0 9 2]
 
-hexpect[849]
+
+/ ---- JSON writes a monadic verb as its text, as q and as a dyadic verb (#83 Q4); it wrote true, which reads back as 1 ----
+t[`jsonMonadText;(`j@(-:);`j@(#:);`j@(-:;1);`j@`a`b!(-:;+);`j@(::;*:));("\"-:\"";"\"#:\"";"[\"-:\",1]";"{\"a\":\"-:\",\"b\":\"+\"}";"[null,\"*:\"]")]
+t[`jsonMonadBack;`j?`j@(-:);"-:"]
+
+hexpect[851]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

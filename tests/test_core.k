@@ -1142,6 +1142,21 @@ t[`rangeKeyTwo;`k@(!2)!3 4;"0 1!3 4"]
 t[`joinEmptyGenericProto;`k@'((0#,1 2),0#,"ab";(0#,,0N),0#,,();(0#,1 2),();(),0#,"ab");("0#,0N 0N";"0#,,0N";"0#,0N 0N";"0#,\"  \"")]
 t[`joinEmptyGenericDictCmp;`k@'(((0#,1 2)!())=(0#`)!!0;((0#,1 2)!0#0n)<(0#`)!!0);2#,"(0#`)!!0"]
 
+/ ---- a train (a list of two or three functions) whose element fails passes the error on: the hook or fork applied the next element to the error (a crash) ----
+t[`trainElementError;{*"\n"\.[.:;,x;{x}]}'("({`a+x};{`b+x})@!0";"({`a+x};{`b+x}) 2";"({`b+x};-;+) 5";"(+;-;{`b+x}) 5";"(-;{`b+x})[1;2]";"({`b+y};-;+)[1;2]";"(+;-;{`b+y})[1;2]");7#,"'type"]
+/ ---- a train owns its arguments as _1/_2 do: a failing element must not free the borrowed left argument (hook or fork); a heap int argument (0N, a long) was freed by the hook-or-index test ----
+t[`trainLeftArgKept;{a:1+!3;{.[{(-;{`b+x})[x;2]};,x;{x}]}[a]'!3;{.[{(+;-;{`b+y})[x;2]};,x;{x}]}[a]'!3;a}[];1 2 3]
+t[`trainHeapIntArg;({#?{(+;-) 0N+0*x}'!x}2000;{#?{[v;i](+;-) v}[x]'!200}2000000000000000000);1 1]
+t[`trainHeapIntErr;({#?{[v;i].[{(+;{`b+x}) x};,v;{x}]}[x]'!200}0N;#?{.[{({`a+x};{`b+x}) x};,0N;{x}]}'!100);1 1]
+
+/ ---- ?[c;a;b] with c of 0s and 1s is q's vector conditional, with no library loaded ----
+tv[`vcondAtoms;"?[1 0 1;1;9]";1 9 1]
+tv[`vcondList;"?[1 0 1;1 2 3;9]";1 9 3]
+tv[`vcondEmpty;"?[!0;0;0]";!0]
+tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
+/ the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
+tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
+
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

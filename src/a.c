@@ -976,13 +976,15 @@ ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[
  * tables (v1/v2) by its verb index, so it never projects; any other function
  * element (lambda, projection, composition, derived verb) goes through _1/_2.
  * Elements are borrowed from x (freed together with x by the caller); the
- * argument(s) are consumed, exactly like _1/_2. */
+ * arguments are owned as by _1/_2 and ap1/ap2: trn1 consumes y, trn2 borrows
+ * its left argument y and consumes z. An element that fails frees what is
+ * still held and passes the error (0) on rather than applying to it. */
 Z I istrain(A x){if(_t(x)!=tA)return 0;U m=_n(x);if(m!=2&&m!=3)return 0;A*e=_A(x);for(U i=0;i<m;i++)if(!TU(_t(e[i])))return 0;return(I)m;}
 Z A ap1(A f,A y){UC t=_t0(f);if(t==tu||t==tv)return v1[_v(f)](y);return _1(f,y);}
 Z A ap2(A f,A y,A z){UC t=_t0(f);if(t==tu||t==tv)return v2[_v(f)](y,z);return _2(f,y,z);}
-Z A trn1(A x,A y,I m){A*e=_A(x);if(m==2){A g=ap1(e[1],_R(y));return ap2(e[0],y,g);}A f=ap1(e[0],_R(y)),h=ap1(e[2],y);return ap2(e[1],f,h);}
-Z A trn2(A x,A y,A z,I m){A*e=_A(x);if(m==2){A g=ap1(e[1],z);return ap2(e[0],y,g);}A l=ap2(e[0],_R(y),_R(z)),r=ap2(e[2],y,z);return ap2(e[1],l,r);}
-A2(_1,/*01*/{I tn=istrain(x);if(tn&&!(_tz(y)&&gl(y)>=0&&gl(y)<(I)_n(x)))return trn1(x,y,tn);}P(!xtt,i1(x,y))U k=xK;P(1<k,k==2&&!xtp?prj(x,A8(y,GAP),2):prj(x,&y,1))
+Z A trn1(A x,A y,I m){A*e=_A(x);if(m==2){A g=Ny(ap1(e[1],_R(y)));return y(ap2(e[0],y,g));}A f=Ny(ap1(e[0],_R(y))),h=N(ap1(e[2],y),mr(f));A r=ap2(e[1],f,h);mr(f);return r;}
+Z A trn2(A x,A y,A z,I m){A*e=_A(x);if(m==2){A g=N(ap1(e[1],z));return ap2(e[0],y,g);}A l=Nz(ap2(e[0],y,_R(z))),r=N(ap2(e[2],y,z),mr(l));A v=ap2(e[1],l,r);mr(l);return v;}
+A2(_1,/*01*/{I tn=istrain(x);if(tn&&!(_tz(y)&&gl_(y)>=0&&gl_(y)<(I)_n(x)))return trn1(x,y,tn);}P(!xtt,i1(x,y))U k=xK;P(1<k,k==2&&!xtp?prj(x,A8(y,GAP),2):prj(x,&y,1))
  X(Ro(run(x,&y,1))Rp(P(k>7,er(y))I m=xn-1,j=0;Ab8;F(m,b[i]=xA[i+1]==GAP&&!j?j++,y:_R(xA[i+1]))I l=MAX(0,1-j);MC(b+m,&y,8*l);_8(xx,b,m+l))
   Rq(_1(xx,N(_1(xy,y))))Rr(w1(xE,xx,y))Rs(sym1(xv,y))Ru(v1[xv](y))Rw(AK(xv-1<3u&&yK==2?1:ytU?yK:1,AW(xv,aV(tr,1,&y))))Rx(ext(x,&y,1))R_(et(y)))0)
 A3(_2,/*001*/{I tn=istrain(x);if(tn)return trn2(x,y,z,tn);}P(!xtt,i2(x,y,z))A a[]={y,z};U k=xK;P(2<k,yR;prj(x,a,2))

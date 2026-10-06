@@ -83,7 +83,7 @@ Z A insL(A x,L i,L j,A y/*1ij0*/)_(
 Z B vc01(A x,A y,A z){U n;P(_tP(x)||!LH(tB,_t(x),tL),0)n=_n(x);P(!(_tP(y)||_tt(y)||_N(y)==n)||!(_tP(z)||_tt(z)||_N(z)==n),0)
  UC t=_t(x);F(n,L v=t==tB?(L)(((CO UC*)_V(x))[i>>3]>>(i&7)&1):t==tG?(L)((CO G*)_V(x))[i]:t==tH?(L)((CO H*)_V(x))[i]:t==tI?(L)((CO I*)_V(x))[i]:((CO L*)_V(x))[i];P(v!=0&&v!=1,0))return 1;}
 A3(ins3,/*100*/
- P(vc01(x,y,z),K("{[c;a;b]b:$[isat b;(#c)#b;b];$[(#c)=#b;;`err\"length\"];w:&c;@[b;w;:;$[isat a;a;(#c)=#a;a w;`err\"length\"]]}",x,_R(y),_R(z)))   //2.7: q's vector conditional ?[c;a;b] when c is booleans
+ P(vc01(x,y,z),K("{[c;a;b]t:{(\"a\"<*$@x)&~`m=@x};b:$[t b;(#c)#b;b];$[(#c)=#b;;`err\"length\"];w:&c;@[b;w;:;$[t a;a;(#c)=#a;a w;`err\"length\"]]}",x,_R(y),_R(z)))   //2.7: q's vector conditional ?[c;a;b] when c is booleans; t is amber.k's isat, inlined so the bare core needs no library
  Xmt(et(x))
  Zmt(z=enl(zR);z(ins3(x,y,z)))
  XM(P(!ztM,et(x))P(!mtc_(xx,zx),ed(x))y=prj(QUE,A8((A)GAP,yR,GAP),3);A u=Nx(y(e2(y,xy,_R(zy))));x(aM(_R(xx),u)))

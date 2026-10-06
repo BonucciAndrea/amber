@@ -546,7 +546,13 @@ ta[`a521;"attr value group `s#1 1 2";"`"]   / group values of s
 ta[`a522;"attr key group `s#1 2!4 3";"`"]   / group of s dict
 ta[`a572;"attr key group `a`b`c!`s#1 1 2";"`s"]   / group of dict, s values
 ta[`a573;"attr key group `a`b`c!`g#2 1 2";"`u"]   / group of dict, g values
+ta[`a535;"attr (`s#()),()";"`s"]   / join s empty general, empty general
+ta[`a536;"attr (`u#()),()";"`u"]   / join u empty general, empty general
+ta[`a537;"attr (),`s#()";"`"]   / join empty general, s empty general
+ta[`a538;"attr (`s#()),`s#()";"`s"]   / join s empty general, s empty general
+ta[`a539;"attr (),`s#(1 2;3 4)";"`s"]   / join empty general, s general
+ta[`a540;"attr (),`s#1 2";"`s"]   / join empty general, s ints
 
-hexpect[525]
+hexpect[531]
 hreport"AMBER ATTRIBUTES vs q"
 $[FAILN;`exit 1;]

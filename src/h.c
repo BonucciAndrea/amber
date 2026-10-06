@@ -64,7 +64,7 @@ A2(cat10,
  Ymt(P(ytm&&_tM(yx)&&xtM&&!_tM(xx),et(x))psh(x,yR))
  P(xtM||ytM,P(!yN,x)P(!xN,x(yR))P(xtT||ytT,x=N(blw(x));y=Nx(blw(yR));cat11(x,y))P(!xtM||!ytM,et(x))P(!mtc_(xx,yx),ed(x))A z=e2f(cat,xy,_R(yy));x(z?aM(_R(xx),z):0))Q(0);0)
 A2(cat11,y(cat10(x,y)))
-A2(cat,/*01*/P(!_tP(x)&&_t(x)==tm&&_at(x)==1,y(et0()))P(!_tP(x)&&_t(x)==tA&&!_n(x)&&_t(xx)==tC&&!_n(xx)&&!_tP(y)&&_t(y)<tM,y)   /*2.7: (),y is y; not 0#,1 2 (its prototype joins)*/cat11(xR,y))   //2.7: a dict made `s takes no more keys, as in q ('type)
+A2(cat,/*01*/P(!_tP(x)&&_t(x)==tm&&_at(x)==1,y(et0()))P(!_tP(x)&&_t(x)==tA&&!_n(x)&&_t(xx)==tC&&!_n(xx)&&!_tP(y)&&_t(y)<tM,I(_t(y)==tA&&!_n(y)&&_at(y)-_at(x),y=mut(y);_at(y)=_at(x))y)   /*2.7: (),y is y, but ()'s attribute when y is empty too, as q; not 0#,1 2 (its prototype joins)*/cat11(xR,y))   //2.7: a dict made `s takes no more keys, as in q ('type)
 A2(psh,/*11*/Q(xtMT);U n=xN;P(!n,enl(x(y)))
  P(xtE,psh(gZ(x),y))   //a range has no room to push into: its items do (sup below keeps it a range, so it looped)
  P(xtG&&yti&&yv==(G)yv||xtC&&ytc,apc(x,yv))

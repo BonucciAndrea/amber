@@ -536,7 +536,7 @@ Some table and dict rules:
   `reverse`, appends, indexing, arithmetic and amends drop it.
 * `` update `g#a from t `` and `` select `s#a from t `` work, and the column keeps its name.
 
-`tests/test_attr.k` has 508 of these cases with q's answers written in, and the session fuzzer ran
+`tests/test_attr.k` has 531 of these cases with q's answers written in, and the session fuzzer ran
 12,000 random ones against q with no difference.
 
 ### Why it makes search faster

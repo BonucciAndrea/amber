@@ -37,6 +37,11 @@ so `xasc`/`s#` work unchanged.
 `short` (`h`), `real`/float32 (`e`), `byte` (`x`, `0x…`), `guid` (`g`, `0Ng`), plus the full
 set of typed nulls/infinities (`0Nh 0Ne 0Wp 0Nd …`). Amber has int (64-bit), float, char and symbol
 only, with `0N`/`0n` nulls; a `b` literal such as `101b` is an int vector.
+- **A `b` literal next to a strand.** Before an int strand it is indexed by it, as in q (`01b 1`
+  is `01b[1]`, `1`; q gives `1b`; `01b 1 2` is `1 0N`). Before a float strand it joins it, and
+  after any strand it is joined to it: `01b 1 2.5` is `0.0 1.0 1.0 2.5` (q: `'type`) and `1 01b` is `1 0 1` (q: `1`).
+  Both joins are ngn/k's reading, which Amber's core follows, and are kept so that literals that
+  work today keep their meaning (issue #83, Q7).
 
 ## 3. qSQL (the template syntax): mostly done
 The `select … by … from … where …` template now works **bare** (no `sel"…"` wrapper), along
@@ -133,6 +138,13 @@ grouped pairs with `fin.k`'s group index
   attribute), and general **attribute preservation through ops**. Apart from sorts, the flag
   is dropped whenever an op builds a new vector, whereas q keeps/drops attributes by defined
   per-op rules.
+- **A general list of mixed types sorts in Amber's order of types, not q's.** `<`, `asc`,
+  `iasc` and the `` `s `` check order it by type first, then by value, with the types in ngn/k's
+  order: chars, floats, ints, symbols. q puts longs first, then floats, chars and symbols. So
+  `` asc (1;"a";`b;2.5) `` is `` ("a";2.5;1;`b) `` (q: `` `s#(1;2.5;"a";`b) ``), and
+  `` `s#(2.5;1) `` succeeds where `` `s#(1;2.5) `` is `'s-fail`, the other way round from q.
+  Kept because the `` `s `` check has to agree with the grade that a sorted find relies on
+  (issue #83, Q14).
 
 ## 7. Enumerations, foreign keys, linked columns
 `` `sym$`` enumeration domains, `.Q.en`, foreign keys (`` `t$`` and dotted `order.customer.name`

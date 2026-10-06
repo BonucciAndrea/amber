@@ -21,7 +21,7 @@ qnw:{[r;src]$[(r 2)&qnest src;(src," where ",r 1;"");(src;$[r 2;r 1;""])]}   / (
 / last-of-each-column aggregation, used for a `by` with no explicit projection
 qlastf:{[c]{[c;x]last x c}[c]}
 qcut:{[s]$[~|/s=",";,trim s;[c:qblank s;d:+\((c="(")|(c="[")|c="{")-(c=")")|(c="]")|c="}";b:0,&(c=",")&d=0;trim'{$[#x;$[","=*x;1_x;x];x]}'b _ s]]}  / comma-split at depth 0, outside strings
-qname:{[s]$[~|/s=":";("";trim s);[c:qblank s;d:+\((c="(")|(c="[")|c="{")-(c=")")|(c="]")|c="}";i:&(c=":")&d=0;$[#i;(trim(*i)#s;trim(1+*i)_s);("";trim s)]]]}  / name:expr (a : in a string, a `symbol or brackets is not the name's)
+qname:{[s]$[~|/s=":";("";trim s);[c:qblank s;j:&c=":";p:c j-1;$[|/(p<":")&p>"/";[n:c j+1;$[|/(p<":")&(p>"/")&(n<":")&n>"/";[c:qlit c;j:&c=":"];]];];d:+\((c="(")|(c="[")|c="{")-(c=")")|(c="]")|c="}";i:j@&0=d j;$[#i;(trim(*i)#s;trim(1+*i)_s);("";trim s)]]]}  / name:expr (a : in a string, a `symbol, a time literal or brackets is not the name's; qlit only when a : has a digit on each side, as one in a literal has)
 qword:{((x>64)&x<91)|((x>96)&x<123)|((x>47)&x<58)|x=95}                            / word-char mask
 qsimple:{(0<#x)&&/qword 0+x}                                                       / is a bare identifier
 qidsub:{[cols;s]$[0=#s;s;,/{[cols;t;f]$[f&in[`$t;cols];"(x`",t,")";f&(t~,"i");$[in[qI;cols];"(x qI)";"(!#x)"];t]}[cols]'[bnd _ s;w bnd:&differ w:qword 0+qblank s]]}   / a bare i is the row number, as q's virtual column; words in "strings" and `symbols are left alone

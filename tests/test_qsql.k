@@ -626,5 +626,24 @@ tqa[`byAfterWhereDigit; "select c:count i by 0+|n from TU where n>2"; KV; (3 4;1
 tq[`byAfterWhereDigitX;  "exec n by 0+|n from TU where n>2";              3 4!(,4;,3)];
 t[`byAfterWherePeach; .[{peach[x;1 2 3 4]};,{#sel"select c:count m by n mod 2 from TL where n>1"};{x}]; 2 2 2 2]
 
+/ a : inside a time or timestamp literal is not an item's name:expr, as q (an unnamed item holding one was split there)
+TT:([]time:09:30:00.000+60000*0 1 6 11;n:1 2 3 4)
+TV:([]ts:2026.01.02D09:00 2026.01.02D09:30 2026.01.02D10:00 2026.01.02D10:30;n:1 2 3 4)
+tqa[`tlitBy;        "select c:count n by time>09:35:00.000 from TT"; KV;       (0 1;2 2)];
+tqa[`tlitByShort;   "select c:count n by time>09:35 from TT"; KV;              (0 1;2 2)];
+tqa[`tlitByLeft;    "select c:count n by 09:35:00<time from TT"; KV;           (0 1;2 2)];
+tqa[`tlitByWithin;  "select c:count n by time within 09:31 09:40 from TT"; KV; (0 1;2 2)];
+tqa[`tlitByNamed;   "select c:count n by g:time>09:35 from TT"; KV;            (0 1;2 2)];
+tqa[`tlitSel;       "select b:time>09:35, time>09:35:00.000 from TT"; {. +x};  (0 0 1 1;0 0 1 1)];
+tq[`tlitExec;       "exec time>09:35:00.000 from TT";                         0 0 1 1];
+tq[`tlitExecBy;     "exec count n by time>09:35 from TT";                     0 1!2 2];
+tqa[`tlitUpdBy;     "update c:count n by time>09:35 from TT"; {(+x)`c};        2 2 2 2];
+tqa[`tlitStampBy;   "select c:count n by ts>2026.01.02D09:30 from TV"; KV;     (0 1;2 2)];
+tq[`tlitStampExec;  "exec ts>2026.01.02D09:30:00.000000000 from TV";          0 0 1 1];
+/ such an item takes Amber's name, the first name in it (x if it starts with a literal), not q's x: pinned on purpose
+tqa[`tlitSelName;   "select time>09:35 from TT"; CL;                          ,`time];
+tqa[`tlitSelNameX;  "select 09:35<time from TT"; CL;                          ,`x];
+tqa[`tlitUpdName;   "update time>09:35 from TT"; CL;                          `time`n];
+
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

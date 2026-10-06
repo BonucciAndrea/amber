@@ -1339,7 +1339,12 @@ tv[`vcondSpliceOther;"?[0 1 2;1 2;9]";0 9 2]
 t[`jsonMonadText;(`j@(-:);`j@(#:);`j@(-:;1);`j@`a`b!(-:;+);`j@(::;*:));("\"-:\"";"\"#:\"";"[\"-:\",1]";"{\"a\":\"-:\",\"b\":\"+\"}";"[null,\"*:\"]")]
 t[`jsonMonadBack;`j?`j@(-:);"-:"]
 
-hexpect[851]
+
+/ ---- an empty item in parentheses is ::, as in ngn/k (#83 Q6); it was 'parse. ( ) is (), as () is, and an empty argument in [] is still elided ----
+t[`parenEmptyItem;{*"\n"\.[{`k@. x};,x;{x}]}'("(1;;2)";"(;)";"(1;)";"(;1)";"(;;)";"(1;(;))";"{(;x)}3";"(1;\n2)";"( )");("(1;::;2)";"(::;::)";"(1;::)";"(::;1)";"(::;::;::)";"(1;(::;::))";"(::;3)";"(1;::;2)";"()")]
+t[`parenEmptyKept;{*"\n"\.[{`k@. x};,x;{x}]}'("()";"(1;2)";"{x+y}[1;]2";"[1;;2]";"(1;2";"(1;;2");("()";"1 2";,"3";,"2";"'parse";"'parse")]
+
+hexpect[853]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

@@ -275,6 +275,11 @@ behaviour shows up as a test failure rather than a silent regression.
   the expression silently evaluates to a discarded projection `f[b;]`, with no error and no output.
   Bit this repo's own qSQL suite (42 of 93 cases stopped running while the suite still reported
   "ALL TESTS PASSED"); `tests/harness.k`'s `hexpect[n]` now guards against it.
+- **A newline inside parentheses separates items, as in ngn/k, so `;` at the end of a line leaves
+  an empty item.** An empty item is `::` (issue #83, Q6), so in a script `x:(1;` / ` 2;` / ` 3)`
+  on three lines is `(1;::;2;::;3)`, where q reads `(1;2;3)` (and 2.7.2 gave `'parse`); a `;` at
+  the start of the next line does the same. Over several lines, write the items without `;`
+  (`(1` / ` 2` / ` 3)` is `1 2 3`). A table, `([]a:1 2;` / ` b:3 4)`, already reads as in q.
 - **A bare `/` on a line of its own opens a block comment** that runs to the next line starting
   with `\` (standard K). Since **2.0.0** an *unterminated* one (no closing `\` before EOF) raises a
   clean parse error instead of silently truncating the file; a properly-closed `/ … \` block is

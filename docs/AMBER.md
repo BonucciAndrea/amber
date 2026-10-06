@@ -970,15 +970,15 @@ same convention as q’s `time`. The q dotted temporal accessors map to plain Am
 
 | q            | Amber        | meaning                              |
 |--------------|--------------|--------------------------------------|
-| `t.hh`       | `hh t`       | hour of day (0–23)                   |
-| `t.mm`       | `mm t`       | minute of hour (0–59)                |
-| `t.ss`       | `sec t`      | second of minute (`ss` = string-search) |
+| `t.hh`       | `hh t`       | hour of day (0–23; as q's `` `hh$ ``, a negative time keeps its sign: -1 for `-01:00:00.000`) |
+| `t.mm`       | `mm t`       | minute of hour (0–59; -59–0 for a negative time, as q's `` `mm$ ``: -30 for `-01:30:00.000`) |
+| `t.ss`       | `sec t`      | second of minute (`ss` = string-search; signed as `mm`) |
 | `t.minute`   | `minute t`   | minutes since midnight               |
 | `t.second`   | `second t`   | seconds since midnight               |
 | (millis)     | `milli t`    | millisecond (0–999)                  |
 | build        | `hms[h;m;s]` | construct a time                     |
 | parse        | `ptime "HH:MM:SS.mmm"` | string → ms                 |
-| format       | `stime t`    | ms → `"HH:MM:SS.mmm"`                 |
+| format       | `stime t`    | ms → `"HH:MM:SS.mmm"`, every digit of the hours past 99 (`"100:00:00.000"`) |
 
 Bucketing for bars:
 
@@ -1025,6 +1025,8 @@ attributes `sa `ua `pa `ga (set sorted/unique/parted/grouped)   `at (get)  [kern
 kernels    `memb (membership) `gagg (group aggregate) `srt (value sort) `mw (windows)
            `xs (multi-column grade) `aj `wjb `ajs (as-of join)  [2.1: see section 5a]
            `ejx (the rows of an equi-join; amber.k's ej uses it)
+           `hh `mm `sec (hour, minute, second of a time or of ms; amber.k's hh mm sec use them)
+           `tjn (a list of dates, times or timestamps alone as its numbers; temporal.k's tdays uses it)
 moving     mcount msum mavg mprd mvar mdev mmin mmax   (std.k, O(n) prefix)
 math       dot mmu (matrix multiply)                   (std.k)
 parse/ser  parse eval reval ser deser protect          (std.k; text serialise)

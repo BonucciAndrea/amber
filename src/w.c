@@ -222,3 +222,20 @@ A1(ejxC,P(_t(x)-tA||_n(x)-2,et(x))A a=_A(x)[0],b=_A(x)[1];
 #undef EJP
 #undef EJQ
 #undef EJF
+// ---- `hh `mm `sec: the hour of day, the minute of the hour, the second of the minute, in C (amber.k's hh, mm and sec call them);
+// last in the link, so they move no other code ----
+//Of a time, an int or an int vector of ms, as q's `hh$ `mm$ `ss$: the units of u ms toward zero and their remainder by m toward zero
+//(0 to 23 hours, -23 to 0 for a negative time); 0N stays 0N. The loops take the units of 32-bit values in integers, with h-m*(h/m)
+//for h%m so clang vectorises them; past 32 bits d takes them as amber.k's `i$x%u did, from the double quotient. mm and sec were
+//amber.k's code alone, whose sign test and type tests cost more per call than the floor they replaced (mm' of times).
+#define TPC(f,d,l,u,m) ZN L d(L v)_(v==NL?NL:(L)((F)v/(F)u)%m) \
+ ZN L l(CO L*RES p,L*RES r,U n)_(L o=0;F(n,L v=p[i];I w=(I)v;I h=w/u;h-=m*(h/m);r[i]=v==NL?NL:(L)h;o|=(v!=w)&(v!=NL))o)   /*nonzero: a value past 32 bits*/ \
+ A1(f,UC t=_t(x);P(t==ttm,ai(d((I)x)))P(_tz(x),L v=gl_(x);x(az(d(v))))P(!_tZ(x),et(x))I(t==tE,x=gZ(x);t=_t(x))I(t-tI&&t-tL,x=cL(x);t=tL)   /*a range (!n) expanded first*/ \
+  U n=xn;A z=aL(n);L*RES r=_V(z);P(t==tI,CO I*RES p=_V(x);F(n,I h=p[i]/u;r[i]=h-m*(h/m))x(z)) \
+  CO L*RES p=_V(x);I(l(p,r,n),F(n,L v=p[i];I(v!=(I)v,r[i]=d(v))))x(z))
+TPC(hhC,hhd,hhL,3600000,24)
+TPC(mmC,mmd,mmL,60000,60)
+TPC(secC,secd,secL,1000,60)
+#undef TPC
+//`tjn (temporal.k's tdays): a general list of dates, of times or of timestamps alone, as its numbers (a.c tjn); anything else as it is
+A tjn(A);A1(tjnC,A y=tjn(x);mr(x);y)

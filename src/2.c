@@ -393,8 +393,8 @@ Z A tari(A x,A y,U op)_(UC ka=_t(x),kb=_t(y);B qa=ka>=tdt,qb=kb>=tdt;P(!op,y)
   P(!(qa&&qb)&&(qa?tval(y):tval(x))==NL,ed(y)))
  L va=tval(x),vb=tval(y);mr(y);
  P(op>=8,ai((I)(op==8?va<vb:op==9?va>vb:va==vb)))
- L vv=op==1?va+vb:op==2?va-vb:op==3?va*vb:op==6?MIN(va,vb):op==7?MAX(va,vb):va;
- UC rk=(qa&&qb)?(op==2?0:ka):(qa?ka:kb);
+ L vv=op==1?(L)((W)va+(W)vb):op==2?(L)((W)va-(W)vb):op==3?va*vb:op==6?MIN(va,vb):op==7?MAX(va,vb):va;
+ UC rk=(qa&&qb)?(op==2?0:ka):(qa?ka:kb);P(rk==tdt&&vv-(I)vv,ez0())   //a date is 32 bits of days: past them 'limit, as the literal (it wrapped)
  tmk(rk,vv))
 A2(ari,C t=xt,u=yt;U v=1<<t|1<<u;
  P(t>=tdt||u>=tdt,P(xtt&&ytt,tari(x,y,f))e2(av+f,x,y))  //a temporal atom with a list: item by item (tari read the list as one int)

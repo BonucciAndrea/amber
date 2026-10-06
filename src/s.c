@@ -49,6 +49,9 @@ C*sf(C*s,L d)_(W x=d,m=x<<12>>12;I e=x<<1>>53;I(x>>63&&!(e==2047&&m),*s++='-')P(
 
 A1(str0,Q(xtC);U n=xn;x=AN(n,aa(n+1,x));xC[n]=0;x)
 Z A ktx(A r)_(P(!r,0)P(_t(r)==tc,enl(r))P(_t(r)-tC,et(r))r)   //a formatter's result: text, or 'type
+//nlt: ^ of an atom that is not a number (1.c's nul). A date or a time is 0, having no null (0N makes midnight); a timestamp is 1 for
+//0N's ns, as str prints it; any other atom eql(cn[t],x), as before. Kept out of nul, here after o.c, so later code keeps its place.
+NI A nlt(A x)_(UC t=_t(x);P(t==tdt||t==ttm,ai(0))P(t==tnp,L v_=*(L*)_V(x);x(ai(v_==NL)))eql(cn[t],x))
 X1(str,Rilf(A y=aC(24);TY(sf)*f=xtf?sf:sl;AN(f(yC,gl(x))-yC,y))R(tdt,ktx(K1("dstr",ai((I)x))))R(ttm,ktx(K1("stime",ai((I)x))))R(tnp,L v_=*(L*)_V(x);x(ktx(K1("pstr",al(v_)))))Rs(aCz(su(xv)))Rc(enl(x))RU(kst(x))R_(e1f(str,x)))
 V hexC(S s,U n,C*r){Z S q="0123456789abcdef";F(n,C c=*s++;*r++=q[(UC)c>>4];*r++=q[c&15])}
 X1(hex,RmMA(e1f(hex,x))RC(A y=aC(2*xn);Mx(hexC(xV,xn,yV))y)R_(et(x)))

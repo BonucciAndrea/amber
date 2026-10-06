@@ -346,18 +346,28 @@ hms:{[h;m;s]1000*s+(60*m)+3600*h}                  / build a time from h m s
 / Deliberately NOT the nanosecond tags (`p timestamp, `n timespan): `i$ would
 / truncate them, and a silently wrong hour is worse than an error. There is no
 / `j$ cast in this dialect -- it raises -- so there is nothing wider to use.
-tnum0:{$[|/(@x)=`t`T`d`D`u`U`v`V;`i$x;x]}
-hh:{_((tnum0 x)%3600000)}                          / hour of day      (q time.hh)
-mm:{60!_((tnum0 x)%60000)}                         / minute of hour   (q time.mm)
-sec:{60!_((tnum0 x)%1000)}                         / second of minute (q time.ss; ss=string-search)
+/ (`u and `v are Amber's verb types, not q's minute and second; Amber has no typed list of times or dates.) A general list
+/ of times, as a strand of times is (01:00:00.000 02:30:00.000), or of dates, takes `i$ too, and one that holds lists or dicts
+/ of them goes item by item, a dict by its values, if all the atoms in it are of one kind, times or dates (tnumk finds their
+/ types); an empty one is !0; one that mixes kinds, or times and ints, at any depth stays as it was.
+tnumk:{$[`m~@x;tnumk@.x;`A~@x;[t:@'x;i:t in`A`m;?(?t@&~i),$[|/i;,/tnumk'x@&i;0#`]];,@x]}   / into general lists and dicts only: no list per atom
+tnumc:{$[`m~@x;(!x)!tnumc@.x;`A~@x;$[&/(@'x)in`t`d;`i$x;tnumc'x];`i$x]}
+tnum0:{$[|/`t`d=@x;`i$x;~|/`A`m=@x;x;~#x;$[`A~@x;!0;x];[k:tnumk x;$[(1=#k)&&/k in`t`d;tnumc x;x]]]}
+/ hh mm sec: as q's `hh$ `mm$ `ss$, a negative time keeps its sign (hh -1, mm -30 for -01:30:00.000): tpart takes the units
+/ of u ms and their remainder by m, both toward zero; a null stays null. hh mm sec of a time, an int or an int vector take `hh
+/ `mm `sec (src/w.c), one pass in C, before anything else; of a float or a float list none below 0 the floor as before (the same there, in fewer passes).
+tpart:{[u;m;x]n:^x;(0N*n)+(~n)*(1-2*x<0)*m!_(x|-x)%u}   / nulls by arithmetic, so a list of lists or a dict of them too
+hh:{$[|/`t`i`I=@x;`hh x;[x:tnum0 x;$[|/`i`I=@x;`hh x;tpart[3600000;24;x]]]]}   / hour of day      (q time.hh)
+mm:{$[|/`t`i`I=@x;`mm x;[x:tnum0 x;$[|/`i`I=@x;`mm x;$[|/`f`F=@x;&/~x<0;0];60!_x%60000;tpart[60000;60;x]]]]}   / minute of hour   (q time.mm)
+sec:{$[|/`t`i`I=@x;`sec x;[x:tnum0 x;$[|/`i`I=@x;`sec x;$[|/`f`F=@x;&/~x<0;0];60!_x%1000;tpart[1000;60;x]]]]}    / second of minute (q time.ss; ss=string-search)
 milli:{1000!tnum0 x}                               / millisecond      (q time.ms)
 minute:{_((tnum0 x)%60000)}                        / minutes since midnight (q time.minute)
 second:{_((tnum0 x)%1000)}                         / seconds since midnight (q time.second)
 z2:{-2$"0",$x}
 z3:{-3$"00",$x}
-stime1:{$[^x;"0N";x<0;"-",stime1[-x];(z2 hh x),":",(z2 mm x),":",(z2 sec x),".",z3 milli x]}   / a negative time is "-" and its size, as in q
-stime:{x:tnum0 x;$[|/(@x)=`i`j;stime1 x;stime1'x]} / time -> "HH:MM:SS.mmm"
-ptime:{$["-"~*x;-ptime[1_x];[p:"."\x;t:`I$":"\*p;m:$[1<#p;`I$3#(p 1),"000";0];(3600000*t 0)+(60000*t 1)+(1000*t 2)+m]]}   / "-HH:MM:SS.mmm" is negative
+stime1:{$[^x;"0N";x<0;"-",stime1[-x];[t:tnum0 x;h:$_t%3600000;($[1=#h;"0",h;h]),":",(z2 mm t),":",(z2 sec t),".",z3 1000!t]]}   / a negative time is "-" and its size, as in q; every digit of the hours (q prints ** past 99), so the text reads back as the same time; tnum0 once
+stime:{$[`i~@x;stime1 x;[x:tnum0 x;$[|/(@x)=`i`j;stime1 x;stime1'x]]]} / time -> "HH:MM:SS.mmm" (HHH past 99 hours); an int (as $ of a time gives it) at once
+ptime:{`i$"T"$x}                                  / "HH:MM:SS.mmm" -> ms, as "T"$ reads it ("-" for a negative time; text that is not a time 'parse)
 bar:{[w;u;t]xbar[$[(^w)|^u;0N;w*u];t]}                        / w u-unit bars: bar[5;60000;t] = 5-min bars(ms)
 minbar:{[w;t]60000*xbar[w;minute t]}               / w-minute bar as a time (ms)
 tsym:{[t;c]+@[+t;c,();stime]}                      / render time cols c of table t as HH:MM:SS strings

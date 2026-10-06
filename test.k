@@ -403,18 +403,64 @@ t[`fdivFloat;fdiv[17.5;2];8]
 t[`fdivVector;fdiv[17;5 6];3 2]
 t[`hms;hms[9;30;15];34215000]
 t[`hh;hh hms[9;30;15];9]
+/ hh is the hour of day, as q's `hh$ (issue #62; it gave all the hours, 100 for 100 hours): a negative time keeps its sign
+t[`hhOfDay;hh'(24:00:00.000;23:59:59.999;100:00:00.000;596:31:23.647);0 23 4 20]
+t[`hhNeg;hh'0-(01:00:00.000;00:30:00.000;25:30:00.000);-1 0 -1]
+t[`hhInts;(hh 3600000 90000000 -3600000 0N;hh 0N;hh 1.5e7);(1 1 -1 0N;0N;4)]
+t[`hhVecPaths;(hh 0 3600000 86399999;hh 0 3600000 90000000;hh 0N 3600000;hh 0N 3600000 90000000 0N;hh 3600000 -3600000;hh 0N -3600000;hh 0n 3.6e6);(0 1 23;0 1 1;0N 1;0N 1 1 0N;1 -1;0N -1;0N 1)]
+t[`hhNested;(hh (0N 0;0);hh (0N -3600000;-90000000);hh `a`b!(0N -3600000;360000000));((0N 0;0);(0N -1;-1);`a`b!(0N -1;4))]   / a list of lists and a dict keep their shape
+t[`thhOfDay;thh (100:00:00.000;0-01:00:00.000;10:35:05.000);4 -1 10]
 t[`mm;mm hms[9;30;15];30]
 t[`sec;sec hms[9;30;15];15]
+/ mm and sec of a negative time keep its sign, as q's `mm$ and `ss$ and as hh (a follow-up to #62; mm -01:30 was 30, sec -01:30:15 was 45); a null stays null
+t[`mmSecNeg;(mm 0-01:30:00.000;sec 0-01:30:15.000;mm 0-25:59:59.999;sec 0-25:59:59.999;mm 0-00:00:15.000;sec 0-00:00:00.500);-30 -15 -59 -59 0 0]
+t[`mmSecInts;(mm -361815000 -5415123 361815000 0N;sec -361815000 -5415123 361815000 0N;mm 0N;sec 0N;mm 361815000;tmm 0-01:30:00.000;tss 0-01:30:15.000);(-30 -30 30 0N;-15 -15 15 0N;0N;0N;30;-30;-15)]
+t[`mmSecNested;(mm (-5415123 0;0);sec (-5415123 0;0);mm `a`b!(-5415123;0);mm `a`b!(-5415123 0;0);mm (0N 0;0);hh (0N 0;0);hh `a`b!(0N -5415123;0));((-30 0;0);(-15 0;0);`a`b!-30 0;`a`b!(-30 0;0);(0N 0;0);(0N 0;0);`a`b!(0N -1;0))]   / lists of lists and dicts, item by item
+t[`mmSecFrac;(mm -0.5;sec -0.5;mm -0.5 60000.5;sec -1500.5;hh -0.5);(0;0;0 1;-1;0)]   / a fraction of a ms below 0 is no minute, not 59
+t[`mmSecRagged;(mm (5415123 0;,0);mm (5415123 0;-5415123 0 1);mm `a`b!(5415123 0;,0);sec (5415123 0;,0N));((30 0;,0);(30 0;-30 0 0);`a`b!(30 0;,0);(15 0;,0N))]   / lists of lists of any lengths
+t[`timeAccessorsFast;(mm 5000000000000 -5000000000000 0N 90000;sec 5000000000000 -5000000000000 0N 1500;mm 00:01:00.000;sec 0-00:00:01.000;year (2026.01.01D23:00;2027.01.01D01:00);dow (2026.03.04;2026.03.05);.[year;,(01:00:00.000;02:00:00.000);{(x?"\n")#x}];year 2026.01.01;dow 2026.03.04;thh 0-01:00:00.000;tmm 01:30:00.000 02:45:00.000);(53 -53 0N 1;20 -20 0N 1;1;-1;2026 2027;`Wed`Thu;"'type";2026;`Wed;-1;30 45)]   / the paths in C (`mm `sec `tjn) and the date atom's: as amber.k's code
+/ the time accessors take a general list of times, as a strand of times is (digest #65; they were 'type, in tnum0)
+t[`timeAccessorsList;(hh 01:00:00.000 02:30:00.000;mm 01:00:00.000 02:30:00.000;sec 01:00:00.000 02:30:15.000;hh (01:00:00.000;02:30:00.000);mm 0-(01:30:00.000;00:30:00.000);milli 01:00:00.123 02:30:00.456;minute 01:00:00.000 02:30:00.000;second 01:00:00.000 02:30:00.000);(1 2;0 30;0 15;1 2;-30 -30;123 456;60 150;3600 9000)]
+t[`timeAccessorsMixed;(.[milli;,(01:00:00.000;2026.01.01);{(x?"\n")#x}];.[hh;,(01:00:00.000;3600000);{(x?"\n")#x}]);2#,"'type"]   / one kind only: times with dates or ints stay 'type
+tavc:0   / counts calls of the lambdas in timeAccessorsVerbs
+t[`timeAccessorsVerbs;(.[hh;,(+;-);{(x?"\n")#x}];.[milli;,(+;-);{(x?"\n")#x}];.[second;,(::;-:);{(x?"\n")#x}];.[mm;,(+);{(x?"\n")#x}];.[mm;,({x};{y});{(x?"\n")#x}];.[mm;,(+;+);{(x?"\n")#x}];.[hh;,({tavc+:1;x};{tavc+:1;x});{(x?"\n")#x}]);7#,"'type"]   / `u and `v are verb types in Amber, not q's minute and second
+t[`timeAccessorsVerbsUncalled;tavc;0]   / hh never calls the lambdas above
+t[`timeAccessorsNested;(hh `a`b!01:00:00.000 02:30:00.000;mm (01:30:00.000;(02:00:00.000;03:00:00.000));hh `a`b!(01:00:00.000;(02:00:00.000;03:00:00.000));mm 0#,(::);hh 0#,(::);.[mm;,(01:30:00.000;(02:00:00.000;3600000));{(x?"\n")#x}]);(`a`b!1 2;(30;0 0);`a`b!(1;2 3);!0;!0;"'type")]   / dicts and lists of lists item by item, as q; an empty list is !0
+t[`timeAccessorsDeep;(mm (01:30:00.000 02:00:00.000;,03:00:00.000);.[milli;,(01:00:00.000;(2026.01.01;2026.01.02));{(x?"\n")#x}];.[hh;,`a`b!(01:00:00.000;(2026.01.01;2026.01.02));{(x?"\n")#x}]);((30 0;,0);"'type";"'type")]   / lists of any lengths; one kind at every depth
+t[`timeAccessorsDates;(milli 2026.01.01 2026.02.01;sec 2026.01.01 2026.02.01;minute 2026.01.01 2026.02.01;second 2026.01.01 2026.02.01;mm `a`b!(2026.01.01;2026.02.01);hh 2026.01.01 2026.02.01;milli 2026.01.01);(497 528;9 9;0 0;9 9;`a`b!0 0;0 0;497)]   / a list of dates is read as its days, as a date atom is (q: 'hh, 'ss; `mm$ gives the month)
+/ the date accessors take dates, timestamps and raw days only (digest #104): an int 0N is the null day, as q's `year$0Nd is 0Ni
+/ (year 0N was -25252734927764555, dow 0N `Fri); a time, a float, text or a list of dates and ints is 'type, as q's `year$
+t[`dateAccessorsNull;(year 0N;month 0N;day 0N;dow 0N;year 0 0N 366;dow 0 0N 1;dparts 0N;month `a`b!0N 59);(0N;0N;0N;`;2000 0N 2001;`Sat``Sun;0N 0N 0N;`a`b!0N 2)]
+t[`dateAccessorsType;(.[year;,(2026.01.01;5);{(x?"\n")#x}];.[year;,01:00:00.000;{(x?"\n")#x}];.[month;,1.5;{(x?"\n")#x}];.[dow;,`a;{(x?"\n")#x}];.[day;,"abc";{(x?"\n")#x}];.[year;,(2026.01.01;01:00:00.000);{(x?"\n")#x}];.[dparts;,(1 2;2026.01.01);{(x?"\n")#x}]);7#,"'type"]
+t[`dateAccessorsMixed;(year (2026.01.01;2026.01.01D23:00:00);dow (2026.03.04;2026.03.04D23:00:00);day ((2026.03.04;2026.01.01);`a`b!(2026.03.05;2026.03.06));year ());(2026 2026;`Wed`Wed;(4 1;`a`b!5 6);!0)]   / dates with timestamps, item by item
+/ in a list of dates or timestamps an int 0N or :: is the null day: D,0N makes one, prev, next and indexing out of range put :: in
+/ (they were 'type with the check, wrong years on 2.7.2; q 0N 2026 and 2026 0N); a list of ints with :: is raw days
+DAD:2026.01.01 2027.01.01
+t[`dateAccessorsNullItems;(year DAD,0N;year prev DAD;year DAD@0 5;dow next DAD;month next 2026.03.04D01:00 2027.05.06D01:00;dow `a`b!(2026.03.04;0N);year ((2026.01.01;0N);::);year (0N;::);year (1 2;::);year DAD@5 6;dow DAD@5 6;year (::;::);year `a`b!(::;::));(2026 2027 0N;0N 2026;2026 0N;`Fri`;5 0N;`a`b!`Wed`;(2026 0N;0N);0N 0N;(2000 2000;0N);0N 0N;``;0N 0N;`a`b!0N 0N)]
+/ a table goes column by column, a keyed table on its value, as q's `year$ (a table was 'type with the check, a keyed table 'nyi on 2.7.2)
+DAT:+`d`p!(DAD;2026.01.01D01:00 2027.03.01D01:00)
+t[`dateAccessorsTables;(year DAT;month DAT;dow DAT;year 0#DAT;.[year;,+`d`x!(DAD;1.5 2.5);{(x?"\n")#x}]);(+`d`p!(2026 2027;2026 2027);+`d`p!(1 1;1 3);+`d`p!(`Thu`Fri;`Thu`Mon);+`d`p!(!0;!0);"'type")]
+t[`dateAccessorsKeyed;(.[year;,(+(,`k)!,1 2)!DAT;{(x?"\n")#x}];.[day;,(+(,`k)!,1 2)!+(,`d)!,DAD;{(x?"\n")#x}]);((+(,`k)!,1 2)!+`d`p!(2026 2027;2026 2027);(+(,`k)!,1 2)!+(,`d)!,1 1)]   / the key is kept, as q's
 t[`minute;minute hms[9;30;15];570]
 t[`second;second hms[9;30;15];34215]
 t[`milli;milli hms[9;30;15]+123;123]
 t[`stime;stime hms[9;30;15];"09:30:15.000"]
 t[`ptime;ptime"09:30:15.123";34215123]
 t[`stimeNeg;stime -1800000 -1 1800000;("-00:30:00.000";"-00:00:00.001";"00:30:00.000")]
+/ every digit of the hours, so a time of 100 hours or more reads back as itself (issue #62; it printed the last two)
+t[`stimeHours;stime 0 3600000 356400000 360000000 2147483647 -2147483647;("00:00:00.000";"01:00:00.000";"99:00:00.000";"100:00:00.000";"596:31:23.647";"-596:31:23.647")]
+t[`timeHoursText;($100:00:00.000;`k 50:00:00.000+50:00:00.000;$0-100:00:00.000);("100:00:00.000";"100:00:00.000";"-100:00:00.000")]
+t[`timeHoursRead;({x=. $x}'(100:00:00.000;596:31:23.647;99:59:59.999);`i$"T"$$123:45:06.789);(1 1 1;445506789)]
+t[`timeHoursGrid;tcell[`time;3600000 360000000];("01:00:00.000";"100:00:00.000")]
+t[`timeHoursAtoms;stime (01:00:00.000;100:00:00.000;3600000);("01:00:00.000";"100:00:00.000";"01:00:00.000")]   / a list of time atoms, as tsym gives
+t[`stimeMidnightAtom;stime (00:00:00.000;01:00:00.000);("00:00:00.000";"01:00:00.000")]   / midnight is not null (issue #62; it printed as 0N)
 t[`ptimeNeg;(ptime"-00:30:00.000";ptime"-01:00:00");-1800000 -3600000]
 t[`ptimeList;*"\n"\.[{"T"$("09:30:00.100";"10:00:00.000")};,0;{x}];"'type"]   / a list of strings is 'type, as before (the sign test must not recurse)
 t[`timeNegText;`i$"T"$"-00:30:00.000";-1800000]
+/ "T"$ of a time past 32 bits of milliseconds is 'limit, as the literal (issue #62; it wrapped)
+t[`timeTextLimit;(.[{"T"$x};,"1000:00:00.000";{(x?"\n")#x}];.[{"T"$x};,"596:31:23.648";{(x?"\n")#x}];`i$"T"$"-596:31:23.648";.[ptime;,"1000:00:00.000";{(x?"\n")#x}]);("'limit";"'limit";-2147483648;"'limit")]
 t[`ptimeRound;(ptime stime hms[13;45;9])=hms[13;45;9];1]
+t[`ptextAsCasts;(ptime"-01:00";pdate"2024.02.29";ptstamp"2026.07.30D09:30:00.123456789";.[pdate;,"2026.02.29";{(x?"\n")#x}]);(-3600000;8825;838719000123456789;"'parse")]   / as "T"$, "D"$ and "P"$ read them (issue #62)
 t[`minbar;minbar[5;hms[9;37;0]];hms[9;35;0]]
 t[`minbarVec;minute minbar[1;hms[9;30;0]+60000*0 1 2];570 571 572]
 t[`bar5m;bar[5;60000;hms[9;37;30]];hms[9;35;0]]

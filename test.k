@@ -367,7 +367,8 @@ t[`fbyListSame;fby[(sum;10 20);(`a`b;`a`b)];30 30]
 t[`xgroupUngroup;ungroup xgroup[`s;st];+`s`v!(`a`a`a`b`b;1 3 5 2 4)]
 t[`xgroupKeyed;xgroup[`k;+`k`a!(1 2 1;10 20 30)];(+(,`k)!,1 2)!+(,`a)!,(10 30;,20)]   / Digest #57: keyed, as q
 / Digest #52: a column the table lacks is an error named after it
-t[`tableFnMissing;{.[x;(`a;+`k`v!(-1 -2;3 4));{2#x}]}'(xasc;xdesc;xkey);3#,"'a"]
+t[`tableFnMissing;{.[x;(`a;+`k`v!(-1 -2;3 4));{2#x}]}'(xasc;xdesc;xkey;xcols);4#,"'a"]   / xcols added a column of nulls
+t[`xcolsMissing;{.[xcols;x;{2#x}]}'((`v`a;+`k`v!(-1 -2;3 4));(`a;+`k`v!(!0;!0));(,`v;+`k`v!(!0;!0)));("'a";"'a";+`v`k!(!0;!0))]   / the first one missing is named; an empty table too
 
 / ---- strings ----
 t[`lower;lower"HeLLo";"hello"]

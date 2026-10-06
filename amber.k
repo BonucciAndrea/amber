@@ -162,7 +162,7 @@ hasc:{[c;t]m:c@&~in[c;cols t];$[#m;`err@$*m;0]}
 xkey:{[k;t]k:k,();hasc[k;t];$[0=#k;unkey t;[d:+t;(+k#d)!+(except[cols t;k])#d]]}   / () xkey t -> unkey (q idiom)
 unkey:{$[iskeyed x;+(+!x),+.x;x]}
 xcolall:{[nm;t]+nm!. t}
-xcols:{[c;t]c:c,();+(c,except[cols t;c])#+t}
+xcols:{[c;t]c:c,();e:(k:cols t)^c;$[(#k)=(#c)+#e;0;hasc[c;t]];+(c,e)#+t}   / a column t lacks: hasc names it; the counts add up only when there is none. k^c: names, so the primitive, not except
 / xasc / xdesc: `xs (src/a.c) grades the table's key columns with a stable
 / multi-column LSD radix sort straight off the columns' raw C arrays -- no
 / per-row K objects, no boxed comparisons -- and returns () when it meets a

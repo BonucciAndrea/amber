@@ -53,6 +53,11 @@ inside a **`.k` script** loaded once the stdlib is up (the loader runs each file
   one per row and is fixed.)
 - **Since 2.5:** Where-clauses cascade (`where sym=`a, n=max n` is the biggest n among the a's),
   columns get q's names (`v v1`, `x`), and `select n, s:sum n` stretches `s`, as `update` does.
+- **Differs from q:** a select whose items all give atoms is one row, in the bare and the functional
+  form, also when no item reads a column or `i` (`select c:0.5 from t`, `select c:abs 0.5 from t`,
+  `` ?[t;();0b;(,`c)!,0.5] ``), where q gives `'rank`. q gives one row only when an item applies
+  one of its built-in aggregates. A check for the constant case cost every select of aggregates on a
+  small table more than we could make free, so it is not made (#20 row 17).
 - Still missing: the general functional forms `?[t;where;by;select]` /
   `![t;where;by;cols]`, and correlated subqueries. Note that `?` at arity 3+ is
   already `ins` in this dialect, so the `?[…]` spelling cannot be added without

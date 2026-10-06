@@ -186,7 +186,10 @@ qsapp:{[r;sk]$[0=#sk;r;qsone[qsapp[r;1_sk];*sk]]}                   / first list
 / the bracket spec is SEMICOLON-separated (q: select[5;>px]), not comma-separated
 / like a select list, so it needs its own depth-aware splitter.
 qscut:{[s]d:sums(s="[")-s="]";b:0,&(s=";")&d=0;trim'{$[#x;$[";"=*x;1_x;x];x]}'b _ s}
-qlim1:{[r;sp]it:qscut sp;ds:qsdir'it;sk:ds@&{0<#x}'ds;nn:it@&{0=#x}'ds;r:qsapp[r;sk];$[0=#nn;r;((-#r)|(#r)&. *nn)#r]}   / the first (last) n rows, at most all of them, as q
+qlim1:{[r;sp]it:qscut sp;ds:qsdir'it;sk:ds@&{0<#x}'ds;nn:it@&{0=#x}'ds;r:qsapp[r;sk];$[0=#nn;r;qlimn[r;. *nn]]}
+/ select[n]: the first (last) n rows, at most all of them; select[m n]: n rows from row m, as q (a null, a negative m or n,
+/ or anything but an int or two is 'type)
+qlimn:{[r;n]$[`i~@n;$[^n;`err"type";((-#r)|(#r)&n)#r];(`I~@n)&2=#n;$[|/(^n)|n<0;`err"type";((n 1)&0|(#r)-*n)#(*n)_r];`err"type"]}
 qlim:{[r;sp]$[0=#sp;r;iskeyed r;[k:keys r;xkey[k;qlim1[unkey r;sp]]];qlim1[r;sp]]}
 
 / ---- select ---------------------------------------------------------------

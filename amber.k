@@ -339,7 +339,7 @@ ssr:{[s;f;t]t/f\s}
 sv:{x/y}
 vs:{$[(`C=@y)&0=#y;,y;x\y]}   / x vs "" is one empty field, as q
 lk1:{[s;p]$[~#p;~#s;"*"=*p;$[#s;lk1[s;1_p]|lk1[1_s;p];lk1[s;1_p]];~#s;0;("?"=*p)|(*p)=*s;lk1[1_s;1_p];0]}
-like:{[x;p]$[`C=@x;lk1[x;p];`s=@x;lk1[$x;p];`S=@x;[u:?x;(lk1[;p]'$u)@u?x];lk1[;p]'x]}   / symbols match by name, as q: each distinct name once
+like:{[x;p]$[`C=@x;`lk(x;p);`s=@x;`lk($x;p);`S=@x;[u:?x;(`lk($u;p))@u?x];`m=@x;(!x)!like[. x;p];`lk(x;p)]}   / q's like in C (`lk, src/a.c): * ? and [ ] classes (#83 Q12); symbols match by name, each distinct name once; a dict's values, as q
 
 / ---- temporal : time-of-day held as milliseconds since midnight (like q time)
 / q's  time.minute / time.hh / time.ss  become  minute t / hh t / ss t  in Amber.

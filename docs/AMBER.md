@@ -901,7 +901,8 @@ ssr ["abracadabra";"ra";"XX"] / "abXXcadabXX"
 sv  ["/";("a";"bc";"d")]      / "a/bc/d"      (join)
 sv  [10;1 2 3]                / 123           (base decode)
 vs  ["/";"a/bc/d"]            / ("a";"bc";"d")(split)
-like["abcde";"a*e"]           / 1             (glob: * and ?)
+like["abcde";"a*e"]           / 1             (glob: * and ?, and [ ] classes)
+like["ab";"a[^a-c]"]          / 0             ([abc] [a-z], ^ negates; as q)
 like[("cat";"dog";"cab");"c*"]/ 101b
 ```
 

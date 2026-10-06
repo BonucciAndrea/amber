@@ -964,9 +964,24 @@ Z A1(prnT,P(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);U n=_n(x);W t0=1,t1=1,t2=1,t3=1;
  for(;i+4<=n;i+=4){L v0=p[i],v1=p[i+1],v2_=p[i+2],v3=p[i+3];t0*=(W)(v0==NL?1:v0);t1*=(W)(v1==NL?1:v1);t2*=(W)(v2_==NL?1:v2_);t3*=(W)(v3==NL?1:v3);}
  for(;i<n;i++){L v0=p[i];t0*=(W)(v0==NL?1:v0);}x(az((L)(t0*t1*t2*t3))))K1("{*/x}",x))
 Z A1(hnlT,I hz=0;I(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);F(_n(x),hz|=p[i]==NL))J(!_tP(x)&&_t(x)==tF,CO F*RES p=_V(x);F(_n(x),hz|=p[i]!=p[i]))x(ai(hz)))
+// `lk(x;p): amber.k's like, as q's (#83 Q12). In the pattern p, * matches any run, ? any char, and [abc] [a-z] [^abc] one char
+// of a class (] first, and - first or last, are themselves); a [ left open is 'domain. p is a string, as q's (a char is
+// 'type), x a string, a char or a list of them (a flag each, an int). One pass over a string, back to the last * on a mismatch (each
+// item of p is one char wide, so that finds a match when there is one); chars compare as unsigned bytes.
+Z I lke(CO UC*p,U n,U j)_(U a=j+1;a+=a<n&&p[a]=='^';U k=a+1;W(k<n&&p[k]-']',k++)k<n?(I)k:-1)      //the ] that closes the class at p[j], or -1
+Z B lkk(CO UC*p,U a,U b,UC c)_(B g=p[a]=='^';a+=g;B r=0;for(U t=a;t<b;t++)r|=p[t]=='-'&&t>a&&t+1<b?p[t-1]<=c&&c<=p[t+1]:p[t]==c;r^g)   //c in the class p[a..b)
+Z B lkv(CO UC*p,U n)_(B r=1;for(U j=0;j<n&&r;j++)I(p[j]=='[',I k=lke(p,n,j);r=k>=0;j=(U)k)r)   //every class closed
+Z B lkq(CO UC*s,U m,CO UC*p,U n){U i=0,j=0,sj=n+1,si=0;
+ while(i<m){I(j<n&&p[j]=='*',sj=++j;si=i;continue)
+  I(j<n,U e=j+1;B o;I(p[j]=='[',e=(U)lke(p,n,j)+1;o=lkk(p,j+1,e-1,s[i]))E(o=p[j]=='?'||p[j]==s[i])I(o,i++;j=e;continue))
+  P(sj>n,0)j=sj;i=++si;}
+ while(j<n&&p[j]=='*')j++;return j==n;}
+Z A1(lkT,P(_t(x)-tA||_n(x)-2||_t(_A(x)[1])-tC,et(x))A s=*_A(x),p=_A(x)[1];CO UC*q=(CO UC*)_V(p);U n=_n(p);P(!lkv(q,n),ed(x))
+ UC u=_t(s),c=(UC)_v(s);P(u==tC,x(ai(lkq((CO UC*)_V(s),_n(s),q,n))))P(u==tc,x(ai(lkq(&c,1,q,n))))P(u-tA,et(x))U m=_n(s);P(!m,x(an(0,tG)))
+ A r=an(m,tG);UC*o=(UC*)_V(r);F(m,A e=_A(s)[i];u=_t(e);c=(UC)_v(e);P(u-tC&&u-tc,mr(r);et(x))o[i]=u==tC?lkq((CO UC*)_V(e),_n(e),q,n):lkq(&c,1,q,n))x(r))
 Z A1(sumnT,P(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);U n=_n(x);W t=0;F(n,L v=p[i];t+=(W)(v==NL?0:v))x(az((L)t)))K1("{+/x}",x))
-ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl","abs","wcol","rcol","fsz","ldir","wtn","senc","hh","mm","sec","tjn"};
- G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,wcolT,rcolT,fszT,ldirT,wtnT,sencT,hhC,mmC,secC,tjnC,ed)[fI((V*)s,L(s),v)](x))
+ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","exit","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl","abs","wcol","rcol","fsz","ldir","wtn","senc","hh","mm","sec","tjn","lk"};
+ G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,wcolT,rcolT,fszT,ldirT,wtnT,sencT,hhC,mmC,secC,tjnC,lkT,ed)[fI((V*)s,L(s),v)](x))
 /* ---- tacit trains: hook (f g) and fork (f g h) --------------------------
  * A general list of length 2 or 3 whose every element is a function becomes a
  * TRAIN when it is applied (a `::` in it is data, as in ngn/k, so such a list is

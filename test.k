@@ -382,6 +382,15 @@ t[`likeStar;like["abcde";"a*e"];1]
 t[`likeQ;like["abcde";"a?e"];0]
 t[`likeMid;like["abcde";"*cd*"];1]
 t[`likeVec;like[("cat";"dog";"cab");"c*"];101b]
+/ #83 Q12: [ ] classes, as q: ranges, ^ negates, ] first and - first or last are themselves
+t[`likeClass;(like["ab";"a[ab]"];like[("a\\";"cb");"*[\\b]"];like[("abc";"aBc");"a[a-z]c"];like[,'"ad-";"[^a-c]"];like[,'"]a-^";"[]a-]"];like[,'"*a";"[*]"];like[,'"mza";"[z-a]"]);(1;1 1;1 0;0 1 1;1 1 1 0;1 0;0 1 1)]
+t[`likeClassSym;(like[`ab`cd`ef;"[ac]?"];like[`c$200 65;"[^a]?"];like["ac";"*[^c]"]);(1 1 0;1;0)]
+t[`likeClassOpen;(.[like;("a[";"a[");{0N}];.[like;("a";"[^]");{0N}]);0N 0N]   / a [ left open: 'domain (q: '[)
+/ like is lk1 for a pattern without [ (lk1, amber.k's matcher before #83 Q12, as the reference)
+t[`likeAsLk1;{S:("";,"a";"ab";"ba";"aab";"abab";"bbb";"abcab";"a?b");P:("";,"*";"a*";"*b";"a?b";"*a*";"??";"a*b*a";"*?*";"ab";"*ab*b";"**";"a**b");(like[S;]'P)~{lk1[;x]'y}[;S]'P}[];1b]
+/ a char as the pattern, or a list holding a symbol, is 'type, as q; a char in x is a string of one char
+t[`likeDict;(like[`a`b!("ab";"cd");"a*"];like[`a`b!`ab`cd;"?d"]);(`a`b!1 0;`a`b!0 1)]   / a dict's values, as q
+t[`likeTypes;(.[like;("a";"[");{0N}];.[like;("ab";"a");{0N}];.[like;((`a;"b");"a*");{0N}];like[("ab";"c");"?b"];like[();"ab"];like[0#`;"ab"]);(0N;0N;0N;1 0;!0;!0)]
 
 / ---- table literals  ([]col:..;..) and ([key:..]col:..) ----
 t[`tlitCols;cols([]sym:`a`b;px:1 2);`sym`px]

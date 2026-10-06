@@ -529,7 +529,13 @@ ta[`a504;"3 in `s#1 2 3";"1"]   / in s
 ta[`a505;"(`u#`a`b`c)?`c";"2"]   / find u
 ta[`a506;"(`g#1 2 1)?1";"0"]   / find g
 ta[`a507;"(`p#1 1 2)?2";"2"]   / find p
+ta[`a508;"attr asc (1 2;3 4)";"`s"]   / asc general list
+ta[`a509;"attr asc ()";"`s"]   / asc empty general list
+ta[`a510;"attr asc enlist 1 2";"`s"]   / asc one-item general list
+ta[`a511;"attr asc (\"ba\";\"a\";\"ab\")";"`s"]   / asc strings
+ta[`a512;"r~`s#r:asc (\"ba\";\"a\";\"ab\")";"1"]   / asc strings: `s# agrees
+ta[`a513;"{asc x;attr x}()";"`"]   / asc () leaves () alone
 
-hexpect[508]
+hexpect[514]
 hreport"AMBER ATTRIBUTES vs q"
 $[FAILN;`exit 1;]

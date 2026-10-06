@@ -1027,14 +1027,22 @@ Z A dam(A x,A y,A z,CO A*a,U n/*10100*/)_(x=mut(x);U m=0;F(zn,m+=zL[i]==NL)
  F(zn,L j=zL[i];I(j==_N(xx),PSH(xx,ii(y,i));PSH(xy,ie(a[2],xy)))Ab8;*b=xy;b[1]=az(j);AC(b+2,a+2,n-2);I(t,b[n-1]=ii(a[n-1],i))
   xy=au;A v=a8(b,n);mr(b[1]);I(t,mr(b[n-1]))P(!v,nsq-=s;z(x(0)))xy=v)
  nsq-=s;I(s,xy=sqz(xy))z(x))
+//t[c]:y and @[t;c;f] amend a table as the dict of its columns and flip it back (x, the dict amended). The flip gives an
+//atom column the count of the columns that are lists, so with none left it made one row (+(,`a)!,,9 from three), or
+//'length where the atoms were of two types: tfl gives each atom column the table's old row count, r (an empty table
+//stays empty), as update and the amend while a list column remains do. Lists replacing every column still give their
+//count (t[`a]:7 8 on a one-column table: two rows). Not in flip, which knows no row count (+`a`b!1 2 is one row)
+ZN A tfa(A x,U r/*1.*/)_(A y=xy;P(!_n(y),flp(x))A v=aA(_n(y));F(_n(y),_A(v)[i]=rsz(r,ii(y,i)))x=mut(x);mr(xy);xy=v;flp(x))   //every column an atom: r of each (no column: as before)
+Z A tfl(A x,U r/*1.*/)_(A y=xy;I(_tA(y),F(_n(y),P(!_tt(_A(y)[i]),flp(x))))tfa(x,r))   //a column a list (the first, nearly always): flip
 AA(a8,/*10..0*/A x=*a,y=a[1];
  X(RE(Ab8;*b=gZ(x);AC(b+1,a+1,n-1);a8(b,n))
    RT_E(P(y==au,mRn(n-2,a+2);Ab8;*b=a[2];b[1]=x;AC(b+2,a+3,n-3);USQ(e8(AP1,b,n-1)))
     Yzc(L i=gl_(y);P(i>=(W)xn,ei(x))x=mut(x);Ab8;*b=ii(x,i);AC(b+1,a+3,n-3);mRn(n-3,b+1);A z=a[2];set(x,i,Nx(USQ(z8(b,n-2)))))
     I(ytZC&&n==4,A z=a[2],u=a[3];P(xtZ&&ztv&&utzZ&&(0xcf&1<<zv),ara(x,y,z,u))P(xtC&&z==av&&utcC,cC(N(ara(x,y,z,u)))))Yt(et(x))mRn(n-1,a+1);nsq++;A r_=f8(AP1,a,n);nsq--;r_?sqz(r_):0)
-   Rm(A z=Nx(fnd(xx,yR));ZT(P(LH(tG,zt,tL)&&(n==3||n==4&&(_tt(a[3])||_tT(a[3])&&_N(a[3])==zn)||n==5&&_tt(a[3])&&(_tt(a[4])||_tT(a[4])&&_N(a[4])==zn)),dam(x,y,cL(z),a,n))z(0);mRn(n-1,a+1);f8(AP1,a,n))x=mut(x);I(ztl,z=mut(z);F(zN,I(zl==NL,zl=xN;PSH(xx,ztt?yR:ii(y,i));PSH(xy,ie(a[2],xy)))))
+   Rm(P(y==au,x=mut(x);Ab8;*b=xy;AC(b+1,a+1,n-1);xy=au;xy=Nx(a8(b,n));x)   //:: is every key, as it is when reading d[::;..]: amend the values
+      A z=Nx(fnd(xx,yR));ZT(P(LH(tG,zt,tL)&&(n==3||n==4&&(_tt(a[3])||_tT(a[3])&&_N(a[3])==zn)||n==5&&_tt(a[3])&&(_tt(a[4])||_tT(a[4])&&_N(a[4])==zn)),dam(x,y,cL(z),a,n))z(0);mRn(n-1,a+1);f8(AP1,a,n))x=mut(x);I(ztl,z=mut(z);F(zN,I(zl==NL,zl=xN;PSH(xx,ztt?yR:ii(y,i));PSH(xy,ie(a[2],xy)))))
     Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);xy=au;xy=Nx(z(a8(b,n)));x)
-   RM(Ab8;AC(b,a,n);YsS(*b=flp(x);flp(N(a8(b,n))))B e=!xN;*b=blw(e?_R(x):x);A p=e?_R(*_A(*b)):0;A u=a8(b,n);P(!u,e?(mr(p),x(0)):0)P(!e,sqz(u))   //p: the prototype of an empty table's rows, its null row
+   RM(Ab8;AC(b,a,n);YsS(U r=xN;*b=flp(x);tfl(N(a8(b,n)),r))B e=!xN;*b=blw(e?_R(x):x);A p=e?_R(*_A(*b)):0;A u=a8(b,n);P(!u,e?(mr(p),x(0)):0)P(!e,sqz(u))   //p: the prototype of an empty table's rows, its null row
     B m=_tA(u)&&!_n(u)&&_tm(ux)&&mtc_(ux,p);mr(p);m?u(x):x(sqz(u)))   //no amend reached the null row: the table as it was (one that did comes back a table already)
    RU(mRn(n-1,a+1);x(USQ(x8(a+1,n-1))))
    R_(et(x)))0)
@@ -1047,6 +1055,12 @@ AA(a8,/*10..0*/A x=*a,y=a[1];
 //level puts back the item it took out, and *u is the value as it was (or a copy of it), so the variable can be put back
 Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u);
 Z A rbl(A),d3(A,A,A),a5(A,A,A,A,A),d3t(A,A,A),d4t(A,A,A,A),dt3(A,A,A),dt4(A,A,A,A);
+//a key (1) at the last level, or a table's column (2) in the table flipped to a dict (tb): inlined in each, so that a
+//dict's has nothing of the table's (its old row count, kept across the amend for tfl)
+Z __attribute__((always_inline)) inline A ixsd(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u,B tb/*10....00..*/)_(x=mut(x);
+ I(ix[k]==_N(xx),u=0;A s=_tt(y)?y:_tA(y)?_A(y)[k]:ii(y,k);PSH(xx,_R(s));PSH(xy,ie(f,xy)))   //a key not there (the last level): added, as a8 does
+ A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z,u);P(!v,u&&*u?(xy=*u,*u=tb?flp(x):x,(A)0):x(0))xy=v;x)
+Z NI A ixtc(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u/*10....00.*/)_(U r=xN;x=ixsd(flp(x),y,kd,ix,k,m,f,z,u,1);x?tfl(x,r):0)   //a column (tfl)
 A ixst(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u/*10....00.*/)_(UC t=kd[k];P(!t,ixsl(x,y,kd,ix,k,m,f,z,u))
  P(t==3,A w=k?drp(k,yR):yR;B s=k&&!_tP(x)&&_t(x)==tS;x=USQ(s?z?d4t(x,w,f,z):d3t(x,w,f):z?d8(A8(x,w,f,z),4):d8(A8(x,w,f),3));mr(w);x)   //d8, not d4: a symbol below
   //the first level names a global; a symbol list there is data, and so are its items (d4t, d3t)
@@ -1058,8 +1072,7 @@ A ixst(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u/*10....00.*/)_(UC t=kd[k];P(
   //then an index into its value, the first value nulled (as for d4's projection, ie gives the nulled first value for :), which keeps its count
  P(t>3,I(t==5,x=flp(x))x=mut(x);A s=_tA(y)?_A(y)[k]:ii(y,k),v=prj(z?ax(dt4,4):ax(dt3,3),(A[]){GAP,drp(k+1,yR)},2);PSH(xx,_R(s));PSH(xy,ie(v,xy));   //a key to add above the last level:
   A w=xy;xy=au;w=z?a8(A8(w,az(ix[k]),v,f,z),5):a8(A8(w,az(ix[k]),v,f),4);mr(v);P(!w,x(0))xy=w;t==5?flp(x):x)   //the rest as a8 does it (d4's projection), without finding the key again
- I(t==2,x=flp(x))x=mut(x);I(ix[k]==_N(xx),u=0;A s=_tt(y)?y:_tA(y)?_A(y)[k]:ii(y,k);PSH(xx,_R(s));PSH(xy,ie(f,xy)))   //a key not there (the last level): added, as a8 does
- A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z,u);P(!v,u&&*u?(xy=*u,*u=t==2?flp(x):x,(A)0):x(0))xy=v;t==2?flp(x):x)   //a column: in the table flipped to a dict
+ P(t==2,ixtc(x,y,kd,ix,k,m,f,z,u))ixsd(x,y,kd,ix,k,m,f,z,u,0))   //a column: in the table flipped to a dict (ixtc)
 Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u)_(U i=(U)ix[k];I(_t(x)==tE,x=gZ(x))P(_t(x)==tM,x=ixsl(blw(x),y,kd,ix,k,m,f,z,u);I(!x&&u&&*u,*u=sqz(*u))x?sqz(x):0)x=mut(x);
  P(k+1==m,A r=!f?z:z&&f==av?_R(z):USQ(z?_8(f,A8(ii(x,i),_R(z)),2):_8(f,A8(ii(x,i)),1));   //the item at the last place: f applied to it (: needs not read it)
   I(__builtin_expect(kd[k]==2,0)&&r&&_n(x)>1&&!_tP(r)&&_tT(r)&&_N(r)!=_N(_A(x)[!i]),mr(r);r=el0())   //a table's column (2): a list of another count does not fit
@@ -1078,12 +1091,16 @@ Z U tci(A x,A y/*00*/)_(P(!xtM||!ytA||yn<2||!_tz(*yA)||!_ts(yA[1]),0)tcc(x,yA[1]
 Z A1(rbl,A y=enl(_R(*xA));F(xn-1,PSH(y,_R(xA[i+1])))x(y))
 Z A d3(A,A,A);Z A tca(A x,A y,A z,A u,U n,U j/*10000.*/)_(A w=aA(yn-1);*_A(w)=_R(*yA);F(yn-2,_A(w)[i+1]=_R(yA[i+2]))
  x=mut(x);xy=mut(xy);A c=_A(xy)[j];_A(xy)[j]=au;c=n==4?d4(c,w,z,u):d3(c,w,z);mr(w);P(!c,x(0))_A(xy)[j]=c;F(_n(xy),A*p=_A(xy)+i;I(_tA(*p),*p=rbl(*p)))x)
+//.[t;(::;c),p;f(;y)] amends each row of t: with none, the rows made nothing to squeeze back, and the result was (),
+//losing the table (q keeps it, as update does). The table, as it is, where f and y are atoms or empty: a list or dict
+//with items is 'length, as before
+Z B tnr(A x,A y,A z,A u/*0000*/)_(xtM&&ytA&&*yA==au&&!xN&&(_tt(z)||!_N(z))&&(!u||_tt(u)||!_N(u)))
 //an amend at more than one level amends each item at the first with the rest of the indices, by a projection of a
 //function that does what . does there (dt3, dt4), but for a symbol list, which is data (. takes it as a name), and so
 //are its items (s: x is such a list, and ds3, ds4 do its items)
 Z A ds3(A,A,A),ds4(A,A,A,A);
-Z __attribute__((always_inline)) inline A d3s(A x,A y,A z,B s/*100.*/)_(U m=yN;P(y==au||!m,z1(x))P(m==1,y=fir(yR);y(a3(x,y,z)))U j=tci(x,y);P(j,tca(x,y,z,0,3,j-1))A u=s?prj(ax(ds3,3),(A[]){GAP,drp(1,yR)},2):prj_(ax(dt3,3),(A[]){GAP,drp(1,yR)},2);y=fir(yR);y(u(a4(x,y,u,z))))
-Z __attribute__((always_inline)) inline A d4s(A x,A y,A z,A u,B s/*1000.*/)_(U m=yN;P(y==au||!m,x(z2(x,uR)))P(m==1,y=fir(yR);y(a4(x,y,z,u)))U j=tci(x,y);P(j,tca(x,y,z,u,4,j-1))A v=s?prj(ax(ds4,4),(A[]){GAP,drp(1,yR)},2):prj_(ax(dt4,4),(A[]){GAP,drp(1,yR)},2);y=fir(yR);A r=y(a5(x,y,v,z,u));mr(v);r)
+Z __attribute__((always_inline)) inline A d3s(A x,A y,A z,B s/*100.*/)_(U m=yN;P(y==au||!m,z1(x))P(m==1,y=fir(yR);y(a3(x,y,z)))U j=tci(x,y);P(j,tca(x,y,z,0,3,j-1))P(tnr(x,y,z,0),x)A u=s?prj(ax(ds3,3),(A[]){GAP,drp(1,yR)},2):prj_(ax(dt3,3),(A[]){GAP,drp(1,yR)},2);y=fir(yR);y(u(a4(x,y,u,z))))
+Z __attribute__((always_inline)) inline A d4s(A x,A y,A z,A u,B s/*1000.*/)_(U m=yN;P(y==au||!m,x(z2(x,uR)))P(m==1,y=fir(yR);y(a4(x,y,z,u)))U j=tci(x,y);P(j,tca(x,y,z,u,4,j-1))P(tnr(x,y,z,u),x)A v=s?prj(ax(ds4,4),(A[]){GAP,drp(1,yR)},2):prj_(ax(dt4,4),(A[]){GAP,drp(1,yR)},2);y=fir(yR);A r=y(a5(x,y,v,z,u));mr(v);r)
 Z A3(d3,/*100*/d3s(x,y,z,0))
 A4(d4,/*1000*/d4s(x,y,z,u,0))
 Z __attribute__((cold)) A3(d3t,/*100*/d3s(x,y,z,1))   //s a constant in each, so d3, d4 inline prj_ as they did prj(DOT,..); a symbol list's
@@ -1099,12 +1116,12 @@ Z NI __attribute__((cold)) A d8q(A*p,A*b,A*a,I n,UC*kd,L*ix,B*h){I g_=ixgn(p);B 
  I(!o,_R(q))A r=USQ(n>3?_8(a[2],A8(q,_R(a[3])),2):_8(a[2],A8(q),1));P(!r,I(*p&&*p!=au,mr(*b))E(*p=*b);0)I(*p&&*p!=au,mr(*p);*p=au)   //as d8 does
  A u=0;q=ixst(*b,a[1],kd,ix,0,(U)w,av,r,&u);mr(r);P(!q,I(u,*p=u)(A)0)return *p=_R(q);}   //(u: a result that does not fit puts the value back)
 AA(d8,/*10..0*/A x=*a;
-I ixwk(A,A,A,B,B,UC*,L*),ixck(A,A,U,A,B),ixgn(A*);A ixit(A,A,UC*,CO L*,U,B*);   //b.c: is .[`v;i;f;y] sure to fail on its index, count or type? (then v is not touched) If not, where can ixst assign? (.[`v;i;f] is not checked)
- //while run assigns a global (ixgs): as before (ixck, d4) in an assignment by d4, and refused if ixst is assigning this one.
+I ixwk(A,A,A,B,B,UC*,L*),ixck(A,A,U,A,B),ixgn(A*),ixgi(A*);A ixit(A,A,UC*,CO L*,U,B*);   //b.c: is .[`v;i;f;y] sure to fail on its index, count or type? (then v is not touched) If not, where can ixst assign? (.[`v;i;f] is not checked)
+ //while run assigns a global (ixgs): as before (ixck, d4) in an assignment by d4, and refused if this one is assigned in place (ixgi).
  //Where ixit reads the item, f goes first, on it (v :: meanwhile, as before), and ixst assigns its result with :, so if f
  //fails, v is put back (unless f set v, to other than ::). Five or more arguments, which amend does not take: 'nyi, v kept.
  //In an assignment by d4 (and v not the one assigned), where the walk finds the item, f goes first too, and then : as before
- X(RsS(P(ray_rc_sync,mr(*a);err0("noupdate"))A*p=gp(x);P(!p,0)I g_=ixgn(p);P(g_>1&&n>2,et0())P(n>4,en0())UC kd[8];L ix[8];
+ X(RsS(P(ray_rc_sync,mr(*a);err0("noupdate"))A*p=gp(x);P(!p,0)I g_=ixgn(p);P(n>2&&g_&&ixgi(p),et0())P(n>4,en0())UC kd[8];L ix[8];
    I w_=n==3||n==4?g_?n<4?0:*p&&_t(*p)==tm&&!_tMT(_y(*p))?-3:-ixck(*p,a[1],0,a[3],a[2]==av):ixwk(*p,a[1],n==4?a[3]:au,n==4&&a[2]==av,0,kd,ix):0;P(n==4&&w_<0,w_==-1?ei0():w_==-2?el0():et0())I(w_<0,w_=0)I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;
    B o;A q=w_?a[2]!=av&&kd[w_-1]==3?ixit(*b,a[1],kd,ix,(U)w_,&o):0:n>2&&a[2]!=av?({A r=d8q(p,b,a,n,kd,ix,&o);P(o,r);(A)0;}):0;   //a table's row, at the last
    //level: read first; and with more below, or in an assignment by d4 (d8q)

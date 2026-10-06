@@ -182,6 +182,12 @@ Amber text via `` `k``, inverted by `eval`) and `protect` (like `.Q.trp`). Amber
 - **Still missing:** `-18!` (compress), `-11!`
   (replay log), the full `$` cast matrix (guid, byte), typed file reader `("SIF";",")0:file`,
   `vs`/`sv` for base-N and temporal, `md5`, `.Q.btoa` (base64).
+- **Differs from q:** `$` of a null or a float gives text that reads back as the same value, which
+  the `` `k `` round trip relies on: `$0N` is `"0N"` and `$0n` is `"0n"` (q's `string` gives `""`),
+  and `$1%3` is `"0.3333333333333333"` and `$1e20` is `"1e20"` (q writes the display precision,
+  `\P`: `"0.3333333"`, `"1e+20"`).
+- **Differs from q:** `` `i$ `` of a float truncates, as in ngn/k and as repl.k's reference card
+  shows: `` `i$1.7 `` is `1` and `` `i$-1.5 `` is `-1`, where q rounds, halves away from zero (`2`, `-2`).
 
 ## 12. Concurrency & performance ops: partial
 `peach` is real **multi-core** (a pool of `AMBER_THREADS` threads), and `ts` (`\ts`) times an
@@ -287,3 +293,12 @@ behaviour shows up as a test failure rather than a silent regression.
 - **An amend that leaves no column of a table a list fills each to the table's row count**
   (`` t[`a]:9 `` with `t:([]a:1 2 3)` gives `9 9 9`; an empty table stays empty), as `update` does;
   q gives `'rank` for these (`` t[`a]:9 ``, `` @[t;`a;:;9] ``, `` @[t;`a`b;:;9] ``).
+- **Find gives `0N` for no match**, as in ngn/k: `1 2 3?5` is `0N`, where q gives the count, `3`.
+  amber.k's `in` and `ij` rely on it.
+- **A take from an empty general list gives empty strings**: `3#()` is `("";"";"")`, since an empty
+  general list keeps a string as its type witness (CHANGELOG, "Empty general lists keep their type
+  witness"); q gives `(();();())`.
+- **`asof` gives `aj`'s answer on a table not sorted by time**: the row with the latest time at or
+  before the one asked for, as `aj` (which sorts the quotes) matches it
+  (`` asof[+`sym`time`bid!(`a`a`a`a;0 1 1 0;10 20 30 40);`sym`time!(`a;1)] `` is `` (,`bid)!,30 ``).
+  q assumes the table is sorted, so its answer there is unspecified (it gives 40).

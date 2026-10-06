@@ -51,13 +51,19 @@ qfn:{[cols;e]. "{[x]",qidsub[cols;e],"}"}                                       
 / clause never fused, while the same query WITH a where clause did. ~(#t)#0b is materialised,
 / ~-identical to (#t)#1b, and fuses. (Verified: gagg with (#t)#1b -> 0 rows; with ~(#t)#0b,
 / K=K or 0<1+!#t -> the correct rows.)
-qmask:{[t;w]$[0=#w;();1=#c:qcut w;qfn[cols t;*c]t;&/qloc[cols t]'1_c;&/{[t;c]qfn[cols t;c]t}[t]'c;qcas[t;c]]}   / Where -> boolean mask
+qmask:{[t;w]$[0=#w;();1=#c:qcut w;[v:qfn[cols t;*c]t;$[`I~@v;v;qwv[t;v]]];&/qloc[cols t]'1_c;&/{[t;c]v:qfn[cols t;c]t;$[`I~@v;v;qwv[t;v]]}[t]'c;qcas[t;c]]}   / Where -> boolean mask
+qma:{[n;m]qwa m;a:~n#0b;$[m;a;~a]}   / a where whose value is an atom (where 1b, where 0b) keeps every row or none, as q
+/ A where whose value is an atom is a boolean, as q: 0 or 1 (Amber's 1b is the int 1) keeps no row or every row, and
+/ any other atom (2, 0N, 0n, `a, 1.5, "a") is 'type. A list is passed on as it was (#83 Q13, C: checking that an int
+/ list holds only 0s and 1s cost about 2% of a where on a bare int column).
+qwa:{$[x~0;;x~1;;`err"type"]}
+qwv:{[t;v]$[`I~@v;v;isat v;qma[#t;v];v]}
 / Several constraints cascade, as q's do: each one sees only the rows the earlier ones kept (and only the columns it
 / names), so  where sym=`a, n=max n  is the largest n among the a's. They were all run on the whole table (digest #39).
 / A constraint that only looks at its own row (columns, literals, data globals, comparisons, in/within/like...) gives
 / the same answer either way, so when every later one is like that the masks are just and-ed, at the old speed.
 qcas:{[t;c]C:cols t;i:qcw[t;C;!#t;*c];i:{[t;C;i;e]qcw[t;C;i;e]}[t;C]/[i;1_c];@[~(#t)#1b;i;:;1b]}
-qcw:{[t;C;i;e]h:$[qhi e;~|/in[`i,qI;C];0];r:qrefs[C;e];v:qfn[$[h;C,qI;C];e]$[h;+(r,qI)!((+t)[r]@\:i),,i;#r;+r!(+t)[r]@\:i;t i];$[isat v;$[v;i;0#i];i@&v]}   / The rows of i that e keeps (an i in e reads i itself)
+qcw:{[t;C;i;e]h:$[qhi e;~|/in[`i,qI;C];0];r:qrefs[C;e];v:qfn[$[h;C,qI;C];e]$[h;+(r,qI)!((+t)[r]@\:i),,i;#r;+r!(+t)[r]@\:i;t i];$[isat v;[qwa v;$[v;i;0#i]];i@&v]}   / The rows of i that e keeps (an i in e reads i itself)
 qlw:`in`within`like`not`null`abs`neg`floor`ceiling`signum`string`lower`upper`mod`div`xbar
 qlwd:{[C;w]s:`$w;c:*w;$[in[s;C]|in[s;qlw]|s~`i;1;(~(c<"0")|c>"9")&~|/w="_";1;[v:.[{.x};,s;{`qlfail}];$[`qlfail~v;0;~|/"opqruvwx"=*$@v]]]}   / A word that keeps a row to itself
 qblank:{[e]$[~|/(e="\"")|e="`";e;[s:e;q:qsmask s;s:@[s;&q|s="\"";:;" "];w:qword 0+s;rid:+\~~':w;bt:&s="`";p:1+bt;p:p@&p<#s;pc:p@&":"=s p;p:p@&w p;b:w&@[(1+#s)#0b;rid p;:;1b]rid;$[#pc;[c:w|(s=".")|(s=":")|(s="/")|s="-";rc:+\~~':c;b|:c&@[(1+#s)#0b;rc pc;:;1b]rc];];s:@[s;bt;:;" "];@[s;&b;:;" "]]]}   / strings and `symbols blanked (a `: symbol takes in . / _ - :, as Amber's pfh; a plain one is a word, _ and all, where Amber stops at _)
@@ -264,7 +270,9 @@ del:{[s]s:qnorm s;s:$[(6#s)~"delete";trim 6_s;s];b:$[(5#s)~"from ";("";trim 5_s)
 / rows the last kept; b is 0b (no groups), 1b (distinct) or a dict of names to trees; a is () or a dict.
 qfv:{in[@x;`o`p`q`r`u`v`w`x]}
 qfe:{[t;e]$[`s~@e;$[in[e;cols t];(+t)e;e~`i;$[in[qI;cols t];(+t)qI;!#t];. e];(`S~@e)&1=#e;*e;(`A~@e)&0<#e;$[qfv[*e];(*e) . qfe[t]'1_e;1=#e;*e;e];e]}
-qfi:{[t;c]{[t;i;w]i@&qfe[qtk[$[qfhi w;~|/in[`i,qI;cols t];0];t;i];w]}[t]/[&qfe[t;*c];1_c]}   / a later constraint's i reads the rows it sees
+qfi:{[t;c]C:cols t;v:qfe[t;*c];i:$[isat v;qfw[#t;v];&v];{[t;C;i;w]v:qfe[qtk[$[qfhi w;~|/in[`i,qI;C];0];t;i];w];$[isat v;i@qfw[#i;v];i@&v]}[t;C]/[i;1_c]}   / a later constraint's i reads the rows it sees
+qfw:{[n;v]qwa v;$[v;!n;!0]}   / the rows an atom constraint keeps: every row or none
+/ qfi keeps i@&v written together for a list, as before: Amber compiles x@&m as one compress (cmprC) with no index vector.
 qtk:{[k;t;j]$[k;+(+t j),(,qI)!,j;t j]}   / rows j of t, with their numbers as qI if k
 qfa:{[t;a]v:qfe[t]'value a;k:!a;$[&/isat'v;+k!,'v;+k!{[l;x]$[isat x;l#x;x]}[#t]'v]}
 qfsg:{[t;e]$[(`A~@e)&2=#e;[f:*e;c:e 1;$[(`s~@c)&in[c;cols t];$[f~sum;(`sum;c);f~avg;(`avg;c);f~min;(`min;c);f~max;(`max;c);f~count;(`count;c);f~first;(`first;c);f~last;(`last;c);()];(c~`i)&f~count;(`count;*cols t);()]];()]}

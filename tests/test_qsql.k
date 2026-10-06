@@ -543,5 +543,54 @@ tqx[`byFnKeyUpd;   "update c:sum n by sym from TFK";"'rank"];
 tqx[`byFnKeyExec;  "exec count i by sym from TFK";"'rank"];
 tq[`byDataGlobal;  "select count i by QG from TN";  (+(,`QG)!,,42)!+(,`x)!,,3];
 
+/ a where whose value is an atom keeps every row (1b) or none (0b), as q: it is not a one-item mask
+tq[`whAtom1b;      "select from trades where 1b";                       trades];
+tq[`whAtom1bI;     "select i from trades where 1b";                     ([]x:!6)];
+tq[`whAtom0b;      "select from trades where 0b";                       0#trades];
+tq[`whAtomAnd;     "select from trades where 1b,0b";                    0#trades];
+tq[`whAtomExec;    "exec sz from trades where 1b";                      1 2 3 4 5 6];
+tq[`whAtomBy;      "exec count sz by sym from trades where 1b";         `a`b`c!3 2 1];
+tq[`whAtomUpd;     "update z:sz from trades where 1b";                  +(+trades),(,`z)!,1 2 3 4 5 6];
+tq[`whAtomDel;     "delete from trades where 0b";                       trades];
+t[`whAtomFunc;     ?[trades;,1b;0b;()];                                 trades]
+t[`whAtomFuncLater; ?[trades;((>;`px;15);1b);0b;()];                    1_trades]
+t[`whAtomFuncDel;  ![trades;,0b;0b;0#`];                                trades]
+/ any other atom is not a boolean: 'type, as q (it was every row, the first row, or 'domain), the error pinned
+tqx[`whAtomNull;   "select from trades where 0N"; "'type"];
+tqx[`whAtomFloat;  "select from trades where 1.5"; "'type"];
+tqx[`whAtomSym;    "select from trades where `a"; "'type"];
+tqx[`whAtomChar;   "exec sz from trades where \"a\""; "'type"];
+tqx[`whAtomFNull;  "update z:0 from trades where 0n"; "'type"];
+tqx[`whAtomCasFloat; "select from trades where px>15, 1.5, sz>avg sz"; "'type"];
+tqx[`whAtomCasSym;   "select from trades where px>15, `a, sz>avg sz"; "'type"];
+tqx[`whAtomCasChar;  "select from trades where px>15, \"a\", sz>avg sz"; "'type"];
+tqx[`whAtomCasFNull; "select from trades where px>15, 0n, sz>avg sz"; "'type"];
+tqe[`whAtomCascade;  "select from trades where px>15, 0N, sz>avg sz"];
+tqx[`whAtomFuncNull;  "?[trades;((>;`px;15);0N);0b;()]"; "'type"];
+/ a functional where over a simple column
+TH:([]a:(1 2;3 4;1 1);b:1 2 3;s:("ab";"cd";"ab"))
+t[`whFuncSimple;      ?[TH;,(>;`b;1);0b;()];                               1_TH]
+/ like on a char column reads it as one string: an atom, so every row or none, as the text form; a temporal column
+TC:([]c:"abc";n:1 2 3)
+TT2:([]time:09:30:00.000+60000*0 1 6 11;n:1 2 3 4)
+t[`whFuncLikeChar;    ?[TC;,(like;`c;"a*");0b;()];                          TC]
+t[`whFuncLikeCharE;   ?[0#TC;,(like;`c;"");0b;()];                          0#TC]
+t[`whFuncLikeCharU;   (+![TC;,(like;`c;"a*");0b;(,`n)!,0])`n;               0 0 0]
+t[`whFuncTime;        ?[TT2;,(>;`time;09:35:00.000);0b;()];                 2_TT2]
+/ an int atom where other than 0 or 1 is 'type, as q (#83 Q13); a list is passed on as before
+tqe[`whIntAtom;      "select from trades where 2"];
+tq[`whZeroOne;       "select from trades where (px>15)&sz<5";        ([]sym:`b`a`b; px:20 30 40.0; sz:2 3 4)];
+tq[`whNotLeft;       "select from trades where ~sz<3";               2_trades];
+/ an empty list as a where's value (no rows, a cascade that kept none, an each over none) keeps no row, as before
+TE:([]n:1 2 3 4;s:("ab";"b";"ac";"d"))
+tq[`whEmptySel;      "select from (0#TE) where s like \"a*\"";           0#TE];
+tq[`whEmptyCas;      "select from TE where n>10,s like \"a*\",n=max n";   0#TE];
+tqa[`whEmptyUpd;     "update z:1 from TE where n>10,s like \"a*\",n=max n"; {(+x)`z}; 0N 0N 0N 0N];
+tq[`whEmptyDel;      "delete from TE where n>10,s like \"a*\",n=max n";   TE];
+tqa[`whEmptyBy;      "select c:count n by n from TE where n>10,s like \"a*\",n=max n"; NR; 0];
+tq[`whEmptyEach;     "select from TE where n>10,{x>1}'n";                 0#TE];
+tq[`whEmptyCols;     "select from ([]a:();b:()) where a=1";               ([]a:();b:())];
+tq[`whEmptyFunc;     "?[TE;((>;`n;10);(like;`s;\"a*\"));0b;()]";        0#TE];
+
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

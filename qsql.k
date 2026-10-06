@@ -177,7 +177,17 @@ qsagg:{[C;e]w:" "vs trim e;$[2=#w;$[(in[`$w 0;qsimp])&in[`$w 1;C];(`$w 0;`$w 1);
 / the by-branch of sel, split out so sel itself stays under the bytecode limit.
 / u is the UNFILTERED table and m the where-mask: the fused path hands the mask
 / to `gagg and never builds the filtered table; the generic path filters first.
-qselby:{[u;m;hw;byp;it;d]r:qbyx[u;byp];sg:qsagg[cols r 0]'{(qname x)1}'it;fa:$[~&/{0<#x}'sg;();$[#m;|/m;1];qaggf[r 0;r 1;(!d)!sg;m];()];qbyr[;r]$[#fa;qks fa;[t:$[#m;qwk[2=hw;r 0;m];r 0];qby[qproj[t;(r 1),(,/qrefs[cols t]'{(qname x)1}'it)];r 1;d]]]}
+/ The by-items are read on the whole table only when each keeps to its row (qloc: a column, n mod 2, 2 xbar n,
+/ g:time>09:35:00.000), where that gives the kept rows' keys; one that reads other rows (n>avg n) is read on the kept
+/ rows, as q. qlit: number and time literals blanked like strings (1.5, 0N, 09:30, 2026.01.02D09:30): a run of words,
+/ . and : whose words each start with a digit. A where's constraints keep refusing the : in them, so a later
+/ time within 09:30 16:00 still runs on the rows kept, not on the whole table.
+qlit:{[s]$[~|/0,(s>"/")&s<":";s;[w:qword 0+s;c:w|(s=".")|s=":";r:+\c>-1_0,c;bd:r@&((c>-1_0,c)&~w)|(w>-1_0,w)&~(s>"/")&s<":";@[s;&c&~@[(2+|/r)#0b;bd;:;1b]r;:;" "]]]}
+qbyl:{[C;byp]$[~^C?`$byp;1;qbyf[C;byp];1;qbyo[C;byp]]}
+qbyf:{[C;byp]$[|/~^"([{`\":"?byp;0;&/{[C;e]t:t@&0<#'t:" "\e;$[1=#t;qbop[C;*t];3=#t;$[~^`mod`div`xbar?`$t 1;qbop[C;t 0]&qbop[C;t 2];0];0]}[C]'","\byp]}   / by-items that are each a column, i, a number, or two of those around mod, div or xbar keep to their row, read without the checks
+qbop:{[C;w]$[(*w)<":";$[(*w)>"/";$[|/w="_";0;&/qword[0+w]|w="."];0];~^(C,`i)?`$w]}   / a column, i, or a number (word characters and ., no _: not 0+|n)
+qbyo:{[C;byp]e:(qname'qcut byp)@\:1;&/qlb[C]'[e;{qlit qblank x}'e]}
+qselby:{[u;m;hw;byp;it;d]$[#m;$[qbyl[cols u;byp];;:qselby[qflt[u;m;hw];();0;byp;it;d]];];r:qbyx[u;byp];sg:qsagg[cols r 0]'{(qname x)1}'it;fa:$[~&/{0<#x}'sg;();$[#m;|/m;1];qaggf[r 0;r 1;(!d)!sg;m];()];qbyr[;r]$[#fa;qks fa;[t:$[#m;qwk[2=hw;r 0;m];r 0];qby[qproj[t;(r 1),(,/qrefs[cols t]'{(qname x)1}'it)];r 1;d]]]}
 / gag1: one select-list item -> one fused result triple (head;values;first-row-indices).
 / (agg;col)        -> a single `gagg pass, as before.
 / (wavg|wsum;w;c)  -> two `gagg sum passes over the same keys and mask, so the group order

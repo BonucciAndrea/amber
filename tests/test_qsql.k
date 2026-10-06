@@ -608,5 +608,23 @@ tq[`casLitJoin;   "select from TL where n>1,n in (2,5)";                TL 1 4];
 t[`casPeach;      .[{peach[x;1 2 3 4]};,{#sel"from TL where n>1,n<4"};{x}];        2 2 2 2]
 t[`casPeachCas;   .[{peach[x;1 2 3 4]};,{#sel"from TL where n>1,n>avg n"};{x}];     2 2 2 2]
 
+/ a by-expression that reads other rows sees only the rows the where kept, as q: avg px is 45, not 35
+tq[`byAfterWhere;     "select s:sum sz by px>avg px from trades where px>25"; (+(,`px)!,0 1)!+(,`s)!,7 11];
+tq[`byAfterWhereNm;   "select s:sum sz by g:px>avg px from trades where px>25"; (+(,`g)!,0 1)!+(,`s)!,7 11];
+tq[`byAfterWhereExec; "exec sum sz by px>avg px from trades where px>25";   0 1!7 11];
+tq[`byAfterWhereTwo;  "select s:sum sz by sym,px>avg px from trades where sz>1"; (+`sym`px!(`a`a`b`c;0 1 0 1))!+(,`s)!,3 6 6 5];
+tq[`byAfterWhereI;    "select j:i by i>avg i from trades where sz>2";       (+(,`x)!,0 1)!+(,`j)!,(2 3;4 5)];
+
+/ the same for by-items that index or use in with a column (the key's name aside: values only)
+KV:{(*. +!x;*. +. x)}
+tqa[`byAfterWhereIx;   "select c:count m by n 0 from TL where n>2"; KV;  (,3;,4)];
+tqa[`byAfterWhereIn;   "select c:count m by n in m from TL where n>3"; KV; (0 1;1 2)];
+tqa[`byAfterWhereColIx; "select c:count n by m n from TL where n>2"; KV;  (0N 4;3 1)];
+/ a by-item that starts with a digit but is not a number reads other rows too: 0+|n is read on the kept rows, as q
+TU:([]n:1 2 3 4;m:4 1 3 2)
+tqa[`byAfterWhereDigit; "select c:count i by 0+|n from TU where n>2"; KV; (3 4;1 1)];
+tq[`byAfterWhereDigitX;  "exec n by 0+|n from TU where n>2";              3 4!(,4;,3)];
+t[`byAfterWherePeach; .[{peach[x;1 2 3 4]};,{#sel"select c:count m by n mod 2 from TL where n>1"};{x}]; 2 2 2 2]
+
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

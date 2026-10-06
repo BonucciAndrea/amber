@@ -454,7 +454,7 @@ t[`fillIntFloats;(0^0n;0^1.5 0n;0^(1;0n);1b^1.5 0n;0N^1.5 0n;0^`a`b!1.5 0n);(0.0
 / other fills of another type still make a generic list, as k; a null int atom becomes the fill
 t[`fillOtherType;(1^0N;0.5^0N;0.5^1 0N;0x00^1.5 0n;`a^1.5 0n);(1;0.5;(1;0.5);(1.5;0x00);(1.5;`a))]
 
-/ ---- with no library (temporal.k's dstr and pstr, amber.k's stime) the core prints a temporal atom itself ----
+/ ---- the core prints a temporal atom itself, with no library loaded (temporal.k's dstr and pstr, amber.k's stime) or with one ----
 / (it was 'value) the same text as the library's, and it reads back
 tv[`fmtMissing;"$2026.07.30";"2026.07.30"]
 tv[`fmtMissingK;"`k@'(2026.07.30;12:34:56.789;2026.07.30D01:02:03.000000004;0001.01.01;1707.09.22D00:12:43.145224192)";("2026.07.30";"12:34:56.789";"2026.07.30D01:02:03.000000004";"1.01.01";"0N")]
@@ -468,13 +468,14 @@ tv[`fmtMissingString;"$({x+y}[2026.07.30])";"{x+y}[2026.07.30;]"]
 tv[`fmtMissingJson;"`j@2026.07.30";"\"2026.07.30\""]
 tv[`fmtMissingJsonList;"`j@(1;2026.07.30)";"[1,\"2026.07.30\"]"]
 t[`fmtMissingGrade;<({x+y}[2026.07.30];{x+y}[2026.07.31]);0 1]
-/ ---- a failing temporal formatter is an error, not the end of the process or a crash ----
-tv[`fmtFails;"dstr::{x+`a};.[{$x};,2026.07.30;{`caught}]";`caught]
-te[`fmtFailsList;"dstr::{x+`a};`k@(2026.07.30;1)"]
+/ ---- printing a temporal does not call dstr, stime or pstr: a program's own, even a failing one, changes nothing (issue #18) ----
+tv[`fmtFails;"dstr::{x+`a};.[{$x};,2026.07.30;{`caught}]";"2026.07.30"]
+tv[`fmtFailsList;"dstr::{x+`a};`k@(2026.07.30;1)";"(2026.07.30;1)"]
+tv[`fmtOwnFormatters;"dstr::{\"d\"};stime::{\"t\"};pstr::{\"p\"};`k@'(2026.07.30;12:34:56.789;2026.07.30D01:02:03.000000004;1707.09.22D00:12:43.145224192)";("2026.07.30";"12:34:56.789";"2026.07.30D01:02:03.000000004";"0N")]
 
 
-te[`fmtFailsProj;"dstr::{x+`a};`k@{x+y}[2026.07.30]"]
-te[`fmtFailsJson;"dstr::{x+`a};`j@`a`b!(1;2026.07.30)"]
+tv[`fmtFailsProj;"dstr::{x+`a};`k@{x+y}[2026.07.30]";"{x+y}[2026.07.30;]"]
+tv[`fmtFailsJson;"dstr::{x+`a};`j@`a`b!(1;2026.07.30)";"{\"a\":1,\"b\":\"2026.07.30\"}"]
 
 / ---- a temporal item keeps its type in a list ----
 / There is no temporal vector: pushing a date onto an int list made it an int.
@@ -1241,7 +1242,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
-hexpect[798]
+hexpect[799]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

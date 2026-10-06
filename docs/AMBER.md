@@ -129,7 +129,8 @@ These are properties of the host, not bugs, and the library is written to respec
 ### Tacit trains: hooks and forks (since 2.0.1)
 
 A parenthesised, **semicolon-separated** list whose every element is a function
-is applied as a **train** rather than indexed. Two shapes exist:
+is applied as a **train** rather than indexed. `::` counts as data here, not as a
+function, so a list holding it is indexed: `(::;::)@0 1` is `(::;::)`. Two shapes exist:
 
 | shape | name | monadic `t y` | dyadic `t[x;y]` |
 |-------|------|---------------|-----------------|

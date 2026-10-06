@@ -1323,7 +1323,13 @@ tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 ppeV:5 6
 t[`ppeStale;?{."{[ab]ab}",x;."(ppeV-1)",x}'(!100)#\:" ";,4 5]
 
-hexpect[843]
+/ ---- a list holding :: is data, not a train, so applying it indexes it, as in ngn/k (#83 Q2); a list of functions is still a train ----
+t[`trainNullIndexed;`k'((::;::)@0 1;(::;::;-:)@0 1;(::;-:)@0 1;(-:;::)@1 0;(::;::)[0 1]);("(::;::)";"(::;::)";"(::;-:)";"(::;-:)";"(::;::)")]
+t[`trainNullFromIndex;{D:({x};{y};1);`k'(D@5 6;(D@5 6)@0 1)}[];2#,"(::;::)"]
+t[`trainNullAtom;(`k(::;::)@5;(::;::)[1;2];*"\n"\.[.:;,"1 (::;::) 2";{x}]);("::";2;"'type")]
+t[`trainOfFunctions;((+;-)/[1;2];(+;-;*)[5;2];(-:;%:)@4);(0;-3;2.0)]
+
+hexpect[847]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

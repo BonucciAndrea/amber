@@ -969,7 +969,8 @@ ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[
  G(&kst,js1,qp,qt,frk,hex,err,qa,qe,qx,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,wcolT,rcolT,fszT,ldirT,wtnT,sencT,hhC,mmC,secC,tjnC,ed)[fI((V*)s,L(s),v)](x))
 /* ---- tacit trains: hook (f g) and fork (f g h) --------------------------
  * A general list of length 2 or 3 whose every element is a function becomes a
- * TRAIN when it is applied: (f g) is a hook, (f g h) a fork (APL/J/BQN rules).
+ * TRAIN when it is applied (a `::` in it is data, as in ngn/k, so such a list is
+ * indexed): (f g) is a hook, (f g h) a fork (APL/J/BQN rules).
  *   hook   monadic  (f g)   y  = y f (g y)      dyadic  x (f g)   y = x f (g y)
  *   fork   monadic  (f g h) y  = (f y) g (h y)  dyadic  x (f g h) y = (x f y) g (x h y)
  * A primitive element is applied straight through the index-aligned monad/dyad
@@ -982,8 +983,8 @@ ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[
 Z I istrain(A x){if(_t(x)!=tA)return 0;U m=_n(x);if(m!=2&&m!=3)return 0;A*e=_A(x);for(U i=0;i<m;i++)if(!TU(_t(e[i])))return 0;return(I)m;}
 Z A ap1(A f,A y){UC t=_t0(f);if(t==tu||t==tv)return v1[_v(f)](y);return _1(f,y);}
 Z A ap2(A f,A y,A z){UC t=_t0(f);if(t==tu||t==tv)return v2[_v(f)](y,z);return _2(f,y,z);}
-Z A trn1(A x,A y,I m){A*e=_A(x);if(m==2){A g=Ny(ap1(e[1],_R(y)));return y(ap2(e[0],y,g));}A f=Ny(ap1(e[0],_R(y))),h=N(ap1(e[2],y),mr(f));A r=ap2(e[1],f,h);mr(f);return r;}
-Z A trn2(A x,A y,A z,I m){A*e=_A(x);if(m==2){A g=N(ap1(e[1],z));return ap2(e[0],y,g);}A l=Nz(ap2(e[0],y,_R(z))),r=N(ap2(e[2],y,z),mr(l));A v=ap2(e[1],l,r);mr(l);return v;}
+Z A trn1(A x,A y,I m){A*e=_A(x);P(e[0]==au||e[1]==au||e[m-1]==au,i1(x,y))if(m==2){A g=Ny(ap1(e[1],_R(y)));return y(ap2(e[0],y,g));}A f=Ny(ap1(e[0],_R(y))),h=N(ap1(e[2],y),mr(f));A r=ap2(e[1],f,h);mr(f);return r;}
+Z A trn2(A x,A y,A z,I m){A*e=_A(x);P(e[0]==au||e[1]==au||e[m-1]==au,i2(x,y,z))if(m==2){A g=N(ap1(e[1],z));return ap2(e[0],y,g);}A l=Nz(ap2(e[0],y,_R(z))),r=N(ap2(e[2],y,z),mr(l));A v=ap2(e[1],l,r);mr(l);return v;}
 A2(_1,/*01*/{I tn=istrain(x);if(tn&&!(_tz(y)&&gl_(y)>=0&&gl_(y)<(I)_n(x)))return trn1(x,y,tn);}P(!xtt,i1(x,y))U k=xK;P(1<k,k==2&&!xtp?prj(x,A8(y,GAP),2):prj(x,&y,1))
  X(Ro(run(x,&y,1))Rp(P(k>7,er(y))I m=xn-1,j=0;Ab8;F(m,b[i]=xA[i+1]==GAP&&!j?j++,y:_R(xA[i+1]))I l=MAX(0,1-j);MC(b+m,&y,8*l);_8(xx,b,m+l))
   Rq(_1(xx,N(_1(xy,y))))Rr(w1(xE,xx,y))Rs(sym1(xv,y))Ru(v1[xv](y))Rw(AK(xv-1<3u&&yK==2?1:ytU?yK:1,AW(xv,aV(tr,1,&y))))Rx(ext(x,&y,1))R_(et(y)))0)

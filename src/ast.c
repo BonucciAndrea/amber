@@ -548,11 +548,12 @@ static ASTNode *ast_from_k_d(A v, int depth) {
     if (head == MKL) {
         /* `(x;y;z)`: either a plain list literal, or -- if every element is
          * itself verb-like and there are exactly 2 or 3 of them -- a tacit
-         * Hook `(f g)` or Fork `(f g h)` train. */
+         * Hook `(f g)` or Fork `(f g h)` train. A `::` makes it a list, as
+         * when it is applied (src/a.c trn1, trn2). */
         U cnt = n - 1;
         if (cnt == 2 || cnt == 3) {
             int all_applicable = 1;
-            for (U i = 1; i < n && all_applicable; i++) all_applicable = is_applicable(_A(v)[i]);
+            for (U i = 1; i < n && all_applicable; i++) all_applicable = is_applicable(_A(v)[i]) && _A(v)[i] != au;
             if (all_applicable) {
                 ASTNode *tt = ast_new(cnt == 2 ? AST_HOOK : AST_FORK,
                                        cnt == 2 ? "Hook" : "Fork",

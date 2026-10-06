@@ -1126,7 +1126,8 @@ t[`floatRound20Nines;fb `F$"9999999999999999999.9";0x43e158e460913d00]   / 20 di
 / ---- flip: an atom value is enlisted; bit lists; empty lists of tables (upstream ngn/k 7bf994cd) ----
 t[`flipAtom;`k@+(,`a)!,{x};"+(,`a)!,,{x}"]
 t[`flipCols;`k@+`a`b!(1 2;3 4);"+`a`b!(1 2;3 4)"]
-t[`flipEmptyTable;(`k@([]);#!+([]);#. +([]));("+(0#`)!0#,(::)";0;0)]   / ([]) stays as it was (ngn/k enlists the empty values here)
+t[`flipEmptyTable;(`k@([]);#!+([]);#. +([]));("+(0#`)!()";0;0)]   / ([]) is the empty table (issue #19); its values were 0#,:: (ngn/k enlists them)
+tv[`emptyTable;"(#([]);!([]);([])~+(0#`)!();([]),([]a:1 2);([]a:1 2),([]))";(0;0#`;1;+(,`a)!,1 2;+(,`a)!,1 2)]   / no columns and no rows, as agreed on #19 (q's ([]) is an empty dict): #([]) was 1 and both joins were 'domain
 t[`flipEmptyTables;(`k@+0#,(+`a`b!(1 2;3 4));`k@+0#,,`a`b!1 2);("(0#,`a`b!0N 0N;0#,`a`b!0N 0N)";",0#,`a`b!0N 0N")]   / empty lists of tables: the prototype was read before it was set; empty lists of dicts, as in ngn/k
 t[`flipBits;(+(01B;01B);+(101B;010B));((0 0;1 1);(1 0;0 1;1 0))]   / lists of bit booleans, read as bits
 t[`flipBits8;*+8#,11B;8#1]   / each column was read as 8-byte words of the lists
@@ -1386,7 +1387,7 @@ t[`keyedArithKeys;(([a:1 2;b:`x`y]v:1 2;w:3 4)+([b:`y`z;a:2 3]w:10 20;v:5 6);([k
 t[`keyedArithLists;((([]a:1 2)!(1 2;3 4))+([]a:2 3)!(10 20;30 40);(([]a:1 2 3)!4 5 6)-([]a:2 3 4)!10 20 30);((+(,`a)!,1 2 3)!(1 2;13 24;30 40);(+(,`a)!,1 2 3 4)!4 -5 -14 -30)]
 t[`keyedArithErr;{*"\n"\.[.:;,x;{x}]}'("kL+([j:2 3]v:5 6)";"kL+([k:2 3]w:5 6)";"kL+(([]k:2 3)!5 6)";"(([]k:2 3)!5 6)*kL";"([k:1 2]v:1 2)|([k:3 4]v:`a`b)");("'domain";"'domain";"'type";"'type";"'type")]
 
-hexpect[877]
+hexpect[878]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

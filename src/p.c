@@ -82,7 +82,7 @@ Z A amkl(CO A*e,U n)_(A x=aA1(MKL);F(n,PSH(x,e[i]))x)                           
 Z A amcg(C end,U*np)_(I nm[256];A ex[256];U n=0;s=pws(s);                                            //parse `name:expr;..` group up to end -> (names ! (e0;e1;..))
  W(*s-end,P(!id0(*s),ep0())A y=str0(N(ps()));nm[n]=us(yC);y(0);s=pws(s);P(*s-':',ep0())s++;
   C v=0;ex[n++]=N(pe(0,&v));s=pws(s);I(*s==';',s++)s=pws(s))
- s++;*np=n;aA3(EXC,qte(aV(tS,n,nm)),amkl(ex,n)))
+ s++;*np=n;aA3(EXC,qte(aV(tS,n,nm)),n?amkl(ex,n):emp(tA)))                                       //no columns: () as the values, not an empty make-list (whose prototype was ::)
 Z A0(amtbl,s++;U nk,nv;A kd=N(amcg(']',&nk)),vd=N(amcg(')',&nv));                                    //table literal ([keys]cols) ; s at '['
  A vt=aA2(FLP,vd);P(!nk,vt)aA3(EXC,aA2(FLP,kd),vt))                                                  //unkeyed:+names!cols  keyed:keytable!valtable
 // amber: civil date -> days since 2000.01.01 (Howard Hinnant, epoch-shifted; matches temporal.k ymd2d); "D"$ and "P"$ use it too (below)

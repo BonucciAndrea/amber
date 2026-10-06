@@ -189,6 +189,9 @@ key value first last reverse distinct group where flip count mod div xbar xlog`
 **Uniform** (list → list)
 `sums prds mins maxs deltas ratios differ prev next`
 
+**Adverb words** (q's, infix: `last each x` is `last'x`)
+`each over scan prior`
+
 Examples:
 
 ```k
@@ -1013,6 +1016,7 @@ scalar     neg not null reciprocal sqrt floor ceiling signum abs exp log sin cos
            flip count mod div xbar xlog round
 aggregate  sum prd min max avg med var dev svar sdev cov scov cor wsum wavg all any
 uniform    sums prds mins maxs deltas ratios differ prev next
+adverbs    each over scan prior
 order/set  rank iasc idesc asc desc xrank xprev rotate in except inter union raze
            sublist cross
 tables     istable isdict iskeyed cols keys rows atr xkey unkey xcolall xcols xasc

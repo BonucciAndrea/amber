@@ -148,6 +148,11 @@ union:{distinct x,y}
 raze:{$[isat x;,x;,/x]}
 sublist:{$[$[1=#y;isat y;0b];$[|/^x;`err"type";abs x;y;0#y];[n:(abs x)&#y;$[x<0;(0-n)#y;n#y]]]}   / An atom comes back as is, as q (0 sublist 5 is !0); a null or symbol count: 'type, as q
 cross:{,/x,/:\:y}
+/ q's adverb words, defined as q defines them (#83 Q11): last each x is last'x, and infix like any named dyad
+each:{x'y}
+over:{x/y}
+scan:{x\y}
+prior:{x':y}
 
 / ---- table predicates & basics ---------------------------------------------
 istable:{`M=@x}

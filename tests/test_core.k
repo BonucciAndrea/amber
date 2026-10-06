@@ -661,6 +661,11 @@ t[`jsonInfNan;(`j@0w;`j@-0w;`j@0n;`j@1.0 0w -0w 0n);("null";"null";"null";"[1,nu
 t[`findBits;((,1)?0101010101B;(,0)?0101b;1 0?0101b;(,1)?0#01b);(0N 0 0N 0 0N 0 0N 0 0N 0;0 0N 0 0N;1 0 1 0;!0)]
 t[`exceptBits;(0101010101B^1;11B^1;0101010101B^0;11B^0);(00000b;0#01b;11111b;11b)]
 t[`exceptMixed;((0;" ")^0;(0;" ")^" ";(1;"a";`b)^"a";(1;"a")^1 2;(1;"a")^(1;"a");(1;"a";2)^1;(1;"a")^!0);(," ";,0;(1;`b);,"a";!0;("a";2);(1;"a"))]   / digest #64: a general list's chars against numbers are kept, not 'type
+/ a range is its items: except between a range and chars removes nothing, as for the ints written out (2.7.2: 'type)
+tv[`exceptRangeChars;"((!3)^\"a\";(1+!3)^\"a\";(!1)^\"\";(!3)^\"ab\")";(0 1 2;1 2 3;,0;0 1 2)]
+tv[`exceptCharsRange;"(\"abc\"^!3;\"abc\"^1+!3)";("abc";"abc")]
+tv[`exceptGenericRange;"((1;\"a\")^!3;(1;\"a\";2)^1+!3)";(,"a";,"a")]   / a general list's numbers go, its chars stay
+t[`exceptRangeNums;((!5)^3+!5;(!5)^!2;(!5)^1 3);(0 1 2;2 3 4;0 2 4)]   / the range fast paths (y covers an end of x) still run
 / Digest #6: > leaves stdin, stdout and stderr open (a failed write with no stderr to report it on looped or crashed)
 t[`closeStdHandles;(7#.[{[d]>0};,0;{x}];7#.[{[d]>1};,0;{x}];7#.[{[d]>2};,0;{x}]);3#,"'domain"]
 t[`aimRange;(7#.[{[d]`aim[!5]};,0;{x}];7#.[{[d]`aim[1000+!3]};,0;{x}]);2#,"'length"]   / Digest #11: a range is its items, not its two stored ends (read as addresses)
@@ -1251,7 +1256,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
-hexpect[800]
+hexpect[804]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

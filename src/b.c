@@ -175,9 +175,21 @@ Z NI __attribute__((cold)) I ixfh(A*p,A x,A y,A z,UC d,B h){A o=_R(x);x=ixag(p,_
 //.: calls no function below that, and 1 only costs a copy) -- 1. The walk is O(the items at y; for .: all of each),
 //where d4 may touch one path in each: to measure in the timing pass
 A*gq(A);Z I ixfd(A x,I l){UC t=_t(x);P(_tU(x)||l>64,1)P(t==tA,({I r=0;F(_N(x),I(ixfd(_A(x)[i],l+1),r=1;break))r;}))return (t==tm||t==tM)&&(ixfd(_x(x),l+1)||ixfd(_y(x),l+1));}
+Z I ixhr(A*,A,A,U,U,B,B,B,I);
+//a table x with a general or symbol column (one without is data) at level k of an amend whose verb calls nothing (f 0),
+//with y[k] its rows (an int, ints, or elided) and y[k+1] a column or a list of them by name, and more levels below: only
+//the items of those columns at those rows can name the variable, as in a dict, so they are walked (a typed column but
+//symbols is data; a column not there is added, and has none); -1 for any other index (a column first, ..): there the
+//caller is unsure, as before. O(the items at y), not the columns
+Z I ixht(A*p,A x,A y,U k,U m,B e,I l){P(_t(y)!=tA,-1)A s=_A(y)[k],c=_A(y)[k+1];B all=s==au;P(!_ts(c)&&_t(c)!=tS,-1)
+ P(!all&&!_tz(s)&&!_tZ(s),-1)A ks=_x(x),cs=_y(x),g=fnd(ks,_R(c));B gv=_tT(g);U nc=gv?_N(g):1;I r=0;
+ for(U i=0;i<nc&&!r;i++){L ci=gv?ixe(g,i):gl_(g);if(ci<0||ci>=(L)_N(cs))continue;A v=_A(cs)[ci];UC u=_t(v);if(u!=tA&&u!=tS)continue;
+  U n=_N(v),nr=all?n:_tz(s)?1:_N(s);for(U j=0;j<nr&&!r;j++){L q=all?(L)j:_tz(s)?gl_(s):ixe(s,j);I(q>=0&&q<(L)n,r=ixhr(p,u==tA?_A(v)[q]:ii(v,(U)q),y,k+2,m,0,e,0,l))}}
+ mr(g);return r;}
 Z I ixhr(A*p,A x,A y,U k,U m,B f,B e,B t,I l){if(k==m)return f&&(e?ixfd(x,0):_tU(x));UC vt=_t(x);
  if(vt==ts){A*q=gq(x);return q==p||q&&*q&&(l>32||ixhr(p,*q,y,k,m,f,e,1,l+1));}   //a name: the amend goes on in its global
- if(!f&&k+1==m||_tP(x)&&!_tU(x))return 0;if(_tU(x)||vt==tM&&(f||k+2<m)&&({I r=0;A c=_y(x);F(_N(c),I(_t(_A(c)[i])==tA||_t(_A(c)[i])==tS,r=1))r;}))return 1;
+ if(!f&&k+1==m||_tP(x)&&!_tU(x))return 0;if(_tU(x))return 1;
+ if(vt==tM&&(f||k+2<m)&&({I r=0;A c=_y(x);F(_N(c),I(_t(_A(c)[i])==tA||_t(_A(c)[i])==tS,r=1;break))r;})){I r=f?-1:ixht(p,x,y,k,m,e,l);return r<0?1:r;}   //a table with a general or symbol column: its items at y (ixht), where it can tell
  B dc=vt==tm;A v=dc?_y(x):x;P(vt>tm||vt==tM,0)P(dc&&(!_tT(_x(x))||!_tT(v)),1)UC u=_t(v);P(u!=tA&&!(u==tS&&(t||dc)),0)   //items that are data
  UC ry=_t(y);U n=_N(v);L j=0;A s=0,g=0;B a=0;I r=0;   //the items at y[k]: every one (a), g's (an int list), or j
  if(ry>tm)s=y;else if(ry==tA)s=_A(y)[k];else if(LH(tE,ry,tL))j=ixe(y,k);else if(ry==tS)s=ii(y,k);else a=1;

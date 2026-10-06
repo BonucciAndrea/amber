@@ -1229,7 +1229,13 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
-hexpect[791]
+/ ---- a parse does not depend on the text parsed before it: just past a lambda's [params] a - starts a number,
+/ and where an earlier text's [params] ended was kept, so a later text in the same memory (the REPL's line
+/ buffer, or a string . reuses) read ppeV-1 there as ppeV applied to -1 ----
+ppeV:5 6
+t[`ppeStale;?{."{[ab]ab}",x;."(ppeV-1)",x}'(!100)#\:" ";,4 5]
+
+hexpect[792]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

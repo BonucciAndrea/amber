@@ -37,4 +37,14 @@ check "short lines across read boundaries" "$tmp/lines.k" "$tmp/lines.want"
 printf '2\n4\n6\n8\n' > "$tmp/long.want"
 check "long lines" "$tmp/long.k" "$tmp/long.want"
 
+# 3. a line does not depend on the line parsed before it in the same buffer.
+#    Just past a lambda's [params] a - starts a number; where the last [params]
+#    ended was kept from line to line, so the third line, moved to the start of
+#    the buffer when it is split across two reads, read vvvv-1 as vvvv applied
+#    to -1 (0N): its - is where the first line's ] ended. The layout depends on
+#    rep's 256-byte buffer: if that size changes, this no longer pins the bug
+{ echo '{[ab]ab}'; printf 'vvvv:5 6%232s\n' ''; echo '(vvvv-1)'; } > "$tmp/params.k"
+printf '{[ab]ab}\n4 5\n' > "$tmp/params.want"
+check "a line after a lambda's parameters" "$tmp/params.k" "$tmp/params.want"
+
 exit $fail

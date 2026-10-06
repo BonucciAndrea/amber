@@ -1,6 +1,6 @@
 #include"a.h" // Amber parser - GNU AGPLv3 - see LICENSE and NOTICE
 #include"csv.h"   //csv_float: numbers read as a CSV cell reads them
-Z S s0,s,ppe;Z U k;Z A pb(A,C);Z A pe(A,C*);Z A ps();                                                   //Parser state (s:current pointer, s0:start of source, k:implicit arg counter)
+Z S s0,s,ppe;Z U k;Z A pb(A,C);Z A pe(A,C*);Z A ps();                                                   //Parser state (s:current pointer, s0:start of source, k:implicit arg counter, ppe: just past the last [params] read, cleared for each parse)
 U si(S s,C v)_(strchrnul(s,v)-(C*)s)                                                                //find char (string index)
 B id0(UC c)_(CAz(c)|(c|1)==0xd1)                                                                    //is identifier start char?
 Z B id1(C c)_(id0(c)|C09(c))                                                                        //is identifier char?
@@ -203,7 +203,7 @@ Z A pe(A x,C*v)_(P(pd>=PD,x?x(ez0()):ez0())pd++;A r=pe_(x,v);pd--;r)            
 Z A pb(A x,C c)_(x=x?aA1(x):emp(tA);                                                                //parse body (sequence of ;-separated expressions)
  W(1,C v=0;A y=Nx(pe(0,&v));PSH(x,c-']'&&y==GAP?au:y);P(y==GAP&&c==')',ep(x))B(*s-';'&&*s-10)B(c==10&&*s==10)s++)
  P(c==10&&!*s,x)P(*s-c,ep(x))s++;x)
-Z A pk_(S*p,C c)_(s0=s=*p;A x=pb(GAP,c);*p=s;P(x,xn==2?las(x):x)eD(s0,SL(s0),s-s0);eQ(s0,SL(s0),s-s0);0)                  //parse either a group of lines (c='\n') or till '\0' (c='\0')
+Z A pk_(S*p,C c)_(s0=s=*p;ppe=0;A x=pb(GAP,c);*p=s;P(x,xn==2?las(x):x)eD(s0,SL(s0),s-s0);eQ(s0,SL(s0),s-s0);0)                  //parse either a group of lines (c='\n') or till '\0' (c='\0')
 A pk(S*p,C c)_(P(!ray_rc_sync,pk_(p,c))plk(1);A x=pk_(p,c);plk(0);x)                               //pk_ under the peach parse lock (m.c plk)
 // "D"$ "T"$ "P"$ (issue #62): the text as the literal reader reads it, its fields checked as there, else 'parse (they rolled
 // over, and "D"$"abc" made a date of a function's address). A time also takes a sign and one to three fields ("10", "10:00"),

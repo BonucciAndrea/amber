@@ -639,6 +639,7 @@ AJWT:+`ts`v!((2026.07.30D10:00:00.000;2026.07.30D11:00:00.000);1 2)
 AJWQ:+`ts`q!((2026.07.30D09:30:00.000;2026.07.30D10:15:00.000;2026.07.30D10:50:00.000);6 5 4)
 t[`wjStamps;       ((+wj1[AJW;`ts;AJWT;AJWQ;,(`c;count;`q)])`c;(+wj1[AJW;`ts;AJWT;AJWQ;,(`s;{+/x};`q)])`s);  (2 1;11 4)]   / {+/x}: wj's pure-K fallback
 t[`wjStampsFirstMin; (+wj[AJW;`ts;AJWT;AJWQ;((`f;first;`ts);(`l;last;`ts);(`m;min;`ts);(`x;max;`ts))])`f`l`m`x;  AJWQ[`ts]@(0 1;1 2;0 1;1 2)]   / temporals as themselves, not their numbers, their addresses or 'type
+t[`wjKernelColumnType; {.[{`wj(0 1 2;,x;,y;,0;,2;,0;,3)};(x;y);{*"\n"\x}]}'[(AJWQ`ts;AJWQ`ts;(1;2.0;3);AJWQ`ts);0 2 4 6];  ("'type";"'type";"'type";,,3)]   / the kernel called directly: a column of timestamps or a generic list is 'type, not its items' addresses; count reads no column
 / a temporal time column against one of another kind is 'type, as in q
 AJD:+`ts`v!((2026.07.30;2026.07.31);1 2)
 t[`ajMixedKinds;   *"\n"\.[aj;(`ts;AJD;AJQ);{x}];  "'type"]

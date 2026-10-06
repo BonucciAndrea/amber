@@ -305,7 +305,10 @@ A wjc(A x){
  CO L*RES T=_V(QT),*RES W0=_V(W0A),*RES W1=_V(W1A),*RES GB=_V(GBA),*RES GE=_V(GEA),*RES cod=_V(CD);
  U nt=_n(W0A),na=_n(e[1]),nq=_n(QT);
  A*QC=(A*)_V(e[1]);
- F(na,P(cod[i]-6&&_N(QC[i])-nq,mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);el(x)))   //a column read has an item per quote (count reads none)
+ //a column read is numbers (ints of any width, a range, floats or chars: a generic list's items would be read by their
+ //addresses) with an item per quote; count reads none
+ F(na,P(cod[i]-6&&(U)(_t(QC[i])-tE)>(U)(tC-tE),mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);et(x))
+      P(cod[i]-6&&_N(QC[i])-nq,mr(QT);mr(CD);mr(W0A);mr(W1A);mr(GBA);mr(GEA);el(x)))
  // The two bounds vectors are the kernel's ONLY workspace and are bump-allocated
  // from the thread-local arena exactly once, before the column loop -- no heap,
  // no per-row or per-column allocation. They are bracketed with

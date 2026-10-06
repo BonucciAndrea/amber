@@ -524,5 +524,13 @@ tq[`strSemi;       "select from TQS where s like \"a;b\"";              1#TQS];
 tq[`strEscQuote;   "exec \"a\\\")\" from TQS";                          "a\")"];
 tq[`strEnd;        "(exec s from TQS where s like \"a;b\"),,\"x)\"";    ("a;b";"x)")];
 
+/ an unparenthesised query as the source takes the where-clause after it, as q's
+TNQ:([]sym:`a`b`a;n:1 2 3)
+tq[`nestWhereExec; "exec n from update c0:n from TNQ where sym=`b";     1 2 3];
+tq[`nestWhereSel;  "select n from update c0:n from TNQ where sym=`b";   ([]n:1 2 3)];
+tq[`nestWhereUpd;  "update m:n from select from TNQ where sym=`a";      ([]sym:`a`a;n:1 3;m:1 3)];
+tq[`nestWhereDel;  "delete from select from TNQ where sym=`a";          0#TNQ];
+tq[`nestWhereParen; "exec n from (update c0:n from TNQ) where sym=`b";  ,2];
+
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

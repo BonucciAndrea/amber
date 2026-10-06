@@ -529,9 +529,11 @@ Z Y2(binZ,
   F(yn,L v;S4(wy,v=yg,v=yh,v=yi,v=yl)*k=-1;k[1]=xn;S4(wx,,W(*k+1<k[1],I i=*k+k[1]>>1;k[v<xh]=i),W(*k+1<k[1],I i=*k+k[1]>>1;k[v<xi]=i),W(*k+1<k[1],I i=*k+k[1]>>1;k[v<xl]=i))
        S4(wz,zg=*k,zh=*k,zi=*k,zl=*k))y(z)))
 
-Z Y2(binF,RF(x=of1(xR);x(binZ(x,of1(y))))REBGHILC(binF(x,N(cF(y))))Rt(P(yt>=tdt,et(y))YU(ed(y))fir(N(binF(x,enl(y)))))RmMA(r2f(binF,x,y))R_(ed(y)))
+Z Y2(binF,RF(x=of1(xR);x(binZ(x,of1(y))))REBGHILC(binF(x,N(cF(y))))Rt(P(yt>=tdt,et(y))YU(ed(y))fir(N(binF(x,enl(y)))))RmMA(r2f(binF,x,y))R_(et(y)))
+Z L bS1(A x,U u)_(S v=su(u);C t[8];U n=SL(v);I(n<5,v=MC(t,v,n+1))CO I*a=xI;L l=-1,e=xn;W(l+1<e,L m=l+e>>1;I(strcmp(v,su(a[m]))<0,e=m)E(l=m))l)//the last item of x at or before u, in <'s order
+Z Y2(binS,Rs(fir(N(binS(x,enl(y)))))RS(A z=an(yn,tZ(xn-1));I w=zw-3;F(yn,L v=bS1(x,yI[i]);S4(w,zg=v,zh=v,zi=v,zl=v))y(z))RmMA(r2f(bin,x,y))R_(et(y)))//symbols, as q's bin
 A ucb(A);
-X2(bin,RC(P(ytA||ytm,binZ(x,y))A u=ucb(xR);u(binZ(u,ytc||ytC?ucb(y):y)))REBGHIL(binZ(x,y))RF(binF(x,y))Rm(_1(xx,N(bin(xy,y))))R_(et(y)))
+X2(bin,RC(P(ytA||ytm,binZ(x,y))A u=ucb(xR);u(binZ(u,ytc||ytC?ucb(y):y)))REBGHIL(binZ(x,y))RF(binF(x,y))RS(binS(x,y))Rm(_1(xx,N(bin(xy,y))))R_(et(y)))
 
 //amber: exponential moving average kernel.  y is a float vector (caller-owned);
 //returns fresh float vector  z[0]=y[0]; z[i]=a*y[i]+(1-a)*z[i-1].  O(n) single sweep.

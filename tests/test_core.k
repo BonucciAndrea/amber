@@ -612,6 +612,10 @@ t[`intLessUnchanged;(1 2<2 1;-1<1;<2 1 3);(1 0;1b;1 0 2)]
 t[`binCharInList;(," ")'(0x80;"");(0;!0)]
 t[`binCharInList2;(" ",0x80)'(0xff;"");(1;!0)]
 t[`binIntInList;1 3 5'(2;4 6);(0;1 2)]
+/ ---- binary search on symbols, in <'s order, as q's bin; a float list with a symbol is 'type, as an int list (#20 row 13) ----
+tv[`binSyms;"(`a`c`e'`b;`a`c`e'`e`f`a`A;(0#`)'`a;`a`c`e'(`b;`d`f))";(0;2 2 0 -1;-1;(0;1 2))]
+tv[`binSymsMany;"{(x'y)~{-1++/~y<x}[x]'y}[{x@<x}`$\"x\",/:$!3000;`$\"x\",/:$-50+!3100]";1b]
+t[`binFloatSym;5#.[{(,0.5)'x};,`a;{x}];"'type"]
 
 
 / ---- the fused compare idioms order chars as the unfused ones do (unsigned among chars) ----
@@ -1331,7 +1335,7 @@ tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 ppeV:5 6
 t[`ppeStale;?{."{[ab]ab}",x;."(ppeV-1)",x}'(!100)#\:" ";,4 5]
 
-hexpect[848]
+hexpect[851]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

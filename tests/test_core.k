@@ -715,6 +715,17 @@ t[`findCharChar;"abc"?"cb";2 1]
 t[`findIntInt;1 2 97?97 1;2 0]
 t[`findGeneric;((1;"a")?"a";(1;"a")?97);1 0N]
 t[`findNeedleKept;{n:98 99;.[{"abc"?x};,n;{x}];n}[];98 99]
+/ a dict's or a table's values are checked too (they gave nulls), with a dict haystack as well
+t[`findCharHayDict;.[.:;,"\"ab\"?`a`b!1 2";{*"\n"\x}];"'type"]
+t[`findIntHayDict;.[.:;,"1 2?`a`b!\"ab\"";{*"\n"\x}];"'type"]
+t[`findCharHayTable;.[.:;,"\"ab\"?([]a:1 2)";{*"\n"\x}];"'type"]
+t[`findIntHayTable;.[.:;,"1 2?([]a:\"ab\")";{*"\n"\x}];"'type"]
+t[`findCharHayKeyed;.[.:;,"\"ab\"?([k:`a`b]v:1 2)";{*"\n"\x}];"'type"]
+t[`findDictHayDict;.[.:;,"(`a`b!1 2)?`a`b!\"ab\"";{*"\n"\x}];"'type"]
+t[`findDictDeep;.[.:;,"\"ab\"?`a`b!(1;2)";{*"\n"\x}];"'type"]
+t[`findListOfDicts;.[.:;,"\"ab\"?(`a`b!1 2;`c`d!3 4)";{*"\n"\x}];"'type"]
+t[`findEmptyDict;.[.:;,"\"ab\"?(0#`)!!0";{*"\n"\x}];"'type"]
+t[`findDictSame;("ab"?`a`b!"ba";1 2?`a`b!2 1;"ab"?([]a:"ba"));(`a`b!1 0;`a`b!1 0;+(,`a)!,1 0)]
 
 / ---- integer literals: from 2^63 in magnitude 'limit, as q refuses them (issue #20, row 7) ----
 tv[`litIntMax;"9223372036854775807 -9223372036854775807 000000000000000000001";9223372036854775807 -9223372036854775807 1]
@@ -1259,7 +1270,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
-hexpect[807]
+hexpect[817]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

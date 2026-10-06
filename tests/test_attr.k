@@ -427,6 +427,18 @@ ta[`a402;"attr til 5";"`"]   / attr til
 ta[`a403;"attr distinct 1 2 2";"`"]   / attr distinct
 ta[`a404;"attr iasc 3 1 2";"`"]   / attr iasc
 ta[`a405;"attr key group 1 2 1";"`"]   / attr group keys
+ta[`a560;"attr key group `p#0#0";"`"]   / group keys of empty p
+ta[`a561;"attr key group `g#0#0";"`u"]   / group keys of empty g
+ta[`a562;"attr key group `s#0#0";"`s"]   / group keys of empty s
+ta[`a563;"attr key group `u#0#0";"`u"]   / group keys of empty u
+ta[`a564;"attr key group `p#0#`";"`"]   / group keys of empty p syms
+ta[`a565;"attr key group `g#\"\"";"`u"]   / group keys of empty g chars
+ta[`a566;"attr key group `s#\"\"";"`s"]   / group keys of empty s chars
+ta[`a567;"attr key group `s#0#0.0";"`s"]   / group keys of empty s floats
+ta[`a568;"attr key group `g#0#2001.01.01";"`u"]   / group keys of empty g dates
+ta[`a569;"attr key group `s#0#0x00";"`s"]   / group keys of empty s bytes
+ta[`a570;"attr value group `s#0#0";"`"]   / group keys of empty s, values
+ta[`a571;"(key group `g#0#0)~0#0";"1"]   / group keys of empty g, data
 ta[`a406;"attr asc `b`a";"`s"]   / attr asc syms
 ta[`a407;"attr asc 2.0 1.0";"`s"]   / attr asc floats
 ta[`a408;"attr asc \"ba\"";"`s"]   / attr asc chars
@@ -553,6 +565,6 @@ ta[`a538;"attr (`s#()),`s#()";"`s"]   / join s empty general, s empty general
 ta[`a539;"attr (),`s#(1 2;3 4)";"`s"]   / join empty general, s general
 ta[`a540;"attr (),`s#1 2";"`s"]   / join empty general, s ints
 
-hexpect[531]
+hexpect[543]
 hreport"AMBER ATTRIBUTES vs q"
 $[FAILN;`exit 1;]

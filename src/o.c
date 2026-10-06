@@ -187,8 +187,8 @@ Z X1(grq,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et
  R(tA,I(xn>1,A z=grpT(x);P(z,x(z)))K1("{$[#x;{b:~x~':x i:<x;i:i@<i+(#x)*-1++\\b;g:(&b)_i;g:g@<g;x[*'g]!g}x;x!0#,!0]}",x))   //generic lists (which may hold floats): ~ joins -0.0 with 0.0 (and NaNs), which grade keeps apart, so the indices are sorted within each run of matching items (one grade, by run then index)
  R3(tE,tL,tM,K1("{$[#x;x[*'g]!g@:<g:(&~x~':x i)_i:<x;x!0#,!0]}",x)))
 //the keys of a group are distinct x, so they take the attribute distinct gives, as q: `s stays, `u and `g give `u,
-//`p none (a dict's values likewise); a list without one pays this test only
-A1(grp,UC a=_tP(x)||!_tT(x)||xtE||!xn?0:_at(x);A z=grq(x);P(!z||!a||a==3,z)zx=mut(zx);_at(zx)=a==1?1:2;z)
+//`p none (a dict's values likewise; an empty list's keys are the list itself); keys that have it already are left alone
+A1(grp,UC a=_tP(x)||!_tT(x)||xtE?0:_at(x);A z=grq(x);P(!z||!a,z)UC t=a==1?1:a==3?0:2;P(_at(zx)==t,z)zx=mut(zx);_at(zx)=t;z)
 Z A1(cSI,Q(xtS||xtI)C t=tS^tI^xt;MINE(x)?(_at(x)=0,AT(t,x)):x(aV(t,xn,xV)))
 Z I penc(A,int,A*,A*);
 X1(unq,RM(K1("{$[#x;x@i@<i:&/'.=+.+x;x]}",x))   /*a table: its distinct rows, first seen first (issue #19); as q*/Rm(unq(val(x)))RE(x)RS(I(xn>=(1u<<16),A u_=0;I(!penc(x,par_thread_count(xn),&u_,0),return x(u_)))cSI(unq(cSI(x))))Ril(rndF(gl(x)))R_(et(x))RB(unq(cG(x)))

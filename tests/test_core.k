@@ -358,6 +358,9 @@ t[`distinctFirstNeg;`k@?(0;-1*0.0;1.0-1.0);"(0;-0.0)"]
 t[`distinctFirstNan;?(1;0n;-0n;0n);(1;0n)]
 t[`distinctGenPlain;?(1;"a";1;`b;"a");(1;"a";`b)]
 
+/ |/ and &/ of floats give 0.0 for a zero, as | & and the scans do (the SIMD kernel kept a lane's zero), threaded too
+t[`foldZeros;1%(|/-0.0 0.0;|/0.0 -0.0;&/-0.0 0.0;&/0.0 -0.0;|/-0.0 -0.0;|/20#-0.0 0.0;&/20#0.0 -0.0;|/,-0.0);8#0w]
+t[`foldZerosBig;1%(|/2000000#-0.0;&/2000000#-0.0 0.0);0w 0w]
 / ---- group of floats: -0.0 and 0.0 (and NaNs) are one key, indices ascending, first key seen ----
 t[`groupZeros;(=0.0 -0.0;=-0.0 0.0 1.5 0.0);((,0.0)!,0 1;-0.0 1.5!(0 1 3;,2))]
 t[`groupNans;=0n 1.0 -0n;0n 1.0!(0 2;,1)]
@@ -1057,7 +1060,42 @@ t[`ejxWidths;`ejx(1 2 300;300 1 70000);(0 1;2 0)]
 t[`ejxEmpty;(`ejx(!0;1 2);`ejx(1 2;!0));2#,(!0;!0)]
 t[`ejxOther;`ejx("ab";"ba");()]
 
-hexpect[676]
+/ ---- +/ of a range is the sum of its items, wrapped as int addition is ----
+t[`rangeSumOne;+/9223372036854775803+!1;9223372036854775803]
+t[`rangeSumWrap;+/4611686018427387904+!2;-9223372036854775807]
+t[`rangeSumThree;+/9223372036854775800+!3;9223372036854775787]
+t[`rangeSumSmall;+/-5+!1005;499485]
+t[`rangeSumTil;+/!10;45]
+
+/ ---- x!y for a large modulus x (the atom path added x to the remainder and overflowed) ----
+t[`modLarge;(9223372036854775807!1;9223372036854775807!-1;5000000000000000000!4000000000000000000);1 9223372036854775806 4000000000000000000]
+t[`modAgreesVec;(9223372036854775807!1 -1)~(9223372036854775807!1),9223372036854775807!-1;1b]
+t[`modSmall;(7!2;7!-2;2!-7;-2!7;-2!-7;0!5);2 5 1 3 -4 5]
+
+/ ---- each over an enumeration beyond 2^31 (upstream ngn/k 4dbf859f) ----
+t[`eachEnum;{x}'2147483646+!4;2147483646 2147483647 2147483648 2147483649]
+t[`eachEnumStr;$2147483647+!2;("2147483647";"2147483648")]
+
+/ ---- a sparse deal from over 2^31 stays in range (upstream ngn/k ea79e42a) ----
+tv[`dealLarge;"r:-1000?5000000000;(~0>&/r;5000000000>|/r;1000=#?r)";1 1 1]
+
+/ ---- 0! of chars gives ints, as 1! does (upstream ngn/k 60d587e0) ----
+t[`modZeroChars;(0!"ab";1!"ab";0!"a");(97 98;0 0;97)]
+
+/ ---- dividing chars by a negative int gives ints, as 0! and every other ! do ----
+t[`divChars;-2!"ab";48 49]
+t[`divCharsOne;-1!"ab";97 98]
+t[`divCharsHigh;-2!0x8081;-64 -64]
+t[`divCharsEmpty;@-2!"";`I]
+
+/ ---- a float prints as the shortest text that is nearest to it ----
+/ (the values are built exactly, without reading a float literal)
+t[`fltPrint2m24;`k@1%16777216.0;"5.960464477539063e-8"]
+t[`fltPrint2p89;`k@*/89#2.0;"6.189700196426902e26"]
+t[`fltPrint2p62a;`k@`f$4350140171453357568;"4.3501401714533576e18"]
+t[`fltPrint2p61;`k@`f$2305844108725321728;"2.3058441087253217e18"]
+t[`fltPrintSmall;`k@0.5 0.25 1.5 100.0;"0.5 0.25 1.5 100.0"]
+
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

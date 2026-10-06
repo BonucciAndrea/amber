@@ -138,12 +138,13 @@ Z A3(subf,/*010*/P(ztF||y&&ytf,z=cF(zR);CO F*RES q=zV;U i=!y;F v=y?gf(cF(y)):zn?
 Z A3(mmmf,/*010*/B i=xv==7;
  I(ztF&&!y&&zn,{int nan_=0;CO F*RES q=zV;U nm_=zn;
    F v_=par_mm_f64(q,nm_,i,&nan_);   //2.5 (exp): parallel from 1M up, the serial answer always
-   if(!nan_)return af(v_);})
+   //a zero is 0.0, as every other min/max gives (the kernel kept a lane's zero: |/-0.0 0.0 was -0.0); on bits: -fno-signed-zeros
+   if(!nan_){W u;MC(&u,&v_,8);u&=~((W)!(u<<1)<<63);MC(&v_,&u,8);return af(v_);}})
  P((y&&ytf)||ztF,y=y?of1(cF(y)):zn?al(i?NL:WL):of1(aV(tf,1,A((L)((W)i<<63)|WFL)));z=of1(cF(zR));of0(N(z(mmmf(x,y,z)))))
  // |/ of a non-empty int vector starts at 0N, so |/0N 0N is 0N (it was -0W, not an element)
  L v=y?gl(y):i?(zn?NL:-WL):WL;az(zn?(i?maxfZ:minfZ)(v,z):v))
 A3(arf,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzfc)Q(ztZFC)
- ZE(P(ztE&&x==ADD&&!y,L i=*zL,j=zL[1];az((j-i)*(j+i-1)/2))z=gZ(zR);z(arf(x,y,z)))
+ ZE(P(ztE&&x==ADD&&!y,L i=*zL,j=zL[1];W n=(W)j-(W)i;az((L)(n&1?n*((W)i+(n-1)/2):n/2*((W)i+(W)j-1))))z=gZ(zR);z(arf(x,y,z)))   //range sum: halve the even factor first ((j+i-1)*n/2 overflowed); wraps as +/ of the items
  ZB(z=cG(zR);z(arf(x,y,z)))
  G(&dexf,admf,subf,admf,___f,___f,mmmf,mmmf,___f,___f,___f)[xv](x,y,z))
 

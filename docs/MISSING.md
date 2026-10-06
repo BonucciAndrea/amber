@@ -83,7 +83,9 @@ Since 2.2 `-0.0` and `0.0` are **one value** for `=`, `~`, `in`, `=` (group), `?
 They also order as one value (issue #15): `-0.0<0.0` is `0`, grades are stable for them, so
 `<(0.0;-0.0)` is `0 1` as in q, and every NaN is one value, sorting first. The keys-only
 sort (`asc`, `x@<x`) never changes an item, and may list equal zeros or NaNs in bit order, which is
-still ascending by value. `&` and `|` of two equal zeros give `0.0`.
+still ascending by value. `&` and `|` of two equal zeros give `0.0`, and so do the folds, scans
+and grouped min/max over them; the moving `mmax`/`mmin` still keep `-0.0`. (q's `min`/`max`
+keep the first zero; ngn/k orders `-0.0` below `0.0`.)
 
 ## 4. On-disk data (HDB): partial (`hdb.k`)
 **Since 2.7:** Binary column files that map straight into memory, in q's layout: `` `:db/t/ set t ``

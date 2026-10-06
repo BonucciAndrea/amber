@@ -13,7 +13,7 @@ Z A1(re0,x?rs0(enl(x)):0) Z A o1f(A1 f,A x/*f1*/)_(re0(f==whr?x(aI(0)):f(fir(x))
 Z AX(em,/*01..1*/A z=0;U k=0;F(n,A y=a[i];I(ytm,k++;y=yx;I(z,P(TS[yt]-TS[zt],z(ed8(a,n)));z=cat10(z,y))E(z=yR)))z=unq(z);
  Ab8;MC(b,a,n*SZ(A));F(n,A y=b[i];I(ytm,A u=kv(&y);b[i]=au;PSH(u,ie(x,u));b[i]=u(u1(y(fil(ai(yn),N(fnd(y,zR),mrn(n,b);u(y(z(0))))))))))AX e8;am(z,Nz(e8(x,b,n))))
 A e1f(A1 f,A x){X(Rt(f(x))Rm(A y=kv(&x);am(x,Nx(e1f(f,y))))RA(U n=xn;P(!n,o1f(f,x))x=mut(x);F(n,P(!(xa=f(xa)),xa=au;x(0)))sqz(x))
- RE(Lij x(0);L n=j-i,i0=i;P(!n,o1f(f,x))A y=aA(n);F(n,P(!(ya=f(ai(i0+i))),mrn(i,yA);0))sqz(y))
+ RE(Lij x(0);L n=j-i,i0=i;P(!n,o1f(f,x))A y=aA(n);F(n,P(!(ya=f(az(i0+i))),mrn(i,yA);0))sqz(y))
  RGHIL(U n=xn;P(!n,o1f(f,x))A y=aA(n);
   S4(xt-tG,F(n,P(!(ya=f(ai(xg))),mrn(i,yA);x(0))),F(n,P(!(ya=f(ai(xh))),mrn(i,yA);x(0))),F(n,P(!(ya=f(ai(xi))),mrn(i,yA);x(0))),F(n,P(!(ya=f(az(xl))),mrn(i,yA);x(0))))sqz(x(y)))
  R_(U n=xN;P(!n,o1f(f,x))A y=aA0(n);F(n,A z=f(ii(x,i));B(!z,y=y(0))PSH(y,z))x(y)))}

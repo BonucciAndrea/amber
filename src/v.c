@@ -655,6 +655,10 @@ Z NI I cntrangeF(A x,L*lo,L*hi){
  // before the integrality pass rather than after it. cntok() re-checks the
  // same thing on the integers; this is only an early-out, never the decision.
  if(!((mx-mn)+1.0<=(F)CNTMAX))return 0;
+ // A small span says nothing about the magnitude (1e19 1.0000000000000004e19 is a span of 2048),
+ // and (L) of a double is defined only below 2^63: whole numbers are exact up to 2^53, so the
+ // counting path takes only those, and anything larger goes to the radix.
+ if(!(mn>=-9007199254740992.0&&mx<=9007199254740992.0))return 0;
  // amber 2.3: no separate integrality pass. The span is small and finite here,
  // so (L)x[i] is defined for every element, and the histogram pass the caller
  // runs next converts each one anyway: it checks (F)(L)x[i]==x[i] as it counts
@@ -664,7 +668,7 @@ Z NI I cntrangeF(A x,L*lo,L*hi){
 // Histogram of a float vector already known to lie in [lo,hi] (cntrangeF==1):
 // returns 0 when some element is not integral -- the caller then releases the
 // counters and falls through to the radix, exactly as the old integrality
-// pre-pass made it do. |x|<2^53 is implied by the small span around (L)mn.
+// pre-pass made it do. |x|<=2^53 is checked by cntrangeF.
 Z B cntint(CO F*RES f,N n,L lo,N*RES c){I bad=0;
  for(N i=0;i<n;i++){L k=(L)f[i];bad|=(F)k!=f[i];c[(W)k-(W)lo]++;}
  return !bad;}

@@ -759,6 +759,9 @@ t[`parseIntMax;`I$"9223372036854775807";9223372036854775807]
 t[`parseIntMin;`I$"-9223372036854775807";-9223372036854775807]
 t[`parseIntZeros;`I$"0000000000000000000000012";12]
 t[`parseIntVec;`I$("12";"99999999999999999999";"x");12 0N 0N]
+/ blanks (space, tab, CR) round the digits are skipped and a leading + is read, as q (#20 row 4)
+t[`parseIntBlanks;`I$(" 12";"+12";"  +12  ";"\t12\r";" -12";" +9223372036854775807";"++12";"-+12";"--12";"+-+-12");12 12 12 12 -12 9223372036854775807 12 -12 12 12]
+t[`parseIntBlanksBad;`I$("+ 12";"+";" ";"\n12";"1 2";" +9223372036854775808";"-";"+-";"- 12");9#0N]
 
 
 / ---- JSON escapes of control characters ----
@@ -1328,7 +1331,7 @@ tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 ppeV:5 6
 t[`ppeStale;?{."{[ab]ab}",x;."(ppeV-1)",x}'(!100)#\:" ";,4 5]
 
-hexpect[846]
+hexpect[848]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

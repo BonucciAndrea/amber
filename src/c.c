@@ -25,7 +25,7 @@ NI A2(ct,UC t=xv,u=yt;Q(xti||x==t)Q(tB<=t&&t<=tS)P(t==TT[u],y)
 A1(cB,ct(tB,x))A1(cG,ct(tG,x))A1(cH,ct(tH,x))A1(cI,ct(tI,x))A1(cL,ct(tL,x))A1(cF,ct(tF,x))A1(cC,ct(tC,x))A1(cS,ct(tS,x))
 Z X1(csti,RmMA(e1f(csti,x))RF(sqzZ(cL(x)))Rf(az(F2C(gf(x))))RC(cG(x))Rc(ai(xv))Ruvw(ai(xv))R(tdt,ai((I)x))R(ttm,ai((I)x))R(tnp,L v_=*(L*)_V(x);x(al(v_)))RilEGHIL(x)R_(et(x)))
 Z B pov(S p,S e)_(B m=*p=='-';p+=m;W(*p=='0'&&C09(p[1]),p++)I n=e-p;n>19||n==19&&strncmp(p,m?"9223372036854775808":"9223372036854775807",19)>0)//digits p..e beyond int64?
-Z X1(prsI,RmMA(e1f(prsI,x))Rc(prsI(enl(x)))RC(x=str0(x);S s=xV;P(!*s,x(_R(cn[tl])))L v=pl(&s);x(*s||pov(xV,s)?_R(cn[tl]):az(v)))R_(et(x)))
+Z X1(prsI,RmMA(e1f(prsI,x))Rc(prsI(enl(x)))RC(x=str0(x);S s=xV;I(C09(*s)||*s=='-'&&C09(s[1]),L v=pl(&s);P(!*s&&!pov(xV,s),x(az(v)))s=xV)W(CBK(*s),s++)B m=0;W(*s=='+'||*s=='-',m^=*s++=='-')S b=s;P(!*s,x(_R(cn[tl])))W u=pu(&s);S e=s;W(CBK(*s),s++)x(*s||pov(b,e)?_R(cn[tl]):az((L)((W)(1-2*m)*u))))R_(et(x)))//a plain number as before; else blanks round it, and signs before it (- an odd number of times is negative), as q
 Z X1(prsF,RmMA(e1f(prsF,x))Rc(prsF(enl(x)))RC(x=str0(x);S s=xV;P(!*s,x(_R(cn[tf])))L v=pf(&s);x(*s?_R(cn[tf]):aV(tf,1,&v)))R_(et(x)))
 A ptT(A),ptD(A),ptP(A);   //"T"$ "D"$ "P"$: the text as the literal reader reads it (p.c)
 Z X1(cSb,RmMA(e1f(cSb,x))RC(U i=0,n=xn;W(i<n&&CBK(xC[i]),i++)W(n>i&&CBK(xC[n-1]),n--)P(!i&&n==xn,cS(x))x(cS(aCn(xC+i,n-i))))Rc(cS(CBK(xv)?emp(tC):x))R_(cS(x)))//`$: blanks trimmed, as q

@@ -335,6 +335,19 @@ A mwC(A x){
      case MWAVG: mwavg(d,r,n,(N)w);break;
      case MWVAR: mwvar(d,r,n,(N)w);break;
      default:    mwdev(d,r,n,(N)w);break;}
+   // An infinity that came into a block's running sum leaves it inf or NaN to
+   // the block's end, so every result from it on in that block is not finite.
+   // q's prefix sums read such a vector otherwise (0n in the first w-1 points
+   // once one is in, and after it leaves the window), and std.k's msumK/mavgK/
+   // mvarK are those: hand it to them. So only the run of results that are not
+   // finite at a block's end is looked at, and only its own inputs (the
+   // window's too when the run is the whole block): an infinity in the block
+   // came in within that run. Nulls ending a block (empty windows, 0n) cost a
+   // look at that run alone.
+   if(t==tF){N st=(N)w>(N)MW_RESYNC?n:(N)MW_RESYNC;B f=0;
+     for(N b0=0;b0<n&&!f;b0+=st){N e=b0+st<n?b0+st:n,q=e;while(q>b0&&r[q-1]-r[q-1]!=0)q--;
+       if(q<e){for(N i=q>b0?q:b0>(N)w?b0-(N)w:0;i<e;i++){F u=d[i];if(u==u&&u-u!=0){f=1;break;}}}}
+     if(f){mr(y);y=emp(tA);}}
    if(tmp)mr(tmp);
  }else{
    // amber 2.3: van Herk / Gil-Werman (MWVH above), with the deque kept for

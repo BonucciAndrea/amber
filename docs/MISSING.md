@@ -287,3 +287,7 @@ behaviour shows up as a test failure rather than a silent regression.
 - **An amend that leaves no column of a table a list fills each to the table's row count**
   (`` t[`a]:9 `` with `t:([]a:1 2 3)` gives `9 9 9`; an empty table stays empty), as `update` does;
   q gives `'rank` for these (`` t[`a]:9 ``, `` @[t;`a;:;9] ``, `` @[t;`a`b;:;9] ``).
+- **Three q-named functions keep Amber's answer where q's differs (#83 Q10).** `"ab" ss ""` is
+  `0 1 2` (q: `'length`) and `` 0 1 in 0#` `` is `0 0` (q: `'type`): Amber answers where q refuses.
+  `differ 1 1.00000000000001 1` is `1 1 1` (q: `100b`), since Amber has no comparison tolerance
+  anywhere else.

@@ -23,6 +23,7 @@ t[`dev;dev 2 4 4 4 5 5 7 9;2.0]
 t[`svar;svar 2 4 4 4 5 5 7 9;4.571428571428571]
 t[`wsum;wsum[1 2 3;10 20 30];140.0]
 t[`qEdges67;(wsum[1 2;3 4];xbar[2;1.5 3.5];xbar[2;1 3];@ratios[!0];med 5;med 1.5);(11.0;0.0 2.0;0 2;`F;5.0;1.5)]   / Digest #67: as q
+t[`qEdges83;(var 0w 0w;var -0w 0w;var 1 0w;var 0n 0n;dev 0w 0w;svar 0w 0w;svar -0w 0w;svar 1 0w;sdev 0w 0w);(0.0;0.0;0w;0n;0.0;0.0;0.0;0w;0.0)]   / #83 Q10: as q (an infinite mean)
 t[`wavg;wavg[10 20 30;1 2 3];7%3.0]
 t[`cor;0.0001>abs 1.0-cor[1 2 3;2 4 6];1]
 t[`cov;0.0001>abs cov[1 2 3;1 2 3]-2%3.0;1]

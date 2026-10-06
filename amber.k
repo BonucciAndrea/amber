@@ -64,9 +64,9 @@ wsi:{$[(`F=@x)&`F=@y;$[^r:`wsm(x;y);wsp[x;y];r];(`I=@x)&`I=@y;$[0N=r:`wsm(x;y);w
 wavg:{$[(`F=@x)&`F=@y;$[^r:(`wsm(x;y))%+/x;wvp[x;y];r];(`I=@x)&`I=@y;$[0N=r:`wsm(x;y);wvp[x;y];r%+/x];`hnl[x]|`hnl y;wvp[x;y];(+/x*y)%+/x]}
 wsp:{m:&~(^x)|^y;+/x[m]*y m}   / (an int 0N*y wraps, so the pairs go before the product)
 wvp:{m:&~(^x)|^y;(+/x[m]*y m)%+/x m}
-var:{avg{x*x}x-avg x}
+var:{d:{x*x}x-avg x;$[`F=@d;$[^s:+/d;$[^r:avgn d;0.0%+/~^x;r];s%#d];0n~r:avg d;0.0%+/~^x;r]}   / avg d, its float path inline; an infinite or NaN mean leaves no square: 0f over the non-nulls, as q (#83 Q10)
 dev:{sqrt var x}
-svar:{$[`F=@x;$[^s:+/x;svp x;[n:#x;(n*avg{x*x}x-s%n)%-1+n]];`hnl x;svp x;(n*var x)%-1+n:#x]}   / n counts the non-nulls; floats: var's own sum
+svar:{$[`F=@x;$[^0*s:+/x;svp x;[n:#x;(n*(+/{x*x}x-s%n)%n)%-1+n]];`hnl x;svp x;(n*var x)%-1+n:#x]}   / n counts the non-nulls; floats: var's own sum (an infinite or NaN sum: svp, whose var is q's), and avg of the squares inline (they are finite)
 svp:{v:x@&~^x;n:#v;(n*var v)%-1+n}
 sdev:{sqrt svar x}
 / cov, scov, cor: pairs with a null dropped, then centred (avg[x*y]-avg[x]*avg y lost digits far from 0);

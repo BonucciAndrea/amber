@@ -322,7 +322,8 @@ finds a row (a dict) or each row of a table in `t`, and `kt _ k` drops a key.
 `kt,kt2` is q's upsert: the rows of `kt2` whose keys `kt` has replace them, and the others are added,
 each one, as q (a new key given twice is added twice); the columns go by name. Amending at keys adds a
 key not there once, with a row of nulls, then amends its row: `` kt[`d]:4 40 `` (a list is the row's
-values in column order), `` kt[`b;`px]:5 ``.
+values in column order), `` kt[`b;`px]:5 ``. An amend that fails leaves a variable that is a keyed table as it was; one
+that fails on a keyed table inside a dict or list (`` h[`a;1]:5 ``) still loses the variable.
 
 ---
 

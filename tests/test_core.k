@@ -163,6 +163,7 @@ t[`simpleVectorDecode;2 2 2/1 0 1;5]
 
 / ---- a failed indexed assignment leaves the variable as it was ----
 IA:{[set;e]. set;r:.[.:;,e;{`err}];(r;. *":"\set)}
+IK:{[set;e]. set;r:.[.:;,e;{`err}];(r;.[.:;,*":"\set;{`lost}])}   / as IA, but a variable the amend deleted reads as `lost, not a 'value that stops the suite
 t[`amendKeepIndex;IA["A1:,0";"A1[1]:0"];(`err;,0)]
 t[`amendKeepModify;IA["A2:1 2 3";"A2[5]+:1"];(`err;1 2 3)]
 t[`amendKeepNegative;IA["A3:1 2 3";"A3[-1]:9"];(`err;1 2 3)]
@@ -1359,7 +1360,20 @@ t[`keyedAmendLocal;{k:kL;k[3]:,99;k[4]:,98;k[2;`v]:5;k[7;`v]:6;k[1]+:,1;m:kM;m[(
 tv[`keyedAmendGlobal;"kG:kL;kG[3]:,99;kG[4]:,98;kG,:([k:1 8]v:0 0);kG";([k:1 2 3 4 8]v:0 20 99 98 0)]
 t[`keyedAmendErr;{*"\n"\.[.:;,x;{x}]}'("@[([k:1 2]v:3 4;w:`a`b);1;:;5]";"@[kL;1 9;+;1]");("'length";"'length")]
 
-hexpect[865]
+/ ---- a failed amend by name of a keyed table keeps it, as q: it is put back (issue #19) ----
+KG:([k:1 2 3]v:10 20 30;w:`a`b`c)
+t[`amendKeyedKeep;(IK["KG1:KG";"KG1[1 9]:7 8"];IK["KG2:KG";"KG2[1]:5"];IK["KG3:KG";"KG3[1]:`z!,77"];IK["KG4:KG";"KG4[`a`b`c]:1"];IK["KG5:KG";"KG5[::]:9"];IK["KG6:KG";"KG6[]:9"];IK["KG7:KG";"KG7[1;`zz;0]:1"];IK["KG8:KG";".[`KG8;,9;-:]"];IK["KG9:KG";"KG9[1]+:`x"];IK["KG10:KG";".[`KG10;,1;:;5]"]);10#,(`err;KG)]
+/ and one that works assigns it, by key, a key added, by column, elided, or by .[`v;..]
+t[`amendKeyedByName;(IK["KH1:KG";"KH1[3]:(99;`z)"];IK["KH2:KG";"KH2[4]:(98;`y)"];IK["KH3:KG";"KH3[3;`v]:99"];IK["KH4:KG";"KH4[;`v]:9"];IK["KH5:KG";"KH5[;`v]+:1"];IK["KH6:KG";".[`KH6;(::;`v);:;9]"];IK["KH7:KG";".[`KH7;,3;:;(1;`q)]"])[;1];(([k:1 2 3]v:10 20 99;w:`a`b`z);([k:1 2 3 4]v:10 20 30 98;w:`a`b`c`y);([k:1 2 3]v:10 20 99;w:`a`b`c);([k:1 2 3]v:9 9 9;w:`a`b`c);([k:1 2 3]v:11 21 31;w:`a`b`c);([k:1 2 3]v:9 9 9;w:`a`b`c);([k:1 2 3]v:10 20 1;w:`a`b`q))]
+/ a keyed table in a dict or list is amended by key below the first level too
+t[`amendKeyedNested;(IK["KN1:`a`b!(KG;1)";"KN1[`a;3]:(99;`z)"];IK["KN2:`a`b!(KG;1)";"KN2[`a;4;`v]:7"])[;1];(`a`b!(([k:1 2 3]v:10 20 99;w:`a`b`z);1);`a`b!(([k:1 2 3 4]v:10 20 30 7;w:`a`b`c`);1))]
+/ a list of keyed tables (a table whose column names are a table) is amended as before, and fails with the error it gave
+KL:([k:1 2 3]v:10 20 30)
+t[`amendKeyedTableList;(IK["L1:(KL;KL)";"L1[1]:5"];IK["L2:(KL;KL)";"L2[0]+:1"];IK["L3:3#,KL";"L3[0]:KL"];IK["L4:(KL;KL)";".[`L4;,0;:;5]"];{l:(KL;KL);l[0]:5;l}[]);((::;(KL;5));(::;(1+KL;KL));(::;3#,KL);((5;KL);(5;KL));(5;KL))]
+t[`amendKeyedListKeep;(IK["DL1:(+(,`a)!,1 2)!3 4";"DL1[,1]:9"];IK["DL2:(+(,`a)!,1 2)!3 4";"DL2[,3]+:1"]);2#,(`err;(+(,`a)!,1 2)!3 4)]   / keys a table, values a list: 'nyi, and kept
+t[`amendKeyedTableListErr;{*"\n"\.[.:;,x;{x}]}'("L5:(KL;KL);L5[;3]:,1";"L6:(KL;KL);L6[0 1;3]:,1";"L7:(KL;KL);L7[5;3]:,1");("'length";"'length";"'index")]
+
+hexpect[871]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

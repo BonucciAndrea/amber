@@ -1139,7 +1139,8 @@ I ixwk(A,A,A,B,B,UC*,L*),ixck(A,A,U,A,B),ixgn(A*),ixgi(A*);A ixit(A,A,UC*,CO L*,
    //level: read first; and with more below, or in an assignment by d4 (d8q)
    I(q,I(!o,_R(q))A r=USQ(n>3?_8(a[2],A8(q,_R(a[3])),2):_8(a[2],A8(q),1));P(!r,I(*p&&*p!=au,mr(*b))E(*p=*b);0)I(*p&&*p!=au,mr(*p);*p=au)   //what f set, the assignment's result replaces
      q=ixst(*b,a[1],kd,ix,0,(U)w_,av,r,0);mr(r);*p=au;return *p=_R(N(q)))   //a row: by d8
-   A u=0,r=w_?ixst(*b,a[1],kd,ix,0,(U)w_,a[2],n==4?a[3]:0,&u):n==4&&_tA(a[1])&&_n(a[1])==1?a4(*b,*_A(a[1]),a[2],a[3]):d8_(b,n);
+   A u=0,r=w_?ixst(*b,a[1],kd,ix,0,(U)w_,a[2],n==4?a[3]:0,&u):({A k_=_tm(*b)&&_tM(_x(*b))?_R(*b):0,r_=n==4&&_tA(a[1])&&_n(a[1])==1?a4(*b,*_A(a[1]),a[2],a[3]):d8_(b,n);   //k_: a keyed
+     I(k_,I(r_,mr(k_))E(I(*p&&*p!=au,mr(k_))E(*p=k_)))r_;});   //table, held to be put back: its amend (kam) fails on what the check does not look at
    P(!r,I(u,I(*p&&*p!=au,mr(u))E(*p=u))0)I(*p&&*p!=au,mr(*p))*p=_R(r))// amend-by-name of a global: not from a peach worker (b.c bS)
    RU(n==3?try(x,a[1],a[2]):er(x))
    R_(d8_(a,n)))0)

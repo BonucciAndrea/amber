@@ -1329,7 +1329,12 @@ t[`trainNullFromIndex;{D:({x};{y};1);`k'(D@5 6;(D@5 6)@0 1)}[];2#,"(::;::)"]
 t[`trainNullAtom;(`k(::;::)@5;(::;::)[1;2];*"\n"\.[.:;,"1 (::;::) 2";{x}]);("::";2;"'type")]
 t[`trainOfFunctions;((+;-)/[1;2];(+;-;*)[5;2];(-:;%:)@4);(0;-3;2.0)]
 
-hexpect[847]
+
+/ ---- ?[c;a;b] with c of 0s and 1s: an a or b that is a list of another length is 'length, as q, not a splice (#83 Q3) ----
+t[`vcondLength;{*"\n"\.[{`k@. x};,x;{x}]}'("?[1 0 1;1 2;9]";"?[1 0 1;9;1 2]";"?[1 0 1;(1;2);9]";"?[0 1 1 0;1 2;5]";"?[!0;1 2;5]";"?[1 0 1;\"ab\";\"xyz\"]");6#,"'length"]
+tv[`vcondSpliceOther;"?[0 1 2;1 2;9]";0 9 2]
+
+hexpect[849]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

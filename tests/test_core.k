@@ -1323,7 +1323,27 @@ tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 ppeV:5 6
 t[`ppeStale;?{."{[ab]ab}",x;."(ppeV-1)",x}'(!100)#\:" ";,4 5]
 
-hexpect[843]
+/ ---- a keyed table is looked up by key, as q: the value row, a row of nulls for a missing key (issue #19) ----
+kL:(+(,`k)!,1 2 3)!+(,`v)!,10 20 30
+kM:(+`a`b!(1 2;`x`y))!+(,`v)!,5 6
+t[`keyedAt;(kL 2;kL@3;kL[1];kL 99;kL(,`k)!,2);((,`v)!,20;(,`v)!,30;(,`v)!,10;(,`v)!,0N;(,`v)!,20)]
+/ a table of keys, or a list of keys (each a list of one value per column), gives a table; one such list is one key
+t[`keyedAtKeys;(kL[+(,`k)!,2 9];kL[(,1;,99)];kL[,2];kL());(+(,`v)!,20 0N;+(,`v)!,10 0N;(,`v)!,20;+(,`v)!,!0)]
+t[`keyedAtCol;(kL[2;`v];kL[99;`v];kL[(,1;,2);`v];kL[+(,`k)!,3 1;`v]);(20;0N;10 20;30 10)]
+t[`keyedMulti;(kM(1;`x);kM(2;`z);kM((1;`x);(2;`y));kM`a`b!(2;`y);kM[+`a`b!(2 1 9;`y`x`x)];kM[`a`b!(1;`x);`v]);((,`v)!,5;(,`v)!,0N;+(,`v)!,5 6;(,`v)!,6;+(,`v)!,6 5 0N;5)]
+t[`keyedSymTemporal;{s:(+(,`s)!,`a`b)!+(,`v)!,1.5 2.5;d:(+(,`d)!,2020.01.01 2020.01.02)!+(,`v)!,1 2;n:(+(,`n)!,2020.01.01D10:00:00 2020.01.01D11:00:00)!+(,`v)!,1 2;(s`b;s`c;d 2020.01.02;d 2020.01.05;n 2020.01.01D11:00:00)}[];((,`v)!,2.5;(,`v)!,0n;(,`v)!,2;(,`v)!,0N;(,`v)!,2)]
+t[`keyedNullRow;((+(,`k)!,1 2)!+`v`w!(3 4;`a`b))9;`v`w!(0N;`)]
+t[`keyedEmpty;(((+(,`k)!,!0)!+(,`v)!,!0)1;((+(,`k)!,!0)!+(,`v)!,!0)[+(,`k)!,1 2]);((,`v)!,0N;+(,`v)!,0N 0N)]
+/ a row or table of keys goes by column name, as q; a char looked up in strings is a key not there (q: a null row too)
+t[`keyedByName;(kM`b`a!(`y;2);kM[+`b`a!(`y`x;2 1)];(+`a`b!(1 2;3 4))?`b`a!4 2;{s:(+(,`s)!,("ab";"cd"))!+(,`v)!,1 2;((s"a")`v;(s"cd")`v;(s[,"ab"])`v)}[]);((,`v)!,6;+(,`v)!,6 5;1;0N 2 1)]
+/ a key of the wrong length is 'length, as in q; a row or table with columns that differ is 'domain (q: 'mismatch)
+t[`keyedAtErr;{*"\n"\.[.:;,x;{x}]}'("kL 1 2";"kM 1";"kL`a`b!1 2";"kL[+(,`j)!,1]");("'length";"'length";"'domain";"'domain")]
+/ find of a row, or of a table's rows, in a table; and a keyed table's find gives the key
+t[`tableFind;((+`a`b!(1 2;3 4))?`a`b!2 4;(+`a`b!(1 2;3 4))?+`a`b!(2 9;4 1);(+(,`a)!,1 2)?2;kL?(,`v)!,20;kL _ 1);(1;1 0N;1;(,`k)!,2;(+(,`k)!,2 3)!+(,`v)!,20 30)]
+/ more columns: each row's places in the columns, numbered column by column, find what a scan of the rows finds
+t[`keyedMultiMany;{b:13!i:!91;a:7!i;q:13!j:!200;p:7!j;((+`a`b!(a;b))?+`a`b!(p;q);(+(a;b))?+(p;q);(+`a`b!(a;b))?`a`b!(3;5))}[];{b:13!i:!91;a:7!i;q:13!j:!200;p:7!j;((+(a;b))?+(p;q);(+(a;b))?+(p;q);(+(a;b))?(3;5))}[]]
+
+hexpect[854]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

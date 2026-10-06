@@ -308,7 +308,16 @@ keys kt              / ,`sym
 unkey kt             / back to the plain table
 xasc[`px;t]          / rows ordered by px
 meta t               / +`c`t!(`sym`px`sz;`s`i`i)
+kt`b                 / `px`sz!200 20          the row for key `b (kt@`b too)
+kt`z                 / `px`sz!0N 0N           a key not there: a row of nulls
+kt[`b;`px]           / 200
 ```
+
+A keyed table is looked up by key as in q: for one key column the key is a value, for several it is a
+list of one value per column, or a dict of them (`` m(1;`x) ``, `` m`a`b!(1;`x) ``). A table of keys,
+or a list of keys, gives a table of rows; a row or table goes by column name. A key not there gives the
+row `t 0N` gives (`::` in a temporal column and blanks in a string one, where q has typed nulls). `t?r`
+finds a row (a dict) or each row of a table in `t`, and `kt _ k` drops a key. Amending a keyed table by key (and `,` of two) is still `'nyi`.
 
 ---
 

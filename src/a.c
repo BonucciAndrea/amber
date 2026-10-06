@@ -1150,7 +1150,7 @@ I ixwk(A,A,A,B,B,UC*,L*),ixck(A,A,U,A,B),ixgn(A*),ixgi(A*);A ixit(A,A,UC*,CO L*,
  //fails, v is put back (unless f set v, to other than ::). Five or more arguments, which amend does not take: 'nyi, v kept.
  //In an assignment by d4 (and v not the one assigned), where the walk finds the item, f goes first too, and then : as before
  X(RsS(P(ray_rc_sync,mr(*a);err0("noupdate"))A*p=gp(x);P(!p,0)I g_=ixgn(p);P(n>2&&g_&&ixgi(p),et0())P(n>4,en0())UC kd[8];L ix[8];
-   I w_=n==3||n==4?g_?n<4?0:*p&&_t(*p)==tm&&!_tMT(_y(*p))?-3:-ixck(*p,a[1],0,a[3],a[2]==av):ixwk(*p,a[1],n==4?a[3]:au,n==4&&a[2]==av,0,kd,ix):0;P(n==4&&w_<0,w_==-1?ei0():w_==-2?el0():et0())I(w_<0,w_=0)I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;
+   I w_=n==3||n==4?g_?n<4?0:*p&&_t(*p)==tm&&!_tMT(_y(*p))?-3:-ixck(*p,a[1],0,a[3],a[2]==av):ixwk(*p,a[1],n==4?a[3]:au,n==4&&a[2]==av,0,kd,ix):0;P(n==4&&w_<0,w_==-1?ei0():w_==-2?el0():w_==-3?et0():(A)0)I(w_<0,w_=0)I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;
    B o;A q=w_?a[2]!=av&&kd[w_-1]==3?ixit(*b,a[1],kd,ix,(U)w_,&o):0:n>2&&a[2]!=av?({A r=d8q(p,b,a,n,kd,ix,&o);P(o,r);(A)0;}):0;   //a table's row, at the last
    //level: read first; and with more below, or in an assignment by d4 (d8q)
    I(q,I(!o,_R(q))A r=USQ(n>3?_8(a[2],A8(q,_R(a[3])),2):_8(a[2],A8(q),1));P(!r,I(*p&&*p!=au,mr(*b))E(*p=*b);0)I(*p&&*p!=au,mr(*p);*p=au)   //what f set, the assignment's result replaces

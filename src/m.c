@@ -493,6 +493,9 @@ Z A bs_(S*p)_(C b[256];S s=*p,e=strchrnul(s,10);P(e-s+1>=L(b),ez0())MC(b,s,e-s);
  P(!strncmp(b,"trace",5)&&(!b[5]||b[5]==32),bstrc(b+5+(b[5]==32)))
  P(!strncmp(b,"disasm",6)&&(!b[6]||b[6]==32),bsvmd(b+6+(b[6]==32)))
  P(!strncmp(b,"ast",3)&&(!b[3]||b[3]==32),bsast(b+3+(b[3]==32)))
+ // 2.7.3: q's \ts (time and space) is \t here. repl.k did this for the terminal only, so a script or the browser
+ // engine took \ts for a shell command, and in the browser that crashed (there is no shell)
+ I(c=='t'&&d=='s'&&(!b[2]||b[2]==32||b[2]==':'),{C*q=b+1;W((*q=q[1]),q++)}d=b[1])
  P(!d||d==10||d==32||d==':',G(&bsl,bst,bsd,bsbs,bsf,bsv,bsm,bs0)[si("ltd\\fvm",c)](b+1+(d==32)))
  // amber 1.9.5: an installed extension (src/ext.h) claims its own \\-commands
  // here, BEFORE the historical "anything else is a shell command" fallback --

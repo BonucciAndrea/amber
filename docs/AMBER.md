@@ -425,7 +425,7 @@ Every join is a function; call it in bracket form `lj[t;kt]` or, since 2.0.0, **
 |----------------------|---------------------|-----------------------------------------|
 | `lj[t;kt]`           | **left** join       | `kt` keyed; unmatched → nulls           |
 | `ij[t;kt]`           | **inner** join      | keep matched rows only                  |
-| `uj[x;y]`            | **union** join      | union of columns, rows concatenated     |
+| `uj[x;y]`            | **union** join      | union of columns, rows concatenated; keyed: union of keys, `y`'s rows update `x`'s, as q |
 | `pj[t;kt]`           | **plus** join       | add matched numeric value columns       |
 | `ej[c;x;y]`          | **equi** join on `c`| inner join on the given columns         |
 | `aj[c;x;y]`          | **as‑of** join      | last `y` row per key with time ≤ `x`.time |

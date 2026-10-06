@@ -666,6 +666,9 @@ t[`encodeEmptyFloat;@(!0)\5.5;`F]
 t[`encodeEmptyChar;*"\n"\.[.:;,"(!0)\\\"a\"";{x}];"'type"]
 t[`encodeOneDigitChar;(,10)\"a";,7]
 t[`encodeEmptySym;*"\n"\.[.:;,"(!0)\\`a";{x}];"'type"]
+/ ---- a base of 8 or 9 divides like any other: its K text's (-8)! and (-9)! were serialise and deserialise ----
+t[`encodeBase89;(2 8\5;2 9\5;16 8\20;8 8 8\511;-8 -9\100;2 8\5 6);(0 5;0 5;2 4;7 7 7;5 1;(0 0;5 6))]
+t[`encodeAtomBase89;(8\100;9\100;-8\100;-9\-100);(1 4 4;1 2 1;2 4 4;1 8 3 8)]
 
 / ---- float to int: 0n is 0N; out of range, floor gives 0W above and 0N below, a cast 0W and -0W (as q) ----
 t[`floorNull;(_0n;_0w;_-0w);0N 9223372036854775807 0N]
@@ -1229,7 +1232,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
-hexpect[791]
+hexpect[793]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

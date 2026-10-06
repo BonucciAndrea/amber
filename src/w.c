@@ -1,6 +1,9 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 Z A2(dec,/*01*/yN?K2("0{z+x*y}/",x,y):K1("0^*:",y))
-Z X2(enc,/*01*/Ril(K2("{$[&/~*x:(x|-x)!|$[x>0;(-x)!;-x!]\\y;1_x;@[x;0;-:0<]]}",x,y))REBGHIL(K2("{$[x;(x|-x)!'|(,y),y{$[y<0;-y!;(-y)!]x}\\-1_|x;~^`c`C?@y;`err\"type\";0#(,10)\\y]}",x,y))R_(en(y)))
+Z A edv(A b,A v,B l/*01.*/)_(P(gl_(b)<!l,v=mod(b,v);v?neg(v):0)b=neg(_R(b));v=mod(b,v);mr(b);v)  //v divided by the base b: (-b)!v, or -b!v for b<0 (b<1 for an atom b); not K text, where -8! and -9! serialise and deserialise
+Z A eqs(A x,A y/*01*/)_(B l=_tZ(x);U i=l?xN:0;A z=enl(_R(y)),v=_R(y);   //y and its quotients: by each base of the list x from the last to the second, or by the atom x till they converge (as a scan would)
+ W(l?--i:1,A b=l?ii(x,i):_R(x),w=edv(b,_R(v),l);mr(b);P(!w,mr(v);mr(y);mr(z);0)I(!l&&(mtc_(w,v)||mtc_(w,y)),mr(w);break)PSH(z,_R(w));mr(v);v=w)mr(v);mr(y);sqz(z))
+Z X2(enc,/*01*/Ril(y=eqs(x,y);P(!y,0)K2("{$[&/~*x:(x|-x)!|y;1_x;@[x;0;-:0<]]}",x,y))REBGHIL(P(!xN,K2("{$[~^`c`C?@y;`err\"type\";0#(,10)\\y]}",x,y))y=eqs(x,y);P(!y,0)K2("{(x|-x)!'|y}",x,y))R_(en(y)))
 Z A scC(C c    ,C*p,U n)_(           A x=emp(tA);C*q;W((q=memchr(p,c,n  )),PSH(x,aCm(p,q));n-=q-p+1;p=q+1)I(n||c-10&&xn,PSH(x,aCn(p,n)))x)
 Z A sCC(C*s,L m,C*p,U n)_(P(!m,el0())A x=emp(tA);C*q;W((q=memmem(p,n,s,m)),PSH(x,aCm(p,q));n-=q+m-p;p=q+m)I(n||      xn,PSH(x,aCn(p,n)))x)
 Z A sc(C c    ,A x)_(XC(x(scC(c,  xV,xn)))et(x))A1(spl,sc(10,x))

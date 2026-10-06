@@ -49,6 +49,7 @@ t[`xbar;xbar[10;0 5 12 23];0 0 10 20]
 t[`sums;sums 1 2 3;1 3 6]
 t[`prds;prds 1 2 3 4;1 2 6 24]
 t[`deltas;deltas 1 3 6 10;1 2 3 4]
+t[`deltasInf;(deltas 0w 1.0;deltas -0w 2.5 3.0;deltas[,0w];deltas 0n 1.0;deltas `a`b!0w 1.0);(0w -0w;-0w 0w 0.5;,0w;0n 0n;`a`b!0w -0w)]   / an infinite first item stays as it is, as q (was 0n)
 t[`differ;differ 1 1 2 2 3;10101b]
 t[`prev;prev 1 2 3;0N 1 2]
 t[`next;next 1 2 3;2 3 0N]

@@ -71,9 +71,14 @@ Z I ixkv(A x,L j,A y,U k,A z,B asg,A g){A vs=_y(x);I r;B in=j>=0&&j<(L)_N(vs);  
  if(_t(vs)==tM&&_N(vs)){A f=g?g:ixkf(vs,y,k+1);r=ixkr(vs,in?j:0,f,y,k+1,z,asg);I(f&&!g,mr(f))return r;}   //values that are dicts of the same keys, held as a table
  A v=in?ii(vs,(U)j):_N(vs)?ii(vs,0):fir(_R(vs));P(!v,4)r=ixck(v,y,k+1,z,asg);mr(v);return r;}   //the value at key j, or one not there: the first, nulled (no values: their
  //prototype, *, which ie nulls; a typed list's null atom, which an index below is 'type into)
+//a list of keyed tables, (kt;kt) or 3#,kt: a table whose column names are a table (a keyed table's keys), which a8 amends
+//as the list of its rows (blw), each a keyed table: checked so (ixcq), its rows read as a8 reads them (from the columns'
+//prototype where the keyed tables are empty and there are no columns). A column name, which makes it a keyed table (its
+//flip), is left to the amend, as a keyed table's own amend is. Out of ixkd, which only tests the keys' type for it
+Z NI I ixkl(A x,A y,U k,A z,B asg){A q=_tA(y)?_A(y)[k]:ii(y,k);I r=_ts(q)||_t(q)==tS?0:ixcq(x,q,y,k,z,asg);I(!_tA(y),mr(q))return r;}
 Z I ixkd(A x,A y,U k,A z,B asg){P(_t(x)==tm&&(_tt(y)?y!=au:_tA(y)&&k+1==_n(y)&&_tt(_A(y)[k])&&_A(y)[k]!=au),0)   //one key at a
  //dict's last level, which any may be (a global's d[k]:v with keys not symbols, where ixwk stops): nothing to look at
- A ks=_x(x),vs=_y(x),f=0;B dn=k+1<_N(y);UC tk=_t(ks);I r=0;P(tk==tM,0)A q=_tA(y)?_A(y)[k]:ii(y,k);   //(not a keyed table)
+ A ks=_x(x),vs=_y(x),f=0;B dn=k+1<_N(y);UC tk=_t(ks);I r=0;P(tk==tM,_t(x)==tM?ixkl(x,y,k,z,asg):0)A q=_tA(y)?_A(y)[k]:ii(y,k);   //(a keyed table: left to the amend)
  if(_t(x)==tM){U nc=_N(vs);L rows=nc?_N(_A(vs)[0]):0;
   if(_ts(q)){if(!dn)r=asg&&nc&&ixzc(z,(U)rows)&&!(nc==1&&!fI(_I(ks),1,_v(q)))?2:0;   //a column needs the row count (for :), unless it is the only column, which may take another
    else{f=fnd(ks,_R(q));r=f?ixkv(x,gl_(f),y,k,z,asg,0):4;}}   //(no columns: one added is the prototype nulled, an empty list)

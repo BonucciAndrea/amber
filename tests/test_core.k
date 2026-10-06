@@ -1393,6 +1393,9 @@ KL:([k:1 2 3]v:10 20 30)
 t[`amendKeyedTableList;(IK["L1:(KL;KL)";"L1[1]:5"];IK["L2:(KL;KL)";"L2[0]+:1"];IK["L3:3#,KL";"L3[0]:KL"];IK["L4:(KL;KL)";".[`L4;,0;:;5]"];{l:(KL;KL);l[0]:5;l}[]);((::;(KL;5));(::;(1+KL;KL));(::;3#,KL);((5;KL);(5;KL));(5;KL))]
 t[`amendKeyedListKeep;(IK["DL1:(+(,`a)!,1 2)!3 4";"DL1[,1]:9"];IK["DL2:(+(,`a)!,1 2)!3 4";"DL2[,3]+:1"]);2#,(`err;(+(,`a)!,1 2)!3 4)]   / keys a table, values a list: 'nyi, and kept
 t[`amendKeyedTableListErr;{*"\n"\.[.:;,x;{x}]}'("L5:(KL;KL);L5[;3]:,1";"L6:(KL;KL);L6[0 1;3]:,1";"L7:(KL;KL);L7[5;3]:,1");("'length";"'length";"'index")]
+t[`amendKeyedTableListKeep;(IK["KL1:(KL;KL)";"KL1[5]:1"];IK["KL2:(KL;KL)";"KL2[0 1]:1 2 3"];IK["KL3:(KL;KL)";"KL3[;3]:,1"];IK["KL4:(KL;KL)";".[`KL4;(5;3);:;,1]"];IK["KL7:(KL;KL)";"KL7[;3]+:,1"];IK["KL8:3#,KL";"KL8[5]:KL"]);(5#,(`err;(KL;KL))),,(`err;3#,KL)]   / and is checked as the list of its rows: the error before anything is touched, which is kept
+t[`amendKeyedTableListKeepErr;{*"\n"\.[.:;,x;{x}]}'("KL9:(KL;KL);KL9[5]:1";"KL9[0 1]:1 2 3";"KL9[;3]:,1";".[`KL9;(5;3);:;,1]";"KL9[1.5]:1";"KL9[0 5]:1");("'index";"'length";"'length";"'index";"'type";"'index")]   / with the error the amend gives
+t[`amendKeyedTableListEmpty;{K0::0#KL;(IK["KE1:(K0;K0)";"KE1[5]:1"];IK["KE3:(K0;K0)";"KE3[0 1]:1 2 3"];IK["KE4:(K0;K0)";".[`KE4;(5;3);:;,1]"];IK["KE5:3#,K0";"KE5[5]:K0"])}[];(3#,(`err;(0#KL;0#KL))),,(`err;3#,0#KL)]   / empty keyed tables, which have no columns: their rows as the amend reads them (blw, from the columns' prototype)
 
 / ---- + - * % & | of two keyed tables over the union of the keys, as q (issue #19): a key on both sides gets the verb,
 / row by row; one on one side passes through as dicts' do (+ - * with the identity: - negates y's), x's keys first ----
@@ -1428,7 +1431,7 @@ t[`jsonMonadBack;`j?`j@(-:);"-:"]
 t[`parenEmptyItem;{*"\n"\.[{`k@. x};,x;{x}]}'("(1;;2)";"(;)";"(1;)";"(;1)";"(;;)";"(1;(;))";"{(;x)}3";"(1;\n2)";"( )");("(1;::;2)";"(::;::)";"(1;::)";"(::;1)";"(::;::;::)";"(1;(::;::))";"(::;3)";"(1;::;2)";"()")]
 t[`parenEmptyKept;{*"\n"\.[{`k@. x};,x;{x}]}'("()";"(1;2)";"{x+y}[1;]2";"[1;;2]";"(1;2";"(1;;2");("()";"1 2";,"3";,"2";"'parse";"'parse")]
 
-hexpect[904]
+hexpect[907]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

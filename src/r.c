@@ -30,7 +30,7 @@ Z F rf()_(W v=1023ll<<52|(r()&-1ull>>12);-1+*(F*)&v)//random float 0..1
 // so the next r() refills from the perturbed state.
 V par_prng_perturb(W salt){W z=salt;F(4,Fj(M,z+=0x9e3779b97f4a7c15ull;W t=z;t=(t^t>>30)*0xbf58476d1ce4e5b9ull;t=(t^t>>27)*0x94d049bb133111ebull;pst.s[i][j]^=t^t>>31))pst.nb=0;}
 
-Z A rt(U n,C t)_(A x=an(n,t);F(((W)n<<Tw[t])+255>>8,r4();MC(xV+(i<<5),pst.b,32))x)//roll n full-range (including negative) items of type t (int of a specific width or char)
+Z A rt(U n,C t)_(A x=an(n,t);F(((W)n<<Tw[t])+255>>8,r4();MC(xV+(i<<5),pst.b,32))pst.nb=0;x)//roll n full-range (including negative) items of type t (int of a specific width or char); nb=0 uses up its words: the next draw starts fresh and `prng[] round-trips (#83 Q5)
 Z CO W msk[]={0xffffffffffffffffll,0x5555555555555555ll,0x1111111111111111ll,0x0101010101010101ll,0x0001000100010001ll,0x0000000100000001ll,0x0000000000000001ll};
 Z A ro(U n,W m)_(P(!(m&m-1),P(!m,rt(n,tL))C t=tZ(m-1);A x=rt(n,t);L v=(m-1)*msk[Tw[t]];L*p=xL;F(((W)n<<Tw[t])+255>>8,Fj(4,*p++&=v))x)   //The bit count in 64 bits, as rt (from 2^29 items it wrapped: digest #34)
  C t=tZ(m-1);A x=an(n,t);S4(t-tG,F(n,xg=ri(m)),F(n,xh=ri(m)),F(n,xi=ri(m)),F(n,xl=r())I(m,F(n,xl%=m)))x)//roll

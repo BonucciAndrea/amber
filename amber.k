@@ -123,11 +123,15 @@ rk:{$[`A~@x;$[#x;1+rk@*x;1];|/`m`M=@x;rk@. x;isatm x;0;1]}   / rank by first ite
 isda:{(isat x)&~(@x)in`o`p`q`r`u`v`w}             / A data atom: not a dict, not a function
 / 2.1: fused group aggregates. `gagg (src/o.c) does acc[group]op=v in ONE pass
 / with the same first-appearance key order as =k; each wrapper keeps the
-/ portable K definition as its fallback for shapes the kernel declines.
-gsum:{[k;v]r:`gagg(`sum;k;v);$[#r;(r 0)!r 1;{[v;i]+/v i}[v]'=k]}
-gavg:{[k;v]r:`gagg(`avg;k;v);$[#r;(r 0)!r 1;{[v;i](+/v i)%#i}[v]'=k]}
-gmin:{[k;v]r:`gagg(`min;k;v);$[#r;(r 0)!r 1;{[v;i]&/v i}[v]'=k]}
-gmax:{[k;v]r:`gagg(`max;k;v);$[#r;(r 0)!r 1;{[v;i]|/v i}[v]'=k]}
+/ portable K definition as its fallback for shapes the kernel declines; that
+/ path skips nulls as the kernel and q do: each group is reduced as before (+/ &/ |/), and only when a null shows
+/ in the answers (NaN, 0N) again with amber.k's sum avg min max, which skip them; 64-bit ints whose sum would wrap a
+/ 0N take those at once when `hnl finds one. In a general list each group is reduced as it comes out: one that stays
+/ general by +/ as before, one that comes out ints or floats by sum or avg.
+gsum:{[k;v]r:`gagg(`sum;k;v);$[#r;(r 0)!r 1;`A=@v;{[v;i]u:v i;$[`A=@u;+/u;sum u]}[v]'=k;$[`I=@v;`hnl v;0b];{[v;i]sum v i}[v]'=k;[r:{[v;i]+/v i}[v]'=k;$[|/^. r;{[v;i]sum v i}[v]'=k;r]]]}
+gavg:{[k;v]r:`gagg(`avg;k;v);$[#r;(r 0)!r 1;`A=@v;{[v;i]u:v i;$[`A=@u;(+/u)%#u;avg u]}[v]'=k;$[`I=@v;`hnl v;0b];{[v;i]avg v i}[v]'=k;[r:{[v;i](+/v i)%#i}[v]'=k;$[|/^. r;{[v;i]avg v i}[v]'=k;r]]]}
+gmin:{[k;v]r:`gagg(`min;k;v);$[#r;(r 0)!r 1;[r:{[v;i]&/v i}[v]'=k;$[|/^. r;{[v;i]min v i}[v]'=k;r]]]}
+gmax:{[k;v]r:`gagg(`max;k;v);$[#r;(r 0)!r 1;[r:{[v;i]|/v i}[v]'=k;$[|/^. r;{[v;i]max v i}[v]'=k;r]]]}
 gcount:{[k]r:`gagg(`count;k;k);$[#r;(r 0)!r 1;#:'=k]}
 gfirst:{[k;v]r:`gagg(`first;k;v);$[#r;(r 0)!r 1;{[v;i]*v i}[v]'=k]}
 glast:{[k;v]r:`gagg(`last;k;v);$[#r;(r 0)!r 1;{[v;i]*|v i}[v]'=k]}

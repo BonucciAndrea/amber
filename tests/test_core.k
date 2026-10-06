@@ -454,16 +454,21 @@ t[`fillIntFloats;(0^0n;0^1.5 0n;0^(1;0n);1b^1.5 0n;0N^1.5 0n;0^`a`b!1.5 0n);(0.0
 / other fills of another type still make a generic list, as k; a null int atom becomes the fill
 t[`fillOtherType;(1^0N;0.5^0N;0.5^1 0N;0x00^1.5 0n;`a^1.5 0n);(1;0.5;(1;0.5);(1.5;0x00);(1.5;`a))]
 
-/ ---- a missing or failing temporal formatter is an error, not the end of the process or a crash ----
-te[`fmtMissing;"$2026.07.30"]
-te[`fmtMissingK;"`k@2026.07.30"]
-/ a projection, composition or derived verb holding a date, and JSON, pass the error up too
-te[`fmtMissingProj;"`k@{x+y}[2026.07.30]"]
-te[`fmtMissingDerived;"`k@(2026.07.30+)"]
-te[`fmtMissingString;"$({x+y}[2026.07.30])"]
-te[`fmtMissingJson;"`j@2026.07.30"]
-te[`fmtMissingJsonList;"`j@(1;2026.07.30)"]
+/ ---- with no library (temporal.k's dstr and pstr, amber.k's stime) the core prints a temporal atom itself ----
+/ (it was 'value) the same text as the library's, and it reads back
+tv[`fmtMissing;"$2026.07.30";"2026.07.30"]
+tv[`fmtMissingK;"`k@'(2026.07.30;12:34:56.789;2026.07.30D01:02:03.000000004;0001.01.01;1707.09.22D00:12:43.145224192)";("2026.07.30";"12:34:56.789";"2026.07.30D01:02:03.000000004";"1.01.01";"0N")]
+tv[`fmtMissingEdges;"`k@'(`mkd -2147483648;`mkd 2147483647;`mkt -1;`mkt 359999999;`mkp -1;`mkp 1)";("-5877611.06.22";"5881610.07.11";"-00:00:00.001";"99:59:59.999";"1999.12.31D23:59:59.999999999";"2000.01.01D00:00:00.000000001")]
+tv[`fmtMissingHours;"`k@'(100:00:00.000;596:31:23.647)";("100:00:00.000";"596:31:23.647")]   / every digit of the hours (#62)
+tv[`fmtMissingBack;"{x~. `k@x}'(2026.07.30;12:34:56.789;2026.07.30D01:02:03.000000004;(2026.07.30;10:00:00.000);100:00:00.000)";1 1 1 1 1]
+/ a projection, composition or derived verb holding a date, and JSON, print it too
+tv[`fmtMissingProj;"`k@{x+y}[2026.07.30]";"{x+y}[2026.07.30;]"]
+tv[`fmtMissingDerived;"`k@(2026.07.30+)";"2026.07.30+"]
+tv[`fmtMissingString;"$({x+y}[2026.07.30])";"{x+y}[2026.07.30;]"]
+tv[`fmtMissingJson;"`j@2026.07.30";"\"2026.07.30\""]
+tv[`fmtMissingJsonList;"`j@(1;2026.07.30)";"[1,\"2026.07.30\"]"]
 t[`fmtMissingGrade;<({x+y}[2026.07.30];{x+y}[2026.07.31]);0 1]
+/ ---- a failing temporal formatter is an error, not the end of the process or a crash ----
 tv[`fmtFails;"dstr::{x+`a};.[{$x};,2026.07.30;{`caught}]";`caught]
 te[`fmtFailsList;"dstr::{x+`a};`k@(2026.07.30;1)"]
 
@@ -1236,7 +1241,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
-hexpect[795]
+hexpect[798]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

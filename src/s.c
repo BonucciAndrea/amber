@@ -52,7 +52,14 @@ Z A ktx(A r)_(P(!r,0)P(_t(r)==tc,enl(r))P(_t(r)-tC,et(r))r)   //a formatter's re
 //nlt: ^ of an atom that is not a number (1.c's nul). A date or a time is 0, having no null (0N makes midnight); a timestamp is 1 for
 //0N's ns, as str prints it; any other atom eql(cn[t],x), as before. Kept out of nul, here after o.c, so later code keeps its place.
 NI A nlt(A x)_(UC t=_t(x);P(t==tdt||t==ttm,ai(0))P(t==tnp,L v_=*(L*)_V(x);x(ai(v_==NL)))eql(cn[t],x))
-X1(str,Rilf(A y=aC(24);TY(sf)*f=xtf?sf:sl;AN(f(yC,gl(x))-yC,y))R(tdt,ktx(K1("dstr",ai((I)x))))R(ttm,ktx(K1("stime",ai((I)x))))R(tnp,L v_=*(L*)_V(x);x(ktx(K1("pstr",al(v_)))))Rs(aCz(su(xv)))Rc(enl(x))RU(kst(x))R_(e1f(str,x)))
+Z C*s2(C*s,U v)_(MC(s,q+v%100*2,2)+2)
+Z C*sdt(C*s,L d)_(L z=d+730425,e=z/146097-(z%146097<0),o=z-e*146097,y=(o-o/1460+o/36524-o/146096)/365,j=o-(365*y+y/4-y/100),p=(5*j+2)/153,m=p<10?p+3:p-9;   //days since 2000.01.01 as temporal.k's dstr prints them (Hinnant's civil_from_days)
+ s=sl(s,y+e*400+(m<3));*s++='.';s=s2(s,m);*s++='.';s2(s,j-(153*p+2)/5+1))
+Z C*stm(C*s,L t)_(I(t<0,*s++='-';t=-t)I(t<36000000,*s++='0')s=sl(s,t/3600000);*s++=':';s=s2(s,t/60000%60);*s++=':';s=s2(s,t/1000%60);*s++='.';*s++='0'+t%1000/100;s2(s,t%100))   //ms as amber.k's stime: every digit of the hours (#62)
+Z C*snp(C*s,L v)_(P(v==NL,MC(s,"0N",2)+2)L d=v/86400000000000,r=v%86400000000000;I(r<0,r+=86400000000000;d--)   //ns as temporal.k's pstr
+ s=sdt(s,d);*s++='D';s=stm(s,r/1000000);r%=1000000;s=s2(s,r/10000);s2(s2(s,r/100),r))
+Z A fdt,ftm,fnp;Z A tfm(A*p,S s,L v,B l,C*(*f)(C*,L))_(P(*p,ktx(_1(*p,l?al(v):ai((I)v))))P(gdf(s),ktx(k1(p,s,l?al(v):ai((I)v))))A y=aC(32);AN(f(yC,v)-yC,y))   //a temporal atom as text: by its library formatter when one is defined, else by the core (the same text), so the bare core prints it too
+X1(str,Rilf(A y=aC(24);TY(sf)*f=xtf?sf:sl;AN(f(yC,gl(x))-yC,y))R(tdt,tfm(&fdt,"dstr",(I)x,0,sdt))R(ttm,tfm(&ftm,"stime",(I)x,0,stm))R(tnp,L v_=*(L*)_V(x);x(tfm(&fnp,"pstr",v_,1,snp)))Rs(aCz(su(xv)))Rc(enl(x))RU(kst(x))R_(e1f(str,x)))
 V hexC(S s,U n,C*r){Z S q="0123456789abcdef";F(n,C c=*s++;*r++=q[(UC)c>>4];*r++=q[c&15])}
 X1(hex,RmMA(e1f(hex,x))RC(A y=aC(2*xn);Mx(hexC(xV,xn,yV))y)R_(et(x)))
 ZN V unh0(C*q){MS(q,-1,256);F(10,q['0'+i]=i)F(6,q['A'+i]=q['a'+i]=10+i)}
@@ -83,9 +90,9 @@ X1(kst,R_(x(aCz("???")))
  RM(pre('+',N(kst(flp(x)))))
  Rm(A y=kv(&x);x=N(kl(x),mr(y));y=N(kr(y),mr(x));cat11(apc(x,'!'),y))
  Rilf(str(x))
- R(tdt,ktx(K1("dstr",ai((I)x))))
- R(ttm,ktx(K1("stime",ai((I)x))))
- R(tnp,L v_=*(L*)_V(x);x(ktx(K1("pstr",al(v_)))))
+ R(tdt,tfm(&fdt,"dstr",(I)x,0,sdt))
+ R(ttm,tfm(&ftm,"stime",(I)x,0,stm))
+ R(tnp,L v_=*(L*)_V(x);x(tfm(&fnp,"pstr",v_,1,snp)))
  Rc(kss(enl(x)))
  Rs(x=str0(str(x));I(xn&&!id0(*xC)||xC+xn-pID(xC),x=kss_(x,1))pre('`',x))
  Ro(x(_R(xx)))

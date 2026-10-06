@@ -304,6 +304,7 @@ A gg(A x/*1*/)_(//get value of global
  W k=gkk(x);x(0);U i=fL(gk,gn,k);i<gn&&gv[i]?_R(gv[i]):ev0())
 A*gp(A x/*1*/)_(U i=gi(x);x(0);P(gfull,gfull=0;ez0();(A*)0)gv+i)//get pointer to global; 0 (and 'limit) when the table is full
 A*gq(A x/*0*/)_(W k=gkk(x);I(!(k>>32)&&id0(*su(k)),k|=(W)gd<<32)U i=fL(gk,gn,k);i<gn?gv+i:0)//as gp, but 0 where x names none yet (none added)
+B gdf(S s)_(W k=us(s);I(!(k>>32),k|=(W)gd<<32)U i=fL(gk,gn,k);i<gn&&gv[i])//is the global s defined? (s.c: a temporal atom's library formatter, else the core's own)
 A gns(U k)_(U n=0;F(gn,n+=gk[i]>>32==k)A y=an(n,tS);n=0;F(gn,I(gk[i]>>32==k,_I(y)[n++]=(I)gk[i]))y)//list namespace (built on the heap: the table no longer fits a stack array)
 // amber 2.0.0: is `p[0..n)` the name of an already-defined rank-2 (dyadic) global
 // function?  The parser (p.c) uses this to make ANY binary library verb infix --

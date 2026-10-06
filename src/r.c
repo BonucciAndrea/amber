@@ -9,18 +9,18 @@
 //l:{r:s;t::&4;{$[x;t::t X's;];f[]}''d;s::t;r} /long jump
 //`0:{"{",(","/x),"},"}'{"0x",`hex@`c$(8#256)\x}''+l'!4
 #define M 4
-// xoshiro256+ state, output buffer and cursor are thread-local: peach workers
+// xoshiro256+ state, output buffer and cursor are thread-local, in one struct (pst) so that one thread-local
+// lookup reaches all three (on macOS each lookup of a thread-local is a call to its getter): peach workers
 // generate random numbers concurrently (e.g. Monte-Carlo `np?1.0`), and a shared
 // `nb` cursor would underflow `b[--nb]` past 0 under a data race (an ASan
 // global-buffer-overflow). Each thread keeps its own stream; par_prng_perturb()
 // (called once per worker) decorrelates them from the parent's.
-Z AM_TLS_IE W s[][M]={{0xd5a986ae75c9a33b,0x9c57a73dcd5e41b7,0x3fe497b4dd1be68d,0x3f57adc392affdef},{0x1016d8e3483a8f0f,0xcb0c33c0e78feede,0x7b5dda788f9f577d,0xf1e01f806161118a},
- {0x81f9e6260eb8e5df,0x5943e008d9222efa,0x8f514f6e6fb18ba4,0x6dacfe2135f9599e},{0xfa9b718d8d0769bf,0x4d46d3d50833e8c9,0x696678daaa7b4cc6,0x3cb5c708d53cc982}};
-Z AM_TLS_IE W b[M];Z AM_TLS_IE U nb;//buf
-X1(prng,Ru(aV(tL,4*M,s))REGHIL(P(xn-4*M,el(x))MC(s,xV,SZ s);nb=0;x(au))Ril(W v=gl(x);I(!v,v=now())F(4,Fj(M,s[i][j]=v=v*6364136223846793005+1442695040888963407/*knuth mmix*/))au)R_(et(x)))
-Z V h(U x,U y){F(M,s[x][i]^=s[y][i])}
-Z V r4(){nb=M;W t[M];F(M,b[i]=s[0][i]+s[3][i])F(M,t[i]=s[1][i]<<17)h(2,0);h(3,1);h(1,2);h(0,3);F(M,s[2][i]^=t[i])F(M,s[3][i]=(s[3][i]<<45|s[3][i]>>19))}//next 4*64 bits
-Z W r()_(I(nb<4,r4())b[--nb])//random 64 bits
+Z AM_TLS_IE struct{W s[4][M];W b[M];U nb;}pst={{{0xd5a986ae75c9a33b,0x9c57a73dcd5e41b7,0x3fe497b4dd1be68d,0x3f57adc392affdef},{0x1016d8e3483a8f0f,0xcb0c33c0e78feede,0x7b5dda788f9f577d,0xf1e01f806161118a},
+ {0x81f9e6260eb8e5df,0x5943e008d9222efa,0x8f514f6e6fb18ba4,0x6dacfe2135f9599e},{0xfa9b718d8d0769bf,0x4d46d3d50833e8c9,0x696678daaa7b4cc6,0x3cb5c708d53cc982}}};   //s: the state, b: the buffered output words, nb: how many are left
+X1(prng,Ru(aV(tL,4*M,pst.s))REGHIL(P(xn-4*M,el(x))MC(pst.s,xV,SZ pst.s);pst.nb=0;x(au))Ril(W v=gl(x);I(!v,v=now())F(4,Fj(M,pst.s[i][j]=v=v*6364136223846793005+1442695040888963407/*knuth mmix*/))pst.nb=0;au)R_(et(x)))
+Z V h(U x,U y){F(M,pst.s[x][i]^=pst.s[y][i])}
+Z V r4(){pst.nb=M;W t[M];F(M,pst.b[i]=pst.s[0][i]+pst.s[3][i])F(M,t[i]=pst.s[1][i]<<17)h(2,0);h(3,1);h(1,2);h(0,3);F(M,pst.s[2][i]^=t[i])F(M,pst.s[3][i]=(pst.s[3][i]<<45|pst.s[3][i]>>19))}//next 4*64 bits
+Z W r()_(I(pst.nb<4,r4())pst.b[--pst.nb])//random 64 bits
 Z U ri(W m)_((U)r()*m>>32)//random int mod m
 Z W rw(W m)_(m>>32?r()%m:ri(m))
 Z F rf()_(W v=1023ll<<52|(r()&-1ull>>12);-1+*(F*)&v)//random float 0..1
@@ -28,9 +28,9 @@ Z F rf()_(W v=1023ll<<52|(r()&-1ull>>12);-1+*(F*)&v)//random float 0..1
 // an independent stream instead of all replaying the parent's identical one.
 // SplitMix64 diffusion -- decorrelation only, no cryptographic claim. nb reset
 // so the next r() refills from the perturbed state.
-V par_prng_perturb(W salt){W z=salt;F(4,Fj(M,z+=0x9e3779b97f4a7c15ull;W t=z;t=(t^t>>30)*0xbf58476d1ce4e5b9ull;t=(t^t>>27)*0x94d049bb133111ebull;s[i][j]^=t^t>>31))nb=0;}
+V par_prng_perturb(W salt){W z=salt;F(4,Fj(M,z+=0x9e3779b97f4a7c15ull;W t=z;t=(t^t>>30)*0xbf58476d1ce4e5b9ull;t=(t^t>>27)*0x94d049bb133111ebull;pst.s[i][j]^=t^t>>31))pst.nb=0;}
 
-Z A rt(U n,C t)_(A x=an(n,t);F(((W)n<<Tw[t])+255>>8,r4();MC(xV+(i<<5),b,32))x)//roll n full-range (including negative) items of type t (int of a specific width or char)
+Z A rt(U n,C t)_(A x=an(n,t);F(((W)n<<Tw[t])+255>>8,r4();MC(xV+(i<<5),pst.b,32))x)//roll n full-range (including negative) items of type t (int of a specific width or char)
 Z CO W msk[]={0xffffffffffffffffll,0x5555555555555555ll,0x1111111111111111ll,0x0101010101010101ll,0x0001000100010001ll,0x0000000100000001ll,0x0000000000000001ll};
 Z A ro(U n,W m)_(P(!(m&m-1),P(!m,rt(n,tL))C t=tZ(m-1);A x=rt(n,t);L v=(m-1)*msk[Tw[t]];L*p=xL;F(((W)n<<Tw[t])+255>>8,Fj(4,*p++&=v))x)   //The bit count in 64 bits, as rt (from 2^29 items it wrapped: digest #34)
  C t=tZ(m-1);A x=an(n,t);S4(t-tG,F(n,xg=ri(m)),F(n,xh=ri(m)),F(n,xi=ri(m)),F(n,xl=r())I(m,F(n,xl%=m)))x)//roll

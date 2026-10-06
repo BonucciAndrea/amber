@@ -325,6 +325,13 @@ t[`rollCharsSmall;#5?" ";5]
 
 t[`rollNullChars;0N?" ";""]
 
+/ ---- `prng n replays the stream whatever was drawn before it: a full-range roll (and so a char roll or a roll
+/ of a power of two) left its buffered word behind, and the next draw after the reseed took it ----
+t[`prngReplayFullRoll;{2?0;`prng 5;c:3?1.0;`prng 5;c~3?1.0}[];1]
+t[`prngReplayEach;{p:("2?0";"3?-1";"3?256";"3?65536";"3?4294967296";"3?\" \"";"5?0x00";"3?100";"3?100000";"3?10000000000";"1?1.0";"-3?10";"-3?10000000000";"0N?10";"3?`a`b`c";"-2?`a`b`c";"3?\"a\"")
+ d:("3?1.0";"3?10";"3?256";"3?100000";"3?10000000000";"3?0";"-3?10";"-3?10000000000";"0N?5";"3?`a`b`c";"-2?`a`b`c";"3?\"a\"";"2?\" \"")
+ ,/{[d;x]{[x;y].x;`prng 5;c:.y;`prng 5;c~.y}[x]'d}[d]'p}[];(17*13)#1b]
+
 / ---- where of counts that overflow or pass 2^32 is 'limit (as upstream ngn/k 4b1dd07e, d5099539 check; issue #10) ----
 te[`whereOverflow;"#&9223372036854775807 9223372036854775807 2"]
 t[`whereLimitSum;.[.:;,"#&4294967297 0";{(x?"\n")#x}];"'limit"]
@@ -1236,7 +1243,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
-hexpect[795]
+hexpect[797]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

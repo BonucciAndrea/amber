@@ -669,6 +669,10 @@ t[`gradeBigNeg;    <-1e19 -1.0000000000000004e19 -1e19;1 0 2]
 t[`razeDicts;      (,/(`a`b!1 2;`c`d!3 4);,/(1 2!3 4;5 6!7 8));(`a`b`c`d!1 2 3 4;1 2 5 6!3 4 7 8)]
 / :: in a dict amend is every key, as when indexing
 t[`amendDictAll;   (.[`a`b!(1 2;3 4);(::;0);:;9];@[`a`b!1 2;::;+;9];.[`x`y!(`p`q!1 2;`p`q!3 4);(::;`q);*;10]);(`a`b!(9 2;9 4);`a`b!10 11;`x`y!(`p`q!1 20;`p`q!3 40))]
+/ a dict as the value through :: on a dict: its values go to the keys in order, as for d[!d] (q matches by key); was a crash
+t[`amendDictAllDictValue;(.[+`a`b!(1 2 3;4 5 6);(0;::);:;`a`b!9 8];{t:+`a`b!(1 2 3;4 5 6);t[0;]:`a`b!9 8;t}[];.[`a`b!(`x`y!1 2;`x`y!3 4);(`a;::);:;`x`y!9 8]);(+`a`b!(9 2 3;8 5 6);+`a`b!(9 2 3;8 5 6);`a`b!+`x`y!(9 3;8 4))]
+t[`amendDictAllDictNear;(.[+`a`b!(1 2 3;4 5 6);(0;::);:;7];.[+`a`b!(1 2 3;4 5 6);(0;::);+;`a`b!10 20];.[(`a`b!1 4;`a`b!2 5);(0;::);:;`a`b!9 8];.[`x`y!(`p`q!1 2;`p`q!3 4);(::;`q);:;`x`y!10 20];{d:`a`b!(`x`y!1 2;`x`y!3 4);d[`a;]:`x`y!9 8;d}[]);(+`a`b!(7 2 3;7 5 6);+`a`b!(11 2 3;24 5 6);+`a`b!(9 2;8 5);`x`y!+`p`q!(1 3;10 20);`a`b!+`x`y!(9 3;8 4))]
+t[`amendDictAllKeyed;*"\n"\.[{.[x;(1;::);:;`a`b!9 8]};,([k:1 2 3]a:4 5 6;b:7 8 9);{x}];"'nyi"]   / a keyed table's row: not yet, as before
 
 / ---- amber 2.2: float literals below 1e-308 (subnormals) ------------------
 / pfu (src/p.c) clamped an out-of-range exponent and returned EARLY, before it

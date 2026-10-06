@@ -1039,7 +1039,7 @@ AA(a8,/*10..0*/A x=*a,y=a[1];
    RT_E(P(y==au,mRn(n-2,a+2);Ab8;*b=a[2];b[1]=x;AC(b+2,a+3,n-3);USQ(e8(AP1,b,n-1)))
     Yzc(L i=gl_(y);P(i>=(W)xn,ei(x))x=mut(x);Ab8;*b=ii(x,i);AC(b+1,a+3,n-3);mRn(n-3,b+1);A z=a[2];set(x,i,Nx(USQ(z8(b,n-2)))))
     I(ytZC&&n==4,A z=a[2],u=a[3];P(xtZ&&ztv&&utzZ&&(0xcf&1<<zv),ara(x,y,z,u))P(xtC&&z==av&&utcC,cC(N(ara(x,y,z,u)))))Yt(et(x))mRn(n-1,a+1);nsq++;A r_=f8(AP1,a,n);nsq--;r_?sqz(r_):0)
-   Rm(P(y==au,x=mut(x);Ab8;*b=xy;AC(b+1,a+1,n-1);xy=au;xy=Nx(a8(b,n));x)   //:: is every key, as it is when reading d[::;..]: amend the values
+   Rm(P(y==au,A k=_R(xx);Ab8;*b=x;b[1]=k;AC(b+2,a+2,n-2);x=a8(b,n);mr(k);x)   //:: is every key, as it is when reading d[::;..]: the keys (!d), as d[!d;..]
       A z=Nx(fnd(xx,yR));ZT(P(LH(tG,zt,tL)&&(n==3||n==4&&(_tt(a[3])||_tT(a[3])&&_N(a[3])==zn)||n==5&&_tt(a[3])&&(_tt(a[4])||_tT(a[4])&&_N(a[4])==zn)),dam(x,y,cL(z),a,n))z(0);mRn(n-1,a+1);f8(AP1,a,n))x=mut(x);I(ztl,z=mut(z);F(zN,I(zl==NL,zl=xN;PSH(xx,ztt?yR:ii(y,i));PSH(xy,ie(a[2],xy)))))
     Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);xy=au;xy=Nx(z(a8(b,n)));x)
    RM(Ab8;AC(b,a,n);YsS(U r=xN;*b=flp(x);tfl(N(a8(b,n)),r))B e=!xN;*b=blw(e?_R(x):x);A p=e?_R(*_A(*b)):0;A u=a8(b,n);P(!u,e?(mr(p),x(0)):0)P(!e,sqz(u))   //p: the prototype of an empty table's rows, its null row

@@ -65,9 +65,28 @@ qwv:{[t;v]$[`I~@v;v;isat v;qma[#t;v];v]}
 qcas:{[t;c]C:cols t;i:qcw[t;C;!#t;*c];i:{[t;C;i;e]qcw[t;C;i;e]}[t;C]/[i;1_c];@[~(#t)#1b;i;:;1b]}
 qcw:{[t;C;i;e]h:$[qhi e;~|/in[`i,qI;C];0];r:qrefs[C;e];v:qfn[$[h;C,qI;C];e]$[h;+(r,qI)!((+t)[r]@\:i),,i;#r;+r!(+t)[r]@\:i;t i];$[isat v;[qwa v;$[v;i;0#i]];i@&v]}   / The rows of i that e keeps (an i in e reads i itself)
 qlw:`in`within`like`not`null`abs`neg`floor`ceiling`signum`string`lower`upper`mod`div`xbar
-qlwd:{[C;w]s:`$w;c:*w;$[in[s;C]|in[s;qlw]|s~`i;1;(~(c<"0")|c>"9")&~|/w="_";1;[v:.[{.x};,s;{`qlfail}];$[`qlfail~v;0;~|/"opqruvwx"=*$@v]]]}   / A word that keeps a row to itself
 qblank:{[e]$[~|/(e="\"")|e="`";e;[s:e;q:qsmask s;s:@[s;&q|s="\"";:;" "];w:qword 0+s;rid:+\~~':w;bt:&s="`";p:1+bt;p:p@&p<#s;pc:p@&":"=s p;p:p@&w p;b:w&@[(1+#s)#0b;rid p;:;1b]rid;$[#pc;[c:w|(s=".")|(s=":")|(s="/")|s="-";rc:+\~~':c;b|:c&@[(1+#s)#0b;rc pc;:;1b]rc];];s:@[s;bt;:;" "];@[s;&b;:;" "]]]}   / strings and `symbols blanked (a `: symbol takes in . / _ - :, as Amber's pfh; a plain one is a word, _ and all, where Amber stops at _)
-qloc:{[C;e]s:qblank e;w:qword 0+s;b:&~~':w;tk:b _ s;ok:&/1,qlwd[C]'tk@&w b;oi:&~w|s=" ";o:s oi;ok&:&/1,in[o;"=<>~+-*%&|$,.()"];nsi:&~s=" ";mp:oi@&in[o;"*|&,<>=+"];ok&&/1,{[s;w;nsi;p]j:nsi?p;$[j=0;0;[q:nsi j-1;c:s q;$[w q;1;c=")";1;(|/c="<>")&|/(s p)="=>";1;0]]]}[s;w;nsi]'mp}   / No aggregate, adverb or monadic first/where/count
+qloc:{[C;e]$[qlm[C;e];1;qlb[C;e;qblank e]]}
+qlm:{[C;e]j:((e="=")|(e="<")|e=">")?1;$[~^j;$[^(C,`i)?`$j#e;0;~&/qword 0+j#e;0;qll(j+1+~^"=>"?e j+1)_e];qlm2[C;e]]}
+qll:{$[0=#x;0;"`"=*x;&/qword[0+x]|x="`";~^"-0123456789"?*x;&/qword[0+x]|(x=".")|x="-";0]}   / a number or a run of `symbols, with nothing else
+qlm2:{[C;e]t:" "\@[e;&e="~";:;" "];t:t@&0<#'t;$[0=#t;0;(2<#t)&((t 1)~"in")|(t 1)~"within";$[|/e="~";0;^(C,`i)?`$*t;0;&/qll'2_t];~&/qword 0+,/t;0;~&/{(x~"not")|x~"null"}'-1_t;0;~^(C,`i)?`$*|t]}   / the common shapes that keep to their row, read without the full check: a column or i compared (= < >) with a literal, under ~, not and null, or in or within literals
+/ qlb: qloc on e's text s, strings and `symbols blanked, read with primitives over its words (b their starts, we
+/ their ends, t their texts). A word keeps a row to itself (qlwv) when it is a column, i, a word of qlw, a number,
+/ or a global that is data; every mark is one of = < > ~ + - * % & | $ , . ( ), and a dyadic one has an operand
+/ before it (qlbm). qlj3, which qlq spares a text with no space, ~ , . bracket or string and no `symbol straight
+/ after a word: nothing indexed by juxtaposition or by . with a column or a bracket on the left (n 0, m n, (n)0,
+/ n "a", n . 0), whose index is another row's value (a global or a literal on the left, L n or 1 2 3 n, looks each
+/ row up for itself); ~ only monadic (~null px; not n~m: qljt); , only between literals (`a,`b; not n,m: qljc); in
+/ and within with no column on their right (n in 1 2 3, sym in syms; not n in m: qlji).
+qlb:{[C;e;s]$[0=#s;1;[w:qword 0+s;b:&w>0,-1_w;we:&w>(1_w),0;t:(1+we-b)#'b _ s;qlb1[C;e;s;w;b;we;t]]]}
+qlb1:{[C;e;s;w;b;we;t]y:`$'t;$[~qlwv[C;y;t];0;[L:(s=" ")&~e=" ";i:&L|~s=" ";o:&~w|s=" ";$[~&/~^"=<>~+-*%&|$,.()"?s o;0;~qlbm[s;w|L;i;o];0;qlq e;1;qlj3[C;s;L;b;we;t;y;i]]]]}
+qlwv:{[C;y;t]g:&~(~^(C,qlw,`i)?y)|((*'t)>"/")&((*'t)<":")&~|/'t="_";$[#g;&/{v:.[{.x};,x;{`qlfail}];$[`qlfail~v;0;~|/"opqruvwx"=*$@v]}'y g;1]}
+qlbm:{[s;v;i;o]m:o@&~^"*|&<>=+"?s o;$[0=#m;1;[k:i?m;$[|/k=0;0;[q:i k-1;$[&/v q;1;[c:s q;&/(v q)|(c=")")|(~^"<>"?c)&~^"=>"?s m]]]]]]}
+qlq:{[e]$[|/~^" \t~,.()[]\""?e;0;[b:&e="`";$[#b;~|/0,qword 0+e@-1+b@&0<b;1]]]}
+qlj3:{[C;s;L;b;we;t;y;i]n:#s;p:-1_(,-1),|\@[n#-1;i;:;i];p:@[p;&p<0;:;n];cl:~^(C,`i)?y;vb:~^qlw?y;ce:(@[n#0;we@&cl;:;1]|s=")"),0;os:@[n#0;b@&~vb;:;1]|(s="(")|L&~0,-1_L;$[|/os&ce p;0;|/(s=".")&ce p;0;$[|/s="~";qljt[s;L;we;vb;p];0];0;$[|/s=",";qljc[s;L;i];0];0;$[|/~^`in`within?y;qlji[s;b;t;cl];0];0;1]}
+qljt:{[s;L;we;vb;p]n:#s;oe:(@[n#0;we@&~vb;:;1]|(s=")")|L&~(1_L),0),0;|/(s="~")&oe p}
+qljc:{[s;L;nb]c:nb?&s=",";$[0=#c;0;|/(c=0)|(c+1)=#nb;1;~&/L nb c-1;1;~&/L nb c+1]}
+qlji:{[s;b;t;cl]i:b@&~^("in";"within")?t;$[0=#i;0;[d:+\(s="(")-s=")";cs:b@&cl;|/{[d;cs;p]r:*(&(p<!#d)&d<d p),#d;|/(cs>p)&cs<r}[d;cs]'i]]}
 / qdec: drop a trailing K comment from a query string.
 / A "/" that STARTS a token -- at the beginning of the string, or preceded by a
 / space or a tab -- and is not inside a "…" literal begins a comment.  The qSQL

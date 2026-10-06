@@ -133,7 +133,7 @@ wtol:{[tag;f;g;w;v]hpush[tag;1e-6>|/|(f[w;v])-g[w;v];"FAIL window kernel drifts 
  }'wins;
 
 / ---- the literal expectations from test-ext.k, unchanged -------------------
-t[`msumLit; msum[3;1 2 3 4 5];  1 3 6 9 12.0]
+t[`msumLit; msum[3;1 2 3 4 5];  1 3 6 9 12]
 t[`mavgLit; mavg[3;1 2 3 4 5];  1 1.5 2 3 4.0]
 t[`mminLit; mmin[3;5 3 4 1 2];  5 3 3 1 1]
 t[`mmaxLit; mmax[3;1 3 2 5 4];  1 3 3 5 5]
@@ -151,9 +151,10 @@ t[`msumEmpty; #msum[3;0#0.0]; 0]
 t[`mminEmpty; #mmin[3;0#0];   0]
 
 / ---- nulls are ABSENT, not contagious: 0n must not poison the whole tail ----
+/ (mmin and mmax take 0n as the smallest value, as & and | do: q's answers)
 t[`msumNull; msum[2;1 0n 3 4.0]; 1 1 3 7.0]
 t[`mavgNull; mavg[2;1 0n 3 4.0]; 1 1 3 3.5]
-t[`mminNull; mmin[2;1 0n 3 4.0]; 1 1 3 3.0]
+t[`mminNull; mmin[2;1 0n 3 4.0]; 1 0n 0n 3.0]
 t[`mmaxNull; mmax[2;1 0n 3 4.0]; 1 1 3 4.0]
 t[`mAllNull; ^*mavg[2;0n 0n];    1b]
 
@@ -211,6 +212,103 @@ t[`distNaN;           #?(0n;0n;1.0);        2]
 t[`ascNZ;             asc(0.0;-0.0);        -0.0 0.0]
 t[`groupNZ;           #=(0.0;-0.0);         1]
 
-hexpect[317]
+/ the int32 minimum stored in a 32-bit column is an ordinary int (Amber has no int32 null)
+t[`msumI32Min;  msum[2;-2147483648 70000 1];  -2147483648 -2147413648 70001]
+t[`mavgI32Min;  mavg[2;-2147483648 70000 1];  (msum[2;-2147483648 70000 1])%1 2 2.0]
+
+/ q's answers (digest #44): msum of ints is ints, mcount counts the non-nulls,
+/ and a window longer than the list, an empty list or a range is no error
+t[`msumInt;     msum[2;1 2 3];         1 3 5]
+t[`msumIntNull; msum[2;1 0N 2];        1 1 2]
+t[`msumLong;    msum[2;100000 2 3];    100000 100002 5]
+t[`msumRange;   msum[2;!5];            0 1 3 5 7]
+t[`msumEmptyR;  msum[1;!0];            !0]
+t[`msumShort;   msum[10;1 2 3];        1 3 6]
+t[`mavgShort;   mavg[3;1 2];           1 1.5]
+t[`mavgRange;   mavg[3;1000+!3];       1000 1000.5 1001]
+t[`mavgEmptyR;  mavg[1;!0];            0#0.0]
+t[`mdevShort;   mdev[3;1 2];           0 0.5]
+t[`mcountNull;  mcount[2;1 0n 2];      1 1 1]
+t[`mcountNullL; mcount[2;1 0N 2 3];    1 1 1 2]
+t[`mcountShort; mcount[10;1 2 3];      1 2 3]
+t[`mcountEmpty; mcount[1;!0];          !0]
+t[`mcountSym;   mcount[2;`a``b];       1 1 1]
+/ a window of 0 or less is empty, as q's prefix difference gives: no sum,
+/ no count, 0n for the average and deviation
+t[`msumW0;      msum[0;1 2 3];         0 0 0]
+t[`msumWNeg;    msum[-1;1 2 3 4 5];    0 0 0 0 0]
+t[`msumWNegF;   msum[-2;1 2 3.0];      0 0 0.0]
+t[`mavgW0;      mavg[0;1 2 3];         0n 0n 0n]
+t[`mavgWNeg;    mavg[-1;1 2 3 4 5];    5#0n]
+t[`mcountW0;    mcount[0;1 2 3];       0 0 0]
+t[`mcountWNeg;  mcount[-1;1 2 3 4 5];  0 0 0 0 0]
+t[`mdevW0;      mdev[0;1 2 3];         0n 0n 0n]
+t[`mdevWNeg;    mdev[-1;1 2 3 4 5];    5#0n]
+t[`mdevWNeg1;   mdev[-1;,7];           ,0n]
+/ a dict is taken by its values, a table by its columns (q)
+t[`msumDict;    msum[2;`a`b`c!1 2 3];  `a`b`c!1 3 5]
+t[`mavgDict;    mavg[2;`a`b`c!1 2 3];  `a`b`c!1 1.5 2.5]
+t[`mcountDict;  mcount[2;`a`b`c!1 2 3];`a`b`c!1 2 2]
+t[`mdevDict;    mdev[2;`a`b`c!1 2 3];  `a`b`c!0 0.5 0.5]
+t[`msumTable;   msum[2;+`a`b!(1 2 3;4 5 6.0)];  +`a`b!(1 3 5;4 9 11.0)]
+/ with nulls: a table goes by its columns, a dict or keyed table by its
+/ values, through the kernel (nulls absent), as q
+t[`msumTabN;    msum[2;+`a`b!(1 0N 3;4 0n 6.0)];    +`a`b!(1 1 3;4 4 6.0)]
+t[`mavgTabN;    mavg[2;+`a`b!(1 0N 3;4 0n 6.0)];    +`a`b!(1 1 3.0;4 4 6.0)]
+t[`mcountTabN;  mcount[2;+`a`b!(1 0N 3;4 0n 6.0)];  +`a`b!(1 1 1;1 1 1)]
+t[`mdevTabN;    mdev[2;+`a`b!(1 0N 3;4 0n 6.0)];    +`a`b!(0 0 0.0;0 0 0.0)]
+t[`msumDictN;   msum[2;`a`b`c!1 0N 3];              `a`b`c!1 1 3]
+t[`mavgDictN;   mavg[2;`a`b`c!1 0N 3];              `a`b`c!1 1 3.0]
+t[`mcountDictN; mcount[2;`a`b`c!1 0N 3];            `a`b`c!1 1 1]
+t[`mdevDictN;   mdev[2;`a`b`c!1 0N 3];              `a`b`c!0 0 0.0]
+t[`msumKeyN;    msum[2;(+(,`k)!,1 2 3)!+`a`b!(1 0N 3;4 0n 6.0)];   (+(,`k)!,1 2 3)!+`a`b!(1 1 3;4 4 6.0)]
+t[`mavgKeyN;    mavg[2;(+(,`k)!,1 2 3)!+`a`b!(1 0N 3;4 0n 6.0)];   (+(,`k)!,1 2 3)!+`a`b!(1 1 3.0;4 4 6.0)]
+t[`mcountKeyN;  mcount[2;(+(,`k)!,1 2 3)!+`a`b!(1 0N 3;4 0n 6.0)]; (+(,`k)!,1 2 3)!+`a`b!(1 1 1;1 1 1)]
+t[`mdevKeyN;    mdev[2;(+(,`k)!,1 2 3)!+`a`b!(1 0N 3;4 0n 6.0)];   (+(,`k)!,1 2 3)!+`a`b!(0 0 0.0;0 0 0.0)]
+t[`msumDictE;   msum[2;(0#`)!0#0];                  (0#`)!0#0]
+/ a general list (and a dict of mixed values): nulls add 0, as in a vector
+/ (q keeps 0N there for msum, 1 1 3f for mavg and 0 0 0f for mdev)
+t[`msumGenN;    msum[2;(1;0N;3.0)];                 (1;1;3.0)]
+t[`mavgGenN;    mavg[2;(1;0n;3)];                   1 1 3.0]
+t[`mdevGenN;    mdev[2;(1;0N;3.0)];                 0 0 0.0]
+t[`mavgDictMix; mavg[2;`a`b`c!(1;0N;3.0)];          `a`b`c!1 1 3.0]
+/ a bool list (bytes in Amber) sums to ints, as q's does
+t[`msumBool;    msum[2;1011b];         1 1 1 2]
+/ a window past 2^32 is a window past the list (it was cut to 32 bits on wasm32)
+t[`msumHugeW;   msum[4294967297;1 2 3];   1 3 6]
+t[`mcountHugeW; mcount[4294967296;1 2 3]; 1 2 3]
+t[`mminHugeW;   mmin[4294967296;3 1 2];   3 1 1]
+/ mmin is null when its window holds a null, mmax when the window is all
+/ null, and -0W (-0w) then in the first w-1 points, as q's (x-1)|':/y gives
+t[`mmaxNullL;   mmax[3;0N 0N 0N 0N 1];      (1+0N;1+0N;0N;0N;1)]
+t[`mmaxNullF;   mmax[3;0n 0n 0n 0n 1.0];    -0w -0w 0n 0n 1.0]
+t[`mmaxNullMix; mmax[2;0n 5 0n 0n 3.0];     -0w 5 5 0n 3.0]
+t[`mminNullF;   mmin[2;0n 1 0n 3 4.0];      0n 0n 0n 0n 3.0]
+t[`mminNullL;   mmin[3;3 1 0N 4 5 6 7];     3 1 0N 0N 0N 4 5]
+t[`mminNullF3;  mmin[3;0n 0n 1.0];          0n 0n 0n]
+/ a window of 0 or less, or an atom, gives x back, as q's (x-1)&':/y does;
+/ a dict is taken by its values
+t[`mminW0;      mmin[0;1 2];                1 2]
+t[`mmaxW0;      mmax[0;1 2.0];              1 2.0]
+t[`mminWNeg;    mmin[-1;1 2 3 4 5];         1 2 3 4 5]
+t[`mmaxWNeg;    mmax[-2;3 1 2.0];           3 1 2.0]
+t[`mminDict;    mmin[2;`a`b`c!3 1 2];       `a`b`c!3 1 1]
+t[`mmaxDict;    mmax[2;`a`b`c!3 1 2];       `a`b`c!3 3 2]
+t[`mminAtom;    mmin[2;5];                  5]
+t[`mmaxAtom;    mmax[0;5.0];                5.0]
+t[`mmaxHugeW;   mmax[4294967296;0N 0N 1];   (1+0N;1+0N;1)]
+/ a dict, table or keyed table goes through the kernel too: nulls, and the
+/ -0W (-0w) of an all-null window in the first w-1 points, as q
+t[`mminTabN;    mmin[2;+`a`b!(1 0N 3;4 0n 6.0)];    +`a`b!(1 0N 0N;4 0n 0n)]
+t[`mmaxTabN;    mmax[2;+`a`b!(0N 0N 3;0n 0n 6.0)];  +`a`b!((1+0N;0N;3);-0w 0n 6.0)]
+t[`mminDictN;   mmin[2;`a`b`c!1 0N 3];              `a`b`c!1 0N 0N]
+t[`mmaxDictN;   mmax[2;`a`b`c!0N 0N 1];             `a`b`c!(1+0N;0N;1)]
+t[`mmaxDictNF;  mmax[2;`a`b`c!0n 0n 1.0];           `a`b`c!-0w 0n 1.0]
+t[`mminKeyN;    mmin[2;(+(,`k)!,1 2 3)!+`a`b!(1 0N 3;4 0n 6.0)];   (+(,`k)!,1 2 3)!+`a`b!(1 0N 0N;4 0n 0n)]
+t[`mmaxKeyN;    mmax[2;(+(,`k)!,1 2 3)!+`a`b!(0N 0N 3;0n 0n 6.0)]; (+(,`k)!,1 2 3)!+`a`b!((1+0N;0N;3);-0w 0n 6.0)]
+t[`mminDictE;   mmin[2;(0#`)!0#0];                  (0#`)!0#0]
+t[`mmaxDictE;   mmax[2;(0#`)!0#0.0];                (0#`)!0#0.0]
+
+hexpect[394]
 hreport"AMBER SORT / WINDOW DIFFERENTIAL"
 $[FAILN;`exit 1;]

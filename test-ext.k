@@ -15,7 +15,7 @@ t:{r,:,($x;$[y~z;"ok";"FAIL got<",(`k y),"> exp<",(`k z),">"])}
 
 / ---- moving / window aggregates ----
 t[`mcount;mcount[3;1 2 3 4 5];1 2 3 3 3]
-t[`msum;msum[3;1 2 3 4 5];1 3 6 9 12.0]
+t[`msum;msum[3;1 2 3 4 5];1 3 6 9 12]
 t[`mavg;mavg[3;1 2 3 4 5];1 1.5 2 3 4.0]
 t[`mmin;mmin[3;5 3 4 1 2];5 3 3 1 1]
 t[`mmax;mmax[3;1 3 2 5 4];1 3 3 5 5]

@@ -41,14 +41,16 @@ Z V Jl(L v){s=v!=NL?sl(s,v):MC(s,"null",4)+4;}  //v-NL overflowed for v>=0
 //written as a string of its own), and nl counts up to 20 characters (a negative 19-digit int).
 Z U nxe(A x/*0*/)_(U n=xN,m=1+n+!n;F(n,m+=nX(ii(x,i)))m)
 //A dict's keys: a number is written as a string, as q ({1:3} is no JSON), so two quotes more each; a key that is
-//a list other than a string is 'type, as q (digest #60)
+//a key that is a list (other than a string), a dict, a table, :: or a monadic verb is 'type, as q (digest #60; a verb such as -: wrote true)
 Z B jkq(UC u)_(u==ti||u==tl||u==tf)
 Z U nkq(A k/*0*/)_(UC u=_t(k);P(_tP(k)||u==tS||u==tC,0)P(LH(tB,u,tF),2*_n(k))P(u-tA,0)U m=0;
- F(_n(k),A e=ii(k,i);UC v=_t(e);I(jkq(v),m+=2)J(!_tP(e)&&LH(tA,v,tS)&&v!=tC,jf=1;et0())mr(e))m)
+ F(_n(k),A e=ii(k,i);UC v=_t(e);I(jkq(v),m+=2)J(v==tu||!_tP(e)&&LH(tA,v,tm)&&v!=tC,jf=1;et0())mr(e))m)
 Z V JK(A k/*1*/);
-Z U nx(A x/*0*/){X(Ri(nl(xv))Rl(nl(*xL))Rc(C c=xv;nC(&c,1))Rf(F v=*xF;P(JI(v),nl((L)v))P(v-v!=0,4)C b[32];sf(b,*(L*)&v)-b)Rm(nxe(xx)+nxe(xy)-1-!_N(xx)+nkq(xx))Ru(4)RC(nC(xC,xn))
+//a keyed table is written as its unkeyed table (0!t), an array of rows, as q; table keys with other values are 'type, as q
+Z A jkt(A x/*0*/)_(A k=xx,v=xy;P(!_tM(v),et0())aM(cat(_x(k),_R(_x(v))),cat(_y(k),_R(_y(v)))))
+Z U nx(A x/*0*/){X(Ri(nl(xv))Rl(nl(*xL))Rc(C c=xv;nC(&c,1))Rf(F v=*xF;P(JI(v),nl((L)v))P(v-v!=0,4)C b[32];sf(b,*(L*)&v)-b)Rm(P(_tM(xx),A y=jkt(x);P(!y,jf=1;0)nX(y))nxe(xx)+nxe(xy)-1-!_N(xx)+nkq(xx))Ru(4)RC(nC(xC,xn))
  RMT_C(nxe(x))R_(A y=str(xR);P(!y,jf=1;0)nX(y)))}
-Z A Jx(A x/*0*/){X(Rm(*s++='{';F(xN,*s=',';s+=!!i;JK(ii(xx,i));*s++=':';JX(ii(xy,i)))*s++='}';x)Rf(F v=*xF;s=JI(v)?sl(s,(L)v):v-v!=0?MC(s,"null",4)+4:sf(s,*(L*)&v);x)Ri(s=sl(s,xv);x)
+Z A Jx(A x/*0*/){X(Rm(P(_tM(xx),A y=jkt(x);I(y,JX(y))E(jf=1);x)*s++='{';F(xN,*s=',';s+=!!i;JK(ii(xx,i));*s++=':';JX(ii(xy,i)))*s++='}';x)Rf(F v=*xF;s=JI(v)?sl(s,(L)v):v-v!=0?MC(s,"null",4)+4:sf(s,*(L*)&v);x)Ri(s=sl(s,xv);x)
  Rl(Jl(*xL);x)Rc(C c=xv;JC(&c,1);x)RC(JC(xC,xn);x)Ru(P(!xv,s=MC(s,"null",4)+4;x)U n=4+!xv;MC(s,xv?"true":"false",n);s+=n;x)R_(I(xtMT,*s++='[';F(xN,I(i,*s++=',')JX(ii(x,i)))*s++=']')E(A y=str(xR);I(y,JX(y))E(jf=1))x))}
 Z U nX(A x/*1*/)_(U n=nx(x);x(0);n)
 Z V JX(A x/*1*/){Jx(x);x(0);}

@@ -195,8 +195,11 @@ Z U wjfwd_lb(CO L*RES a,U cur,U hi,L key){U lim=hi-cur>AMGALLOP?cur+AMGALLOP:hi,
 Z U wjfwd_ub(CO L*RES a,U cur,U hi,L key){U lim=hi-cur>AMGALLOP?cur+AMGALLOP:hi,j=cur;
  W(j<lim&&a[j]<=key,j++)I(j==lim&&lim<hi,j=amub(a,lim,hi,key))return j;}
 // Pass 1: per-row half-open window [LO[i],HI[i]) inside the row's group slice.
-// A null/empty/out-of-range slice, or an inverted window, yields the empty
-// range 0,0 -- every reducer below then produces that reducer's identity.
+// A null/empty/out-of-range slice yields the empty range 0,0, and a window whose
+// end comes before s, the quote it reads from (for wj the one in force at its
+// start, for wj1 the first inside), yields the empty range at s: so every
+// inverted wj1 window is empty, and a wj one only when it ends before that
+// quote -- every reducer below then produces that reducer's identity.
 // Per-group cursor cache, identical in construction and rationale to ajc()'s in
 // src/a.c -- see the long comment there. wj needs TWO cursors per group (the
 // window has a lower and an upper edge), and both advance monotonically for as
@@ -216,10 +219,11 @@ Z V wjbounds(CO L*RES T,U nq,CO L*RES W0,CO L*RES W1,CO L*RES GB,CO L*RES GE,U n
    I(cbase[g]==b&&ck0[g]<=k0&&ck1[g]<=k1,
      lo=wjfwd_lb(T,clo_[g],h,k0);hi=wjfwd_ub(T,chi_[g],h,k1))
    E(lo=amlb(T,(U)b,h,k0);hi=amub(T,(U)b,h,k1))
-   I(hi<lo,hi=lo)                      // inverted window -> empty, never a wrapped count
    // pv, q's wj: from the quote in force at the window's start, the last one at or before it (the last of a run at
    // that very time), or the group's first if there is none; lo is the first one inside, which is wj1 (digest #68)
    U s=lo;I(pv,I(s<h&&T[s]==k0,W(s+1<h&&T[s+1]==k0,s++))E(I(s>(U)b,s--)))
+   // a window ending before s, the quote it reads from, is empty at s, never a wrapped count: every inverted wj1
+   // window, and a wj one ending before the quote in force at its start; hi is clamped to s, not lo, as q's wj
    LO[i]=s;HI[i]=hi<s?s:hi;
    cbase[g]=b;ck0[g]=k0;ck1[g]=k1;clo_[g]=lo;chi_[g]=hi;)}
 // Pass 2, float column -> float result. c: 0=first 1=last 2=min 3=max 4=sum 5=avg.

@@ -974,6 +974,11 @@ t[`emptyIdxStaleDict;{x:(`c`d!3 4;`x);?{[x;n](x@n_n#1)~0#x}[x]'1+!20}[];,1]
 t[`emptyIdxMatch;{d:`a`a0!(,0#,,();0#,,());ks:`a`a0;ks_d;{[d;w]((!d)@w)!(.d)@w}[d;&^ks?!d];(ks_d)~{[d;w]((!d)@w)!(.d)@w}[d;&^ks?!d]}[];1]
 t[`emptyIdxEmptyList;(`k@()@!0;`k@(0#,,())@!0);("()";"0#,,()")]
 
+/ ---- an empty list whose prototype is :: (no dates left, or a list of functions) prints as 0#,(::), which reads back ----
+/ (0#,:: read back as a function: 0#, composed with ::)
+t[`emptyProtoNil;`k@'(0#2026.01.02 2026.01.03;0#({x};1);(0#2026.01.02 2026.01.03;1);,0#12:00:00.000 13:00:00.000);("0#,(::)";"0#,(::)";"(0#,(::);1)";",0#,(::)")]
+t[`emptyProtoNilBack;{x~. `k@x}'(0#2026.01.02 2026.01.03;0#({x};1);(0#2026.01.02 2026.01.03;1);([]));1 1 1 1]
+
 / ---- an elided amend, or a lambda's each, with a keyed table is 'nyi, not a crash ----
 ktA:(+(,`k)!,1 2)!+(,`v)!,3 4
 te[`amendKeyedEmptyTable;"@[0#+`a`b!(1 2;3 4);::;:;ktA]"]
@@ -1078,7 +1083,7 @@ t[`floatRound20Nines;fb `F$"9999999999999999999.9";0x43e158e460913d00]   / 20 di
 / ---- flip: an atom value is enlisted; bit lists; empty lists of tables (upstream ngn/k 7bf994cd) ----
 t[`flipAtom;`k@+(,`a)!,{x};"+(,`a)!,,{x}"]
 t[`flipCols;`k@+`a`b!(1 2;3 4);"+`a`b!(1 2;3 4)"]
-t[`flipEmptyTable;(`k@([]);#!+([]);#. +([]));("+(0#`)!0#,::";0;0)]   / ([]) stays as it was (ngn/k enlists the empty values here)
+t[`flipEmptyTable;(`k@([]);#!+([]);#. +([]));("+(0#`)!0#,(::)";0;0)]   / ([]) stays as it was (ngn/k enlists the empty values here)
 t[`flipEmptyTables;(`k@+0#,(+`a`b!(1 2;3 4));`k@+0#,,`a`b!1 2);("(0#,`a`b!0N 0N;0#,`a`b!0N 0N)";",0#,`a`b!0N 0N")]   / empty lists of tables: the prototype was read before it was set; empty lists of dicts, as in ngn/k
 t[`flipBits;(+(01B;01B);+(101B;010B));((0 0;1 1);(1 0;0 1;1 0))]   / lists of bit booleans, read as bits
 t[`flipBits8;*+8#,11B;8#1]   / each column was read as 8-byte words of the lists
@@ -1270,7 +1275,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
-hexpect[817]
+hexpect[819]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

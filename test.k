@@ -199,6 +199,8 @@ t[`ajSortedZeros;{n:-1*x;(ajsorted[`s`t;+`s`t!(`a`a;n,x)];ajsorted[`s`t;+`s`t!(`
 t[`ajNanQuoteLast;(+aj[`sym`time;+`sym`time!(,`a;,-0.0);+`sym`time`bid!(`a`a`a;0.0 1.0 -0n;10 20 30)])`bid;,10]
 t[`ajCharTimes;(+aj[`sym`time;+`sym`time!(`a`a`a;`c$66 201 64);+`sym`time`bid!(`a`a;`c$65 200;10 20)])`bid;(+aj[`sym`time;+`sym`time!(`a`a`a;`c$66 201 64);xasc[`sym`time;+`sym`time`bid!(`a`a;`c$65 200;10 20)]])`bid]
 t[`asofLatest;asof[+`sym`time`bid!(`a`a`a`a;0 1 1 0;10 20 30 40);`sym`time!(`a;1)];(,`bid)!,30]
+/ no row at or before the time, or none of the sym: the other columns as nulls, as aj and q (#20 row 19)
+t[`asofNone;`k@asof[+`sym`time`bid`px!(`a`a;0 1;10 20;1.5 2.5)]'(`sym`time!(`a;-1);`sym`time!(`b;5));"+`bid`px!(0N 0N;0n 0n)"]
 
 t[`divExact;(div[4417977684374999297;1000000];div[-4417977684374999297;7];div[17;-3];div[17 0N -17;8]);(4417977684374;-631139669196428471;-6;2 0N -3)]
 t[`xbarExact;(xbar[1000000;4417977684374999297];xbar[5;4611686018427387903];xbar[5;17 18]);(4417977684374000000;4611686018427387900;15 15)]

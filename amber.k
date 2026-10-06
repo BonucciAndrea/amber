@@ -232,7 +232,7 @@ tjsame:{[a;b]p:tjk a;q:tjk b;$[tjmx[a;p]|tjmx[b;q];`err"type";(p~q)|(`~p)|`~q;::
 ajm:{[c;x;y]c:c,();g:-1_c;tc:*|c;b:wjbnd[g;x;y];`aj((+y)tc;(+x)tc;b 0;b 1)}
 aj:{[c;x;y]c:c,();y:ajord[c;y];m:ajm[c;x;y];vc:except[cols y;c];k:&~^m;+(+x),vc!{[m;k;x;yd;c]r:(yd c)@m;$[c in !+x;@[(+x)c;k;:;r k];r]}[m;k;x;+y]'vc}  / a column x has keeps its values where nothing matches
 aj0:{[c;x;y]c:c,();y:ajord[c;y];m:ajm[c;x;y];vc:except[cols y;-1_c];k:&~^m;+(+x),vc!{[m;k;x;yd;c]r:(yd c)@m;$[c in !+x;@[(+x)c;k;:;r k];r]}[m;k;x;+y]'vc}   / a row with no quote keeps its own time and every column x has, as q
-asof:{[t;d]c:!d;g:-1_c;tc:*|c;td:+t;msk:$[#g;&/({[td;d;c]td[c]=d c}[td;d]'g);(#t)#1b];i:&msk&~td[tc]>d tc;$[#i;(except[cols t;c])#t[i@*|&m=|/m:td[tc]i];()]}  / the latest at or before: the last row whose time is the greatest
+asof:{[t;d]c:!d;g:-1_c;tc:*|c;td:+t;msk:$[#g;&/({[td;d;c]td[c]=d c}[td;d]'g);(#t)#1b];i:&msk&~td[tc]>d tc;(except[cols t;c])#t[$[#i;i@*|&m=|/m:td[tc]i;0N]]}  / the latest at or before: the last row whose time is the greatest; with none, nulls (as aj, and q)
 
 / ---- window join wj : w=(begins;ends) aligned to t rows -----------------------
 / VECTORISED window lookup: quotes are xasc'd on c, so within each group the time

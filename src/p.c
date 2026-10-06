@@ -51,7 +51,9 @@ Z A0(pZ,S p=s;W(*p-'0'<2u,p++)                                                  
  P(*p=='B',S t=s;s=p+1;cB(aV(tG,p-t,t)))//todo
  P(*p=='b',S t=s;s=p+1;cG(cB(aV(tG,p-t,t))))
  A x=pV(tL,plN);B o=ovf;ovf=0;P(!x,0)P(o,x(ez0()))sqzZ(x))   //the flag is cleared whatever pV returns, so a failed literal cannot fail the next one
-Z A0(pF,pV(tF,pf))                                                                                  //parse floats
+Z A0(pF,S p=s;W(*p-'0'<2u,p++)I((*p=='b'||*p=='B')&&C09(p[1]),B d=0;C c=*++p;W(CA9(c)||c=='.'||c==':',d|=!!strchr(".nwef",c);c=*++p)P(!d,pZ()))pV(tF,pf))   //parse floats; a
+ //bool token run into an int (01b1 2.5) is a noun of its own that the strand after it indexes, as before an int strand
+ //(pZ) and in ngn/k, which reads each token of a strand by itself: run into a float (01b2.5, 01b0w) it stays 'value
 Z A0(pC,C a[1<<9];U n=0;C c=*++s;A x=0;                                                      //parse "string" (in chunks of 512)
  W(c&&c-'"',I(n==L(a),A c_=aV(tC,n,a);x=x?cat11(x,c_):c_;n=0)I(c=='\\',c=*++s;B(!c)U i=fG("tnr0",4,c);I(i<4,c="\t\n\r"[i]))a[n++]=c;c=*++s)
  P(!c,x?x(ep0()):ep0())s++;A c_=aV(tC,n,a);x?cat11(x,c_):c_)

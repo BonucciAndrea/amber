@@ -352,6 +352,10 @@ tv[`litPlain;"(1 2;1.5 2;0N 1;0n 1.5)";(1 2;1.5 2.0;0N 1;0n 1.5)]
 te[`boolDot;"{b:7;1 1b.5}[]"]
 te[`boolDotAlone;"{b:7;01b.1}[]"]
 t[`boolStrandStill;1 01b;1 0 1]
+/ a bool token run into an int before a float strand (no space) is a noun of its own that the strand indexes, as before an
+/ int strand and in ngn/k; run into a float it stays 'value, as in ngn/k, which reads each token of a strand by itself
+tv[`boolRunFloat;"(ER'(\"01b1 2.5\";\"01B1 0w\");`k@{x}[101b1 2 32.5+])";(2#,"'type";"1 0 11.0 2.0 32.5+")]   / 2.7.2: 'value; 101b1 2 3+ is "1 0 11 2 3+"
+t[`boolRunFloatTok;ER'("01b2.5";"01b0w";"01b0n";"01b1e2";"01b1f";"1b1.5");6#,"'value"]
 
 / ---- scans with a float seed, or of floats with -, are float scans ----
 t[`scanSeedAdd;1.5+\1 2;2.5 4.5]
@@ -1235,7 +1239,7 @@ tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 ppeV:5 6
 t[`ppeStale;?{."{[ab]ab}",x;."(ppeV-1)",x}'(!100)#\:" ";,4 5]
 
-hexpect[792]
+hexpect[794]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

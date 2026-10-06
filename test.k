@@ -62,6 +62,7 @@ t[`rotateWhole;(rotate[3;1 2 3];rotate[0;1 2 3];rotate[-3;1 2 3]);3#,1 2 3]   / 
 / Digest #38: an atom does what q does, not what the k primitive does
 t[`negAfterParams;({[x]-1+x}0 1 2;{[x]-x}0 1 2;{[x;y]-1+x+y}[1;2];{[x]-1.5*x}2);(-1 0 1;0 -1 -2;2;-3.0)]   / Digest #40: was -(1+x)
 t[`exceptCharNum;(1 2 3^"a";"ab"^1;(1 2 3)^,"a";except[1 2 3;"a"];except["ab";1 2];"abc"^"b";1 2 3^2);(1 2 3;"ab";1 2 3;1 2 3;"ab";"ac";1 3)]   / Digest #64: nothing removed, as q and ngn/k
+t[`exceptMixed;(except[(1;2.5);"a"];except[(0;" ");0];except[(1;"a";`b);"a"];except[(1;"a");1 2];except[(1;"a";2);1];except[(1;`a;2);1];except[("ab";"c");0];except[(`a;"a");0];except[(1 2;"a");1]);((1;2.5);," ";(1;`b);,"a";("a";2);(`a;2);("ab";"c");(`a;"a");(1 2;"a"))]   / digest #64: was 'type
 t[`jsonKeys;(`j@1 2!3 4;`j@(1.5 2)!3 4;`j@`a`b!3 4;`j@("ab";"cd")!3 4;5#.[`j@;,(1 2;3 4)!3 4;{x}]);("{\"1\":3,\"2\":4}";"{\"1.5\":3,\"2\":4}";"{\"a\":3,\"b\":4}";"{\"ab\":3,\"cd\":4}";"'type")]   / Digest #60: number keys as strings, list keys 'type, as q
 t[`listFnAtom;(prev 5;next 5;raze 5;5#.[distinct;,5;{x}];5#.[group;,5;{x}];distinct `a`b!1 1);(5;5;,5;"'type";"'type";,1)]
 
@@ -74,8 +75,17 @@ t[`rank;rank 30 10 20;2 0 1]
 t[`distinct;distinct 1 1 2 3 3;1 2 3]
 t[`inMem;in[3 5;1 2 3 4];10b]
 t[`inCharInt;*"\n"\.[in;(97;"abc");{x}];"'type"]   / a char and a number are 'type, as in q (issue #20, row 12)
+t[`inSymInt;(in[``;0];except[``;0];in[`b`;0];in[0 5 1000000;`$("";"a")];inter[`$("";"a");0]);(00b;``;00b;000b;0#`)]   / a symbol is not a number: the null symbol is not 0 (digest #100: was 11b)
 t[`except;except[1 2 3 4;2 4];1 3]
 t[`inter;inter[1 2 3 4;2 4 6];2 4]
+t[`inGeneric;((1 2;3) in (1 2;3 4);3 in (1 2;3 4);1 2 in (1 2;3);(1;`a) in (1 2;`a);("ab";"c") in ("ab";"cd"));(10b;0b;1b;0b;10b)]   / an item of lower rank than y's items is not found, as q (digest #53)
+t[`interExceptGeneric;(inter[(1 2;3);(1 2;5 6)];inter[(1 2;3);(3;5)];except[(1 2;3);(1 2;3 4)];except[(1 2;3);(3;5)]);(,1 2;,3;,3;,1 2)]   / each item of x is one item
+t[`interExceptOneItem;{$[`e~*r:.[x;y;{(`e;*"\n"\x)}];r 1;r]}'[(except;inter;except;except;except;except);((1 2 3;(1 2;3));(1 2;(1 2;3));("ab";("ab";"cd"));((1;"a");("ab";"cd"));((1 2;3);,(1 2;3));((1;"a");("ab";1)))];6#,"'type"]   / x one item of y: 'type, as q (where 1b)
+t[`interExceptWholeItem;(except[(1 2;3 4);(1 2;(1 2;3 4))];inter[(1 2;3 4);(1 2;(1 2;3 4))]);(,3 4;,1 2)]   / x found whole (#29) still goes item by item, as q
+t[`interExceptTypedY;(except[(1 2;3 4);1 2 3];inter[(1 2;3);1 2 3]);((1 2;3 4);,3)]   / a general x against a typed y: item by item too (2.7.2: nested garbage; q: 'type)
+t[`inTableRows;{$[`C~@r:.[in;x;{x}];*"\n"\r;r]}'((+`a`b!(1 2;3 4);+`a`b!(1 5;3 6));(+`a`b!(1 2;3 4);+`b`a!(3 4;1 2));(`a`b!1 3;+`a`b!(1 2;3 4));(`b`a!3 1;+`a`b!(1 2;3 4));(`a`b!1 4;+`a`b!(1 2;3 4));(+(,`b)!,3 9;(+(,`a)!,1 2)!+(,`b)!,3 4);(+`a`b!(1 2;3 4);+`a`c!(1 2;3 4));(1;`a`b!1 2);(5;`a`b!1 2));(10b;11b;1b;1b;0b;10b;"'mismatch";1b;0b)]   / rows by column name; a dict y: its values, as q (digest #101: was 'nyi)
+t[`exceptInterTable;(except[(1;"a");`x`y!1 2];except[1 2 3;`a`b!"ab"];except[+`a`b!(1 2;3 4);+`a`b!(1 5;3 6)];inter[+`a`b!(1 2;3 4);+`a`b!(1 5;3 6)];except[1 2 3;`a`b!1 2];inter[1 2 3;`a`b!1 2];except[(1;`a);`a`b!(1;`x)]);(,"a";1 2 3;+`a`b!(,2;,4);+`a`b!(,1;,3);,3;1 2;,`a)]   / as q (digest #101: was 'nyi)
+t[`exceptInterEmptyGeneric;(except[(1 2;3 4);(1 2;3 4)];except[("ab";"cd");("ab";"cd")];except[(1;`a);(1;`a)];inter[(1 2;3);(5 6;7)];inter[(1 2;3 4);(5 6;7 8)];except[1 2;1 2];except[`a`b;`a`b];except[2024.01.01 2024.01.02;2024.01.01 2024.01.02]);(();();();();();!0;0#`;())]   / none of a general list is (), as q; a typed one keeps its type (digest #102: was 0#,0N 0N)
 t[`union;union[1 2 3;3 4 5];1 2 3 4 5]
 t[`sublistPos;sublist[3;1 2 3 4 5];1 2 3]
 t[`sublistCap;sublist[9;1 2 3];1 2 3]

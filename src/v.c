@@ -93,7 +93,11 @@ Y2(fil,RmMA(e2f(fil,x,y))Rt(P(yt>=tdt,et(y))YU(y-au?y:xR)fir(fil(x,enl(y))))RF(P
 Z B cxn(UC a,UC b)_(B ca=a==tC||a==tc,cb=b==tC||b==tc,na=a==tB||LH(tG,a,tF)||a==ti||a==tl||a==tf,nb=b==tB||LH(tG,b,tF)||b==ti||b==tl||b==tf;ca&&nb||na&&cb)
 X2(crt,Rt(P(LH(tdt,xt,tnp),et(y))fil(x,y))R_(en(y))
  RT(P(cxn(xt,yt),y(xR))I v=rnk(y);P(!v,crt(x,enl(y)))
-  P(v>0&&rnk(x)==v,I(xtE&&ytE,Lij L k=*yL,l=yL[1];P(k<=i,y(0);aE(MAX(i,l),MAX(j,l)))P(j<=l,y(0);aE(i,MIN(j,k))))K2("{x@&^y?x}",x,y))
+  P(v>0&&rnk(x)==v,I(xtE&&ytE,Lij L k=*yL,l=yL[1];P(k<=i,y(0);aE(MAX(i,l),MAX(j,l)))P(j<=l,y(0);aE(i,MIN(j,k))))
+   //a general x's chars against numeric y, or numbers against chars, are kept, not looked for (find is 'type): they
+   //are found as ` instead, which no char or number y holds ((0;" ")^0 is ," " - digest #64)
+   I(xtA,A w=0;F(xn,I(cxn(_t(xa),yt),I(!w,w=mut(xR))mr(_A(w)[i]);_A(w)[i]=as(0)))P(w,A r=K2("{&^y?x}",w,y);mr(w);r?i1(x,r):0))
+   K2("{x@&^y?x}",x,y))
   K2("{x@&~(!0),x~\\:y}/",x,y)))
 B tru(A x/*1*/)_(B v=xtU?x!=au:xtt?!!gl_(x):!!xN;x(0);v)
 A ucb(A);//chars as unsigned bytes (2.c)

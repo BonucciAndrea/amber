@@ -226,7 +226,13 @@ Z V wjbounds(CO L*RES T,U nq,CO L*RES W0,CO L*RES W1,CO L*RES GB,CO L*RES GE,U n
    // window, and a wj one ending before the quote in force at its start; hi is clamped to s, not lo, as q's wj
    LO[i]=s;HI[i]=hi<s?s:hi;
    cbase[g]=b;ck0[g]=k0;ck1[g]=k1;clo_[g]=lo;chi_[g]=hi;)}
-// Pass 2, float column -> float result. c: 0=first 1=last 2=min 3=max 4=sum 5=avg.
+// Nulls (#73 item 137): min, max, a float sum and a float avg skip them, as q's. Each window is first reduced as before,
+// and only a window whose answer shows a null is reduced again skipping them: a float sum or avg is NaN only then (or
+// for 0w-0w, which gives NaN again), and an int min is 0N only then, 0N being the least int; float min and max and int
+// max pass over nulls as they are. An int sum or avg still adds a 0N in, as before: it wraps, so its answer does not
+// show one, and looking for one would cost a pass over the column.
+// Pass 2, float column -> float result. c: 0=first 1=last 2=min 3=max 4=sum 5=avg; first and last are the end
+// quotes, null or not; avg divides by the values that are not null (none: 0n).
 Z V wjrFF(CO F*RES p,CO U*RES LO,CO U*RES HI,U nt,I c,F*RES o){
  switch(c){
  case 0: for(U i=0;i<nt;i++){U a=LO[i];o[i]=a<HI[i]?p[a]:NF;} break;
@@ -242,13 +248,16 @@ Z V wjrFF(CO F*RES p,CO U*RES LO,CO U*RES HI,U nt,I c,F*RES o){
  case 4: for(U i=0;i<nt;i++){U a=LO[i],b=HI[i];F r=0;
            WJSIMD(+:r)
            for(U k=a;k<b;k++)r+=p[k];
+           I(r!=r,r=0;for(U k=a;k<b;k++)r+=p[k]==p[k]?p[k]:0)
            o[i]=r;} break;
- default: for(U i=0;i<nt;i++){U a=LO[i],b=HI[i];F r=0;   /* 5 = avg */
+ default: for(U i=0;i<nt;i++){U a=LO[i],b=HI[i],m=b-a;F r=0;   /* 5 = avg */
            WJSIMD(+:r)
            for(U k=a;k<b;k++)r+=p[k];
-           o[i]=b>a?r/(F)(b-a):NF;} break;
+           I(r!=r,r=0;m=0;for(U k=a;k<b;k++){B v=p[k]==p[k];r+=v?p[k]:0;m+=v;})
+           o[i]=m?r/(F)m:NF;} break;
  }}
-// Pass 2, long column -> long result. c: 0=first 1=last 2=min 3=max 4=sum.
+// Pass 2, long column -> long result. c: 0=first 1=last 2=min 3=max 4=sum. max needs no test, as no value is
+// below -0W, where it starts.
 Z V wjrLL(CO L*RES p,CO U*RES LO,CO U*RES HI,U nt,I c,L*RES o){
  switch(c){
  case 0: for(U i=0;i<nt;i++){U a=LO[i];o[i]=a<HI[i]?p[a]:NL;} break;
@@ -256,6 +265,7 @@ Z V wjrLL(CO L*RES p,CO U*RES LO,CO U*RES HI,U nt,I c,L*RES o){
  case 2: for(U i=0;i<nt;i++){U a=LO[i],b=HI[i];L r=WL;
            WJSIMD(min:r)
            for(U k=a;k<b;k++)r=p[k]<r?p[k]:r;
+           I(r==NL,r=WL;for(U k=a;k<b;k++){L v=p[k]==NL?WL:p[k];r=v<r?v:r;})
            o[i]=r;} break;
  case 3: for(U i=0;i<nt;i++){U a=LO[i],b=HI[i];L r=-WL;
            WJSIMD(max:r)

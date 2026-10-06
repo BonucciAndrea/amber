@@ -46,7 +46,7 @@ I qA(A x,A y/*00*/)_(I v=TS[xt]-TS[yt];P(v,v)
  X(Ril(ql(gl_(x),gl_(y)))
    Rf(qf(*xF,*yF))
    Rs(S s=su(xv);C t[8];U n=SL(s);I(n<5,s=MC(t,s,n+1))strcmp(s,su(yv)))
-   RT(F(MIN(xn,yn),A z=ii(x,i),u=ii(y,i);I d=qA(z,u);mr(z(u));P(d,d))ql(xn,yn))
+   RT(F(MIN(xn,yn),A z=ii(x,i),u=ii(y,i);I d=qA(z,u);mr(z(u));P(d,d))P(!xn&&!yn&&xtA,qA(xx,yx))ql(xn,yn))//empty lists: by prototype, as ~
    Ropqr(x=str(xR);y=str(yR);I r=x&&y?qA(x,y):!!x-!!y;I(x,mr(x))I(y,mr(y));r)   //a function whose text fails (a formatter's error) sorts first
    R(tdt,ql((I)x,(I)y))R(ttm,ql((I)x,(I)y))R(tnp,ql(*(L*)_V(x),*(L*)_V(y)))   //dates and times by their value, not their words; a timestamp by its nanoseconds, not its address
    R_(ql(x,y)))0)

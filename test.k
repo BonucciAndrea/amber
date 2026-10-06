@@ -579,6 +579,8 @@ t[`amendWrap;      ({x[0 1]*:-9223372036854775807;x}3#-1099511627776;@[2#9223372
 / whole-number floats beyond 2^53 are not counting-sorted (their (L) is undefined past 2^63)
 t[`sortBigFloats;  {(<x;>x;x@<x)}1e19 1.0000000000000004e19 1e19 1.0000000000000002e19;(0 2 3 1;1 3 0 2;1e19 1e19 1.0000000000000002e19 1.0000000000000004e19)]
 t[`gradeBigNeg;    <-1e19 -1.0000000000000004e19 -1e19;1 0 2]
+/ raze of dicts joins them into a dict, as , and {x,y}/ do
+t[`razeDicts;      (,/(`a`b!1 2;`c`d!3 4);,/(1 2!3 4;5 6!7 8));(`a`b`c`d!1 2 3 4;1 2 5 6!3 4 7 8)]
 
 / ---- amber 2.2: float literals below 1e-308 (subnormals) ------------------
 / pfu (src/p.c) clamped an out-of-range exponent and returned EARLY, before it

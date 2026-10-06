@@ -466,7 +466,26 @@ t[`dictTyped;((`a!1.5)+`b!2.5;(`a`b!1 2)-`b`c!10 20);(`a`b!1.5 2.5;`a`b`c!1 -8 -
 / A dict with no keys on one side gives the other one, as q and ngn/k (it was 'length, digest #24)
 t[`dictEmptyUntyped;((`a`b!1 2)+()!();((1 2;3 4)!5 6)+()!();(()!())-`a`b!1 2;(()!())+()!());(`a`b!1 2;(1 2;3 4)!5 6;`a`b!-1 -2;()!())]
 t[`dictEmptyTyped;(`a`b!1 2)+(0#`)!!0;`a`b!1 2]
+t[`dictEmptyCompare;((`a`b!1 2)<()!();(`a`b!1 2)>()!();(`a`b!1 2)=()!();(()!())<`a`b!1 2;(()!())>`a`b!1 2;(()!())=`a`b!1 2;(`a`b!1.5 2)<()!();(()!())<`a`b!1.5 2);(`a`b!0 0;`a`b!1 1;`a`b!0 0;`a`b!1 1;`a`b!0 0;`a`b!0 0;`a`b!0 0;`a`b!1 1)]   / as with (0#`)!!0: a key on one side meets a null; it was 'length
+t[`dictEmptyCompareVals;(((0#`)!())<`a`b!1 2;(`a`b!1 2)=(0#`)!();(`a`b!1 2)<(0#,`x)!();((1 2;3 4)!5 6)<()!();(()!())<()!();((0#`)!())<(0#`)!());(`a`b!1 1;`a`b!0 0;`a`b!0 0;(1 2;3 4)!0 0;()!();(0#`)!())]   / () values and generic keys of any prototype: it was `a`b!(!0;!0)
+t[`dictEmptyListVals;((`a`b!(1 2;3 4))+()!();(`a`b!(1 2;3 4))|()!();(`a`b!+(,`c)!,1 2)+()!();(`a`b!(1 2;3 4))<()!();(()!())<`a`b!(1 2;3 4);(`a`b!+(,`c)!,1 2)<()!();(`a`b!1 2)<(0#`)!0#,1 2;(`a`b!+(,`c)!,1 2)+(0#`)!0#,1 2);(`a`b!(1 2;3 4);`a`b!(1 2;3 4);`a`b!+(,`c)!,1 2;`a`b!(0 0;0 0);`a`b!(1 1;1 1);`a`b!+(,`c)!,0 0;`a`b!0 0;`a`b!+(,`c)!,1 2)]   / as x f 0#x; it was 'length or (0 0;0 0)
+t[`dictEmptyBothCompare;`k@(((0#`)!"")<(0#`)!"";((0#`)!0#0n)<(0#`)!0#0n;(()!())<(0#`)!!0;((0#`)!!0)<()!();((0#`)!())<(0#`)!!0;(()!0#0n)<()!0#0n;(()!0#0n)<()!();(()!())<()!0#0n;(()!0#0n)<(0#`)!();((0#`)!())<()!0#0n);"((0#`)!!0;(0#`)!!0;(0#`)!!0;(0#`)!!0;(0#`)!!0;()!!0;()!!0;()!!0;(0#`)!!0;(0#`)!!0)"]   / two empty dicts: typed ones as before, generic keys or values take the other's typed 0# in either order (+ - * % & | ,' are dkey's)
+lk:(1 2;3 4)!5 6
+t[`dictEmptyGenericKeys;(lk+(0#`)!!0;lk+(0#`)!();((0#`)!!0)+lk;((0#`)!!0)-lk;lk<(0#`)!!0;((0#`)!!0)<lk;lk<()!();lk,'(0#`)!!0;((0#`)!!0),'lk);((1 2;3 4)!5 6;(1 2;3 4)!5 6;(1 2;3 4)!5 6;(1 2;3 4)!-5 -6;(1 2;3 4)!0 0;(1 2;3 4)!1 1;(1 2;3 4)!0 0;(1 2;3 4)!5 6;(1 2;3 4)!5 6)]   / it was (1 2;3 4;`)!5 6 0N, 'type or (1 2;3 4)!(0 0;0 0)
 t[`dictEmptyVals;(((0#`)!())-`a`b!1 2;(`a`b!1 2)+(0#`)!());(`a`b!-1 -2;`a`b!1 2)]   / empty values () filled nothing: `a`b!(!0;!0)
+/ Two empty dicts: the values combine as lists do, (!0)+0#0n is 0#0n, whichever dict is on the left (x's came back)
+t[`dictEmptyBothTyped;`k'{(x+y;y+x;y-x;y*x;y%x;y&x;y|x)}[(0#`)!0#0n;(0#`)!!0];7#,"(0#`)!0#0n"]
+t[`dictEmptyBothEach;`k'(((0#`)!!0),'(0#`)!0#0n;(!0),'0#0n);("(0#`)!0#,(0N;0n)";"0#,(0N;0n)")]
+t[`dictEmptyBothProto;`k'(((0#`)!0#0n)+(0#`)!0#,1 2;((0#`)!0#,1 2)+(0#`)!0#0n);2#,"(0#`)!0#,0n 0n"]   / 0#,1 2 is not ()
+t[`dictEmptyBothType;*"\n"\.[.:;,"((0#`)!0#`)+(0#`)!!0";{x}];"'type"]   / as (0#`)+!0 and q
+t[`dictEmptyBothKeys;`k'(((0#`)!!0)+(!0)!0#0n;((!0)!0#0n)+(0#`)!!0);("(0#`)!0#0n";"(!0)!0#0n")]   / x's keys, as for keys of different types with values (q: 'type)
+/ ()!() gives the other dict, either way round, as q; () values alone take the list rule, () keys give way to y's
+t[`dictEmptyBothUntyped;`k'{(x+y;y+x;x-y;y-x)}[()!();(0#`)!!0];4#,"(0#`)!!0"]
+t[`dictEmptyBothUntypedSym;`k'{(x+y;y+x)}[()!();(0#`)!()];2#,"(0#`)!()"]   / q: (`symbol$())!() both ways
+t[`dictEmptyBothUntypedVals;`k'{(x+y;y+x)}[(0#`)!();(0#`)!0#0n];2#,"(0#`)!0#,0#0n"]   / as ()+0#0n
+t[`dictEmptyBothUntypedType;*"\n"\.[.:;,"((0#`)!())+(0#`)!0#`";{x}];"'type"]   / as ()+0#` (q: (`symbol$())!())
+t[`dictEmptyBothUntypedKeys;`k'{(x+y;y+x)}[()!0#0n;(0#`)!!0];2#,"(0#`)!0#0n"]
+t[`dictEmptyBothUntypedEach;`k'(((0#`)!()),'(0#`)!0#0n;((0#`)!0#0n),'(0#`)!();(()!()),'(0#`)!!0;((0#`)!!0),'()!();(()!0#0n),'(0#`)!!0);(2#,"(0#`)!0#,,0n"),(2#,"(0#`)!!0"),,"(0#`)!0#,(0n;0N)"]   / q: (`symbol$())!()
 
 / ---- the fused masked sums equal the unfused expression, bit for bit ----
 fu:{[x;m]`k@+/x@&m};un:{[x;m]i:&m;d:x@i;`k@+/d}
@@ -696,12 +715,13 @@ t[`dictMixedRankL;*"\n"\.[.:;,"((1 2;3 4)!5 6)+`a`b!1 2";{x}];"'domain"]
 / a dict with no keys is not checked: two empty ones still add, as group counts from ()!() do
 t[`temporalStrand;(2026.01.01 2026.01.02;12:00:00.000 13:00:00.000;#2026.01.01 2026.01.02 2026.01.03;1+2026.01.01 2026.01.02;5#.[.:;,"2026.01.01 12:00:00.000";{x}])~(2026.01.01+0 1;12:00:00.000+0 3600000;3;2026.01.02+0 1;"'type");1]   / Digest #65: a strand of one kind is a list, as q
 t[`groupMixedRank;(=(1;"ab");=(1 2;1);=(1;"ab";1);(1;"ab")?"ab";((1;"ab")!10 20)"ab";5#.[?;(("ab";"cd");1);{x}]);((1;"ab")!(,0;,1);(1 2;1)!(,0;,1);(1;"ab")!(0 2;,1);1;20;"'rank")]   / Digest #29: as q
-t[`dictEmptyBoth;`k@((()!())+#'=0#`;(#'=0#`)+()!());"(()!();(0#`)!!0)"]
+t[`dictEmptyBoth;`k'((()!())+#'=0#`;(#'=0#`)+()!());2#,"(0#`)!!0"]
 / Digest #23 #25 #26: a key on one side passes its value through; x's repeated keys stay
 t[`dictOneSide;((`a`b!1 2)|`c!,1 2;(`a`b!(1 2 3;3))|`a`c!(5;6 7);(`a`b!0x0102)|`b`c!0x0304;(`a`b!0x0102)&`b`c!0x0304);(`a`b`c!(1;2;1 2);`a`b`c!(5 5 5;3;6 7);`a`b`c!0x010304;`a`b`c!0x010204)]
 t[`dictRepeatKey;((`a`a!1 2)+`a!10;(`a`a!1 2)*`b!3);(`a`a!11 2;`a`a`b!1 2 3)]
 t[`dictEachJoin;(`a`b!1 2),'(1 2!3 4);(`a;`b;1;2)!1 2 3 4]
 t[`dictSameKeys;((`a`b!1 2)+`a`b!10 20;(`a`b!1 2)|`a`b!0 5;(`a`b!1 2.0)%`a`b!2 4);(`a`b!11 22;`a`b!1 5;`a`b!0.5 0.5)]
+t[`dictOneSideDiv;((`a!1)%`b!2;(`a`b!1 2)%`b`c!4 8;(`a!1.5)%`b!2);(`a`b!1 2;`a`b`c!(1;0.5;8);`a`b!(1.5;2))]   / % passes a one-sided value through, as q (it took 1%y: `a`b!1.0 0.5)
 
 / ---- an error with a computed message reads its text before releasing it ----
 t[`errComputedText;*"\n"\.[{`err "ab",x};,"cd";{x}];"'abcd"]
@@ -1095,6 +1115,32 @@ t[`fltPrint2p89;`k@*/89#2.0;"6.189700196426902e26"]
 t[`fltPrint2p62a;`k@`f$4350140171453357568;"4.3501401714533576e18"]
 t[`fltPrint2p61;`k@`f$2305844108725321728;"2.3058441087253217e18"]
 t[`fltPrintSmall;`k@0.5 0.25 1.5 100.0;"0.5 0.25 1.5 100.0"]
+
+/ ---- indexing with a table gives a table (upstream ngn/k b87b7d27) ----
+t[`indexTable;1 2 3@+`c`e!(0 1;2 0);+`c`e!(1 2;3 1)]
+t[`indexDict;1 2 3@`c`e!(0 1;2 0);`c`e!(1 2;3 1)]
+
+/ ---- empty generic lists order by prototype, so the order agrees with ~ ----
+t[`distinctEmpties;?(1;0#,1 2;();0#,1 2);(1;0#,0N 0N;())]
+t[`distinctEmptiesCount;#?(();0#,1 2;();0#,1 2;0#,"ab");3]
+t[`gradeEmpties;<(0#,1 2;();0#,1 2);1 0 2]
+t[`gradeEmptiesSorted;{s:x@<x;(<s)~!#s}@(0#,1 2;();0#,1 2;();0#,"ab");1b]
+
+/ ---- a dict whose keys are an empty generic list prints so it reads back ----
+t[`dictKeysEmptyText;`k@(0#,,1)!();"(0#,,0N)!()"]
+t[`dictKeysEmptyBack;{x~. `k@x}@(0#,,1)!();1b]
+t[`dictKeysEmptyParen;`k@()!();"()!()"]
+t[`dictKeysVec;`k@(`a`b!1 2);"`a`b!1 2"]
+
+/ ---- a one-item range as dict keys prints in parentheses, so it reads back ----
+t[`rangeKeyPrint;`k@(!1)!,2;"(,0)!,2"]
+t[`rangeKeyPrint5;`k@(5+!1)!,2;"(,5)!,2"]
+t[`rangeKeyRoundTrip;(. `k@(!1)!,2)~(!1)!,2;1]
+t[`rangeKeyTwo;`k@(!2)!3 4;"0 1!3 4"]
+
+/ ---- an empty generic list joined to an empty list keeps its prototype; only () gives way (2.7) ----
+t[`joinEmptyGenericProto;`k@'((0#,1 2),0#,"ab";(0#,,0N),0#,,();(0#,1 2),();(),0#,"ab");("0#,0N 0N";"0#,,0N";"0#,0N 0N";"0#,\"  \"")]
+t[`joinEmptyGenericDictCmp;`k@'(((0#,1 2)!())=(0#`)!!0;((0#,1 2)!0#0n)<(0#`)!!0);2#,"(0#`)!!0"]
 
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

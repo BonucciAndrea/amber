@@ -45,6 +45,12 @@ A2(und,/*01*/
  YM(flp(N(und(x,flp(y)))))
  et(y))
 X1(enl,R5(ti,tl,tf,tc,ts,x(aV(TT[xt],1,TP(xt)?&x:xV)))Rm(A y=kv(&x);aM(x,e1f(enl,y)))R_(aA1(x)))
+//two keyed tables (issue #19): q's upsert, y's rows replacing those of keys x has (the last, for a key given twice) and
+//the others added, each, as they come; y's key and value columns go by name (kcl), and other columns are 'domain (q:
+//'mismatch), as a table joined to one. A keyed table and a dict is 'type
+Z A kcl(A x,A y/*00*/)_(P(mtc_(xx,yx),_R(y))P(_N(xx)-_N(yx),ed0())A p=N(cL(fnd(yx,_R(xx))));F(_n(p),P(_L(p)[i]==NL,mr(p);ed0()))aM(_R(xx),i1(yy,p)))
+Z A kct(A x,A y/*10*/)_(P(!_tM(yx),et(x))A k=Nx(kcl(xx,yx)),v=kcl(xy,yy);P(!v,mr(k);x(0))
+ K("{[x;k;v]i:(!x)?k;w:&^i;f:&~^i;((!x),k w)!@[.x;i f;:;v f],v w}",x,k,v))
 A2(cat10,
  XE(cat10(gZ(x),y))
  YE(y=gZ(yR);y(cat10(x,y)))
@@ -53,9 +59,9 @@ A2(cat10,
  P(xtT&&ytT,P(!yn,x)P(!xn,x(yR))P(xt-yt,P(xtZ&&ytZ,yR;N(sup(&x,&y));cat11(x,y))cat11(blw(x),blw(yR)))P(xtB||ytB,en(x))
   U m=xn,n=yn,w=xw-3;x=aa(m+n,x);
   MC(xV+((W)m<<w),yV,(W)n<<w);I(ytA,mRa(y))x)
- P(xtm&&ytm,a4(x,yx,av,yy))
- Xmt(cat10(enl(x),y))
- Ymt(psh(x,yR))
+ P(xtm&&ytm,_tM(xx)?!_tM(xy)?en(x):!_tM(yx)?et(x):!_tM(yy)?en(x):kct(x,y):a4(x,yx,av,yy))   //keyed tables: kct (keys a table, values not: 'nyi, as before)
+ Xmt(P(xtm&&_tM(xx)&&ytM&&!_tM(yx),et(x))cat10(enl(x),y))   //a keyed table and an unkeyed one, either way round: 'type, as q (issue #19)
+ Ymt(P(ytm&&_tM(yx)&&xtM&&!_tM(xx),et(x))psh(x,yR))
  P(xtM||ytM,P(!yN,x)P(!xN,x(yR))P(xtT||ytT,x=N(blw(x));y=Nx(blw(yR));cat11(x,y))P(!xtM||!ytM,et(x))P(!mtc_(xx,yx),ed(x))A z=e2f(cat,xy,_R(yy));x(z?aM(_R(xx),z):0))Q(0);0)
 A2(cat11,y(cat10(x,y)))
 A2(cat,/*01*/P(!_tP(x)&&_t(x)==tm&&_at(x)==1,y(et0()))P(!_tP(x)&&_t(x)==tA&&!_n(x)&&_t(xx)==tC&&!_n(xx)&&!_tP(y)&&_t(y)<tM,y)   /*2.7: (),y is y; not 0#,1 2 (its prototype joins)*/cat11(xR,y))   //2.7: a dict made `s takes no more keys, as in q ('type)

@@ -675,7 +675,7 @@ t[`amendDictAll;   (.[`a`b!(1 2;3 4);(::;0);:;9];@[`a`b!1 2;::;+;9];.[`x`y!(`p`q
 / a dict as the value through :: on a dict: its values go to the keys in order, as for d[!d] (q matches by key); was a crash
 t[`amendDictAllDictValue;(.[+`a`b!(1 2 3;4 5 6);(0;::);:;`a`b!9 8];{t:+`a`b!(1 2 3;4 5 6);t[0;]:`a`b!9 8;t}[];.[`a`b!(`x`y!1 2;`x`y!3 4);(`a;::);:;`x`y!9 8]);(+`a`b!(9 2 3;8 5 6);+`a`b!(9 2 3;8 5 6);`a`b!+`x`y!(9 3;8 4))]
 t[`amendDictAllDictNear;(.[+`a`b!(1 2 3;4 5 6);(0;::);:;7];.[+`a`b!(1 2 3;4 5 6);(0;::);+;`a`b!10 20];.[(`a`b!1 4;`a`b!2 5);(0;::);:;`a`b!9 8];.[`x`y!(`p`q!1 2;`p`q!3 4);(::;`q);:;`x`y!10 20];{d:`a`b!(`x`y!1 2;`x`y!3 4);d[`a;]:`x`y!9 8;d}[]);(+`a`b!(7 2 3;7 5 6);+`a`b!(11 2 3;24 5 6);+`a`b!(9 2;8 5);`x`y!+`p`q!(1 3;10 20);`a`b!+`x`y!(9 3;8 4))]
-t[`amendDictAllKeyed;*"\n"\.[{.[x;(1;::);:;`a`b!9 8]};,([k:1 2 3]a:4 5 6;b:7 8 9);{x}];"'nyi"]   / a keyed table's row: not yet, as before
+t[`amendDictAllKeyed;(.[([k:1 2 3]a:4 5 6;b:7 8 9);(1;::);:;`a`b!9 8];.[([k:1 2 3]a:4 5 6;b:7 8 9);(4;::);:;`a`b!9 8]);(([k:1 2 3]a:9 5 6;b:8 8 9);([k:1 2 3 4]a:4 5 6 9;b:7 8 9 8))]   / a keyed table's row by its key, a key not there added, as q (issue #19)
 
 / ---- amber 2.2: float literals below 1e-308 (subnormals) ------------------
 / pfu (src/p.c) clamped an out-of-range exponent and returned EARLY, before it

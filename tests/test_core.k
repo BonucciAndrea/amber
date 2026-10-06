@@ -1343,7 +1343,23 @@ t[`tableFind;((+`a`b!(1 2;3 4))?`a`b!2 4;(+`a`b!(1 2;3 4))?+`a`b!(2 9;4 1);(+(,`
 / more columns: each row's places in the columns, numbered column by column, find what a scan of the rows finds
 t[`keyedMultiMany;{b:13!i:!91;a:7!i;q:13!j:!200;p:7!j;((+`a`b!(a;b))?+`a`b!(p;q);(+(a;b))?+(p;q);(+`a`b!(a;b))?`a`b!(3;5))}[];{b:13!i:!91;a:7!i;q:13!j:!200;p:7!j;((+(a;b))?+(p;q);(+(a;b))?+(p;q);(+(a;b))?(3;5))}[]]
 
-hexpect[854]
+/ ---- , of two keyed tables is q's upsert; an amend at a keyed table's keys adds the keys not there, as q (issue #19) ----
+t[`keyedUpsert;(kL,([k:3 4]v:33 44);kL,([k:,3]v:,5);kL,([k:2 2 5]v:1 2 3);([k:!0]v:!0),([k:2 1]v:7 8));(([k:1 2 3 4]v:10 20 33 44);([k:1 2 3]v:10 20 5);([k:1 2 3 5]v:10 2 30 3);([k:2 1]v:7 8))]
+/ y's rows of keys x lacks are each added, a key given twice too, as q (an amend at keys adds a key once, as q)
+t[`keyedUpsertNew;(kL,([k:5 5]v:1 2);kL,([k:2 5 5]v:7 8 9);kL,([k:3 3]v:1 2));(([k:1 2 3 5 5]v:10 20 30 1 2);([k:1 2 3 5 5]v:10 7 30 8 9);([k:1 2 3]v:10 20 2))]
+/ the key and value columns go by name; columns that differ are 'domain (q: 'mismatch), a dict 'type (q: 'type or 'length)
+t[`keyedUpsertByName;({k:([k:1 2]v:3 4;w:`a`b);k,([k:2 3]w:`z`y;v:9 9)}[];kM,([b:`x`z;a:1 3]v:7 8));(([k:1 2 3]v:3 9 9;w:`a`z`y);([a:1 2 3;b:`x`y`z]v:7 6 8))]
+t[`keyedUpsertUnkeyed;{*"\n"\.[.:;,x;{x}]}'("kL,([])";"([]),kL";"kL,0#([]a:1 2)";"kL,([]a:1 2)";"([]k:4 5;v:1 2),kL";"(0#kL),([]k:1 2;v:3 4)");6#,"'type"]   / a keyed table and an unkeyed one, either way, empty or not: 'type, as q
+/ a dict whose keys are a table and values a list stays 'nyi in an amend at keys and in , (it was not a keyed table)
+t[`keyedListValues;{*"\n"\.[.:;,x;{x}]}'(("dL:(+(,`a)!,1 2)!3 4;",)'("dL[,1]:9";"dL[,3]:9";"@[dL;,1;:;9]";"dL,(+(,`a)!,,3)!,5";"dL,(+(,`a)!,,3)!5"),("kL,(+(,`k)!,,3)!,5";"{d:(+(,`a)!,1 2)!3 4;d[,1]:9;d}[]"));7#,"'nyi"]
+t[`keyedUpsertErr;{*"\n"\.[.:;,x;{x}]}'("kL,`k`v!4 40";"kL,(,`v)!,5";"kL,([k:,3]w:,1)";"kL,([j:,3]v:,1)");("'type";"'type";"'domain";"'domain")]
+t[`keyedAmend;(@[kL;1;:;,7];@[kL;5;:;,7];.[kL;(9;`v);:;99];@[kL;1;+;1];@[kL;1;:;5];@[kL;(,5;,5);:;(,1;,2)]);(([k:1 2 3]v:7 20 30);([k:1 2 3 5]v:10 20 30 7);([k:1 2 3 9]v:10 20 30 99);([k:1 2 3]v:11 20 30);([k:1 2 3]v:5 20 30);([k:1 2 3 5]v:10 20 30 2))]
+t[`keyedAmendCols;{k:([k:1 2]v:3 4;w:`a`b);(@[k;2;:;(99;`z)];@[k;9;:;(98;`y)];@[k;(,1;,8);:;((1;`m);(2;`n))];@[k;([]k:1 8);:;([]v:5 6;w:`r`s)])}[];(([k:1 2]v:3 99;w:`a`z);([k:1 2 9]v:3 4 98;w:`a`b`y);([k:1 2 8]v:1 4 2;w:`m`b`n);([k:1 2 8]v:5 4 6;w:`r`b`s))]
+t[`keyedAmendLocal;{k:kL;k[3]:,99;k[4]:,98;k[2;`v]:5;k[7;`v]:6;k[1]+:,1;m:kM;m[(3;`q)]:,51;(k;m)}[];(([k:1 2 3 4 7]v:11 5 99 98 6);([a:1 2 3;b:`x`y`q]v:5 6 51))]
+tv[`keyedAmendGlobal;"kG:kL;kG[3]:,99;kG[4]:,98;kG,:([k:1 8]v:0 0);kG";([k:1 2 3 4 8]v:0 20 99 98 0)]
+t[`keyedAmendErr;{*"\n"\.[.:;,x;{x}]}'("@[([k:1 2]v:3 4;w:`a`b);1;:;5]";"@[kL;1 9;+;1]");("'length";"'length")]
+
+hexpect[865]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

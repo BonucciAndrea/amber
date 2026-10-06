@@ -317,7 +317,12 @@ A keyed table is looked up by key as in q: for one key column the key is a value
 list of one value per column, or a dict of them (`` m(1;`x) ``, `` m`a`b!(1;`x) ``). A table of keys,
 or a list of keys, gives a table of rows; a row or table goes by column name. A key not there gives the
 row `t 0N` gives (`::` in a temporal column and blanks in a string one, where q has typed nulls). `t?r`
-finds a row (a dict) or each row of a table in `t`, and `kt _ k` drops a key. Amending a keyed table by key (and `,` of two) is still `'nyi`.
+finds a row (a dict) or each row of a table in `t`, and `kt _ k` drops a key.
+
+`kt,kt2` is q's upsert: the rows of `kt2` whose keys `kt` has replace them, and the others are added,
+each one, as q (a new key given twice is added twice); the columns go by name. Amending at keys adds a
+key not there once, with a row of nulls, then amends its row: `` kt[`d]:4 40 `` (a list is the row's
+values in column order), `` kt[`b;`px]:5 ``.
 
 ---
 

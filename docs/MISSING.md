@@ -69,7 +69,14 @@ The primitives keep k's treatment, where the int null is just the smallest int:
 | `0N+1`, `0N-1`, `0N*2` | wrap: `-9223372036854775807`, `9223372036854775807`, `0` | `0N` |
 | `+/0N 1` | `-9223372036854775807` | (no `+/` in q; `sum` gives `1`) |
 | `&/0N 5` | `0N` (the null is the smallest) | `min` gives `5` |
-| `0^1.5 0n` | `(1.5;0)`: a fill of another type makes a generic list | `1.5 0f` |
+| `0.5^1 0N` | `(1;0.5)`: a fill of another type makes a generic list | `1 0.5` |
+
+Fill of floats is the exception (since 2.7.1): an int atom filling floats gives floats, as in q.
+`0^1.5 0n` is `1.5 0.0` (2.7.0 and ngn/k: `(1.5;0)`), `0^0n` is `0.0`, `0N^1.5 0n` leaves `0n`,
+a float item of a generic list is filled the same way (`0^(1;0n)` is `(1;0.0)`), and so are
+the float values of a dict or table. A char or symbol filling floats still makes a generic list
+(`` `a^1.5 0n `` is ``(1.5;`a)``). A null int atom becomes the fill (`0.5^0N` is `0.5`, as in k
+and q), and so does a null float atom filled by a symbol (`` `a^0n `` is `` `a ``, as in k; q: `'type`).
 
 Since 2.5 `sums prds prd wsum wavg svar sdev` skip nulls too, and `cov scov cor` drop a pair
 with a null. Still k: on a dict, `sum` and `min` count the null (`sum `a`b!0N 1` is
@@ -107,14 +114,17 @@ Amber now ships `hopen`/`hclose`/`hsend`/`hrecv`/`hsync` (raw-socket messaging) 
   handler dispatch, `.z.w`, websockets, TLS, and the full multi-process tickerplant / RDB / HDB /
   gateway pattern (`tick.q`, `r.q`, `u.q`, `w.q`).
 
-## 6. Attributes: 4 of 4 (setters); find accel on 2
+## 6. Attributes: 4 of 4 (setters); find accel on 1 (sorted)
 All four attributes are set in C: **sorted (`` `sa``)**, **unique (`` `ua``)**,
-**parted (`` `pa``)**, **grouped (`` `ga``)**, read back with `` `at``. **Sorted and parted**
-vectors take the O(log n) binary-search find path; grouped pairs with `fin.k`'s group index
+**parted (`` `pa``)**, **grouped (`` `ga``)**, read back with `` `at``. **Sorted** int vectors
+stored 16 bits or wider take the O(log n) binary-search find path; sorted floats and
+symbols, byte-wide ints and parted vectors (which need not be in order) take the ordinary
+find, as an unflagged vector does;
+grouped pairs with `fin.k`'s group index
 (`bysym`/`symrows`) for O(1) per-symbol slicing.
 - **Since 2.1.0:** every ascending value sort (`asc`, `x@<x`, `` `srt``, `xasc` on a flat
-  numeric column) returns its result flagged `` `s``, so a later `?`, `in`, `bin` or `aj` on it
-  takes the O(log n) path without an explicit `` `sa``.
+  numeric column) returns its result flagged `` `s``, so a later `?` on it, when it is an int
+  vector stored 16 bits or wider, takes the O(log n) path without an explicit `` `sa``.
 - **Still missing:** dedicated find/`where=` acceleration driven by the `` `u`` / `` `g``
   attribute *itself* (grouped speed currently comes from the separate group index, not the
   attribute), and general **attribute preservation through ops**. Apart from sorts, the flag
@@ -212,7 +222,7 @@ tickerplant** `hopen`/`u.*` (§5).
    `peach` beats serial `'`, and unlock a real (binary-wire) IPC and a binary on-disk format.
 2. **Grouped-attribute-driven `where sym=`.** The `` `g`` setter exists, but fast `where sym=`
    currently comes from `fin.k`'s separate group index rather than from the attribute itself.
-   Wiring the attribute into the C find path (as sorted/parted already are) would make it automatic.
+   Wiring the attribute into the C find path (as sorted already is) would make it automatic.
 3. **Missing atom types** (§2): `short`/`real`/`byte`/`guid` and their typed nulls/infinities.
 4. **Attribute preservation through ops** (§6): keep/drop attributes by q's per-op rules instead
    of always dropping on a new allocation.
@@ -244,6 +254,12 @@ behaviour shows up as a test failure rather than a silent regression.
   (which would change what an interactive line prints), 1.9 adds the `` `diag`` runtime switch:
   `` `diag 0`` suppresses the report and returns the previous setting, `` `diag 1`` restores it.
   `tests/harness.k` uses it. Code that catches errors in bulk should do the same.
+- **Folds and scans of chars under `% < > =` read the chars as numbers from the start, unlike
+  ngn/k.** `%/,"a"` and `</,"a"` are 97, `<\"ab"` is `97 1` and `"a"</!0` is 97, where ngn/k
+  keeps the char in the items the verb never sees (the one item of a fold of one, a scan's first
+  item, a char seed over no items): `"a"`, `("a";1)`, `"a"`. Kept so that `%/` and `+/` agree
+  (`+/,"a"` is 97 in both); see #17 and #64. Unseeded folds and scans of no chars differ too:
+  `</""` is `0N` and `<\""` is `!0`, where ngn/k gives `" "` and `""`.
 - **No long-typed infinity literal.** `0w`/`-0w` exist for floats; `0W`/`-0W` do not parse, so
   the identity elements of `&/`/`|/` over an empty long vector can only be obtained from the
   primitives themselves.

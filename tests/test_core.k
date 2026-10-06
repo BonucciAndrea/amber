@@ -411,6 +411,11 @@ te[`binTemporalGeneric;"(1 2 3)'(2026.07.30;1)"]
 / a temporal atom on the left of fill is 'type too (it was 'nyi), not a fill
 t[`fillTemporalLeft;{.[{x^y};(x;y);{(x?"\n")#x}]}[2026.07.30;0N 1];"'type"]
 
+/ ---- an int atom filling floats gives floats, as q (2.7.1's fast path; 2.7.0 and ngn/k: (1.5;0)) ----
+t[`fillIntFloats;(0^0n;0^1.5 0n;0^(1;0n);1b^1.5 0n;0N^1.5 0n;0^`a`b!1.5 0n);(0.0;1.5 0.0;(1;0.0);1.5 1.0;1.5 0n;`a`b!1.5 0.0)]
+/ other fills of another type still make a generic list, as k; a null int atom becomes the fill
+t[`fillOtherType;(1^0N;0.5^0N;0.5^1 0N;0x00^1.5 0n;`a^1.5 0n);(1;0.5;(1;0.5);(1.5;0x00);(1.5;`a))]
+
 / ---- a missing or failing temporal formatter is an error, not the end of the process or a crash ----
 te[`fmtMissing;"$2026.07.30"]
 te[`fmtMissingK;"`k@2026.07.30"]
@@ -1158,6 +1163,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
+hexpect[744]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

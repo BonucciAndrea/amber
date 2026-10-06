@@ -354,19 +354,19 @@ tnumk:{$[`m~@x;tnumk@.x;`A~@x;[t:@'x;i:t in`A`m;?(?t@&~i),$[|/i;,/tnumk'x@&i;0#`
 tnumc:{$[`m~@x;(!x)!tnumc@.x;`A~@x;$[&/(@'x)in`t`d;`i$x;tnumc'x];`i$x]}
 tnum0:{$[|/`t`d=@x;`i$x;~|/`A`m=@x;x;~#x;$[`A~@x;!0;x];[k:tnumk x;$[(1=#k)&&/k in`t`d;tnumc x;x]]]}
 / hh mm sec: as q's `hh$ `mm$ `ss$, a negative time keeps its sign (hh -1, mm -30 for -01:30:00.000): tpart takes the units
-/ of u ms and their remainder by m, both toward zero; a null stays null. hh of a time, an int or an int vector takes `hh
-/ (src/w.c), one pass in C, before anything else; mm and sec of a number or a numeric list none below 0 take the floor as before (the same there, in fewer passes).
+/ of u ms and their remainder by m, both toward zero; a null stays null. hh mm sec of a time, an int or an int vector take `hh
+/ `mm `sec (src/w.c), one pass in C, before anything else; of a float or a float list none below 0 the floor as before (the same there, in fewer passes).
 tpart:{[u;m;x]n:^x;(0N*n)+(~n)*(1-2*x<0)*m!_(x|-x)%u}   / nulls by arithmetic, so a list of lists or a dict of them too
 hh:{$[|/`t`i`I=@x;`hh x;[x:tnum0 x;$[|/`i`I=@x;`hh x;tpart[3600000;24;x]]]]}   / hour of day      (q time.hh)
-mm:{x:tnum0 x;$[$[|/`i`I`f`F=@x;&/~x<0;0];60!_x%60000;tpart[60000;60;x]]}   / minute of hour   (q time.mm)
-sec:{x:tnum0 x;$[$[|/`i`I`f`F=@x;&/~x<0;0];60!_x%1000;tpart[1000;60;x]]}    / second of minute (q time.ss; ss=string-search)
+mm:{$[|/`t`i`I=@x;`mm x;[x:tnum0 x;$[|/`i`I=@x;`mm x;$[|/`f`F=@x;&/~x<0;0];60!_x%60000;tpart[60000;60;x]]]]}   / minute of hour   (q time.mm)
+sec:{$[|/`t`i`I=@x;`sec x;[x:tnum0 x;$[|/`i`I=@x;`sec x;$[|/`f`F=@x;&/~x<0;0];60!_x%1000;tpart[1000;60;x]]]]}    / second of minute (q time.ss; ss=string-search)
 milli:{1000!tnum0 x}                               / millisecond      (q time.ms)
 minute:{_((tnum0 x)%60000)}                        / minutes since midnight (q time.minute)
 second:{_((tnum0 x)%1000)}                         / seconds since midnight (q time.second)
 z2:{-2$"0",$x}
 z3:{-3$"00",$x}
-stime1:{$[^x;"0N";x<0;"-",stime1[-x];[h:$_(tnum0 x)%3600000;($[1=#h;"0",h;h]),":",(z2 mm x),":",(z2 sec x),".",z3 milli x]]}   / a negative time is "-" and its size, as in q; every digit of the hours (q prints ** past 99), so the text reads back as the same time
-stime:{x:tnum0 x;$[|/(@x)=`i`j;stime1 x;stime1'x]} / time -> "HH:MM:SS.mmm" (HHH past 99 hours)
+stime1:{$[^x;"0N";x<0;"-",stime1[-x];[t:tnum0 x;h:$_t%3600000;($[1=#h;"0",h;h]),":",(z2 mm t),":",(z2 sec t),".",z3 1000!t]]}   / a negative time is "-" and its size, as in q; every digit of the hours (q prints ** past 99), so the text reads back as the same time; tnum0 once
+stime:{$[`i~@x;stime1 x;[x:tnum0 x;$[|/(@x)=`i`j;stime1 x;stime1'x]]]} / time -> "HH:MM:SS.mmm" (HHH past 99 hours); an int (as $ of a time gives it) at once
 ptime:{`i$"T"$x}                                  / "HH:MM:SS.mmm" -> ms, as "T"$ reads it ("-" for a negative time; text that is not a time 'parse)
 bar:{[w;u;t]xbar[$[(^w)|^u;0N;w*u];t]}                        / w u-unit bars: bar[5;60000;t] = 5-min bars(ms)
 minbar:{[w;t]60000*xbar[w;minute t]}               / w-minute bar as a time (ms)

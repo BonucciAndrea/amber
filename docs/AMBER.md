@@ -1017,6 +1017,8 @@ attributes `sa `ua `pa `ga (set sorted/unique/parted/grouped)   `at (get)  [kern
 kernels    `memb (membership) `gagg (group aggregate) `srt (value sort) `mw (windows)
            `xs (multi-column grade) `aj `wjb `ajs (as-of join)  [2.1: see section 5a]
            `ejx (the rows of an equi-join; amber.k's ej uses it)
+           `hh `mm `sec (hour, minute, second of a time or of ms; amber.k's hh mm sec use them)
+           `tjn (a list of dates, times or timestamps alone as its numbers; temporal.k's tdays uses it)
 moving     mcount msum mavg mprd mvar mdev mmin mmax   (std.k, O(n) prefix)
 math       dot mmu (matrix multiply)                   (std.k)
 parse/ser  parse eval reval ser deser protect          (std.k; text serialise)

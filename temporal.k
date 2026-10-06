@@ -23,19 +23,20 @@ pdate:{`i$"D"$x}                                            / "YYYY.MM.DD" -> da
 / mixes dates and ints, is 'type, as q's `year$ (which takes no ints at all). dkind: the kinds in a list, `d for a date or a
 / timestamp, `i for an int, none for 0N or ::, `x for anything else, from the items' types, going into lists and dicts only
 / (x~\:(::) on the whole list: indexing a general list does not keep a :: or a verb in it, (::;::)@0 1 is 0 1).
+/ `tjn (src/w.c) takes a list of dates alone, or of timestamps, in one pass in C (no list of types: @'x cost more than the `i$).
 / tdnul: a list of dates (or of timestamps) with nulls in it takes one `i$ (tsdate) with 0N for them; a mixed one goes item by item.
 dkind:{$[`m~@x;dkind@.x;~`A~@x;$[(@x)in`i`I;,`i;,`x];[t:@'x;u:?t;k:(`d`d`i`x)@3^`d`n`I?u@&~u in`i`u`A`m;i:&t=`i;w:&t=`u;k,:$[#i;$[|/~^x i;,`i;0#`];0#`];k,:$[#w;$[&/(x~\:(::))w;0#`;,`x];0#`];?k,,/dkind'x@&t in`A`m]]}
 tdnul:{[x;t]n:~t in`d`n`A`m;y:@[x;&n;:;0N];u:t@&~n;$[&/`d=u;`i$y;&/`n=u;tsdate y;{$[(::)~x;0N;tdays x]}'x]}
-tdays:{$[`d~@x;`i$x;`n~@x;tsdate x;(@x)in`i`I;x;`m~@x;(!x)!tdays@.x;~`A~@x;`err"type";~#x;!0;&/`d=t:@'x;`i$x;&/`n=t;tsdate x;[k:dkind x;$[&/k=`d;tdnul[x;t];~&/k=`i;`err"type";|/n:x~\:(::);@[x;&n;:;0N];x]]]}
+tdays:{$[`d~@x;`i$x;`n~@x;tsdate x;(@x)in`i`I;x;`m~@x;(!x)!tdays@.x;~`A~@x;`err"type";~#x;!0;`I~@d:`tjn x;$[`d~@*x;d;`n~@*x;tsdate d;`err"type"];[t:@'x;k:dkind x;$[&/k=`d;tdnul[x;t];~&/k=`i;`err"type";|/n:x~\:(::);@[x;&n;:;0N];x]]]}
 dtab:{$[`M~@x;1;`m~@x;`M~@!x;0]}                             / a table or a keyed table: the accessors go column by column, a keyed table on its value (keeping its key), as q's
 dnul:{[d;v](0N*n)+(~n:^d)*v}                                 / v where the day d is not null, else 0N
-dpart:{[i;x]$[dtab x;$[`M~@x;+dpart[i]@+x;(!x)!dpart[i;.x]];[d:tdays x;$[#d;dnul[d;(d2ymd d*~^d)i];d]]]}   / the year (0), month (1) or day (2) of a date; a null day gives 0N
+dpart:{[i;x]$[`d~@x;(d2ymd`i$x)i;dtab x;$[`M~@x;+dpart[i]@+x;(!x)!dpart[i;.x]];[d:tdays x;$[~#d;d;|//^d;dnul[d;(d2ymd d*~^d)i];(d2ymd d)i]]]}   / the year (0), month (1) or day (2) of a date; a null day gives 0N (dnul only if there is one; a date atom has none)
 dparts:{dpart[;x]'0 1 2}                                     / date -> (year;month;day)  (native date atom or raw days)
 year:{dpart[0;x]}                                            / .year
 month:{dpart[1;x]}                                           / .month
 dayof:{dpart[2;x]}                                           / .day
 day:{dpart[2;x]}                                             / .day (alias)
-dow:{$[dtab x;$[`M~@x;+dow@+x;(!x)!dow@.x];[d:tdays x;`Mon`Tue`Wed`Thu`Fri`Sat`Sun dnul[d;7!(d*~^d)+5]]]}   / day of week (2000.01.01 = Sat); a null day gives `
+dow:{$[`d~@x;`Mon`Tue`Wed`Thu`Fri`Sat`Sun 7!(`i$x)+5;dtab x;$[`M~@x;+dow@+x;(!x)!dow@.x];[d:tdays x;`Mon`Tue`Wed`Thu`Fri`Sat`Sun $[|//^d;dnul[d;7!(d*~^d)+5];7!d+5]]]}   / day of week (2000.01.01 = Sat); a null day gives `
 dadd:{[d;n]d+n}                                             / add n days
 ddiff:{x-y}                                                 / days between two dates
 
@@ -48,6 +49,6 @@ pstr:{$[^`i$x;"0N";(dstr tsdate `i$x),"D",(stime tsms `i$x),-6$"00000",$tsus `i$
 ptstamp:{`i$"P"$x}                                          / "YYYY.MM.DDDHH:MM:SS.nnnnnnnnn" -> ns, every digit, as "P"$ reads it
 
 / ---- native-type accessors on time atoms (extract raw ms, then decompose) ----
-thh:{hh `i$x}                                               / .hh  hour of day (0 to 23; amber.k's hh)
-tmm:{mm `i$x}                                               / .mm  minute of hour (amber.k's mm)
-tss:{sec `i$x}                                              / .ss  second of minute (amber.k's sec)
+thh:{$[`t~@x;`hh x;hh`i$x]}                                 / .hh  hour of day (0 to 23; amber.k's hh; a time atom takes `hh at once)
+tmm:{$[`t~@x;`mm x;mm`i$x]}                                 / .mm  minute of hour (amber.k's mm)
+tss:{$[`t~@x;`sec x;sec`i$x]}                               / .ss  second of minute (amber.k's sec)

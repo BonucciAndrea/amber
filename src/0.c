@@ -77,15 +77,20 @@ I pg=4096;//pagesize
  // automatically as genfs.py's file list grows or shrinks.
  Z ST{C*a,p[16];N n;}s[]={{.a=""},{.a=""},//s:storage,
   #include"o/w/fs.h"
+  {0},{0},{0},{0},{0},{0},{0},{0}   //2.7.3: free slots (a 0), for files the page hands in (vfsadd) or Amber creates
  };Z ST{C i;N o;}d[8]={{.i=1},{.i=1},{.i=1}};Z CO I ns=L(s),nd=L(d);//d:fd table
  #define FI P((U)f>=nd||!d[f].i,EBADF)I i=d[f].i;//validate fd "f" and get inode "i"
  I open(S p,I v,...)_(I m=SL(p);P(m>=SZ s[0].p,ENAMETOOLONG)I i=0;W(i<ns&&strcmp(s[i].p,p),i++)
   I(i>=ns,P(O_CREAT&~v,ENOENT)i=0;W(i<ns&&s[i].a,i++)P(i>=ns,ENOSPC)s[i].a="";s[i].n=0;MC(s[i].p,p,m))
   I f=0;W(f<nd&&d[f].i,f++)P(f>=nd,EMFILE)d[f].i=i;d[f].o=0;f)
+ //2.7.3: a file from the page (a CSV dropped on the notepad): its name p, n bytes at a, which the store keeps. A name
+ //already there is replaced. 0, or ENAMETOOLONG / ENOSPC
+ I vfsadd(S p,C*a,N n)_(I m=SL(p);P(!m||m>=SZ s[0].p,ENAMETOOLONG)I i=2;W(i<ns&&strcmp(s[i].p,p),i++)
+  I(i>=ns,i=2;W(i<ns&&s[i].a,i++)P(i>=ns,ENOSPC)MC(s[i].p,p,m+1))s[i].a=a;s[i].n=n;0)
  I close(I f)_(FI d[f].i=0;0)
  I read(I f,V*a,N n)_(FI P(i==1,js_in(a,n))I o=d[f].o;n=MAX(0,MIN(n,s[i].n-o));MC(a,s[i].a+o,n);d[f].o+=n;n)
  I write(I f,CO V*a,N n)_(FI;P(i==1,js_out(a,n);n)
-  I m=d[f].o+n;I(m>s[i].n,C*b=js_alloc(m);MC(b,s[i].a,n);s[i].a=b;s[i].n=m)MC(s[i].a+d[f].o,a,n);n)
+  I m=d[f].o+n;I(m>s[i].n,C*b=js_alloc(m);MC(b,s[i].a,s[i].n);s[i].a=b;s[i].n=m)MC(s[i].a+d[f].o,a,n);n)
  off_t lseek(I f,off_t o,I w)_(FI;o=w==SEEK_CUR?o+d[f].o:w==SEEK_END?o+s[i].n:w==SEEK_SET?o:-1;P(o<0,EINVAL)d[f].o=o)
  I fstat(I f,ST stat*r)_(FI;I n=s[i].n;
   *r=(TY(*r)){.st_ino=i,.st_mode=S_IFCHR,.st_nlink=1,.st_size=n,.st_blksize=512,.st_blocks=n+511>>9};0)

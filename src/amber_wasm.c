@@ -149,6 +149,13 @@ void amber_load(void) {
 // Every bundled example is a small hand-written .k file (well under this
 // buffer), so a fixed-size static buffer is fine -- same pattern as
 // g_inbuf/g_rewritebuf above.
+// amber_addfile(a, n): put a file in the virtual filesystem (o/w/fs.h's store, 0.c) so Amber code can read
+// it by name -- the notepad's dropped CSVs. The name is at amber_inbuf() (under 16 bytes), the n bytes at a, which
+// JS allocated in this memory and leaves to the store. 0 when it went in.
+I vfsadd(S, C*, N);
+__attribute__((export_name("amber_addfile")))
+int amber_addfile(char *a, unsigned long n) { return vfsadd(g_inbuf, a, n); }
+
 #include <fcntl.h>
 #define READBUF_SZ (1<<17)
 static char g_readbuf[READBUF_SZ];

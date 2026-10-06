@@ -48,7 +48,7 @@ X1(enl,R5(ti,tl,tf,tc,ts,x(aV(TT[xt],1,TP(xt)?&x:xV)))Rm(A y=kv(&x);aM(x,e1f(enl
 //two keyed tables (issue #19): q's upsert, y's rows replacing those of keys x has (the last, for a key given twice) and
 //the others added, each, as they come; y's key and value columns go by name (kcl), and other columns are 'domain (q:
 //'mismatch), as a table joined to one. A keyed table and a dict is 'type
-Z A kcl(A x,A y/*00*/)_(P(mtc_(xx,yx),_R(y))P(_N(xx)-_N(yx),ed0())A p=N(cL(fnd(yx,_R(xx))));F(_n(p),P(_L(p)[i]==NL,mr(p);ed0()))aM(_R(xx),i1(yy,p)))
+A kcl(A x,A y/*00*/)_(P(mtc_(xx,yx),_R(y))P(_N(xx)-_N(yx),ed0())A p=N(cL(fnd(yx,_R(xx))));F(_n(p),P(_L(p)[i]==NL,mr(p);ed0()))aM(_R(xx),i1(yy,p)))
 Z A kct(A x,A y/*10*/)_(P(!_tM(yx),et(x))A k=Nx(kcl(xx,yx)),v=kcl(xy,yy);P(!v,mr(k);x(0))
  K("{[x;k;v]i:(!x)?k;w:&^i;f:&~^i;((!x),k w)!@[.x;i f;:;v f],v w}",x,k,v))
 A2(cat10,

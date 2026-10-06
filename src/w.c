@@ -40,14 +40,23 @@ U urnk(A);
 // f on the two value lists too (each for ,'), so their types combine as for lists, either way round, with x's keys
 // unless they are () (not 0#,1 2, whose prototype combines); ()!() gives the other dict, as q, and stays with ()!()
 #define u0(v) (_tA(v)&&!_n(v)&&_t(_x(v))==tC&&!_n(_x(v)))
-Z A dkey(I c,A2 f,A x,A y/*00f01*/)_(B e=!_n(xx)&&!_n(yx);P(e&&u0(yx)&&u0(yy),y(_R(x)))P(e&&u0(xx)&&u0(xy),y)
+//dkey's K rule; r: the values of the keys on both sides. Dicts with no key in common skip f (it was 'type for (`a!1)|`b!`y,
+//as no value meets another); keyed tables (t, from kar) still apply it to the empty slices, so columns that do not meet
+//are 'type, as q
+#define DK(r) "{[c;kx;vx;ky;vy]yo:$[#kx;&^kx?ky;!#ky];iy:$[#ky;ky?kx;(#kx)#0N];iy:$[#kx;@[iy;&~(kx?kx)=!#kx;:;0N];iy];b:&~^iy;xo:&^iy;f:(+;-;*;%;&;|;,)c;u:c>1;r:" r ";(kx,ky yo)!($[c<3;f[vx xo;u];vx xo],r,$[c<3;f[u;vy yo];vy yo])@<xo,b,(#kx)+!#yo}"
+Z A dkey(I c,A2 f,A x,A y,B t/*0f010*/)_(B e=!_n(xx)&&!_n(yx);P(e&&u0(yx)&&u0(yy),y(_R(x)))P(e&&u0(xx)&&u0(xy),y)
  P(e||c<6&&mtc_(xx,yx),A v=c<6?f(xy,_R(yy)):e2f(f,xy,_R(yy));y(v?am(_R(e&&u0(xx)?yx:xx),v):0))
- A v=K("{[c;kx;vx;ky;vy]yo:$[#kx;&^kx?ky;!#ky];iy:$[#ky;ky?kx;(#kx)#0N];iy:$[#kx;@[iy;&~(kx?kx)=!#kx;:;0N];iy];b:&~^iy;xo:&^iy;f:(+;-;*;%;&;|;,)c;u:c>1;r:$[c=6;f'[vx b;vy iy b];#b;f[vx b;vy iy b];()];(kx,ky yo)!($[c<3;f[vx xo;u];vx xo],r,$[c<3;f[u;vy yo];vy yo])@<xo,b,(#kx)+!#yo}",
-       az(c),_R(xx),_R(xy),_R(yx),_R(yy));y(v))   //no key on both: f is not applied to the two empty slices (it was 'type for (`a!1)|`b!`y, as no value meets another)
+ A v=t?K(DK("f[vx b;vy iy b]"),az(c),_R(xx),_R(xy),_R(yx),_R(yy))
+      :K(DK("$[c=6;f'[vx b;vy iy b];#b;f[vx b;vy iy b];()]"),az(c),_R(xx),_R(xy),_R(yx),_R(yy));y(v))
+A kcl(A,A);//h.c
+//two keyed tables, or dicts keyed by tables (issue #19): dkey's rule over the union of the keys, a row for a row; y's key
+//and value columns go by name (h.c's kcl, as for ,), other columns 'domain; values a table on one side only 'type, as q
+Z A kar(I c,A2 f,A x,A y/*0f01*/)_(B t=_tM(xy);P(t-_tM(yy),et(y))A k=Ny(kcl(xx,yx)),v=t?kcl(xy,yy):_R(yy);P(!v,mr(k);y(0))y=y(am(k,v));dkey(c,f,x,y,1))
 //two dicts (x and y as in e2f; c: dkey's verb, or -1)
 Z A e2d(I c,A2 f,A x,A y/*0f01*/)_(P(_n(xx)&&_n(yx)&&urnk(xx)-urnk(yx),ed(y))
-  P(c>=0&&!_tM(xx)&&!_tM(yx),dkey(c,f,x,y))
-  A z=cat(xx,_R(yx));P(!z,y(0))P(_tM(xx)||_tM(yx),mr(z);y(en0()))   /*Keyed tables: not yet (issue #19); keys that do not join were 'domain above*/z=unq(z);P(!z,y(0))B o=(f==add||f==sub||f==mul||f==dvd||f==mnm||f==mnu)&&(_n(xx)||_t(xx)-tA)&&(_n(yx)||_t(yx)-tA)&&!mtc_(xx,yx);A mx=o?fnd(xx,zR):0,my=o?fnd(yx,zR):0;x=x1(zR);P(!x,I(mx,mr(mx))I(my,mr(my))z(y(0)))y=y(y1(zR));P(!y,I(mx,mr(mx))I(my,mr(my))z(x(0)))   //mx my: 0N where a key is missing on that side (none is when the keys match)
+  P(c>=0&&!_tM(xx)&&!_tM(yx),dkey(c,f,x,y,0))
+  P(c>=0&&c<6&&_tM(xx)&&_tM(yx),kar(c,f,x,y))
+  A z=cat(xx,_R(yx));P(!z,y(0))P(_tM(xx)||_tM(yx),mr(z);y(en0()))   /*Keyed tables in < > = and ,', or with other keys: not yet (issue #19); keys that do not join were 'domain above*/z=unq(z);P(!z,y(0))B o=(f==add||f==sub||f==mul||f==dvd||f==mnm||f==mnu)&&(_n(xx)||_t(xx)-tA)&&(_n(yx)||_t(yx)-tA)&&!mtc_(xx,yx);A mx=o?fnd(xx,zR):0,my=o?fnd(yx,zR):0;x=x1(zR);P(!x,I(mx,mr(mx))I(my,mr(my))z(y(0)))y=y(y1(zR));P(!y,I(mx,mr(mx))I(my,mr(my))z(x(0)))   //mx my: 0N where a key is missing on that side (none is when the keys match)
   I(o,                                                         //a missing key takes the verb's identity (only a missing one: a null value stays)
    A u=f==mnm||f==mnu?(xtF||ytF?af(WF):az(WL)):ai(f==mul||f==dvd);x=K("{$[|/^z;@[x;&^z;:;y];x]}",x,_R(u),mx);P(!x,mr(u);mr(my);z(y(0)))y=K("{$[|/^z;@[x;&^z;:;y];x]}",y,u,my);P(!y,z(x(0))))   //the identity atom at the missing positions only
   am(z,Nz(x(e2f(f,x,y)))))

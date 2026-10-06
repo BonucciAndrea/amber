@@ -291,9 +291,10 @@ t[`fbyUpdate;     (upd"update f:(max;px) fby sym from ft")`f;        50 40 50 40
 / and on SEVERAL group columns, which used to return one value per column
 t[`fbyWhereCols;  (sel"select px from ft where px=(max;px) fby (sym;ex)")`px; 20 30 40 50.0]
 
-/ ---- two keyed tables in arithmetic or comparison: 'nyi (they crashed); a keyed table with an atom works ----
+/ ---- two keyed tables: + - * % & | over the union of the keys, as dicts (issue #19); comparison 'nyi (they crashed); a keyed table with an atom works ----
 KA:(+(,`a)!,1 2 3)!4 5 6;KB:(+(,`a)!,2 3 4)!10 20 30;KE:{.[x;y;{(x?"\n")#x}]}
-t[`keyedNyi;    {KE[x;(KA;KB)]}'(+;-;*;%;&;|;<;>;=);  9#,"'nyi"]
+t[`keyedArith;  {x[KA;KB]}'(+;-;*;%;&;|);  (+(,`a)!,1 2 3 4)!/:(4 15 26 30;4 -5 -14 -30;4 50 120 30;(4;0.5;0.3;30);4 5 6 30;4 10 20 30)]
+t[`keyedNyi;    {KE[x;(KA;KB)]}'(<;>;=);  3#,"'nyi"]
 t[`keyedAtom;   KA+1;                                       (+(,`a)!,1 2 3)!5 6 7]
 / ---- distinct of a table: its distinct rows, first seen first, as q (issue #19) ----
 t[`tableDistinct;   ?([]a:1 1 2 1;b:`x`x`y`x);               ([]a:1 2;b:`x`y)]
@@ -513,6 +514,6 @@ tq[`strSemi;       "select from TQS where s like \"a;b\"";              1#TQS];
 tq[`strEscQuote;   "exec \"a\\\")\" from TQS";                          "a\")"];
 tq[`strEnd;        "(exec s from TQS where s like \"a;b\"),,\"x)\"";    ("a;b";"x)")];
 
-hexpect[323]
+hexpect[324]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

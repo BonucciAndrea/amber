@@ -325,6 +325,10 @@ key not there once, with a row of nulls, then amends its row: `` kt[`d]:4 40 `` 
 values in column order), `` kt[`b;`px]:5 ``. An amend that fails leaves a variable that is a keyed table as it was; one
 that fails on a keyed table inside a dict or list (`` h[`a;1]:5 ``) still loses the variable.
 
+`kt+kt2` (and `- * % & |`) works over the union of the keys, as for dicts: a key on both sides gets the verb row by
+row, a key on one side passes its row through (`-` negates one of `kt2`'s), `kt`'s keys first; the key and value
+columns go by name. Comparing two keyed tables (`< > =`) is still `'nyi`.
+
 ---
 
 ## 7. Selecting and grouping (qSQL)

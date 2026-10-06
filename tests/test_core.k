@@ -797,9 +797,9 @@ t[`charToSymFF;(`s$0xff)~`$,0xff;1b]
 t[`charToSymAll;(`s$'`c$!256)~`$,'`c$!256;1b]
 t[`charToSymA;`s$"a";`a]
 
-/ ---- dict arithmetic: keys of different ranks and keyed tables are errors, not crashes ----
+/ ---- dict arithmetic: keys of different ranks are errors, not crashes; keys that are tables add over their union ----
 t[`dictMixedRank;*"\n"\.[.:;,"(`a`b!1 2)+((1 2;3 4)!5 6)";{x}];"'domain"]
-t[`keyedPlusKeyed;*"\n"\.[.:;,"a:(+(,`a)!,1 2 3)!4 5 6;b:(+(,`a)!,2 3 4)!10 20 30;a+b";{x}];"'nyi"]
+t[`keyedPlusKeyed;{a:(+(,`a)!,1 2 3)!4 5 6;b:(+(,`a)!,2 3 4)!10 20 30;a+b}[];(+(,`a)!,1 2 3 4)!4 15 26 30]
 t[`keyedPlusKeyedCols;*"\n"\.[.:;,"((+(,`a)!,1 2)!3 4)+((+(,`b)!,1 2)!3 4)";{x}];"'domain"]   / key tables with different columns do not join
 t[`dictListKeys;((1 2;3 4)!5 6)+(1 2;3 4)!7 8;(1 2;3 4)!12 14]
 t[`keyedPlusAtom;((+(,`a)!,1 2 3)!4 5 6)+1;(+(,`a)!,1 2 3)!5 6 7]
@@ -1373,7 +1373,20 @@ t[`amendKeyedTableList;(IK["L1:(KL;KL)";"L1[1]:5"];IK["L2:(KL;KL)";"L2[0]+:1"];I
 t[`amendKeyedListKeep;(IK["DL1:(+(,`a)!,1 2)!3 4";"DL1[,1]:9"];IK["DL2:(+(,`a)!,1 2)!3 4";"DL2[,3]+:1"]);2#,(`err;(+(,`a)!,1 2)!3 4)]   / keys a table, values a list: 'nyi, and kept
 t[`amendKeyedTableListErr;{*"\n"\.[.:;,x;{x}]}'("L5:(KL;KL);L5[;3]:,1";"L6:(KL;KL);L6[0 1;3]:,1";"L7:(KL;KL);L7[5;3]:,1");("'length";"'length";"'index")]
 
-hexpect[871]
+/ ---- + - * % & | of two keyed tables over the union of the keys, as q (issue #19): a key on both sides gets the verb,
+/ row by row; one on one side passes through as dicts' do (+ - * with the identity: - negates y's), x's keys first ----
+kA:([k:1 2 3]v:4 5 6;w:1.5 2.5 3.5);kB:([k:2 3 4]v:10 20 30;w:10 20 30.0)
+t[`keyedArithCols;{x[kA;kB]}'(+;-;*;&;|);(([k:1 2 3 4]v:4 15 26 30;w:1.5 12.5 23.5 30);([k:1 2 3 4]v:4 -5 -14 -30;w:1.5 -7.5 -16.5 -30);([k:1 2 3 4]v:4 50 120 30;w:1.5 25 70 30.0);([k:1 2 3 4]v:4 5 6 30;w:1.5 2.5 3.5 30);([k:1 2 3 4]v:4 10 20 30;w:1.5 10 20 30.0))]
+t[`keyedArithRight;(kB-kA;kA+kA;kA+([k:2 5]w:1 2.0;v:7 8));(([k:2 3 4 1]v:5 14 30 -4;w:7.5 16.5 30 -1.5);([k:1 2 3]v:8 10 12;w:3 5 7.0);([k:1 2 3 5]v:4 12 6 8;w:1.5 3.5 3.5 2))]
+/ % passes a key on one side through as for dicts (q: 'type for an int column); types combine as lists do (q too)
+t[`keyedArithTypes;(([k:1 2]v:1 2)%([k:2 3]v:2 4);([k:1 2]v:1 2)+([k:2 3]v:5.5 6));(([k:1 2 3]v:(1;1.0;4));([k:1 2 3]v:(1;7.5;6.0)))]
+/ two key columns by name, a repeated key of x (the first gets y's row), empty tables, +: on a variable
+t[`keyedArithKeys;(([a:1 2;b:`x`y]v:1 2;w:3 4)+([b:`y`z;a:2 3]w:10 20;v:5 6);([k:1 2 2]v:1 2 3)+([k:2 3]v:10 20);([k:0#0]v:0#0)+([k:2 1]v:7 8);kL-([k:0#0]v:0#0);{k:kL;k+:([k:3 4]v:1 1);k}[]);(([a:1 2 3;b:`x`y`z]v:1 7 6;w:3 14 20);([k:1 2 2 3]v:1 12 3 20);([k:2 1]v:7 8);kL;([k:1 2 3 4]v:10 20 31 1))]
+/ a dict keyed by a table with list values, as q; other key columns 'domain (q: 'mismatch); other value columns 'domain (q: the union of the columns, 0 for + -, nulls for * & |, 'type for %); a table of values on one side only 'type, as q
+t[`keyedArithLists;((([]a:1 2)!(1 2;3 4))+([]a:2 3)!(10 20;30 40);(([]a:1 2 3)!4 5 6)-([]a:2 3 4)!10 20 30);((+(,`a)!,1 2 3)!(1 2;13 24;30 40);(+(,`a)!,1 2 3 4)!4 -5 -14 -30)]
+t[`keyedArithErr;{*"\n"\.[.:;,x;{x}]}'("kL+([j:2 3]v:5 6)";"kL+([k:2 3]w:5 6)";"kL+(([]k:2 3)!5 6)";"(([]k:2 3)!5 6)*kL";"([k:1 2]v:1 2)|([k:3 4]v:`a`b)");("'domain";"'domain";"'type";"'type";"'type")]
+
+hexpect[877]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

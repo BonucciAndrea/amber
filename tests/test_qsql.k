@@ -377,6 +377,14 @@ tqa[`iByStrKey;   "select c:count n by s like \"i*\" from TS where i>0"; CL; `s`
 / the functional distinct drops the hidden column before it looks for equal rows
 T5:([]sym:`a`b`a; n:1 2 1)
 t[`iFuncDistinct;   ?[T5;,(>;`i;-1);1b;()];                         ([]sym:`a`b; n:1 2)]
+/ the same answers where i is read without the hidden column: count i, and-ed constraints, a where then items
+tq[`iCountWhere;  "exec count i from trades where px>25";             4];
+tq[`iCountBy;     "select c:count i by sym from trades where px>15";  ([sym:`a`b`c]c:2 2 1)];
+tq[`iAnded;       "select from trades where px>15, i<4";              ([]sym:`b`a`b; px:20 30 40.0; sz:2 3 4)];
+tq[`iExecItems;   "exec i,sz from trades where sym=`a";               `x`sz!(0 2 5;1 3 6)];
+t[`iFuncLater;    ?[trades;((>;`px;15);(<;`i;4));0b;()];              ([]sym:`b`a`b; px:20 30 40.0; sz:2 3 4)]
+t[`iFuncCount;    ?[trades;,(>;`px;25);0b;(,`n)!,(count;`i)];         ([]n:,4)]
+t[`iFuncUpd;      (+![trades;,(>;`px;35);0b;(,`j)!,`i])`j;            0N 0N 0N 3 4 5]
 
 / ---- digest #73 item 95: a bare distinct is q's distinct flag, not a column; with by it is q's distinct function ----
 DT:([]sym:`a`b`a`a;n:1 2 1 3;m:5 6 5 7)
@@ -505,6 +513,6 @@ tq[`strSemi;       "select from TQS where s like \"a;b\"";              1#TQS];
 tq[`strEscQuote;   "exec \"a\\\")\" from TQS";                          "a\")"];
 tq[`strEnd;        "(exec s from TQS where s like \"a;b\"),,\"x)\"";    ("a;b";"x)")];
 
-hexpect[316]
+hexpect[323]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

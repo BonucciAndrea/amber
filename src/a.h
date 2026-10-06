@@ -185,7 +185,7 @@ V cyc(V*,U,U),eS(A,U),eQ(S,U,U),exit(I),hexC(S,U,C*),kargs(I,S*),kinit(),*memmem
 B id0(UC),mtc_(A,A),tru(A);
 V par_prng_perturb(W);//decorrelate a peach worker's thread-local prng stream (r.c)
 A peach_pool(A,A,U,I);//persistent thread-pool morsel-driven peach (src/peachpool.c)
-CO C*peach_errmsg(V);//error category raised by the failing worker of the last peach dispatch
+CO C*peach_errmsg(V);//error category raised by the first failing item of the last peach dispatch
 CO C*errtext(V);//the calling thread's current error text (e.c)
 V plk(B);//take (1) / drop (0) the parse+compile lock inside a peach scope (m.c)
 C*sf(C*,L),*sl(C*,L),sup(A*,A*),tZ(L),*strchrnul(S,I);

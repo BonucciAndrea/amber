@@ -128,7 +128,7 @@ A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);
  {C wb[64];L wd;F wv=1.5;MC(&wd,&wv,8);sf(wb,wd);}
  A r=peach_pool(fn,dat,n,nw);
  mr(fn);mr(dat);
- // re-raise the error the failing worker hit ('noupdate, 'type, ...), which is
+ // re-raise the error the first failing item hit ('noupdate, 'type, ...), which is
  // what the same f'x would have raised serially; a generic message only when
  // the worker left none.
  P(!r,CO C*m=peach_errmsg();x(err0(*m?m:"worker error in peach")))

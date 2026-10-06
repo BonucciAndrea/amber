@@ -17,8 +17,8 @@ typedef struct {
     A *out;              /* result slots [0,n), pre-zeroed by the dispatcher  */
     U n, grain;
     U cursor;            /* next morsel start; grabbed via __atomic_fetch_add */
-    volatile int err;    /* set by the first worker whose f() raised          */
-    char msg[40];        /* that worker's error category, for the re-raise    */
+    U err;               /* the lowest index whose f() raised so far; n if none */
+    char msg[40];        /* that item's error category, for the re-raise      */
 } Job;
 
 typedef struct {
@@ -35,6 +35,7 @@ typedef struct {
 
 static Pool P;
 static pthread_mutex_t init_mx = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t err_mx = PTHREAD_MUTEX_INITIALIZER;   /* taken only when an item fails */
 static int P_ready = 0;
 
 /* Grab morsels until the input is exhausted. Runs on every worker AND on the
@@ -47,19 +48,24 @@ static void run_morsels(Job *j) {
         if (t >= j->n) break;
         U hi = t + j->grain; if (hi > j->n) hi = j->n;
         for (U i = t; i < hi; i++) {
-            if (j->err) break;                 /* another slice already failed */
+            if (i > __atomic_load_n(&j->err, __ATOMIC_RELAXED)) break;   /* an earlier item already failed */
             A item = ii(j->dat, i);
             A v = _1(j->f, item);
             if (!v) {
-                /* The first worker to fail records its error category (the
-                 * text is in its OWN thread-local buffer, gone once it returns)
-                 * so the dispatcher can re-raise that error, not a generic one. */
-                if (!__atomic_exchange_n(&j->err, 1, __ATOMIC_ACQ_REL)) {
+                /* The failing item with the lowest index records its error
+                 * category (the text is in this thread's OWN buffer, gone once
+                 * it returns), so the dispatcher re-raises the error serial f'y
+                 * would: the first failing item's, whichever worker failed
+                 * first (#83 Q16). Items before it still run; items after it
+                 * are skipped. */
+                pthread_mutex_lock(&err_mx);
+                if (i < __atomic_load_n(&j->err, __ATOMIC_RELAXED)) {
                     const char *t = errtext(); size_t k = 0;
                     if (*t == '\'') t++;
                     while (t[k] && t[k] != '\n' && k < sizeof j->msg - 1) { j->msg[k] = t[k]; k++; }
-                    j->msg[k] = 0;
+                    j->msg[k] = 0; __atomic_store_n(&j->err, i, __ATOMIC_RELAXED);
                 }
+                pthread_mutex_unlock(&err_mx);
                 break;
             }
             j->out[i] = v;
@@ -170,7 +176,7 @@ A peach_pool(A f, A dat, U n, I nw) {
      * TASK_GRAIN items per morsel and never fewer than 1. */
     { U g = n / (U)(nw * 4); if (g < 1) g = 1; if (g > TASK_GRAIN) g = TASK_GRAIN;
       P.job.grain = g; }
-    P.job.n = n; P.job.cursor = 0; P.job.err = 0; P.job.msg[0] = 0;
+    P.job.n = n; P.job.cursor = 0; P.job.err = n; P.job.msg[0] = 0;
     P.active = P.nth;                             /* each worker decrements once */
     P.gen++;
     pthread_cond_broadcast(&P.cv_work);
@@ -182,7 +188,7 @@ A peach_pool(A f, A dat, U n, I nw) {
     while (P.active > 0) pthread_cond_wait(&P.cv_done, &P.mx);
     pthread_mutex_unlock(&P.mx);
 
-    int err = P.job.err;
+    int err = P.job.err < n;
     ray_rc_sync = false;                          /* back to serial before assembling */
 
     if (err) {
@@ -198,7 +204,7 @@ A peach_pool(A f, A dat, U n, I nw) {
     return sqz(r);
 }
 
-/* The error category the failing worker of the LAST dispatch raised, or "". */
+/* The error category the first failing item of the LAST dispatch raised, or "". */
 const char *peach_errmsg(void) { return P.job.msg; }
 
 #endif /* !wasm */

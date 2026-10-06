@@ -11,7 +11,7 @@
 / binary IPC on the hot path. -8!/-9! (src/ser.c) stays as the `!`-verb
 / serializer and is still verified here in its own right.
 / 
-/ Five things are checked, in order:
+/ Six things are checked, in order:
 /   1. (-9! -8! x) ~ x  over every shape the serializer claims to support.
 /   2. peach returns exactly what serial each returns, for every result shape
 /      (atoms, symbols, nested lists, dicts, tables) -- the thread pool is
@@ -23,6 +23,8 @@
 /   5. thread stress: inputs far larger than one morsel, so several workers run
 /      concurrently, exercising the thread-local arith/format state and the
 /      allocator + symbol-intern lock -- results must still be exact.
+/   6. `gagg on 64K+ symbol keys (hashed to codes on the threads) hands back
+/      the same () as one thread when it declines the values.
 / Exits non-zero if anything fails, so it can be wired into CI as-is.
 / ============================================================================
 dir:{$[#p:"/"/-1_"/"\x;p;"."]}`argv 1
@@ -156,6 +158,20 @@ ok["multi-morsel alloc/reduce";(peach[{+/!x+1};!M])~{+/!x+1}'!M]
 ok["multi-morsel nested"     ;(peach[{(x;x*x;$x)};!M])~{(x;x*x;$x)}'!M]
 / forcing many lanes must not change the answer vs a single lane
 ok["multi-morsel over floats";(peach[{0.5*x*x};!M])~{0.5*x*x}'!M]
+
+/ ---- 6. `gagg on threads declines cleanly -----------------------------------
+/ From 64K symbol keys on more than one thread `gagg aggregates their codes.
+/ When it declined the op, the values or the mask there (an unknown op,
+/ chars, an atom, values or a mask shorter than the keys) it gave a null with
+/ no error: a segfault, or a nameless error under gsum. One thread gives (),
+/ and gsum then takes its generic path.
+sec"6. gagg declines on threads"
+G:65536;gk:G#`a`b`c
+ok["gagg declines chars"     ;()~`gagg(`sum;gk;G#"abc")]
+ok["gagg declines an atom"   ;()~`gagg(`sum;gk;5)]
+ok["gagg first, an atom"     ;()~`gagg(`first;gk;5)]
+ok["gagg declines short mask";()~`gagg(`sum;gk;G#1;(G-1)#1b)]
+ok["gsum falls back"         ;(gsum[gk;G#"abc"])~+/'(G#"abc")@=gk]
 
 / ---- summary ----------------------------------------------------------------
 `0:""

@@ -518,7 +518,8 @@ A gaggT(A x){
    A u=0,cd=0;I(!penc(k,par_thread_count(_n(k)),&u,&cd),
      I(cd,U nx=_n(x);A x2=an(nx,tA);F(nx,_A(x2)[i]=i==1?cd:_R(e[i]))A r=gaggT(x2);
        I(r&&!_tP(r)&&_t(r)==tA&&_n(r)==3,A ks=i1(u,_R(_A(r)[0]));I(ks,A z=aV(tA,3,A(ks,_R(_A(r)[1]),_R(_A(r)[2])));mr(r);mr(u);return x(z);))
-       I(r,mr(r))mr(u);return x(0);)   //codes made but no answer: the error stands
+       mr(u);I(r&&!_tP(r)&&_t(r)==tA&&!_n(r),return x(r);)   //declined (op, values or mask): (), as on one thread
+       I(r,mr(r))return x(0);)   //codes made but no answer: the error stands
      mr(u);))
  P(_tP(k)||_n(k)<PGAG_MIN,gaggC(x))
  I code=-1;

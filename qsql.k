@@ -119,7 +119,10 @@ qbyn:{[C;i;it]p:qname it;$[#p 0;`$p 0;qsimple p 1;$[p[1]~,"i";$[in[`i;C];`i;`x];
 / and sort apart; qbyr gives the result's key its name back. The third item is the names, numbered by qnmd;
 / the fourth the given and bare ones, which select by with no columns leaves out of the value columns, as q.
 / qbyh is the hidden names.
-qbyx:{[t;byp]C:cols t;it:qcut byp;ex:{(qname x)1}'it;nm:qbyn[C]'[!#it;it];dv:qnmv[nm;it];nm:qnmd[C;nm;dv];v:{[t;C;e]qfn[C;e]t}[t;C]'ex;hn:qbyh[nm;{[n;e]e~$n}'[nm;ex]];(+((+t),hn!v);hn;nm;nm@&~dv)}
+/ A single by-key that is a function (a name the table lacks that is a global function, as sym is std.k's) is
+/ q's 'rank. One row grouped on the function; from two rows up sym crashed (a list of functions is a train: the
+/ train crash, #92 item 96) and a function that does not fail on the column gave 'rank. A data global is a key.
+qbyx:{[t;byp]C:cols t;it:qcut byp;ex:{(qname x)1}'it;nm:qbyn[C]'[!#it;it];dv:qnmv[nm;it];nm:qnmd[C;nm;dv];v:{[t;C;e]qfn[C;e]t}[t;C]'ex;$[(1=#v)&qfv@*v;`err"rank";];hn:qbyh[nm;{[n;e]e~$n}'[nm;ex]];(+((+t),hn!v);hn;nm;nm@&~dv)}
 qbyh:{[nm;b]{[n;b;i]$[b;n;`$"[",($n),";",($i),"]"]}'[nm;b;!#nm]}   / b: the key is the column of its name
 qbyr:{[r;x]$[(x 1)~x 2;r;iskeyed r;(+(x 2)!. +!r)!. r;r]}   / the by-result's key under the names qbyn gave
 qnull:{$[in[@x;`I`i];0N;in[@x;`F`f];0n;in[@x;`S`s];`;in[@x;`C`c];" ";0N]}

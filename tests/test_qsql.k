@@ -532,5 +532,16 @@ tq[`nestWhereUpd;  "update m:n from select from TNQ where sym=`a";      ([]sym:`
 tq[`nestWhereDel;  "delete from select from TNQ where sym=`a";          0#TNQ];
 tq[`nestWhereParen; "exec n from (update c0:n from TNQ) where sym=`b";  ,2];
 
+/ a by-key that is a function is q's 'rank on a table of any length; a global that is data is a key
+tqx:{[tag;q;want]e:.[{(1b;. qrw x)};,q;{(0b;*"\n"\x)}];hpush[tag;(~e 0)&want~e 1;"FAIL want the error ",want,"  <-  ",q]}
+TFK:([]n:,0)
+QG:42
+tqx[`byFnKey;      "select count i by sym from (select c0:n from TFK)";"'rank"];
+tqx[`byFnKeyAll;   "select by sym from TFK";"'rank"];
+tqx[`byFnKey2;     "select count i by sym from ([]n:1 2)";"'rank"];
+tqx[`byFnKeyUpd;   "update c:sum n by sym from TFK";"'rank"];
+tqx[`byFnKeyExec;  "exec count i by sym from TFK";"'rank"];
+tq[`byDataGlobal;  "select count i by QG from TN";  (+(,`QG)!,,42)!+(,`x)!,,3];
+
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

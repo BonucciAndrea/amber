@@ -85,7 +85,7 @@ A1(len,x(az(xN)))
 U _N(A x/*0*/){X(RE(Lij j-i)RT_E(xn)Rm(_N(xy))RM(_N(_x(xy)))R_(1))}
 // amber 2.7: a number filling the nulls of a float vector, in one loop (0^px went through amend: 770 ms on 10M)
 Z A filF(A x,A y){UC t=_t(x);F a=t==tf?*(CO F*)_V(x):t==ti?(F)(I)_v(x):(F)*(CO L*)_V(x);
- I(t==ti&&(U)_v(x)==0x80000000u,a=NF)I(t==tl&&*(CO L*)_V(x)==NL,a=NF)
+ I(t==tl&&*(CO L*)_V(x)==NL,a=NF)
  y=mut(y);F*RES p=(F*)_V(y);U n=_n(y);F(n,I(p[i]!=p[i],p[i]=a))return y;}
 Y2(fil,RmMA(e2f(fil,x,y))Rt(P(yt>=tdt,et(y))YU(y-au?y:xR)fir(fil(x,enl(y))))RF(P(_t(x)==tf||_t(x)==ti||_t(x)==tl,filF(x,y))K2("{@[y;&^y;:;x]}",x,y))R_(K2("{@[y;&^y;:;x]}",x,y)))
 //Chars against ints or floats share no item: except removes nothing, as 2.3.1, ngn/k and q (find of one in the

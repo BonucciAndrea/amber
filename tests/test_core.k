@@ -454,6 +454,10 @@ t[`fillIntFloats;(0^0n;0^1.5 0n;0^(1;0n);1b^1.5 0n;0N^1.5 0n;0^`a`b!1.5 0n);(0.0
 / other fills of another type still make a generic list, as k; a null int atom becomes the fill
 t[`fillOtherType;(1^0N;0.5^0N;0.5^1 0N;0x00^1.5 0n;`a^1.5 0n);(1;0.5;(1;0.5);(1.5;0x00);(1.5;`a))]
 
+/ ---- an int atom filling float nulls gives its value as a float, -2147483648 too (it gave 0n) ----
+t[`fillFloatMinI32;(-2147483648^0n;-2147483648^0n 1.5;-2147483648^(0n;`a);-2147483648^`a`b!0n 1);(-2147483648.0;-2147483648 1.5;(-2147483648.0;`a);`a`b!-2147483648 1.0)]
+t[`fillFloatIntNull;(0N^0n;0N^0n 1.5;-2147483647^0n;-2147483649^0n);(0n;0n 1.5;-2147483647.0;-2147483649.0)]
+
 / ---- a missing or failing temporal formatter is an error, not the end of the process or a crash ----
 te[`fmtMissing;"$2026.07.30"]
 te[`fmtMissingK;"`k@2026.07.30"]
@@ -1232,7 +1236,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
-hexpect[793]
+hexpect[795]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

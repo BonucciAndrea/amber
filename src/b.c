@@ -186,6 +186,7 @@ Z I ixht(A*p,A x,A y,U k,U m,B e,I l){P(_t(y)!=tA,-1)A s=_A(y)[k],c=_A(y)[k+1];B
  for(U i=0;i<nc&&!r;i++){L ci=gv?ixe(g,i):gl_(g);if(ci<0||ci>=(L)_N(cs))continue;A v=_A(cs)[ci];UC u=_t(v);if(u!=tA&&u!=tS)continue;
   U n=_N(v),nr=all?n:_tz(s)?1:_N(s);for(U j=0;j<nr&&!r;j++){L q=all?(L)j:_tz(s)?gl_(s):ixe(s,j);I(q>=0&&q<(L)n,r=ixhr(p,u==tA?_A(v)[q]:ii(v,(U)q),y,k+2,m,0,e,0,l))}}
  mr(g);return r;}
+//(ixch returns before calling this where its first tests give 0: no f, x not a name, one level. Keep the two in step)
 Z I ixhr(A*p,A x,A y,U k,U m,B f,B e,B t,I l){if(k==m)return f&&(e?ixfd(x,0):_tU(x));UC vt=_t(x);
  if(vt==ts){A*q=gq(x);return q==p||q&&*q&&(l>32||ixhr(p,*q,y,k,m,f,e,1,l+1));}   //a name: the amend goes on in its global
  if(!f&&k+1==m||_tP(x)&&!_tU(x))return 0;if(_tU(x))return 1;
@@ -198,19 +199,28 @@ Z I ixhr(A*p,A x,A y,U k,U m,B f,B e,B t,I l){if(k==m)return f&&(e?ixfd(x,0):_tU
  U c=a?n:g?_N(g):1;for(U i=0;i<c&&!r;i++){L q=a?(L)i:g?ixe(g,i):j;I(q>=0&&q<(L)n,r=ixhr(p,u==tA?_A(v)[q]:ii(v,(U)q),y,k+1,m,f,e,0,l))}
  I(g,mr(g))return r;}
 Z I ixho(A*p,A x,A y,B f,UC d)_(ixhr(p,x,y,0,y==au?0:_t(y)>tm?1:_N(y),f,d==19,1,0))   //from the first level
+//a global where the walk met a symbol (512, ixwk), which can name the variable, or stopped at the first level (0): held
+//(ixfh) where ixho finds a function or the variable on the way; its result, or -1 where not held. Out of ixca and ixcv
+//(not inlined), so that their path for a variable (a local, or a global's key or index found) is as it was
+Z NI I ixch(A*p,A x,A y,A z,UC d,I m){B f=d==14||d==15||d==18||d==19;P(!f&&!_ts(x)&&(y==au||_t(y)>tm||_N(y)==1),-1)P(!ixho(p,x,y,f,d),-1)   //one level, no f: none (ixhr)
+ return ixfh(p,x,y,z,d,m?f:1);}
+//a global where an amend by name can follow ixst (ixwk's +256), or as for ixch: else assigned by ixag (as before)
+Z I ixcg(A*p,A x,A y,A z,UC d,CO UC*kd,CO L*ix,I m){I(m==512,I r=ixch(p,x,y,z,d,512);P(r>=0,r)m=0)I(!m,I r=ixch(p,x,y,z,d,0);P(r>=0,r))
+ *p=ixag(p,x,y,z,d,kd,ix,m&255,0);return 0;}
 Z NI I ixcv(A*p,A x,A y,A z,UC d,B g,UC*kd,L*ix,I m,I n){B f=d==14||d==15||d==18||d==19,o;A q=0;
  if(!n){if(m>0&&m<256){I(f||kd[m-1]==3,q=ixit(x,y,kd,ix,(U)m,&o))}   //a row with more below (where the walk stopped, or did not start):
-  else if(m?m>0&&kd[(m&255)-1]==3:_t(x)==tM){U w=m&255;q=ixit(x,y,kd,ix,w,&o);I(q,m=w?(I)w:1)}}   //no symbol is met, so no global is amended by name
+  else{I(m==512,I r=ixch(p,x,y,z,d,512);P(r>=0,r)m=0)   //(512: ixwk met a symbol, which can name the variable: held, or as before)
+   if(m?m>0&&kd[(m&255)-1]==3:_t(x)==tM){U w=m&255;q=ixit(x,y,kd,ix,w,&o);I(q,m=w?(I)w:1)}}}   //no symbol is met, so no global is amended by name
  if(q){B h=f&&g;I(h,RC_INC(x))A r=ixv2(d,q,z);I(o,mr(q))   //f, or at a table's row: the verb first, on the item
   if(h&&*p!=x){P(!r,mr(x);4)I(*p,mr(*p))*p=x;}E(I(h,(V)RC_DECV(x))P(!r,4))   //f set the variable: if f failed, it keeps that; else
   B rw=kd[m-1]==3;A u=0;A w=ixst(x,y,kd,ix,0,(U)m,rw?av:0,r,rw?0:&u);I(rw,mr(r))P(!w&&u,*p=u;4)*p=w;return 0;}   //the assignment is made on x, as before (held). ixst takes r,
  //but for a row (d8); a result that does not fit (a column's count) is its error, and x is put back (u)
  I(f&&!n&&m>0&&kd[(m&255)-1]==9,mr((A)ix[(m&255)-1]))   //no item read: the find ixwk made for a list of keys (9) is not passed to ixst
  P(m<0,-m)I(f&&!n,m=_t(x)==tm&&!_tMT(_y(x))?-3:-ixck(x,y,0,z,!d))P(m<0,-m)   //ixwk's or ixck's error, and *p untouched;
- P(g&&!m&&ixho(p,x,y,f,d),ixfh(p,x,y,z,d,1))P(m>255||g&&!m,*p=ixag(p,x,y,z,d,kd,ix,m&255,0);0)A u=0;x=ixas(x,y,z,d,kd,ix,m,&u);P(!x&&u,*p=u;4)*p=x;return 0;}   //else 0; 4: the verb's error, and *p as it was (or as f set it)
+ P(m>255||g&&!m,ixcg(p,x,y,z,d,kd,ix,m))A u=0;x=ixas(x,y,z,d,kd,ix,m,&u);P(!x&&u,*p=u;4)*p=x;return 0;}   //else 0; 4: the verb's error, and *p as it was (or as f set it)
 Z NI I ixca(A*p,A x,A y,A z,UC d,B g){UC kd[8];L ix[8];I n=g&&ixgs?ixgn(p):0;P(n>1,3)
- I m=n?_t(x)==tm&&!_tMT(_y(x))?-3:-ixck(x,y,0,z,!d):ixwk(x,y,z,!d,g,kd,ix);B f=d==14||d==15||d==18||d==19;I(m==512,P(ixho(p,x,y,f,d),ixfh(p,x,y,z,d,f))m=0)P(d,ixcv(p,x,y,z,d,g,kd,ix,m,n))P(m<0,-m)   //a verb, which can fail: ixcv
- P(g&&!m&&ixho(p,x,y,0,0),ixfh(p,x,y,z,0,1))*p=m>255||g&&!m?ixag(p,x,y,z,0,kd,ix,m&255,0):ixas(x,y,z,0,kd,ix,m,0);return 0;}   //: assigns z, which ixwk checked fits
+ I m=n?_t(x)==tm&&!_tMT(_y(x))?-3:-ixck(x,y,0,z,!d):ixwk(x,y,z,!d,g,kd,ix);P(d,ixcv(p,x,y,z,d,g,kd,ix,m,n))P(m<0,-m)   //a verb, which can fail: ixcv
+ P(m>255||g&&!m,ixcg(p,x,y,z,0,kd,ix,m))*p=ixas(x,y,z,0,kd,ix,m,0);return 0;}   //: assigns z, which ixwk checked fits
 Z NI __attribute__((cold)) V noupd(A*s){mr(*s);*s=err0("noupdate");}
 //g f:y, f a global that # _ @ or . calls (bM), which can set g: g held while f runs, as for g[i]f:y (ixfh); 0: f's error
 Z NI __attribute__((cold)) I bmh(A*p,A x,A y,UC d){y=v2[d](_R(x),y);mr(x);P(!y,0)I(*p,mr(*p))*p=y;return 1;}
@@ -237,7 +247,7 @@ AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,d--,es8(a,n))/*d: per-thread VM recursio
    E(b++;UC n=m;A x=f;s+=n;U(*s=x((c==ba?_8:prj)(x,s-n+1,n)))))
   C6(bm,bM,bx,bX,by,bY,A*p=(c&1?gv:l)+BG,x=*p;I(__builtin_expect(c&1&&ray_rc_sync,0),noupd(s);goto l)  //          |      |                       |
    U(x,*s=ev(*s))A y=*s++;                                                                           //          |      |                       |
-   I(c==bm||c==bM,UC d_=*b++;I(c==bM&&(d_-14<2u||d_-18<2u),U(bmh(p,x,y,d_),*--s=0))E(y=v2[d_](x,y);U(y,*--s=0)*p=x(y)))   //mod asgn  |bm,i,d|.. x -> ..             |vars[i]:dyads[d][vars[i];x]
+   I(c==bm||c==bM,UC d_=*b++;I(__builtin_expect(c==bM&&(d_-14<2u||d_-18<2u),0),U(bmh(p,x,y,d_),*--s=0))E(y=v2[d_](x,y);U(y,*--s=0)*p=x(y)))   //mod asgn  |bm,i,d|.. x -> ..             |vars[i]:dyads[d][vars[i];x]
    E(UC d_=*b++;I e_=ixca(p,x,y,*s,d_,c&1);x=e_?ixer(e_):*p;mr(*s);I(c==bx||c==bX,mr(y);U(x,*s=0)s++)        //ind asgn  |bx,i,d|.. z y -> ..           |vars[i]:  .[vars[i];y;dyads[d];z]
                                     E(U(x,*s=y(0))U(*s=dot(x,y)))))                                 //ind asgn  |by,i,d|.. z y -> .. r         |vars[i]:r:.[vars[i];y;dyads[d];z]
   C(bG,A x=*--s=gv[BG];U(x,ev0())xR)                                                                //get global|bG,i,i|.. -> .. globals[i]    |

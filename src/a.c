@@ -1055,6 +1055,12 @@ AA(a8,/*10..0*/A x=*a,y=a[1];
 //level puts back the item it took out, and *u is the value as it was (or a copy of it), so the variable can be put back
 Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u);
 Z A rbl(A),d3(A,A,A),a5(A,A,A,A,A),d3t(A,A,A),d4t(A,A,A,A),dt3(A,A,A),dt4(A,A,A,A);
+//a key (1) at the last level, or a table's column (2) in the table flipped to a dict (tb): inlined in each, so that a
+//dict's has nothing of the table's (its old row count, kept across the amend for tfl)
+Z __attribute__((always_inline)) inline A ixsd(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u,B tb/*10....00..*/)_(x=mut(x);
+ I(ix[k]==_N(xx),u=0;A s=_tt(y)?y:_tA(y)?_A(y)[k]:ii(y,k);PSH(xx,_R(s));PSH(xy,ie(f,xy)))   //a key not there (the last level): added, as a8 does
+ A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z,u);P(!v,u&&*u?(xy=*u,*u=tb?flp(x):x,(A)0):x(0))xy=v;x)
+Z NI A ixtc(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u/*10....00.*/)_(U r=xN;x=ixsd(flp(x),y,kd,ix,k,m,f,z,u,1);x?tfl(x,r):0)   //a column (tfl)
 A ixst(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u/*10....00.*/)_(UC t=kd[k];P(!t,ixsl(x,y,kd,ix,k,m,f,z,u))
  P(t==3,A w=k?drp(k,yR):yR;B s=k&&!_tP(x)&&_t(x)==tS;x=USQ(s?z?d4t(x,w,f,z):d3t(x,w,f):z?d8(A8(x,w,f,z),4):d8(A8(x,w,f),3));mr(w);x)   //d8, not d4: a symbol below
   //the first level names a global; a symbol list there is data, and so are its items (d4t, d3t)
@@ -1066,8 +1072,7 @@ A ixst(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u/*10....00.*/)_(UC t=kd[k];P(
   //then an index into its value, the first value nulled (as for d4's projection, ie gives the nulled first value for :), which keeps its count
  P(t>3,I(t==5,x=flp(x))x=mut(x);A s=_tA(y)?_A(y)[k]:ii(y,k),v=prj(z?ax(dt4,4):ax(dt3,3),(A[]){GAP,drp(k+1,yR)},2);PSH(xx,_R(s));PSH(xy,ie(v,xy));   //a key to add above the last level:
   A w=xy;xy=au;w=z?a8(A8(w,az(ix[k]),v,f,z),5):a8(A8(w,az(ix[k]),v,f),4);mr(v);P(!w,x(0))xy=w;t==5?flp(x):x)   //the rest as a8 does it (d4's projection), without finding the key again
- U r=0;I(t==2,r=xN;x=flp(x))x=mut(x);I(ix[k]==_N(xx),u=0;A s=_tt(y)?y:_tA(y)?_A(y)[k]:ii(y,k);PSH(xx,_R(s));PSH(xy,ie(f,xy)))   //a key not there (the last level): added, as a8 does
- A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z,u);P(!v,u&&*u?(xy=*u,*u=t==2?flp(x):x,(A)0):x(0))xy=v;t==2?tfl(x,r):x)   //a column: in the table flipped to a dict (tfl)
+ P(t==2,ixtc(x,y,kd,ix,k,m,f,z,u))ixsd(x,y,kd,ix,k,m,f,z,u,0))   //a column: in the table flipped to a dict (ixtc)
 Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u)_(U i=(U)ix[k];I(_t(x)==tE,x=gZ(x))P(_t(x)==tM,x=ixsl(blw(x),y,kd,ix,k,m,f,z,u);I(!x&&u&&*u,*u=sqz(*u))x?sqz(x):0)x=mut(x);
  P(k+1==m,A r=!f?z:z&&f==av?_R(z):USQ(z?_8(f,A8(ii(x,i),_R(z)),2):_8(f,A8(ii(x,i)),1));   //the item at the last place: f applied to it (: needs not read it)
   I(__builtin_expect(kd[k]==2,0)&&r&&_n(x)>1&&!_tP(r)&&_tT(r)&&_N(r)!=_N(_A(x)[!i]),mr(r);r=el0())   //a table's column (2): a list of another count does not fit

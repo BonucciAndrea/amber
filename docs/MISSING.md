@@ -282,3 +282,8 @@ behaviour shows up as a test failure rather than a silent regression.
 - **An amend that leaves no column of a table a list fills each to the table's row count**
   (`` t[`a]:9 `` with `t:([]a:1 2 3)` gives `9 9 9`; an empty table stays empty), as `update` does;
   q gives `'rank` for these (`` t[`a]:9 ``, `` @[t;`a;:;9] ``, `` @[t;`a`b;:;9] ``).
+- **A table joined to a table of other columns is `'domain`** (issue #19): `` (+`a!,1 2),+`b!,3 4 ``,
+  and `` (+`a!,1 2),,`b!3 `` (the row enlisted, a one-row table). A row dict of other columns makes
+  a list of dicts: `` (+`a!,1 2),`b!3 ``. q gives `'mismatch` for all three
+  (`` ([]a:1 2),([]b:3 4) ``, `` ([]a:1 2),enlist(enlist`b)!enlist 3 ``, `` ([]a:1 2),(enlist`b)!enlist 3 ``),
+  and ngn/k a list of dicts.

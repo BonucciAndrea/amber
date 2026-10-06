@@ -793,6 +793,9 @@ t[`dictRepeatKey;((`a`a!1 2)+`a!10;(`a`a!1 2)*`b!3);(`a`a!11 2;`a`a`b!1 2 3)]
 t[`dictEachJoin;(`a`b!1 2),'(1 2!3 4);(`a;`b;1;2)!1 2 3 4]
 t[`dictSameKeys;((`a`b!1 2)+`a`b!10 20;(`a`b!1 2)|`a`b!0 5;(`a`b!1 2.0)%`a`b!2 4);(`a`b!11 22;`a`b!1 5;`a`b!0.5 0.5)]
 t[`dictOneSideDiv;((`a!1)%`b!2;(`a`b!1 2)%`b`c!4 8;(`a!1.5)%`b!2);(`a`b!1 2;`a`b`c!(1;0.5;8);`a`b!(1.5;2))]   / % passes a one-sided value through, as q (it took 1%y: `a`b!1.0 0.5)
+t[`dictDisjointTypes;.[.:;,"((`a!1)|`b!`y;(`a!1)&`b!`y;(`a!1)%`b!`y;(`a!`x)|(,`b)!,1 2;((0#`)!!0)|(,`)!,`a;(`a`b!1 2)%`c!`y;(`a!2026.01.01)+`b!2026.01.02;(`a!12:00)|`b!13:00)";{x}];(`a`b!(1;`y);`a`b!(1;`y);`a`b!(1;`y);`a`b!(`x;1 2);(,`)!,`a;`a`b`c!(1;2;`y);`a`b!2026.01.01 2026.01.02;`a`b!12:00 13:00)]   / no key on both: no value meets another, so the types need not meet, as ngn/k (it was 'type; q passes the dates, times and (`a!`x)|(,`b)!,1 2 through, and is 'type for the int/symbol ones)
+t[`dictDisjointShared;*"\n"\.[.:;,"(`a`b!1 2)|`b`c!`x`y";{x}];"'type"]   / a key on both still meets the verb
+t[`dictDisjointNeg;.[.:;,"`i$(`a!2026.01.01)-`b!2026.01.02";{x}];`a`b!9497 -9498]   / a right-only value is negated, a date too, as q
 
 / ---- an error with a computed message reads its text before releasing it ----
 t[`errComputedText;*"\n"\.[{`err "ab",x};,"cd";{x}];"'abcd"]
@@ -1256,7 +1259,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
-hexpect[804]
+hexpect[807]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

@@ -42,8 +42,8 @@ U urnk(A);
 #define u0(v) (_tA(v)&&!_n(v)&&_t(_x(v))==tC&&!_n(_x(v)))
 Z A dkey(I c,A2 f,A x,A y/*00f01*/)_(B e=!_n(xx)&&!_n(yx);P(e&&u0(yx)&&u0(yy),y(_R(x)))P(e&&u0(xx)&&u0(xy),y)
  P(e||c<6&&mtc_(xx,yx),A v=c<6?f(xy,_R(yy)):e2f(f,xy,_R(yy));y(v?am(_R(e&&u0(xx)?yx:xx),v):0))
- A v=K("{[c;kx;vx;ky;vy]yo:$[#kx;&^kx?ky;!#ky];iy:$[#ky;ky?kx;(#kx)#0N];iy:$[#kx;@[iy;&~(kx?kx)=!#kx;:;0N];iy];b:&~^iy;xo:&^iy;f:(+;-;*;%;&;|;,)c;u:c>1;r:$[c=6;f'[vx b;vy iy b];f[vx b;vy iy b]];(kx,ky yo)!($[c<3;f[vx xo;u];vx xo],r,$[c<3;f[u;vy yo];vy yo])@<xo,b,(#kx)+!#yo}",
-       az(c),_R(xx),_R(xy),_R(yx),_R(yy));y(v))
+ A v=K("{[c;kx;vx;ky;vy]yo:$[#kx;&^kx?ky;!#ky];iy:$[#ky;ky?kx;(#kx)#0N];iy:$[#kx;@[iy;&~(kx?kx)=!#kx;:;0N];iy];b:&~^iy;xo:&^iy;f:(+;-;*;%;&;|;,)c;u:c>1;r:$[c=6;f'[vx b;vy iy b];#b;f[vx b;vy iy b];()];(kx,ky yo)!($[c<3;f[vx xo;u];vx xo],r,$[c<3;f[u;vy yo];vy yo])@<xo,b,(#kx)+!#yo}",
+       az(c),_R(xx),_R(xy),_R(yx),_R(yy));y(v))   //no key on both: f is not applied to the two empty slices (it was 'type for (`a!1)|`b!`y, as no value meets another)
 //two dicts (x and y as in e2f; c: dkey's verb, or -1)
 Z A e2d(I c,A2 f,A x,A y/*0f01*/)_(P(_n(xx)&&_n(yx)&&urnk(xx)-urnk(yx),ed(y))
   P(c>=0&&!_tM(xx)&&!_tM(yx),dkey(c,f,x,y))

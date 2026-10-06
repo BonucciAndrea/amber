@@ -951,6 +951,7 @@ syntax and type-aware arithmetic:
 ```q
 2026.07.30                      / date  (days since 2000.01.01)
 10:00:00.000 + 00:00:05.000     / time + time -> 10:00:05.000
+-10:00:00.000                   / a negative time, as q; -t and neg t negate a time
 2026.08.15 - 2026.07.30         / date - date -> 16 (days) ; date+n -> date
 2026.07.30D09:30:00.000000000   / timestamp (ns since 2000.01.01)
 year 2026.07.30                 / accessors: year month day dow  ·  thh tmm tss (time)

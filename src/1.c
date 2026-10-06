@@ -1,6 +1,6 @@
 #include<math.h> // Amber - GNU AGPLv3 - see LICENSE and NOTICE
 #include"a.h"
-X1(neg,RE(neg(gZ(x)))Rilc(az((L)(0-(W)gl(x))))Rf(af(-gf(x)))RC(neg(cG(x)))RmMA(e1f(neg,x))RB(neg(cG(x)))R_(et(x))
+X1(neg,RE(neg(gZ(x)))Rilc(az((L)(0-(W)gl(x))))Rf(af(-gf(x)))RC(neg(cG(x)))RmMA(e1f(neg,x))RB(neg(cG(x)))R(ttm,I v=(I)x;P(v<-2147483647,ez0())atm(-v))R_(et(x))   //a time negates, as q (#83 Q8; it was 'type); -596:31:23.648 has no negative in 32 bits: 'limit
  RGHILF(U n=xn;I(xw-3<3&&minfZ(0,x)==(L)(~0ull<<((8<<(xw-3))-1)),x=ct(tH+xw-3,x))A y=MINE(x)?x:an(n,xt),z=x-y?x:au;_at(y)=0;n=((n<<xw-3)+31&~31)>>xw-3;
   Mz(X(C(tG,F(n,yg=-xg))C(tH,F(n,yh=-xh))C(tI,F(n,yi=(I)(0u-(U)xi)))C(tL,F(n,yl=(L)(0-(W)xl)))D(F(n,yf=-xf))))y))
 X1(not,RmMA(e1f(not,x))RU(x(ai(x==au)))

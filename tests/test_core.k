@@ -868,6 +868,13 @@ t[`strandMinusBigInt;ER"99999999999999999999-0.5";"'limit"]   / an int literal p
 t[`temporalKept;(2026.07.30+1;1+2026.07.30;2026.07.30-1;2026.07.30-2026.07.29;10:00:00.000+00:00:01.000;2026.07.30&2026.07.29;2026.07.30<2026.07.31)~(2026.07.31;2026.07.31;2026.07.29;1;10:00:01.000;2026.07.29;1);1]
 t[`temporalType;ER'("2026.07.30+2.3";"2026.07.30*2";"2026.07.30%2";"2!2026.07.30";"2026.07.30+2026.07.30");5#,"'type"]
 t[`temporalNull;ER"2026.07.30+0N";"'domain"]
+/ a - before a time literal is part of it, as q and as -10 for an int (#83 Q8; it was the verb on the time, 'type, so a
+/ negative time's text did not read back), down to -596:31:23.648 as "T"$ reads; a strand of times takes one; dates keep the verb
+tv[`timeNegLiteral;"(`i$-10:00:00.000;`i$-00:00:00.001;`i$-596:31:23.648;`i$-00:00:00.000;@-10:00:00.000;-10:00~0-10:00:00.000)";(-36000000;-1;-2147483648;0;`t;1)]
+tv[`timeNegStrand;"((10:00:00.000 -10:00:00.000)~(10:00:00.000;0-10:00:00.000);(-10:00:00.000 -11:00:00.000 12:00:00.000)~(0-10:00:00.000;0-11:00:00.000;12:00:00.000))";1 1]
+/ -x of a time negates it, as q (it was 'type); -596:31:23.648 has no negative in 32 bits, so it is 'limit
+tv[`timeNeg;"({-x}10:00:00.000;-(0-10:00:00.000);-(10:00:00.000;0-01:00:00.000);-00:00:00.000)~(0-10:00:00.000;10:00:00.000;(0-10:00:00.000;01:00:00.000);00:00:00.000)";1]
+t[`timeNegErrors;ER'("-596:31:23.649";"-(-596:31:23.648)";"-1000:00:00.000";"-10:60:00.000";"-2026.07.30";"{-x}2026.07.30D00:00:00.000000000");("'limit";"'limit";"'limit";"'parse";"'type";"'type")]
 / a date plus or minus an int past 32 bits of days is 'limit, as the literal (it wrapped: 2026.07.30+2147483647 was -5877584.01.18)
 t[`dateArithLimit;ER'("2026.07.30+2147483647";"2147483647+2026.07.30";"5881610.07.11+1";"(`mkd -2147483648)-1";"2026.07.30+9223372036854775807";"2026.07.30+1 2147483647");6#,"'limit"]
 t[`dateArithTop;`i$(5881610.07.10+1;2026.07.30-2147483647;(`mkd -2147483647)-1;2026.07.30+-9707);2147483647 -2147473940 -2147483648 0]
@@ -1229,7 +1236,7 @@ tv[`vcondSplice;"?[2 3 4;(0;1);9]";9 3 4]
 / the core's lambda uses no global name: a user's isat (or the harness's own t) is not called
 tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 
-hexpect[791]
+hexpect[795]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

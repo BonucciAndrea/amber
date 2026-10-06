@@ -344,7 +344,8 @@ A dltC(A x){
 Z A fredslow(L d,A x,A y){A t=d==18?cmprC(x,_R(y)):v2[d](x,_R(y));P(!t,0)A dv=_1(aw+1,ADD);A r=_1(dv,t);mr(dv);return r;}
 // amber 2.2: `#'=x` (count per group) as one counting pass over a byte, short
 // or char vector; keys in first-appearance order and counts squeezed to the
-// narrowest width, exactly as `=x` then `#'` produce them. Anything else runs
+// narrowest width, as `=x` then `#'` produce them, but for the keys' attribute:
+// = marks those of an `s, `u or `g list, and these carry none. Anything else runs
 // the unfused pair. Reached through fredC with code 19 (see b.c fus()).
 Z A fcntC(A x){UC tx=_t(x);
  I(!_tP(x)&&(tx==tG||tx==tC),U n=xn;CO UC*p=xV;U c0[256]={0},c1[256]={0},c2[256]={0},c3[256]={0};U i=0;

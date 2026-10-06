@@ -535,7 +535,18 @@ ta[`a510;"attr asc enlist 1 2";"`s"]   / asc one-item general list
 ta[`a511;"attr asc (\"ba\";\"a\";\"ab\")";"`s"]   / asc strings
 ta[`a512;"r~`s#r:asc (\"ba\";\"a\";\"ab\")";"1"]   / asc strings: `s# agrees
 ta[`a513;"{asc x;attr x}()";"`"]   / asc () leaves () alone
+ta[`a514;"attr key group `s#1 1 2";"`s"]   / group keys of s
+ta[`a515;"attr key group `u#1 2 3";"`u"]   / group keys of u
+ta[`a516;"attr key group `g#2 1 2";"`u"]   / group keys of g
+ta[`a517;"attr key group `p#2 2 1";"`"]   / group keys of p
+ta[`a518;"attr key group `s#`a`a`b";"`s"]   / group keys of s syms
+ta[`a519;"attr key group `s#2001.01.01 2001.01.01 2001.01.02";"`s"]   / group keys of s dates
+ta[`a520;"(key group `s#1 1 2)~1 2";"1"]   / group keys of s data
+ta[`a521;"attr value group `s#1 1 2";"`"]   / group values of s
+ta[`a522;"attr key group `s#1 2!4 3";"`"]   / group of s dict
+ta[`a572;"attr key group `a`b`c!`s#1 1 2";"`s"]   / group of dict, s values
+ta[`a573;"attr key group `a`b`c!`g#2 1 2";"`u"]   / group of dict, g values
 
-hexpect[514]
+hexpect[525]
 hreport"AMBER ATTRIBUTES vs q"
 $[FAILN;`exit 1;]

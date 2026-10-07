@@ -179,6 +179,7 @@ t[`pjNulls;((+pj[+`k`a!(1 2 3;0N 20 30);xkey[`k;+`k`a!(1 3;1 2)]])`a;(+pj[+`k`a!
 / Digest #45: a column t lacks takes kt's values as they are; key columns must agree in type
 t[`pjNewColKinds;{(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`c!(1 3;x)]])`c}'("xy";(10 20;30 40);`p`q);("x",(`c$0),"y";(10 20;!0;30 40);`p``q)]
 t[`pjKeyType;.[pj;(+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`b!(`x`y;5 6)]);{5#x}];"'type"]
+t[`pjCharsBoth;{5#.[pj;(+`k`c!(1 2 3;"abc");xkey[`k;+`k`c!x]);{x}]}'((1 3;"xy");(!0;""));2#,"'type"]   / as q's + of chars; were 217 98 220 and 97 98 99 (ints)
 t[`pjNewColFloat;(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`b!(1 3;1.5 2.5)]])`b;1.5 0.0 2.5]
 t[`ej;#ej[`s;+`s`p!(`a`b`a;1 2 3);+`s`x!(`a`b`d;10 20 30)];3]
 t[`ejAllMatches;ej[`s;+`s`n!(`a`b;1 2);+`s`v!(`a`a`b;10 11 20)];+`s`n`v!(`a`a`b;1 1 2;10 11 20)]

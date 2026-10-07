@@ -211,8 +211,9 @@ uj:{[x;y]$[iskeyed x;ujk[x;y];[c:distinct cols[x],cols y;+c!{[x;y;c]gc[x;#x;y;c]
 / y has no row). y's key columns go by name; other key columns are 'domain (q: 'mismatch), an unkeyed y is 'type, as q
 ujk:{[x;y]$[`M=@. x;0;`err"nyi"];$[iskeyed y;$[`M=@. y;0;`err"nyi"];`err"type"];k:!x;c:!+k;$[(c@<c)~d@<d:!+!y;0;`err"domain"];u:?k,+c#+!y;xkey[c;lj[+(+u),+x u;y]]}
 / pj: a column t has gets kt's matching values added (0 where none); one t lacks just takes them, with a zero of its
-/ own type where nothing matches (0+"xy" was ints, a nested column broke); key columns must agree in type (digest #45)
-pj:{[t;kt]kc:keys kt;td:+t;$[&/(@'(+!kt)kc)=@'td kc;0;`err"type"];p:jprobe[kc;+!kt;td];i:(#p 0)^(p 0)?p 1;vt:value kt;vc:cols vt;+td,vc!{[i;t;vt;c]v:vt c;$[c in !t;[z:$[`F~@v;0.0;0];a:t c;r:a+z^(v,z)@i;$[|/^a;@[r;&^a;:;*0#r];r]];pjn[v;i]]}[i;td;vt]'vc}
+/ own type where nothing matches (0+"xy" was ints, a nested column broke); key columns must agree in type (digest #45);
+/ a char column in both is 'type, as q's + of chars (was ints)
+pj:{[t;kt]kc:keys kt;td:+t;$[&/(@'(+!kt)kc)=@'td kc;0;`err"type"];p:jprobe[kc;+!kt;td];i:(#p 0)^(p 0)?p 1;vt:value kt;vc:cols vt;+td,vc!{[i;t;vt;c]v:vt c;$[c in !t;[z:$[`F~@v;0.0;`C~@v;$[`C~@t c;`err"type";0];0];a:t c;r:a+z^(v,z)@i;$[|/^a;@[r;&^a;:;*0#r];r]];pjn[v;i]]}[i;td;vt]'vc}
 pjn:{[v;i]$[`F~@v;0.0^(v,0.0)@i;`I~@v;0^(v,0)@i;`C~@v;(v,`c$0)@i;`A~@v;(v,,0#*v)@i;(v,*0#v)@i]}
 ejk:{$[`A~t:@x;$[#x;$[(u:@*x)in`d`t`n;u;`C~u;`str;`A];`A];t]}   / ej: a key column's kind, its type; a general list (how dates, times and strings are held) has its first item's, else `A, which joins any
 ejK:{$[`A~@x;$[1=#?@'x;$[`str~k:ejk x;`C;k];`A];@x]}   / on a mismatch only: a general list's kind if all its items agree, else `A (a mixed column joins any); strings meet chars as before

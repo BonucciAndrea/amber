@@ -2,7 +2,7 @@
 A1(rs0,rsz(0,x))
 ZN A flt(A x,A y,B b/*01b*/)_(P(xK-1,er(y))Ym(K("{(!y)[i]!(.y)i:&z~/:x@.y}",xR,y,ai(b)))
  x=Ny(x1(yR));x=xN?Ny(cL(x)):x(emp(tG));P(!xtt&&xN-yN,el(x(y)))A z=rs0(yR);F(yN,L n=gl(ii(x,i));B(b&&n-(U)n,z=ed(z))Fj(b?n:!n,PSH(z,ii(y,i))))x(y(z)))
-V cyc(V*a,U m,U n){Q(m);W(2*m<=n,MC(a+m,a,m);m*=2)I(n>m,MC(a+m,a,n-m))}
+V cyc(V*a,N m,N n){Q(m);W(2*m<=n,MC(a+m,a,m);m*=2)I(n>m,MC(a+m,a,n-m))}   //m and n in bytes, 64 bits: in 32, 2^31 bytes or more wrapped (a crash) and 2^32 were cut (most of the result left unwritten)
 Z V cpyB(W*x,U j,CO W*y,U k,U n) {P(!n)x+=j>>6;y+=k>>6;j&=63;k&=63; // x[j..j+n] = y[k..k+n] (bits; from upstream ngn/k fe213831..78383dd3)
  I(j,W a=*y>>k;I(k&&n>64-k,a|=y[1]<<64-k);*x=(*x&(1ULL<<j)-1)|a<<j;P(n<=64-j)++x;k+=64-j;y+=k>>6;k&=63;n-=64-j) // align x
  I(!k,MC(x,y,n+7>>3))E(W a=*y++>>k,b;F(n>>6,b=*y++;*x++=a|b<<64-k;a=b>>k);I(n&63,b=(n&63)>64-k?*y:0;*x++=a|b<<64-k))}
@@ -54,10 +54,10 @@ Z A kct(A x,A y/*10*/)_(P(!_tM(yx),et(x))A k=Nx(kcl(xx,yx)),v=kcl(xy,yy);P(!v,mr
 A2(cat10,
  XE(cat10(gZ(x),y))
  YE(y=gZ(yR);y(cat10(x,y)))
- P(xtB&&ytB,U m=xn,n=yn,d=m&63;x=aa(m+n,x);P(!d,MC(xV+(m>>3),yV,n+63>>6<<3);x)
+ P(xtB&&ytB,U m=xn,n=yn,d=m&63;P(m+n<m,ez(x))x=aa(m+n,x);P(!d,MC(xV+(m>>3),yV,n+63>>6<<3);x)
   L*a=xL+(m>>6),*b=yL,v=*a&~(~0ull<<d);F(n+63>>6,v|=(W)*b<<d;*a++=v;v=(W)*b++>>64-d;)*a=v;x)
  P(xtT&&ytT,P(!yn,x)P(!xn,x(yR))P(xt-yt,P(xtZ&&ytZ,yR;N(sup(&x,&y));cat11(x,y))cat11(blw(x),blw(yR)))P(xtB||ytB,en(x))
-  U m=xn,n=yn,w=xw-3;x=aa(m+n,x);
+  U m=xn,n=yn,w=xw-3;P(m+n<m,ez(x))x=aa(m+n,x);   //a count past 32 bits: 'limit, as take's (it wrapped: a crash)
   MC(xV+((W)m<<w),yV,(W)n<<w);I(ytA,mRa(y))x)
  P(xtm&&ytm,_tM(xx)?!_tM(xy)?en(x):!_tM(yx)?et(x):!_tM(yy)?en(x):kct(x,y):a4(x,yx,av,yy))   //keyed tables: kct (keys a table, values not: 'nyi, as before)
  Xmt(P(xtm&&_tM(xx)&&(ytM?!_tM(yx):ytT&&!yn),ytA?x:et(x))cat10(enl(x),y))   //a keyed table and an unkeyed one, either way round: 'type, as q (issue #19); with an empty list, as q: kt,() and (),kt are kt, a typed one 'type
@@ -65,7 +65,7 @@ A2(cat10,
  P(xtM||ytM,P(!yN,x)P(!xN,x(yR))P(xtT||ytT,x=N(blw(x));y=Nx(blw(yR));cat11(x,y))P(!xtM||!ytM,et(x))P(!mtc_(xx,yx),ed(x))A z=e2f(cat,xy,_R(yy));x(z?aM(_R(xx),z):0))Q(0);0)
 A2(cat11,y(cat10(x,y)))
 A2(cat,/*01*/P(!_tP(x)&&_t(x)==tm&&_at(x)==1,y(et0()))P(!_tP(x)&&_t(x)==tA&&!_n(x)&&_t(xx)==tC&&!_n(xx)&&!_tP(y)&&_t(y)<tM,I(_t(y)==tA&&!_n(y)&&_at(y)-_at(x),y=mut(y);_at(y)=_at(x))y)   /*2.7: (),y is y, but ()'s attribute when y is empty too, as q; not 0#,1 2 (its prototype joins)*/cat11(xR,y))   //2.7: a dict made `s takes no more keys, as in q ('type)
-A2(psh,/*11*/Q(xtMT);U n=xN;P(!n,enl(x(y)))
+A2(psh,/*11*/Q(xtMT);U n=xN;P(!n,enl(x(y)))P(!~n,y(ez(x)))   //no room for one more in 32 bits: 'limit
  P(xtE,psh(gZ(x),y))   //a range has no room to push into: its items do (sup below keeps it a range, so it looped)
  P(xtG&&yti&&yv==(G)yv||xtC&&ytc,apc(x,yv))
  P(xtH&&yti&&yv==(H)yv ,x=aa(n+1,x);xH[n]=yv;x)

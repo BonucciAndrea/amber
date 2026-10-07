@@ -276,10 +276,14 @@ A4(ara,/*1000*/Q(xtZC)Q(ytZC)Q(ztv)Q(0xcf&1<<zv)Q(utzZ||utcC)
 //
 // Only the like-typed float and 64-bit-int cases are taken natively; amber.k
 // guards the call so anything else keeps the old k expression.
+// A range (!n, 1+!n: tE, which holds its two ends) passes amber.k's `I guard, so on the 'type path of this kernel
+// and cvm's it goes as its items and the kernel runs again; anything else is still 'type
+Z A rgE(A x,A1*f){A*a=_A(x);P(_t(a[0])-tE&&_t(a[1])-tE,et(x))A p=_t(a[0])==tE?gZ(_R(a[0])):_R(a[0]),q=_t(a[1])==tE?gZ(_R(a[1])):_R(a[1]);mr(x);
+ P(!p||!q,mr(p);mr(q);0)A y=aA(2);_A(y)[0]=p;_A(y)[1]=q;return f(y);}   //out of memory: 0, as the kernels below
 A wsmC(A x){
  if(_t(x)!=tA||_n(x)!=2) return et(x);
  A*a=_A(x);A p=a[0],q=a[1];U n=_n(p);
- if(_n(q)!=n) return et(x);
+ if(_n(q)!=n) return rgE(x,wsmC);
  if(_t(p)==tF&&_t(q)==tF){F r=par_bdot_f64((CO F*)_V(p),(CO F*)_V(q),n);mr(x);return af(r);}
  // ints: only a 64-bit list can hold 0N, so two narrower ones are k's +/x*y and one is widened; a null on either side gives 0N, so
  // amber.k's wsum knows to take the pairs instead (an int 0N*y wraps, it doesn't stay null) - digest #43
@@ -289,7 +293,7 @@ A wsmC(A x){
   for(;i+2<=n;i+=2){L a0=wa[i],a1=wa[i+1],b0=wb[i],b1=wb[i+1];wz|=(a0==NL)|(a1==NL)|(b0==NL)|(b1==NL);w0+=(W)a0*(W)b0;w1+=(W)a1*(W)b1;}
   for(;i<n;i++){L a0=wa[i],b0=wb[i];wz|=(a0==NL)|(b0==NL);w0+=(W)a0*(W)b0;}
   mr(wp);mr(wq);return al(wz?NL:(L)(w0+w1));}
- return et(x);}
+ return rgE(x,wsmC);}
 
 // `cvm (x;y) -- cov, scov and cor's sums in one kernel: (sxy;sxx;syy;n), centred, over the pairs with no
 // null, in two fused passes and no temporaries. amber.k's cov was avg[x*y]-avg[x]*avg y, which lost digits
@@ -309,7 +313,7 @@ CVM(cvmFF,F,F,CVNF,CVNF) CVM(cvmFL,F,L,CVNF,CVNL) CVM(cvmLF,L,F,CVNL,CVNF) CVM(c
 A cvmC(A x){
  if(_t(x)!=tA||_n(x)!=2) return et(x);
  A*a=_A(x);A p=a[0],q=a[1];
- if(_tP(p)||_tP(q)||!(_t(p)==tF||LH(tB,_t(p),tL))||!(_t(q)==tF||LH(tB,_t(q),tL))) return et(x);
+ if(_tP(p)||_tP(q)||!(_t(p)==tF||LH(tB,_t(p),tL))||!(_t(q)==tF||LH(tB,_t(q),tL))) return rgE(x,cvmC);
  U n=_n(p);if(_n(q)!=n) return el(x);
  p=_t(p)==tF||_t(p)==tL?_R(p):cL(_R(p));q=_t(q)==tF||_t(q)==tL?_R(q):cL(_R(q));mr(x);P(!p||!q,mr(p);mr(q);0)
  A r=an(4,tF);F*o=(F*)_V(r);B fp=_t(p)==tF,fq=_t(q)==tF;

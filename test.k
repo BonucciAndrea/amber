@@ -36,6 +36,7 @@ t[`covNull;    (cov[1 2 3;1 2 0n];scov[1 2 3;1 2 0n];cor[1 2 3;1 2 0n];cov[1 2 3
 t[`scovNoPair; (scov[0n 0n;1 2.0];scov[0#0;0#0];scov[1 0N;0N 2];scov[,1.0;,2.0];svar 0#0.0;svar@,1);   (0n;0n;0n;0n;0n;0n)]   / none or one pair left: 0n, as q (2.5.0-2.7.2: -0.0 for none)
 t[`covFar;     (cov[10000000000+0 1 2.0;0 0 1.0];1e-10>abs cor[10000000000+0 1 2.0;0 0 1.0]-sqrt 0.75);   (1%3;1b)]
 t[`covKinds;   (cov[1 2 3 4.0;2 4 6 9.0];scov[1 2 3 4;2 4 6 9];cov[(1;2;3.0);1 2 3.0]);   (2.875;11.5%3;2%3)]
+t[`statsRange; {(cov[!3;1 2 4];cor[1 2 4;1+!3]=cor[1 2 4;1 2 3];scov[!3;!3];cov[x;1 2 4];cov[!3;1 2 4.0];wsum[!3;1 2 4];wavg[1 2 4;!3])}@!3;   (1.0;1;1.0;1.0;1.0;10.0;10%7)]   / a range is its items, as q; all were 'type
 / the g* fallback (keys or values the `gagg kernel declines: char, float, date keys; a mixed list) skips nulls
 t[`gaggFallbackNull;    (gsum["aab";1 0N 3];gavg["aab";1 0N 3];gmin["aab";1 0N 3];gmin[1.0 1.0 2.0;1 0n 3];gsum[1.0 1.0 2.0;1 0n 3]);   ("ab"!1 3;"ab"!1.0 3.0;"ab"!1 3;1.0 2.0!1.0 3.0;1.0 2.0!1.0 3.0)]
 t[`gaggFallbackAllNull; (gsum["aab";0N 0N 3];gavg["aab";0N 0N 3];gmin["aab";0N 0N 3];gmax["aab";0N 0N 3];gmin[1.0 1.0 2.0;0n 0n 3];gmax[1.0 1.0 2.0;0n 0n 3]);   ("ab"!0 3;"ab"!0n 3.0;"ab"!9223372036854775807 3;"ab"!-9223372036854775807 3;1.0 2.0!0w 3.0;1.0 2.0!-0w 3.0)]

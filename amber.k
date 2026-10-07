@@ -54,17 +54,17 @@ sum:{$[0=#x;$[`F=@x;0.0;0];`F=@x;$[^s:+/x;+/0.0^x;s];`I=@x;`sumn x;+/nid[x;0;0.0
 prd:{$[0=#x;$[`F=@x;1.0;1];`F=@x;$[^r:*/x;*/1.0^x;r];`I=@x;`prn x;*/nid[x;1;1.0]]}   / Nulls skipped; empty: keep the float type
 min:{$[`I=@x;$[0N=m:&/x;&/9223372036854775807^x;m];`F=@x;$[^m:&/x;&/0w^x;m];&/x]}   / min 0N 5 is 5; all nulls: the largest int (q 0W); no nulls: just &/
 max:{$[`I=@x;$[0N=m:|/x;-9223372036854775807;m];`F=@x;$[^m:|/x;-0w;m];|/x]}   / a null is the least, so |/ skips it unless all are null (then -0W, -0w)
-avg:{$[`I=@x;$[0N=&/x;avgn x;(+/0.0+x)%#x];`F=@x;$[^s:+/x;avgn x;s%#x];(+/0.0+x)%#x]}   / the non-null items, summed as floats, like q (an int64 +/ can wrap); none: 0n
+avg:{$[`I=@x;$[0N=&/x;avgn x;(+/0.0+x)%#x];`F=@x;$[^s:+/x;avgn x;s%#x];#x;(+/0.0+x)%#x;0n]}   / the non-null items, summed as floats, like q (an int64 +/ can wrap); none: 0n (an empty general list too, as q: an empty temporal column is one)
 avgn:{v:x@&~^x;$[#v;(+/0.0+v)%#v;0n]}
 / fused dot (`wsm) when both sides are float vectors: no product vector is
 / built, so the 80MB temporary `+/x*y` writes and re-reads never exists.
 / wsum, wavg: a pair with a null is skipped (its weight too). `wsm gives NaN for floats or 0N for ints when one is in
 wsum:{r:wsi[x;y];$[`i~@r;`f$r;r]}   / A float, as q (ints gave an int, digest #67)
 wsi:{$[(`F=@x)&`F=@y;$[^r:`wsm(x;y);wsp[x;y];r];(`I=@x)&`I=@y;$[0N=r:`wsm(x;y);wsp[x;y];r];`hnl[x]|`hnl y;wsp[x;y];+/x*y]}
-wavg:{$[(`F=@x)&`F=@y;$[^r:(`wsm(x;y))%+/x;wvp[x;y];r];(`I=@x)&`I=@y;$[0N=r:`wsm(x;y);wvp[x;y];r%+/x];`hnl[x]|`hnl y;wvp[x;y];(+/x*y)%+/x]}
+wavg:{$[(`F=@x)&`F=@y;$[^r:(`wsm(x;y))%+/x;wvp[x;y];r];(`I=@x)&`I=@y;$[0N=r:`wsm(x;y);wvp[x;y];r%+/x];`hnl[x]|`hnl y;wvp[x;y];#y;(+/x*y)%+/x;0n]}
 wsp:{m:&~(^x)|^y;+/x[m]*y m}   / (an int 0N*y wraps, so the pairs go before the product)
 wvp:{m:&~(^x)|^y;(+/x[m]*y m)%+/x m}
-var:{d:{x*x}x-avg x;$[`F=@d;$[^s:+/d;$[^r:avgn d;0.0%+/~^x;r];s%#d];0n~r:avg d;0.0%+/~^x;r]}   / avg d, its float path inline; an infinite or NaN mean leaves no square: 0f over the non-nulls, as q (#83 Q10)
+var:{$[#x;[d:{x*x}x-avg x;$[`F=@d;$[^s:+/d;$[^r:avgn d;0.0%+/~^x;r];s%#d];0n~r:avg d;0.0%+/~^x;r]];(`F=@x)|`I=@x;[d:{x*x}x-avg x;$[^s:+/d;$[^r:avgn d;0.0%+/~^x;r];s%#d]];0n]}   / avg d, its float path inline; an infinite or NaN mean leaves no square: 0f over the non-nulls, as q (#83 Q10); a non-empty list takes that path at the cost of one count; none: 0n, as avg (an empty temporal column, a general list, cannot take x-avg x), but an empty int or float list as before
 dev:{sqrt var x}
 svar:{$[`F=@x;$[^0*s:+/x;svp x;[n:#x;(n*(+/{x*x}x-s%n)%n)%-1+n]];`hnl x;svp x;(n*var x)%-1+n:#x]}   / n counts the non-nulls; floats: var's own sum (an infinite or NaN sum: svp, whose var is q's), and avg of the squares inline (they are finite)
 svp:{v:x@&~^x;n:#v;(n*var v)%-1+n}

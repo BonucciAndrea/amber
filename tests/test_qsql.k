@@ -338,6 +338,9 @@ t[`byEmptyLast; @(.(sel"select by sym from ft where px>1000"))`px; `F]
 TT:([]sym:`a`b;n:1 2;d:10:00:00.000 11:00:00.000)
 t[`byEmptyTemporal;  (.(sel"select mx:max d, mn:min d, s:sum d by sym from TT where n>5"))@/:`mx`mn`s; (();();())]
 t[`byEmptyTemporal0; `k@(.(sel"select mx:max d, c:count d, l:last n by sym from 0#TT"))@/:`mx`c`l; "(();!0;!0)"]
+/ avg, dev and wavg of it are floats, as q's (they were (), and with no by 'type)
+tqa[`byEmptyTempAvg; "select a:avg d, s:dev d, w:wavg[n;d] by sym from TT where n>5"; {`k@(. x)@/:`a`s`w}; "(0#0n;0#0n;0#0n)"]
+tq[`selEmptyTempAvg; "select a:avg d, s:dev d, w:wavg[n;d] from TT where n>5"; ([]a:,0n;s:,0n;w:,0n)]
 
 / ---- digest #39: constraints cascade, as q's (each sees the rows the earlier ones kept); #40: a leading minus ----
 tq[`whereCascade;     "select from trades where sym=`a, px=max px";   ([]sym:,`a; px:,60.0; sz:,6)];

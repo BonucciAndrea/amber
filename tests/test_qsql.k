@@ -351,6 +351,12 @@ t[`byEmptyTemporal0; `k@(.(sel"select mx:max d, c:count d, l:last n by sym from 
 / avg, dev and wavg of it are floats, as q's (they were (), and with no by 'type)
 tqa[`byEmptyTempAvg; "select a:avg d, s:dev d, w:wavg[n;d] by sym from TT where n>5"; {`k@(. x)@/:`a`s`w}; "(0#0n;0#0n;0#0n)"]
 tq[`selEmptyTempAvg; "select a:avg d, s:dev d, w:wavg[n;d] from TT where n>5"; ([]a:,0n;s:,0n;w:,0n)]
+/ and avg of a temporal column is the average of its numbers (ms, days, ns), as q's (it was 'type)
+TTA:([]sym:`a`b`a;d:(10:00:00.000;11:00:00.000;12:00:00.000))
+tq[`selTempAvg;      "select a:avg d from TTA";            ([]a:,39600000.0)]
+tq[`byTempAvg;       "select a:avg d by sym from TTA";     (+(,`sym)!,`a`b)!+(,`a)!,39600000.0 39600000.0]
+tv[`avgTempDate;     "avg(2026.01.01;2026.01.04)";          9498.5]
+tv[`avgTempStamp;    "avg(2026.01.01D10:00;2026.01.01D11:00)"; 820578600000000000.0]
 
 / ---- digest #39: constraints cascade, as q's (each sees the rows the earlier ones kept); #40: a leading minus ----
 tq[`whereCascade;     "select from trades where sym=`a, px=max px";   ([]sym:,`a; px:,60.0; sz:,6)];

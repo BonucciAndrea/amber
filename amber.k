@@ -54,7 +54,7 @@ sum:{$[0=#x;$[`F=@x;0.0;0];`F=@x;$[^s:+/x;+/0.0^x;s];`I=@x;`sumn x;+/nid[x;0;0.0
 prd:{$[0=#x;$[`F=@x;1.0;1];`F=@x;$[^r:*/x;*/1.0^x;r];`I=@x;`prn x;*/nid[x;1;1.0]]}   / Nulls skipped; empty: keep the float type
 min:{$[`I=@x;$[0N=m:&/x;&/9223372036854775807^x;m];`F=@x;$[^m:&/x;&/0w^x;m];&/x]}   / min 0N 5 is 5; all nulls: the largest int (q 0W); no nulls: just &/
 max:{$[`I=@x;$[0N=m:|/x;-9223372036854775807;m];`F=@x;$[^m:|/x;-0w;m];|/x]}   / a null is the least, so |/ skips it unless all are null (then -0W, -0w)
-avg:{$[`I=@x;$[0N=&/x;avgn x;(+/0.0+x)%#x];`F=@x;$[^s:+/x;avgn x;s%#x];#x;(+/0.0+x)%#x;0n]}   / the non-null items, summed as floats, like q (an int64 +/ can wrap); none: 0n (an empty general list too, as q: an empty temporal column is one)
+avg:{$[`I=@x;$[0N=&/x;avgn x;(+/0.0+x)%#x];`F=@x;$[^s:+/x;avgn x;s%#x];#x;$[^`d`t`n?@*x;(+/0.0+x)%#x;avg`i$x];0n]}   / the non-null items, summed as floats, like q (an int64 +/ can wrap); none: 0n (an empty general list too, as q: an empty temporal column is one); a temporal list: its numbers' (days, ms, ns), as q
 avgn:{v:x@&~^x;$[#v;(+/0.0+v)%#v;0n]}
 / fused dot (`wsm) when both sides are float vectors: no product vector is
 / built, so the 80MB temporary `+/x*y` writes and re-reads never exists.

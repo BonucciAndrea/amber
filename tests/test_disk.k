@@ -50,6 +50,11 @@ t[`colWritePrivate;(`rcol T,"/c/big")0;big 0]
 te[`colMissing;"`rcol T,\"/c/nope\""]
 (T,"/c/junk") 1:"not a column file at all, just some text that is long enough"
 te[`colNotOurs;"`rcol T,\"/c/junk\""]
+/ a file that opens but is shorter than the header page is 'format, as other damage; 'io is a file that cannot be
+/ opened or read, and a directory (#94 Q14)
+x:`wcol(T,"/c/ff";1 2 3;-1;0);(T,"/c/gg") 1:4000#1:T,"/c/ff";(T,"/c/hh") 1:""
+rc:{.[{`rcol x};,T,"/c/",x;{*"\n"\x}]}
+t[`colShort;rc'("gg";"hh";"junk";"nope";"");("'format";"'format";"'format";"'io";"'io")]
 t[`fszMissing;`fsz T,"/c/nope";-1]
 t[`fszDir;`fsz T,"/c";-2]
 t[`ldir;(`ldir T)1;()]
@@ -110,6 +115,6 @@ x:loaddb T,"/hdb"
 t[`reload;#sel"select from trade";12]
 
 rm T
-hexpect[56]
+hexpect[57]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

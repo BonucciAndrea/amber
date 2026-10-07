@@ -116,8 +116,10 @@ A rcolT(A x){
  if(_t(x)==tA&&_n(x)==2){pth=_A(x)[0];dom=_A(x)[1];P(_t(dom)!=tS,x(et0()))}
  C path[4096];P(!dpath(pth,path,SZ path),x(et0()))
  I f=open(path,O_RDONLY);P(f<0,x(eo0()))
- struct stat st;DHdr h;
- if(fstat(f,&st)||(W)st.st_size<DHB||drall(f,&h,SZ h,0)){close(f);return x(eo0());}
+ struct stat st;DHdr h;I e=fstat(f,&st);
+ // a file that opens but is too short for the header is damage, 'format (#94 Q14); 'io is a failed open, stat or
+ // read, and a directory
+ if(e||(W)st.st_size<DHB||drall(f,&h,SZ h,0)){close(f);return x(!e&&S_ISREG(st.st_mode)&&(W)st.st_size<DHB?err0("format"):eo0());}
  B ok=!memcmp(h.mg,"AMBC",4)&&h.ver==1&&h.kind<=KTIME&&(W)st.st_size>=DHB+h.nb;
  if(ok)S(h.kind,
   C(KFLAT,ok=h.typ<tn&&dflat(h.typ)&&h.nb==dbytes(h.typ,h.cnt))

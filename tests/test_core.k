@@ -193,6 +193,8 @@ G:5;L:{";"/x#,y}
 t[`listGlobals255;#. "(",(L[255;"G"]),")";255]
 t[`listGlobalsSum254;#. "(",(L[254;"G+1"]),")";254]
 t[`listGlobalsLambda254;#(. "{(",(L[254;"G+x"]),")}")1;254]
+/ a list of more than 255 constants inside another list folds to one constant, as one alone does (ngn/k); it was 'limit
+t[`nestedConstList;{.[.:;,x;{x}]}'("#((",(L[300;"1"]),");0)";"(0;(0;(",(L[300;"2"]),")))";"{((",(L[300;"3"]),");x)}[4]");(2;(0;(0;300#2));(300#3;4))]
 
 / ---- an impossible size is 'limit, one error for all of them (issue #10) ----
 ER:{.[.:;,x;{(x?"\n")#x}]}
@@ -1424,7 +1426,7 @@ t[`jsonMonadBack;`j?`j@(-:);"-:"]
 t[`parenEmptyItem;{*"\n"\.[{`k@. x};,x;{x}]}'("(1;;2)";"(;)";"(1;)";"(;1)";"(;;)";"(1;(;))";"{(;x)}3";"(1;\n2)";"( )");("(1;::;2)";"(::;::)";"(1;::)";"(::;1)";"(::;::;::)";"(1;(::;::))";"(::;3)";"(1;::;2)";"()")]
 t[`parenEmptyKept;{*"\n"\.[{`k@. x};,x;{x}]}'("()";"(1;2)";"{x+y}[1;]2";"[1;;2]";"(1;2";"(1;;2");("()";"1 2";,"3";,"2";"'parse";"'parse")]
 
-hexpect[899]
+hexpect[900]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

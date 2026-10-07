@@ -410,7 +410,10 @@ Z I cr(A x/*0*/,B r)_(I o=xo;                                                   
 A1(qte,/*1*/xtS||xtA?aA1(x):x)                                                                      //quote
 Z A2(c2,/*00*/P(xtw&&!ytSA,1)/*P(x==TIL&&ytZ&&yn<4,F(yn,P(gl(ii(y,i))>100u,0))1)*/0)                //constant folding
 Z A3(c3,/*000*/P(ADD<=x&&x<=MUL&&ytzZ&&ztzZ&&(ytt||ztt||yn==zn)&&MAX(xN,yN)<101,1)0)                //constant folding
-Z A1(cf,P(!xtA||!xn,x)P(xx==MKL,F(xn,A y=xa;YSA(x))qte(N(drp(1,x))))P(xn==2?c2(xx,xy):xn==3?c3(xx,xy,xz):0,qte(N(val(x))))A y=rsz(xn,au);F(xn,ya=cf(xa);xa=au;P(!ya,die("CF")))AO(xo,x(y)))
+#define cfL(u) (_tA(u)&&_n(u)&&_x(u)==MKL)   //a list node
+Z A cf(A);Z A1(cfn,B k=0;F(xn,k|=cfL(xa))P(!k,x)UC o=xo;A y=rsz(xn,au);F(xn,A u=xa;xa=au;ya=cfL(u)?cf(u):u;P(!ya,die("CF")))x=AO(o,x(y));   //a list with an item not constant: its list items fold as one alone does, as in ngn/k,
+ F(xn,A y=xa;YSA(x))qte(N(drp(1,x))))                                                                //and then the list, if they all did
+Z A1(cf,P(!xtA||!xn,x)P(xx==MKL,F(xn,A y=xa;YSA(cfn(x)))qte(N(drp(1,x))))P(xn==2?c2(xx,xy):xn==3?c3(xx,xy,xz):0,qte(N(val(x))))A y=rsz(xn,au);F(xn,ya=cf(xa);xa=au;P(!ya,die("CF")))AO(xo,x(y)))
 Z I mxs(I i,I s)_(I r=s;W(1,UC c=MIN(bc,b[i++]);r=MAX(r,s);P(!c,r)s+=ds[c]+ks[c]*b[i];i+=di[c]+(c==bj)*b[i];I(c==bz,r=MAX(r,mxs(i+b[i-1],s))))r)//max stack
 Z B shy(A x/*0*/)_(!xtA?0:xn&&xx==GAP?shy(xA[xn-1]):xn==3&&cm(xx)&&_tSA(xy))                        //is last expr an assignment?
 // Amber 2.5 (exp): one compile of the body: OK, a cr() error offset, -2 a size limit, -3 the global table full

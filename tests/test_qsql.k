@@ -467,6 +467,22 @@ tqa[`updByGenOther;  "update n:sums n by sym from TG"; {(+x)`n};                
 TD:0#([]sym:`a`b`a;n:1 2 3;d:2026.01.01 2026.01.02 2026.01.03)
 tv[`fupdByUnifTemporal; "(+![TD;();(,`sym)!,`sym;(,`n)!,(sums;`n)])`n";   !0];
 t[`fupdByNoRow;      (+![trades;,(>;`px;100);(,`sym)!,`sym;(,`m)!,(max;`sz)])`m;   6#0N];
+/ the same without by: a value that changes a typed column's type is 'type, as q's; a general column takes anything
+tqe[`updType;        "update sz:2.5 from trades where px>25"];
+tqe[`updTypeSym;     "update sym:\"c\" from trades where px>25"];
+te[`fupdType;        "![trades;,(>;`px;25);0b;(,`sz)!,2.5]"];
+tqa[`updTypeSame;    "update sz:0 from trades where px>25"; {(+x)`sz};          1 2 0 0 0 0];
+TGW:([]n:1 2 3;g:(1 2;3 4;5 6))
+tqa[`updTypeGen;     "update g:7 from TGW where n>1"; {(+x)`g};                 (1 2;7;7)];
+/ also when the where keeps no row, and into a temporal column (a general list: its first item's type), by or not
+tqe[`updTypeNoRow;   "update sz:2.5 from trades where px>100"];
+tqa[`updTypeNoRowOk; "update sz:sz+1 from trades where px>100"; {(+x)`sz};      1 2 3 4 5 6];
+TTU:([]sym:`a`b`a;n:1 2 3;d:2026.01.01 2026.01.02 2026.01.03)
+tqe[`updTypeTemp;    "update d:2.5 from TTU where n>1"];
+tqe[`updTypeTempBy;  "update d:2.5 by sym from TTU where n>1"];
+tqa[`updTypeTempOk;  "update d:2026.01.05 from TTU where n>2"; {(+x)`d};  (2026.01.01;2026.01.02;2026.01.05)];
+TMX:([]n:1 2 3;g:(2026.01.01;"ab";`c))
+tqa[`updTypeMixed;   "update g:2.5 from TMX where n>1"; {(+x)`g};               (2026.01.01;2.5;2.5)];
 
 / ---- qSQL on a keyed table runs on its rows, as q's: select (no columns, no by), update and delete keep the key ----
 KT:([s:`a`b`c]n:1 2 3;m:4 5 6)

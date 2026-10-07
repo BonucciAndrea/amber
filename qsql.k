@@ -280,8 +280,16 @@ exq:{[s]s:qnorm s;s:$[(4#s)~"exec";trim 4_s;s];r:qsplit[s;" where "];h:r 0;r2:$[
 qexby:{[h;u;wh;eb]r:qdi[h]qsi[h;u;wh;0<#wh;(eb 0;eb 1;1b);""];k:+key r;v:+value r;$[1=#!k;k@*!k;key r]!$[1=#!v;v@*!v;value r]}
 
 / ---- update  (add / replace columns; optional where and by) ---------------
-qasg:{[t;idx;nm;v]@[$[in[nm;cols t];(+t)nm;(#t)#qnull v];idx;:;v]}
-qasgby:{[t;nm;f;gi;rc;w]tp:$[#rc;qproj[t;rc];t];$[0=#gi;:qasg0[t;nm;f;tp;w];];gv:{[t;f;iv]v:f atr[t;iv];$[isat v;(#iv)#v;v]}[tp;f]'gi;rv:raze gv;ri:raze gi;$[~w;rv@<ri;[e:in[nm;cols t];c:$[e;(+t)nm;(#t)#qnull[*gv]];r:@[c;ri;:;rv];$[e&(~`A~@c)&~(@r)~@c;`err"type";r]]]}   / each group once; every row: back in row order, else one scatter into the column (a value that changes a typed column's type is 'type, as q)
+/ qty: a value of another type than its column's is 'type, as q's amend, rows or none: the column's kind is its type, a
+/ temporal column's (a general list) that of its first item (qkd); a general column takes anything, and so does an
+/ empty general value (update n:() ..., and so update n:d ... where no row is kept, which q refuses; nor is an empty
+/ temporal column refused, from 0#t: its items are gone). Run once per column, before the amend, and only when the
+/ types differ: a value of the column's type or an atom of its first item's, and in a general column a value whose
+/ first item has the type of the column's first item, is amended with no call.
+qkd:{$[`A~t:@x;$[#x;$[(u:@*x)in`d`t`n;u;`A];`A];t]}
+qty:{[c;v]k:qkd c;$[`A~k;;k~w:qkd v;;(`$_$k)~`$_$w;;(`A~w)&0=#v;;(`A~@c)&~&/k=@'c;;`err"type"]}   / the same type passes at one match; an atom's (`f for `F) by name; a general column of mixed kinds takes anything: looked at only before a 'type
+qasg:{[t;idx;nm;v]$[in[nm;cols t];[c:(+t)nm;$[(@c)~@v;$[`A~@c;$[(@*c)~@*v;;qty[c;v]];];(@*c)~@v;;qty[c;v]];@[c;idx;:;v]];@[(#t)#qnull v;idx;:;v]]}
+qasgby:{[t;nm;f;gi;rc;w]tp:$[#rc;qproj[t;rc];t];$[0=#gi;:qasg0[t;nm;f;tp;w];];gv:{[t;f;iv]v:f atr[t;iv];$[isat v;(#iv)#v;v]}[tp;f]'gi;rv:raze gv;ri:raze gi;$[~w;rv@<ri;[e:in[nm;cols t];c:$[e;(+t)nm;(#t)#qnull[*gv]];$[~e;;(@c)~@rv;$[`A~@c;$[(@*c)~@*rv;;qty[c;rv]];];(@*c)~@rv;;qty[c;rv]];@[c;ri;:;rv]]]}   / each group once; every row: back in row order, else one scatter into the column (a value of another type is 'type, qty)
 / no groups (an empty table, or a where that keeps no row): the column is typed by the expression on no rows, as q's:
 / an atom's type, or a typed vector itself while no column it reads is general (first st of no strings is "", q ());
 / anything else (an error, a general list) is (), and a new column is filled

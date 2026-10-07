@@ -121,7 +121,16 @@ t[`readSize4G;$[SP;rd S4;"'limit"];"'limit"]   / a vector's count is 32 bits; it
 t[`readOffset4GBig;$[SP;rd(S4;4294967296 2);"XY"];"XY"]   / it read at 0
 rm T,"/big"
 
+/ ---- x 1: y over the file y was read from: written from its start, not truncated first (Linux: y's pages, a map of
+/ the file, were zeros by the time they were copied, and the file was all NULs; "bb" 1: get`:bb was SIGBUS) ----
+W:T,"/w";W 1:"original";W 1:1:W
+t[`writeOwnRead;1:W;"original"]
+v:1:W;W 1:v
+t[`writeOwnReadKept;(v;1:W);2#,"original"]
+B:T,"/bb";(`$":",B)set 5000#"abc";B 1:get`$":",B
+t[`writeOwnGet;1:B;5000#"abc"]
+
 rm T
-hexpect[59]
+hexpect[62]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

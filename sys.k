@@ -39,8 +39,7 @@ Q.fc:{[f;x]f x}                            / parallel-on-cut (sequential fallbac
 Q.trp:{[f;a;h].[f;a;h]}                    / protected apply with handler
 
 / ---- .j : JSON -----------------------------------------------------------
-jenc:{$[`m=@x;"{",(","/{[d;k](`j@$[`C=@k;k;$k]),":",jenc d k}[x]'!x),"}";`M=@x;"[",(","/{[t;i]jenc t i}[x]'!#x),"]";`A=@x;"[",(","/jenc'x),"]";`j@x]}   / dict keys as strings; every other value as the core writer `j@ writes it (escapes, null)
-j.j:{jenc x}                               / value -> JSON string
+j.j:{`j@x}                                 / value -> JSON string: the core writer, which writes a keyed table as its rows and a list key as 'type, as q
 j.k:{`j? x}                                / JSON string -> value
 
 / ---- terminal charting ----------------------------------------------------

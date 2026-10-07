@@ -172,7 +172,12 @@ t["jj escape";   `j?j.j "a\"b\nc";             "a\"b\nc"]
 t["jj null";     j.j (1;0N;0n);                "[1,null,null]"]
 t["jj keys";     j.j 1 2!("x";"y\"");          "{\"1\":\"x\",\"2\":\"y\\\"\"}"]
 t["jj string keys"; j.j ("ab";"cd")!1 2;  "{\"ab\":1,\"cd\":2}"]
+t["jj keyed";   j.j (+(,`k)!,1 2)!+(,`v)!,3 4;  "[{\"k\":1,\"v\":3},{\"k\":2,\"v\":4}]"]   / as q; was 'nyi
+t["jj keyed in dict"; j.j `a`b!(1;(+(,`k)!,1 2)!+(,`v)!,3 4);  "{\"a\":1,\"b\":[{\"k\":1,\"v\":3},{\"k\":2,\"v\":4}]}"]
+te["jj list keys";  "j.j (1 2;3 4)!3 4"]   / 'type, as q; was {["1","2"]:3,["3","4"]:4}, not JSON
+te["jj table keys"; "j.j (+(,`k)!,1 2)!3 4"]
+t["jj range keys"; j.j (!3)!`a`b`c;  "{\"0\":\"a\",\"1\":\"b\",\"2\":\"c\"}"]   / whole, as 0 1 2 keys
 
-hexpect[76]
+hexpect[81]
 hreport"AMBER CHART / TEMPORAL AXIS"
 $[FAILN;`exit 1;]

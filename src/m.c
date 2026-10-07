@@ -42,6 +42,7 @@
 #include<stdlib.h>
 #include"arena.h"
 #include<unistd.h>
+#include<errno.h>
 #include"inspect.h" // \v rich variable inspector
 #include"ast.h"     // \ast AST visualizer
 #include"trace.h"   // \trace execution profiler
@@ -148,9 +149,11 @@ I(nreg==L(reg),mc();I(nreg==L(reg),die("MMAP")))reg[nreg++]=(TY(*reg)){p,n,f};AU
 // (Windows sections don't nest), so the MAP_FIXED below always failed there and
 // every 0:, 1: and \l read came back 'io. When it fails, read into a plain vector.
 #if !defined(wasm)
-Z A mfr(U f,U i,U n)_(A x=an(n,tC);U o=0;W(o<n,L r=pread(f,(C*)_V(x)+o,n-o,(off_t)i+o);P(r<=0,mr(x);eo0())o+=(U)r)x)
+// (a GiB a call: macOS's pread refuses more than INT_MAX bytes, so a read of 2 GiB or more was 'io; again after a signal,
+// as the line editor's SIGWINCH handler is not SA_RESTART)
+Z A mfr(U f,W i,W n)_(A x=an((U)n,tC);W o=0;W(o<n,L r=pread(f,(C*)_V(x)+o,MIN(n-o,(W)1<<30),(off_t)(i+o));I(r<0&&errno==EINTR,continue)P(r<=0,mr(x);eo0())o+=(W)r)x)
 #else
-Z A mfr(U f,U i,U n)_(eo0())
+Z A mfr(U f,W i,W n)_(eo0())
 #endif
 // amber 2.7: the on-disk columns (src/dsk.c). n>0 bytes of file f from offset i (a multiple of the page size)
 // mapped as a payload, a header page in front, 64-bit sizes; 0 when the map fails and the caller reads instead.
@@ -162,7 +165,8 @@ A mfw(I f,W i,W n){P(!n||i%(W)pg,0)V*p=mm(pg+n,1);P(!p,0)
 #else
 A mfw(I f,W i,W n){(V)f;(V)i;(V)n;return 0;}
 #endif
-A mf(U f,U i,U n)_(V*p=mm(pg+n,1);P(!p,eo0())P(mmap(p+pg,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_FIXED,f,i)!=p+pg,mu(p);mfr(f,i,n))A x=AP(p+pg);xb=0;xr=REFB;xT=tC;xn=n;x)
+// n<2^32 bytes of file f from offset i: both 64-bit (they were unsigned int, so an offset of 2^32+k read at k)
+A mf(U f,W i,W n)_(V*p=mm(pg+n,1);P(!p,eo0())P(mmap(p+pg,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_FIXED,f,(off_t)i)!=p+pg,mu(p);mfr(f,i,n))A x=AP(p+pg);xb=0;xr=REFB;xT=tC;xn=(U)n;x)
 
 // Per-thread size-class free lists: each peach worker recycles chunks on its
 // OWN lists with zero locking. Thread-local storage is initial-exec here (no

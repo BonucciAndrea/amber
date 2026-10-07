@@ -104,7 +104,24 @@ t[`loadSelf;`x((`argv[]0;T,"/l/top.k");"");"\"\"/511\n"]
 m:0;x:.[.:;,"\\l ",T,"/l/cnd.k";{x}]
 t[`loadNested300;m;300]   / a load that stops is not limited before 512
 
+/ ---- 1: past 32 bits: file sizes and offsets are 64-bit ----------------------
+/ they were cut to 32 bits: an offset of 2^32+k read at k, a negative one a page below 2^32 mapped far past the end
+/ (SIGBUS on Linux, so in a process of its own), and a file of 2 to 4 GiB read as ""
+x:mkd T,"/big";F1:T,"/big/ff";F1 1:"hello world"
+rd:{.[{1:x};,x;{*"\n"\x}]}
+t[`readOffset4G;rd(F1;4294967297 3);""]   / past the end, as 1:(F1;20 3); it was "ell"
+t[`readOffsetNeg;rd'((F1;-1 3);(F1;-9223372036854775807 1));("'io";"'io")]   / the second was ,"e"
+t[`readOffsetNegPage;`x(,`argv[]0;"`0:.[{1:x};,(\"",F1,"\";-4096 3);{*\"\\n\"\\x}]\n");"'io\n"]
+/ big files, sparse: only where the file system keeps them so (a 64 MiB probe takes no blocks), or they would be written
+dd:{[f;n;s]`x(("/bin/dd";"of=",f;"bs=1";"seek=",$n;$[#s;"conv=notrunc";"count=0"]);s);f}
+SP:64>. *"\t"\`x(("/usr/bin/du";"-sk";dd[T,"/big/probe";67108864;""]);"")
+S2:$[SP;dd[T,"/big/s2g";2147483648;""];""];S4:$[SP;dd[dd[T,"/big/s4g";4294967301;""];4294967296;"XY"];""]
+t[`readSize2G;$[SP;#1:S2;2147483648];2147483648]   / it was 0
+t[`readSize4G;$[SP;rd S4;"'limit"];"'limit"]   / a vector's count is 32 bits; it was 5
+t[`readOffset4GBig;$[SP;rd(S4;4294967296 2);"XY"];"XY"]   / it read at 0
+rm T,"/big"
+
 rm T
-hexpect[53]
+hexpect[59]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

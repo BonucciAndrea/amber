@@ -63,6 +63,10 @@ inside a **`.k` script** loaded once the stdlib is up (the loader runs each file
   `` ?[t;();0b;(,`c)!,0.5] ``), where q gives `'rank`. q gives one row only when an item applies
   one of its built-in aggregates. A check for the constant case cost every select of aggregates on a
   small table more than we could make free, so it is not made (#20 row 17).
+- **Differs from q:** `med` of an empty general column is `0n` (floats), q's answer for an empty
+  temporal column: an Amber temporal column is a general list too, so the two cannot be told apart.
+  With `` t:([]sym:`a`b;n:1 2;g:(1;"a")) ``, `select med g by sym from t where n>5` gives `g` as `0#0n`
+  (q: `()`), and `med ()` is `0n` (q: `` `float$() ``) (#94 Q9).
 - Still missing: the general functional forms `?[t;where;by;select]` /
   `![t;where;by;cols]`, and correlated subqueries. Note that `?` at arity 3+ is
   already `ins` in this dialect, so the `?[…]` spelling cannot be added without
@@ -94,6 +98,9 @@ and q), and so does a null float atom filled by a symbol (`` `a^0n `` is `` `a `
 Since 2.5 `sums prds prd wsum wavg svar sdev` skip nulls too, and `cov scov cor` drop a pair
 with a null. Still k: on a dict, `sum` and `min` count the null (`sum `a`b!0N 1` is
 `-9223372036854775807`; q gives `1`), and `avgs` and `med` treat nulls as the primitives do.
+`wj` and `wj1` skip nulls in a float `sum` or `avg` and in `min`, but an int `sum` or `avg` adds
+`0N` in, as `+` does: a window of ints `0N 2` sums to `-9223372036854775806` (q: `2`). Looking for
+a null there would cost windows that have none (#94 Q4).
 
 ## 3b. Signed zero and NaN: one value each, as in q
 
@@ -117,6 +124,9 @@ names write the binary format too and still read the old text files (AMBER.md §
   databases (`par.txt` across disks), compression, on-disk `aj` over partitions, and map-reduce for
   aggregates that span partitions without grouping by the partition column (those copy the
   columns they need into one table first).
+- **Still missing:** appending to a table on disk. There is no `upsert`, so no
+  `` `:db/t/ upsert t `` (q appends the rows to the column files), and amber.k's `insert` takes the
+  table itself, not a name or a path as q's `` `t insert r `` does (#94 Q13).
 
 ## 5. IPC & the tick architecture: partial (`ipc.k`)
 Amber now ships `hopen`/`hclose`/`hsend`/`hrecv`/`hsync` (raw-socket messaging) and an
@@ -324,7 +334,13 @@ behaviour shows up as a test failure rather than a silent regression.
   a list of dicts: `` (+`a!,1 2),`b!3 ``. q gives `'mismatch` for all three
   (`` ([]a:1 2),([]b:3 4) ``, `` ([]a:1 2),enlist(enlist`b)!enlist 3 ``, `` ([]a:1 2),(enlist`b)!enlist 3 ``),
   and ngn/k a list of dicts.
-- **Three q-named functions keep Amber's answer where q's differs (#83 Q10).** `"ab" ss ""` is
+- **Four q-named functions keep Amber's answer where q's differs (#83 Q10, #94 Q3).** `"ab" ss ""` is
   `0 1 2` (q: `'length`) and `` 0 1 in 0#` `` is `0 0` (q: `'type`): Amber answers where q refuses.
   `differ 1 1.00000000000001 1` is `1 1 1` (q: `100b`), since Amber has no comparison tolerance
-  anywhere else.
+  anywhere else. `` (!0) union 0#` `` is `!0` (q: `` `symbol$() ``), since q's type would cost every
+  `union` a test for an empty `x`.
+- **Five q-named functions keep Amber's answer for a dict or a table (#94 Q7).**
+  `` distinct `a`b`c!1 1 2 `` is `1 2`, the distinct values, as ngn/k's `?` (q: `'type`); `raze` of a
+  table is the table, as k's `,/` (q: its last row, as a dict); `flip ()!()` is an empty table with
+  no columns (q: `'rank`); `` fills `a`b`c!(1;`x;0N) `` is `` `a`b`c!(1;`x;`x) `` (q: `'type`); and
+  `xprev` of a keyed table is `'type` (q: `'length`).

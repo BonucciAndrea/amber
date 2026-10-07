@@ -320,8 +320,13 @@ qfsg:{[t;e]$[(`A~@e)&2=#e;[f:*e;c:e 1;$[(`s~@c)&in[c;cols t];$[f~sum;(`sum;c);f~
 qfby:{[t;b;a]bk:!b;h:qbyh[bk;bk~'value b];x:(();h;bk);t2:+(+t),h!qfe[t]'value b;sg:$[0<#a;qfsg[t]'value a;()];fa:$[(0<#sg)&&/{0<#x}'sg;qaggf[t2;h;(!a)!sg;()];()];$[#fa;:qbyr[qks fa;x];];qbyr[;x]$[0=#a;[nk:except[cols t;bk];qby[t2;h;nk!qlastf'nk]];qby[t2;h;(!a)!{[e]{[e;x]qfe[x;e]}[e]}'value a]]}   / computed keys hidden as qbyx's
 qfhi:{$[`s~@x;x~`i;`S~@x;in[`i;x];`m~@x;qfhi@. x;(`A~@x)&0<#x;$[(2=#x)&(count~*x)&`i~x 1;0;|/qfhi'x];0]}   / does a parse tree read i's values (count i does not)
 qfin:{[c;b;a]$[(`m~@b)|0<#c;qfhi[a]|(0<#c)&qfhi b;0]}   / does a functional query read i on rows c or b cut
-qfsel:{[t;c;b;a]t:$[`s~@t;. t;t];kk:$[((b~0b)|b~())&0=#a;keys t;0#`];$[(b~1b)&(0=#a)&iskeyed t;`err"type";];t:unkey t;k:qik[qfin[c;b;a];t];t:qai[k&0=#c;t];t:$[0=#c;t;qtk[k;t;qfi[t;c]]];qkx[kk]qdi[k]$[b~0b;$[0=#a;t;qfa[t;a]];b~();qfx[t;a];b~1b;?qdi[k]$[0=#a;t;qfa[t;a]];qfby[t;b;a]]}
-qfx:{[t;a]$[`m~@a;(!a)!qfe[t]'value a;0=#a;last t;qfe[t;a]]}   / b () is q's exec: a column or tree is its value, a dict a dict of them, () the last row
+qfsel:{[t;c;b;a]t:$[`s~@t;. t;t];kk:$[((b~0b)|b~())&0=#a;keys t;0#`];$[(b~1b)&(0=#a)&iskeyed t;`err"type";];t:unkey t;k:qik[qfin[c;b;a];t];t:qai[k&0=#c;t];t:$[0=#c;t;qtk[k;t;qfi[t;c]]];qkx[kk]qdi[k]$[b~0b;$[0=#a;t;qfa[t;a]];b~();qfx[t;a];b~1b;?qdi[k]$[0=#a;t;qfa[t;a]];`m~@b;qfby[t;b;a];qfxb[t;b;a]]}
+qfx:{[t;a]$[`m~@a;(!a)!qfsa[t]'value a;0=#a;last t;qfsa[t;a]]}   / b () is q's exec: a column or tree is its value, a dict a dict of them, () the last row
+/ b a column or tree (not a dict) is q's exec by: a dict from its values, sorted, to a's on each group's rows (a dict
+/ a: a table of them; a (): q's 'nyi; an atom b, such as ,`sym, one group; i the rows' numbers, kept as qI). A symbol list, as a or b or a value of
+/ a's dict, is read as q reads it, an application: `sym`n is sym[n]
+qfxb:{[t;b;a]$[(0=#a)&~`m~@a;`err"nyi";];t:$[(qfhi[a]|qfhi b)&~in[qI;cols t];qai[1;t];t];v:qfsa[t;b];g:=$[isat v;(#t)#v;v];k:!g;o:<k;gi:(. g)o;(k o)!$[`m~@a;+(!a)!{[t;gi;e]{[t;e;i]qfsa[t i;e]}[t;e]'gi}[t;gi]'. a;{[t;a;i]qfsa[t i;a]}[t;a]'gi]}
+qfsa:{[t;e]$[(`S~@e)&1<#e;(qfe[t;*e]). qfe[t]'1_e;qfe[t;e]]}
 qfcs:{[C;e]$[`s~@e;$[in[e;C];,e;(e~`i)&in[qI;C];,qI;0#`];(`A~@e)&0<#e;?,/qfcs[C]'e;0#`]}   / the columns a parse tree names (as qrefs for a string)
 qfub:{[t;idx;b;a]k:+(!b)!qfe[t idx]'value b;gi:idx@value(=rows k);+((+t),(!a)!{[t;gi;w;n;e]qasgby[t;n;{[e;x]qfe[x;e]}[e];gi;qfcs[cols t;e];w]}[t;gi;(#idx)<#t]'[!a;value a])}
 qfupd:{[t;c;b;a]t:$[`s~@t;. t;t];kk:keys t;t:unkey t;k:qik[qfin[c;b;a];t];t:qai[k&`m~@b;t];idx:$[0=#c;!#t;qfi[t;c]];qkx[kk]qdi[k]$[`S~@a;$[0=#a;t@&~@[(#t)#0b;idx;:;1b];+(except[cols t;a])#+t];((b~0b)|b~())&0=#c;+((+t),(!a)!{[t;e]v:qfe[t;e];$[isat v;(#t)#v;v]}[t]'value a);(b~0b)|b~();+((+t),(!a)!{[k;t;idx;n;e]qasg[t;idx;n;qfe[qtk[k;t;idx];e]]}[k;t;idx]'[!a;value a]);qfub[t;idx;b;a]]}

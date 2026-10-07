@@ -104,6 +104,16 @@ tq[`execNamed;    "exec p:px from trades where px>45"; (,`p)!,50 60.0];
 tv[`fExecCol;     "?[trades;();();`sz]";              1 2 3 4 5 6];
 tv[`fExecRow;     "?[trades;,(>;`px;45);();()]";      `sym`px`sz!(`a;60.0;6)];
 tv[`fExecDict;    "?[trades;();();`p`s!(`px;(sum;`sz))]"; `p`s!(10 20 30 40 50 60.0;21)];
+/ a by that is a column or tree (not a dict) is q's exec by: a dict from its values, sorted; a symbol list is q's
+/ application (`sym`sz is sym[sz]), so ?[t;();();`sz`sym] is 'type, as q's
+tv[`fExecBy;      "?[trades;();`sym;`sz]";             `a`b`c!(1 3 6;2 4;,5)];
+tv[`fExecByTree;  "?[trades;();`sym;(sum;`sz)]";       `a`b`c!10 6 5];
+tv[`fExecByDict;  "?[trades;();`sym;`s`p!`sz`px]";     `a`b`c!+`s`p!((1 3 6;2 4;,5);(10 30 60.0;20 40.0;,50.0))];
+tv[`fExecByWh;    "?[trades;,(>;`px;15);`sym;`i]";     `a`b`c!(2 5;1 3;,4)];
+tv[`fExecBySyms;  "?[trades;();`sym`sz;`sz]";          ``a`b`c!(,6;2 5;1 3;,4)];
+te[`fExecSyms;    "?[trades;();();`sz`sym]"];
+tv[`fExecDictSyms; "?[trades;();();(,`x)!,`sz`sz]";      (,`x)!,2 3 4 5 6 0N];
+tv[`fExecByAtom;  "?[trades;();,`sym;`sz]";            (,`sym)!,1 2 3 4 5 6];
 
 / ============================ 5. update ======================================
 tqa[`updNewCols;   "update d:px*2 from trades";        CL; `sym`px`sz`d];

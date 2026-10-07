@@ -29,11 +29,12 @@ Z B tlc(CO UC*b)_(W(*b==bj,b+=2+b[1])!*b)                                       
 // 2: 'length; 3: 'type; 4: the error a key's lookup (fnd) raised, as the amend would.
 Z L ixe(A q,U j){UC t=_t(q);CO V*d=_V(q);return t==tL?((CO L*)d)[j]:t==tI?((CO I*)d)[j]:t==tH?((CO H*)d)[j]:t==tG?((CO G*)d)[j]:t==tE?*(CO L*)d+(L)j:((CO UC*)d)[j>>3]>>(j&7)&1;}//item j of an int list, without boxing it
 Z I ixkd(A x,A y,U k,A z,B asg),ixcq(A x,A q,A y,U k,A z,B asg);
+Z AM_TLS_IE B ixsm;   //set where the check meets a symbol with an index below it, which names a global; ixwk clears it before it looks
 Z B ixzc(A z,U c){return !_tP(z)&&!_tt(z)&&_N(z)!=c;}   //z a list, dict or table not of count c: 'length
 Z A ixzi(A z,U i){return !_tP(z)&&_t(z)==tA?_A(z)[i]:au;}   //z's item i, which goes with index i: a general list's; else an atom, or not known (::)
 NI I ixck(A x,A y,U k,A z,B asg){if(x&&k<_N(y)&&!_tP(x)&&(_t(x)==tm||_t(x)==tM))return ixkd(x,y,k,z,asg);
  if(x&&y!=au&&k<_N(y)&&(_t(x)!=ts&&LH(ti,_t(x),ts)||LH(tdt,_t(x),tnp)))return 3;   //an index into a number, char or temporal atom (:: as the index is the whole value); a symbol atom names a global, which the assignment amends
- if(!x||k>=_N(y)||_tP(x)||!_tT(x))return 0;
+ if(!x||k>=_N(y)||_tP(x)||!_tT(x)){I(x&&k<_N(y)&&_ts(x),ixsm=1)return 0;}   //a symbol with an index below it: an amend by name follows (ixsm)
  if(!_tP(y)&&LH(tE,_t(y),tL)){L v=ixe(y,k);if(v<0||v>=(L)_N(x))return 1;if(k+1==_N(y))return 0;if(k&&_t(x)==tS)return 3;A w=ii(x,(U)v);I r=ixck(w,y,k+1,z,asg);mr(w);return r;}   //y an int list: an int index per level
  A q=_tA(y)?_A(y)[k]:ii(y,k);I r=ixcq(x,q,y,k,z,asg);I(!_tA(y),mr(q))return r;}
 //q at level k of list x: y's, or an item of a general list or the values of a dict there, which index at the same level
@@ -105,7 +106,9 @@ U tcc(A,A);
 //A dict whose values are not a list is one an amend has taken them out of (ixst, or a8), and is amending: a symbol at a
 //level below names a global, amended by name, which names this variable again (v:`a`b!(`v;1 2); v[`a;`b]:9). Refused
 //('type) before it is touched, as the amend failed on it, which then freed it, and the caller again. gl: x is a global's
-//value, assigned in run (ixca): where the walk meets a symbol below the first level, 512, so d4 assigns it (ixca);
+//value, assigned in run (ixca): where the walk meets a symbol below the first level, or the check below where it stopped
+//(a list of indices, an elided level, a list of keys, a row) meets one with an index below it (ixsm), 512, so d4 assigns
+//it (ixca), held where the symbol can name the variable (ixch): ixst, which has items out of it, could not put it back;
 //and +256 where an amend by name can follow ixst's places (a key to add or a list of keys, or the walk stopped short
 //above the last level), so that ixca keeps the global's place while ixst assigns it
 I ixwk(A x,A y,A z,B asg,B gl,UC*kd,L*ix){if(!x)return 0;if(_t(x)==tm&&!_tMT(_y(x)))return -3;UC ry=_t(y);B at=ry>tm,ty=LH(tE,ry,tL);U m=at?1:_N(y),k=0;I a=-1;   //a: the first level with a key to add
@@ -125,17 +128,17 @@ I ixwk(A x,A y,A z,B asg,B gl,UC*kd,L*ix){if(!x)return 0;if(_t(x)==tm&&!_tMT(_y(
      kd[k]=t==tm?1:2;ix[k]=j;I(!last,w=ii(vs,(U)j))}}
    else if(t==tM&&(ty||_tz(s))){if(j<0||j>=(L)_N(_A(vs)[0])||!last&&!(k+2==m&&_tA(y)&&_t(_A(y)[k+1])==ts))break;kd[k]=3;ix[k]=j;
     if(!last){U c=tcc(v,_A(y)[k+1]);I(c,kd[k]=6;ix[k+1]=c-1)}k++;break;}   //a row then a column that d4 would amend on its own (tca, a.c): 6, which ixst does so
-   else if(!last&&a<0&&!ty&&_t(s)==tS){A f=fnd(ks,_R(s));U c=_N(s);I r=ixzc(z,c)?2:0;A e=k+2==m&&_tz(_A(y)[k+1])?_A(y)[k+1]:0,h_=0;   //a list of keys above the last level: found
+   else if(!last&&a<0&&!ty&&_t(s)==tS){A f=fnd(ks,_R(s));U c=_N(s);I r=ixzc(z,c)?2:0;A e=k+2==m&&_tz(_A(y)[k+1])?_A(y)[k+1]:0,h_=0;I(gl,ixsm=0)   //a list of keys above the last level: found
     for(U i=0;i<c&&!r;i++){L q=ixe(f,i);B kin=q>=0&&q<(L)_N(ks);A u=_tA(vs)&&(kin||_N(vs))?_A(vs)[kin?q:0]:0,zw_=ixzi(z,i);   //once, and its places (f) passed to ixst (9); z of its count first
      if(e&&u&&!_tP(u)&&_tT(u)){L g=gl_(e);I(g<0||g>=(L)_N(u),r=1)}   //one int into a list below: its range, as ixck checks it, without taking the list
      else I(_t(vs)!=tM||ixnd(y,k+1,zw_),I(_t(vs)==tM&&!h_,h_=ixkf(vs,y,k+1))r=ixkv(v,kin?q:-1,y,k,zw_,asg,h_))}I(h_,mr(h_))   //else as ixkd checks it (a column not there: the first, nulled): values that are
      //dicts of the same keys (held as a table) are rows, read where there is something below to check (their columns found once, then)
-    I(v!=x,mr(v))P(r,mr(f);-r)kd[k]=9;ix[k]=(L)f;return (I)(k+1|gl<<8);}   //as ixkd checks it: a missing key above the last level adds it, the first value nulled
+    I(v!=x,mr(v))P(r,mr(f);-r)P(gl&&ixsm,mr(f);512)kd[k]=9;ix[k]=(L)f;return (I)(k+1|gl<<8);}   //as ixkd checks it: a missing key above the last level adds it, the first value nulled
    else break;}
   else break;
   if(last){k++;break;}if(v!=x)mr(v);v=w;}
  if(k==m||k&&(kd[k-1]==3||kd[k-1]==6)){I(v!=x,mr(v))P(a>=0&&k==m&&a+2==(I)m&&!kd[a+1],kd[a]+=3;a+2)return a<0?(I)k:a+1|gl<<8;}   //7, 8: a key to add, then one index into a list
- I r=ixck(v,y,k,z,asg);B sy=gl&&k&&_ts(v);I(v!=x,mr(v))P(r,-r)P(sy,512)P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;ix[k]=-1;return (I)(k+1|(gl&&k+1<m)<<8);}   //stopped short below the first level: d8 from there (3)
+ I r;B sy;if(gl&&k){ixsm=0;r=ixck(v,y,k,z,asg);sy=_ts(v)||ixsm;}else{r=ixck(v,y,k,z,asg);sy=0;}I(v!=x,mr(v))P(r,-r)P(sy,512)P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;ix[k]=-1;return (I)(k+1|(gl&&k+1<m)<<8);}   //stopped short below the first level: d8 from there (3)
 A ixst(A,A,CO UC*,CO L*,U,U,A,A,A*),ixv2(UC,A,A);
 //the item at the places ixwk found, where each is one that is there -- an int into a list (0), a key or column there
 //(1, 2: not one to add), a row then its column (6), or a table's row at the last level (3) -- so that the verb can go

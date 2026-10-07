@@ -174,7 +174,8 @@ xcols:{[c;t]c:c,();e:(k:cols t)^c;$[(#k)=(#c)+#e;0;hasc[c;t]];+(c,e)#+t}   / a c
 xsg:{[cs;d]{[d;o;v]o@$[d;>v o;<v o]}[d]/[!#*cs;|cs]}   / Each column's own order, the last key first (stable); the rows' grade squeezed one-item rows (digest #58)
 xasc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;0b);o:$[#o;o;xsg[(+t)c;0b]];t:t@o;d:+t;+d,(1#c)!`sa'd@1#c}
 xdesc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;1b);o:$[#o;o;xsg[(+t)c;1b]];t@o}
-fills:{$[|/`m`M=@x;dcv[fills;x];$[1=#x;isat x;0=#x];x;x@|\(!#x)*~^x]}   / each null takes the last value before it, as q; a dict by its values, a table by column
+fills:{$[|/`m`M=@x;dcv[fills;x];$[2>#x;$[#x;isat x;1b];0b];x;`A=@x;$[`A=@n:^x;fln\x;x@|\(!#x)*~n];x@|\(!#x)*~^x]}   / each null takes the last value before it, as q; a dict by its values, a table by column
+fln:{$[isat x;$[(`f=@x)&`I=@y;x^0.0+y;x^y];isat y;$[^y;x;y];~(#x)=#y;`err"length";`A=@n:^y;fln'[x;y];[t:(@x),@y;x:$[t~`I`F;0.0+x;x];y:$[t~`F`I;0.0+y;y];@[y;i;:;x i:&n]]]}   / a list of lists fills position by position from the item before, as q's ^\ (the nulls of y take x's; ints with floats: floats, as q)
 attr:{`at x}                                         / q's attr: `s `u `p `g, or ` for none
 meta:{d:+unkey x;xkey[`c;+`c`t`a!(!d;{@*x}'value d;{`at x}'value d)]}
 insert:{[t;r]t,r}

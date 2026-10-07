@@ -524,5 +524,126 @@ tq[`strSemi;       "select from TQS where s like \"a;b\"";              1#TQS];
 tq[`strEscQuote;   "exec \"a\\\")\" from TQS";                          "a\")"];
 tq[`strEnd;        "(exec s from TQS where s like \"a;b\"),,\"x)\"";    ("a;b";"x)")];
 
+/ an unparenthesised query as the source takes the where-clause after it, as q's
+TNQ:([]sym:`a`b`a;n:1 2 3)
+tq[`nestWhereExec; "exec n from update c0:n from TNQ where sym=`b";     1 2 3];
+tq[`nestWhereSel;  "select n from update c0:n from TNQ where sym=`b";   ([]n:1 2 3)];
+tq[`nestWhereUpd;  "update m:n from select from TNQ where sym=`a";      ([]sym:`a`a;n:1 3;m:1 3)];
+tq[`nestWhereDel;  "delete from select from TNQ where sym=`a";          0#TNQ];
+tq[`nestWhereParen; "exec n from (update c0:n from TNQ) where sym=`b";  ,2];
+
+/ a by-key that is a function is q's 'rank on a table of any length; a global that is data is a key
+tqx:{[tag;q;want]e:.[{(1b;. qrw x)};,q;{(0b;*"\n"\x)}];hpush[tag;(~e 0)&want~e 1;"FAIL want the error ",want,"  <-  ",q]}
+TFK:([]n:,0)
+QG:42
+tqx[`byFnKey;      "select count i by sym from (select c0:n from TFK)";"'rank"];
+tqx[`byFnKeyAll;   "select by sym from TFK";"'rank"];
+tqx[`byFnKey2;     "select count i by sym from ([]n:1 2)";"'rank"];
+tqx[`byFnKeyUpd;   "update c:sum n by sym from TFK";"'rank"];
+tqx[`byFnKeyExec;  "exec count i by sym from TFK";"'rank"];
+tq[`byDataGlobal;  "select count i by QG from TN";  (+(,`QG)!,,42)!+(,`x)!,,3];
+
+/ a where whose value is an atom keeps every row (1b) or none (0b), as q: it is not a one-item mask
+tq[`whAtom1b;      "select from trades where 1b";                       trades];
+tq[`whAtom1bI;     "select i from trades where 1b";                     ([]x:!6)];
+tq[`whAtom0b;      "select from trades where 0b";                       0#trades];
+tq[`whAtomAnd;     "select from trades where 1b,0b";                    0#trades];
+tq[`whAtomExec;    "exec sz from trades where 1b";                      1 2 3 4 5 6];
+tq[`whAtomBy;      "exec count sz by sym from trades where 1b";         `a`b`c!3 2 1];
+tq[`whAtomUpd;     "update z:sz from trades where 1b";                  +(+trades),(,`z)!,1 2 3 4 5 6];
+tq[`whAtomDel;     "delete from trades where 0b";                       trades];
+t[`whAtomFunc;     ?[trades;,1b;0b;()];                                 trades]
+t[`whAtomFuncLater; ?[trades;((>;`px;15);1b);0b;()];                    1_trades]
+t[`whAtomFuncDel;  ![trades;,0b;0b;0#`];                                trades]
+/ any other atom is not a boolean: 'type, as q (it was every row, the first row, or 'domain), the error pinned
+tqx[`whAtomNull;   "select from trades where 0N"; "'type"];
+tqx[`whAtomFloat;  "select from trades where 1.5"; "'type"];
+tqx[`whAtomSym;    "select from trades where `a"; "'type"];
+tqx[`whAtomChar;   "exec sz from trades where \"a\""; "'type"];
+tqx[`whAtomFNull;  "update z:0 from trades where 0n"; "'type"];
+tqx[`whAtomCasFloat; "select from trades where px>15, 1.5, sz>avg sz"; "'type"];
+tqx[`whAtomCasSym;   "select from trades where px>15, `a, sz>avg sz"; "'type"];
+tqx[`whAtomCasChar;  "select from trades where px>15, \"a\", sz>avg sz"; "'type"];
+tqx[`whAtomCasFNull; "select from trades where px>15, 0n, sz>avg sz"; "'type"];
+tqe[`whAtomCascade;  "select from trades where px>15, 0N, sz>avg sz"];
+tqx[`whAtomFuncNull;  "?[trades;((>;`px;15);0N);0b;()]"; "'type"];
+/ a functional where over a simple column
+TH:([]a:(1 2;3 4;1 1);b:1 2 3;s:("ab";"cd";"ab"))
+t[`whFuncSimple;      ?[TH;,(>;`b;1);0b;()];                               1_TH]
+/ like on a char column reads it as one string: an atom, so every row or none, as the text form; a temporal column
+TC:([]c:"abc";n:1 2 3)
+TT2:([]time:09:30:00.000+60000*0 1 6 11;n:1 2 3 4)
+t[`whFuncLikeChar;    ?[TC;,(like;`c;"a*");0b;()];                          TC]
+t[`whFuncLikeCharE;   ?[0#TC;,(like;`c;"");0b;()];                          0#TC]
+t[`whFuncLikeCharU;   (+![TC;,(like;`c;"a*");0b;(,`n)!,0])`n;               0 0 0]
+t[`whFuncTime;        ?[TT2;,(>;`time;09:35:00.000);0b;()];                 2_TT2]
+/ an int atom where other than 0 or 1 is 'type, as q (#83 Q13); a list is passed on as before
+tqe[`whIntAtom;      "select from trades where 2"];
+tq[`whZeroOne;       "select from trades where (px>15)&sz<5";        ([]sym:`b`a`b; px:20 30 40.0; sz:2 3 4)];
+tq[`whNotLeft;       "select from trades where ~sz<3";               2_trades];
+/ an empty list as a where's value (no rows, a cascade that kept none, an each over none) keeps no row, as before
+TE:([]n:1 2 3 4;s:("ab";"b";"ac";"d"))
+tq[`whEmptySel;      "select from (0#TE) where s like \"a*\"";           0#TE];
+tq[`whEmptyCas;      "select from TE where n>10,s like \"a*\",n=max n";   0#TE];
+tqa[`whEmptyUpd;     "update z:1 from TE where n>10,s like \"a*\",n=max n"; {(+x)`z}; 0N 0N 0N 0N];
+tq[`whEmptyDel;      "delete from TE where n>10,s like \"a*\",n=max n";   TE];
+tqa[`whEmptyBy;      "select c:count n by n from TE where n>10,s like \"a*\",n=max n"; NR; 0];
+tq[`whEmptyEach;     "select from TE where n>10,{x>1}'n";                 0#TE];
+tq[`whEmptyCols;     "select from ([]a:();b:()) where a=1";               ([]a:();b:())];
+tq[`whEmptyFunc;     "?[TE;((>;`n;10);(like;`s;\"a*\"));0b;()]";        0#TE];
+
+/ a later constraint that reads other rows sees only the rows the earlier ones kept, as q: indexing by a column
+/ (n 0, m n), in with a column on its right, and match all read other rows, though they look like n>1
+TL:([]n:1 2 3 4 5 6;m:6 2 3 1 5 4)
+tq[`casIndex;     "select from TL where n>1,n>n 0";                     TL 2 3 4 5];
+tq[`casIndexCol;  "select from TL where n>1,m>m n";                     TL 1 4 5];
+tq[`casInCol;     "select from TL where n>3,n in m";                    TL 3 4];
+tq[`casMatch;     "select from TL where n>2,n~3 4 5 6";                 TL 2 3 4 5];
+tq[`casInLit;     "select from TL where n>2,n in 3 4";                  TL 2 3];
+tq[`casGlobalIx;  "select from TL where n>2,(10 20 30 40 50 60 70 m)>35"; TL 2 4 5];
+/ and what still keeps to its row: a monadic ~, a , between literals
+tq[`casMonoNot;   "select from TL where n>1,~n=4";                      TL 1 2 4 5];
+tq[`casLitJoin;   "select from TL where n>1,n in (2,5)";                TL 1 4];
+/ qloc keeps its answers in globals; a peach worker may not assign one, and does not keep them
+t[`casPeach;      .[{peach[x;1 2 3 4]};,{#sel"from TL where n>1,n<4"};{x}];        2 2 2 2]
+t[`casPeachCas;   .[{peach[x;1 2 3 4]};,{#sel"from TL where n>1,n>avg n"};{x}];     2 2 2 2]
+
+/ a by-expression that reads other rows sees only the rows the where kept, as q: avg px is 45, not 35
+tq[`byAfterWhere;     "select s:sum sz by px>avg px from trades where px>25"; (+(,`px)!,0 1)!+(,`s)!,7 11];
+tq[`byAfterWhereNm;   "select s:sum sz by g:px>avg px from trades where px>25"; (+(,`g)!,0 1)!+(,`s)!,7 11];
+tq[`byAfterWhereExec; "exec sum sz by px>avg px from trades where px>25";   0 1!7 11];
+tq[`byAfterWhereTwo;  "select s:sum sz by sym,px>avg px from trades where sz>1"; (+`sym`px!(`a`a`b`c;0 1 0 1))!+(,`s)!,3 6 6 5];
+tq[`byAfterWhereI;    "select j:i by i>avg i from trades where sz>2";       (+(,`x)!,0 1)!+(,`j)!,(2 3;4 5)];
+
+/ the same for by-items that index or use in with a column (the key's name aside: values only)
+KV:{(*. +!x;*. +. x)}
+tqa[`byAfterWhereIx;   "select c:count m by n 0 from TL where n>2"; KV;  (,3;,4)];
+tqa[`byAfterWhereIn;   "select c:count m by n in m from TL where n>3"; KV; (0 1;1 2)];
+tqa[`byAfterWhereColIx; "select c:count n by m n from TL where n>2"; KV;  (0N 4;3 1)];
+/ a by-item that starts with a digit but is not a number reads other rows too: 0+|n is read on the kept rows, as q
+TU:([]n:1 2 3 4;m:4 1 3 2)
+tqa[`byAfterWhereDigit; "select c:count i by 0+|n from TU where n>2"; KV; (3 4;1 1)];
+tq[`byAfterWhereDigitX;  "exec n by 0+|n from TU where n>2";              3 4!(,4;,3)];
+t[`byAfterWherePeach; .[{peach[x;1 2 3 4]};,{#sel"select c:count m by n mod 2 from TL where n>1"};{x}]; 2 2 2 2]
+
+/ a : inside a time or timestamp literal is not an item's name:expr, as q (an unnamed item holding one was split there)
+TT:([]time:09:30:00.000+60000*0 1 6 11;n:1 2 3 4)
+TV:([]ts:2026.01.02D09:00 2026.01.02D09:30 2026.01.02D10:00 2026.01.02D10:30;n:1 2 3 4)
+tqa[`tlitBy;        "select c:count n by time>09:35:00.000 from TT"; KV;       (0 1;2 2)];
+tqa[`tlitByShort;   "select c:count n by time>09:35 from TT"; KV;              (0 1;2 2)];
+tqa[`tlitByLeft;    "select c:count n by 09:35:00<time from TT"; KV;           (0 1;2 2)];
+tqa[`tlitByWithin;  "select c:count n by time within 09:31 09:40 from TT"; KV; (0 1;2 2)];
+tqa[`tlitByNamed;   "select c:count n by g:time>09:35 from TT"; KV;            (0 1;2 2)];
+tqa[`tlitSel;       "select b:time>09:35, time>09:35:00.000 from TT"; {. +x};  (0 0 1 1;0 0 1 1)];
+tq[`tlitExec;       "exec time>09:35:00.000 from TT";                         0 0 1 1];
+tq[`tlitExecBy;     "exec count n by time>09:35 from TT";                     0 1!2 2];
+tqa[`tlitUpdBy;     "update c:count n by time>09:35 from TT"; {(+x)`c};        2 2 2 2];
+tqa[`tlitStampBy;   "select c:count n by ts>2026.01.02D09:30 from TV"; KV;     (0 1;2 2)];
+tq[`tlitStampExec;  "exec ts>2026.01.02D09:30:00.000000000 from TV";          0 0 1 1];
+/ such an item takes Amber's name, the first name in it (x if it starts with a literal), not q's x: pinned on purpose
+tqa[`tlitSelName;   "select time>09:35 from TT"; CL;                          ,`time];
+tqa[`tlitSelNameX;  "select 09:35<time from TT"; CL;                          ,`x];
+tqa[`tlitUpdName;   "update time>09:35 from TT"; CL;                          `time`n];
+
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

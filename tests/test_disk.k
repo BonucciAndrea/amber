@@ -93,7 +93,18 @@ t[`ptSortedSym;attr (sel"select from trade where date=2026.01.02")`sym;`p]
 x:loaddb T,"/hdb"
 t[`reload;#sel"select from trade";12]
 
+/ ---- \l of a script that loads itself ---------------------------------------
+/ each level nested the loader on the C stack with no limit and crashed (SIGSEGV); now 'stack after 512 levels, as q's
+/ 'stack after 500. Run in a process of its own, so a crash cannot stop the suite: the child prints the trapped error
+/ (printed already, so "") and how many levels ran (511 under the script's own load)
+x:mkd T,"/l";(T,"/l/rec.k") 0:("n+:1";"\\l ",T,"/l/rec.k")
+(T,"/l/top.k") 0:("n:0";"r:.[.:;,\"\\\\l ",T,"/l/rec.k\";{x}]";"`0:(`k r),\"/\",$n")
+t[`loadSelf;`x((`argv[]0;T,"/l/top.k");"");"\"\"/511\n"]
+(T,"/l/cnd.k") 0:("m+:1";"$[m<300;. \"\\\\l ",T,"/l/cnd.k\";]")
+m:0;x:.[.:;,"\\l ",T,"/l/cnd.k";{x}]
+t[`loadNested300;m;300]   / a load that stops is not limited before 512
+
 rm T
-hexpect[51]
+hexpect[53]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

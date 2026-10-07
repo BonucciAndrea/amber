@@ -19,7 +19,12 @@
  * Parsing rules (a practical RFC 4180 subset, not a full implementation):
  *   - fields are comma-separated; rows are separated by "\n" or "\r\n"
  *   - a field may be double-quoted ("like this"); a doubled quote ("")
- *     inside a quoted field is an escaped literal quote
+ *     inside a quoted field is an escaped literal quote. Bytes after the
+ *     closing quote stay in the field, the quote with them: "a"b is a"b,
+ *     as q reads it
+ *   - a NUL is an ordinary byte (the file is read by length, not as a C
+ *     string), at the end of the file too; a symbol ends at it, as `$
+ *     ends one
  *   - the first row is the header (column names)
  *   - a column is typed Long if every non-empty cell parses as a whole
  *     number, Float if every non-empty cell parses as a number (with a
@@ -57,8 +62,9 @@
  * (au) and prints a message to stderr if the file cannot be opened. */
 A csv_read(S path);
 
-/* `csvx "path.csv": reads the file with both csv_read() and the 2.2.0
- * reference reader kept in csv.c and returns 1 iff the two agree bit for bit
+/* `csvx "path.csv": reads the file with both csv_read() and the reference
+ * reader kept in csv.c (2.2.0's, with the two rules above that #94 Q15
+ * changed) and returns 1 iff the two agree bit for bit
  * (names, types, lengths, every byte of every column); the first difference
  * is printed to stderr. */
 int csv_check(S path);

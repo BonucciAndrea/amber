@@ -63,6 +63,23 @@ t[`fszMissing;`fsz T,"/c/nope";-1]
 t[`fszDir;`fsz T,"/c";-2]
 t[`ldir;(`ldir T)1;()]
 
+/ ---- `csvr: what a cell holds -------------------------------------------------
+/ #94 Q15: bytes after a closing quote stay in the cell (they ended the row: three rows of symbols here), and a NUL is
+/ an ordinary byte (it ended the file: two rows); a symbol ends at it, as `$ ends one. `csvx: the reference reader agrees
+x:mkd T,"/csv";CQ:{f:T,"/csv/",$x;f 1:y;f}
+CQ1:CQ[`q1;"x,y\n\"a\"b,c\n1,2\n"];CQ2:CQ[`q2;"v,w\n1,\"a\"b\n2,\"c\"\n"];CQ3:CQ[`q3;"x,y\n1,2\n3,",(`c$0),"4\n5,6\n"]
+CQ4:CQ[`q4;"x,y",(`c$0),"z\n1,2\n"]
+t[`csvrQuoteTail;`csvr CQ1;+`x`y!(`$("a\"b";,"1");`$(,"c";,"2"))]
+t[`csvrQuoteTailRow;`csvr CQ2;+`v`w!(1 2;`$("a\"b";,"c"))]
+t[`csvrNul;`csvr CQ3;+`x`y!(1 3 5;`$(,"2";"";,"6"))]
+t[`csvrNulHeader;`csvr CQ4;+`x`y!(,1;,2)]
+t[`csvxQ15;`csvx'(CQ1;CQ2;CQ3;CQ4);1 1 1 1]
+/ NULs at the end of the file are data too: in the last cell, that column is symbols (q's typed reader gives 0N);
+/ a NUL line, at the end or inside, is a row whose first cell is no number (q's typed reader gives a row of nulls)
+Z0:`c$0
+CQ8:CQ[`q8;"a,b\n1,2\n3,4",3#Z0];CQ9:CQ[`q9;"a,b\n1,2\n3,4\n",3#Z0];CQ10:CQ[`q10;"a,b\n1,2\n",Z0,"\n3,4\n"]
+t[`csvrNulEnd;`csvr'(CQ8;CQ9;CQ10);(+`a`b!(1 3;`$(,"2";,"4"));+`a`b!(`$(,"1";,"3";"");2 4 0N);+`a`b!(`$(,"1";"";,"3");2 0N 4))]
+
 / ---- values, splayed tables, the sym file ------------------------------------
 dt:([]sym:`a`b`c`a;px:1 2 3 4.0;n:10 20 30 40;s:("ab";"c";"";"def"))
 t[`dsetDget;dget dset[T,"/one";dt];dt]
@@ -167,6 +184,6 @@ B:T,"/bb";(`$":",B)set 5000#"abc";$[LK;wo[B;get`$":",B];B 1:5000#"abc"]
 t[`writeOwnGet;1:B;5000#"abc"]
 
 rm T
-hexpect[72]
+hexpect[78]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

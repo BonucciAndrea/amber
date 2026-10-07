@@ -214,7 +214,12 @@ ujk:{[x;y]$[`M=@. x;0;`err"nyi"];$[iskeyed y;$[`M=@. y;0;`err"nyi"];`err"type"];
 / own type where nothing matches (0+"xy" was ints, a nested column broke); key columns must agree in type (digest #45)
 pj:{[t;kt]kc:keys kt;td:+t;$[&/(@'(+!kt)kc)=@'td kc;0;`err"type"];p:jprobe[kc;+!kt;td];i:(#p 0)^(p 0)?p 1;vt:value kt;vc:cols vt;+td,vc!{[i;t;vt;c]v:vt c;$[c in !t;[z:$[`F~@v;0.0;0];a:t c;r:a+z^(v,z)@i;$[|/^a;@[r;&^a;:;*0#r];r]];pjn[v;i]]}[i;td;vt]'vc}
 pjn:{[v;i]$[`F~@v;0.0^(v,0.0)@i;`I~@v;0^(v,0)@i;`C~@v;(v,`c$0)@i;`A~@v;(v,,0#*v)@i;(v,*0#v)@i]}
-ej:{[c;x;y]c:c,();p:jprobe[c;c#+y;+x];$[#r:`ejx p;+(+atr[x;r 0]),{y@x}[r 1]'c_+y;(!#y)~(p 0)?p 0;[i:(p 0)?p 1;j:&~^i;+(+atr[x;j]),{y@x}[i@j]'c_+y];ejm[c;x;y;p]]}   / every matching row of y, in order (keys encoded as lj/ij do); `ejx (src/w.c) finds them in one hash pass over y's keys; other keys: unique ones found as ij finds them, else grouped
+ejk:{$[`A~t:@x;$[#x;$[(u:@*x)in`d`t`n;u;`C~u;`str;`A];`A];t]}   / ej: a key column's kind, its type; a general list (how dates, times and strings are held) has its first item's, else `A, which joins any
+ejK:{$[`A~@x;$[1=#?@'x;$[`str~k:ejk x;`C;k];`A];@x]}   / on a mismatch only: a general list's kind if all its items agree, else `A (a mixed column joins any); strings meet chars as before
+ejo:{&/(x=y)|(`A=x)|`A=y}
+ejs:{$[`str~k:ejk x;`A;k]}   / y's key column: a string column is a general list, which q joins to any (q checks only a typed one)
+ejt:{[c;x;y]x:+x;y:+y;$[ejo[ejk'x c;ejs'y c];0;ejo[ejK'x c;ejK'y c];0;`err"type"]}   / ej's check of its key columns' kinds: 'type for two that differ
+ej:{[c;x;y]c:c,();p:jprobe[c;c#+y;+x];$[#r:`ejx p;[$[#*r;0;1<#c;ejt[c;x;y];0];+(+atr[x;r 0]),{y@x}[r 1]'c_+y];[ejt[c;x;y];(!#y)~(p 0)?p 0];[i:(p 0)?p 1;j:&~^i;+(+atr[x;j]),{y@x}[i@j]'c_+y];ejm[c;x;y;p]]}   / every matching row of y, in order (keys encoded as lj/ij do); `ejx (src/w.c) finds them in one hash pass over y's keys; other keys: unique ones found as ij finds them, else grouped; key columns of two kinds are 'type, as q (ejt: only when `ejx is not used, or finds nothing for two or more keys)
 ejm:{[c;x;y;p]g:=p 0;i:(#g)^(!g)?p 1;n:(#'. g),0;+(+x@&n i),c_+y@,/((. g),,!0)i}   / repeated keys: group y's keys and repeat each row of x for each of its matches
 
 / ---- asof join (aj/aj0) : y must contain matching + time cols -----------------

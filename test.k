@@ -188,6 +188,9 @@ t[`ejKeyedY;.[ej;(`s;+`s`n!(`a`b;1 2);(+(,`s)!,`a`c)!+(,`v)!,10 30);{`err}];`err
 t[`ejFloatKeys;ej[`s;+`s`n!(-0.0 0n 1.5;1 2 3);+`s`v!(0.0 0n;10 20)];+`s`n`v!(-0.0 0n;1 2;10 20)]
 t[`ejManyMatches;ej[`s;+`s`n!(`a`b`c;1 2 3);+`s`v!(`b`a`b`b`c`b`b`b;1+!8)];+`s`n`v!(`a`b`b`b`b`b`b`c;1 2 2 2 2 2 2 3;2 1 3 4 6 7 8 5)]
 t[`ejCharKeys;ej[`s;+`s`n!("ab";1 2);+`s`v!("bba";10 11 20)];+`s`n`v!("abb";1 2 2;20 10 11)]
+/ key columns of two types are 'type, as q, for any key of two (they gave no rows); a general list column joins as before
+t[`ejKeyTypes;{.[ej;x;{5#x}]}'((`k;+`k`v!(1 2 3;10 20 30);+`k`w!(2 3 4.0;1 2 3));(`k;+`k`v!(1 2 3;10 20 30);+`k`w!(`b`c`d;1 2 3));(`k;+`k`v!(1 2 3.;1 2 3);+`k`w!(`b`c`d;1 2 3));(`k`j;+`k`j`v!(1 2 3;`a`b`c;10 20 30);+`k`j`w!(2 3 4;2 3 4.;1 2 3)));4#,"'type"]
+t[`ejKeyGeneral;ej[`k;+`k`v!(1 2 3;10 20 30);+`k`w!((2;3);1 2)];+`k`v`w!(2 3;20 30;1 2)]
 
 / ---- asof / window joins ----
 trade:+`sym`time`px!(`a`b`a;3 4 9;100 200 300)
@@ -430,6 +433,10 @@ t[`tlitRows;#([]a:1 2 3 4);4]
 
 / ---- temporal ----
 \l temporal.k
+/ ej: a date, timestamp or string key column (each held as a general list) against another kind is 'type, as q; dates join dates
+t[`ejKeyTemporal;{D:+`k`v!(2000.01.02 2000.01.03;1 2);({.[ej;x;{5#x}]}'((`k;D;+`k`w!(1 2;3 4));(`k;D;+`k`w!(2000.01.02D00:00 2000.01.03D00:00;1 2));(`k;+`k`v!(("ab";"cd");1 2);+`k`w!(`ab`cd;1 2)));ej[`k;D;+`k`w!(2000.01.03 2000.01.05;7 8)])}[];(3#,"'type";+`k`v`w!(,2000.01.03;,2;,7))]
+t[`ejKeyMixed;ej[`k;+`k`v!((2000.01.02;2);1 2);+`k`w!(2 3;7 8)];+`k`v`w!(,2;,2;,7)]   / a general column of mixed kinds joins any, as before (only its first item is a date)
+t[`ejKeyYStrings;ej[`k`j;+`k`j`v!(`a`b;0 1;1 2);+`k`j`w!(("ab";"cd");0 1;1 2)];+`k`j`v`w!(0#`;!0;!0;!0)]   / y's string column joins any column of x's, as q (no rows here)
 t[`tsLastNs;pstr 2026.07.30D23:59:59.999999999;"2026.07.30D23:59:59.999999999"]
 t[`tsMsFloor;pstr 2140.01.01D00:01:24.374999297;"2140.01.01D00:01:24.374999297"]
 t[`tsBefore2000;pstr 1999.12.31D23:59:59.999999999;"1999.12.31D23:59:59.999999999"]

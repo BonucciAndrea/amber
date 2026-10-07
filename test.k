@@ -50,6 +50,7 @@ t[`sums;sums 1 2 3;1 3 6]
 t[`prds;prds 1 2 3 4;1 2 6 24]
 t[`deltas;deltas 1 3 6 10;1 2 3 4]
 t[`deltasInf;(deltas 0w 1.0;deltas -0w 2.5 3.0;deltas[,0w];deltas 0n 1.0;deltas `a`b!0w 1.0);(0w -0w;-0w 0w 0.5;,0w;0n 0n;`a`b!0w -0w)]   / an infinite first item stays as it is, as q (was 0n)
+t[`deltasNull;(deltas 1 0N 3;deltas 0N 1 2;deltas 3 0N 0N 5;deltas 5000000000 0N 5000000003;deltas 1.0 0n 3;deltas `a`b`c!1 0N 3;deltas 100 -100;deltas 30000 -30000;deltas 2000000000 -2000000000;{deltas x}@!5;deltas 101b;deltas -128 127 -128;deltas@+`a`b!(1 0N 3;1 2 3);deltas (+(,`k)!,`x`y`z)!+`a`b!(3 0N 4;1 1 2));(1 0N 0N;0N 0N 1;3 0N 0N 0N;5000000000 0N 0N;1.0 0n 0n;`a`b`c!1 0N 0N;100 -200;30000 -60000;2000000000 -4000000000;0 1 1 1 1;1 -1 1;-128 255 -255;+`a`b!(1 0N 0N;1 1 1);(+(,`k)!,`x`y`z)!+`a`b!(3 0N 0N;1 0 1))]   / an int null and the item after it are null, as q, in a list or a table's column (k's - wrapped the null)
 t[`differ;differ 1 1 2 2 3;10101b]
 t[`prev;prev 1 2 3;0N 1 2]
 t[`next;next 1 2 3;2 3 0N]

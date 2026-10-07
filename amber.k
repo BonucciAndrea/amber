@@ -83,7 +83,7 @@ sums:{$[`F=@x;$[^*|r:+\x;+\0.0^x;r];`I=@x;$[`hnl x;+\0^x;+\x];|/`m`M=@x;dcv[sums
 prds:{$[`F=@x;$[^*|r:*\x;*\1.0^x;r];`I=@x;$[`hnl x;*\1^x;*\x];|/`m`M=@x;dcv[prds;x];*\nid[x;1;1.0]]}
 mins:{$[|/`m`M=@x;dcv[mins;x];&\nid[x;9223372036854775807;0w]]}   / mins 0n 1.0 is 0w 1.0, as q
 maxs:{$[|/`m`M=@x;dcv[maxs;x];|\nid[x;-9223372036854775807;-0w]]}
-deltas:{$[`m~@x;dcv[deltas;x];$[1=#x;isat x;0b];x;#x;x-(0^0*1#x),-1_x;x]}   / the zero in front has x's type: 0, before floats made a general list (576 ms on 10M); 0^ as 0*0w is 0n
+deltas:{$[`m~@x;dcv[deltas;x];$[1=#x;isat x;0b];x;#x;$[`F=@x;x-0.0,-1_x;`I=@x;`dlt x;`M=@x;dcv[deltas;x];x-(0^0*1#x),-1_x];x]}   / the zero in front has x's type: 0, before floats made a general list (576 ms on 10M); 0^ as 0*0w is 0n; floats: a float zero, so neither; ints: `dlt, one pass, nulls as q; a table by column
 ratios:{$[`m~@x;dcv[ratios;x];$[1=#x;isat x;0b];x;#x;x%(,1.0),0.0+-1_x;0#0.0]}   / empty: an empty float list, as q (digest #67); floats all through (1, before floats was a general list)
 differ:{$[`m~@x;dcv[differ;x];isat x;1b;~#x;x=x;|/`I`S`C=@x;1b,~(1_x)=-1_x;`F=@x;1b,~((1_x)=-1_x)|(^1_x)&^-1_x;@[~~':x;0;:;1b]]}   / The first item always differs, a null too; typed lists compare shifted (NaN matches NaN, as ~)
 prev:{$[`m~@x;dcv[prev;x];isat x;x;-1_(,x@#x),x]}   / An atom comes back as is, as q; a dict or keyed table: by its values; the null is the list's own (x@#x), not 0N

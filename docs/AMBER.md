@@ -906,7 +906,9 @@ select sum sz by sym from trade where date=2026.01.02
   1M rows is ~6 ms. `update`/`delete` on one is `'par`, as q. `ptab[`trade;()]` gives the whole
   thing as one table.
 * **Older files.** `dset`/`dget`, `splay`/`dload` and `partsave`/`partload` still work, now on
-  the binary format, and they still read the text files Amber wrote before 2.7.
+  the binary format, and they still read the text files Amber wrote before 2.7. They read one by
+  evaluating it as Amber source, so use them only on files you trust. `get` reads only the binary
+  format: a file or a splayed table in any other is `'format`, and is never evaluated (as q's `get`).
 
 Two things to know: the partition column is built only when the query uses it, and a select
 spanning many partitions copies the columns it needs into one table (q maps them in place).
@@ -1086,7 +1088,7 @@ form, a large slice of q's system vocabulary:
 * **`hdb.k`**: on‑disk data, binary and memory‑mapped since 2.7 (see §9e): `set`/`get`,
   `dset`/`dget` (value ↔ file), `splay`/`dload` (splayed table ↔ directory, one file per column with
   a `.d`), `Q.en`/`Q.dpft`/`loaddb`/`ptab` (partitioned databases), and the older
-  `partsave`/`partload`/`parts`. Text files from before 2.7 still read.
+  `partsave`/`partload`/`parts`. Text files from before 2.7 still read through `dget`/`dload`, not `get`.
 * **`ipc.k`**: raw‑socket messaging (`hopen hclose hsend hrecv hsync`, a text protocol rather than the
   q binary wire) and an in‑process tickerplant (`u.def u.sub u.pub u.get u.end`).
 

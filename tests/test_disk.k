@@ -72,6 +72,13 @@ x:(`$":",T,"/f") set 1 2 3
 t[`setFile;get`$":",T,"/f";1 2 3]
 x:`zzdisk set 7
 t[`setGlobal;get`zzdisk;7]
+/ get reads only the binary format: a text file or table is 'format and never run (#94 Q11). dget and dload still
+/ read the files Amber wrote before 2.7, by running them
+x:mkd T,"/old/tt";(T,"/old/tt/.d") 1:`k@,`a;(T,"/old/tt/a") 1:"zzrun:1;5 6";(T,"/old/run") 1:"zzrun:42;1+2"
+ge:{.[get;,`$":",T,x;{*"\n"\x}]}
+t[`getText;(ge"/old/run";ge"/old/tt";ge"/old/nope";.[.:;,`zzrun;{"unset"}]);("'format";"'format";"'io";"unset")]
+x:dget T,"/old/run";y:dload T,"/old/tt"
+t[`getTextDget;(x;y);(3;+(,`a)!,5 6)]
 
 / ---- a partitioned database ------------------------------------------------
 trade:([]sym:`ibm`msft`ibm`aapl;px:10 20 11 30.0;sz:100 200 300 400)
@@ -94,6 +101,6 @@ x:loaddb T,"/hdb"
 t[`reload;#sel"select from trade";12]
 
 rm T
-hexpect[51]
+hexpect[53]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

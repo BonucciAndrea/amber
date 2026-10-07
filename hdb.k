@@ -9,7 +9,8 @@
 /   partsave / partload / parts   the older value-partitioned layout
 / Since 2.7 the files are binary. `wcol writes a column and `rcol maps it back (src/dsk.c), so a numeric
 / column costs one mmap to load and its pages come in as a query reads them. Symbol columns are kept as
-/ indexes into the database's sym file, like q. Files written before 2.7 (Amber text) still read.
+/ indexes into the database's sym file, like q. Files written before 2.7 (Amber text) still read through dget and
+/ dload, which evaluate them; get reads only the binary format.
 / ============================================================================
 
 / ---- paths ----------------------------------------------------------------
@@ -47,7 +48,9 @@ dload:{[dir]dir:hdb.sl hdb.p dir;$[hdb.amc dir,"/.d";hdb.dl[dir;hdb.syms hdb.par
 / ---- the q names ----------------------------------------------------------
 / `a set 5 and get`a are globals; `:path set x writes a file, and a path ending in / splays a table.
 set:{[h;v]$[(`s~@h)&~":"=*$h;[.[h;();:;v];h];[p:hdb.p h;$["/"~*|p;splay[p;v];dset[p;v]];h]]}
-get:{[h]$[(`s~@h)&~":"=*$h;. h;[p:hdb.sl hdb.p h;$[-2=`fsz p;dload p;dget p]]]}
+/ get reads only the binary format: a file or a table in any other is 'format, never evaluated (q's get never runs a
+/ file). dget and dload, Amber's own names, still read the text files Amber wrote before 2.7. A missing file is 'io, as before
+get:{[h]$[(`s~@h)&~":"=*$h;. h;[p:hdb.sl hdb.p h;$[-2=`fsz p;$[hdb.amc p,"/.d";hdb.dl[p;hdb.syms hdb.par p];`err"format"];hdb.amc p;`rcol p;-1=`fsz p;`err"io";`err"format"]]]}
 
 / ---- partitioned databases ------------------------------------------------
 / db/<partition>/<table>/<col>, partitions named by a date (2026.01.02) or an int, symbols in db/sym.

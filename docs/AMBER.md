@@ -879,7 +879,8 @@ table is `'type`); export is
 callback drops the refcount when the consumer finishes. `arrow.import (schemaAddr; arrayAddr)`
 → Amber table (a copy: Amber's inline object header precludes aliasing a foreign buffer),
 translating format strings and validity bitmaps (→ `0N`/`0n`/null). Numeric widths, ranges
-and symbol (utf8) columns round-trip exactly. Structs live in `a.h`, logic in `ar.c`.
+and symbol (utf8) columns round-trip exactly; exporting any other column (chars, bytes, a general list such
+as strings or temporal values) is `'nyi`. Structs live in `a.h`, logic in `ar.c`.
 
 ## 9e. On disk: splayed and partitioned tables (since 2.7.0)
 

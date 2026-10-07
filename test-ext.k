@@ -161,6 +161,12 @@ t[`arrowBool3;abi 0x414d42010300030000000000000005;101b]
 t[`arrowBool8;abi 0x414d420103000800000000000000c3;11000011b]
 t[`arrowBool10;abi 0x414d420103000a00000000000000a502;1010010101b]
 t[`arrowBool17;abi 0x414d420103001100000000000000018001;10000000000000011b]
+/ a column with no Arrow format here is 'nyi: it was exported as int64 over its payload (8 bytes a row from a char)
+aen:{.[{arrow.export x;"ok"};,x;{*"\n"\x}]}
+t[`arrowNyi;aen'(([]c:"abc");([]b:0x0102);([]l:(1 2;3 4));([]s:("ab";"c"));([]d:2026.01.01 2026.01.02);([]a:1 2;c:"ab"));6#,"'nyi"]
+t[`arrowEmptyColExp;(+`a`b!(0#`;!0))~arrow.import arrow.export ([]a:`$();b:());1b]   / an empty table's general column: int64, as before
+/ a symbol of any length comes back whole: it was cut to 255 bytes
+t[`arrowLongSym;{(+arrow.import arrow.export ([]s:(x;`b)))`s}'(`$255#"a";`$256#"b";`$300#"c";`$70000#"d");{(x;`b)}'(`$255#"a";`$256#"b";`$300#"c";`$70000#"d")]
 
 fails:r@&{"FAIL"~4#x}'r[;1]
 `0:"";`0:"============ EXTENDED TEST SUITE ============"

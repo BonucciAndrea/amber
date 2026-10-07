@@ -1036,8 +1036,9 @@ Z A set(A x,L i,A y/*1i1*/)_(Q(MINE(x));
 //With every key present that is one amend of the values. Otherwise the keys go in order, as the fold over them did:
 //a key not yet in the dict is added at its first use, with the value ie gives from the values at that point.
 //Deeper (n==5, .[d;(k;i);f;y]) the keys always go in order, squeezing as the fold did: after each atom, not at the end
-Z A dam(A x,A y,A z,CO A*a,U n/*10100*/)_(x=mut(x);U m=0;F(zn,m+=zL[i]==NL)
- P(!m&&n<5,Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);xy=au;xy=Nx(z(a8(b,n)));x)
+Z A ixfl(A,A,A,A,A*);   //u: the amend at every key there by ixfl, where f can fail (ixal); then x put back in *u
+Z A dam(A x,A y,A z,CO A*a,U n,A*u/*10100.*/)_(x=mut(x);U m=0;F(zn,m+=zL[i]==NL)
+ P(!m&&n<5,P(u,A v=xy;xy=au;v=ixfl(v,z,a[2],n>3?a[3]:0,u);mr(z);P(!v,I(*u,xy=*u;*u=x)E(mr(x))(A)0)xy=v;x)Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);xy=au;xy=Nx(z(a8(b,n)));x)
  A w=aL(m);m=0;F(zn,I(zL[i]==NL,_L(w)[m++]=i))A k=i1(y,_R(w)),p=k?fnd(k,_R(k)):0;I(k,mr(k))I(p,p=cL(p))P(!p,mr(w);z(x(0)))
  L c=_N(xx);z=mut(z);F(m,L q=_L(p)[i];_L(p)[i]=q==i?c++:_L(p)[q];zL[_L(w)[i]]=_L(p)[i])mr(p);mr(w);B t=n>3&&!_tt(a[n-1]),s=n<5;nsq+=s;
  F(zn,L j=zL[i];I(j==_N(xx),PSH(xx,ii(y,i));PSH(xy,ie(a[2],xy)))Ab8;*b=xy;b[1]=az(j);AC(b+2,a+2,n-2);I(t,b[n-1]=ii(a[n-1],i))
@@ -1068,7 +1069,7 @@ AA(a8,/*10..0*/A x=*a,y=a[1];
     I(ytZC&&n==4,A z=a[2],u=a[3];P(xtZ&&ztv&&utzZ&&(0xcf&1<<zv),ara(x,y,z,u))P(xtC&&z==av&&utcC,cC(N(ara(x,y,z,u)))))Yt(et(x))mRn(n-1,a+1);nsq++;A r_=f8(AP1,a,n);nsq--;r_?sqz(r_):0)
    Rm(P(y==au,A k=_R(xx);Ab8;*b=x;b[1]=k;AC(b+2,a+2,n-2);x=a8(b,n);mr(k);x)   //:: is every key, as it is when reading d[::;..]: the keys (!d), as d[!d;..]
       P(_tM(xx),_tM(xy)?kam(x,a,n):x(en(yR)))   //at a keyed table's keys (keys a table, values not: 'nyi, as before)
-      A z=Nx(fnd(xx,yR));ZT(P(LH(tG,zt,tL)&&(n==3||n==4&&(_tt(a[3])||_tT(a[3])&&_N(a[3])==zn)||n==5&&_tt(a[3])&&(_tt(a[4])||_tT(a[4])&&_N(a[4])==zn)),dam(x,y,cL(z),a,n))z(0);mRn(n-1,a+1);f8(AP1,a,n))x=mut(x);I(ztl,z=mut(z);F(zN,I(zl==NL,zl=xN;PSH(xx,ztt?yR:ii(y,i));PSH(xy,ie(a[2],xy)))))
+      A z=Nx(fnd(xx,yR));ZT(P(LH(tG,zt,tL)&&(n==3||n==4&&(_tt(a[3])||_tT(a[3])&&_N(a[3])==zn)||n==5&&_tt(a[3])&&(_tt(a[4])||_tT(a[4])&&_N(a[4])==zn)),dam(x,y,cL(z),a,n,0))z(0);mRn(n-1,a+1);f8(AP1,a,n))x=mut(x);I(ztl,z=mut(z);F(zN,I(zl==NL,zl=xN;PSH(xx,ztt?yR:ii(y,i));PSH(xy,ie(a[2],xy)))))
     Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);xy=au;xy=Nx(z(a8(b,n)));x)
    RM(Ab8;AC(b,a,n);YsS(U r=xN;*b=flp(x);tfl(N(a8(b,n)),r))B e=!xN;*b=blw(e?_R(x):x);A p=e?_R(*_A(*b)):0;A u=a8(b,n);P(!u,e?(mr(p),x(0)):0)P(!e,sqz(u))   //p: the prototype of an empty table's rows, its null row
     B m=_tA(u)&&!_n(u)&&_tm(ux)&&mtc_(ux,p);mr(p);m?u(x):x(sqz(u)))   //no amend reached the null row: the table as it was (one that did comes back a table already)
@@ -1080,20 +1081,24 @@ AA(a8,/*10..0*/A x=*a,y=a[1];
 //the check found). An item on the way is taken out of its list, so it is amended in place. z 0: .[x;y;f], f of one argument.
 //f 0: z, taken, is the item's new value (a verb's result, b.c ixca), where every level is one place that is there (ixit).
 //u: where f fails at the last place, and every level above is one that is there (0, 1, 2, 6: not a key to add), each
-//level puts back the item it took out, and *u is the value as it was (or a copy of it), so the variable can be put back
+//level puts back the item it took out, and *u is the value as it was (or a copy of it), so the variable can be put back;
+//and so where an amend by name from a symbol (3) fails, which leaves the symbol as it was
 Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u);
+Z inline B ixnf(A,A,A);A ixal(A,A,A,A,A*);   //(one index, a list, at the last level below a stop short (3): as at the first, so that a
+//verb that fails there is put back too, where it can fail)
 Z A rbl(A),d3(A,A,A),a5(A,A,A,A,A),d3t(A,A,A),d4t(A,A,A,A),dt3(A,A,A),dt4(A,A,A,A);
 //a key (1) at the last level, or a table's column (2) in the table flipped to a dict (tb): inlined in each, so that a
 //dict's has nothing of the table's (its old row count, kept across the amend for tfl)
 Z __attribute__((always_inline)) inline A ixsd(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u,B tb/*10....00..*/)_(x=mut(x);
- I(ix[k]==_N(xx),u=0;A s=_tt(y)?y:_tA(y)?_A(y)[k]:ii(y,k);PSH(xx,_R(s));PSH(xy,ie(f,xy)))   //a key not there (the last level): added, as a8 does
+ I(ix[k]==_N(xx),u=0;A s=_tt(y)?_R(y):_tA(y)?_R(_A(y)[k]):ii(y,k);PSH(xx,s);PSH(xy,ie(f,xy)))   //a key not there (the last level): added, as a8
+  //does (ii's item is made, not borrowed: an int key, from ixkn, may be boxed)
  A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z,u);P(!v,u&&*u?(xy=*u,*u=tb?flp(x):x,(A)0):x(0))xy=v;x)
 Z NI A ixtc(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u/*10....00.*/)_(U r=xN;x=ixsd(flp(x),y,kd,ix,k,m,f,z,u,1);x?tfl(x,r):0)   //a column (tfl)
 A ixst(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u/*10....00.*/)_(UC t=kd[k];P(!t,ixsl(x,y,kd,ix,k,m,f,z,u))
- P(t==3,A w=k?drp(k,yR):yR;B s=k&&!_tP(x)&&_t(x)==tS;x=USQ(s?z?d4t(x,w,f,z):d3t(x,w,f):z?d8(A8(x,w,f,z),4):d8(A8(x,w,f),3));mr(w);x)   //d8, not d4: a symbol below
+ P(t==3,A w=k?drp(k,yR):yR,o=x;B s=k&&!_tP(x)&&_t(x)==tS;x=USQ(s?z?d4t(x,w,f,z):d3t(x,w,f):u&&_tA(w)&&_n(w)==1&&_t(x)<=tm&&!ixnf(_t(x)==tm?_y(x):x,f,z)?ixal(x,*_A(w),f,z,u):z?d8(A8(x,w,f,z),4):d8(A8(x,w,f),3));mr(w);P(!x&&u&&_ts(o),*u=o,(A)0)x)   //d8, not d4: a symbol below
   //the first level names a global; a symbol list there is data, and so are its items (d4t, d3t)
  P(t==9,A s=_A(y)[k],p=(A)ix[k],v=prj(z?ax(dt4,4):ax(dt3,3),(A[]){GAP,drp(k+1,yR)},2);B tb=_t(x)==tM;I(tb,x=flp(x))U n=z?5:4;A b[5]={x,s,v,f,z};   //keys above the last level:
-  x=LH(tG,_t(p),tL)&&(n==4?_tt(f)||_tT(f)&&_N(f)==_n(p):_tt(f)&&(_tt(z)||_tT(z)&&_N(z)==_n(p)))?dam(x,s,cL(p),b,n):(mr(p),a8(b,n));mr(v);P(!x,0)tb?flp(x):x)   //as a8 does (Rm), the find from ixwk
+  x=LH(tG,_t(p),tL)&&(n==4?_tt(f)||_tT(f)&&_N(f)==_n(p):_tt(f)&&(_tt(z)||_tT(z)&&_N(z)==_n(p)))?dam(x,s,cL(p),b,n,0):(mr(p),a8(b,n));mr(v);P(!x,0)tb?flp(x):x)   //as a8 does (Rm), the find from ixwk
  P(t==6,U j=(U)ix[k+1];x=mut(x);xy=mut(xy);A c=_A(xy)[j];_A(xy)[j]=au;c=ixsl(c,y,kd,ix,k,k+1,f,z,u);P(!c,u&&*u?(_A(xy)[j]=*u,*u=x,(A)0):x(0))_A(xy)[j]=c;   //a row then a column: that column
   F(_n(xy),A*p=_A(xy)+i;I(_tA(*p),*p=rbl(*p)))x)   //amended at the row, as d4 does it (tca)
  P(t>6,I(t==8,x=flp(x))x=mut(x);A s=_tA(y)?_A(y)[k]:ii(y,k);PSH(xx,_R(s));PSH(xy,ie(av,xy));A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z,0);P(!v,x(0))xy=v;t==8?flp(x):x)   //a key to add,
@@ -1107,6 +1112,31 @@ Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u)_(U i=(U)ix[k];I(_t(x)==tE
   P(!r,u?(*u=x,(A)0):x(0))set(x,i,r))
  A w;I(_t(x)==tA,w=_A(x)[i];_A(x)[i]=au)E(w=ii(x,i))w=ixst(w,y,kd,ix,k+1,m,f,z,u);P(!w,u&&*u?(_tA(x)?(V)(_A(x)[i]=*u):mr(*u),*u=x,(A)0):x(0))set(x,i,w))
 A ixv2(UC d,A q,A z/*00.*/)_(USQ(v2[d](q,_R(z))))   //b.c ixca: the verb on the item ixit read, which it goes first on
+//x[y]f:z in run (a verb but # _ @ ., b.c ixcv) and .[`x;,y;f(;z)] (d8), where the walk did not start: y one index, a
+//list, where a8 folds f in place item by item, so that f failing part way lost x. Where f cannot fail -- : and ~, a verb
+//of arithmetic or comparison on numbers with numbers, or , on typed data -- a8 does it, as before (ixnf). Else ixfl folds
+//over a list of ints into a list as a8 does, but first takes x at y (one gather; o), and where f fails puts those back,
+//last first (squeezed where a result made the list general), and gives x back (*u)
+Z __attribute__((always_inline)) inline B ixnf(A x,A f,A z){P(!z||!_tv(f),0)U d=(U)_v(f);P(!d||d==11,1)UC t=_t(x),v=_t(z);P(t==tA||t>=tM,0)   //(a general list: its items not known)
+ return d==12?LH(ti,v,ts)||LH(tE,v,tS):d<11&&d!=5&&LH(tE,t,tF)&&(LH(ti,v,tf)||LH(tE,v,tF));}
+Z A ixfl(A x,A y,A f,A z,A*u){U m=_N(y);P(!m,z?a4(x,y,f,z):a8(A8(x,y,f),3))I(_t(x)==tE,x=gZ(x))UC t=_t(x),at=_at(x);A o=i1(x,_R(y));x=mut(x);nsq++;
+ for(U i=0;i<m;i++){A q=ii(y,i);U j=(U)gl_(q);mr(q);A r=j>=_N(x)?ei0():USQ(z?_8(f,A8(ii(x,j),_tt(z)?_R(z):ii(z,i)),2):_8(f,A8(ii(x,j)),1));   //(out of range, which the check
+  //before has refused: 'index, as in a8)
+  if(!r){for(U k=i;k--;){q=ii(y,k);x=set(x,(U)gl_(q),ii(o,k));mr(q);}nsq--;mr(o);I(_t(x)!=t,x=sqz(x))_at(x)=at;*u=x;return 0;}
+  x=set(x,j,r);}
+ nsq--;mr(o);return sqz(x);}
+//a list (ixfl, at ints); a dict: dam, from a8's find, which with every key there amends its values so (ixfl, u); a table
+//at a list of columns: as the dict of its columns (a8). Else as before (a4, a3)
+A ixal(A x,A y,A f,A z,A*u){UC t=_t(x);
+ #define IXP z?a4(x,y,f,z):a8(A8(x,y,f),3)
+ P(_tP(y)||!_tT(y),IXP)P(t<tM,!_tZ(y)||ixnf(x,f,z)?IXP:ixfl(x,y,f,z,u))
+ P(t==tM,P(_t(y)!=tS||ixnf(x,f,z),IXP)A c=_y(x);B n=z&&_tt(z)&&_tA(c)&&_N(c);for(U i=0;n&&i<_N(c);i++)n=ixnf(_A(c)[i],f,z);P(n,IXP)   //(z an atom, and f
+  //cannot fail on any column: as before)
+  U r=_N(x);x=ixal(flp(x),y,f,z,u);P(!x,I(*u,*u=flp(*u))(A)0)tfl(x,r))
+ P(t!=tm||_t(_x(x))==tM||!_tT(_y(x))||ixnf(_y(x),f,z),IXP)A p=fnd(_x(x),_R(y));P(!p,*u=x,(A)0)   //(a keyed table; values that are dicts, held as a table)
+ P(!LH(tG,_t(p),tL)||z&&!_tt(z)&&!(_tT(z)&&_N(z)==_N(p)),mr(p),IXP)   //(z a dict or table: a8's fold over the keys)
+ #undef IXP
+ return dam(x,y,cL(p),A8(x,y,f,z),z?4:3,u);}
 Z A3(a3,/*100*/a8(A8(x,y,z),3))
 A4(a4,/*1000*/a8(A8(x,y,z,u),4))
 Z A a5(A x,A y,A z,A u,A v/*10000*/)_(a8(A8(x,y,z,u,v),5))
@@ -1144,18 +1174,20 @@ Z NI __attribute__((cold)) A d8q(A*p,A*b,A*a,I n,UC*kd,L*ix,B*h){I g_=ixgn(p);B 
  I(!o,_R(q))A r=USQ(n>3?_8(a[2],A8(q,_R(a[3])),2):_8(a[2],A8(q),1));P(!r,I(*p&&*p!=au,mr(*b))E(*p=*b);0)I(*p&&*p!=au,mr(*p);*p=au)   //as d8 does
  A u=0;q=ixst(*b,a[1],kd,ix,0,(U)w,av,r,&u);mr(r);P(!q,I(u,*p=u)(A)0)return *p=_R(q);}   //(u: a result that does not fit puts the value back)
 AA(d8,/*10..0*/A x=*a;
-I ixwk(A,A,A,B,B,UC*,L*),ixck(A,A,U,A,B),ixgn(A*),ixgi(A*);A ixit(A,A,UC*,CO L*,U,B*);   //b.c: is .[`v;i;f;y] sure to fail on its index, count or type? (then v is not touched) If not, where can ixst assign? (.[`v;i;f] is not checked)
+I ixwk(A,A,A,B,B,UC*,L*),ixck(A,A,U,A,B),ixgn(A*),ixgi(A*),ixkn(A,A,UC*,L*);A ixit(A,A,UC*,CO L*,U,B*);   //b.c: is .[`v;i;f;y] or .[`v;i;f] sure to fail on its index, count or type? (then v is not touched) If not, where can ixst assign?
  //while run assigns a global (ixgs): as before (ixck, d4) in an assignment by d4, and refused if this one is assigned in place (ixgi).
  //Where ixit reads the item, f goes first, on it (v :: meanwhile, as before), and ixst assigns its result with :, so if f
  //fails, v is put back (unless f set v, to other than ::). Five or more arguments, which amend does not take: 'nyi, v kept.
  //In an assignment by d4 (and v not the one assigned), where the walk finds the item, f goes first too, and then : as before
  X(RsS(P(ray_rc_sync,mr(*a);err0("noupdate"))A*p=gp(x);P(!p,0)I g_=ixgn(p);P(n>2&&g_&&ixgi(p),et0())P(n>4,en0())UC kd[8];L ix[8];
-   I w_=n==3||n==4?g_?n<4?0:*p&&_t(*p)==tm&&!_tMT(_y(*p))?-3:-ixck(*p,a[1],0,a[3],a[2]==av):ixwk(*p,a[1],n==4?a[3]:au,n==4&&a[2]==av,0,kd,ix):0;P(n==4&&w_<0,w_==-1?ei0():w_==-2?el0():et0())I(w_<0,w_=0)I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;
+   I w_=n==3||n==4?g_?*p&&_t(*p)==tm&&!_tMT(_y(*p))?-3:-ixck(*p,a[1],0,n==4?a[3]:au,n==4&&a[2]==av):ixwk(*p,a[1],n==4?a[3]:au,n==4&&a[2]==av,0,kd,ix):0;
+   I(!w_&&*p&&_t(*p)==tm&&n>2&&!g_&&a[2]!=av,w_=ixkn(*p,a[1],kd,ix))P(w_<0,w_==-1?ei0():w_==-2?el0():w_==-3?et0():(A)0)I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;
    B o;A q=w_?a[2]!=av&&kd[w_-1]==3?ixit(*b,a[1],kd,ix,(U)w_,&o):0:n>2&&a[2]!=av?({A r=d8q(p,b,a,n,kd,ix,&o);P(o,r);(A)0;}):0;   //a table's row, at the last
    //level: read first; and with more below, or in an assignment by d4 (d8q)
    I(q,I(!o,_R(q))A r=USQ(n>3?_8(a[2],A8(q,_R(a[3])),2):_8(a[2],A8(q),1));P(!r,I(*p&&*p!=au,mr(*b))E(*p=*b);0)I(*p&&*p!=au,mr(*p);*p=au)   //what f set, the assignment's result replaces
      q=ixst(*b,a[1],kd,ix,0,(U)w_,av,r,0);mr(r);*p=au;return *p=_R(N(q)))   //a row: by d8
-   A u=0,r=w_?ixst(*b,a[1],kd,ix,0,(U)w_,a[2],n==4?a[3]:0,&u):({A k_=_tm(*b)&&_tM(_x(*b))?_R(*b):0,r_=n==4&&_tA(a[1])&&_n(a[1])==1?a4(*b,*_A(a[1]),a[2],a[3]):d8_(b,n);   //k_: a keyed
+   A u=0,r=w_?ixst(*b,a[1],kd,ix,0,(U)w_,a[2],n==4?a[3]:0,&u):({A k_=_tm(*b)&&_tM(_x(*b))?_R(*b):0,r_=!k_&&n>2&&_tA(a[1])&&_n(a[1])==1?n>3&&(a[2]==av||ixnf(_t(*b)==tm?_y(*b):*b,a[2],a[3]))?a4(*b,*_A(a[1]),a[2],a[3]):ixal(*b,*_A(a[1]),a[2],n>3?a[3]:0,&u)
+     :n==4&&_tA(a[1])&&_n(a[1])==1?a4(*b,*_A(a[1]),a[2],a[3]):d8_(b,n);   //k_: a keyed
      I(k_,I(r_,mr(k_))E(I(*p&&*p!=au,mr(k_))E(*p=k_)))r_;});   //table, held to be put back: its amend (kam) fails on what the check does not look at
    P(!r,I(u,I(*p&&*p!=au,mr(u))E(*p=u))0)I(*p&&*p!=au,mr(*p))*p=_R(r))// amend-by-name of a global: not from a peach worker (b.c bS)
    RU(n==3?try(x,a[1],a[2]):er(x))

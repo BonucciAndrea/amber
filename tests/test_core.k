@@ -1177,6 +1177,8 @@ t[`reshapeKeyed;4#.[.:;,"2 2#((+(,`k)!,1 2)!+(,`v)!,3 4)";{x}];"'nyi"]
 t[`reshapeKeyedNull;4#.[.:;,"0N 2#((+(,`k)!,1 2)!+(,`v)!,3 4)";{x}];"'nyi"]
 t[`reshapeKeyedEmpty;4#.[.:;,"2 0#=0#,`a`b!1 2";{x}];"'nyi"]
 t[`takeKeyedSyms;4#.[.:;,"(,`x)#((+(,`k)!,1 2)!+(,`v)!,3 4)";{x}];"'nyi"]
+/ first or last of an enlisted keyed table, or one passed by ., is the keyed table: the empty one's values were a list of dicts
+t[`firstEnlistKeyed;{x~/:(*,x;*|,x;.[{x};,x])}'{(0#x;x)}(+(,`k)!,1 2)!+(,`n)!,3 4;(1 1 1;1 1 1)]
 / keys of the other kind (chars against numbers): the lookup is 'type, as find is since 2.4.0, and the take passes it up (it crashed, even under a trap)
 t[`takeKeysCharsNums;(5#.[{"ab"#x};,1 2!3 4;{x}];5#.[{1 2#x};,"xy"!3 4;{x}]);("'type";"'type")]
 / a failed lookup releases only the dict: the key list belongs to the caller (shared here, used again)
@@ -1420,7 +1422,7 @@ t[`jsonMonadBack;`j?`j@(-:);"-:"]
 t[`parenEmptyItem;{*"\n"\.[{`k@. x};,x;{x}]}'("(1;;2)";"(;)";"(1;)";"(;1)";"(;;)";"(1;(;))";"{(;x)}3";"(1;\n2)";"( )");("(1;::;2)";"(::;::)";"(1;::)";"(::;1)";"(::;::;::)";"(1;(::;::))";"(::;3)";"(1;::;2)";"()")]
 t[`parenEmptyKept;{*"\n"\.[{`k@. x};,x;{x}]}'("()";"(1;2)";"{x+y}[1;]2";"[1;;2]";"(1;2";"(1;;2");("()";"1 2";,"3";,"2";"'parse";"'parse")]
 
-hexpect[896]
+hexpect[897]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

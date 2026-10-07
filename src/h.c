@@ -16,7 +16,7 @@ A rsz(L n,A x/*1*/)_(
    Rm(A y=kv(&x);x=Ny(rsz(n,x));y=Nx(rsz(n,y));am(x,y))
    RE(Lij P(n>j-i||n<i-j,rsz(n,gZ(x)))x(0);n>=0?aE(i,i+n):aE(j+n,j))
    R_(P(n==NL||n==(L)xn||n==-(L)xn,x)P(!xn,rsz(n,enl(fir(x))))   //2.7: taking all of it is it, attribute and all, as in q
-      I r=n<0;n*=1-2*r;P((W)n-(U)n,ez(x))A y=an(n,xt);N w=MAX(0,xw-3),m=xn<<w,k=n%xn<<w,l=n<<w;
+      I r=n<0;n*=1-2*r;P((W)n-(U)n,ez(x))A y=an(n,xt);N w=MAX(0,xw-3),m=(N)xn<<w,k=n%xn<<w,l=n<<w;   //m in 64 bits: a source of 4 GB or more was cut (and -n# read before it)
       XB(cycB(yV,xV,r?m-k:0,m,l);x(y))                                        //bits: cycled bit by bit (it was 'nyi)
       I(!r,MC(yV,xV,MIN(m,l)))J(l<=m,MC(yV,xV+m-l,l))E(MC(yV,xV+m-k,k);MC(yV+k,xV,m-k))
       cyc(yV,m,l);I(!n&&ytA,yx=mkn(_R(xx)))x(ytA?sqz(mRa(y)):y)))0)
@@ -82,7 +82,8 @@ A apc(A x/*1*/,C c    )_(Q(xtC||xtG);U n=xn;x=aa(n+1,x);xC[n]=c;x)
 A cts(A x/*1*/,S s,U m)_(Q(xtC);     U n=xn;x=aa(n+m,x);MC(xV+n,s,m);x)
 Z A insL(A x,L i,L j,A y/*1ij0*/)_(
  P(i>=(W)(j+1)||j>=(W)(xN+1),ei(x))
- A z=an(xn-j+i+yn,xt);U w=xw-3;MC(zV,xV,(W)i<<w);MC(zV+(i<<w),yV,(W)yn<<w);MC(zV+(i+yn<<w),xV+((W)j<<w),(W)(xn-j)<<w);
+ P(xn-j+i+yn>>32,ez(x))A z=an(xn-j+i+yn,xt);U w=xw-3;   //a count past 32 bits: 'limit (it was cut)
+ MC(zV,xV,(W)i<<w);MC(zV+(i<<w),yV,(W)yn<<w);MC(zV+(i+yn<<w),xV+((W)j<<w),(W)(xn-j)<<w);
  I(xtR,I(!zn,zx=emp(tC))I(MINE(x),mrn(j-i,xA+i);AZ(x))E(mRn(i,xA);mRn(xn-j,xA+j))I(MINE(y),AZ(y))E(mRa(y))z=sqz(z))
  x(z))
 // a q condition: booleans (ints of 0 and 1 here). 1: y and z each an atom or as long as it; 2: one is not, and ins3 gives 'length,

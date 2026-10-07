@@ -137,7 +137,7 @@ glast:{[k;v]r:`gagg(`last;k;v);$[#r;(r 0)!r 1;{[v;i]*|v i}[v]'=k]}
 / verbs are never infix here (see the REPL's \h note), so it is within[t;(a;b)],
 / not  t within (a;b).
 within:{[x;r]$[isat x;(~x<r[0])&~x>r[1];[w:`wtn(x;r);$[isat w;(~x<r[0])&~x>r[1];w]]]}   / one C pass for numbers (2.7)
-except:{y:$[`m=@y;. y;y];$[cxk[x;y];x;`A~@x;[m:&~in[@'x;cxt y];ixg[x;&~@[(#x)#0b;m;:;$[#m;ini[x m;y];!0]]]];x@&~ini[x;y]]}   / Chars against numbers share nothing: x as it is, as q; in a general x, only items that can match are looked for (digest #64)
+except:{y:$[`m=@y;. y;y];$[cxk[x;y];x;`A~@x;[m:&~in[@'x;cxt y];ixg[x;&~@[(#x)#0b;m;:;$[#m;ini[x m;y];!0]]]];x@&~ini[x;y]]}   / Chars against numbers share nothing: x as it is, as ngn/k (q: the same for an atom y, 'type for a list y); in a general x, only items that can match are looked for (digest #64)
 cxk:{c:`c`C;n:`i`I`f`F;((|/c=@x)&|/n=@y)|(|/n=@x)&|/c=@y}
 cxt:{c:`c`C;n:`i`I`f`F;$[|/c=@x;n;|/n=@x;c;0#`]}   / the types that share no item with x
 inter:{ixg[x;&ini[x;y]]}

@@ -320,6 +320,20 @@ A cvmC(A x){
  I(fp&&fq,cvmFF(_V(p),_V(q),n,o))J(fp,cvmFL(_V(p),_V(q),n,o))J(fq,cvmLF(_V(p),_V(q),n,o))E(cvmLL(_V(p),_V(q),n,o))
  mr(p);mr(q);return r;}
 
+// `dlt x -- deltas of an int list in one pass, with no shifted copy and no join: x[i]-x[i-1], the first item as it
+// is. Only a 64-bit list can hold 0N, and there an item or the one before it null gives 0N, as q (k's - wraps it);
+// the select is branch-free, so the loop vectorises. A narrower list keeps its width, and a difference that does not
+// fit it redoes one width wider, as - does; a range or a bit list is first made its items. One thread, as k's int -.
+// amber.k's deltas, ints only.
+#define DLN(T) {CO T*RES p=(CO T*)_V(x);T*RES o=(T*)_V(r);I ov=0;o[0]=p[0];for(U i=1;i<n;i++){L d=(L)p[i]-(L)p[i-1];o[i]=(T)d;ov|=d!=(L)(T)d;}P(ov,mr(r);x=ct(t+1,x);P(!x,0)dltC(x))}
+A dltC(A x){
+ UC t=_t(x);P(!_tP(x)&&t==tE,x=gZ(x);P(!x,0)dltC(x))P(!_tP(x)&&t==tB,x=cG(x);P(!x,0)dltC(x))
+ P(_tP(x)||!LH(tG,t,tL)||!_n(x),K1("{x-(0*1#x),-1_x}",x))
+ U n=_n(x);A r=an(n,t);P(!r,mr(x);0)
+ I(t==tL,CO L*RES p=(CO L*)_V(x);L*RES o=(L*)_V(r);o[0]=p[0];for(U i=1;i<n;i++){L a=p[i],b=p[i-1];L d=(L)((W)a-(W)b);o[i]=(a==NL)|(b==NL)?NL:d;})
+ J(t==tI,DLN(I))J(t==tH,DLN(H))E(DLN(G))
+ mr(x);return r;}
+
 // ---- amber 2.1: fused reduction over a dyad -- +/x*y, +/x=y, +/x<y, +/x>y ----
 // The compiler (src/b.c fus()) turns `+/ (x DYAD y)` into fredC(dyad;x;y).
 // Flat same-typed float or long vectors (and vector/atom pairs for the

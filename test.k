@@ -55,6 +55,8 @@ t[`xbar;xbar[10;0 5 12 23];0 0 10 20]
 t[`sums;sums 1 2 3;1 3 6]
 t[`prds;prds 1 2 3 4;1 2 6 24]
 t[`deltas;deltas 1 3 6 10;1 2 3 4]
+t[`deltasInf;(deltas 0w 1.0;deltas -0w 2.5 3.0;deltas[,0w];deltas 0n 1.0;deltas `a`b!0w 1.0);(0w -0w;-0w 0w 0.5;,0w;0n 0n;`a`b!0w -0w)]   / an infinite first item stays as it is, as q (was 0n)
+t[`deltasNull;(deltas 1 0N 3;deltas 0N 1 2;deltas 3 0N 0N 5;deltas 5000000000 0N 5000000003;deltas 1.0 0n 3;deltas `a`b`c!1 0N 3;deltas 100 -100;deltas 30000 -30000;deltas 2000000000 -2000000000;{deltas x}@!5;deltas 101b;deltas -128 127 -128;deltas@+`a`b!(1 0N 3;1 2 3);deltas (+(,`k)!,`x`y`z)!+`a`b!(3 0N 4;1 1 2));(1 0N 0N;0N 0N 1;3 0N 0N 0N;5000000000 0N 0N;1.0 0n 0n;`a`b`c!1 0N 0N;100 -200;30000 -60000;2000000000 -4000000000;0 1 1 1 1;1 -1 1;-128 255 -255;+`a`b!(1 0N 0N;1 1 1);(+(,`k)!,`x`y`z)!+`a`b!(3 0N 0N;1 0 1))]   / an int null and the item after it are null, as q, in a list or a table's column (k's - wrapped the null)
 t[`differ;differ 1 1 2 2 3;10101b]
 t[`prev;prev 1 2 3;0N 1 2]
 t[`next;next 1 2 3;2 3 0N]
@@ -71,17 +73,21 @@ t[`negAfterParams;({[x]-1+x}0 1 2;{[x]-x}0 1 2;{[x;y]-1+x+y}[1;2];{[x]-1.5*x}2);
 t[`exceptCharNum;(1 2 3^"a";"ab"^1;(1 2 3)^,"a";except[1 2 3;"a"];except["ab";1 2];"abc"^"b";1 2 3^2);(1 2 3;"ab";1 2 3;1 2 3;"ab";"ac";1 3)]   / Digest #64: nothing removed, as q and ngn/k
 t[`exceptMixed;(except[(1;2.5);"a"];except[(0;" ");0];except[(1;"a";`b);"a"];except[(1;"a");1 2];except[(1;"a";2);1];except[(1;`a;2);1];except[("ab";"c");0];except[(`a;"a");0];except[(1 2;"a");1]);((1;2.5);," ";(1;`b);,"a";("a";2);(`a;2);("ab";"c");(`a;"a");(1 2;"a"))]   / digest #64: was 'type
 t[`jsonKeys;(`j@1 2!3 4;`j@(1.5 2)!3 4;`j@`a`b!3 4;`j@("ab";"cd")!3 4;5#.[`j@;,(1 2;3 4)!3 4;{x}]);("{\"1\":3,\"2\":4}";"{\"1.5\":3,\"2\":4}";"{\"a\":3,\"b\":4}";"{\"ab\":3,\"cd\":4}";"'type")]   / Digest #60: number keys as strings, list keys 'type, as q
+t[`jsonRangeKeys;(`j@(!3)!`a`b`c;`j@(!2)!3 4;`j@(1+!2)!3 4;`j@`a`b!(1;(!2)!3 4));("{\"0\":\"a\",\"1\":\"b\",\"2\":\"c\"}";"{\"0\":3,\"1\":4}";"{\"1\":3,\"2\":4}";"{\"a\":1,\"b\":{\"0\":3,\"1\":4}}")]   / a range key is written whole, as 0 1 2; was cut off (its two quotes were not counted)
 t[`jsonKeyedTable;(`j@(+(,`k)!,1 2)!+(,`v)!,3 4;`j@`a`b!((+(,`k)!,!0)!+(,`v)!,!0;(+(,`k)!,1 2)!+(,`v)!,3 4);`j@(+`a`b!(1 2;`x`y))!+`c`d!(3 4;5 6);`j@(+`a`b!(1 2;`x`y))!+`b`a!(3 4;5 6);{5#.[`j@;,x;{x}]}'((+(,`k)!,1 2)!3 4;(`a;+`a!,1 2)!3 4;(`a;`a`b!1 2)!3 4;(1;::)!3 4;(1;-:)!3 4));("[{\"k\":1,\"v\":3},{\"k\":2,\"v\":4}]";"{\"a\":[],\"b\":[{\"k\":1,\"v\":3},{\"k\":2,\"v\":4}]}";"[{\"a\":1,\"b\":\"x\",\"c\":3,\"d\":5},{\"a\":2,\"b\":\"y\",\"c\":4,\"d\":6}]";"[{\"a\":1,\"b\":\"x\",\"b\":3,\"a\":5},{\"a\":2,\"b\":\"y\",\"b\":4,\"a\":6}]";5#,"'type")]   / digest #60: a keyed table as 0!t, as q (names shared by key and value repeat, as q); table, dict, :: and verb keys 'type, as q
 t[`listFnAtom;(prev 5;next 5;raze 5;5#.[distinct;,5;{x}];5#.[group;,5;{x}];distinct `a`b!1 1);(5;5;,5;"'type";"'type";,1)]
 t[`listFnAtomRank;{5#.[x;,5;{x}]}'(asc;desc;iasc;idesc;rank;flip;xrank[2];rotate[1];xprev[1]);9#,"'rank"]   / was 5, 'io (desc), 5, 'io (idesc), 5, ,,5, 10, 5, 'type
 t[`listFnAtomAsIs;{.[*x;1_x;{5#x}]}'((deltas;5);(ratios;2.0);(fills;0N);(fills;`a);(sublist;2;5);(xbar;2;5.5);(xbar;2 3;5.5));(5;2.0;0N;`a;5;4.0;4 3.0)]   / was 'rank 'rank 'type 'domain ,5 4 4 3
 t[`listFnOneItem;(asc@,5;deltas@,5;fills@,0N;sublist[2;,5];rotate[1;,5];xprev[1;,5];deltas `a!5);(,5;,5;,0N;,5;,5;,0N;(,`a)!,5)]   / a one-item list is not an atom
 t[`listFnAtomArgs;{5#.[*x;1_x;{x}]}'((rotate;1.5;,5);(rotate;`a;,5);(sublist;`a;5);(sublist;0n;5);(sublist;0N;5);(asc;{x});(iasc;+);(xrank;2;{x}));8#,"'type"]   / a bad count, a function: 'type, as q
+t[`sublistPair;(sublist[1 2;10 20 30 40];sublist[3 5;10 20 30 40];sublist[-1 2;10 20 30 40];sublist[1 -2;10 20 30 40];sublist[1 2;`a`b`c!1 2 3];sublist[1 2;+(,`a)!,1 2 3];sublist[1 2;5]);(20 30;,40;0N 10;!0;`b`c!2 3;+(,`a)!,2 3;5)]   / (start;count), as q; was 'domain
 t[`listFnAtomFn;{.[*x;1_x;{5#x}]}'((flip;{x});(deltas;{x});(xprev;1;{x}));("'rank";{x};,-1)]   / as q: flip is 'rank, deltas returns it, xprev indexes it
 t[`listFnDict;{(fills `a`b`c!0N 3 1;deltas x;ratios x;prev x;differ `a`b`c!1 1 2;sums `a`b`c!1 0N 2;mins `a`b`c!0N 3 1)}`a`b`c!3 1 4;(`a`b`c!0N 3 1;`a`b`c!3 -2 3;`a`b`c!3.0,(1%3),4.0;`a`b`c!0N 3 1;`a`b`c!101b;`a`b`c!1 1 3;`a`b`c!9223372036854775807 3 1)]   / digest #103: by value, as q; was by position: 0N 0N 0N, 0 0 4, 'length, ,0N
 t[`listFnDictErr;{5#.[*x;1_x;{x}]}'((flip;`a`b`c!3 1 4);(next;`a`b!1 2);(rotate;1;`a`b`c!3 1 4);(xprev;1;`a`b!1 2);(rotate;1;(+(,`k)!,`x`y)!+(,`a)!,1 2));("'rank";"'type";"'type";"'type";"'type")]   / as q; was a table of one-row columns, ,0N, `b`c`a!1 4 3, 0N 0N, 'nyi
 t[`listFnTable;{(fills x;sums x;mins x;flip `a`b!(1;2 3))}@+`a`b!(0N 3 1;1 0N 2);(+`a`b!(0N 3 1;1 1 2);+`a`b!(0 3 4;1 1 3);+`a`b!(9223372036854775807 3 1;1 1 1);+`a`b!(1 1;2 3))]   / by column, as q; fills was a dict of tables
 t[`listFnKeyed;{(fills x;deltas fills x;differ x)}(+(,`k)!,`x`y`z)!+`a`b!(3 0N 4;1 1 2);((+(,`k)!,`x`y`z)!+`a`b!(3 3 4;1 1 2);(+(,`k)!,`x`y`z)!+`a`b!(3 0 1;1 0 1);(+(,`k)!,`x`y`z)!111b)]   / by the value table, as q; all were 'nyi
+t[`differRatiosEmptyTable;{(differ x;ratios x;differ (+(,`k)!,!0)!x;ratios (+(,`k)!,!0)!x)}@+(,`a)!,!0;(!0;+(,`a)!,0#0.0;(+(,`k)!,!0)!!0;(+(,`k)!,!0)!+(,`a)!,0#0.0)]   / as q; were the table and an empty float list
+t[`fillsNested;(fills (1 0N;0N 2);fills `a`b!(1 0N;0N 2);fills ("ab";" c");fills@+`a`b!(0N 3 1;(1 2;0N 0N;0N 3));fills (1;0N;`a;`);fills (1 0N;0n 2.0);fills (1.5 0n;0N 2));((1 0N;1 2);`a`b!(1 0N;1 2);("ab";"ac");+`a`b!(0N 3 1;(1 2;1 2;1 3));(1;1;`a;`a);(1 0N;1 2.0);(1.5 0n;1.5 2.0))]   / a list of lists fills position by position, as q; was indexed with nested indices
 t[`listFnNullFill;{(prds `a`b`c!x;maxs `a`b`c!x;prds@+`a`b!(x;1 0N 2);maxs@+`a`b!(x;1 0N 2))}0N 3 1;(`a`b`c!1 3 3;`a`b`c!-9223372036854775807 3 3;+`a`b!(1 3 3;1 1 2);+`a`b!(-9223372036854775807 3 3;1 1 2))]   / nulls filled in a dict or table, as q; were 0N 0N 0N, 0N 3 3 (dict)
 t[`listFnKeyedMore;{(ratios x;prev x;sums x;mins x;5#.[next;,x;{x}];5#.[xprev;(1;x);{x}])}(+(,`k)!,`x`y`z)!+`a`b!(3 0N 4;1 1 2);((+(,`k)!,`x`y`z)!+`a`b!(3.0 0n 0n;1.0 1.0 2.0);(+(,`k)!,`x`y`z)!+`a`b!(0N 3 0N;0N 1 1);(+(,`k)!,`x`y`z)!+`a`b!(3 3 7;1 2 4);(+(,`k)!,`x`y`z)!+`a`b!(3 3 3;1 1 1);"'type";"'type")]   / as q (xprev: q 'length); were 'length, 'nyi, 3 -9223372036854775805 .., 3 0N 0N, 'nyi, 'nyi
 
@@ -386,7 +392,8 @@ t[`fbyListSame;fby[(sum;10 20);(`a`b;`a`b)];30 30]
 t[`xgroupUngroup;ungroup xgroup[`s;st];+`s`v!(`a`a`a`b`b;1 3 5 2 4)]
 t[`xgroupKeyed;xgroup[`k;+`k`a!(1 2 1;10 20 30)];(+(,`k)!,1 2)!+(,`a)!,(10 30;,20)]   / Digest #57: keyed, as q
 / Digest #52: a column the table lacks is an error named after it
-t[`tableFnMissing;{.[x;(`a;+`k`v!(-1 -2;3 4));{2#x}]}'(xasc;xdesc;xkey);3#,"'a"]
+t[`tableFnMissing;{.[x;(`a;+`k`v!(-1 -2;3 4));{2#x}]}'(xasc;xdesc;xkey;xcols);4#,"'a"]   / xcols added a column of nulls
+t[`xcolsMissing;{.[xcols;x;{2#x}]}'((`v`a;+`k`v!(-1 -2;3 4));(`a;+`k`v!(!0;!0));(,`v;+`k`v!(!0;!0)));("'a";"'a";+`v`k!(!0;!0))]   / the first one missing is named; an empty table too
 
 / ---- strings ----
 t[`lower;lower"HeLLo";"hello"]

@@ -40,10 +40,11 @@ Z V Jl(L v){s=v!=NL?sl(s,v):MC(s,"null",4)+4;}  //v-NL overflowed for v>=0
 //keys and values are sized as lists (nx sized a char vector as one string, where each char is
 //written as a string of its own), and nl counts up to 20 characters (a negative 19-digit int).
 Z U nxe(A x/*0*/)_(U n=xN,m=1+n+!n;F(n,m+=nX(ii(x,i)))m)
-//A dict's keys: a number is written as a string, as q ({1:3} is no JSON), so two quotes more each; a key that is
-//a key that is a list (other than a string), a dict, a table, :: or a monadic verb is 'type, as q (digest #60; a verb such as -: wrote true)
+//A dict's keys: a number is written as a string, as q ({1:3} is no JSON), so two quotes more each (a range too:
+//it holds its two ends, so its count is _N, not _n); a key that is
+//a list (other than a string), a dict, a table, :: or a monadic verb is 'type, as q (digest #60; a verb such as -: wrote true)
 Z B jkq(UC u)_(u==ti||u==tl||u==tf)
-Z U nkq(A k/*0*/)_(UC u=_t(k);P(_tP(k)||u==tS||u==tC,0)P(LH(tB,u,tF),2*_n(k))P(u-tA,0)U m=0;
+Z U nkq(A k/*0*/)_(UC u=_t(k);P(_tP(k)||u==tS||u==tC,0)P(LH(tE,u,tF),2*_N(k))P(u-tA,0)U m=0;
  F(_n(k),A e=ii(k,i);UC v=_t(e);I(jkq(v),m+=2)J(v==tu||!_tP(e)&&LH(tA,v,tm)&&v!=tC,jf=1;et0())mr(e))m)
 Z V JK(A k/*1*/);
 //a keyed table is written as its unkeyed table (0!t), an array of rows, as q; table keys with other values are 'type, as q

@@ -164,7 +164,7 @@ Amber now provides the common members (as `.`-style names `z.*`/`Q.*`/`j.*`/`h.*
   `Q.gc Q.w` (mem placeholders), `Q.fc` (sequential fallback), `Q.trp` (protected).
   Missing: `.Q.dpft .Q.en` (partition/enumerate), `.Q.hg/.Q.hp` (HTTP get/post),
   `.Q.j10/.Q.x10` (base64), `.Q.pv/.Q.pf` (partition vars).
-- **`.j.*`** JSON **done**: `j.j` (encode) / `j.k` (decode, via the core `` `j``).
+- **`.j.*`** JSON **done**: `j.j` (encode) / `j.k` (decode), both the core `` `j``.
 - **`.h.*`** markup **partial**: a minimal HTML table/row renderer (`h.ht h.hrow h.hc`).
   Missing: CSV/XML/XLS rendering and an HTTP server.
 

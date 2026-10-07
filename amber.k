@@ -83,9 +83,9 @@ sums:{$[`F=@x;$[^*|r:+\x;+\0.0^x;r];`I=@x;$[`hnl x;+\0^x;+\x];|/`m`M=@x;dcv[sums
 prds:{$[`F=@x;$[^*|r:*\x;*\1.0^x;r];`I=@x;$[`hnl x;*\1^x;*\x];|/`m`M=@x;dcv[prds;x];*\nid[x;1;1.0]]}
 mins:{$[|/`m`M=@x;dcv[mins;x];&\nid[x;9223372036854775807;0w]]}   / mins 0n 1.0 is 0w 1.0, as q
 maxs:{$[|/`m`M=@x;dcv[maxs;x];|\nid[x;-9223372036854775807;-0w]]}
-deltas:{$[`m~@x;dcv[deltas;x];$[1=#x;isat x;0b];x;#x;x-(0*1#x),-1_x;x]}   / the zero in front has x's type: 0, before floats made a general list (576 ms on 10M)
-ratios:{$[`m~@x;dcv[ratios;x];$[1=#x;isat x;0b];x;#x;x%(,1.0),0.0+-1_x;0#0.0]}   / empty: an empty float list, as q (digest #67); floats all through (1, before floats was a general list)
-differ:{$[`m~@x;dcv[differ;x];isat x;1b;~#x;x=x;|/`I`S`C=@x;1b,~(1_x)=-1_x;`F=@x;1b,~((1_x)=-1_x)|(^1_x)&^-1_x;@[~~':x;0;:;1b]]}   / The first item always differs, a null too; typed lists compare shifted (NaN matches NaN, as ~)
+deltas:{$[`m~@x;dcv[deltas;x];$[1=#x;isat x;0b];x;#x;$[`F=@x;x-0.0,-1_x;`I=@x;`dlt x;`M=@x;dcv[deltas;x];x-(0^0*1#x),-1_x];x]}   / the zero in front has x's type: 0, before floats made a general list (576 ms on 10M); 0^ as 0*0w is 0n; floats: a float zero, so neither; ints: `dlt, one pass, nulls as q; a table by column
+ratios:{$[`m~@x;dcv[ratios;x];$[1=#x;isat x;0b];x;#x;x%(,1.0),0.0+-1_x;`M=@x;0.0+x;0#0.0]}   / empty: an empty float list, as q (digest #67), an empty table its columns as floats; floats all through (1, before floats was a general list)
+differ:{$[`m~@x;dcv[differ;x];isat x;1b;~#x;$[`M=@x;!0;x=x];|/`I`S`C=@x;1b,~(1_x)=-1_x;`F=@x;1b,~((1_x)=-1_x)|(^1_x)&^-1_x;@[~~':x;0;:;1b]]}   / The first item always differs, a null too; typed lists compare shifted (NaN matches NaN, as ~)
 prev:{$[`m~@x;dcv[prev;x];isat x;x;-1_(,x@#x),x]}   / An atom comes back as is, as q; a dict or keyed table: by its values; the null is the list's own (x@#x), not 0N
 next:{$[`m~@x;`err"type";isat x;x;1_x,,x@#x]}   / A dict or keyed table: 'type as q
 
@@ -141,7 +141,7 @@ glast:{[k;v]r:`gagg(`last;k;v);$[#r;(r 0)!r 1;{[v;i]*|v i}[v]'=k]}
 / verbs are never infix here (see the REPL's \h note), so it is within[t;(a;b)],
 / not  t within (a;b).
 within:{[x;r]$[isat x;(~x<r[0])&~x>r[1];[w:`wtn(x;r);$[isat w;(~x<r[0])&~x>r[1];w]]]}   / one C pass for numbers (2.7)
-except:{y:$[`m=@y;. y;y];$[cxk[x;y];x;`A~@x;[m:&~in[@'x;cxt y];ixg[x;&~@[(#x)#0b;m;:;$[#m;ini[x m;y];!0]]]];x@&~ini[x;y]]}   / Chars against numbers share nothing: x as it is, as q; in a general x, only items that can match are looked for (digest #64)
+except:{y:$[`m=@y;. y;y];$[cxk[x;y];x;`A~@x;[m:&~in[@'x;cxt y];ixg[x;&~@[(#x)#0b;m;:;$[#m;ini[x m;y];!0]]]];x@&~ini[x;y]]}   / Chars against numbers share nothing: x as it is, as ngn/k (q: the same for an atom y, 'type for a list y); in a general x, only items that can match are looked for (digest #64)
 cxk:{c:`c`C;n:`i`I`f`F;((|/c=@x)&|/n=@y)|(|/n=@x)&|/c=@y}
 cxt:{c:`c`C;n:`i`I`f`F;$[|/c=@x;n;|/n=@x;c;0#`]}   / the types that share no item with x
 inter:{ixg[x;&ini[x;y]]}
@@ -150,7 +150,7 @@ ini:{y:$[`m=@y;. y;isatm y;,y;y];r:in[x;y];a:(isat r)&~isat x;$[(`A~@r)|a&(rk x)
 / in gives one flag for a list x one item of y (1 2 3 in (1 2;3)): 'type, as q's where 1b; x found whole among items of its own rank (#29) goes item by item, as q
 union:{distinct x,y}
 raze:{$[isat x;,x;,/x]}
-sublist:{$[$[1=#y;isat y;0b];$[|/^x;`err"type";abs x;y;0#y];[n:(abs x)&#y;$[x<0;(0-n)#y;n#y]]]}   / An atom comes back as is, as q (0 sublist 5 is !0); a null or symbol count: 'type, as q
+sublist:{$[$[1=#y;isat y;0b];$[|/^x;`err"type";abs x;y;0#y];[n:(abs x)&#y;$[x<0;$[`I=@x;$[`m=@y;sublist[x;!y]!sublist[x;. y];[i:*x;y i+!0|x[1]&(#y)-i]];(0-n)#y];n#y]]]}   / An atom comes back as is, as q (0 sublist 5 is !0); a null or symbol count: 'type, as q; a (start;count) pair: the items from start, as q (a pair is a list, so x<0 is true for it)
 cross:{,/x,/:\:y}
 / q's adverb words, defined as q defines them (#83 Q11): last each x is last'x, and infix like any named dyad
 each:{x'y}
@@ -171,7 +171,7 @@ hasc:{[c;t]m:c@&~in[c;cols t];$[#m;`err@$*m;0]}
 xkey:{[k;t]k:k,();hasc[k;t];$[0=#k;unkey t;[d:+t;(+k#d)!+(except[cols t;k])#d]]}   / () xkey t -> unkey (q idiom)
 unkey:{$[iskeyed x;+(+!x),+.x;x]}
 xcolall:{[nm;t]+nm!. t}
-xcols:{[c;t]c:c,();+(c,except[cols t;c])#+t}
+xcols:{[c;t]c:c,();e:(k:cols t)^c;$[(#k)=(#c)+#e;0;hasc[c;t]];+(c,e)#+t}   / a column t lacks: hasc names it; the counts add up only when there is none. k^c: names, so the primitive, not except
 / xasc / xdesc: `xs (src/a.c) grades the table's key columns with a stable
 / multi-column LSD radix sort straight off the columns' raw C arrays -- no
 / per-row K objects, no boxed comparisons -- and returns () when it meets a
@@ -183,7 +183,8 @@ xcols:{[c;t]c:c,();+(c,except[cols t;c])#+t}
 xsg:{[cs;d]{[d;o;v]o@$[d;>v o;<v o]}[d]/[!#*cs;|cs]}   / Each column's own order, the last key first (stable); the rows' grade squeezed one-item rows (digest #58)
 xasc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;0b);o:$[#o;o;xsg[(+t)c;0b]];t:t@o;d:+t;+d,(1#c)!`sa'd@1#c}
 xdesc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;1b);o:$[#o;o;xsg[(+t)c;1b]];t@o}
-fills:{$[|/`m`M=@x;dcv[fills;x];$[1=#x;isat x;0=#x];x;x@|\(!#x)*~^x]}   / each null takes the last value before it, as q; a dict by its values, a table by column
+fills:{$[|/`m`M=@x;dcv[fills;x];$[2>#x;$[#x;isat x;1b];0b];x;`A=@x;$[`A=@n:^x;fln\x;x@|\(!#x)*~n];x@|\(!#x)*~^x]}   / each null takes the last value before it, as q; a dict by its values, a table by column
+fln:{$[isat x;$[(`f=@x)&`I=@y;x^0.0+y;x^y];isat y;$[^y;x;y];~(#x)=#y;`err"length";`A=@n:^y;fln'[x;y];[t:(@x),@y;x:$[t~`I`F;0.0+x;x];y:$[t~`F`I;0.0+y;y];@[y;i;:;x i:&n]]]}   / a list of lists fills position by position from the item before, as q's ^\ (the nulls of y take x's; ints with floats: floats, as q)
 attr:{`at x}                                         / q's attr: `s `u `p `g, or ` for none
 meta:{d:+unkey x;xkey[`c;+`c`t`a!(!d;{@*x}'value d;{`at x}'value d)]}
 insert:{[t;r]t,r}

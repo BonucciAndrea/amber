@@ -158,7 +158,7 @@ Z A fcanon(A x)_(U n=xn;A y=aF(n);CO W*RES p=(CO W*)xV;W*RES q=(W*)yV;F(n,W v=p[
 Z A grpT(A x){A u=frT(x);P(!u,0)A d=grpI(u);mr(u);P(!d,0)A v=kv(&d);return am(i1(x,d),v);}
 Z A unqT(A x){A u=frT(x);P(!u,0)N m=0;I*RES r=_I(u);F(xn,I(r[i]==(I)i,r[m++]=(I)i))A j=aV(tI,(U)m,r);mr(u);return i1(x,j);}
 Z A cSI(A);// amber 2.0.0: symbol<->int-id reinterpret (defined just below), used by grp's tS fast path
-X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x))
+Z X1(grq,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x))
  // amber 2.0.0: group a SYMBOL vector by its interned 4-byte id (tS is stored as
  // tI-width ids; equal symbols -> equal ids) instead of the general path, whose
  // `<x` grade lexically string-sorts symbols (o.c asc's RS(asc(str(x)))) at
@@ -170,7 +170,7 @@ X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x
  // amber 2.7: short symbols are packed ids spread over a huge range, so grouping the ids hashed every row
  // (246 ms on 10M rows of 10 symbols). Dense codes first: the distinct symbols (first-seen order), each row's
  // index in them, and the codes grouped by their small range (~70 ms). The keys come out in the same order.
- RS(P(!xn,K1("{x!0#,!0}",x))A u=unq(_R(x));P(!u,x(0))A k=fnd(u,x);P(!k,mr(u);0)A d=grp(k);P(!d,mr(u);0)A v=kv(&d);mr(d);am(u,v))
+ RS(P(!xn,K1("{x!0#,!0}",x))A u=unq(_R(x));P(!u,x(0))A k=fnd(u,x);P(!k,mr(u);0)A d=grq(k);P(!d,mr(u);0)A v=kv(&d);mr(d);am(u,v))
  // amber item 7, REVERTED after measurement. The "optimisation" here was to
  // hoist the group payload pointers into an rp[256] array before the scatter,
  // on the theory that `_I(r[v])` was a dependent load. It is not: A is an
@@ -186,6 +186,9 @@ X1(grp,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x
  RF(P(!xn,K1("{x!0#,!0}",x))K2("{x[*'g]!g@:<g:(&1,~(1_s)=(-1)_s:y i)_i:<y}",x,fcanon(x)))   //floats: 2.3.0's canonical keys (first spelling, indices in order)
  R(tA,I(xn>1,A z=grpT(x);P(z,x(z)))K1("{$[#x;{b:~x~':x i:<x;i:i@<i+(#x)*-1++\\b;g:(&b)_i;g:g@<g;x[*'g]!g}x;x!0#,!0]}",x))   //generic lists (which may hold floats): ~ joins -0.0 with 0.0 (and NaNs), which grade keeps apart, so the indices are sorted within each run of matching items (one grade, by run then index)
  R3(tE,tL,tM,K1("{$[#x;x[*'g]!g@:<g:(&~x~':x i)_i:<x;x!0#,!0]}",x)))
+//the keys of a group are distinct x, so they take the attribute distinct gives, as q: `s stays, `u and `g give `u,
+//`p none (a dict's values likewise; an empty list's keys are the list itself); keys that have it already are left alone
+A1(grp,UC a=_tP(x)||!_tT(x)||xtE?0:_at(x);A z=grq(x);P(!z||!a,z)UC t=a==1?1:a==3?0:2;P(_at(zx)==t,z)zx=mut(zx);_at(zx)=t;z)
 Z A1(cSI,Q(xtS||xtI)C t=tS^tI^xt;MINE(x)?(_at(x)=0,AT(t,x)):x(aV(t,xn,xV)))
 Z I penc(A,int,A*,A*);
 X1(unq,RM(K1("{$[#x;x@i@<i:&/'.=+.+x;x]}",x))   /*a table: its distinct rows, first seen first (issue #19); as q*/Rm(unq(val(x)))RE(x)RS(I(xn>=(1u<<16),A u_=0;I(!penc(x,par_thread_count(xn),&u_,0),return x(u_)))cSI(unq(cSI(x))))Ril(rndF(gl(x)))R_(et(x))RB(unq(cG(x)))

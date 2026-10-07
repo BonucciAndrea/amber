@@ -987,13 +987,12 @@ A rdxsrt(A x){
 // trusted now that setting it checks the data and every in-place write drops it
 // (m.c mut/aa, 2.c), so this is q's rule: sorting sorted data costs nothing.
 Z A srtUC(A x,B d){U n=xn,c[256]={0};CO UC*p=xV;F(n,c[p[i]]++)A z=an(n,tC);UC*r=zV;F(256,U k=d?255-i:i;MS(r,k,c[k]);r+=c[k])_at(z)=!d;return x(z);}//chars: a counting sort as unsigned bytes
-I tjk(A);
 A1(srtC,UC t=_t(x);
  I(!_tP(x)&&LH(tG,t,tS)&&_at(x)==1,return x)
  I(!_tP(x)&&t==tC,return srtUC(x,0))
  I(!_tP(x)&&LH(tG,t,tS)&&t-tC,A c=cntsrt(x);I(c,_at(c)=1;return x(c))
                         c=rdxsrt(x);I(c,_at(c)=1;return x(c)))
- A g=asc(xR);P(!g,x(0))A r=i1(x,g);x(0);P(!r,0)I(!_tP(r)&&(LH(tG,_t(r),tS)||_t(r)==tA&&tjk(r)>1),_at(r)=1)r)   //dates and times too   //2.7: syms too, as q's asc (sort and find share one collation)
+ A g=asc(xR);P(!g,x(0))A r=i1(x,g);x(0);P(!r,0)I(!_tP(r)&&LH(tG,_t(r),tS),_at(r)=1)I(_t(r)==tA,r=mut(r);_at(r)=1)r)   //dates and times too   //2.7: syms too, as q's asc (sort and find share one collation)   //any general list, as q: x@<x is in <'s order (mut: () may be the shared empty)
 A1(srtdC,UC t=_t(x);
  I(!_tP(x)&&t==tC,return srtUC(x,1))
  I(!_tP(x)&&LH(tG,t,tS)&&t-tC,A c=cntsrt(x);I(c,A r=rev(x(c));P(!r,0)I(!_tP(r),_at(r)=0)return r;)

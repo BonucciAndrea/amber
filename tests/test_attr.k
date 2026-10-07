@@ -427,6 +427,18 @@ ta[`a402;"attr til 5";"`"]   / attr til
 ta[`a403;"attr distinct 1 2 2";"`"]   / attr distinct
 ta[`a404;"attr iasc 3 1 2";"`"]   / attr iasc
 ta[`a405;"attr key group 1 2 1";"`"]   / attr group keys
+ta[`a560;"attr key group `p#0#0";"`"]   / group keys of empty p
+ta[`a561;"attr key group `g#0#0";"`u"]   / group keys of empty g
+ta[`a562;"attr key group `s#0#0";"`s"]   / group keys of empty s
+ta[`a563;"attr key group `u#0#0";"`u"]   / group keys of empty u
+ta[`a564;"attr key group `p#0#`";"`"]   / group keys of empty p syms
+ta[`a565;"attr key group `g#\"\"";"`u"]   / group keys of empty g chars
+ta[`a566;"attr key group `s#\"\"";"`s"]   / group keys of empty s chars
+ta[`a567;"attr key group `s#0#0.0";"`s"]   / group keys of empty s floats
+ta[`a568;"attr key group `g#0#2001.01.01";"`u"]   / group keys of empty g dates
+ta[`a569;"attr key group `s#0#0x00";"`s"]   / group keys of empty s bytes
+ta[`a570;"attr value group `s#0#0";"`"]   / group keys of empty s, values
+ta[`a571;"(key group `g#0#0)~0#0";"1"]   / group keys of empty g, data
 ta[`a406;"attr asc `b`a";"`s"]   / attr asc syms
 ta[`a407;"attr asc 2.0 1.0";"`s"]   / attr asc floats
 ta[`a408;"attr asc \"ba\"";"`s"]   / attr asc chars
@@ -529,7 +541,30 @@ ta[`a504;"3 in `s#1 2 3";"1"]   / in s
 ta[`a505;"(`u#`a`b`c)?`c";"2"]   / find u
 ta[`a506;"(`g#1 2 1)?1";"0"]   / find g
 ta[`a507;"(`p#1 1 2)?2";"2"]   / find p
+ta[`a508;"attr asc (1 2;3 4)";"`s"]   / asc general list
+ta[`a509;"attr asc ()";"`s"]   / asc empty general list
+ta[`a510;"attr asc enlist 1 2";"`s"]   / asc one-item general list
+ta[`a511;"attr asc (\"ba\";\"a\";\"ab\")";"`s"]   / asc strings
+ta[`a512;"r~`s#r:asc (\"ba\";\"a\";\"ab\")";"1"]   / asc strings: `s# agrees
+ta[`a513;"{asc x;attr x}()";"`"]   / asc () leaves () alone
+ta[`a514;"attr key group `s#1 1 2";"`s"]   / group keys of s
+ta[`a515;"attr key group `u#1 2 3";"`u"]   / group keys of u
+ta[`a516;"attr key group `g#2 1 2";"`u"]   / group keys of g
+ta[`a517;"attr key group `p#2 2 1";"`"]   / group keys of p
+ta[`a518;"attr key group `s#`a`a`b";"`s"]   / group keys of s syms
+ta[`a519;"attr key group `s#2001.01.01 2001.01.01 2001.01.02";"`s"]   / group keys of s dates
+ta[`a520;"(key group `s#1 1 2)~1 2";"1"]   / group keys of s data
+ta[`a521;"attr value group `s#1 1 2";"`"]   / group values of s
+ta[`a522;"attr key group `s#1 2!4 3";"`"]   / group of s dict
+ta[`a572;"attr key group `a`b`c!`s#1 1 2";"`s"]   / group of dict, s values
+ta[`a573;"attr key group `a`b`c!`g#2 1 2";"`u"]   / group of dict, g values
+ta[`a535;"attr (`s#()),()";"`s"]   / join s empty general, empty general
+ta[`a536;"attr (`u#()),()";"`u"]   / join u empty general, empty general
+ta[`a537;"attr (),`s#()";"`"]   / join empty general, s empty general
+ta[`a538;"attr (`s#()),`s#()";"`s"]   / join s empty general, s empty general
+ta[`a539;"attr (),`s#(1 2;3 4)";"`s"]   / join empty general, s general
+ta[`a540;"attr (),`s#1 2";"`s"]   / join empty general, s ints
 
-hexpect[508]
+hexpect[543]
 hreport"AMBER ATTRIBUTES vs q"
 $[FAILN;`exit 1;]

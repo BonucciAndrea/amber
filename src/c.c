@@ -28,7 +28,8 @@ Z B pov(S p,S e)_(B m=*p=='-';p+=m;W(*p=='0'&&C09(p[1]),p++)I n=e-p;n>19||n==19&
 Z X1(prsI,RmMA(e1f(prsI,x))Rc(prsI(enl(x)))RC(x=str0(x);S s=xV;I(C09(*s)||*s=='-'&&C09(s[1]),L v=pl(&s);P(!*s&&!pov(xV,s),x(az(v)))s=xV)W(CBK(*s),s++)B m=0;W(*s=='+'||*s=='-',m^=*s++=='-')S b=s;P(!*s,x(_R(cn[tl])))W u=pu(&s);S e=s;W(CBK(*s),s++)x(*s||pov(b,e)?_R(cn[tl]):az((L)((W)(1-2*m)*u))))R_(et(x)))//a plain number as before; else blanks round it, and signs before it (- an odd number of times is negative), as q
 Z X1(prsF,RmMA(e1f(prsF,x))Rc(prsF(enl(x)))RC(x=str0(x);S s=xV;P(!*s,x(_R(cn[tf])))L v=pf(&s);x(*s?_R(cn[tf]):aV(tf,1,&v)))R_(et(x)))
 A ptT(A),ptD(A),ptP(A);   //"T"$ "D"$ "P"$: the text as the literal reader reads it (p.c)
-Z X1(cSb,RmMA(e1f(cSb,x))RC(U i=0,n=xn;W(i<n&&CBK(xC[i]),i++)W(n>i&&CBK(xC[n-1]),n--)P(!i&&n==xn,cS(x))x(cS(aCn(xC+i,n-i))))Rc(cS(CBK(xv)?emp(tC):x))R_(cS(x)))//`$: blanks trimmed, as q
+Z A cSb(A);Z A cSl(A x)_(U n=xn;A z=an(n,tS);C b[256];F(n,A s=xa;P(_t(s)-tC||_n(s)>255,mr(z);e1f(cSb,x))U j=0,m=_n(s);CO C*p=_C(s);W(j<m&&CBK(p[j]),j++)W(m>j&&CBK(p[m-1]),m--)MC(b,p+j,m-j);b[m-j]=0;_I(z)[i]=us(b))x(z))   //`$ of a list of strings in one loop: each trimmed into a buffer and interned (through ct each item went to str0, which grew it for its NUL); anything else item by item
+Z X1(cSb,RA(xn?cSl(x):e1f(cSb,x))R(tm,e1f(cSb,x))R(tM,e1f(cSb,x))RC(U i=0,n=xn;W(i<n&&CBK(xC[i]),i++)W(n>i&&CBK(xC[n-1]),n--)P(!i&&n==xn,cS(x))x(cS(aCn(xC+i,n-i))))Rc(cS(CBK(xv)?emp(tC):x))R_(cS(x)))//`$: blanks trimmed, as q
 Z Y2(pad,RmMA(e2f(pad,x,y))RC(K2("{y@(!x)+(x<0)*#y}",x,y))Rc(dlr(x,enl(y)))R_(et(y)))
 X2(dlr,Rs(I v=xv;P(v-(C)v,ed(y))G(&csti,cF,cC,cSb,prsI,prsF,ed)[si("ifcsIF",v|'s'*!v)](y))Ril(pad(x,y))
  Rc(C ch=xv;P(ch=='D'||ch=='d',ptD(y))P(ch=='T'||ch=='t',ptT(y))P(ch=='P'||ch=='p',ptP(y))et(y))R_(et(y)))

@@ -502,11 +502,11 @@ Z A bscd(S s)_(P(!*s,C b[256];getcwd(b,SZ b)?eo0():aCz(b))chdir(s)?eo0():au)
 Z A bsd(S s)_(P(!*s,as(gd))s+=*s=='.';gd=us(s);au)
 // amber 2.7: \l on a directory maps a database (hdb.k's loaddb), as q's \l db does
 #if !defined(wasm)
-Z B bdir(S s)_(struct stat st;!stat(s,&st)&&S_ISDIR(st.st_mode))
+Z I bdir(S s)_(struct stat st;stat(s,&st)?0:S_ISDIR(st.st_mode)?1:2*!!S_ISFIFO(st.st_mode))   // 1 a directory, 2 a FIFO
 #else
-Z B bdir(S s)_((V)s;0)
+Z I bdir(S s)_((V)s;0)
 #endif
-Z A bsl1(S s)_(P(bdir(s),K1("{loaddb x;}",aCz(s)))I f=open(s,0,0);A x=u1c(ai(f));close(f);N(x);P(!xn,x(au))C*p=xC,*e=p+xn-1;P(*e-10,x(err0("eoleof")))*e=0;I(*p=='#'&&p[1]=='!',p=strchrnul(p,10);p+=!!*p)
+Z A bsl1(S s)_(I b=bdir(s);P(b==1,K1("{loaddb x;}",aCz(s)))I f=open(s,0,0);A x=b>1?frf(f):u1c(ai(f));close(f);N(x);P(!xn,x(au))C*p=xC,*e=p+xn-1;P(*e-10,x(err0("eoleof")))*e=0;I(*p=='#'&&p[1]=='!',p=strchrnul(p,10);p+=!!*p)
   // amber 2.0.0: run the source through the K qSQL rewriter (qrwf, qsql.k) so
   // bare `select .. from ..` works in a .k file exactly as it does at the REPL
   // prompt -- no sel"..." wrapper. Guarded so nothing changes until qsql.k is

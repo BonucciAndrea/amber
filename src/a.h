@@ -338,3 +338,4 @@ U os(S);W ov_(S,W);
 // a string path holding a NUL: open() and the rest would take the name before it, so it is 'domain (#94 Q16)
 #define pnul(x) (_t(x)==tC&&memchr(_V(x),0,_n(x)))
 A evn(S,S,B);
+A frf(I);

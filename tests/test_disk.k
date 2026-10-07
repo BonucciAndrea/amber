@@ -126,6 +126,12 @@ FH:`$":",T,"/io/fh";x:ER[{FH 0:x};,("ab";,"c")]
 t[`fileHandleRead;(ER[{0:x};,T,"/io/fh"];ER[{0:x};,FH];ER[{1:x};,FH];ER[{1:x};,(FH;1 2)]);(("ab";,"c");("ab";,"c");"ab\nc\n";"b\n")]
 x:ER[{FH 1:x};,"xy"]
 t[`fileHandleWrite;ER[{1:x};,T,"/io/fh"];"xy"]
+/ a FIFO is read to its end: a short read from a pipe means "not written yet", where 0:, 1: and \l stopped (a writer
+/ that paused was read in part); a socket still returns what one read gives
+FF:{[p;a;b]x:`x(("/usr/bin/mkfifo";p);"");x:`x(("/bin/sh";"-c";"((printf '",a,"'; sleep 0.3; printf '",b,"') >",p,") </dev/null >/dev/null 2>&1 &");"");p}
+t[`fifoRead;(ER[{0:x};,FF[T,"/io/p1";"one\\n";"two\\n"]];ER[{1:x};,FF[T,"/io/p2";"one\\n";"two\\n"]]);(("one";"two");"one\ntwo\n")]
+FA:FB:0;x:ER[.:;,"\\l ",FF[T,"/io/p3";"FA:1\\n";"FB:2\\n"]]
+t[`fifoLoad;FA,FB;1 2]
 
 / ---- a partitioned database ------------------------------------------------
 trade:([]sym:`ibm`msft`ibm`aapl;px:10 20 11 30.0;sz:100 200 300 400)
@@ -190,6 +196,6 @@ B:T,"/bb";(`$":",B)set 5000#"abc";$[LK;wo[B;get`$":",B];B 1:5000#"abc"]
 t[`writeOwnGet;1:B;5000#"abc"]
 
 rm T
-hexpect[80]
+hexpect[82]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

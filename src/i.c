@@ -54,13 +54,16 @@ Z I o(A x/*1*/,I fl)_(Xz(gl(x))Xs(xv?osf(su(xv),fl):1)XC(P(pnul(x),mr(x);ed0())x
 Z I of(A x/*1*/,I fl)_(P(xts&&xv&&*su(xv)==':',ofl(su(xv)+1,fl))o(x,fl))   // 0: and 1:: q's file handle `:path names the file path, as set and get (osf took it for host:port); < keeps `:port
 Z I fm(I f)_(ST stat s;fstat(f,&s)<0?0:s.st_mode)                                                                                                                 // get file mode
 Z A frd(I f,N i,N n)_(P(i||n+1,en0())DIR*a=fdopendir(f);P(!a,ei0())A x=emp(tC);ST dirent*e;W((e=readdir(a)),S s=e->d_name;x=apc(cts(x,s,SL(s)),10))closedir(a);x) // read dir
-Z A frS(I f,N n)_(C b[1024];A x=emp(tC);W(n,I k=read(f,b,MIN(SZ b,n));P(k<0,eo(x))n-=k;x=cts(x,b,k);P(k-SZ b,x))x)                                                // read stream (only length)
-Z A frs(I f,N i,N n)_(I(i&&lseek(f,i,SEEK_CUR)<0,mr(N(frS(f,i))))frS(f,n))                                                                                        // read stream (offset too)
+// read stream (only length). e: to the end (a FIFO: a short read from a pipe means "not written yet", so a writer that paused was read only in
+// part), else to the first short read (a handle, a socket, a device, a terminal: one line from 1:0, as in q)
+Z A frS(I f,N n,B e)_(C b[1024];A x=emp(tC);W(n,I k=read(f,b,MIN(SZ b,n));P(k<0,eo(x))P(!k,x)n-=k;x=cts(x,b,k);P(k-SZ b&&!e,x))x)
+Z A frs(I f,N i,N n,B e)_(I(i&&lseek(f,i,SEEK_CUR)<0,mr(N(frS(f,i,e))))frS(f,n,e))                                                                               // read stream (offset too)
 // read through mmap. 64-bit throughout: MAX(0,m-i) took the int's type and cut m-i to 32 bits, so a file of 2 to 4 GiB
 // read as "" and a bigger one as its size mod 2^32. A negative offset is 'io (one a page below 2^32 mapped past the end:
 // SIGBUS on Linux), and 2^32 bytes or more 'limit, as a vector's count is 32 bits
 Z A frm(I f,N i,N n)_(L m=lseek(f,0,SEEK_END);P(m<0||(L)i<0,eo0())n=MIN(n,(N)MAX(m-(L)i,0));P(n>>32,ez0())n?mf(f,i,n):emp(tC))
-Z A fr(A x/*1*/,N i,N n)_(Xz(frs(gl(x),i,n))I f=N(of(x,O_RDONLY));P(f<3,frs(f,i,n))I m=fm(f);x=(S_ISDIR(m)?frd:S_ISREG(m)?frm:frs)(f,i,n);close(f);x)              // read
+Z A fr(A x/*1*/,N i,N n)_(Xz(frs(gl(x),i,n,0))I f=N(of(x,O_RDONLY));P(f<3,frs(f,i,n,0))I m=fm(f);x=S_ISDIR(m)?frd(f,i,n):S_ISREG(m)?frm(f,i,n):frs(f,i,n,S_ISFIFO(m));close(f);x) // read
+A frf(I f)_(frs(f,0,-1,1))   // \l of a FIFO (m.c): to its end
 void am_ln_sb_capture(const char*,unsigned long);// ln.c: tee stdout into the status-bar scroll-back ring
 Z A fws(I f,S s,N n)_(I(f==1,am_ln_sb_capture(s,n))W(n>0,L k=write(f,s,n);P(k<0,eo0())P(!k,au)s+=k;n-=k)au)                                                         // write stream (fd 1 -> also scroll-back)
 Z A fwm(I f,S s,N n)_(N o=0;W(o<n,L k=pwrite(f,s+o,MIN(n-o,(N)1<<30),(off_t)o);I(k<0&&errno==EINTR,continue)P(k<=0,o=ftruncate(f,0);eo0())o+=k)P(ftruncate(f,n),eo0())au)   // write a file from its start, a GiB a call (macOS refuses more than INT_MAX), then cut it to n

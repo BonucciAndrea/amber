@@ -50,7 +50,9 @@ dload:{[dir]dir:hdb.sl hdb.p dir;$[hdb.amc dir,"/.d";hdb.dl[dir;hdb.syms hdb.par
 
 / ---- the q names ----------------------------------------------------------
 / `a set 5 and get`a are globals; `:path set x writes a file, and a path ending in / splays a table.
-set:{[h;v]$[(`s~@h)&~":"=*$h;[.[h;();:;v];h];[p:hdb.p h;$["/"~*|p;splay[p;v];dset[p;v]];h]]}
+/ A keyed table is 'type to splay, as q's set (it was written unkeyed); `:f set kt writes it whole, keyed. Amber's own
+/ splay still writes a keyed table's unkeyed table
+set:{[h;v]$[(`s~@h)&~":"=*$h;[.[h;();:;v];h];[p:hdb.p h;$["/"~*|p;$[iskeyed v;`err"type";splay[p;v]];dset[p;v]];h]]}
 / get reads only the binary format: a file or a table in any other is 'format, never evaluated (q's get never runs a
 / file). dget and dload, Amber's own names, still read the text files Amber wrote before 2.7. A missing file is 'io, as before
 get:{[h]$[(`s~@h)&~":"=*$h;. h;[p:hdb.sl hdb.p h;$[-2=`fsz p;$[hdb.amc p,"/.d";hdb.dl[p;hdb.syms hdb.par p];`err"format"];hdb.amc p;`rcol p;-1=`fsz p;`err"io";`err"format"]]]}
@@ -61,7 +63,7 @@ hdb.pv:{[p]$p}                                                  / partition valu
 hdb.pok:{[s]d:in[s;"0123456789"];$[0=#s;0;&/d;1;(10=#s)&(".."~s 4 7)&&/d 0 1 2 3 5 6 8 9;1;0]}   / looks like a partition
 hdb.pcn:{[p]$[`d~@p;`date;`int]}                                / the partition column's name
 Q.en:{[d;t]d:hdb.sl hdb.p d;dd:+t;{[d;dd;c]$[`S~@dd c;hdb.enum[d;dd c];0]}[d;dd]'cols t;t}
-Q.dpft:{[d;p;f;t]d:hdb.sl hdb.p d;v:. t;v:$[iskeyed v;unkey v;v];v:xasc[f;v];dd:+v;dd:@[dd;f;{`pa x}];hdb.splay[d,"/",(hdb.pv p),"/",$t;d;+dd];t}
+Q.dpft:{[d;p;f;t]d:hdb.sl hdb.p d;v:. t;$[iskeyed v;`err"type";0];v:xasc[f;v];dd:+v;dd:@[dd;f;{`pa x}];hdb.splay[d,"/",(hdb.pv p),"/",$t;d;+dd];t}
 
 / A partitioned table is a dict naming where it lives: database, table, partition column, the partitions that
 / hold it and its columns. Nothing is read until a query asks: qpsel (select, exec) and ptab map what they need.

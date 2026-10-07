@@ -77,6 +77,12 @@ wa:{x:`wcol((T,"/c/w1";1 2;-1;0);(T,"/c/w2";`k;-1;0));(x;`rcol T,"/c/w1";`rcol T
 tv[`wcolAll;"wa[]";((T,"/c/w1";T,"/c/w2");1 2;`k)]   / a list of quadruples: all written, then renamed
 wd:{x:.[{`wcol((T,"/c/w3";1 2;-1;0);(T,"/c/w3";3 4;-1;0))};,0;{*"\n"\x}];(x;`fsz T,"/c/w3";`fsz T,"/c/w3.tmp")}
 tv[`wcolDup;"wd[]";("'domain";-1;-1)]   / a path named twice: nothing is written
+/ set of a keyed table to a splay is 'type, as q's set (it wrote the unkeyed table), and so is Q.dpft of one (q: 'nyi); nothing
+/ is written. One file keeps a keyed table whole
+kt:([k:1 2]v:3 4)
+t[`splayKeyed;(.[set;(`$":",T,"/db/k/";kt);{*"\n"\x}];`fsz T,"/db/k";.[Q.dpft;(T,"/hdbk";2026.01.01;`v;`kt);{*"\n"\x}];`fsz T,"/hdbk");("'type";-1;"'type";-1)]
+x:splay[T,"/db/k2";kt]
+t[`setKeyedFile;(get(`$":",T,"/kf") set kt;dload T,"/db/k2");(kt;([]k:1 2;v:3 4))]   / Amber's splay still writes it unkeyed
 x:mkd T,"/old";(T,"/old/x") 1:`k 1 2 3
 t[`oldTextFile;dget T,"/old/x";1 2 3]
 h:`$":",T,"/db/u/"
@@ -115,6 +121,6 @@ x:loaddb T,"/hdb"
 t[`reload;#sel"select from trade";12]
 
 rm T
-hexpect[57]
+hexpect[59]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

@@ -320,6 +320,12 @@ behaviour shows up as a test failure rather than a silent regression.
   with `\` (standard K). Since **2.0.0** an *unterminated* one (no closing `\` before EOF) raises a
   clean parse error instead of silently truncating the file; a properly-closed `/ … \` block is
   unchanged. `tests/harness.k` still carries a warning comment about the sharp edge.
+- **`insert` fills a column a row or a table lacks with item `0N` of `t`'s column**, as `aj`
+  fills an unmatched row: ints, floats, symbols, chars and general columns of atoms get q's nulls,
+  but a general column whose first item is a list gets that list's nulls (q: an empty list), a
+  column of strings gets blanks as long as its first string (q: `""`), a boolean column `0N`
+  (Amber's booleans are ints; q: `0b`), and a date, time or timestamp column `::`, since there is
+  no temporal null (q: `0Nd`, `0Nt`, `0Np`).
 - **An amend that leaves no column of a table a list fills each to the table's row count**
   (`` t[`a]:9 `` with `t:([]a:1 2 3)` gives `9 9 9`; an empty table stays empty), as `update` does;
   q gives `'rank` for these (`` t[`a]:9 ``, `` @[t;`a;:;9] ``, `` @[t;`a`b;:;9] ``).
@@ -347,7 +353,3 @@ behaviour shows up as a test failure rather than a silent regression.
   table is the table, as k's `,/` (q: its last row, as a dict); `flip ()!()` is an empty table with
   no columns (q: `'rank`); `` fills `a`b`c!(1;`x;0N) `` is `` `a`b`c!(1;`x;`x) `` (q: `'type`); and
   `xprev` of a keyed table is `'type` (q: `'length`).
-- **`insert` is `t,r` (#94 Q1).** It does not line a row up by column name or check its types, as
-  q's does. With `` u:+`a`b!(1 2;3 4) ``, `` insert[u;`b`a!5 6] `` is a list of three dicts (q: `u`
-  with the row `a` 6, `b` 5), and `` insert[u;`a`b!(5;`x)] `` makes `b` a general column (q:
-  `'type`). Doing it would cost an insert of rows already in the table's order.

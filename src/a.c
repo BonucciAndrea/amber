@@ -980,8 +980,9 @@ Z A1(lkT,P(_t(x)-tA||_n(x)-2||_t(_A(x)[1])-tC,et(x))A s=*_A(x),p=_A(x)[1];CO UC*
  UC u=_t(s),c=(UC)_v(s);P(u==tC,x(ai(lkq((CO UC*)_V(s),_n(s),q,n))))P(u==tc,x(ai(lkq(&c,1,q,n))))P(u-tA,et(x))U m=_n(s);P(!m,x(an(0,tG)))
  A r=an(m,tG);UC*o=(UC*)_V(r);F(m,A e=_A(s)[i];u=_t(e);c=(UC)_v(e);P(u-tC&&u-tc,mr(r);et(x))o[i]=u==tC?lkq((CO UC*)_V(e),_n(e),q,n):lkq(&c,1,q,n))x(r))
 Z A1(sumnT,P(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);U n=_n(x);W t=0;F(n,L v=p[i];t+=(W)(v==NL?0:v))x(az((L)t)))K1("{+/x}",x))
-ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","dlt","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl","abs","wcol","rcol","fsz","ldir","wtn","senc","hh","mm","sec","tjn","exit","lk"};
- G(&kst,js1,qp,qt,frk,hex,err,qa,qe,dltC,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,wcolT,rcolT,fszT,ldirT,wtnT,sencT,hhC,mmC,secC,tjnC,qx,lkT,ed)[fI((V*)s,L(s),v)](x))   //found by a scan in this order: dlt (amber.k's deltas, each call) early, exit last
+Z A1(qins,x(INS))   //`ins: the insert verb (h.c ins2), which amber.k binds to insert once (#94 Q1)
+ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","dlt","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl","abs","wcol","rcol","fsz","ldir","wtn","senc","hh","mm","sec","tjn","exit","lk","ins"};
+ G(&kst,js1,qp,qt,frk,hex,err,qa,qe,dltC,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,wcolT,rcolT,fszT,ldirT,wtnT,sencT,hhC,mmC,secC,tjnC,qx,lkT,qins,ed)[fI((V*)s,L(s),v)](x))   //found by a scan in this order: dlt (amber.k's deltas, each call) early, exit last
 /* ---- tacit trains: hook (f g) and fork (f g h) --------------------------
  * A general list of length 2 or 3 whose every element is a function becomes a
  * TRAIN when it is applied (a `::` in it is data, as in ngn/k, so such a list is
@@ -1206,4 +1207,5 @@ A k1(A*p,S s,A x)_(I(!*p,plk(1);I(!*p,ki(p,s))plk(0))P(!*p,x(0))_1(*p,x))
 A k2(A*p,S s,A x,A y)_(I(!*p,plk(1);I(!*p,ki(p,s))plk(0))P(!*p,mr(y);0)_2(*p,x,y))   //x borrowed on every path, as _2 borrows it (digest #9)
 A k8(A*p,S s,CO A*a,U n)_(I(!*p,plk(1);I(!*p,ki(p,s))plk(0))P(!*p,mrn(n,(A*)a);0)n?_8(*p,a,n):*p)
 AA(no8,/*10..0*/en(*a))
+AA(ins8,/*10..0*/er(*a))   //insert[t;r;..]: 'rank, as for the lambda it was (#94 Q1)
 A2(no2,/*01*/y(en0()))//amber 2.1: unused fused-verb dyad slots

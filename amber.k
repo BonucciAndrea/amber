@@ -187,7 +187,7 @@ fills:{$[|/`m`M=@x;dcv[fills;x];$[2>#x;$[#x;isat x;1b];0b];x;`A=@x;$[`A=@n:^x;fl
 fln:{$[isat x;$[(`f=@x)&`I=@y;x^0.0+y;x^y];isat y;$[^y;x;y];~(#x)=#y;`err"length";`A=@n:^y;fln'[x;y];[t:(@x),@y;x:$[t~`I`F;0.0+x;x];y:$[t~`F`I;0.0+y;y];@[y;i;:;x i:&n]]]}   / a list of lists fills position by position from the item before, as q's ^\ (the nulls of y take x's; ints with floats: floats, as q)
 attr:{`at x}                                         / q's attr: `s `u `p `g, or ` for none
 meta:{d:+unkey x;xkey[`c;+`c`t`a!(!d;{@*x}'value d;{`at x}'value d)]}
-insert:{[t;r]t,r}
+insert:`ins[]                                       / q's insert: a row dict or table lined up by t's column names, its types checked (the verb in src/h.c, ins2)
 
 / ---- joins -----------------------------------------------------------------
 / jprobe: build (right-key-probe; left-key-probe) for a keyed join in the cheapest

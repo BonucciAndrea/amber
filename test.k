@@ -152,6 +152,21 @@ t[`keyedCols;cols kt;`s`p`v]
 t[`unkey;unkey kt;tt]
 t[`xcols;cols xcols[`v;tt];`v`s`p]
 t[`meta;(!meta tt)`c;`s`p`v]
+/ insert lines rows up by column name, as q (issue #19): a row dict, a table, a list of rows, an empty table, a keyed table;
+/ a column a table lacks is filled with nulls of t's column, as q
+iu:+`a`b!(1 2;3 4);ik:xkey[`k;+`k`v`w!(1 2;3 4;5 6)]
+t[`insertByName;{.[insert;x;{x}]}'((iu;`b`a!5 6);(iu;+`b`a!(5 6;7 8));(iu;(`b`a!5 6;`b`a!7 8));(0#iu;`b`a!5 6);(iu;+(,`b)!,5 6);(+`a`b!(1 2;`x`y);+(,`a)!,5 6));(+`a`b!(1 2 6;3 4 5);+`a`b!(1 2 7 8;3 4 5 6);+`a`b!(1 2 6 8;3 4 5 7);+`a`b!(,6;,5);+`a`b!(1 2 0N 0N;3 4 5 6);+`a`b!(1 2 5 6;`x`y``))]
+t[`insertFill;insert[+`a`g`c`s`d!(1 2;(1;`x);"ab";("ab";"cd");2020.01.01 2020.01.02);+(,`a)!,,3];+`a`g`c`s`d!(1 2 3;(1;`x;0N);"ab ";("ab";"cd";"  ");(2020.01.01;2020.01.02;::))]   / item 0N of each column, as aj fills; a date has no null (q: 0N, " ", "", 0Nd)
+t[`insertKeyed;{.[insert;x;{x}]}'((ik;`w`k`v!9 3 7);(ik;+`w`k`v!(9 8;3 4;7 6));(ik;xkey[`k;+`w`k`v!(9 8;3 4;7 6)]);(ik;+`w`k!(9 8;3 4)));(xkey[`k;+`k`v`w!(1 2 3;3 4 7;5 6 9)];xkey[`k;+`k`v`w!(1 2 3 4;3 4 7 6;5 6 9 8)];xkey[`k;+`k`v`w!(1 2 3 4;3 4 7 6;5 6 9 8)];xkey[`k;+`k`v`w!(1 2 3 4;3 4 0N 0N;5 6 9 8)])]
+t[`insertErrors;{.[insert;x;{*"\n"\x}]}'((iu;`b!5);(iu;`a`b`c!5 6 7);(iu;+`b`c!(5 6;7 8));(ik;`w`k`v!9 1 7);(ik;`w`v!9 7);(ik;+`w`v!(9 8;7 6));(ik;`k`v!3 7));(+`a`b!(1 2 0N;3 4 5);"'mismatch";"'mismatch";"'insert";"'k";"'k";xkey[`k;+`k`v`w!(1 2 3;3 4 7;5 6 0N)])]   / as q: a column a row lacks takes a null (a key column: 'k), another column 'mismatch, a key t has 'insert
+t[`insertTypes;{.[insert;x;{*"\n"\x}]}'((iu;`a`b!(5;`x));(iu;`a`b!5 6.0);(iu;+`a`b!(5 6;`x`y));(+`a`d!(1 2;2020.01.01 2020.01.02);`a`d!(3;5));(+`a`c!(1 2;"xy");`a`c!(3;"zz"));(iu;xkey[`a;+`a`b!(,7;,8)]);(iu;ik));7#,"'type"]   / q's 'type: an item of another type than its column's (a date column too), a keyed r into an unkeyed t
+t[`insertTypesFit;{.[insert;x;{x}]}'((+`a`c!(1 2;"xy");`a`c!(3;"z"));(+`a`b!(1 2;(1;`x));`a`b!(3;"s"));(+`a`d!(1 2;2020.01.01 2020.01.02);`d`a!(2020.01.03;3)));(+`a`c!(1 2 3;"xyz");+`a`b!(1 2 3;(1;`x;"s"));+`a`d!(1 2 3;(2020.01.01;2020.01.02;2020.01.03)))]   / a general column takes anything, a date column a date
+t[`insertInfix;(iu insert `b`a!5 6;iu insert `a`b!5 6);(+`a`b!(1 2 6;3 4 5);+`a`b!(1 2 5;3 4 6))]
+t[`insertPositional;{.[insert;x;{*"\n"\x}]}'((iu;9 10);(iu;(5 6;7 8));(ik;(3;7;9));(iu;(9;`x));(iu;1 2 3));(+`a`b!(1 2 9;3 4 10);+`a`b!(1 2 5 6;3 4 7 8);xkey[`k;+`k`v`w!(1 2 3;3 4 7;5 6 9)];"'type";"'length")]   / a list of values lines up by position, as q
+t[`insertEmptyRow;{.[insert;x;{*"\n"\x}]}'((iu;()!());(ik;()!()));(+`a`b!(1 2 0N;3 4 0N);"'k")]   / an empty row dict: a row of nulls, as q (keyed: its key column is missing)
+t[`insertMixedGeneral;insert[+`a`d!(1 2;(2020.01.01;`x));`a`d!3 4];+`a`d!(1 2 3;(2020.01.01;`x;4))]   / a general column of mixed items takes anything, though its first item is a date
+t[`insertKeyedInOrder;{.[insert;x;{*"\n"\x}]}'((ik;xkey[`k;+`k`v`w!(,3;,7;,9)]);(ik;xkey[`k;+`k`v`w!(,1;,7;,9)]);(ik;xkey[`k;+`k`v`w!(,3;,`x;,9)]));(xkey[`k;+`k`v`w!(1 2 3;3 4 7;5 6 9)];"'insert";"'type")]   / a keyed table of t's columns in t's order: new keys only, types checked
+t[`insertRank;.[insert;(iu;`a`b!5 6;7);{*"\n"\x}];"'rank"]   / three arguments, as for the lambda insert was
 
 / ---- joins ----
 lt:+`s`p!(`a`b`c`a;10 20 30 40)

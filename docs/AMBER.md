@@ -345,7 +345,7 @@ prompt with no wrapper:
 select avg px by sym from trades where px>100     / grouped aggregate
 select sym,px from trades where px>180            / chosen columns, filtered
 exec avg px from trades where sym=`AAPL           / one column/expression -> a vector
-exec px,sz from trades where sym=`AAPL            / several -> a `px`sz dict of columns
+exec px,sz from trades where sym=`AAPL            / several (or one named, p:px) -> a dict of columns
 update mid:0.5*bid+ask from quotes                / add/replace columns
 delete from trades where sz<300                   / drop rows
 r:select n:#px, avg px by sym from trades         / assign; also  5#select …  count select …

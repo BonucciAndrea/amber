@@ -270,11 +270,12 @@ qpt:{[u]$[`m~@u;in[`amberpt;!u];0]}
 
 / ---- exec  (return one column / expression, not a table) ------------------
 / exec splits its select-list the SAME way select does (qcut, honouring brackets):
-/   one item  -> the bare vector          exec px from t        exec spread:px-ask from t
+/   one item  -> the bare vector          exec px from t        exec px-ask from t
 /   many      -> a dict name!(vectors)     exec px,ask from t -> `px`ask!(..;..)
 / so `exec a,b` yields two named columns (q semantics) instead of joining them into
 / one vector, which is what lets `plot exec px,ask ...` draw a line per column.
-exq:{[s]s:qnorm s;s:$[(4#s)~"exec";trim 4_s;s];r:qsplit[s;" where "];r2:qsplit[r 0;" from "];r:$[r 2;$[|/"sedu"=*r2 1;qnw[r;r2 1];(r2 1;r 1)];(r2 1;"")];wh:r 1;u:unkey@. qtry r 0;eb:qsplit0[r2 0;" by "];k:qik[qiq[eb 0;eb 1;eb 2;0<#wh];u];pq:$[qpt u;qpexec[u;r2 0;wh];(u;wh)];u:pq 0;wh:pq 1;$[eb 2;qexby[k;u;wh;eb];[t:$[#wh;qwk[k;u;qmask[u;wh]];u];C:cols t;it:qcut trim r2 0;v:{[C;t;e]qfn[C;(qname e)1]t}[C;t]'it;$[1=#it;*v;(qnms[C;it])!v]]]}
+/ As q's, one item with a name (exec s:px-ask from t) is a dict too, and no item (exec from t) is the last row.
+exq:{[s]s:qnorm s;s:$[(4#s)~"exec";trim 4_s;s];r:qsplit[s;" where "];h:r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r:$[r 2;$[|/"sedu"=*r2 1;qnw[r;r2 1];(r2 1;r 1)];(r2 1;"")];wh:r 1;u:unkey@. qtry r 0;eb:qsplit0[r2 0;" by "];k:qik[qiq[eb 0;eb 1;eb 2;0<#wh];u];pq:$[qpt u;qpexec[u;r2 0;wh];(u;wh)];u:pq 0;wh:pq 1;$[eb 2;qexby[k;u;wh;eb];[t:$[#wh;qwk[k;u;qmask[u;wh]];u];$[#r2 0;[C:cols t;it:qcut trim r2 0;v:{[C;t;e]qfn[C;e 1]t}[C;t]'p:qname'it;$[(1=#it)&~#**p;*v;(qnms[C;it])!v]];last t]]]}
 / exec e by b: a dict from the groups to e, as q (through select, then the key column and the value column)
 qexby:{[h;u;wh;eb]r:qdi[h]qsi[h;u;wh;0<#wh;(eb 0;eb 1;1b);""];k:+key r;v:+value r;$[1=#!k;k@*!k;key r]!$[1=#!v;v@*!v;value r]}
 
@@ -296,7 +297,7 @@ del:{[s]s:qnorm s;s:$[(6#s)~"delete";trim 6_s;s];b:$[(5#s)~"from ";("";trim 5_s)
 / ---- functional form ------------------------------------------------------
 / q's ?[t;c;b;a] (select) and ![t;c;b;a] (update, delete) over parse trees: a symbol is a column (or a global),
 / a one-item list like enlist`a is that item as a value, (f;x;y) applies f. c's clauses cascade, each on the
-/ rows the last kept; b is 0b (no groups), 1b (distinct) or a dict of names to trees; a is () or a dict.
+/ rows the last kept; b is 0b (no groups), () (an exec, qfx), 1b (distinct) or a dict of names to trees; a is () or a dict.
 qfv:{in[@x;`o`p`q`r`u`v`w`x]}
 qfe:{[t;e]$[`s~@e;$[in[e;cols t];(+t)e;e~`i;$[in[qI;cols t];(+t)qI;!#t];. e];(`S~@e)&1=#e;*e;(`A~@e)&0<#e;$[qfv[*e];(*e) . qfe[t]'1_e;1=#e;*e;e];e]}
 qfi:{[t;c]C:cols t;v:qfe[t;*c];i:$[isat v;qfw[#t;v];&v];{[t;C;i;w]v:qfe[qtk[$[qfhi w;~|/in[`i,qI;C];0];t;i];w];$[isat v;i@qfw[#i;v];i@&v]}[t;C]/[i;1_c]}   / a later constraint's i reads the rows it sees
@@ -308,7 +309,8 @@ qfsg:{[t;e]$[(`A~@e)&2=#e;[f:*e;c:e 1;$[(`s~@c)&in[c;cols t];$[f~sum;(`sum;c);f~
 qfby:{[t;b;a]bk:!b;h:qbyh[bk;bk~'value b];x:(();h;bk);t2:+(+t),h!qfe[t]'value b;sg:$[0<#a;qfsg[t]'value a;()];fa:$[(0<#sg)&&/{0<#x}'sg;qaggf[t2;h;(!a)!sg;()];()];$[#fa;:qbyr[qks fa;x];];qbyr[;x]$[0=#a;[nk:except[cols t;bk];qby[t2;h;nk!qlastf'nk]];qby[t2;h;(!a)!{[e]{[e;x]qfe[x;e]}[e]}'value a]]}   / computed keys hidden as qbyx's
 qfhi:{$[`s~@x;x~`i;`S~@x;in[`i;x];`m~@x;qfhi@. x;(`A~@x)&0<#x;$[(2=#x)&(count~*x)&`i~x 1;0;|/qfhi'x];0]}   / does a parse tree read i's values (count i does not)
 qfin:{[c;b;a]$[(`m~@b)|0<#c;qfhi[a]|(0<#c)&qfhi b;0]}   / does a functional query read i on rows c or b cut
-qfsel:{[t;c;b;a]t:$[`s~@t;. t;t];kk:$[((b~0b)|b~())&0=#a;keys t;0#`];$[(b~1b)&(0=#a)&iskeyed t;`err"type";];t:unkey t;k:qik[qfin[c;b;a];t];t:qai[k&0=#c;t];t:$[0=#c;t;qtk[k;t;qfi[t;c]]];qkx[kk]qdi[k]$[(b~0b)|b~();$[0=#a;t;qfa[t;a]];b~1b;?qdi[k]$[0=#a;t;qfa[t;a]];qfby[t;b;a]]}
+qfsel:{[t;c;b;a]t:$[`s~@t;. t;t];kk:$[((b~0b)|b~())&0=#a;keys t;0#`];$[(b~1b)&(0=#a)&iskeyed t;`err"type";];t:unkey t;k:qik[qfin[c;b;a];t];t:qai[k&0=#c;t];t:$[0=#c;t;qtk[k;t;qfi[t;c]]];qkx[kk]qdi[k]$[b~0b;$[0=#a;t;qfa[t;a]];b~();qfx[t;a];b~1b;?qdi[k]$[0=#a;t;qfa[t;a]];qfby[t;b;a]]}
+qfx:{[t;a]$[`m~@a;(!a)!qfe[t]'value a;0=#a;last t;qfe[t;a]]}   / b () is q's exec: a column or tree is its value, a dict a dict of them, () the last row
 qfcs:{[C;e]$[`s~@e;$[in[e;C];,e;(e~`i)&in[qI;C];,qI;0#`];(`A~@e)&0<#e;?,/qfcs[C]'e;0#`]}   / the columns a parse tree names (as qrefs for a string)
 qfub:{[t;idx;b;a]k:+(!b)!qfe[t idx]'value b;gi:idx@value(=rows k);+((+t),(!a)!{[t;gi;w;n;e]qasgby[t;n;{[e;x]qfe[x;e]}[e];gi;qfcs[cols t;e];w]}[t;gi;(#idx)<#t]'[!a;value a])}
 qfupd:{[t;c;b;a]t:$[`s~@t;. t;t];kk:keys t;t:unkey t;k:qik[qfin[c;b;a];t];t:qai[k&`m~@b;t];idx:$[0=#c;!#t;qfi[t;c]];qkx[kk]qdi[k]$[`S~@a;$[0=#a;t@&~@[(#t)#0b;idx;:;1b];+(except[cols t;a])#+t];((b~0b)|b~())&0=#c;+((+t),(!a)!{[t;e]v:qfe[t;e];$[isat v;(#t)#v;v]}[t]'value a);(b~0b)|b~();+((+t),(!a)!{[k;t;idx;n;e]qasg[t;idx;n;qfe[qtk[k;t;idx];e]]}[k;t;idx]'[!a;value a]);qfub[t;idx;b;a]]}

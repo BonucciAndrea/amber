@@ -97,6 +97,13 @@ tq[`execAgg;      "exec sum px from trades";          210.0];
 tq[`execWhere;    "exec px from trades where px>35";  40 50 60.0];
 tqa[`execEmpty;    "exec px from none";                NR; 0];
 tq[`execSym;      "exec sym from trades";             `a`b`a`b`c`a];
+/ exec with no item is the last row, one named item a dict, and ?[t;c;();a] (by ()) an exec, as q's
+tq[`execNoItem;   "exec from trades";                 `sym`px`sz!(`a;60.0;6)];
+tq[`execNoItemWh; "exec from trades where px<25";     `sym`px`sz!(`b;20.0;2)];
+tq[`execNamed;    "exec p:px from trades where px>45"; (,`p)!,50 60.0];
+tv[`fExecCol;     "?[trades;();();`sz]";              1 2 3 4 5 6];
+tv[`fExecRow;     "?[trades;,(>;`px;45);();()]";      `sym`px`sz!(`a;60.0;6)];
+tv[`fExecDict;    "?[trades;();();`p`s!(`px;(sum;`sz))]"; `p`s!(10 20 30 40 50 60.0;21)];
 
 / ============================ 5. update ======================================
 tqa[`updNewCols;   "update d:px*2 from trades";        CL; `sym`px`sz`d];
@@ -487,7 +494,7 @@ tq[`colonStrItem;  "select n,\"a:b\" from TC";                        ([]n:1 2 3
 tqa[`colonSymBy;   "select c:count n by f=`:b from TC"; {value(+value x)`c}; 2 1];
 tq[`colonSymExBy;  "exec n by f=`:b from TC";                         01b!(1 3;,2)];
 tq[`colonLambda;   "exec {x:1;x+y}[n;n] from TC";                     2 3 4];
-tq[`colonNamed;    "exec a:f=`:b from TC";                            010b];
+tq[`colonNamed;    "exec a:f=`:b from TC";                            (,`a)!,010b];
 
 / a comma inside ( ), { } or a string does not split an item or a constraint
 TM:([]n:1 2 3 4)

@@ -104,6 +104,12 @@ static void test_add_mul_f64(size_t n) {
     for (size_t i = 0; i < n; i++) ref[i] = a[i] * b[i];
     for (size_t i = 0; i < n; i++) { char w[64]; snprintf(w, sizeof w, "mul_f64[n=%zu][%zu]", n, i); chk_f64(w, out[i], ref[i]); }
 
+    /* mulnan: the same products as simd_mul_f64, and 1 once a product is NaN (here the last, past any vector tail) */
+    { int z = simd_mulnan_f64(a, b, out, n);
+      for (size_t i = 0; i < n; i++) { char w[64]; snprintf(w, sizeof w, "mulnan_f64[n=%zu][%zu]", n, i); chk_f64(w, out[i], a[i] * b[i]); }
+      chk_i64("mulnan_f64 no NaN", z, 0);
+      if (n) { double s0 = b[n - 1]; b[n - 1] = 0.0 / 0.0; chk_i64("mulnan_f64 NaN", simd_mulnan_f64(a, b, out, n), 1); b[n - 1] = s0; } }
+
     double sref = 0; for (size_t i = 0; i < n; i++) sref += a[i];
     char w[64]; snprintf(w, sizeof w, "sum_f64[n=%zu]", n);
     /* SIMD reduction associates differently than the naive left-to-right

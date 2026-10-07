@@ -174,8 +174,10 @@ qsimp:`sum`avg`min`max`count`first`last`dev`var
 / columns, is also fused -- qaggf answers it with two `gagg sum passes (over w*c and over w)
 / and one divide, instead of dropping the whole query onto the per-group path. Without this,
 / one weighted average in the select list de-optimised every other aggregate beside it.
+/ The bracket form wavg[w;c] (no spaces) is fused as w wavg c, so both forms give one answer (#94 Q10).
 qwagg:`wavg`wsum
-qsagg:{[C;e]w:" "vs trim e;$[2=#w;$[(in[`$w 0;qsimp])&in[`$w 1;C];(`$w 0;`$w 1);(w~("count";,"i"))&0<#C;(`count;*C);()];3=#w;$[(in[`$w 1;qwagg])&(in[`$w 0;C])&in[`$w 2;C];(`$w 1;`$w 0;`$w 2);()];()]}
+qsagg:{[C;e]w:" "vs trim e;$[2=#w;$[(in[`$w 0;qsimp])&in[`$w 1;C];(`$w 0;`$w 1);(w~("count";,"i"))&0<#C;(`count;*C);()];3=#w;$[(in[`$w 1;qwagg])&(in[`$w 0;C])&in[`$w 2;C];(`$w 1;`$w 0;`$w 2);()];1=#w;qswb[C;*w];()]}
+qswb:{[C;e]$[("wavg["~5#e)&"]"=*|e;[a:`$";"\-1_5_e;$[(2=#a)&&/in[a;C];(`wavg;a 0;a 1);()]];()]}
 / the by-branch of sel, split out so sel itself stays under the bytecode limit
 / the by-branch of sel, split out so sel itself stays under the bytecode limit.
 / u is the UNFILTERED table and m the where-mask: the fused path hands the mask
@@ -195,13 +197,16 @@ qselby:{[u;m;hw;byp;it;d]$[#m;$[qbyl[cols u;byp];;:qselby[qflt[u;m;hw];();0;byp;
 / (agg;col)        -> a single `gagg pass, as before.
 / (wavg|wsum;w;c)  -> two `gagg sum passes over the same keys and mask, so the group order
 /                     matches, then divide for wavg. Returns () if either pass declines,
-/                     which keeps the existing "cannot fuse -> fall back" contract.
+/                     which keeps the existing "cannot fuse -> fall back" contract. A row with a
+/                     null value or weight adds no weight, as wavg's pairs: `wmul (src/o.c) gives w*c
+/                     and whether a product is null in one pass (a float product is null then); two
+/                     int columns take k's * and a scan of c, as an int product need not be (0N*2 is 0).
 qgg:{[o;k;v;m]$[#m;`gagg(o;k;v;m);`gagg(o;k;v)]}   / an empty mask is every row (no where-clause)
 / 2.7.2: a big symbol key read by more than one `gagg pass is hashed once, to codes (`senc, on the threads; () on
 / one thread, where each pass hashing as it goes is cheaper). The group keys still come from the rows, so the
 / codes never show
 qsc:{[k]e:`senc(k);$[#e;e 1;k]}
-gag1:{[d;k;m;p]$[(2=#p)&in[p 0;`dev`var];qvd[d;k;m;p];2=#p;qgg[p 0;k;d p 1;m];[wv:d p 1;a:qgg[`sum;k;wv*d p 2;m];$[(p 0)~`wsum;a;$[0=#a;();[b:qgg[`sum;k;wv;m];$[0=#b;();(a 0;(a 1)%b 1;a 2)]]]]]]}
+gag1:{[d;k;m;p]$[(2=#p)&in[p 0;`dev`var];qvd[d;k;m;p];2=#p;qgg[p 0;k;d p 1;m];[wv:d p 1;r:$[(p 0)~`wsum;();`wmul(wv;d p 2)];a:qgg[`sum;k;pv:$[#r;r 0;wv*d p 2];m];$[(p 0)~`wsum;a;$[0=#a;();[b:qgg[`sum;k;$[#r;$[r 1;wv*~^pv;wv];`hnl d p 2;wv*~^d p 2;wv];m];$[0=#b;();(a 0;(a 1)%b 1;a 2)]]]]]]}
 / 2.7.2: dev and var by group as var does it, avg of the squared distance from the mean: one pass for the group
 / means, each row's mean found by its key, one pass for the average square
 qvd:{[d;k;m;p]v:d p 1;a:qgg[`avg;k;v;m];$[0=#a;();[e:v-(a 1)@(a 0)?k;b:qgg[`avg;k;e*e;m];$[0=#b;();(b 0;$[`dev~p 0;sqrt b 1;b 1];b 2)]]]}

@@ -221,6 +221,15 @@ t[`byBare;     . qrw"select sum sz by sym from trades"; . qrw"select sum sz by s
 tqa[`aggName;    "select last px by sym from trades"; cols; `sym`px];
 tqa[`aggNameSum; "select sum sz by sym from trades";  cols; `sym`sz];
 tqa[`aggNameWide;"select wavg[sz;px] by sym from trades"; cols; `sym`sz];   / q names it by the first argument (digest #56)
+/ wavg by group, fused: a row with a null value or weight adds no weight, as wavg's pairs and q's (it gave 5/3)
+TWN:([]sym:`a`a`a`b;sz:1 2 3 4.0;px:1 0n 3 5.0;iz:1 2 3 4;ip:1 0N 3 5)
+tq[`wavgByNull;    "select v:sz wavg px by sym from TWN";             (+(,`sym)!,`a`b)!+(,`v)!,2.5 5.0];
+tq[`wavgByNullInt; "select v:iz wavg ip by sym from TWN";             (+(,`sym)!,`a`b)!+(,`v)!,2.5 5.0];
+tq[`wavgByNullMix; "select v:iz wavg px by sym from TWN";             (+(,`sym)!,`a`b)!+(,`v)!,2.5 5.0];
+tq[`wavgByNullWh;  "select v:sz wavg px by sym from TWN where iz<4";  (+(,`sym)!,,`a)!+(,`v)!,,2.5];
+/ and the bracket form wavg[w;x] is fused as w wavg x: one answer for both (#94 Q10)
+TWB:([]sym:(`a`b`c`d)4!!100000;sz:1.0+0.001*997!!100000;px:100.0+0.01*1000!!100000)
+t[`wavgByForms;    sel"select v:wavg[sz;px] by sym from TWB";         sel"select v:sz wavg px by sym from TWB"];
 / Digest #56 #61: q's column names and repeats; an atom beside a list is extended, as update
 tqa[`nameRepeats;"select max px, min px, 2*px, sum px*sz from trades"; cols; `px`px1`x`px2];
 tqa[`selectExtend;"select px, s:sum sz from trades"; {(+x)`s}; 6#21];

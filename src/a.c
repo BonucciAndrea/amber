@@ -652,7 +652,7 @@ A2(ie,/*00*/x==CAT?emp(yt):iex(x,fir(yR)))
 Z __attribute__((always_inline)) inline A prj_(A x,CO A*a,U n)_(XmMA(x8(a,n))U k=MAX(n,xK);F(n,k-=a[i]!=GAP)x=(xtp?val:aA1)(xR);I i=0,j=1;W(i<n&&j<xn,I(xA[j]==GAP,xA[j]=a[i++])j++)W(i<n,PSH(x,a[i++]))P(xn>9,ez(x))AT(tp,AK(k,x)))
 AX(prj,prj_(x,a,n))   //prj_: inlined into d3s, d4s (an amend at more than one level), as prj(DOT,..) was
 A2(com,/*01*/AK(yK,AT(tq,aA2(xR,y))))
-Z A iM(A x,L i)_(Q(xtM);A y=xy,z=aA(yn);Q(ytA);Fj(zn|!zn,zA[j]=io(yA[j],i))am(_R(xx),sqz(z)))
+Z A iM(A x,L i)_(Q(xtM);A y=xy;Q(ytA);P(!yn,am(_R(xx),rs0(enl(io(yx,i)))))A z=aA(yn);Fj(zn,zA[j]=io(yA[j],i))am(_R(xx),sqz(z)))   //no columns: 0# of the prototype's row, a table when rows are dicts
 A ii(A x/*0*/,U i)_(X(RA(_R(xa))RC(ac(xc))RG(ai(xg))RH(ai(xh))RI(ai(xi))RL(al(xl))RF(af(xf))RS(as(xi))Rm(ii(xy,i))RM(iM(x,i))RE(az(*xL+i))RB(ai(xG[i>>3]>>(i&7)&1))R_(xR))0)
 A io(A x/*0*/,L i)_(X(RE(i<(W)(xL[1]-*xL)?az(*xL+i):_R(cn[tl]))RT_E(i<(W)xn?ii(x,i):xn?mkn(ii(x,0)):xtA?_R(xx):_R(cn[xt]))Rt(xR)Rm(io(xy,i))RM(iM(x,i)))0)
 A1(fir,x(io(x,0)))A1(las,x(io(x,xN-1)))

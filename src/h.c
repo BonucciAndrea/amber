@@ -60,8 +60,8 @@ A2(cat10,
   U m=xn,n=yn,w=xw-3;x=aa(m+n,x);
   MC(xV+((W)m<<w),yV,(W)n<<w);I(ytA,mRa(y))x)
  P(xtm&&ytm,_tM(xx)?!_tM(xy)?en(x):!_tM(yx)?et(x):!_tM(yy)?en(x):kct(x,y):a4(x,yx,av,yy))   //keyed tables: kct (keys a table, values not: 'nyi, as before)
- Xmt(P(xtm&&_tM(xx)&&ytM&&!_tM(yx),et(x))cat10(enl(x),y))   //a keyed table and an unkeyed one, either way round: 'type, as q (issue #19)
- Ymt(P(ytm&&_tM(yx)&&xtM&&!_tM(xx),et(x))psh(x,yR))
+ Xmt(P(xtm&&_tM(xx)&&(ytM?!_tM(yx):ytT&&!yn),ytA?x:et(x))cat10(enl(x),y))   //a keyed table and an unkeyed one, either way round: 'type, as q (issue #19); with an empty list, as q: kt,() and (),kt are kt, a typed one 'type
+ Ymt(P(ytm&&_tM(yx)&&(xtM?!_tM(xx):xtT&&!xn),xtA?x(yR):et(x))psh(x,yR))
  P(xtM||ytM,P(!yN,x)P(!xN,x(yR))P(xtT||ytT,x=N(blw(x));y=Nx(blw(yR));cat11(x,y))P(!xtM||!ytM,et(x))P(!mtc_(xx,yx),ed(x))A z=e2f(cat,xy,_R(yy));x(z?aM(_R(xx),z):0))Q(0);0)
 A2(cat11,y(cat10(x,y)))
 A2(cat,/*01*/P(!_tP(x)&&_t(x)==tm&&_at(x)==1,y(et0()))P(!_tP(x)&&_t(x)==tA&&!_n(x)&&_t(xx)==tC&&!_n(xx)&&!_tP(y)&&_t(y)<tM,y)   /*2.7: (),y is y; not 0#,1 2 (its prototype joins)*/cat11(xR,y))   //2.7: a dict made `s takes no more keys, as in q ('type)

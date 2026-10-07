@@ -1391,6 +1391,8 @@ t[`keyedJoinTypedEmpty;{$[`C~@r:.[.:;,x;{x}];*"\n"\r;""]}'("kL,!0";"kL,\"\"";"kL
 / a dict whose keys are a table and values a list stays 'nyi in an amend at keys and in , (it was not a keyed table)
 t[`keyedListValues;{*"\n"\.[.:;,x;{x}]}'(("dL:(+(,`a)!,1 2)!3 4;",)'("dL[,1]:9";"dL[,3]:9";"@[dL;,1;:;9]";"dL,(+(,`a)!,,3)!,5";"dL,(+(,`a)!,,3)!5"),("kL,(+(,`k)!,,3)!,5";"{d:(+(,`a)!,1 2)!3 4;d[,1]:9;d}[]"));7#,"'nyi"]
 t[`keyedUpsertErr;{*"\n"\.[.:;,x;{x}]}'("kL,`k`v!4 40";"kL,(,`v)!,5";"kL,([k:,3]w:,1)";"kL,([j:,3]v:,1)");("'type";"'type";"'domain";"'domain")]
+/ a dict joined to a keyed table, or a keyed table to a list of them (held as a table of keyed tables), either way: 'type, as q (#94 Q8; they were 'index, a dict, and a table of one-row tables)
+t[`keyedJoinDictType;{$[`C~@r:.[.:;,x;{x}];*"\n"\r;r]}'("(kL;kL),kL";"kL,(kL;kL)";"(`k`v!4 40),kL";"(`k!4),kL";"(1 2!3 4),kL");5#,"'type"]
 t[`keyedAmend;(@[kL;1;:;,7];@[kL;5;:;,7];.[kL;(9;`v);:;99];@[kL;1;+;1];@[kL;1;:;5];@[kL;(,5;,5);:;(,1;,2)]);(([k:1 2 3]v:7 20 30);([k:1 2 3 5]v:10 20 30 7);([k:1 2 3 9]v:10 20 30 99);([k:1 2 3]v:11 20 30);([k:1 2 3]v:5 20 30);([k:1 2 3 5]v:10 20 30 2))]
 t[`keyedAmendCols;{k:([k:1 2]v:3 4;w:`a`b);(@[k;2;:;(99;`z)];@[k;9;:;(98;`y)];@[k;(,1;,8);:;((1;`m);(2;`n))];@[k;([]k:1 8);:;([]v:5 6;w:`r`s)])}[];(([k:1 2]v:3 99;w:`a`z);([k:1 2 9]v:3 4 98;w:`a`b`y);([k:1 2 8]v:1 4 2;w:`m`b`n);([k:1 2 8]v:5 4 6;w:`r`b`s))]
 t[`keyedAmendLocal;{k:kL;k[3]:,99;k[4]:,98;k[2;`v]:5;k[7;`v]:6;k[1]+:,1;m:kM;m[(3;`q)]:,51;(k;m)}[];(([k:1 2 3 4 7]v:11 5 99 98 6);([a:1 2 3;b:`x`y`q]v:5 6 51))]
@@ -1454,7 +1456,7 @@ t[`allocGrowFloats;{(#x;+/x;x~0.0+!131072)}`j?"[",(","/$!131072),"]";(131072;858
 t[`allocGrowChars;{(#x;+/`i$x;-12#x)}@,/$!200000;(1088890;56866720;"199998199999")]
 t[`allocPeachFree;`x(("/bin/sh";"-c";"AMBER_THREADS=4 exec \"$0\"";`argv 0);"p:`pe({0.5*!x};40000*1+!8);s:+/'p;q:`pe({,/$!x};20000*1+!8);c:#'q;b:20000 2#!40000;p:0;q:0\n\\m\n`0:\" \"/$s,c,+/+/b\n");"399990000.0 1599980000.0 3599970000.0 6399960000.0 9999950000.0 14399940000.0 19599930000.0 25599920000.0 88890 188890 288890 388890 488890 608890 728890 848890 799980000\n"]   / in a process of its own, as \m reports the running script's own text
 
-hexpect[922]
+hexpect[923]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

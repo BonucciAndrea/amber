@@ -227,7 +227,7 @@ A aE(L i,L j)_(Q(i<=j)P(i==j,emp(tG))A x=an(tE,2);*xL=i;xL[1]=j;x)
 // has to carry it too, with its reference (`s#() on a shared () freed garbage there: 'UNMAP)
 A1(mut,XP(x)P(MINE(x),_at(x)=0;x)U n=xn;B w=!n&&xt==tA;x=x(aV(xt,n|w,xV));AN(n,x);XR(mRn(n|w,xA);x)x)
 C tZ(L v)_(G(tL,tL,tL,tL,tI,tI,tH,tG)[CLZ(v^v>>63|1)-1>>3])
-A kv(A*p)_(A x=*p;Q(xn==2);P(!MINE(x),--xr;*p=_R(xx);_R(xy))*p=xx;AZ(x);x(xy))
+A kv(A*p)_(A x=*p;Q(xn==2);P(!MINE(x),A k=_R(xx),v=_R(xy);I(ray_rc_sync,mr(x))E(--xr);*p=k;v)*p=xx;AZ(x);x(xy))   //shared: the halves taken, then x let go: in peach by mr, atomic (a plain --xr raced in workers reading one table), else --xr as before
 L gl_(A x)_(XP(xv)*xL)
 L gl(A x)_(L v=gl_(x);x(0);v)
 F gf(A x)_(F v=*xF;x(0);v)

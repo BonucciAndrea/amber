@@ -605,9 +605,8 @@ tq[`casGlobalIx;  "select from TL where n>2,(10 20 30 40 50 60 70 m)>35"; TL 2 4
 tq[`casMonoNot;   "select from TL where n>1,~n=4";                      TL 1 2 4 5];
 tq[`casLitJoin;   "select from TL where n>1,n in (2,5)";                TL 1 4];
 / qloc keeps its answers in globals; a peach worker may not assign one, and does not keep them
-/ off for now: reading a shared table's columns from peach workers races (a crash or 'type now and then); back on with the fix
-/ t[`casPeach;      .[{peach[x;1 2 3 4]};,{#sel"from TL where n>1,n<4"};{x}];        2 2 2 2]
-/ t[`casPeachCas;   .[{peach[x;1 2 3 4]};,{#sel"from TL where n>1,n>avg n"};{x}];     2 2 2 2]
+t[`casPeach;      .[{peach[x;1 2 3 4]};,{#sel"from TL where n>1,n<4"};{x}];        2 2 2 2]
+t[`casPeachCas;   .[{peach[x;1 2 3 4]};,{#sel"from TL where n>1,n>avg n"};{x}];     2 2 2 2]
 
 / a by-expression that reads other rows sees only the rows the where kept, as q: avg px is 45, not 35
 tq[`byAfterWhere;     "select s:sum sz by px>avg px from trades where px>25"; (+(,`px)!,0 1)!+(,`s)!,7 11];
@@ -625,7 +624,7 @@ tqa[`byAfterWhereColIx; "select c:count n by m n from TL where n>2"; KV;  (0N 4;
 TU:([]n:1 2 3 4;m:4 1 3 2)
 tqa[`byAfterWhereDigit; "select c:count i by 0+|n from TU where n>2"; KV; (3 4;1 1)];
 tq[`byAfterWhereDigitX;  "exec n by 0+|n from TU where n>2";              3 4!(,4;,3)];
-/ t[`byAfterWherePeach; .[{peach[x;1 2 3 4]};,{#sel"select c:count m by n mod 2 from TL where n>1"};{x}]; 2 2 2 2]
+t[`byAfterWherePeach; .[{peach[x;1 2 3 4]};,{#sel"select c:count m by n mod 2 from TL where n>1"};{x}]; 2 2 2 2]
 
 / a : inside a time or timestamp literal is not an item's name:expr, as q (an unnamed item holding one was split there)
 TT:([]time:09:30:00.000+60000*0 1 6 11;n:1 2 3 4)

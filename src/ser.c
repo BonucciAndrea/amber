@@ -107,8 +107,11 @@ Z CO V*rtake(RB*b,N k){I(b->bad||k>b->n-b->i,b->bad=1;return 0)CO UC*q=b->p+b->i
 Z UC ru8 (RB*b){CO V*q=rtake(b,1);I(!q,return 0)UC v;MC(&v,q,1);return v;}
 Z U  ru32(RB*b){CO V*q=rtake(b,4);I(!q,return 0)U  v;MC(&v,q,4);return v;}
 Z W  ru64(RB*b){CO V*q=rtake(b,8);I(!q,return 0)W  v;MC(&v,q,8);return v;}
+/* a name of 256 bytes or more, which wsym writes whole, from a buffer of its own length (it was 'domain); out of
+ * line, off the path of the short ones */
+ZN U rsyml(RB*b,CO V*q,U n){C*t=realloc(0,(N)n+1);I(!t,b->bad=1;return 0)MC(t,q,n);t[n]=0;U r=us(t);free(t);return r;}
 Z U  rsym(RB*b){U n=ru32(b);I(b->bad,return 0)CO V*q=rtake(b,n);I(!q,return 0)
- C t[256];I(n>=SZ t,b->bad=1;return 0)MC(t,q,n);t[n]=0;return us(t);}
+ C t[256];I(n>=SZ t,return rsyml(b,q,n))MC(t,q,n);t[n]=0;return us(t);}
 
 Z A dec(RB*b,I d);
 Z A dec(RB*b,I d){

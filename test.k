@@ -649,6 +649,8 @@ t[`serLeftKept9;{m:(-9 5000000000)0;m!-8!1 2;m}[];-9]
 / -9! keeps an attribute only when the data keeps it (sort, grade and find trust `s)
 t[`deserAttrKept;  (`at@-9!-8!`sa 1000 2000 3000;`at@-9!-8!`pa 3 3 1 1 2;`at@-9!-8!`ua 1 2 3);(`s;`p;`u)]
 t[`deserAttrBad;   {c:-8!`sa 1000 2000 3000;c[14 15 18 19]:(-8!3000 2000 1000)14 15 18 19;x:-9!c;(`at@x;<x;x?1000)}[];(`;2 1 0;2)]
+/ -9! reads a symbol of 256 bytes or more, which -8! writes whole (it was 'domain)
+t[`deserLongSym;.[{[d]y:(`$255#"a";`$256#"a";`$70000#"c";`b,`$2000#"e";(`$300#"f")!1);(y~-9!-8!y;#$*-9!-8!,`$300#"b")};,0;{x}];(1;300)]
 
 / dates, times and timestamps grade by their values (not their words, nor a timestamp's address)
 t[`gradeDates;     (<(1999.12.31;2000.01.01);<(2000.01.01;1999.12.31;2026.07.30);>(1999.12.31;2000.01.01));(0 1;1 0 2;1 0)]

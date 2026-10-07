@@ -73,13 +73,16 @@ A arrowExport(A x){
  L addr[2]={(L)sc,(L)ar};
  return x(aV(tL,2,addr));}
 
-// build one Amber column from an Arrow child buffer (copy); apply validity bitmap as nulls
-Z A mkcol(S fmt,CO V*data,CO UC*valid,L n){A c;C f=fmt?*fmt:'l';
+// build one Amber column from an Arrow child buffer (copy); apply validity bitmap as nulls. o: the array's offset, in
+// items (so far only a boolean's, below, reads it)
+Z A mkcol(S fmt,CO V*data,CO UC*valid,L n,L o){A c;C f=fmt?*fmt:'l';
  S(f,C('i',c=aI(n);I(data,MC(_V(c),data,4*n)))
      C('l',c=aL(n);I(data,MC(_V(c),data,8*n)))
      C('g',c=aF(n);I(data,MC(_V(c),data,8*n)))
      C('s',c=an(n,tH);I(data,MC(_V(c),data,2*n)))
-     C('b',c=an(n,tG);I(data,MC(_V(c),data,n)))
+     // a boolean is a bit a row, from bit o: it was copied a byte a row, so the packed bytes came back as numbers and
+     // n bytes were read from a buffer of (n+7)/8. A null is 0, as Amber's booleans have none
+     C('b',c=an(n,tG);C*g=(C*)_V(c);CO UC*d=data;I(d,F(n,L j=o+i;g[i]=d[j>>3]>>(j&7)&1))E(MS(g,0,n))I(valid,F(n,L j=o+i;I(!(valid[j>>3]>>(j&7)&1),g[i]=0))))
      C('C',c=an(n,tG);I(data,MC(_V(c),data,n)))
      D(c=aL(n);I(data,MC(_V(c),data,8*n))))
  // A null int32 cell: the column goes 64-bit with 0N, as int32 has no null (1<<31 was an ordinary number: digest #35)
@@ -99,7 +102,7 @@ A arrowImport(A x){
   nv[i]=us(cs->name?cs->name:"");
   if(cs->format&&*cs->format=='u'){CO I*offs=(CO I*)ca->buffers[1];CO C*dt=(CO C*)ca->buffers[2];A s=aS(nrows);I*sv=(I*)_V(s);
    F(nrows,C tmp[256];L l=offs[i+1]-offs[i];I(l>255,l=255)MC(tmp,dt+offs[i],l);tmp[l]=0;sv[i]=us(tmp))cv[i]=s;}//utf8 -> symbols
-  else{CO UC*valid=ca->n_buffers>1?(CO UC*)ca->buffers[0]:0;CO V*data=ca->n_buffers>1?ca->buffers[1]:0;cv[i]=mkcol((S)cs->format,data,valid,nrows);}}
+  else{CO UC*valid=ca->n_buffers>1?(CO UC*)ca->buffers[0]:0;CO V*data=ca->n_buffers>1?ca->buffers[1]:0;cv[i]=mkcol((S)cs->format,data,valid,nrows,ca->offset);}}
  if(ar->release)ar->release(ar);
  if(sc->release)sc->release(sc);
  free(ar);free(sc);

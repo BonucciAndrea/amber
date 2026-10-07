@@ -312,6 +312,33 @@ struct TestArrowArray {
     void *private_data;
 };
 
+static void rel_test_schema(struct TestArrowSchema *s) { s->release = 0; }
+static void rel_test_array(struct TestArrowArray *a) { a->release = 0; }
+
+/* A foreign producer's boolean column (pyarrow's bool): a bit a row, from the
+ * array's offset, with a validity bitmap. It was read a byte a row: 13 bytes
+ * from the packed buffer came back as numbers. The buffers are padded, as Arrow
+ * producers pad them, so the old read stayed inside them. */
+static void t_arrow_bool(void) {
+    static const unsigned char bits[64] = {0x2d, 0xb5}, valid[64] = {0xdf, 0xdf};
+    const void *cbuf[2] = {valid, bits}, *tbuf[1] = {0};
+    struct TestArrowSchema cs = {"b", "a", 0, 2, 0, 0, 0, rel_test_schema, 0}, *csp = &cs;
+    struct TestArrowArray ca = {13, 2, 3, 2, 0, cbuf, 0, 0, rel_test_array, 0}, *cap = &ca;
+    struct TestArrowSchema sc = {"+s", "", 0, 0, 1, &csp, 0, rel_test_schema, 0};
+    struct TestArrowArray ar = {13, 0, 0, 1, 1, tbuf, &cap, 0, rel_test_array, 0};
+    amber_value back = amber_arrow_import(&sc, &ar), col;
+    char *text;
+    CK(back != 0);
+    if (!back) return;
+    col = amber_table_column(back, 0);
+    text = amber_format_plain(col);
+    /* bits 3..15 are 1 0 1 0 0 1 0 1 0 1 1 0 1; bits 5 and 13 are null, so 0 */
+    CK(text && strcmp(text, "1 0 0 0 0 1 0 1 0 1 0 0 1") == 0);
+    if (text) amber_free(text);
+    amber_release(col);
+    amber_release(back);
+}
+
 static void t_arrow(void) {
     amber_value t = amber_eval_str("([]a:1 2 3; b:1.5 2.5 3.5)");
     void *schema = 0, *array = 0;
@@ -401,6 +428,7 @@ int main(int argc, char **argv) {
     t_push();
     t_call();
     t_arrow();
+    t_arrow_bool();
     t_format();
     t_plugin();
     amber_shutdown();

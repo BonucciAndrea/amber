@@ -155,6 +155,12 @@ t[`arrowPtrs;{[t]p:arrow.export t;n:#p;arrow.import p;n}[([]a:1 2 3)];2]  / expo
 / crash cannot stop the suite: the child prints each case's error
 axc:"\\l amber.k\n\\l std.k\n\\l sys.k\nd:`diag 0\n`0:{.[{arrow.export x;\"ok\"};,x;{*\"\\n\"\\x}]}'(1 2 3;(1;2);`a`b;(1 2;3 4);101b;(,`a;,`x);());`0:.[{`aex x;\"ok\"};,(`a`b;(1 2;3));{*\"\\n\"\\x}]\n"
 t[`arrowNonTable;`x(,`argv[]0;axc);"'type\n'type\n'type\n'type\n'type\n'type\n'type\n'type\n"]
+/ a bit mask (-9!, or a column file of type 3) is an Arrow boolean, a bit a row: import read it a byte a row
+abi:{(+arrow.import arrow.export ([]a:-9!x))`a}
+t[`arrowBool3;abi 0x414d42010300030000000000000005;101b]
+t[`arrowBool8;abi 0x414d420103000800000000000000c3;11000011b]
+t[`arrowBool10;abi 0x414d420103000a00000000000000a502;1010010101b]
+t[`arrowBool17;abi 0x414d420103001100000000000000018001;10000000000000011b]
 
 fails:r@&{"FAIL"~4#x}'r[;1]
 `0:"";`0:"============ EXTENDED TEST SUITE ============"

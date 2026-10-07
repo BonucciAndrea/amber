@@ -268,12 +268,8 @@ static ASTNode *describe_leaf(A v, UC t) {
         case tc: snprintf(lb, sizeof lb, "\"%c\"", (char)_v(v)); return ast_new(AST_SCALAR, lb, "(Char)");
         case ts: snprintf(lb, sizeof lb, "`%s", su((U)_v(v))); return ast_new(AST_SCALAR, lb, "(Symbol)");
         /* Date/Time/Timestamp atoms: shown as their raw underlying integer
-         * (days/ms/ns since epoch) rather than a calendar-formatted string.
-         * Amber's real date/time formatters (s.c: "dstr"/"stime"/"pstr") are
-         * invoked reflectively through the K evaluator (K1(name,...)), and
-         * \ast must never evaluate anything -- see the file header -- so
-         * this stays a raw, honestly-labeled value instead of reaching for
-         * that machinery. */
+         * (days/ms/ns since epoch) rather than a calendar-formatted string,
+         * as they always have been here. */
         case tdt: snprintf(lb, sizeof lb, "%lld", (long long)_v(v)); return ast_new(AST_SCALAR, lb, "(Date, raw days)");
         case ttm: snprintf(lb, sizeof lb, "%lld", (long long)_v(v)); return ast_new(AST_SCALAR, lb, "(Time, raw ms)");
         case tnp: snprintf(lb, sizeof lb, "%lld", (long long)*_L(v)); return ast_new(AST_SCALAR, lb, "(Timestamp, raw ns)");

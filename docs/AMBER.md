@@ -951,6 +951,7 @@ syntax and type-aware arithmetic:
 ```q
 2026.07.30                      / date  (days since 2000.01.01)
 10:00:00.000 + 00:00:05.000     / time + time -> 10:00:05.000
+-10:00:00.000                   / a negative time, as q; -t and neg t negate a time
 2026.08.15 - 2026.07.30         / date - date -> 16 (days) ; date+n -> date
 2026.07.30D09:30:00.000000000   / timestamp (ns since 2000.01.01)
 year 2026.07.30                 / accessors: year month day dow  ·  thh tmm tss (time)
@@ -961,6 +962,10 @@ year 2026.07.30                 / accessors: year month day dow  ·  thh tmm tss
 
 Anything else is `'type` (date+2.3, date*2, date+date), and date+0N is `'domain`: there's no null
 date yet, so it used to just hand the date back.
+
+Two kinds compare as in q: a date and a time are `'type`, a date against a timestamp is its
+midnight (`2026.07.30=2026.07.30D00:00:00.000000000` is 1), and a timestamp against a time is its
+time of day, to the millisecond.
 
 Columns keep numeric storage (as q does internally), so `xasc` and the `s#` attribute work
 unchanged and a `time`-named column auto-renders as `HH:MM:SS.mmm` in a grid.

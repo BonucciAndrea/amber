@@ -1199,7 +1199,10 @@ Z A3(dt3,/*111*/A r=_tP(x)||_tU(x)||_t(x)==ts?d8((A[]){x,y,z},3):_t(x)==tS?d3t(x
 Z A4(dt4,/*1111*/A r=_tP(x)||_tU(x)||_t(x)==ts?d8((A[]){x,y,z,u},4):_t(x)==tS?d4t(x,y,z,u):d4(x,y,z,u);mr(y);mr(z);mr(u);r)
 Z __attribute__((cold)) A3(ds3,/*111*/A r=d3t(x,y,z);mr(y);mr(z);r)
 Z __attribute__((cold)) A4(ds4,/*1111*/A r=d4t(x,y,z,u);mr(y);mr(z);mr(u);r)
-ZN A ki(A*p,S s)_(*p=evs(s,0);P(!*p,0)PSH(cns,*p))   //a name that does not evaluate (a missing formatter): its error, not die
+//A call site's lambda is compiled in the root, whatever \d is at its first call: the compiler puts a name in the
+//namespace current then, and the lambda is kept for the life of the process (![t;c;b;a]'s qfupd, \l's qrwf).
+//grt (m.c) sets that for this thread alone, so a peach worker's first call leaves the others' \d alone
+ZN A ki(A*p,S s)_(B r=grt(1);*p=evs(s,0);grt(r);P(!*p,0)PSH(cns,*p))   //a name that does not evaluate (a missing formatter): its error, not die
 //k1 k2 k8: the lambda is compiled on first use under the parse lock in a peach scope, so two workers reaching
 //it first do not both compile it and push it to cns at once (digest #10); outside peach plk does nothing
 A k1(A*p,S s,A x)_(I(!*p,plk(1);I(!*p,ki(p,s))plk(0))P(!*p,x(0))_1(*p,x))

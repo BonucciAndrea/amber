@@ -196,7 +196,7 @@ CO C*peach_errmsg(V);//error category raised by the first failing item of the la
 CO C*errtext(V);//the calling thread's current error text (e.c)
 V plk(B);//take (1) / drop (0) the parse+compile lock inside a peach scope (m.c)
 C*sf(C*,L),*sl(C*,L),sup(A*,A*),tZ(L),*strchrnul(S,I);
-U gi(A);EX B gfull;
+U gi(A);B grt(B);EX B gfull;
 B am_infix_dyad(S,U);//p.c: is a name a defined rank-2 global fn? -> infix
 B am_name_nonfn(S,U);//p.c: is a name BOUND to something that is not a rank-2 fn? -> not infix
 A unqL(A);//amber: O(n) integer distinct (f.c), 0 = not handled

@@ -117,10 +117,12 @@ te[`ptDelete;"del\"delete from trade where px>0\""]
 t[`ptab;#ptab[`trade;()];12]
 t[`ptabSome;#ptab[`trade;,2026.01.03];4]
 t[`ptSortedSym;attr (sel"select from trade where date=2026.01.02")`sym;`p]
+trade2:([]px:1.5 2.5;sym:`z`y;sz:1 2);x:Q.dpft[T,"/hdb2";2026.01.03;`sym;`trade2]
+t[`dpftOrder;(`rcol T,"/hdb2/2026.01.03/trade2/.d";`rcol T,"/hdb2/2026.01.03/trade2/px");(`sym`px`sz;2.5 1.5)]   / the parted column first, as q's .Q.dpft
 x:loaddb T,"/hdb"
 t[`reload;#sel"select from trade";12]
 
 rm T
-hexpect[59]
+hexpect[60]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

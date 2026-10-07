@@ -63,7 +63,7 @@ hdb.pv:{[p]$p}                                                  / partition valu
 hdb.pok:{[s]d:in[s;"0123456789"];$[0=#s;0;&/d;1;(10=#s)&(".."~s 4 7)&&/d 0 1 2 3 5 6 8 9;1;0]}   / looks like a partition
 hdb.pcn:{[p]$[`d~@p;`date;`int]}                                / the partition column's name
 Q.en:{[d;t]d:hdb.sl hdb.p d;dd:+t;{[d;dd;c]$[`S~@dd c;hdb.enum[d;dd c];0]}[d;dd]'cols t;t}
-Q.dpft:{[d;p;f;t]d:hdb.sl hdb.p d;v:. t;$[iskeyed v;`err"type";0];v:xasc[f;v];dd:+v;dd:@[dd;f;{`pa x}];hdb.splay[d,"/",(hdb.pv p),"/",$t;d;+dd];t}
+Q.dpft:{[d;p;f;t]d:hdb.sl hdb.p d;v:. t;$[iskeyed v;`err"type";0];v:xasc[f;v];dd:+v;dd:@[dd;f;{`pa x}];c:!dd;c:(,f),c@&~c=f;hdb.splay[d,"/",(hdb.pv p),"/",$t;d;+c!dd c];t}   / f first, as q
 
 / A partitioned table is a dict naming where it lives: database, table, partition column, the partitions that
 / hold it and its columns. Nothing is read until a query asks: qpsel (select, exec) and ptab map what they need.

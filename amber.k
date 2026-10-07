@@ -64,9 +64,9 @@ wsi:{$[(`F=@x)&`F=@y;$[^r:`wsm(x;y);wsp[x;y];r];(`I=@x)&`I=@y;$[0N=r:`wsm(x;y);w
 wavg:{$[(`F=@x)&`F=@y;$[^r:(`wsm(x;y))%+/x;wvp[x;y];r];(`I=@x)&`I=@y;$[0N=r:`wsm(x;y);wvp[x;y];r%+/x];`hnl[x]|`hnl y;wvp[x;y];(+/x*y)%+/x]}
 wsp:{m:&~(^x)|^y;+/x[m]*y m}   / (an int 0N*y wraps, so the pairs go before the product)
 wvp:{m:&~(^x)|^y;(+/x[m]*y m)%+/x m}
-var:{avg{x*x}x-avg x}
+var:{d:{x*x}x-avg x;$[`F=@d;$[^s:+/d;$[^r:avgn d;0.0%+/~^x;r];s%#d];0n~r:avg d;0.0%+/~^x;r]}   / avg d, its float path inline; an infinite or NaN mean leaves no square: 0f over the non-nulls, as q (#83 Q10)
 dev:{sqrt var x}
-svar:{$[`F=@x;$[^s:+/x;svp x;[n:#x;(n*avg{x*x}x-s%n)%-1+n]];`hnl x;svp x;(n*var x)%-1+n:#x]}   / n counts the non-nulls; floats: var's own sum
+svar:{$[`F=@x;$[^0*s:+/x;svp x;[n:#x;(n*(+/{x*x}x-s%n)%n)%-1+n]];`hnl x;svp x;(n*var x)%-1+n:#x]}   / n counts the non-nulls; floats: var's own sum (an infinite or NaN sum: svp, whose var is q's), and avg of the squares inline (they are finite)
 svp:{v:x@&~^x;n:#v;(n*var v)%-1+n}
 sdev:{sqrt svar x}
 / cov, scov, cor: pairs with a null dropped, then centred (avg[x*y]-avg[x]*avg y lost digits far from 0);
@@ -148,6 +148,11 @@ union:{distinct x,y}
 raze:{$[isat x;,x;,/x]}
 sublist:{$[$[1=#y;isat y;0b];$[|/^x;`err"type";abs x;y;0#y];[n:(abs x)&#y;$[x<0;(0-n)#y;n#y]]]}   / An atom comes back as is, as q (0 sublist 5 is !0); a null or symbol count: 'type, as q
 cross:{,/x,/:\:y}
+/ q's adverb words, defined as q defines them (#83 Q11): last each x is last'x, and infix like any named dyad
+each:{x'y}
+over:{x/y}
+scan:{x\y}
+prior:{x':y}
 
 / ---- table predicates & basics ---------------------------------------------
 istable:{`M=@x}
@@ -338,7 +343,7 @@ ssr:{[s;f;t]t/f\s}
 sv:{x/y}
 vs:{$[(`C=@y)&0=#y;,y;x\y]}   / x vs "" is one empty field, as q
 lk1:{[s;p]$[~#p;~#s;"*"=*p;$[#s;lk1[s;1_p]|lk1[1_s;p];lk1[s;1_p]];~#s;0;("?"=*p)|(*p)=*s;lk1[1_s;1_p];0]}
-like:{[x;p]$[`C=@x;lk1[x;p];`s=@x;lk1[$x;p];`S=@x;[u:?x;(lk1[;p]'$u)@u?x];lk1[;p]'x]}   / symbols match by name, as q: each distinct name once
+like:{[x;p]$[`C=@x;`lk(x;p);`s=@x;`lk($x;p);`S=@x;[u:?x;(`lk($u;p))@u?x];`m=@x;(!x)!like[. x;p];`lk(x;p)]}   / q's like in C (`lk, src/a.c): * ? and [ ] classes (#83 Q12); symbols match by name, each distinct name once; a dict's values, as q
 
 / ---- temporal : time-of-day held as milliseconds since midnight (like q time)
 / q's  time.minute / time.hh / time.ss  become  minute t / hh t / ss t  in Amber.

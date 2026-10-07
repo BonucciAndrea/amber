@@ -105,6 +105,15 @@ same["tables"        ;{+`v!,x+!3}        ;!5]
 same["mixed widths"  ;{$[2!x;x;0.5*x]}   ;!12]
 same["over symbols"  ;{$x}               ;`a`b`c`d`e`f]
 same["single item"   ;{x*2}              ;,7]
+/ an atom y is f y, as f'y (not a one-item list); a dict y maps its values, a table y its rows
+same["int atom"      ;{x*2}              ;7]
+same["atom, list out";{x,x}              ;5]
+same["char atom"     ;{x}                ;"a"]
+same["symbol atom"   ;{x}                ;`s]
+same["float atom"    ;{x}                ;2.5]
+same["null atom"     ;{x}                ;0N]
+same["dict y"        ;{x*2}              ;`a`b`c!1 2 3]
+same["table y"       ;{x}                ;+`a`b!(1 2 3;4 5 6)]
 
 / ---- 3. large peach: correctness and flat memory ---------------------------
 sec"3. large peach"
@@ -139,6 +148,11 @@ e1:.[{[q]peach[{$[x=5;x+`sym;x]};!10]};,0;{[e]"caught"}]
 ok["worker error is trapped";e1~"caught"]
 e2:.[{[q]peach[{$[x=400;x+`sym;x]};!1000]};,0;{[e]"caught"}]
 ok["error deep in a chunk"  ;e2~"caught"]
+/ several items fail: the error is the first failing item's, as serial each's (#83 Q16), even when a
+/ later item fails long before it (item 0 here works first; every other item fails at once)
+pe1:{.[peach;(x;y);{[e](e?"\n")#e}]}
+ok["first failing item's error" ;"'length"~pe1[{x+1 2 3};(1 2;`a)]]
+ok["first item fails last"      ;"'length"~pe1[{$[x;x+`a;[+/%1+!4000000;1 2+1 2 3]]};!256]]
 / the interpreter must still be usable afterwards: the persistent worker
 / threads are re-armed for the next dispatch, no wedged global error state.
 ok["peach works after error";(peach[{x+1};!30])~1+!30]

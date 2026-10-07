@@ -1399,6 +1399,27 @@ t[`keyedArithKeys;(([a:1 2;b:`x`y]v:1 2;w:3 4)+([b:`y`z;a:2 3]w:10 20;v:5 6);([k
 t[`keyedArithLists;((([]a:1 2)!(1 2;3 4))+([]a:2 3)!(10 20;30 40);(([]a:1 2 3)!4 5 6)-([]a:2 3 4)!10 20 30);((+(,`a)!,1 2 3)!(1 2;13 24;30 40);(+(,`a)!,1 2 3 4)!4 -5 -14 -30)]
 t[`keyedArithErr;{*"\n"\.[.:;,x;{x}]}'("kL+([j:2 3]v:5 6)";"kL+([k:2 3]w:5 6)";"kL+(([]k:2 3)!5 6)";"(([]k:2 3)!5 6)*kL";"([k:1 2]v:1 2)|([k:3 4]v:`a`b)");("'domain";"'domain";"'type";"'type";"'type")]
 
+/ ---- a list holding :: is data, not a train, so applying it indexes it, as in ngn/k (#83 Q2); a list of functions is still a train ----
+t[`trainNullIndexed;`k'((::;::)@0 1;(::;::;-:)@0 1;(::;-:)@0 1;(-:;::)@1 0;(::;::)[0 1]);("(::;::)";"(::;::)";"(::;-:)";"(::;-:)";"(::;::)")]
+t[`trainNullFromIndex;{D:({x};{y};1);`k'(D@5 6;(D@5 6)@0 1)}[];2#,"(::;::)"]
+t[`trainNullAtom;(`k(::;::)@5;(::;::)[1;2];*"\n"\.[.:;,"1 (::;::) 2";{x}]);("::";2;"'type")]
+t[`trainOfFunctions;((+;-)/[1;2];(+;-;*)[5;2];(-:;%:)@4);(0;-3;2.0)]
+
+
+/ ---- ?[c;a;b] with c of 0s and 1s: an a or b that is a list of another length is 'length, as q, not a splice (#83 Q3) ----
+t[`vcondLength;{*"\n"\.[{`k@. x};,x;{x}]}'("?[1 0 1;1 2;9]";"?[1 0 1;9;1 2]";"?[1 0 1;(1;2);9]";"?[0 1 1 0;1 2;5]";"?[!0;1 2;5]";"?[1 0 1;\"ab\";\"xyz\"]");6#,"'length"]
+tv[`vcondSpliceOther;"?[0 1 2;1 2;9]";0 9 2]
+
+
+/ ---- JSON writes a monadic verb as its text, as q and as a dyadic verb (#83 Q4); it wrote true, which reads back as 1 ----
+t[`jsonMonadText;(`j@(-:);`j@(#:);`j@(-:;1);`j@`a`b!(-:;+);`j@(::;*:));("\"-:\"";"\"#:\"";"[\"-:\",1]";"{\"a\":\"-:\",\"b\":\"+\"}";"[null,\"*:\"]")]
+t[`jsonMonadBack;`j?`j@(-:);"-:"]
+
+
+/ ---- an empty item in parentheses is ::, as in ngn/k (#83 Q6); it was 'parse. ( ) is (), as () is, and an empty argument in [] is still elided ----
+t[`parenEmptyItem;{*"\n"\.[{`k@. x};,x;{x}]}'("(1;;2)";"(;)";"(1;)";"(;1)";"(;;)";"(1;(;))";"{(;x)}3";"(1;\n2)";"( )");("(1;::;2)";"(::;::)";"(1;::)";"(::;1)";"(::;::;::)";"(1;(::;::))";"(::;3)";"(1;::;2)";"()")]
+t[`parenEmptyKept;{*"\n"\.[{`k@. x};,x;{x}]}'("()";"(1;2)";"{x+y}[1;]2";"[1;;2]";"(1;2";"(1;;2");("()";"1 2";,"3";,"2";"'parse";"'parse")]
+
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

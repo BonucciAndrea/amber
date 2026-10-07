@@ -22,7 +22,7 @@ pdate:{`i$"D"$x}                                            / "YYYY.MM.DD" -> da
 / int 0N or :: (as D,0N, prev D and D@5 make) is the null day. Anything else, a time, a float, a symbol or text, or a list that
 / mixes dates and ints, is 'type, as q's `year$ (which takes no ints at all). dkind: the kinds in a list, `d for a date or a
 / timestamp, `i for an int, none for 0N or ::, `x for anything else, from the items' types, going into lists and dicts only
-/ (x~\:(::) on the whole list: indexing a general list does not keep a :: or a verb in it, (::;::)@0 1 is 0 1).
+/ (x~\:(::) on the whole list: indexing a general list of two or three verbs applies it as a train, (+;-)@0 1 is 0 0).
 / `tjn (src/w.c) takes a list of dates alone, or of timestamps, in one pass in C (no list of types: @'x cost more than the `i$).
 / tdnul: a list of dates (or of timestamps) with nulls in it takes one `i$ (tsdate) with 0N for them; a mixed one goes item by item.
 dkind:{$[`m~@x;dkind@.x;~`A~@x;$[(@x)in`i`I;,`i;,`x];[t:@'x;u:?t;k:(`d`d`i`x)@3^`d`n`I?u@&~u in`i`u`A`m;i:&t=`i;w:&t=`u;k,:$[#i;$[|/~^x i;,`i;0#`];0#`];k,:$[#w;$[&/(x~\:(::))w;0#`;,`x];0#`];?k,,/dkind'x@&t in`A`m]]}

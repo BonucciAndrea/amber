@@ -114,6 +114,14 @@ ti["union-atom-dup";   1 2 3 union 2;       1 2 3]
 ti["in-vec-unchanged";     1 2 3 in 2 3;    0 1 1]
 ti["except-vec-unchanged"; 1 2 3 except 2 3;,1]
 
-hexpect[52]
+/ ---- #83 Q11: q's adverb words, defined as q defines them ({x'y} and so on) -
+/ Named dyads, so infix as the rest are: on 2.7.2 each of these was 'value.
+tv["adverb-each";    "last each (\"ab\";\"cd\")";  "bd"];
+tv["adverb-over";    "(+) over 1 2 3";               6];
+tv["adverb-scan";    "(+) scan 1 2 3";               1 3 6];
+tv["adverb-prior";   "(-) prior 1 3 6";              1 2 3];
+tv["adverb-bracket"; "(each[neg;`a`b!1 2];over[{x*y};1 2 3 4];{x div 2} scan 100)";  (`a`b!-1 -2;24;100 50 25 12 6 3 1 0)];
+
+hexpect[57]
 hreport"AMBER INFIX DYADS"
 $[FAILN;`exit 1;]

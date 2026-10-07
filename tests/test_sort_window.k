@@ -157,6 +157,12 @@ t[`mavgNull; mavg[2;1 0n 3 4.0]; 1 1 3 3.5]
 t[`mminNull; mmin[2;1 0n 3 4.0]; 1 0n 0n 3.0]
 t[`mmaxNull; mmax[2;1 0n 3 4.0]; 1 1 3 4.0]
 t[`mAllNull; ^*mavg[2;0n 0n];    1b]
+/ #83 Q10: an infinity gives q's answer, which is msumK/mavgK/mvarK's prefix sums (0n in the first w-1 points
+/ once one is in, and after it leaves the window)
+t[`mavgInf; (mavg[2;0w 1];mavg[2;1 0w 2 3];mavg[3;-0w 0w 1 2 3];mavg[2;0n 1 0w]); (0n 0n;1 0n 0w 0n;5#0n;0n 1 0w)]
+t[`mavgInfLong; {(mavg[3;x]~mavgK[3;x])&mavg[5000;x]~mavgK[5000;x]}@[gflt 20000;9000;:;-0w]; 1b]
+t[`mwInfQ; (msum[2;0w 1];msum[3;1 2 0n 0w 3 4 5];mdev[2;0w 1];mdev[3;1 0w 3 4 5 6.0];mvar[3;1 0w 3 4.0]); (0n 0n;1 3 3 0w 0w 0w 0n;0n 0n;0 0n 0n 0n 0n 0n;0 0n 0n 0n)]   / q's answers (q has no mvar: mdev's square)
+t[`mwInfLong; {(msum[3;x]~msumK[3;x])&(mvar[3;x]~mvarK[3;x])&mdev[5000;x]~sqrt mvarK[5000;x]}@[gflt 20000;9000;:;0w]; 1b]
 
 / ---- drift: the running difference must stay tight to the prefix-sum answer -
 dv:1000000+gflt 200000
@@ -309,6 +315,6 @@ t[`mmaxKeyN;    mmax[2;(+(,`k)!,1 2 3)!+`a`b!(0N 0N 3;0n 0n 6.0)]; (+(,`k)!,1 2 
 t[`mminDictE;   mmin[2;(0#`)!0#0];                  (0#`)!0#0]
 t[`mmaxDictE;   mmax[2;(0#`)!0#0.0];                (0#`)!0#0.0]
 
-hexpect[394]
+hexpect[398]
 hreport"AMBER SORT / WINDOW DIFFERENTIAL"
 $[FAILN;`exit 1;]

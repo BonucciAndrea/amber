@@ -150,7 +150,7 @@ Z A pt(C*v)_(C c=*s;                                                            
  P(c=='`',qte(p1(N(pS('`')))))
  P(c=='"',p1(pC()))
  P(c=='[',s++;pb(GAP,']'))
- P(c=='(',s++;P(*s=='[',amtbl())P(*s==')',s++;emp(tA))A x=N(pb(MKL,')'));xn-2?x:las(x))
+ P(c=='(',s++;P(*s=='[',amtbl())P(*pw(s)==')',s=pw(s)+1;emp(tA))A x=N(pb(MKL,')'));xn-2?x:las(x))
  P(c=='{',C k0=k;k=1;S s1=s0,t=s0=s++;A y=N(pp());
   // The body is parsed with this lambda's parameters in scope, so pt() below
   // does not read one of them as an infix verb. Saved and restored rather than
@@ -206,8 +206,9 @@ Z A pe_(A x,C*v)_(s=pw(s);C c=*s;                                               
  A z=pe(0,v);P(!z,y(x?x(0):0))P(z==GAP,*v=1;P(!x,y)Yu(ep(x))AO(o,aA3(y,x,z)))
  *v&=y!=av;I(!x,y=pm(y))*v?aA3(aw,x?AO(o,aA3(y,x,GAP)):y,z):AO(o,x?aA3(y,x,z):aA2(pm(y),z)))
 Z A pe(A x,C*v)_(P(pd>=PD,x?x(ez0()):ez0())pd++;A r=pe_(x,v);pd--;r)                         //pe_, at most PD deep: 'limit beyond
-Z A pb(A x,C c)_(x=x?aA1(x):emp(tA);                                                                //parse body (sequence of ;-separated expressions)
- W(1,C v=0;A y=Nx(pe(0,&v));PSH(x,c-']'&&y==GAP?au:y);P(y==GAP&&c==')',ep(x))B(*s-';'&&*s-10)B(c==10&&*s==10)s++)
+//parse body (sequence of ;-separated expressions); an empty one is :: but in [] (an elided argument), so (1;;2) is (1;::;2), as ngn/k
+Z A pb(A x,C c)_(x=x?aA1(x):emp(tA);
+ W(1,C v=0;A y=Nx(pe(0,&v));PSH(x,c-']'&&y==GAP?au:y);B(*s-';'&&*s-10)B(c==10&&*s==10)s++)
  P(c==10&&!*s,x)P(*s-c,ep(x))s++;x)
 Z A pk_(S*p,C c)_(s0=s=*p;ppe=0;A x=pb(GAP,c);*p=s;P(x,xn==2?las(x):x)eD(s0,SL(s0),s-s0);eQ(s0,SL(s0),s-s0);0)                  //parse either a group of lines (c='\n') or till '\0' (c='\0')
 A pk(S*p,C c)_(P(!ray_rc_sync,pk_(p,c))plk(1);A x=pk_(p,c);plk(0);x)                               //pk_ under the peach parse lock (m.c plk)

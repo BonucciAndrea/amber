@@ -129,7 +129,8 @@ These are properties of the host, not bugs, and the library is written to respec
 ### Tacit trains: hooks and forks (since 2.0.1)
 
 A parenthesised, **semicolon-separated** list whose every element is a function
-is applied as a **train** rather than indexed. Two shapes exist:
+is applied as a **train** rather than indexed. `::` counts as data here, not as a
+function, so a list holding it is indexed: `(::;::)@0 1` is `(::;::)`. Two shapes exist:
 
 | shape | name | monadic `t y` | dyadic `t[x;y]` |
 |-------|------|---------------|-----------------|
@@ -187,6 +188,9 @@ key value first last reverse distinct group where flip count mod div xbar xlog`
 
 **Uniform** (list → list)
 `sums prds mins maxs deltas ratios differ prev next`
+
+**Adverb words** (q's, infix: `last each x` is `last'x`)
+`each over scan prior`
 
 Examples:
 
@@ -918,7 +922,8 @@ ssr ["abracadabra";"ra";"XX"] / "abXXcadabXX"
 sv  ["/";("a";"bc";"d")]      / "a/bc/d"      (join)
 sv  [10;1 2 3]                / 123           (base decode)
 vs  ["/";"a/bc/d"]            / ("a";"bc";"d")(split)
-like["abcde";"a*e"]           / 1             (glob: * and ?)
+like["abcde";"a*e"]           / 1             (glob: * and ?, and [ ] classes)
+like["ab";"a[^a-c]"]          / 0             ([abc] [a-z], ^ negates; as q)
 like[("cat";"dog";"cab");"c*"]/ 101b
 ```
 
@@ -1033,6 +1038,7 @@ scalar     neg not null reciprocal sqrt floor ceiling signum abs exp log sin cos
            flip count mod div xbar xlog round
 aggregate  sum prd min max avg med var dev svar sdev cov scov cor wsum wavg all any
 uniform    sums prds mins maxs deltas ratios differ prev next
+adverbs    each over scan prior
 order/set  rank iasc idesc asc desc xrank xprev rotate in except inter union raze
            sublist cross
 tables     istable isdict iskeyed cols keys rows atr xkey unkey xcolall xcols xasc

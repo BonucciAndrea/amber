@@ -23,6 +23,7 @@ t[`dev;dev 2 4 4 4 5 5 7 9;2.0]
 t[`svar;svar 2 4 4 4 5 5 7 9;4.571428571428571]
 t[`wsum;wsum[1 2 3;10 20 30];140.0]
 t[`qEdges67;(wsum[1 2;3 4];xbar[2;1.5 3.5];xbar[2;1 3];@ratios[!0];med 5;med 1.5);(11.0;0.0 2.0;0 2;`F;5.0;1.5)]   / Digest #67: as q
+t[`qEdges83;(var 0w 0w;var -0w 0w;var 1 0w;var 0n 0n;dev 0w 0w;svar 0w 0w;svar -0w 0w;svar 1 0w;sdev 0w 0w);(0.0;0.0;0w;0n;0.0;0.0;0.0;0w;0.0)]   / #83 Q10: as q (an infinite mean)
 t[`wavg;wavg[10 20 30;1 2 3];7%3.0]
 t[`cor;0.0001>abs 1.0-cor[1 2 3;2 4 6];1]
 t[`cov;0.0001>abs cov[1 2 3;1 2 3]-2%3.0;1]
@@ -389,6 +390,15 @@ t[`likeStar;like["abcde";"a*e"];1]
 t[`likeQ;like["abcde";"a?e"];0]
 t[`likeMid;like["abcde";"*cd*"];1]
 t[`likeVec;like[("cat";"dog";"cab");"c*"];101b]
+/ #83 Q12: [ ] classes, as q: ranges, ^ negates, ] first and - first or last are themselves
+t[`likeClass;(like["ab";"a[ab]"];like[("a\\";"cb");"*[\\b]"];like[("abc";"aBc");"a[a-z]c"];like[,'"ad-";"[^a-c]"];like[,'"]a-^";"[]a-]"];like[,'"*a";"[*]"];like[,'"mza";"[z-a]"]);(1;1 1;1 0;0 1 1;1 1 1 0;1 0;0 1 1)]
+t[`likeClassSym;(like[`ab`cd`ef;"[ac]?"];like[`c$200 65;"[^a]?"];like["ac";"*[^c]"]);(1 1 0;1;0)]
+t[`likeClassOpen;(.[like;("a[";"a[");{0N}];.[like;("a";"[^]");{0N}]);0N 0N]   / a [ left open: 'domain (q: '[)
+/ like is lk1 for a pattern without [ (lk1, amber.k's matcher before #83 Q12, as the reference)
+t[`likeAsLk1;{S:("";,"a";"ab";"ba";"aab";"abab";"bbb";"abcab";"a?b");P:("";,"*";"a*";"*b";"a?b";"*a*";"??";"a*b*a";"*?*";"ab";"*ab*b";"**";"a**b");(like[S;]'P)~{lk1[;x]'y}[;S]'P}[];1b]
+/ a char as the pattern, or a list holding a symbol, is 'type, as q; a char in x is a string of one char
+t[`likeDict;(like[`a`b!("ab";"cd");"a*"];like[`a`b!`ab`cd;"?d"]);(`a`b!1 0;`a`b!0 1)]   / a dict's values, as q
+t[`likeTypes;(.[like;("a";"[");{0N}];.[like;("ab";"a");{0N}];.[like;((`a;"b");"a*");{0N}];like[("ab";"c");"?b"];like[();"ab"];like[0#`;"ab"]);(0N;0N;0N;1 0;!0;!0)]
 
 / ---- table literals  ([]col:..;..) and ([key:..]col:..) ----
 t[`tlitCols;cols([]sym:`a`b;px:1 2);`sym`px]

@@ -33,8 +33,9 @@ Z AX(l8,/*01..1*/Ab8;MC(b,a,n*SZ(A));*b=GAP;x=prj(x,b,n);x(e1(x,*a)))
 //them up can fail ('nyi for table keys): check each
 U urnk(A);
 // + - * % & | and ,' on two dicts line them up by key: x's keys in order (a repeat kept, as ngn/k and q), then y's
-// new ones; a key on both sides gets f, a key on one side passes its value through (+ - * with their identity, so
-// 0-y; % as it is, as q and ngn/k: (`a!1)%`b!2 is `a`b!1 2). They were looked up in the union of the keys, so a missing key read a null
+// new ones; a key on both sides gets f, a key on one side passes its value through as it is, as ngn/k (#14), and -
+// gives 0-y: (`a!1)%`b!2 is `a`b!1 2, (`a!"x")+`b!"y" `a`b!"xy" (+ - * applied their identity, 0+y: `a`b!120 121);
+// keyed tables (kar, t) keep the identity under + - * (0+y), as q's columns meet it. They were looked up in the union of the keys, so a missing key read a null
 // shaped like the other dict's first value (| and ,' mangled lists, bytes became ints), an empty dict was 'length
 // and a repeated key of x went (digest #23-#26). The same keys: just f on the two value lists. Two empty dicts:
 // f on the two value lists too (each for ,'), so their types combine as for lists, either way round, with x's keys
@@ -43,11 +44,11 @@ U urnk(A);
 //dkey's K rule; r: the values of the keys on both sides. Dicts with no key in common skip f (it was 'type for (`a!1)|`b!`y,
 //as no value meets another); keyed tables (t, from kar) still apply it to the empty slices, so columns that do not meet
 //are 'type, as q
-#define DK(r) "{[c;kx;vx;ky;vy]yo:$[#kx;&^kx?ky;!#ky];iy:$[#ky;ky?kx;(#kx)#0N];iy:$[#kx;@[iy;&~(kx?kx)=!#kx;:;0N];iy];b:&~^iy;xo:&^iy;f:(+;-;*;%;&;|;,)c;u:c>1;r:" r ";(kx,ky yo)!($[c<3;f[vx xo;u];vx xo],r,$[c<3;f[u;vy yo];vy yo])@<xo,b,(#kx)+!#yo}"
+#define DK(r,o) "{[c;kx;vx;ky;vy]yo:$[#kx;&^kx?ky;!#ky];iy:$[#ky;ky?kx;(#kx)#0N];iy:$[#kx;@[iy;&~(kx?kx)=!#kx;:;0N];iy];b:&~^iy;xo:&^iy;f:(+;-;*;%;&;|;,)c;u:c>1;r:" r ";(kx,ky yo)!(" o ")@<xo,b,(#kx)+!#yo}"
 Z A dkey(I c,A2 f,A x,A y,B t/*0f010*/)_(B e=!_n(xx)&&!_n(yx);P(e&&u0(yx)&&u0(yy),y(_R(x)))P(e&&u0(xx)&&u0(xy),y)
  P(e||c<6&&mtc_(xx,yx),A v=c<6?f(xy,_R(yy)):e2f(f,xy,_R(yy));y(v?am(_R(e&&u0(xx)?yx:xx),v):0))
- A v=t?K(DK("f[vx b;vy iy b]"),az(c),_R(xx),_R(xy),_R(yx),_R(yy))
-      :K(DK("$[c=6;f'[vx b;vy iy b];#b;f[vx b;vy iy b];()]"),az(c),_R(xx),_R(xy),_R(yx),_R(yy));y(v))
+ A v=t?K(DK("f[vx b;vy iy b]","$[c<3;f[vx xo;u];vx xo],r,$[c<3;f[u;vy yo];vy yo]"),az(c),_R(xx),_R(xy),_R(yx),_R(yy))
+      :K(DK("$[c=6;f'[vx b;vy iy b];#b;f[vx b;vy iy b];()]","(vx xo),r,$[c=1;0-vy yo;vy yo]"),az(c),_R(xx),_R(xy),_R(yx),_R(yy));y(v))
 A kcl(A,A);//h.c
 //two keyed tables, or dicts keyed by tables (issue #19): dkey's rule over the union of the keys, a row for a row; y's key
 //and value columns go by name (h.c's kcl, as for ,), other columns 'domain; values a table on one side only 'type, as q

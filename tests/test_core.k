@@ -839,6 +839,8 @@ t[`dictOneSideDiv;((`a!1)%`b!2;(`a`b!1 2)%`b`c!4 8;(`a!1.5)%`b!2);(`a`b!1 2;`a`b
 t[`dictDisjointTypes;.[.:;,"((`a!1)|`b!`y;(`a!1)&`b!`y;(`a!1)%`b!`y;(`a!`x)|(,`b)!,1 2;((0#`)!!0)|(,`)!,`a;(`a`b!1 2)%`c!`y;(`a!2026.01.01)+`b!2026.01.02;(`a!12:00)|`b!13:00)";{x}];(`a`b!(1;`y);`a`b!(1;`y);`a`b!(1;`y);`a`b!(`x;1 2);(,`)!,`a;`a`b`c!(1;2;`y);`a`b!2026.01.01 2026.01.02;`a`b!12:00 13:00)]   / no key on both: no value meets another, so the types need not meet, as ngn/k (it was 'type; q passes the dates, times and (`a!`x)|(,`b)!,1 2 through, and is 'type for the int/symbol ones)
 t[`dictDisjointShared;*"\n"\.[.:;,"(`a`b!1 2)|`b`c!`x`y";{x}];"'type"]   / a key on both still meets the verb
 t[`dictDisjointNeg;.[.:;,"`i$(`a!2026.01.01)-`b!2026.01.02";{x}];`a`b!9497 -9498]   / a right-only value is negated, a date too, as q
+t[`dictDisjointPass;.[.:;,"((`a!\"x\")+`b!\"y\";(`a!\"x\")-`b!\"y\";(`a!\"x\")*`b!\"y\";(`a`b!\"xy\")+`b`c!\"zw\";(`a!1)+`b!`y;(`a!0x01)+`b!0x02;(`a!-0.0)+`b!1.0)";{x}];(`a`b!"xy";`a`b!("x";-121);`a`b!"xy";`a`b`c!("x";243;"w");`a`b!(1;`y);`a`b!0x0102;`a`b!-0.0 1.0)]   / + - * pass a one-sided value through, as ngn/k (#14): they applied their identity, so chars and bytes became ints and a symbol was 'type
+t[`keyedDisjointIdentity;((+(,`k)!,1 2)!+(,`v)!,"ab")+/:((+(,`k)!,3 4)!+(,`v)!,"cd";(+(,`k)!,3 4)!+(,`v)!,1 2);((+(,`k)!,1 2 3 4)!+(,`v)!,97 98 99 100;(+(,`k)!,1 2 3 4)!+(,`v)!,97 98 1 2)]   / keyed tables keep the identity, as q's columns meet it (#19)
 
 / ---- an error with a computed message reads its text before releasing it ----
 t[`errComputedText;*"\n"\.[{`err "ab",x};,"cd";{x}];"'abcd"]
@@ -1462,7 +1464,7 @@ t[`allocGrowFloats;{(#x;+/x;x~0.0+!131072)}`j?"[",(","/$!131072),"]";(131072;858
 t[`allocGrowChars;{(#x;+/`i$x;-12#x)}@,/$!200000;(1088890;56866720;"199998199999")]
 t[`allocPeachFree;`x(("/bin/sh";"-c";"AMBER_THREADS=4 exec \"$0\"";`argv 0);"p:`pe({0.5*!x};40000*1+!8);s:+/'p;q:`pe({,/$!x};20000*1+!8);c:#'q;b:20000 2#!40000;p:0;q:0\n\\m\n`0:\" \"/$s,c,+/+/b\n");"399990000.0 1599980000.0 3599970000.0 6399960000.0 9999950000.0 14399940000.0 19599930000.0 25599920000.0 88890 188890 288890 388890 488890 608890 728890 848890 799980000\n"]   / in a process of its own, as \m reports the running script's own text
 
-hexpect[927]
+hexpect[929]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

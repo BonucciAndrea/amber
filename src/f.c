@@ -468,6 +468,8 @@ Z A tfd(A x,A y)_(P(ytA&&!yn,y(aL(0)))B o;y=N(tky(x,y,&o));A c=xy;
  P(_N(c)==1,A z=ii(y,0);mr(y);P(!o,fnd(*_A(c),z))y=ii(z,0);mr(z);P(urnk(y)+1<urnk(*_A(c)),y(az(NL)))fnd(*_A(c),y))
  A z=N(K2("{[a;b]n:1+#*a;({[a;b;n;s;i]c:a i;u:(n*s 0)+c?c;(u?u;u?(n*(n-1)^s 1)+(n-1)^c?b i)}[a;b;n]/[((*a)?*a;(*a)?*b);1_!#a])1}",c,y));
  o?z(ii(z,0)):z)
+ZN A fndD(A x,A y/*01*/)_(B t=ytM;A v=kv(&y);v=Ny(fnd(x,v));t?aM(y,v):am(y,v))   //fnd's dict of () or table of no rows, out of line
+ZN A fndM(A x,A y/*01*/)_(ytm&&_tA(yy)&&!_n(yy)||ytM&&!yN?fndD(x,y):r2f(fnd,x,y))   //fnd's dict, table or general list: its tests out of line too (in fnd they moved the code of every find)
 X2(fnd,
  R_(et(y))
  Rm(i1(xx,N(fnd(xy,y))))
@@ -488,7 +490,9 @@ X2(fnd,
   // empty list's char prototype, and a char against numbers is 'type (issue #20, row 12)
   P(ytA&&!yn,A g=aG(0);A r=fnd(g,y);mr(g);r)
   P(xt!=tS&&(ytC||ytc),et(y))
-  YmMA(r2f(fnd,x,y))
+  // a dict of (), or a table of no rows, finds its values or columns as above, as the byte haystack does (each-right
+  // asked a () its char prototype: 'type)
+  YmMA(fndM(x,y))
   YE(fnd(x,gZ(y)))
   YB(fnd(x,cG(y)))
   P(xt==TT[yt]||xtZ&&ytzZ,

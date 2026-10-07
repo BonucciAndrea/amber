@@ -529,7 +529,7 @@ ta[`a492;"(`s#1.0 2.0!`a`b) 1.5";"`a"]   / dict s float keys
 ta[`a493;"attr exec a from update `u#a from ([]a:1 2)";"`u"]   / update u
 ta[`a494;"attr exec a from update `u#a from ([]a:1 1)";"ERR u-fail"]   / update u fail
 ta[`a495;"attr `a xasc ([]a:3 1 2)";"`"]   / xasc table attr
-ta[`a496;"attr (`s#`a`b!1 2),`c!3";"ERR type"]   / s then append dict
+ta[`a496;"attr (`s#`a`b!1 2),(enlist `c)!enlist 3";"`"]   / s then append dict
 ta[`a497;"attr (select a from ([]a:`s#1 2 3))`a";"`s"]   / select keeps
 ta[`a498;"attr (select a from ([]a:`s#1 2 3) where a>1)`a";"`"]   / select where keeps
 ta[`a499;"attr exec a from ([]a:`s#1 2 3)";"`s"]   / exec keeps
@@ -564,11 +564,18 @@ ta[`a537;"attr (),`s#()";"`"]   / join empty general, s empty general
 ta[`a538;"attr (`s#()),`s#()";"`s"]   / join s empty general, s empty general
 ta[`a539;"attr (),`s#(1 2;3 4)";"`s"]   / join empty general, s general
 ta[`a540;"attr (),`s#1 2";"`s"]   / join empty general, s ints
+ta[`a574;"(`s#1 3 5!`a`b`c),(enlist 9)!enlist `q";"1 3 5 9!`a`b`c`q"]   / s dict join
+ta[`a575;"attr key (`s#1 3 5!`a`b`c),(enlist 9)!enlist `q";"`"]   / s dict join keys
+ta[`a576;"attr (`s#1 3 5!`a`b`c),`s#1 3 5!`a`b`c";"`"]   / s dict join same keys
+ta[`a577;"attr key (`s#1 3 5!`a`b`c),`s#1 3 5!`a`b`c";"`s"]   / s dict join same keys keys
+ta[`a578;"((`s#1 3 5!`a`b`c),`s#1 3 5!`a`b`c) 4";"`"]   / s dict join no step
+ta[`a579;"(`s#`a`b!1 2),()";"+`a`b!(,1;,2)"]   / s dict join empty (ngn/k)
+ta[`a580;"attr (`s#1 3 5!`a`b`c),()!()";"`"]   / s dict join empty dict
 
 / not a q case: a lookup in an `s dict of symbols or chars held its keys once too many. \m (the heap check) prints a
 / !refc line for each object counted more than it is held; it reads stdin, so this runs in a process of its own
 t[`leakSortedDictLookup;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"(`s#`a`c!1 2)`b;\n(`s#`a`c!1 2)`b`d;\n(`s#\"ac\"!1 2)\"b\";\n\\m\n");""]
 
-hexpect[544]
+hexpect[551]
 hreport"AMBER ATTRIBUTES vs q"
 $[FAILN;`exit 1;]

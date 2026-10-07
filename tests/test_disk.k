@@ -132,6 +132,12 @@ FF:{[p;a;b]x:`x(("/usr/bin/mkfifo";p);"");x:`x(("/bin/sh";"-c";"((printf '",a,"'
 t[`fifoRead;(ER[{0:x};,FF[T,"/io/p1";"one\\n";"two\\n"]];ER[{1:x};,FF[T,"/io/p2";"one\\n";"two\\n"]]);(("one";"two");"one\ntwo\n")]
 FA:FB:0;x:ER[.:;,"\\l ",FF[T,"/io/p3";"FA:1\\n";"FB:2\\n"]]
 t[`fifoLoad;FA,FB;1 2]
+/ #94 Q17: a regular file whose size the kernel does not report (Linux's /proc: size 0, or lseek refuses it) is read as
+/ a stream ('io or "" before). Only where /proc is; an empty file still reads as "", and a negative offset is 'io
+PX:-1<`fsz"/proc/version";PV:(1b;"Linux";,"Linux";"version")
+t[`procRead;$[PX;(ER[{0<#1:x};,"/proc/self/status"];ER[{5#1:x};,"/proc/version"];ER[{0:x};,"/proc/sys/kernel/ostype"];ER[{1:x};,("/proc/version";6 7)]);PV];PV]
+E0:T,"/io/empty";E0 1:""
+t[`readEmpty;(1:E0;0:E0;1:(E0;5 3);ER[{1:x};,(E0;-1 3)]);("";();"";"'io")]
 
 / ---- a partitioned database ------------------------------------------------
 trade:([]sym:`ibm`msft`ibm`aapl;px:10 20 11 30.0;sz:100 200 300 400)
@@ -196,6 +202,6 @@ B:T,"/bb";(`$":",B)set 5000#"abc";$[LK;wo[B;get`$":",B];B 1:5000#"abc"]
 t[`writeOwnGet;1:B;5000#"abc"]
 
 rm T
-hexpect[82]
+hexpect[84]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

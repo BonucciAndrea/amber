@@ -53,6 +53,7 @@ Z I osf(S s,L fl)_(P(!strchr(s,':'),ofl(s,fl))U h=addr(&s);P(*s-':',ed0())s++;W 
 Z I o(A x/*1*/,I fl)_(Xz(gl(x))Xs(xv?osf(su(xv),fl):1)XC(P(pnul(x),mr(x);ed0())x=str0(x);I v;Mx(v=osf(xV,fl));v)et(x))   // a path holding a NUL is 'domain (#94 Q16; open() took the name before it)
 Z I of(A x/*1*/,I fl)_(P(xts&&xv&&*su(xv)==':',ofl(su(xv)+1,fl))o(x,fl))   // 0: and 1:: q's file handle `:path names the file path, as set and get (osf took it for host:port); < keeps `:port
 Z I fm(I f)_(ST stat s;fstat(f,&s)<0?0:s.st_mode)                                                                                                                 // get file mode
+Z I fmz(I f,L*z)_(ST stat s;P(fstat(f,&s)<0,0)*z=s.st_size;s.st_mode)                                                                                            // get file mode and size
 Z A frd(I f,N i,N n)_(P(i||n+1,en0())DIR*a=fdopendir(f);P(!a,ei0())A x=emp(tC);ST dirent*e;W((e=readdir(a)),S s=e->d_name;x=apc(cts(x,s,SL(s)),10))closedir(a);x) // read dir
 // read stream (only length). e: to the end (a FIFO: a short read from a pipe means "not written yet", so a writer that paused was read only in
 // part), else to the first short read (a handle, a socket, a device, a terminal: one line from 1:0, as in q)
@@ -61,8 +62,10 @@ Z A frs(I f,N i,N n,B e)_(I(i&&lseek(f,i,SEEK_CUR)<0,mr(N(frS(f,i,e))))frS(f,n,e
 // read through mmap. 64-bit throughout: MAX(0,m-i) took the int's type and cut m-i to 32 bits, so a file of 2 to 4 GiB
 // read as "" and a bigger one as its size mod 2^32. A negative offset is 'io (one a page below 2^32 mapped past the end:
 // SIGBUS on Linux), and 2^32 bytes or more 'limit, as a vector's count is 32 bits
-Z A frm(I f,N i,N n)_(L m=lseek(f,0,SEEK_END);P(m<0||(L)i<0,eo0())n=MIN(n,(N)MAX(m-(L)i,0));P(n>>32,ez0())n?mf(f,i,n):emp(tC))
-Z A fr(A x/*1*/,N i,N n)_(Xz(frs(gl(x),i,n,0))I f=N(of(x,O_RDONLY));P(f<3,frs(f,i,n,0))I m=fm(f);x=S_ISDIR(m)?frd(f,i,n):S_ISREG(m)?frm(f,i,n):frs(f,i,n,S_ISFIFO(m));close(f);x) // read
+Z A frm(I f,N i,N n)_(L m=lseek(f,0,SEEK_END);P((L)i<0,eo0())P(m<0,frs(f,i,n,1))n=MIN(n,(N)MAX(m-(L)i,0));P(n>>32,ez0())n?mf(f,i,n):emp(tC))   // (a file lseek refuses: a stream)
+Z A fr(A x/*1*/,N i,N n)_(Xz(frs(gl(x),i,n,0))I f=N(of(x,O_RDONLY));P(f<3,frs(f,i,n,0))L z=0;I m=fmz(f,&z);x=S_ISDIR(m)?frd(f,i,n):S_ISREG(m)&&(z||(L)i<0)?frm(f,i,n):frs(f,i,n,S_ISREG(m)||S_ISFIFO(m));close(f);x) // read
+// (#94 Q17: a regular file of size 0, empty or one whose size the kernel does not report, as in Linux's /proc, is a stream read to its end;
+// a negative offset stays frm's 'io)
 A frf(I f)_(frs(f,0,-1,1))   // \l of a FIFO (m.c): to its end
 void am_ln_sb_capture(const char*,unsigned long);// ln.c: tee stdout into the status-bar scroll-back ring
 Z A fws(I f,S s,N n)_(I(f==1,am_ln_sb_capture(s,n))W(n>0,L k=write(f,s,n);P(k<0,eo0())P(!k,au)s+=k;n-=k)au)                                                         // write stream (fd 1 -> also scroll-back)

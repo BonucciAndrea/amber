@@ -163,6 +163,7 @@ t[`simpleVectorDecode;2 2 2/1 0 1;5]
 
 / ---- a failed indexed assignment leaves the variable as it was ----
 IA:{[set;e]. set;r:.[.:;,e;{`err}];(r;. *":"\set)}
+IK:{[set;e]. set;r:.[.:;,e;{`err}];(r;.[.:;,*":"\set;{`lost}])}   / as IA, but a variable the amend deleted reads as `lost, not a 'value that stops the suite
 t[`amendKeepIndex;IA["A1:,0";"A1[1]:0"];(`err;,0)]
 t[`amendKeepModify;IA["A2:1 2 3";"A2[5]+:1"];(`err;1 2 3)]
 t[`amendKeepNegative;IA["A3:1 2 3";"A3[-1]:9"];(`err;1 2 3)]
@@ -808,9 +809,9 @@ t[`charToSymFF;(`s$0xff)~`$,0xff;1b]
 t[`charToSymAll;(`s$'`c$!256)~`$,'`c$!256;1b]
 t[`charToSymA;`s$"a";`a]
 
-/ ---- dict arithmetic: keys of different ranks and keyed tables are errors, not crashes ----
+/ ---- dict arithmetic: keys of different ranks are errors, not crashes; keys that are tables add over their union ----
 t[`dictMixedRank;*"\n"\.[.:;,"(`a`b!1 2)+((1 2;3 4)!5 6)";{x}];"'domain"]
-t[`keyedPlusKeyed;*"\n"\.[.:;,"a:(+(,`a)!,1 2 3)!4 5 6;b:(+(,`a)!,2 3 4)!10 20 30;a+b";{x}];"'nyi"]
+t[`keyedPlusKeyed;{a:(+(,`a)!,1 2 3)!4 5 6;b:(+(,`a)!,2 3 4)!10 20 30;a+b}[];(+(,`a)!,1 2 3 4)!4 15 26 30]
 t[`keyedPlusKeyedCols;*"\n"\.[.:;,"((+(,`a)!,1 2)!3 4)+((+(,`b)!,1 2)!3 4)";{x}];"'domain"]   / key tables with different columns do not join
 t[`dictListKeys;((1 2;3 4)!5 6)+(1 2;3 4)!7 8;(1 2;3 4)!12 14]
 t[`keyedPlusAtom;((+(,`a)!,1 2 3)!4 5 6)+1;(+(,`a)!,1 2 3)!5 6 7]
@@ -1137,7 +1138,8 @@ t[`floatRound20Nines;fb `F$"9999999999999999999.9";0x43e158e460913d00]   / 20 di
 / ---- flip: an atom value is enlisted; bit lists; empty lists of tables (upstream ngn/k 7bf994cd) ----
 t[`flipAtom;`k@+(,`a)!,{x};"+(,`a)!,,{x}"]
 t[`flipCols;`k@+`a`b!(1 2;3 4);"+`a`b!(1 2;3 4)"]
-t[`flipEmptyTable;(`k@([]);#!+([]);#. +([]));("+(0#`)!0#,(::)";0;0)]   / ([]) stays as it was (ngn/k enlists the empty values here)
+t[`flipEmptyTable;(`k@([]);#!+([]);#. +([]));("+(0#`)!()";0;0)]   / ([]) is the empty table (issue #19); its values were 0#,:: (ngn/k enlists them)
+tv[`emptyTable;"(#([]);!([]);([])~+(0#`)!();([]),([]a:1 2);([]a:1 2),([]))";(0;0#`;1;+(,`a)!,1 2;+(,`a)!,1 2)]   / no columns and no rows, as agreed on #19 (q's ([]) is an empty dict): #([]) was 1 and both joins were 'domain
 t[`flipEmptyTables;(`k@+0#,(+`a`b!(1 2;3 4));`k@+0#,,`a`b!1 2);("(0#,`a`b!0N 0N;0#,`a`b!0N 0N)";",0#,`a`b!0N 0N")]   / empty lists of tables: the prototype was read before it was set; empty lists of dicts, as in ngn/k
 t[`flipBits;(+(01B;01B);+(101B;010B));((0 0;1 1);(1 0;0 1;1 0))]   / lists of bit booleans, read as bits
 t[`flipBits8;*+8#,11B;8#1]   / each column was read as 8-byte words of the lists
@@ -1335,7 +1337,68 @@ tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 ppeV:5 6
 t[`ppeStale;?{."{[ab]ab}",x;."(ppeV-1)",x}'(!100)#\:" ";,4 5]
 
-hexpect[851]
+/ ---- a keyed table is looked up by key, as q: the value row, a row of nulls for a missing key (issue #19) ----
+kL:(+(,`k)!,1 2 3)!+(,`v)!,10 20 30
+kM:(+`a`b!(1 2;`x`y))!+(,`v)!,5 6
+t[`keyedAt;(kL 2;kL@3;kL[1];kL 99;kL(,`k)!,2);((,`v)!,20;(,`v)!,30;(,`v)!,10;(,`v)!,0N;(,`v)!,20)]
+/ a table of keys, or a list of keys (each a list of one value per column), gives a table; one such list is one key
+t[`keyedAtKeys;(kL[+(,`k)!,2 9];kL[(,1;,99)];kL[,2];kL());(+(,`v)!,20 0N;+(,`v)!,10 0N;(,`v)!,20;+(,`v)!,!0)]
+t[`keyedAtCol;(kL[2;`v];kL[99;`v];kL[(,1;,2);`v];kL[+(,`k)!,3 1;`v]);(20;0N;10 20;30 10)]
+t[`keyedMulti;(kM(1;`x);kM(2;`z);kM((1;`x);(2;`y));kM`a`b!(2;`y);kM[+`a`b!(2 1 9;`y`x`x)];kM[`a`b!(1;`x);`v]);((,`v)!,5;(,`v)!,0N;+(,`v)!,5 6;(,`v)!,6;+(,`v)!,6 5 0N;5)]
+t[`keyedSymTemporal;{s:(+(,`s)!,`a`b)!+(,`v)!,1.5 2.5;d:(+(,`d)!,2020.01.01 2020.01.02)!+(,`v)!,1 2;n:(+(,`n)!,2020.01.01D10:00:00 2020.01.01D11:00:00)!+(,`v)!,1 2;(s`b;s`c;d 2020.01.02;d 2020.01.05;n 2020.01.01D11:00:00)}[];((,`v)!,2.5;(,`v)!,0n;(,`v)!,2;(,`v)!,0N;(,`v)!,2)]
+t[`keyedNullRow;((+(,`k)!,1 2)!+`v`w!(3 4;`a`b))9;`v`w!(0N;`)]
+t[`keyedEmpty;(((+(,`k)!,!0)!+(,`v)!,!0)1;((+(,`k)!,!0)!+(,`v)!,!0)[+(,`k)!,1 2]);((,`v)!,0N;+(,`v)!,0N 0N)]
+/ a row or table of keys goes by column name, as q; a char looked up in strings is a key not there (q: a null row too)
+t[`keyedByName;(kM`b`a!(`y;2);kM[+`b`a!(`y`x;2 1)];(+`a`b!(1 2;3 4))?`b`a!4 2;{s:(+(,`s)!,("ab";"cd"))!+(,`v)!,1 2;((s"a")`v;(s"cd")`v;(s[,"ab"])`v)}[]);((,`v)!,6;+(,`v)!,6 5;1;0N 2 1)]
+/ a key of the wrong length is 'length, as in q; a row or table with columns that differ is 'domain (q: 'mismatch)
+t[`keyedAtErr;{*"\n"\.[.:;,x;{x}]}'("kL 1 2";"kM 1";"kL`a`b!1 2";"kL[+(,`j)!,1]");("'length";"'length";"'domain";"'domain")]
+/ find of a row, or of a table's rows, in a table; and a keyed table's find gives the key
+t[`tableFind;((+`a`b!(1 2;3 4))?`a`b!2 4;(+`a`b!(1 2;3 4))?+`a`b!(2 9;4 1);(+(,`a)!,1 2)?2;kL?(,`v)!,20;kL _ 1);(1;1 0N;1;(,`k)!,2;(+(,`k)!,2 3)!+(,`v)!,20 30)]
+/ more columns: each row's places in the columns, numbered column by column, find what a scan of the rows finds
+t[`keyedMultiMany;{b:13!i:!91;a:7!i;q:13!j:!200;p:7!j;((+`a`b!(a;b))?+`a`b!(p;q);(+(a;b))?+(p;q);(+`a`b!(a;b))?`a`b!(3;5))}[];{b:13!i:!91;a:7!i;q:13!j:!200;p:7!j;((+(a;b))?+(p;q);(+(a;b))?+(p;q);(+(a;b))?(3;5))}[]]
+
+/ ---- , of two keyed tables is q's upsert; an amend at a keyed table's keys adds the keys not there, as q (issue #19) ----
+t[`keyedUpsert;(kL,([k:3 4]v:33 44);kL,([k:,3]v:,5);kL,([k:2 2 5]v:1 2 3);([k:!0]v:!0),([k:2 1]v:7 8));(([k:1 2 3 4]v:10 20 33 44);([k:1 2 3]v:10 20 5);([k:1 2 3 5]v:10 2 30 3);([k:2 1]v:7 8))]
+/ y's rows of keys x lacks are each added, a key given twice too, as q (an amend at keys adds a key once, as q)
+t[`keyedUpsertNew;(kL,([k:5 5]v:1 2);kL,([k:2 5 5]v:7 8 9);kL,([k:3 3]v:1 2));(([k:1 2 3 5 5]v:10 20 30 1 2);([k:1 2 3 5 5]v:10 7 30 8 9);([k:1 2 3]v:10 20 2))]
+/ the key and value columns go by name; columns that differ are 'domain (q: 'mismatch), a dict 'type (q: 'type or 'length)
+t[`keyedUpsertByName;({k:([k:1 2]v:3 4;w:`a`b);k,([k:2 3]w:`z`y;v:9 9)}[];kM,([b:`x`z;a:1 3]v:7 8));(([k:1 2 3]v:3 9 9;w:`a`z`y);([a:1 2 3;b:`x`y`z]v:7 6 8))]
+t[`keyedUpsertUnkeyed;{*"\n"\.[.:;,x;{x}]}'("kL,([])";"([]),kL";"kL,0#([]a:1 2)";"kL,([]a:1 2)";"([]k:4 5;v:1 2),kL";"(0#kL),([]k:1 2;v:3 4)");6#,"'type"]   / a keyed table and an unkeyed one, either way, empty or not: 'type, as q
+/ a dict whose keys are a table and values a list stays 'nyi in an amend at keys and in , (it was not a keyed table)
+t[`keyedListValues;{*"\n"\.[.:;,x;{x}]}'(("dL:(+(,`a)!,1 2)!3 4;",)'("dL[,1]:9";"dL[,3]:9";"@[dL;,1;:;9]";"dL,(+(,`a)!,,3)!,5";"dL,(+(,`a)!,,3)!5"),("kL,(+(,`k)!,,3)!,5";"{d:(+(,`a)!,1 2)!3 4;d[,1]:9;d}[]"));7#,"'nyi"]
+t[`keyedUpsertErr;{*"\n"\.[.:;,x;{x}]}'("kL,`k`v!4 40";"kL,(,`v)!,5";"kL,([k:,3]w:,1)";"kL,([j:,3]v:,1)");("'type";"'type";"'domain";"'domain")]
+t[`keyedAmend;(@[kL;1;:;,7];@[kL;5;:;,7];.[kL;(9;`v);:;99];@[kL;1;+;1];@[kL;1;:;5];@[kL;(,5;,5);:;(,1;,2)]);(([k:1 2 3]v:7 20 30);([k:1 2 3 5]v:10 20 30 7);([k:1 2 3 9]v:10 20 30 99);([k:1 2 3]v:11 20 30);([k:1 2 3]v:5 20 30);([k:1 2 3 5]v:10 20 30 2))]
+t[`keyedAmendCols;{k:([k:1 2]v:3 4;w:`a`b);(@[k;2;:;(99;`z)];@[k;9;:;(98;`y)];@[k;(,1;,8);:;((1;`m);(2;`n))];@[k;([]k:1 8);:;([]v:5 6;w:`r`s)])}[];(([k:1 2]v:3 99;w:`a`z);([k:1 2 9]v:3 4 98;w:`a`b`y);([k:1 2 8]v:1 4 2;w:`m`b`n);([k:1 2 8]v:5 4 6;w:`r`b`s))]
+t[`keyedAmendLocal;{k:kL;k[3]:,99;k[4]:,98;k[2;`v]:5;k[7;`v]:6;k[1]+:,1;m:kM;m[(3;`q)]:,51;(k;m)}[];(([k:1 2 3 4 7]v:11 5 99 98 6);([a:1 2 3;b:`x`y`q]v:5 6 51))]
+tv[`keyedAmendGlobal;"kG:kL;kG[3]:,99;kG[4]:,98;kG,:([k:1 8]v:0 0);kG";([k:1 2 3 4 8]v:0 20 99 98 0)]
+t[`keyedAmendErr;{*"\n"\.[.:;,x;{x}]}'("@[([k:1 2]v:3 4;w:`a`b);1;:;5]";"@[kL;1 9;+;1]");("'length";"'length")]
+
+/ ---- a failed amend by name of a keyed table keeps it, as q: it is put back (issue #19) ----
+KG:([k:1 2 3]v:10 20 30;w:`a`b`c)
+t[`amendKeyedKeep;(IK["KG1:KG";"KG1[1 9]:7 8"];IK["KG2:KG";"KG2[1]:5"];IK["KG3:KG";"KG3[1]:`z!,77"];IK["KG4:KG";"KG4[`a`b`c]:1"];IK["KG5:KG";"KG5[::]:9"];IK["KG6:KG";"KG6[]:9"];IK["KG7:KG";"KG7[1;`zz;0]:1"];IK["KG8:KG";".[`KG8;,9;-:]"];IK["KG9:KG";"KG9[1]+:`x"];IK["KG10:KG";".[`KG10;,1;:;5]"]);10#,(`err;KG)]
+/ and one that works assigns it, by key, a key added, by column, elided, or by .[`v;..]
+t[`amendKeyedByName;(IK["KH1:KG";"KH1[3]:(99;`z)"];IK["KH2:KG";"KH2[4]:(98;`y)"];IK["KH3:KG";"KH3[3;`v]:99"];IK["KH4:KG";"KH4[;`v]:9"];IK["KH5:KG";"KH5[;`v]+:1"];IK["KH6:KG";".[`KH6;(::;`v);:;9]"];IK["KH7:KG";".[`KH7;,3;:;(1;`q)]"])[;1];(([k:1 2 3]v:10 20 99;w:`a`b`z);([k:1 2 3 4]v:10 20 30 98;w:`a`b`c`y);([k:1 2 3]v:10 20 99;w:`a`b`c);([k:1 2 3]v:9 9 9;w:`a`b`c);([k:1 2 3]v:11 21 31;w:`a`b`c);([k:1 2 3]v:9 9 9;w:`a`b`c);([k:1 2 3]v:10 20 1;w:`a`b`q))]
+/ a keyed table in a dict or list is amended by key below the first level too
+t[`amendKeyedNested;(IK["KN1:`a`b!(KG;1)";"KN1[`a;3]:(99;`z)"];IK["KN2:`a`b!(KG;1)";"KN2[`a;4;`v]:7"])[;1];(`a`b!(([k:1 2 3]v:10 20 99;w:`a`b`z);1);`a`b!(([k:1 2 3 4]v:10 20 30 7;w:`a`b`c`);1))]
+/ a list of keyed tables (a table whose column names are a table) is amended as before, and fails with the error it gave
+KL:([k:1 2 3]v:10 20 30)
+t[`amendKeyedTableList;(IK["L1:(KL;KL)";"L1[1]:5"];IK["L2:(KL;KL)";"L2[0]+:1"];IK["L3:3#,KL";"L3[0]:KL"];IK["L4:(KL;KL)";".[`L4;,0;:;5]"];{l:(KL;KL);l[0]:5;l}[]);((::;(KL;5));(::;(1+KL;KL));(::;3#,KL);((5;KL);(5;KL));(5;KL))]
+t[`amendKeyedListKeep;(IK["DL1:(+(,`a)!,1 2)!3 4";"DL1[,1]:9"];IK["DL2:(+(,`a)!,1 2)!3 4";"DL2[,3]+:1"]);2#,(`err;(+(,`a)!,1 2)!3 4)]   / keys a table, values a list: 'nyi, and kept
+t[`amendKeyedTableListErr;{*"\n"\.[.:;,x;{x}]}'("L5:(KL;KL);L5[;3]:,1";"L6:(KL;KL);L6[0 1;3]:,1";"L7:(KL;KL);L7[5;3]:,1");("'length";"'length";"'index")]
+
+/ ---- + - * % & | of two keyed tables over the union of the keys, as q (issue #19): a key on both sides gets the verb,
+/ row by row; one on one side passes through as dicts' do (+ - * with the identity: - negates y's), x's keys first ----
+kA:([k:1 2 3]v:4 5 6;w:1.5 2.5 3.5);kB:([k:2 3 4]v:10 20 30;w:10 20 30.0)
+t[`keyedArithCols;{x[kA;kB]}'(+;-;*;&;|);(([k:1 2 3 4]v:4 15 26 30;w:1.5 12.5 23.5 30);([k:1 2 3 4]v:4 -5 -14 -30;w:1.5 -7.5 -16.5 -30);([k:1 2 3 4]v:4 50 120 30;w:1.5 25 70 30.0);([k:1 2 3 4]v:4 5 6 30;w:1.5 2.5 3.5 30);([k:1 2 3 4]v:4 10 20 30;w:1.5 10 20 30.0))]
+t[`keyedArithRight;(kB-kA;kA+kA;kA+([k:2 5]w:1 2.0;v:7 8));(([k:2 3 4 1]v:5 14 30 -4;w:7.5 16.5 30 -1.5);([k:1 2 3]v:8 10 12;w:3 5 7.0);([k:1 2 3 5]v:4 12 6 8;w:1.5 3.5 3.5 2))]
+/ % passes a key on one side through as for dicts (q: 'type for an int column); types combine as lists do (q too)
+t[`keyedArithTypes;(([k:1 2]v:1 2)%([k:2 3]v:2 4);([k:1 2]v:1 2)+([k:2 3]v:5.5 6));(([k:1 2 3]v:(1;1.0;4));([k:1 2 3]v:(1;7.5;6.0)))]
+/ two key columns by name, a repeated key of x (the first gets y's row), empty tables, +: on a variable
+t[`keyedArithKeys;(([a:1 2;b:`x`y]v:1 2;w:3 4)+([b:`y`z;a:2 3]w:10 20;v:5 6);([k:1 2 2]v:1 2 3)+([k:2 3]v:10 20);([k:0#0]v:0#0)+([k:2 1]v:7 8);kL-([k:0#0]v:0#0);{k:kL;k+:([k:3 4]v:1 1);k}[]);(([a:1 2 3;b:`x`y`z]v:1 7 6;w:3 14 20);([k:1 2 2 3]v:1 12 3 20);([k:2 1]v:7 8);kL;([k:1 2 3 4]v:10 20 31 1))]
+/ a dict keyed by a table with list values, as q; other key columns 'domain (q: 'mismatch); other value columns 'domain (q: the union of the columns, 0 for + -, nulls for * & |, 'type for %); a table of values on one side only 'type, as q
+t[`keyedArithLists;((([]a:1 2)!(1 2;3 4))+([]a:2 3)!(10 20;30 40);(([]a:1 2 3)!4 5 6)-([]a:2 3 4)!10 20 30);((+(,`a)!,1 2 3)!(1 2;13 24;30 40);(+(,`a)!,1 2 3 4)!4 -5 -14 -30)]
+t[`keyedArithErr;{*"\n"\.[.:;,x;{x}]}'("kL+([j:2 3]v:5 6)";"kL+([k:2 3]w:5 6)";"kL+(([]k:2 3)!5 6)";"(([]k:2 3)!5 6)*kL";"([k:1 2]v:1 2)|([k:3 4]v:`a`b)");("'domain";"'domain";"'type";"'type";"'type")]
+
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

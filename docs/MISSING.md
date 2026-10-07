@@ -302,3 +302,8 @@ behaviour shows up as a test failure rather than a silent regression.
   before the one asked for, as `aj` (which sorts the quotes) matches it
   (`` asof[+`sym`time`bid!(`a`a`a`a;0 1 1 0;10 20 30 40);`sym`time!(`a;1)] `` is `` (,`bid)!,30 ``).
   q assumes the table is sorted, so its answer there is unspecified (it gives 40).
+- **A table joined to a table of other columns is `'domain`** (issue #19): `` (+`a!,1 2),+`b!,3 4 ``,
+  and `` (+`a!,1 2),,`b!3 `` (the row enlisted, a one-row table). A row dict of other columns makes
+  a list of dicts: `` (+`a!,1 2),`b!3 ``. q gives `'mismatch` for all three
+  (`` ([]a:1 2),([]b:3 4) ``, `` ([]a:1 2),enlist(enlist`b)!enlist 3 ``, `` ([]a:1 2),(enlist`b)!enlist 3 ``),
+  and ngn/k a list of dicts.

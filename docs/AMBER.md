@@ -308,7 +308,26 @@ keys kt              / ,`sym
 unkey kt             / back to the plain table
 xasc[`px;t]          / rows ordered by px
 meta t               / +`c`t!(`sym`px`sz;`s`i`i)
+kt`b                 / `px`sz!200 20          the row for key `b (kt@`b too)
+kt`z                 / `px`sz!0N 0N           a key not there: a row of nulls
+kt[`b;`px]           / 200
 ```
+
+A keyed table is looked up by key as in q: for one key column the key is a value, for several it is a
+list of one value per column, or a dict of them (`` m(1;`x) ``, `` m`a`b!(1;`x) ``). A table of keys,
+or a list of keys, gives a table of rows; a row or table goes by column name. A key not there gives the
+row `t 0N` gives (`::` in a temporal column and blanks in a string one, where q has typed nulls). `t?r`
+finds a row (a dict) or each row of a table in `t`, and `kt _ k` drops a key.
+
+`kt,kt2` is q's upsert: the rows of `kt2` whose keys `kt` has replace them, and the others are added,
+each one, as q (a new key given twice is added twice); the columns go by name. Amending at keys adds a
+key not there once, with a row of nulls, then amends its row: `` kt[`d]:4 40 `` (a list is the row's
+values in column order), `` kt[`b;`px]:5 ``. An amend that fails leaves a variable that is a keyed table as it was; one
+that fails on a keyed table inside a dict or list (`` h[`a;1]:5 ``) still loses the variable.
+
+`kt+kt2` (and `- * % & |`) works over the union of the keys, as for dicts: a key on both sides gets the verb row by
+row, a key on one side passes its row through (`-` negates one of `kt2`'s), `kt`'s keys first; the key and value
+columns go by name. Comparing two keyed tables (`< > =`) is still `'nyi`.
 
 ---
 
@@ -412,7 +431,7 @@ Every join is a function; call it in bracket form `lj[t;kt]` or, since 2.0.0, **
 |----------------------|---------------------|-----------------------------------------|
 | `lj[t;kt]`           | **left** join       | `kt` keyed; unmatched → nulls           |
 | `ij[t;kt]`           | **inner** join      | keep matched rows only                  |
-| `uj[x;y]`            | **union** join      | union of columns, rows concatenated     |
+| `uj[x;y]`            | **union** join      | union of columns, rows concatenated; keyed: union of keys, `y`'s rows update `x`'s, as q |
 | `pj[t;kt]`           | **plus** join       | add matched numeric value columns       |
 | `ej[c;x;y]`          | **equi** join on `c`| inner join on the given columns         |
 | `aj[c;x;y]`          | **as‑of** join      | last `y` row per key with time ≤ `x`.time |

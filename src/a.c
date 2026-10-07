@@ -1034,12 +1034,24 @@ Z A dam(A x,A y,A z,CO A*a,U n/*10100*/)_(x=mut(x);U m=0;F(zn,m+=zL[i]==NL)
 //count (t[`a]:7 8 on a one-column table: two rows). Not in flip, which knows no row count (+`a`b!1 2 is one row)
 ZN A tfa(A x,U r/*1.*/)_(A y=xy;P(!_n(y),flp(x))A v=aA(_n(y));F(_n(y),_A(v)[i]=rsz(r,ii(y,i)))x=mut(x);mr(xy);xy=v;flp(x))   //every column an atom: r of each (no column: as before)
 Z A tfl(A x,U r/*1.*/)_(A y=xy;I(_tA(y),F(_n(y),P(!_tt(_A(y)[i]),flp(x))))tfa(x,r))   //a column a list (the first, nearly always): flip
+A tky(A,A,B*);//f.c
+//amend a keyed table at keys (issue #19, as q): keys not there are added first, each once and in order, with a row of
+//nulls, then its value table is amended at the keys' rows. A list given to one key is its row's values in column order
+//(an atom, of its one column; a list of such lists to a list of keys), as in q; a result that is not a table is 'type
+Z A kam(A x,CO A*a,U n/*10..0*/)_(A y=a[1],z=Nx(fnd(xx,_R(y)));B t=_tt(z),m=0;I(!t,z=Nx(cL(z)))I(t,m=gl_(z)==NL)E(F(zn,I(zL[i]==NL,m=1)))x=mut(x);
+ I(m,B o;A k=tky(xx,_R(y),&o);P(!k,z(x(0)))   //the keys not there: as a table, the new keys, null rows and their places
+  A r=K("{[k;v;z;u]w:&^z;n:#k;u:u w;d:u?u;f:&d=!#u;(k,u f;v,v(#f)#0N;@[z;w;:;n+f?d])}",_R(xx),_R(xy),t?enl(z):z,aM(_R(_x(xx)),k));P(!r,x(0))
+  mr(xx);xx=ii(r,0);mr(xy);xy=ii(r,1);z=ii(r,2);mr(r);I(t,z=z(ii(z,0))))
+ A v=0;I(n==4&&a[2]==av&&!_tm(a[3])&&!_tM(a[3])&&(t||!_tt(a[3])),A c=_x(xy),w=t&&_tt(a[3])?enl(_R(a[3])):t?_R(a[3]):flp(_R(a[3]));P(!w,z(x(0)))   //as a row, or rows
+  P(_N(w)-_N(c),mr(w);z(x(el0())))v=t?am(_R(c),w):aM(_R(c),w))
+ Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);I(v,b[3]=v)xy=au;A u=a8(b,n);mr(z);I(v,mr(v))P(!u,x(0))xy=u;P(!_tM(u),x(et0()))x)
 AA(a8,/*10..0*/A x=*a,y=a[1];
  X(RE(Ab8;*b=gZ(x);AC(b+1,a+1,n-1);a8(b,n))
    RT_E(P(y==au,mRn(n-2,a+2);Ab8;*b=a[2];b[1]=x;AC(b+2,a+3,n-3);USQ(e8(AP1,b,n-1)))
     Yzc(L i=gl_(y);P(i>=(W)xn,ei(x))x=mut(x);Ab8;*b=ii(x,i);AC(b+1,a+3,n-3);mRn(n-3,b+1);A z=a[2];set(x,i,Nx(USQ(z8(b,n-2)))))
     I(ytZC&&n==4,A z=a[2],u=a[3];P(xtZ&&ztv&&utzZ&&(0xcf&1<<zv),ara(x,y,z,u))P(xtC&&z==av&&utcC,cC(N(ara(x,y,z,u)))))Yt(et(x))mRn(n-1,a+1);nsq++;A r_=f8(AP1,a,n);nsq--;r_?sqz(r_):0)
    Rm(P(y==au,A k=_R(xx);Ab8;*b=x;b[1]=k;AC(b+2,a+2,n-2);x=a8(b,n);mr(k);x)   //:: is every key, as it is when reading d[::;..]: the keys (!d), as d[!d;..]
+      P(_tM(xx),_tM(xy)?kam(x,a,n):x(en(yR)))   //at a keyed table's keys (keys a table, values not: 'nyi, as before)
       A z=Nx(fnd(xx,yR));ZT(P(LH(tG,zt,tL)&&(n==3||n==4&&(_tt(a[3])||_tT(a[3])&&_N(a[3])==zn)||n==5&&_tt(a[3])&&(_tt(a[4])||_tT(a[4])&&_N(a[4])==zn)),dam(x,y,cL(z),a,n))z(0);mRn(n-1,a+1);f8(AP1,a,n))x=mut(x);I(ztl,z=mut(z);F(zN,I(zl==NL,zl=xN;PSH(xx,ztt?yR:ii(y,i));PSH(xy,ie(a[2],xy)))))
     Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);xy=au;xy=Nx(z(a8(b,n)));x)
    RM(Ab8;AC(b,a,n);YsS(U r=xN;*b=flp(x);tfl(N(a8(b,n)),r))B e=!xN;*b=blw(e?_R(x):x);A p=e?_R(*_A(*b)):0;A u=a8(b,n);P(!u,e?(mr(p),x(0)):0)P(!e,sqz(u))   //p: the prototype of an empty table's rows, its null row
@@ -1127,7 +1139,8 @@ I ixwk(A,A,A,B,B,UC*,L*),ixck(A,A,U,A,B),ixgn(A*),ixgi(A*);A ixit(A,A,UC*,CO L*,
    //level: read first; and with more below, or in an assignment by d4 (d8q)
    I(q,I(!o,_R(q))A r=USQ(n>3?_8(a[2],A8(q,_R(a[3])),2):_8(a[2],A8(q),1));P(!r,I(*p&&*p!=au,mr(*b))E(*p=*b);0)I(*p&&*p!=au,mr(*p);*p=au)   //what f set, the assignment's result replaces
      q=ixst(*b,a[1],kd,ix,0,(U)w_,av,r,0);mr(r);*p=au;return *p=_R(N(q)))   //a row: by d8
-   A u=0,r=w_?ixst(*b,a[1],kd,ix,0,(U)w_,a[2],n==4?a[3]:0,&u):n==4&&_tA(a[1])&&_n(a[1])==1?a4(*b,*_A(a[1]),a[2],a[3]):d8_(b,n);
+   A u=0,r=w_?ixst(*b,a[1],kd,ix,0,(U)w_,a[2],n==4?a[3]:0,&u):({A k_=_tm(*b)&&_tM(_x(*b))?_R(*b):0,r_=n==4&&_tA(a[1])&&_n(a[1])==1?a4(*b,*_A(a[1]),a[2],a[3]):d8_(b,n);   //k_: a keyed
+     I(k_,I(r_,mr(k_))E(I(*p&&*p!=au,mr(k_))E(*p=k_)))r_;});   //table, held to be put back: its amend (kam) fails on what the check does not look at
    P(!r,I(u,I(*p&&*p!=au,mr(u))E(*p=u))0)I(*p&&*p!=au,mr(*p))*p=_R(r))// amend-by-name of a global: not from a peach worker (b.c bS)
    RU(n==3?try(x,a[1],a[2]):er(x))
    R_(d8_(a,n)))0)

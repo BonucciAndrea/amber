@@ -207,6 +207,10 @@ Z NI I ixch(A*p,A x,A y,A z,UC d,I m){B f=d==14||d==15||d==18||d==19;P(!f&&!_ts(
 //a global where an amend by name can follow ixst (ixwk's +256), or as for ixch: else assigned by ixag (as before)
 Z I ixcg(A*p,A x,A y,A z,UC d,CO UC*kd,CO L*ix,I m){I(m==512,I r=ixch(p,x,y,z,d,512);P(r>=0,r)m=0)I(!m,I r=ixch(p,x,y,z,d,0);P(r>=0,r))
  *p=ixag(p,x,y,z,d,kd,ix,m&255,0);return 0;}
+//a keyed table assigned by d4 (m 0): its amend (a.c's kam) fails on what ixwk does not look at (a key's lookup, a row's
+//length or columns, the value's count), so it is held while it is amended, and put back if that fails (issue #19, as q)
+Z NI __attribute__((cold)) I ixkk(A*p,A x,A y,A z,UC d,B g,UC*kd,L*ix){A o=_R(x);I r=g?ixcg(p,x,y,z,d,kd,ix,0):(*p=ixas(x,y,z,d,kd,ix,0,0),0);
+ I(r,mr(o);return r)I(!*p,*p=o;return 4)mr(o);return 0;}
 Z NI I ixcv(A*p,A x,A y,A z,UC d,B g,UC*kd,L*ix,I m,I n){B f=d==14||d==15||d==18||d==19,o;A q=0;
  if(!n){if(m>0&&m<256){I(f||kd[m-1]==3,q=ixit(x,y,kd,ix,(U)m,&o))}   //a row with more below (where the walk stopped, or did not start):
   else{I(m==512,I r=ixch(p,x,y,z,d,512);P(r>=0,r)m=0)   //(512: ixwk met a symbol, which can name the variable: held, or as before)
@@ -217,10 +221,10 @@ Z NI I ixcv(A*p,A x,A y,A z,UC d,B g,UC*kd,L*ix,I m,I n){B f=d==14||d==15||d==18
  //but for a row (d8); a result that does not fit (a column's count) is its error, and x is put back (u)
  I(f&&!n&&m>0&&kd[(m&255)-1]==9,mr((A)ix[(m&255)-1]))   //no item read: the find ixwk made for a list of keys (9) is not passed to ixst
  P(m<0,-m)I(f&&!n,m=_t(x)==tm&&!_tMT(_y(x))?-3:-ixck(x,y,0,z,!d))P(m<0,-m)   //ixwk's or ixck's error, and *p untouched;
- P(m>255||g&&!m,ixcg(p,x,y,z,d,kd,ix,m))A u=0;x=ixas(x,y,z,d,kd,ix,m,&u);P(!x&&u,*p=u;4)*p=x;return 0;}   //else 0; 4: the verb's error, and *p as it was (or as f set it)
+ P(!m&&x&&_tm(x)&&_tM(_x(x)),ixkk(p,x,y,z,d,g,kd,ix))P(m>255||g&&!m,ixcg(p,x,y,z,d,kd,ix,m))A u=0;x=ixas(x,y,z,d,kd,ix,m,&u);P(!x&&u,*p=u;4)*p=x;return 0;}   //else 0; 4: the verb's error, and *p as it was (or as f set it)
 Z NI I ixca(A*p,A x,A y,A z,UC d,B g){UC kd[8];L ix[8];I n=g&&ixgs?ixgn(p):0;P(n>1,3)
  I m=n?_t(x)==tm&&!_tMT(_y(x))?-3:-ixck(x,y,0,z,!d):ixwk(x,y,z,!d,g,kd,ix);P(d,ixcv(p,x,y,z,d,g,kd,ix,m,n))P(m<0,-m)   //a verb, which can fail: ixcv
- P(m>255||g&&!m,ixcg(p,x,y,z,0,kd,ix,m))*p=ixas(x,y,z,0,kd,ix,m,0);return 0;}   //: assigns z, which ixwk checked fits
+ P(!m&&x&&_tm(x)&&_tM(_x(x)),ixkk(p,x,y,z,0,g,kd,ix))P(m>255||g&&!m,ixcg(p,x,y,z,0,kd,ix,m))*p=ixas(x,y,z,0,kd,ix,m,0);return 0;}   //: assigns z, which ixwk checked fits
 Z NI __attribute__((cold)) V noupd(A*s){mr(*s);*s=err0("noupdate");}
 //g f:y, f a global that # _ @ or . calls (bM), which can set g: g held while f runs, as for g[i]f:y (ixfh); 0: f's error
 Z NI __attribute__((cold)) I bmh(A*p,A x,A y,UC d){y=v2[d](_R(x),y);mr(x);P(!y,0)I(*p,mr(*p))*p=y;return 1;}

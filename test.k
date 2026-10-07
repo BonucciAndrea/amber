@@ -154,6 +154,12 @@ t[`ljAllMatch;(+lj[+`k`a!(1 2;10 20);xkey[`k;+`k`a!(1 2;5 6)]])`a;5 6]
 t[`ljAllMatchGeneric;(+lj[+`k`a!(1 2;(10;`y));xkey[`k;+`k`a!(1 2;5 6)]])`a;(5;6)]
 t[`ijRows;#ij[lt;kv];3]
 t[`uj;(+uj[+`a`b!(1 2;3 4);+`b`c!(5 6;7 8)])`c;0N 0N 7 8]
+/ keyed tables, as q (issue #19): the union of the keys, y's rows replacing the columns y has, its other columns added
+t[`ujKeyed;{k:([k:1 2 3]v:3 4 5;u:`x`y`z);(k uj ([k:2 4]w:`a`b;v:40 50);k uj ([k:2 4]u:`a`b);k uj ([k:2 2 9]v:1 2 3);k uj ([k:2 4]v:0N 50);k uj k;([k:0#0]v:0#0) uj k;k uj ([k:0#0]v:0#0;w:0#`))}[];(([k:1 2 3 4]v:3 40 5 50;u:`x`y`z`;w:``a``b);([k:1 2 3 4]v:3 4 5 0N;u:`x`a`z`b);([k:1 2 3 9]v:3 1 5 3;u:`x`y`z`);([k:1 2 3 4]v:3 0N 5 50;u:`x`y`z`);([k:1 2 3]v:3 4 5;u:`x`y`z);([k:1 2 3]v:3 4 5;u:`x`y`z);([k:1 2 3]v:3 4 5;u:`x`y`z;w:```))]
+/ two key columns, y's by name; a general column; other key columns 'domain (q: 'mismatch), an unkeyed y or a value column of another type 'type, as q
+t[`ujKeyedMulti;(([a:1 2;b:`x`y]v:5 6) uj ([b:`y`z;a:2 3]v:7 8);([k:`a`b]v:(1;`x)) uj ([k:`b`c]v:(2.5;"s")));(([a:1 2 3;b:`x`y`z]v:5 7 8);([k:`a`b`c]v:(1;2.5;"s")))]
+t[`ujKeyedList;{*"\n"\.[uj;x;{x}]}'((((+(,`a)!,1 2)!3 4);((+(,`a)!,1 2)!3 4));(([k:1 2]v:3 4);(+(,`k)!,2 3)!10 20);(((+(,`a)!,1 2)!3 4);([k:1 2]v:3 4)));3#,"'nyi"]   / keys a table, values a list: 'nyi, as before
+t[`ujKeyedErr;{*"\n"\.[uj;x;{x}]}'((([k:1 2]v:3 4);([kk:2 4]v:1 2));(([k:1 2]v:3 4);([]k:2 4;v:1 2));(([k:1 2]v:3 4);([k:2 4]v:1.5 2)));("'domain";"'type";"'type")]
 t[`pj;(+pj[+`s`p!(`a`b`c;1 1 1);xkey[`s;+`s`p!(`a`b;10 20)]])`p;11 21 1]
 t[`pjNewCol;(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`b!(1 3;100 300)]])`b;100 0 300]
 t[`pjNulls;((+pj[+`k`a!(1 2 3;0N 20 30);xkey[`k;+`k`a!(1 3;1 2)]])`a;(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`a!(1 3;0N 2)]])`a);(0N 20 32;10 20 32)]
@@ -677,7 +683,7 @@ t[`amendDictAll;   (.[`a`b!(1 2;3 4);(::;0);:;9];@[`a`b!1 2;::;+;9];.[`x`y!(`p`q
 / a dict as the value through :: on a dict: its values go to the keys in order, as for d[!d] (q matches by key); was a crash
 t[`amendDictAllDictValue;(.[+`a`b!(1 2 3;4 5 6);(0;::);:;`a`b!9 8];{t:+`a`b!(1 2 3;4 5 6);t[0;]:`a`b!9 8;t}[];.[`a`b!(`x`y!1 2;`x`y!3 4);(`a;::);:;`x`y!9 8]);(+`a`b!(9 2 3;8 5 6);+`a`b!(9 2 3;8 5 6);`a`b!+`x`y!(9 3;8 4))]
 t[`amendDictAllDictNear;(.[+`a`b!(1 2 3;4 5 6);(0;::);:;7];.[+`a`b!(1 2 3;4 5 6);(0;::);+;`a`b!10 20];.[(`a`b!1 4;`a`b!2 5);(0;::);:;`a`b!9 8];.[`x`y!(`p`q!1 2;`p`q!3 4);(::;`q);:;`x`y!10 20];{d:`a`b!(`x`y!1 2;`x`y!3 4);d[`a;]:`x`y!9 8;d}[]);(+`a`b!(7 2 3;7 5 6);+`a`b!(11 2 3;24 5 6);+`a`b!(9 2;8 5);`x`y!+`p`q!(1 3;10 20);`a`b!+`x`y!(9 3;8 4))]
-t[`amendDictAllKeyed;*"\n"\.[{.[x;(1;::);:;`a`b!9 8]};,([k:1 2 3]a:4 5 6;b:7 8 9);{x}];"'nyi"]   / a keyed table's row: not yet, as before
+t[`amendDictAllKeyed;(.[([k:1 2 3]a:4 5 6;b:7 8 9);(1;::);:;`a`b!9 8];.[([k:1 2 3]a:4 5 6;b:7 8 9);(4;::);:;`a`b!9 8]);(([k:1 2 3]a:9 5 6;b:8 8 9);([k:1 2 3 4]a:4 5 6 9;b:7 8 9 8))]   / a keyed table's row by its key, a key not there added, as q (issue #19)
 
 / ---- amber 2.2: float literals below 1e-308 (subnormals) ------------------
 / pfu (src/p.c) clamped an out-of-range exponent and returned EARLY, before it

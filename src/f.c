@@ -449,10 +449,29 @@ Z B fmx(A x,B c)_(P(xtmM,fmx(xy,c))P(xtA,F(xn,P(fmx(xa,c),1))0)c?LH(tE,xt,tF)||L
 // amber 2.7: find in an empty general list: nothing is there, so 0N. The rank test below read the empty list's
 // placeholder slot and called an atom the wrong rank: ()?`a was 'rank. A list y keeps its old answer, one 0N.
 Z A fnd0(A y)_(P(_tt(y),y(az(NL)))U n=_N(y);A z=aL(n);F(n,zL[i]=NL)y(z))
+//y's keys for the table x (borrowed), consumed: a list of x's count of columns, each one long when y is one key (o).
+//A row or table goes by column name (in another order too, as q); columns that differ are 'domain (q: 'mismatch)
+A tky(A x,A y,B*o)_(U n=_N(xx);*o=!ytM;
+ I(ytm||ytM,A v=kv(&y);   //y: the row's keys or the table's columns, v: their values
+  I(!mtc_(xx,y),P(_t(y)!=tS||_N(y)-n,mr(v);ed(y))A p=cL(fnd(y,_R(xx)));P(!p,mr(v);y(0))F(n,P(_L(p)[i]==NL,mr(p);mr(v);ed(y)))A w=i1(v,p);mr(v);P(!w,y(0))v=w)
+  mr(y);y=v)
+ E(U k=urnk(x)-1,l=urnk(y);I(l<k&&n==1,y=enl(y))E(I(l==k+1,y=N(flp(y));*o=0)E(P(l-k,el(y)))))
+ P(_N(y)-n,el(y))
+ *o?e1f(enl,y):y)
+// find in a table (issue #19, as q; a keyed table's lookup by key comes here): the first row equal to y, one row (a dict
+// of the columns, or a key: a value per column, or for one column the value), or to each row of y (a table of the same
+// columns, or a list of keys); 0N for none. One column is find in it (a value of a lower rank than its items, as a char
+// in strings, is none). Others number each row by the place of its values in x, column by column ((rows of x + 1)*code
+// + place, numbered again by find), one find of ints per column after the first, as amber.k's jprobe encodes join keys;
+// a hash per column, where a scan of rows would match them value by value
+Z A tfd(A x,A y)_(P(ytA&&!yn,y(aL(0)))B o;y=N(tky(x,y,&o));A c=xy;
+ P(_N(c)==1,A z=ii(y,0);mr(y);P(!o,fnd(*_A(c),z))y=ii(z,0);mr(z);P(urnk(y)+1<urnk(*_A(c)),y(az(NL)))fnd(*_A(c),y))
+ A z=N(K2("{[a;b]n:1+#*a;({[a;b;n;s;i]c:a i;u:(n*s 0)+c?c;(u?u;u?(n*(n-1)^s 1)+(n-1)^c?b i)}[a;b;n]/[((*a)?*a;(*a)?*b);1_!#a])1}",c,y));
+ o?z(ii(z,0)):z)
 X2(fnd,
  R_(et(y))
  Rm(i1(xx,N(fnd(xy,y))))
- RM(en(y))
+ RM(tfd(x,y))
  RE(x=gZ(xR);x(fnd(x,y)))
  // The rank of x's first item says whether y is one item or a list of them; when the items differ in rank, y may be
  // one of them all the same, so it is looked for whole first ((1;"ab")?"ab" is 1, it was 0N 0N). An x of one rank

@@ -147,7 +147,7 @@ I ixwk(A x,A y,A z,B asg,B gl,UC*kd,L*ix){if(!x)return 0;if(_t(x)==tm&&!_tMT(_y(
   if(last){k++;break;}if(v!=x)mr(v);v=w;}
  if(k==m||k&&(kd[k-1]==3||kd[k-1]==6)){I(v!=x,mr(v))P(a>=0&&k==m&&a+2==(I)m&&!kd[a+1],kd[a]+=3;a+2)return a<0?(I)k:a+1|gl<<8;}   //7, 8: a key to add, then one index into a list
  I r,sy;if(gl&&k){ixsm=0;r=ixck(v,y,k,z,asg);sy=_ts(v)?2:ixsm;}else{r=ixck(v,y,k,z,asg);sy=0;}I(v!=x,mr(v))P(r,-r)P(sy,sy>1&&a<0?kd[k]=3,ix[k]=-1,512|(I)(k+1):512)P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;ix[k]=-1;return (I)(k+1|(gl&&k+1<m)<<8);}   //stopped short below the first level: d8 from there (3)
-A ixst(A,A,CO UC*,CO L*,U,U,A,A,A*),ixv2(UC,A,A);
+A ixst(A,A,CO UC*,CO L*,U,U,A,A,A*),ixv2(UC,A,A),ixal(A,A,A,A,A*);
 //the item at the places ixwk found, where each is one that is there -- an int into a list (0), a key or column there
 //(1, 2: not one to add), a row then its column (6), or a table's row at the last level (3) -- so that the verb can go
 //first, on it, and its result be assigned with :, and a verb that fails touches nothing. Else 0 (the amend goes as before).
@@ -274,7 +274,11 @@ Z NI I ixcv(A*p,A x,A y,A z,UC d,B g,UC*kd,L*ix,I m,I n){B f=d==14||d==15||d==18
  //but for a row (d8); a result that does not fit (a column's count) is its error, and x is put back (u)
  I(f&&!n&&m>0&&kd[(m&255)-1]==9,mr((A)ix[(m&255)-1]))   //no item read: the find ixwk made for a list of keys (9) is not passed to ixst
  P(m<0,-m)I(f&&!n,m=_t(x)==tm&&!_tMT(_y(x))?-3:-ixck(x,y,0,z,!d))P(m<0,-m)   //ixwk's or ixck's error, and *p untouched;
- P(!m&&x&&_tm(x)&&_tM(_x(x)),ixkk(p,x,y,z,d,g,kd,ix))P(m>255||g&&!m,ixcg(p,x,y,z,d,kd,ix,m))A u=0;x=ixas(x,y,z,d,kd,ix,m,&u);P(!x&&u,*p=u;4)*p=x;return 0;}   //else 0; 4: the verb's error, and *p as it was (or as f set it)
+ P(!m&&x&&_tm(x)&&_tM(_x(x)),ixkk(p,x,y,z,d,g,kd,ix))   //a keyed table: held (ixkk), as before
+ I(!m&&!f&&!n&&_tA(y)&&_n(y)==1&&_t(x)<=tm,A u=0;x=ixal(x,*_A(y),av+d,z,&u);P(!x&&u,*p=u;4)*p=x;return 0)   //one index, a list (a8 folds the
+ //verb in place, item by item): a list of ints, of keys there, of columns, where a verb that fails puts back what it did (a.c).
+ //A global too, not by ixcg: the verb calls no function, and at one level no symbol is followed, so nothing amends it by name
+ P(m>255||g&&!m,ixcg(p,x,y,z,d,kd,ix,m))A u=0;x=ixas(x,y,z,d,kd,ix,m,&u);P(!x&&u,*p=u;4)*p=x;return 0;}   //else 0; 4: the verb's error, and *p as it was (or as f set it)
 Z NI I ixca(A*p,A x,A y,A z,UC d,B g){UC kd[8];L ix[8];I n=g&&ixgs?ixgn(p):0;P(n>1,3)
  I m=n?_t(x)==tm&&!_tMT(_y(x))?-3:-ixck(x,y,0,z,!d):ixwk(x,y,z,!d,g,kd,ix);P(d,ixcv(p,x,y,z,d,g,kd,ix,m,n))P(m<0,-m)   //a verb, which can fail: ixcv
  P(!m&&x&&_tm(x)&&_tM(_x(x)),ixkk(p,x,y,z,0,g,kd,ix))P(m>255||g&&!m,ixcg(p,x,y,z,0,kd,ix,m))*p=ixas(x,y,z,0,kd,ix,m,0);return 0;}   //: assigns z, which ixwk checked fits

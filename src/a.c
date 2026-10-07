@@ -1112,6 +1112,22 @@ Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u)_(U i=(U)ix[k];I(_t(x)==tE
   P(!r,u?(*u=x,(A)0):x(0))set(x,i,r))
  A w;I(_t(x)==tA,w=_A(x)[i];_A(x)[i]=au)E(w=ii(x,i))w=ixst(w,y,kd,ix,k+1,m,f,z,u);P(!w,u&&*u?(_tA(x)?(V)(_A(x)[i]=*u):mr(*u),*u=x,(A)0):x(0))set(x,i,w))
 A ixv2(UC d,A q,A z/*00.*/)_(USQ(v2[d](q,_R(z))))   //b.c ixca: the verb on the item ixit read, which it goes first on
+//a dict (or keyed table) marked `s, held by v alone, that .[`v;y;..] would give a key it has not, y one level (deeper,
+//as for a keyed table's row at a new key, the key is added, as q adds the row): 'step, as in q, which takes no more keys
+//into a sorted dict it amends in place (one held elsewhere too is copied: the key is added, and the copy has no mark);
+//but 'type, as q, for a key of another type than typed keys (ixkf, on that path only). 1: so, and the error set. Out of
+//line: its callers test the mark first
+Z B ixkf(UC k,UC t)_(k>tm?t==k||LH(ti,k,tl)&&LH(ti,t,tl):LH(tE,k,tL)?LH(ti,t,tl)||LH(tE,t,tL):k==tF?t==tf||t==tF:k==tC?t==tc||t==tC:k==tS?t==ts||t==tS:1)   //does a key of type t fit keys of type k?
+//(k an atom's type: keys in a general list whose items are all atoms of that type, as dates are here, where q has a
+//typed list: ixku; else tA, which any key fits)
+Z UC ixku(A ks)_(U n=_N(ks);UC u=n?_t(*_A(ks)):tA;F(n,I(_t(_A(ks)[i])!=u,u=tA;break))u>tm?u:tA)
+NI B ixsk(A x,A y/*00*/)_(P(_tP(x)||_t(x)!=tm||_at(x)!=1||!MINE(x)||y==au||!_tt(y)&&_N(y)!=1,0)A q=_tt(y)?_R(y):ii(y,0);P(q==au,0)
+ A f=fnd(_x(x),_R(q));P(!f,mr(q);0)A ks=_x(x);L c=_N(ks);B r=0;I(_tt(f),L j=gl_(f);r=j<0||j>=c)E(f=cL(f);F(_n(f),L j=_L(f)[i];I(j<0||j>=c,r=1)))mr(f);
+ I(r,UC k=_t(ks);I(k==tA,k=ixku(ks))B o=_t(q)==tA?({B b=1;F(_n(q),I(!ixkf(k,_t(_A(q)[i])),b=0))b;}):ixkf(k,_t(q));err0(o?"step":"type"))mr(q);r)
+//ixsk after the walk (m, kd, ix: ixwk's, or ixkn's as m 1): where it found the place of y's one key (kd 1: a symbol key
+//into symbol keys, or ixkn's, into keys that are not), that says whether the key is new, so it is not found again (ixsk
+//looks only then, for which error); else ixsk
+NI B ixsq(A x,A y,CO UC*kd,CO L*ix,I m)_(!_tP(x)&&_t(x)==tm&&m==1&&kd[0]==1&&(_t(_x(x))!=tS||_ts(y)||_t(y)==tS||_tA(y)&&_ts(*_A(y)))?ix[0]>=(L)_N(_x(x))&&ixsk(x,y):ixsk(x,y))
 //x[y]f:z in run (a verb but # _ @ ., b.c ixcv) and .[`x;,y;f(;z)] (d8), where the walk did not start: y one index, a
 //list, where a8 folds f in place item by item, so that f failing part way lost x. Where f cannot fail -- : and ~, a verb
 //of arithmetic or comparison on numbers with numbers, or , on typed data -- a8 does it, as before (ixnf). Else ixfl folds
@@ -1173,6 +1189,12 @@ Z NI __attribute__((cold)) A d8q(A*p,A*b,A*a,I n,UC*kd,L*ix,B*h){I g_=ixgn(p);B 
  P(w<0||!gd&&(g_||_t(*b)!=tM),*h=0,(A)0)A q=ixit(*b,a[1],kd,ix,(U)w,&o);P(!(*h=!!q),I(w>0&&kd[w-1]==9,mr((A)ix[w-1]))(A)0)I(!w,w=1)   //(the find for a list of keys, 9, unused)
  I(!o,_R(q))A r=USQ(n>3?_8(a[2],A8(q,_R(a[3])),2):_8(a[2],A8(q),1));P(!r,I(*p&&*p!=au,mr(*b))E(*p=*b);0)I(*p&&*p!=au,mr(*p);*p=au)   //as d8 does
  A u=0;q=ixst(*b,a[1],kd,ix,0,(U)w,av,r,&u);mr(r);P(!q,I(u,*p=u)(A)0)return *p=_R(q);}   //(u: a result that does not fit puts the value back)
+//d8 on a dict marked `s (d8 tests the mark), after the walk (w, where it found no error: that comes first, as for
+//d[y]:v): .[`d;y;:;v], which does not go by ixkn, at a key that is
+//not a symbol: its place, found here once, as for a verb (and assigned there, ixst); then a new key is 'step or 'type
+//(ixsq): -5, the error set. Else w, as it is now (a lookup that fails, as d8 went before: ixsk, and a4's error)
+I ixkn(A,A,UC*,L*);B ixsq(A,A,CO UC*,CO L*,I);Z NI __attribute__((cold)) I ixs8(A x,A*a,I n,I g,UC*kd,L*ix,I w){
+ I(!w&&_t(x)==tm&&n==4&&!g&&a[2]==av,I r=ixkn(x,a[1],kd,ix);I(r>0,w=r))P(ixsq(x,a[1],kd,ix,w),I(w>0&&kd[w-1]==9,mr((A)ix[w-1]))-5)return w;}
 AA(d8,/*10..0*/A x=*a;
 I ixwk(A,A,A,B,B,UC*,L*),ixck(A,A,U,A,B),ixgn(A*),ixgi(A*),ixkn(A,A,UC*,L*);A ixit(A,A,UC*,CO L*,U,B*);   //b.c: is .[`v;i;f;y] or .[`v;i;f] sure to fail on its index, count or type? (then v is not touched) If not, where can ixst assign?
  //while run assigns a global (ixgs): as before (ixck, d4) in an assignment by d4, and refused if this one is assigned in place (ixgi).
@@ -1181,7 +1203,9 @@ I ixwk(A,A,A,B,B,UC*,L*),ixck(A,A,U,A,B),ixgn(A*),ixgi(A*),ixkn(A,A,UC*,L*);A ix
  //In an assignment by d4 (and v not the one assigned), where the walk finds the item, f goes first too, and then : as before
  X(RsS(P(ray_rc_sync,mr(*a);err0("noupdate"))A*p=gp(x);P(!p,0)I g_=ixgn(p);P(n>2&&g_&&ixgi(p),et0())P(n>4,en0())UC kd[8];L ix[8];
    I w_=n==3||n==4?g_?*p&&_t(*p)==tm&&!_tMT(_y(*p))?-3:-ixck(*p,a[1],0,n==4?a[3]:au,n==4&&a[2]==av):ixwk(*p,a[1],n==4?a[3]:au,n==4&&a[2]==av,0,kd,ix):0;
-   I(!w_&&*p&&_t(*p)==tm&&n>2&&!g_&&a[2]!=av,w_=ixkn(*p,a[1],kd,ix))P(w_<0,w_==-1?ei0():w_==-2?el0():w_==-3?et0():(A)0)I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;
+   I(!w_&&*p&&_t(*p)==tm&&n>2&&!g_&&a[2]!=av,w_=ixkn(*p,a[1],kd,ix))
+   I(__builtin_expect(n>2&&*p&&!_tP(*p)&&_at(*p)==1,0)&&w_>=0,w_=ixs8(*p,a,n,g_,kd,ix,w_))   //marked `s: a new key 'step (-5), the walk's find reused
+   P(w_<0,w_==-1?ei0():w_==-2?el0():w_==-3?et0():(A)0)I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;
    B o;A q=w_?a[2]!=av&&kd[w_-1]==3?ixit(*b,a[1],kd,ix,(U)w_,&o):0:n>2&&a[2]!=av?({A r=d8q(p,b,a,n,kd,ix,&o);P(o,r);(A)0;}):0;   //a table's row, at the last
    //level: read first; and with more below, or in an assignment by d4 (d8q)
    I(q,I(!o,_R(q))A r=USQ(n>3?_8(a[2],A8(q,_R(a[3])),2):_8(a[2],A8(q),1));P(!r,I(*p&&*p!=au,mr(*b))E(*p=*b);0)I(*p&&*p!=au,mr(*p);*p=au)   //what f set, the assignment's result replaces

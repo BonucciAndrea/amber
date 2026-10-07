@@ -213,6 +213,7 @@ in[3 5;1 2 3 4]      / 10b
 except[1 2 3 4;2 4]  / 1 3
 inter[1 2 3 4;2 4 6] / 2 4
 sublist[3;1 2 3 4 5] / 1 2 3          (capped, unlike k's cyclic #)
+sublist[1 2;1 2 3 4 5] / 2 3        ((start;count), as q)
 cross[1 2;10 20]     / ((1;10);(1;20);(2;10);(2;20))
 ```
 

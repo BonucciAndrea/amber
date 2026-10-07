@@ -146,7 +146,7 @@ ini:{y:$[`m=@y;. y;isatm y;,y;y];r:in[x;y];a:(isat r)&~isat x;$[(`A~@r)|a&(rk x)
 / in gives one flag for a list x one item of y (1 2 3 in (1 2;3)): 'type, as q's where 1b; x found whole among items of its own rank (#29) goes item by item, as q
 union:{distinct x,y}
 raze:{$[isat x;,x;,/x]}
-sublist:{$[$[1=#y;isat y;0b];$[|/^x;`err"type";abs x;y;0#y];[n:(abs x)&#y;$[x<0;(0-n)#y;n#y]]]}   / An atom comes back as is, as q (0 sublist 5 is !0); a null or symbol count: 'type, as q
+sublist:{$[$[1=#y;isat y;0b];$[|/^x;`err"type";abs x;y;0#y];[n:(abs x)&#y;$[x<0;$[`I=@x;$[`m=@y;sublist[x;!y]!sublist[x;. y];[i:*x;y i+!0|x[1]&(#y)-i]];(0-n)#y];n#y]]]}   / An atom comes back as is, as q (0 sublist 5 is !0); a null or symbol count: 'type, as q; a (start;count) pair: the items from start, as q (a pair is a list, so x<0 is true for it)
 cross:{,/x,/:\:y}
 
 / ---- table predicates & basics ---------------------------------------------

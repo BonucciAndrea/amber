@@ -1145,14 +1145,14 @@ Z NI __attribute__((cold)) A d8q(A*p,A*b,A*a,I n,UC*kd,L*ix,B*h){I g_=ixgn(p);B 
  I(!o,_R(q))A r=USQ(n>3?_8(a[2],A8(q,_R(a[3])),2):_8(a[2],A8(q),1));P(!r,I(*p&&*p!=au,mr(*b))E(*p=*b);0)I(*p&&*p!=au,mr(*p);*p=au)   //as d8 does
  A u=0;q=ixst(*b,a[1],kd,ix,0,(U)w,av,r,&u);mr(r);P(!q,I(u,*p=u)(A)0)return *p=_R(q);}   //(u: a result that does not fit puts the value back)
 AA(d8,/*10..0*/A x=*a;
-I ixwk(A,A,A,B,B,UC*,L*),ixck(A,A,U,A,B),ixgn(A*),ixgi(A*),ixkn(A,A,UC*,L*);A ixit(A,A,UC*,CO L*,U,B*);   //b.c: is .[`v;i;f;y] sure to fail on its index, count or type? (then v is not touched) If not, where can ixst assign? (.[`v;i;f] is not checked)
+I ixwk(A,A,A,B,B,UC*,L*),ixck(A,A,U,A,B),ixgn(A*),ixgi(A*),ixkn(A,A,UC*,L*);A ixit(A,A,UC*,CO L*,U,B*);   //b.c: is .[`v;i;f;y] or .[`v;i;f] sure to fail on its index, count or type? (then v is not touched) If not, where can ixst assign?
  //while run assigns a global (ixgs): as before (ixck, d4) in an assignment by d4, and refused if this one is assigned in place (ixgi).
  //Where ixit reads the item, f goes first, on it (v :: meanwhile, as before), and ixst assigns its result with :, so if f
  //fails, v is put back (unless f set v, to other than ::). Five or more arguments, which amend does not take: 'nyi, v kept.
  //In an assignment by d4 (and v not the one assigned), where the walk finds the item, f goes first too, and then : as before
  X(RsS(P(ray_rc_sync,mr(*a);err0("noupdate"))A*p=gp(x);P(!p,0)I g_=ixgn(p);P(n>2&&g_&&ixgi(p),et0())P(n>4,en0())UC kd[8];L ix[8];
-   I w_=n==3||n==4?g_?n<4?0:*p&&_t(*p)==tm&&!_tMT(_y(*p))?-3:-ixck(*p,a[1],0,a[3],a[2]==av):ixwk(*p,a[1],n==4?a[3]:au,n==4&&a[2]==av,0,kd,ix):0;
-   I(!w_&&*p&&_t(*p)==tm&&n>2&&!g_&&a[2]!=av,w_=ixkn(*p,a[1],kd,ix))P(n==4&&w_<0,w_==-1?ei0():w_==-2?el0():w_==-3?et0():(A)0)I(w_<0,w_=0)I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;
+   I w_=n==3||n==4?g_?*p&&_t(*p)==tm&&!_tMT(_y(*p))?-3:-ixck(*p,a[1],0,n==4?a[3]:au,n==4&&a[2]==av):ixwk(*p,a[1],n==4?a[3]:au,n==4&&a[2]==av,0,kd,ix):0;
+   I(!w_&&*p&&_t(*p)==tm&&n>2&&!g_&&a[2]!=av,w_=ixkn(*p,a[1],kd,ix))P(w_<0,w_==-1?ei0():w_==-2?el0():w_==-3?et0():(A)0)I(!*p,*p=au)Ab8;*b=*p;MC(b+1,a+1,(n-1)*SZ(A));*p=au;
    B o;A q=w_?a[2]!=av&&kd[w_-1]==3?ixit(*b,a[1],kd,ix,(U)w_,&o):0:n>2&&a[2]!=av?({A r=d8q(p,b,a,n,kd,ix,&o);P(o,r);(A)0;}):0;   //a table's row, at the last
    //level: read first; and with more below, or in an assignment by d4 (d8q)
    I(q,I(!o,_R(q))A r=USQ(n>3?_8(a[2],A8(q,_R(a[3])),2):_8(a[2],A8(q),1));P(!r,I(*p&&*p!=au,mr(*b))E(*p=*b);0)I(*p&&*p!=au,mr(*p);*p=au)   //what f set, the assignment's result replaces

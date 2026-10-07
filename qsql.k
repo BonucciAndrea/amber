@@ -187,7 +187,7 @@ qbyl:{[C;byp]$[~^C?`$byp;1;qbyf[C;byp];1;qbyo[C;byp]]}
 qbyf:{[C;byp]$[|/~^"([{`\":"?byp;0;&/{[C;e]t:t@&0<#'t:" "\e;$[1=#t;qbop[C;*t];3=#t;$[~^`mod`div`xbar?`$t 1;qbop[C;t 0]&qbop[C;t 2];0];0]}[C]'","\byp]}   / by-items that are each a column, i, a number, or two of those around mod, div or xbar keep to their row, read without the checks
 qbop:{[C;w]$[(*w)<":";$[(*w)>"/";$[|/w="_";0;&/qword[0+w]|w="."];0];~^(C,`i)?`$w]}   / a column, i, or a number (word characters and ., no _: not 0+|n)
 qbyo:{[C;byp]e:(qname'qcut byp)@\:1;&/qlb[C]'[e;{qlit qblank x}'e]}
-qselby:{[u;m;hw;byp;it;d]$[#m;$[qbyl[cols u;byp];;:qselby[qflt[u;m;hw];();0;byp;it;d]];];r:qbyx[u;byp];sg:qsagg[cols r 0]'{(qname x)1}'it;fa:$[~&/{0<#x}'sg;();$[#m;|/m;1];qaggf[r 0;r 1;(!d)!sg;m];()];qbyr[;r]$[#fa;qks fa;[t:$[#m;qwk[2=hw;r 0;m];r 0];qby[qproj[t;(r 1),(,/qrefs[cols t]'{(qname x)1}'it)];r 1;d]]]}
+qselby:{[u;m;hw;byp;it;d]$[#m;$[qbyl[cols u;byp];;:qselby[qflt[u;m;hw];();0;byp;it;d]];];r:qbyx[u;byp];$[|/in[!d;r 3];`err"dup";];sg:qsagg[cols r 0]'{(qname x)1}'it;fa:$[~&/{0<#x}'sg;();$[#m;|/m;1];qaggf[r 0;r 1;(!d)!sg;m];()];qbyr[;r]$[#fa;qks fa;[t:$[#m;qwk[2=hw;r 0;m];r 0];qby[qproj[t;(r 1),(,/qrefs[cols t]'{(qname x)1}'it)];r 1;d]]]}   / a column named as a given or bare by-key is 'dup, as q (exec's columns come with hidden names, qexby)
 / gag1: one select-list item -> one fused result triple (head;values;first-row-indices).
 / (agg;col)        -> a single `gagg pass, as before.
 / (wavg|wsum;w;c)  -> two `gagg sum passes over the same keys and mask, so the group order
@@ -277,7 +277,7 @@ qpt:{[u]$[`m~@u;in[`amberpt;!u];0]}
 / As q's, one item with a name (exec s:px-ask from t) is a dict too, and no item (exec from t) is the last row.
 exq:{[s]s:qnorm s;s:$[(4#s)~"exec";trim 4_s;s];r:qsplit[s;" where "];h:r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r:$[r 2;$[|/"sedu"=*r2 1;qnw[r;r2 1];(r2 1;r 1)];(r2 1;"")];wh:r 1;u:unkey@. qtry r 0;eb:qsplit0[r2 0;" by "];k:qik[qiq[eb 0;eb 1;eb 2;0<#wh];u];pq:$[qpt u;qpexec[u;r2 0;wh];(u;wh)];u:pq 0;wh:pq 1;$[eb 2;qexby[k;u;wh;eb];[t:$[#wh;qwk[k;u;qmask[u;wh]];u];$[#r2 0;[C:cols t;it:qcut trim r2 0;v:{[C;t;e]qfn[C;e 1]t}[C;t]'p:qname'it;$[(1=#it)&~#**p;*v;(qnms[C;it])!v]];last t]]]}
 / exec e by b: a dict from the groups to e, as q (through select, then the key column and the value column)
-qexby:{[h;u;wh;eb]r:qdi[h]qsi[h;u;wh;0<#wh;(eb 0;eb 1;1b);""];k:+key r;v:+value r;$[1=#!k;k@*!k;key r]!$[1=#!v;v@*!v;value r]}
+qexby:{[h;u;wh;eb]$[#eb 0;[it:qcut eb 0;e:{(qname x)1}'it;b:","/{"(",($y),"):",x}'[e;!#it]];b:""];r:qdi[h]qsi[h;u;wh;0<#wh;(b;eb 1;1b);""];k:+key r;v:+value r;k:$[1=#!k;k@*!k;key r];$[~#b;k!$[1=#!v;v@*!v;value r];(1=#it)&~#*qname@*it;k!v@*!v;k!+(qnms[cols u;it])!. v]}   / the items go in under hidden names (0) (1)..., so none meets a key's name; one item with no name gives its values, else a table under the items' names, as q
 
 / ---- update  (add / replace columns; optional where and by) ---------------
 / qty: a value of another type than its column's is 'type, as q's amend, rows or none: the column's kind is its type, a

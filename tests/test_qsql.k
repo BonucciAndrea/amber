@@ -423,6 +423,14 @@ tq[`byNameFused;  "select s:sum sz,p:max px by sz:sz mod 2 from trades where px>
 tq[`byNameOther;  "select s:sum sz by sym:sz mod 2 from trades";     (+(,`sym)!,0 1)!+(,`s)!,12 9];
 tq[`byNameLast;   "select by sz:sz mod 2 from trades";                (+(,`sz)!,0 1)!+`sym`px!(`a`c;60 50.0)];
 tq[`byNameExec;   "exec sum sz by sz:sz mod 2 from trades";          0 1!12 9];
+/ a column named as a given or bare by-key is q's 'dup (the column was dropped); exec has no 'dup and keeps it, one
+/ item with no name as its values, else as a table
+tqe[`byDupBare;   "select sum sz by sz from trades"];
+tqe[`byDupGiven;  "select sz:sum sz by sz:sym from trades"];
+tqe[`byDupWhere;  "select sz, px by sym,sz from trades where px>25"];
+tq[`byDupNot;     "select s:sum sz by sz from trades where sz<3";    (+(,`sz)!,1 2)!+(,`s)!,1 2];
+tq[`byDupExec;    "exec s:sum sz by sz from trades where sz<3";      1 2!+(,`s)!,1 2];
+tq[`byDupExecBare; "exec sum sz by sz from trades where sz<3";       1 2!1 2];
 tqa[`byIKey;      "select c:count sz by i from trades"; CL;          `x`c];
 tqa[`byIAll;      "select by i from trades"; CL;                      `x`sym`px`sz];
 tq[`byTwoSame;    "select s:sum sz by sz mod 2,sz mod 3 from trades"; (+`sz`sz1!(0 0 0 1 1 1;0 1 2 0 1 2))!+(,`s)!,6 4 2 3 1 5];

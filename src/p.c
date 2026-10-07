@@ -1,6 +1,6 @@
 #include"a.h" // Amber parser - GNU AGPLv3 - see LICENSE and NOTICE
 #include"csv.h"   //csv_float: numbers read as a CSV cell reads them
-Z S s0,s,ppe;Z U k;Z A pb(A,C);Z A pe(A,C*);Z A ps();                                                   //Parser state (s:current pointer, s0:start of source, k:implicit arg counter)
+Z S s0,s,ppe;Z U k;Z A pb(A,C);Z A pe(A,C*);Z A ps();                                                   //Parser state (s:current pointer, s0:start of source, k:implicit arg counter, ppe: just past the last [params] read, cleared for each parse)
 U si(S s,C v)_(strchrnul(s,v)-(C*)s)                                                                //find char (string index)
 B id0(UC c)_(CAz(c)|(c|1)==0xd1)                                                                    //is identifier start char?
 Z B id1(C c)_(id0(c)|C09(c))                                                                        //is identifier char?
@@ -51,7 +51,9 @@ Z A0(pZ,S p=s;W(*p-'0'<2u,p++)                                                  
  P(*p=='B',S t=s;s=p+1;cB(aV(tG,p-t,t)))//todo
  P(*p=='b',S t=s;s=p+1;cG(cB(aV(tG,p-t,t))))
  A x=pV(tL,plN);B o=ovf;ovf=0;P(!x,0)P(o,x(ez0()))sqzZ(x))   //the flag is cleared whatever pV returns, so a failed literal cannot fail the next one
-Z A0(pF,pV(tF,pf))                                                                                  //parse floats
+Z A0(pF,S p=s;W(*p-'0'<2u,p++)I((*p=='b'||*p=='B')&&C09(p[1]),B d=0;C c=*++p;W(CA9(c)||c=='.'||c==':',d|=!!strchr(".nwef",c);c=*++p)P(!d,pZ()))pV(tF,pf))   //parse floats; a
+ //bool token run into an int (01b1 2.5) is a noun of its own that the strand after it indexes, as before an int strand
+ //(pZ) and in ngn/k, which reads each token of a strand by itself: run into a float (01b2.5, 01b0w) it stays 'value
 Z A0(pC,C a[1<<9];U n=0;C c=*++s;A x=0;                                                      //parse "string" (in chunks of 512)
  W(c&&c-'"',I(n==L(a),A c_=aV(tC,n,a);x=x?cat11(x,c_):c_;n=0)I(c=='\\',c=*++s;B(!c)U i=fG("tnr0",4,c);I(i<4,c="\t\n\r"[i]))a[n++]=c;c=*++s)
  P(!c,x?x(ep0()):ep0())s++;A c_=aV(tC,n,a);x?cat11(x,c_):c_)
@@ -203,7 +205,7 @@ Z A pe(A x,C*v)_(P(pd>=PD,x?x(ez0()):ez0())pd++;A r=pe_(x,v);pd--;r)            
 Z A pb(A x,C c)_(x=x?aA1(x):emp(tA);                                                                //parse body (sequence of ;-separated expressions)
  W(1,C v=0;A y=Nx(pe(0,&v));PSH(x,c-']'&&y==GAP?au:y);P(y==GAP&&c==')',ep(x))B(*s-';'&&*s-10)B(c==10&&*s==10)s++)
  P(c==10&&!*s,x)P(*s-c,ep(x))s++;x)
-Z A pk_(S*p,C c)_(s0=s=*p;A x=pb(GAP,c);*p=s;P(x,xn==2?las(x):x)eD(s0,SL(s0),s-s0);eQ(s0,SL(s0),s-s0);0)                  //parse either a group of lines (c='\n') or till '\0' (c='\0')
+Z A pk_(S*p,C c)_(s0=s=*p;ppe=0;A x=pb(GAP,c);*p=s;P(x,xn==2?las(x):x)eD(s0,SL(s0),s-s0);eQ(s0,SL(s0),s-s0);0)                  //parse either a group of lines (c='\n') or till '\0' (c='\0')
 A pk(S*p,C c)_(P(!ray_rc_sync,pk_(p,c))plk(1);A x=pk_(p,c);plk(0);x)                               //pk_ under the peach parse lock (m.c plk)
 // "D"$ "T"$ "P"$ (issue #62): the text as the literal reader reads it, its fields checked as there, else 'parse (they rolled
 // over, and "D"$"abc" made a date of a function's address). A time also takes a sign and one to three fields ("10", "10:00"),

@@ -1366,6 +1366,8 @@ t[`keyedUpsertNew;(kL,([k:5 5]v:1 2);kL,([k:2 5 5]v:7 8 9);kL,([k:3 3]v:1 2));((
 / the key and value columns go by name; columns that differ are 'domain (q: 'mismatch), a dict 'type (q: 'type or 'length)
 t[`keyedUpsertByName;({k:([k:1 2]v:3 4;w:`a`b);k,([k:2 3]w:`z`y;v:9 9)}[];kM,([b:`x`z;a:1 3]v:7 8));(([k:1 2 3]v:3 9 9;w:`a`z`y);([a:1 2 3;b:`x`y`z]v:7 6 8))]
 t[`keyedUpsertUnkeyed;{*"\n"\.[.:;,x;{x}]}'("kL,([])";"([]),kL";"kL,0#([]a:1 2)";"kL,([]a:1 2)";"([]k:4 5;v:1 2),kL";"(0#kL),([]k:1 2;v:3 4)");6#,"'type"]   / a keyed table and an unkeyed one, either way, empty or not: 'type, as q
+t[`keyedJoinEmpty;(kL,();(),kL;(0#kL),();(),0#kL;kL,0#,1 2;{d:(+(,`a)!,1 2)!3 4;(d,();(),d)}[]);(kL;kL;0#kL;0#kL;kL;2#,(+(,`a)!,1 2)!3 4)]   / () is no rows: a keyed table joined to it, either way, is the keyed table, as q (and a dict keyed by a table)
+t[`keyedJoinTypedEmpty;{$[`C~@r:.[.:;,x;{x}];*"\n"\r;""]}'("kL,!0";"kL,\"\"";"kL,0#`";"(!0),kL";"\"\",kL";"(!0),(+(,`a)!,1 2)!3 4");6#,"'type"]   / a typed empty list: 'type, as q
 / a dict whose keys are a table and values a list stays 'nyi in an amend at keys and in , (it was not a keyed table)
 t[`keyedListValues;{*"\n"\.[.:;,x;{x}]}'(("dL:(+(,`a)!,1 2)!3 4;",)'("dL[,1]:9";"dL[,3]:9";"@[dL;,1;:;9]";"dL,(+(,`a)!,,3)!,5";"dL,(+(,`a)!,,3)!5"),("kL,(+(,`k)!,,3)!,5";"{d:(+(,`a)!,1 2)!3 4;d[,1]:9;d}[]"));7#,"'nyi"]
 t[`keyedUpsertErr;{*"\n"\.[.:;,x;{x}]}'("kL,`k`v!4 40";"kL,(,`v)!,5";"kL,([k:,3]w:,1)";"kL,([j:,3]v:,1)");("'type";"'type";"'domain";"'domain")]
@@ -1422,7 +1424,7 @@ t[`jsonMonadBack;`j?`j@(-:);"-:"]
 t[`parenEmptyItem;{*"\n"\.[{`k@. x};,x;{x}]}'("(1;;2)";"(;)";"(1;)";"(;1)";"(;;)";"(1;(;))";"{(;x)}3";"(1;\n2)";"( )");("(1;::;2)";"(::;::)";"(1;::)";"(::;1)";"(::;::;::)";"(1;(::;::))";"(::;3)";"(1;::;2)";"()")]
 t[`parenEmptyKept;{*"\n"\.[{`k@. x};,x;{x}]}'("()";"(1;2)";"{x+y}[1;]2";"[1;;2]";"(1;2";"(1;;2");("()";"1 2";,"3";,"2";"'parse";"'parse")]
 
-hexpect[897]
+hexpect[899]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

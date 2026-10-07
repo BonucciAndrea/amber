@@ -79,6 +79,11 @@ t[`csvxQ15;`csvx'(CQ1;CQ2;CQ3;CQ4);1 1 1 1]
 Z0:`c$0
 CQ8:CQ[`q8;"a,b\n1,2\n3,4",3#Z0];CQ9:CQ[`q9;"a,b\n1,2\n3,4\n",3#Z0];CQ10:CQ[`q10;"a,b\n1,2\n",Z0,"\n3,4\n"]
 t[`csvrNulEnd;`csvr'(CQ8;CQ9;CQ10);(+`a`b!(1 3;`$(,"2";,"4"));+`a`b!(`$(,"1";,"3";"");2 4 0N);+`a`b!(`$(,"1";"";,"3");2 0N 4))]
+/ a whole number past 64 bits is no long: it read as 0W (or 0N) in a long column, and now its column is floats, as
+/ strtod reads it (q's typed reader, told "J", gives 0N); the 64-bit ends stay longs
+CQ5:CQ[`q5;"v\n12345678901234567890\n7\n"];CQ6:CQ[`q6;"v\n-9223372036854775809\n1\n"]
+t[`csvrBigInt;(`csvr CQ5;`csvr CQ6);(+(,`v)!,1.2345678901234567e19 7.0;+(,`v)!,-9.223372036854776e18 1.0)]
+t[`csvrInt64Ends;`csvr CQ[`q7;"v\n9223372036854775807\n-9223372036854775807\n"];+(,`v)!,9223372036854775807 -9223372036854775807]
 
 / ---- values, splayed tables, the sym file ------------------------------------
 dt:([]sym:`a`b`c`a;px:1 2 3 4.0;n:10 20 30 40;s:("ab";"c";"";"def"))
@@ -184,6 +189,6 @@ B:T,"/bb";(`$":",B)set 5000#"abc";$[LK;wo[B;get`$":",B];B 1:5000#"abc"]
 t[`writeOwnGet;1:B;5000#"abc"]
 
 rm T
-hexpect[78]
+hexpect[80]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

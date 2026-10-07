@@ -77,6 +77,21 @@
 static int csv_quiet;
 #define CSV_MSG(...) do { if (!csv_quiet) fprintf(stderr, __VA_ARGS__); } while (0)
 
+/* [s,s+n), a whole number strtoll has read whole: is it within 64 bits?
+ * strtoll clamps one past them (0W, or 0N below), and errno says so only on
+ * some libcs (wasm's sets none), so count its digits: blanks, a sign and
+ * leading zeros left off, at most 19, and 19 no more than 2^63-1 (2^63 for
+ * a negative one, which is 0N). */
+static int csv_fits(const char *s, size_t n) {
+    const char *e = s + n;
+    while (s < e && (*s == ' ' || (unsigned)(*s - '\t') < 5)) s++;
+    int neg = s < e && *s == '-';
+    if (s < e && (*s == '-' || *s == '+')) s++;
+    while (s < e && *s == '0') s++;
+    size_t d = (size_t)(e - s);
+    return d < 19 || (d == 19 && memcmp(s, neg ? "9223372036854775808" : "9223372036854775807", 19) <= 0);
+}
+
 /* ======================================================================
  * Reference reader: the 2.2.0 implementation, unchanged apart from names,
  * returning its two halves instead of the table, and #94 Q15's two rules:
@@ -160,12 +175,13 @@ static RefF **ref_grid(char *data, char *end, U *nrows_out, U *ncols_out) {
 
 enum { COL_LONG, COL_FLOAT, COL_SYM };
 
-/* the whole field must be read: a NUL inside it stops strtoll short of its end */
+/* the whole field must be read: a NUL inside it stops strtoll short of its end. A whole number past 64 bits is no
+ * Long (strtoll gave 0W or 0N), so its column reads as Float */
 static int ref_is_long(RefF f, long long *out) {
     if (!f.n) return 1;
     char *end;
     long long v = strtoll(f.s, &end, 10);
-    if (end == f.s || end != f.s + f.n) return 0;
+    if (end == f.s || end != f.s + f.n || !csv_fits(f.s, f.n)) return 0;
     *out = v;
     return 1;
 }
@@ -408,6 +424,27 @@ static const char *fast_long(const char *p, const char *e, L *v, int *negz) {
     return p;
 }
 
+/* [s,t) as [+-]?0*[0-9]{1,19}, at most 19 digits after its leading zeros,
+ * within 64 bits (2^63-1, or 2^63 when negative): the Longs fast_long leaves
+ * to strtoll, 19 digits (nanosecond timestamps, 64-bit ids) or zero-padded.
+ * Out of line, so the short numbers' path stays as it was. *uns for the two
+ * (double) would not turn into strtod's Float: -2^63, 0N's bits, and a
+ * negative zero (strtod's -0.0). */
+__attribute__((noinline))
+static int long19(const char *s, const char *t, L *v, unsigned char *uns) {
+    int neg = s < t && *s == '-';
+    if (s < t && (*s == '-' || *s == '+')) s++;
+    const char *d = s;
+    while (s < t && *s == '0') s++;
+    if (t == d || t - s > 19) return 0;
+    uint64_t w = 0;
+    for (; s < t; s++) { if ((unsigned)(*s - '0') > 9) return 0; w = w * 10 + (unsigned)(*s - '0'); }
+    if (w > ((uint64_t)1 << 63) - 1 + (uint64_t)neg) return 0;
+    *v = neg ? (L)(0 - w) : (L)w;
+    if (neg && (!w || w >> 63)) *uns = 1;
+    return 1;
+}
+
 /* [+-]?digits[.digits][(e|E)[+-]?digits] at p, at most 19 significant
  * digits and a decimal exponent the table covers. Returns the byte after it
  * and the correctly rounded value, or 0 when the string is outside that
@@ -463,7 +500,8 @@ static const char *fast_float(const char *p, const char *e, F *v) {
 }
 
 /* strtoll/strtod over [s,s+n) exactly as the reference calls them: the whole
- * string must be consumed (a NUL in it stops them short). */
+ * string must be consumed (a NUL in it stops them short), and a Long must be
+ * within 64 bits (csv_fits). */
 static int libc_num(const char *s, size_t n, int fl, L *lv, F *fv) {
     char sb[128];
     char *buf = n < sizeof sb ? sb : (char *)malloc(n + 1);
@@ -471,7 +509,7 @@ static int libc_num(const char *s, size_t n, int fl, L *lv, F *fv) {
     memcpy(buf, s, n); buf[n] = 0;
     char *end; int ok;
     if (fl) { double d = strtod(buf, &end); ok = end != buf && end == buf + n; if (ok) *fv = d; }
-    else { long long d = strtoll(buf, &end, 10); ok = end != buf && end == buf + n; if (ok) *lv = (L)d; }
+    else { long long d = strtoll(buf, &end, 10); ok = end != buf && end == buf + n && csv_fits(buf, n); if (ok) *lv = (L)d; }
     if (buf != sb) free(buf);
     return ok;
 }
@@ -481,6 +519,7 @@ static int libc_num(const char *s, size_t n, int fl, L *lv, F *fv) {
 static int cell_long(const char *s, const char *t, L *v, unsigned char *uns) {
     int nz;
     if (fast_long(s, t, v, &nz) == t) { if (nz) *uns = 1; return 1; }
+    if (t - s >= 19 && long19(s, t, v, uns)) return 1;
     if (libc_num(s, (size_t)(t - s), 0, v, 0)) { *uns = 1; return 1; }
     return 0;
 }
@@ -1741,7 +1780,7 @@ static CO char *const st_odd[] = { "", "-", "+", ".", "-.", "e5", "1e", "1e+", "
     "99999999999999999999", "-99999999999999999999", "9223372036854775807", "-9223372036854775808",
     "9223372036854775808", "0x1p3", "0X10", "nan", "NaN", "inf", "-Infinity", " 5", "5 ", "\t7", "1,5", "1_0",
     "00000000000000000000000001", "0.000000000000000000000000001", "1e22", "1e23", "9007199254740993e22",
-    "12345678901234567890e-5", "0.1", "0.3", "2.2250738585072011e-308", "2.2250738585072014e-308", "+.5", "5." };
+    "12345678901234567890e-5", "-0000000000000000000", "0.1", "0.3", "2.2250738585072011e-308", "2.2250738585072014e-308", "+.5", "5." };
 #define ST_NODD (sizeof st_odd / sizeof *st_odd)
 
 /* A random numeric-looking string, biased to the shapes that matter: the
@@ -1754,7 +1793,7 @@ static size_t st_number(char *o) {
     size_t n = 0;
     U sg = st_below(4);
     if (sg == 1) o[n++] = '-'; else if (sg == 2) o[n++] = '+';
-    U lead = st_below(5) == 0 ? st_below(4) : 0;
+    U lead = st_below(5) == 0 ? (st_below(4) ? st_below(4) : st_below(24)) : 0;
     for (U i = 0; i < lead; i++) o[n++] = '0';
     U di = st_below(5) == 0 ? st_below(24) : st_below(10);
     for (U i = 0; i < di; i++) o[n++] = (char)('0' + st_below(10));
@@ -1786,7 +1825,7 @@ static int st_numbers(long count) {
         s[n] = 0;
         if (!n) continue;
         char *end;
-        long long rl = strtoll(s, &end, 10); int okl = end != s && !*end;
+        long long rl = strtoll(s, &end, 10); int okl = end != s && !*end && csv_fits(s, n);
         double rd = strtod(s, &end); int okd = end != s && !*end;
         L lv = 0; F fv = 0; unsigned char uns = 0;
         int ml = cell_long(s, s + n, &lv, &uns), mf = cell_float(s, s + n, &fv);
@@ -1826,6 +1865,14 @@ static CO StFix st_fix[] = {
     FX("f\n1e-320\n4.9e-324\n1e308\n1e309\n-1e309\n"),
     FX("i\n9007199254740993\n9223372036854775807\n"),
     FX("i\n99999999999999999999\n-99999999999999999999\n"),
+    FX("i\n9223372036854775808\n1\n"),       /* past 64 bits: Float */
+    FX("i\n1\n-9223372036854775809\n2\n"),
+    FX("i\n12345678901234567890\nx\n"),
+    FX("i\n1234567890123456789\n-9223372036854775808\n0009223372036854775807\n"),   /* 19 digits; -2^63 (0N) */
+    FX("i\n0000000000000000000123\n-0000000000000000000000\n-0009223372036854775808\n1.5\n"),   /* zero-padded */
+    FX("i\n-9223372036854775808\n1.5\n"),
+    FX("i\n-0000000000000000000\n1.5\n"),     /* 19 digits of -0: strtod's -0.0 */
+    FX("i\n9223372036854775807\n-9223372036854775807\n-0\n"),
     FX("i,f\n+5,+1.5\n-7,-.5\n"),
     FX("a,b\n,\n,\n"),                    /* all-empty columns */
     FX("m\n1\n2\n3.5\n4\n"),              /* int then float */

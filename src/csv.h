@@ -27,8 +27,9 @@
  *     ends one
  *   - the first row is the header (column names)
  *   - a column is typed Long if every non-empty cell parses as a whole
- *     number, Float if every non-empty cell parses as a number (with a
- *     decimal point/exponent, or the Long check failed), otherwise Symbol
+ *     number in 64 bits, Float if every non-empty cell parses as a number
+ *     (with a decimal point/exponent, past 64 bits, or the Long check
+ *     failed), otherwise Symbol
  *   - an empty cell becomes that column's null: 0N (Long), 0n (Float), or
  *     the empty symbol `` ` `` (Symbol)
  *   - rows longer/shorter than the header are clipped/padded with nulls

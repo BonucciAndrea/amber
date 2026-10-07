@@ -121,6 +121,11 @@ t[`pathNulStdin;`x(("/bin/sh";"-c";"exec \"$0\" 2>/dev/null";`argv 0);"LD:0\n\\l
 / x 0: y and x 1: y whose path does not open ('domain for a NUL, 'io for a missing directory) free y: \m reported it
 / (in a process of its own, as \m reports the running script's own text)
 t[`pathNulFree;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"y:\"abc\";z:(\"ab\";\"cd\");.[{\"ab\\000cd\" 1: x};,y;{x}];.[{\"ab\\000cd\" 0: x};,z;{x}];.[{\"/nonexistent/dir/f\" 1: x};,y;{x}];.[{\"/nonexistent/dir/f\" 0: x};,z;{x}];\n\\m\n");""]
+/ q's file handles: `:path names the file path to 0: and 1:, as to set and get (taken for host:port, it was 'domain)
+FH:`$":",T,"/io/fh";x:ER[{FH 0:x};,("ab";,"c")]
+t[`fileHandleRead;(ER[{0:x};,T,"/io/fh"];ER[{0:x};,FH];ER[{1:x};,FH];ER[{1:x};,(FH;1 2)]);(("ab";,"c");("ab";,"c");"ab\nc\n";"b\n")]
+x:ER[{FH 1:x};,"xy"]
+t[`fileHandleWrite;ER[{1:x};,T,"/io/fh"];"xy"]
 
 / ---- a partitioned database ------------------------------------------------
 trade:([]sym:`ibm`msft`ibm`aapl;px:10 20 11 30.0;sz:100 200 300 400)
@@ -185,6 +190,6 @@ B:T,"/bb";(`$":",B)set 5000#"abc";$[LK;wo[B;get`$":",B];B 1:5000#"abc"]
 t[`writeOwnGet;1:B;5000#"abc"]
 
 rm T
-hexpect[78]
+hexpect[80]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

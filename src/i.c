@@ -48,8 +48,10 @@
 Z U addr(S*p)_(S s=*p;P(!*s,0x0100007f)UC v[4];F(4,I(i,P(*s-'.',ed0())s++)v[i]=pu(&s);P(v[i]>255,ed0()))*p=s;*(U*)v)
 Z I skt(U h,UH p)_(I f=socket(AF_INET,SOCK_STREAM,0);P(f<0,eo0())I v=setsockopt(f,IPPROTO_TCP,TCP_NODELAY,(I[]){1},4);P(v<0,eo0())
 ST sockaddr_in a;a.sin_family=AF_INET;a.sin_addr.s_addr=h;a.sin_port=(UH)(p<<8|p>>8);P(connect(f,(ST sockaddr*)&a,SZ a)<0,eo0())f)
-Z I osf(S s,L fl)_(P(!strchr(s,':'),I f=open(s,fl,0666);P(f<3/*fbsd*/,eo0())f)U h=addr(&s);P(*s-':',ed0())s++;W p=pu(&s);P(*s,ed0())skt(h,p))
+Z I ofl(S s,L fl)_(I f=open(s,fl,0666);P(f<3/*fbsd*/,eo0())f)                                                              // open a file
+Z I osf(S s,L fl)_(P(!strchr(s,':'),ofl(s,fl))U h=addr(&s);P(*s-':',ed0())s++;W p=pu(&s);P(*s,ed0())skt(h,p))
 Z I o(A x/*1*/,I fl)_(Xz(gl(x))Xs(xv?osf(su(xv),fl):1)XC(P(pnul(x),mr(x);ed0())x=str0(x);I v;Mx(v=osf(xV,fl));v)et(x))   // a path holding a NUL is 'domain (#94 Q16; open() took the name before it)
+Z I of(A x/*1*/,I fl)_(P(xts&&xv&&*su(xv)==':',ofl(su(xv)+1,fl))o(x,fl))   // 0: and 1:: q's file handle `:path names the file path, as set and get (osf took it for host:port); < keeps `:port
 Z I fm(I f)_(ST stat s;fstat(f,&s)<0?0:s.st_mode)                                                                                                                 // get file mode
 Z A frd(I f,N i,N n)_(P(i||n+1,en0())DIR*a=fdopendir(f);P(!a,ei0())A x=emp(tC);ST dirent*e;W((e=readdir(a)),S s=e->d_name;x=apc(cts(x,s,SL(s)),10))closedir(a);x) // read dir
 Z A frS(I f,N n)_(C b[1024];A x=emp(tC);W(n,I k=read(f,b,MIN(SZ b,n));P(k<0,eo(x))n-=k;x=cts(x,b,k);P(k-SZ b,x))x)                                                // read stream (only length)
@@ -58,12 +60,12 @@ Z A frs(I f,N i,N n)_(I(i&&lseek(f,i,SEEK_CUR)<0,mr(N(frS(f,i))))frS(f,n))      
 // read as "" and a bigger one as its size mod 2^32. A negative offset is 'io (one a page below 2^32 mapped past the end:
 // SIGBUS on Linux), and 2^32 bytes or more 'limit, as a vector's count is 32 bits
 Z A frm(I f,N i,N n)_(L m=lseek(f,0,SEEK_END);P(m<0||(L)i<0,eo0())n=MIN(n,(N)MAX(m-(L)i,0));P(n>>32,ez0())n?mf(f,i,n):emp(tC))
-Z A fr(A x/*1*/,N i,N n)_(Xz(frs(gl(x),i,n))I f=N(o(x,O_RDONLY));P(f<3,frs(f,i,n))I m=fm(f);x=(S_ISDIR(m)?frd:S_ISREG(m)?frm:frs)(f,i,n);close(f);x)              // read
+Z A fr(A x/*1*/,N i,N n)_(Xz(frs(gl(x),i,n))I f=N(of(x,O_RDONLY));P(f<3,frs(f,i,n))I m=fm(f);x=(S_ISDIR(m)?frd:S_ISREG(m)?frm:frs)(f,i,n);close(f);x)              // read
 void am_ln_sb_capture(const char*,unsigned long);// ln.c: tee stdout into the status-bar scroll-back ring
 Z A fws(I f,S s,N n)_(I(f==1,am_ln_sb_capture(s,n))W(n>0,L k=write(f,s,n);P(k<0,eo0())P(!k,au)s+=k;n-=k)au)                                                         // write stream (fd 1 -> also scroll-back)
 Z A fwm(I f,S s,N n)_(N o=0;W(o<n,L k=pwrite(f,s+o,MIN(n-o,(N)1<<30),(off_t)o);I(k<0&&errno==EINTR,continue)P(k<=0,o=ftruncate(f,0);eo0())o+=k)P(ftruncate(f,n),eo0())au)   // write a file from its start, a GiB a call (macOS refuses more than INT_MAX), then cut it to n
 // not through a shared map, whose copy was SIGBUS when the disk was full: a failed write is 'io and leaves the file empty. No O_TRUNC: y can map this file (f 1: 1:f)
-Z X2(fw,Ril(I f=gl_(x);My(x=(f<3||!S_ISREG(fm(f))?fws:fwm)(f,yV,yn))x)R_(I f=N(o(xR,O_RDWR|O_CREAT),mr(y));A z=v1c(ai(f),y);I(f>2,close(f))z))                   // write
+Z X2(fw,Ril(I f=gl_(x);My(x=(f<3||!S_ISREG(fm(f))?fws:fwm)(f,yV,yn))x)R_(I f=N(of(xR,O_RDWR|O_CREAT),mr(y));A z=v1c(ai(f),y);I(f>2,close(f))z))                   // write
 ZN A dle()_(C*e=dlerror();I(e,os(e);os("\n"))eo0())
 A1(opn,Xz(x)ai(N(o(x,O_RDWR|O_CREAT))))                                                                                     // <s
 A cls(L n)_(P(n!=(I)n||n>=0&&n<3,ed0())P(close(n)<0,eo0())au)   /*Digest #6: stdin/out/err stay open (an error with no stderr to report it looped), and a bad close is an error; an int past 32 bits (0N) is no descriptor, and close() would take its low half*/                                                                                                    // >i

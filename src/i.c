@@ -120,9 +120,9 @@ A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);
  I(_t(dat)==tm,A v=kv(&dat);A r=peachC(aA2(fn,v));P(!r,mr(dat);x(0))return x(am(dat,r));)
  U n=_N(dat);I nw=peachNW();if(nw>64)nw=64;
 #if defined(wasm)
- {A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}                 // no threads in the wasm sandbox
+ {A r=_tt(dat)?_1(fn,_R(dat)):eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}   // no threads in the wasm sandbox
 #else
- if(nw<2||n<2||ray_rc_sync){A r=eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}
+ if(nw<2||n<2||ray_rc_sync){A r=_tt(dat)?_1(fn,_R(dat)):eachR(fn,dat,0,n);mr(fn);mr(dat);return x(r);}   // an atom (n is 1): f y, as f'y
  // Warm the lazily-initialised float format tables (src/s.c I5/P5) on THIS parent thread,
  // so no worker is ever the first to touch them and race on their one-time build.
  {C wb[64];L wd;F wv=1.5;MC(&wd,&wv,8);sf(wb,wd);}

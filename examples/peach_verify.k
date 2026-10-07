@@ -105,6 +105,15 @@ same["tables"        ;{+`v!,x+!3}        ;!5]
 same["mixed widths"  ;{$[2!x;x;0.5*x]}   ;!12]
 same["over symbols"  ;{$x}               ;`a`b`c`d`e`f]
 same["single item"   ;{x*2}              ;,7]
+/ an atom y is f y, as f'y (not a one-item list); a dict y maps its values, a table y its rows
+same["int atom"      ;{x*2}              ;7]
+same["atom, list out";{x,x}              ;5]
+same["char atom"     ;{x}                ;"a"]
+same["symbol atom"   ;{x}                ;`s]
+same["float atom"    ;{x}                ;2.5]
+same["null atom"     ;{x}                ;0N]
+same["dict y"        ;{x*2}              ;`a`b`c!1 2 3]
+same["table y"       ;{x}                ;+`a`b!(1 2 3;4 5 6)]
 
 / ---- 3. large peach: correctness and flat memory ---------------------------
 sec"3. large peach"

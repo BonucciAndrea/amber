@@ -104,6 +104,24 @@ t[`getText;(ge"/old/run";ge"/old/tt";ge"/old/nope";.[.:;,`zzrun;{"unset"}]);("'f
 x:dget T,"/old/run";y:dload T,"/old/tt"
 t[`getTextDget;(x;y);(3;+(,`a)!,5 6)]
 
+/ ---- 0: and 1: of a path ---------------------------------------------------------
+ER:{[f;a].[f;a;{*"\n"\x}]};N0:`c$0;x:mkd T,"/io";P0:T,"/io/ab";P0 1:"kept"
+/ #94 Q16: a path holding a NUL is 'domain (open() took the name before it: "ab\0cd" 1: y wrote ab)
+t[`pathNul;(1:P0;ER[{1:x};,P0,N0,"zz"];ER[{0:x};,P0,N0];ER[{x 1:"nul"};,P0,N0,"cd"]);("kept";"'domain";"'domain";"'domain")]   / items run from the right
+t[`pathNulVerbs;(1:P0;ER[{`csvr x};,P0,N0];ER[{`fsz x};,P0,N0];ER[{`ldir x};,T,N0];ER[{`rcol x};,P0,N0];ER[{`wcol(x;1 2;-1;0)};,P0,N0,"cd"];ER[{`x(x;"")};,("/bin/echo";"a",N0)]);(,"kept"),6#,"'domain"]
+/ . of a string reads it as a C string, so \l and \cd (and a shell command) of a path holding a NUL took the name before it
+/ (that line is refused before it runs, as the lines before it run; a \ that starts a line inside a string is no command,
+/ and code holding a NUL is cut there, as before)
+LD:0;(T,"/io/ld.k")0:,"LD:1"
+t[`pathNulText;(LD;ER[.:;,"\\l ",T,"/io/ld.k",N0,"zz"];ER[.:;,"LD:2\n\\l ",T,"/io/ld.k",N0];ER[.:;,"\\cd ",T,N0];ER[.:;,"\"a\n\\tb\"",N0]);(2;"'domain";"'domain";"'domain";"a\n\tb")]
+/ a script's \l and \cd lines and a line on stdin reach the parser the same way: the script stops with 'domain at that line
+SA:0;LD:0;(T,"/io/s1.k")0:("SA:1";"\\l ",T,"/io/ld.k",N0,"zz");(T,"/io/s2.k")0:("SA:2";"\\cd ",T,N0,"zz")
+t[`pathNulScript;(SA;LD;ER[.:;,"\\l ",T,"/io/s1.k"];ER[.:;,"\\l ",T,"/io/s2.k"]);(1;0;"";"")]   / a script's error is printed where it stops, so the trap sees ""
+t[`pathNulStdin;`x(("/bin/sh";"-c";"exec \"$0\" 2>/dev/null";`argv 0);"LD:0\n\\l ",T,"/io/ld.k",N0,"zz\nLD\n");"0\n"]
+/ x 0: y and x 1: y whose path does not open ('domain for a NUL, 'io for a missing directory) free y: \m reported it
+/ (in a process of its own, as \m reports the running script's own text)
+t[`pathNulFree;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"y:\"abc\";z:(\"ab\";\"cd\");.[{\"ab\\000cd\" 1: x};,y;{x}];.[{\"ab\\000cd\" 0: x};,z;{x}];.[{\"/nonexistent/dir/f\" 1: x};,y;{x}];.[{\"/nonexistent/dir/f\" 0: x};,z;{x}];\n\\m\n");""]
+
 / ---- a partitioned database ------------------------------------------------
 trade:([]sym:`ibm`msft`ibm`aapl;px:10 20 11 30.0;sz:100 200 300 400)
 x:{[d]Q.dpft[T,"/hdb";d;`sym;`trade]}'2026.01.02 2026.01.03 2026.01.05
@@ -167,6 +185,6 @@ B:T,"/bb";(`$":",B)set 5000#"abc";$[LK;wo[B;get`$":",B];B 1:5000#"abc"]
 t[`writeOwnGet;1:B;5000#"abc"]
 
 rm T
-hexpect[72]
+hexpect[78]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

@@ -516,7 +516,7 @@ Z A bsl1(S s)_(P(bdir(s),K1("{loaddb x;}",aCz(s)))I f=open(s,0,0);A x=u1c(ai(f))
   // The qrwf lookup is deferred inside {qrwf x} so `.`'s handler also catches
   // the undefined-variable error during bootstrap (before qsql.k defines qrwf);
   // `diag is toggled off around the probe so that recovered error never prints.
-  A rw=K1("{d:`diag 0;r:.[{qrwf x};,x;{`ERR}];`diag d;r}",aCz(p));A r=_t(rw)==tC?(rw=str0(rw),evs(_C(rw),1)):evs(p,1);mr(rw);x(r))
+  A rw=K1("{d:`diag 0;r:.[{qrwf x};,x;{`ERR}];`diag d;r}",aCm(p,e));A r=_t(rw)==tC?(rw=str0(rw),evn(_C(rw),_C(rw)+_n(rw),1)):evn(p,e,1);mr(rw);x(r))
 // a script that loads itself (or two that load each other) nested evs and bsl on the C stack with no limit and
 // crashed it; the VM counts its own depth (run), but a \l line does not go through it. 'stack after 512, as q's
 // 'stack after 500 (per thread, as run's count)
@@ -534,7 +534,10 @@ Z A bsast(S s)_(ast_cmd(s))
 Z A bstrc(S s)_(trace_cmd(s))
 // \disasm <expr>: compile-only bytecode disassembler (vm.h). Never runs `s`.
 Z A bsvmd(S s)_(vm_disasm_cmd(s))
-Z A bs_(S*p)_(C b[256];S s=*p,e=strchrnul(s,10);P(e-s+1>=L(b),ez0())MC(b,s,e-s);b[e-s]=0;*p=e+!!*e;C c=*b,d=b[1];P(c=='c'&&d=='d'&&(!b[2]||b[2]==32),bscd(b+2+(b[2]==32)))
+// t: the text's end, where it is known (. of a string, \l of a script, a line of the REPL; evn), else 0. A system command
+// (\l, \cd, a shell command) whose line stops at a NUL before it would take the name before the NUL for its path
+// ('domain, #94 Q16: ."\\l ab\000zz" loaded ab), so the line is refused before it runs; code is cut there as before
+Z A bs_(S*p,S t)_(C b[256];S s=*p,e=strchrnul(s,10);P(e<t&&!*e,ed0())P(e-s+1>=L(b),ez0())MC(b,s,e-s);b[e-s]=0;*p=e+!!*e;C c=*b,d=b[1];P(c=='c'&&d=='d'&&(!b[2]||b[2]==32),bscd(b+2+(b[2]==32)))
  P(!strncmp(b,"trace",5)&&(!b[5]||b[5]==32),bstrc(b+5+(b[5]==32)))
  P(!strncmp(b,"disasm",6)&&(!b[6]||b[6]==32),bsvmd(b+6+(b[6]==32)))
  P(!strncmp(b,"ast",3)&&(!b[3]||b[3]==32),bsast(b+3+(b[3]==32)))
@@ -549,7 +552,7 @@ Z A bs_(S*p)_(C b[256];S s=*p,e=strchrnul(s,10);P(e-s+1>=L(b),ez0())MC(b,s,e-s);
  I(am_ext_bs,A amrv=am_ext_bs(b);P(amrv,amrv))
  K1("0x0a\\`x(,,\"/bin/sh\"),,:",aCz(b)))
 
-Z A evs1(S*p)_(S s=*p;P(*s=='\\',++*p;bs_(p))A x=pk((V*)p,10);N(x);x=N(cpl(aCm(s,*p),x,0));x(run(x,0,0)))
+Z A evs1(S*p,S t)_(S s=*p;P(*s=='\\',++*p;bs_(p,t))A x=pk((V*)p,10);N(x);x=N(cpl(aCm(s,*p),x,0));x(run(x,0,0)))
 // arena: rewind the HFT scratchpad at the end of EVERY statement, on every
 // exit -- including the library-mode early return that hands back the final
 // statement's value. That early return (`P(!*s,x)`) used to skip the rewind
@@ -560,16 +563,17 @@ Z A evs1(S*p)_(S s=*p;P(*s=='\\',++*p;bs_(p))A x=pk((V*)p,10);N(x);x=N(cpl(aCm(s
 // `. "expr"` reaches it through val() in src/a.c, and a full reset there would
 // stomp scratch the OUTER expression still has live. A mark frees exactly what
 // this statement took and nothing older, and marks nest LIFO by construction.
-A evs(S s,B r)_(W(*s,ArenaMark am_=arena_mark();A x=evs1(&s);P(!x,I(r,s=strchrnul(s,10);s+=!!*s;epr(0))arena_release(am_);0)I(r,x(out(x)))E(P(!*s,arena_release(am_);x)x(0))mc();arena_release(am_))au)
+A evn(S s,S t,B r)_(W(*s,ArenaMark am_=arena_mark();A x=evs1(&s,t);P(!x,I(r,s=strchrnul(s,10);s+=!!*s;epr(0))arena_release(am_);0)I(r,x(out(x)))E(P(!*s,arena_release(am_);x)x(0))mc();arena_release(am_))au)
+A evs(S s,B r)_(evn(s,0,r))   // text whose end is not known: s is cut at its first NUL
 // amber 1.9.5: the bare REPL (./amber with no script) reads through the native
 // line editor (src/ln.c) -- editing, history and Tab completion -- and falls
 // back to the historical raw read(2) only when stdin is not a terminal.
-B rep()_(I(am_ln_interactive(),N x=0;C*p=am_repl_getline("",&x);P(!p,0)evs(p,1);free(p);1)
+B rep()_(I(am_ln_interactive(),N x=0;C*p=am_repl_getline("",&x);P(!p,0)evn(p,p+x,1);free(p);1)
  Z C*b;Z W m,k;C*q;//b holds m bytes; its first k are an incomplete line, kept until its newline is read
  I(!b,P(!(b=malloc(m=256)),die("OOM")))
  W(1,I(k==m,C*t=realloc(b,2*m);P(!t,die("OOM"))b=t;m*=2)//a line longer than the buffer: grow it
      L n=read(0,b+k,m-k);P(n<=0,0)q=memchr(b+k,10,n);k+=n;
-     P(q,C*p=b;W(q,*q=0;evs(p,1);p=q+1;q=memchr(p,10,b+k-p))k=b+k-p;memmove(b,p,k);1))1)
+     P(q,C*p=b;W(q,*q=0;evn(p,q,1);p=q+1;q=memchr(p,10,b+k-p))k=b+k-p;memmove(b,p,k);1))1)
 V repl(){W(rep())}
 
 A cns,cn[tn];Z A ce[tn];S*argv,*env;

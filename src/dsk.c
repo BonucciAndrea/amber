@@ -51,7 +51,8 @@ typedef struct{C mg[4];UC ver,kind,typ,att;W cnt,nb,dom;}DHdr;   //32 bytes, the
 Z B dflat(UC t){return t==tB||t==tG||t==tH||t==tI||t==tL||t==tF||t==tC;}
 Z W dbytes(UC t,W n){return ((n<<Tw[t])+7)>>3;}
 // a path out of a char vector, NUL-terminated; 0 when it does not fit
-Z B dpath(A p,C*b,N cap){P(_t(p)!=tC||!_n(p)||_n(p)>=cap,0)MC(b,_V(p),_n(p));b[_n(p)]=0;return 1;}
+Z B dpath(A p,C*b,N cap){P(_t(p)!=tC||!_n(p)||_n(p)>=cap||pnul(p),0)MC(b,_V(p),_n(p));b[_n(p)]=0;return 1;}
+Z A dpe(A p){return pnul(p)?ed0():et0();}   // why dpath refused p: a NUL in it is 'domain (#94 Q16), else 'type
 // mkdir -p of every directory above the file
 Z I dmkp(C*p){for(C*s=p+1;*s;s++)if(*s=='/'){*s=0;I r=mkdir(p,0777);*s='/';if(r&&errno!=EEXIST)return -1;}return 0;}
 Z I dwall(I f,CO V*b,W n){CO C*p=b;while(n){W k0=n>((W)1<<30)?((W)1<<30):n;ssize_t k=write(f,p,(N)k0);if(k<0&&errno==EINTR)continue;if(k<=0)return -1;p+=k;n-=(W)k;}return 0;}
@@ -68,7 +69,7 @@ Z I drall(I f,V*b,W n,W off){C*p=b;while(n){W k0=n>((W)1<<30)?((W)1<<30):n;ssize
 Z B dwt(A x,C*path,C*tmp){
  P(_t(x)!=tA||_n(x)!=4,et0(),0)
  A*a=_A(x);A pth=a[0],v=a[1];L dn=gl_(a[2]),atr=gl_(a[3]);
- P(!dpath(pth,path,4096-8),et0(),0)
+ P(!dpath(pth,path,4096-8),dpe(pth),0)
  UC t=_t(v),kind,typ=t,att=0;W cnt,nb;CO V*src;A body=0;
  if(dn>=0){P(_tP(v)||!(t==tG||t==tH||t==tI||t==tL),et0(),0)
   if(t!=tI){body=cI(_R(v));P(!body,0)v=body;}   //find gives the narrowest int that holds the indexes
@@ -114,7 +115,7 @@ Z A dload(I f,UC t,W n,W nb){
 A rcolT(A x){
  A pth=x,dom=0;
  if(_t(x)==tA&&_n(x)==2){pth=_A(x)[0];dom=_A(x)[1];P(_t(dom)!=tS,x(et0()))}
- C path[4096];P(!dpath(pth,path,SZ path),x(et0()))
+ C path[4096];P(!dpath(pth,path,SZ path),x(dpe(pth)))
  I f=open(path,O_RDONLY);P(f<0,x(eo0()))
  struct stat st;DHdr h;I e=fstat(f,&st);
  // a file that opens but is too short for the header is damage, 'format (#94 Q14); 'io is a failed open, stat or
@@ -151,14 +152,14 @@ A rcolT(A x){
 
 // `fsz path: the size of a file, -1 when there is nothing there, -2 for a directory. Other failures are
 // 'io: hdb.k must never take a sym file it could not read for a missing one and write a new one over it.
-A fszT(A x){C path[4096];P(!dpath(x,path,SZ path),x(et0()))struct stat st;
+A fszT(A x){C path[4096];P(!dpath(x,path,SZ path),x(dpe(x)))struct stat st;
  if(stat(path,&st))return x(errno==ENOENT||errno==ENOTDIR?al(-1):eo0());
  return x(al(S_ISDIR(st.st_mode)?-2:(L)st.st_size));}
 
 // `ldir path: (directories;files) in a directory, each a list of names in byte order, . and .. left out
 #include<dirent.h>
 Z I dcmp(CO V*a,CO V*b){return strcmp(*(C*CO*)a,*(C*CO*)b);}
-A ldirT(A x){C path[4096];P(!dpath(x,path,SZ path-260),x(et0()))DIR*d=opendir(path);P(!d,x(eo0()))
+A ldirT(A x){C path[4096];P(!dpath(x,path,SZ path-260),x(dpe(x)))DIR*d=opendir(path);P(!d,x(eo0()))
  N cap=64,n=0;C**nm=malloc(cap*SZ(C*));B ok=!!nm;struct dirent*e;
  while(ok&&(e=readdir(d))){if(!strcmp(e->d_name,".")||!strcmp(e->d_name,".."))continue;
   if(n==cap){C**q=realloc(nm,2*cap*SZ(C*));if(!q){ok=0;break;}nm=q;cap*=2;}

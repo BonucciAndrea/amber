@@ -573,9 +573,9 @@ A1(vmdT,x(al((L)vm_selftest())))
 // CSV loader builtin (`csvr): x is a char vector (file path); returns a typed
 // table via csv_read() (csv.{h,c}). x itself is a string, not the arena/file --
 // csv_read() re-opens the path with a plain C FILE*, so x is only consumed here.
-X1(csvrT,RC(C buf[4096];P(xn>=SZ buf,x(ez0()))U n=xn;MC(buf,xC,n);buf[n]=0;x(csv_read(buf)))R_(et(x)))//a longer path used to be truncated silently
+X1(csvrT,RC(C buf[4096];P(xn>=SZ buf,x(ez0()))P(pnul(x),x(ed0()))U n=xn;MC(buf,xC,n);buf[n]=0;x(csv_read(buf)))R_(et(x)))//a longer path used to be truncated silently
 // `csvx "path": the new reader against the 2.2.0 reference reader, bit for bit (csv.h).
-X1(csvxT,RC(C buf[1024];U n=MIN(xn,SZ buf-1);MC(buf,xC,n);buf[n]=0;x(al((L)csv_check(buf))))R_(et(x)))
+X1(csvxT,RC(P(pnul(x),x(ed0()))C buf[1024];U n=MIN(xn,SZ buf-1);MC(buf,xC,n);buf[n]=0;x(al((L)csv_check(buf))))R_(et(x)))
 // CSV parser self-test builtin (`csv0): writes a small known CSV (mixed long/
 // float/symbol columns, an embedded comma inside a quoted field, an escaped
 // quote, and one empty cell) to a temp file, parses it with csv_read(), and
@@ -1010,7 +1010,7 @@ AX(_8,/*01..1*/Q(n)P(n==1,x1(*a))P(n==2&&!xtp,A y=*a;y(x2(y,a[1])))P(!xtt,i8(x,a
  X(Ro(run(x,a,n))Rp(I m=xn-1,j=0;Ab8;F(m,b[i]=xA[i+1]==GAP&&j<n?a[j++]:_R(xA[i+1]))I l=MAX(0,n-j);P(l+m>8,mrn(m,b);er8(a+j,n-j))MC(b+m,a+j,8*l);_8(xx,b,m+l))
    Rq(_1(xx,N(_8(xy,a,n))))Rr(w8(xE,xx,a,n))Rv(x=v8[xv](a,n);mrn(n-1,a+1);x)Rx(ext(x,a,n))R_(et8(a,n)))0)
 A1(jS,cS(jc('.',str(x))))//join symbols with "."
-X1(val,RA(P(!xn,x)P(xn==1,fir(x))P(xn>9,ez(x))x=mut(x);A y=_8(xx,&xy,xn-1);AN(1,x);x(y))RmM(x(_R(xy)))RE(gZ(x))RC(x=str0(x);x(evs(xV,0)))Rc(val(enl(x)))RsS(gg(x))
+X1(val,RA(P(!xn,x)P(xn==1,fir(x))P(xn>9,ez(x))x=mut(x);A y=_8(xx,&xy,xn-1);AN(1,x);x(y))RmM(x(_R(xy)))RE(gZ(x))RC(x=str0(x);x(evn(xV,xV+xn,0)))Rc(val(enl(x)))RsS(gg(x))
  Ropq(AT(tA,mut(x)))Rr(cat10(AT(tA,mut(x)),aw+xE))Ruvw(ai(xv))R_(x))
 A2(dot,/*01*/Ym(et(y))U n=yN;P(!n,y(xR))P(n>8,ez(y))y=mRa(N(blw(y)));y(x8(yA,n)))
 Z U knd(A x/*0*/)_(X(Ril(ti)REBGHIL(tI)R_(xt))0)

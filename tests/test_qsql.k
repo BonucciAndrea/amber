@@ -248,6 +248,16 @@ t[`selSortExpr;   (sel"select[>px*sz] from st")`px; 6.0 5 4 3 2 1]
 / ... and it applies to a KEYED (by-clause) result with the key put back
 t[`selSortKeyed;  (value sel"select[>s] s:sum px by sym from st")`s; 9.0 7 5]
 t[`selLimitKeyed; #sel"select[2] s:sum px by sym from st"; 2]
+/ select[m n] is n rows from row m (past the end, the rows there are); a null, a negative, or a third number is 'type;
+/ every item an atom is one row, as before, in both forms; q gives 'rank unless an item applies one of its aggregates
+/ (#20 row 17: c:0.5, and c:sz 0 in selAtomCol too)
+tq[`selFromCount; "select[1 2] from st";        st 1 2]
+tq[`selFromCountPast; "select[4 5] from st";    st 4 5]
+t[`selLimitBad;  {5#.[sel;,x;{x}]}'("select[0N] from st";"select[1 0N] from st";"select[-1 2] from st";"select[1 2 3] from st"); 4#,"'type"]
+t[`selAtomRow;   (sel"select c:0.5 from st";sel"select c:abs 0.5 from st"); 2#,+(,`c)!,,0.5]
+t[`selAtomAgg;   sel"select c:1+sum sz from st";  +(,`c)!,,211]
+t[`selAtomCol;   sel"select c:sz 0,d:0.5 from st"; +`c`d!(,30;,0.5)]
+t[`selAtomFunc;  {$[`C~@r:.[{?[st;();0b;(,`c)!,x]};,x;{x}];5#r;r]}'(0.5;(abs;0.5);(sum;`sz));(+(,`c)!,,0.5;+(,`c)!,,0.5;+(,`c)!,,210)]
 / both at once on a grouped result -- the form docs/language.html publishes:
 / group, then sort the aggregate descending, then take the first n.
 t[`selSortLimitKeyed;  (value sel"select[3;>v] v:sum px by sym from st")`v; 9.0 7 5]
@@ -513,6 +523,6 @@ tq[`strSemi;       "select from TQS where s like \"a;b\"";              1#TQS];
 tq[`strEscQuote;   "exec \"a\\\")\" from TQS";                          "a\")"];
 tq[`strEnd;        "(exec s from TQS where s like \"a;b\"),,\"x)\"";    ("a;b";"x)")];
 
-hexpect[323]
+hexpect[330]
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

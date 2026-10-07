@@ -339,6 +339,7 @@ templates are also callable as strings (`sel"select …"`, `exq`, `upd`, `del`) 
 ```k
 select[5] from trades                 / the first 5 rows
 select[-5] from trades                / the last 5
+select[10 5] from trades              / 5 rows from row 10
 select[>px] from trades               / sorted by px, descending
 select[<sym] from trades              / ... ascending
 select[5;>px] from trades             / sorted, THEN limited -- q's order
@@ -349,8 +350,9 @@ select[2;>px*sz] from trades          / a sort key may be any expression
 
 The clauses run in q's order: **where → by/select → sort → limit**. A bracket item beginning
 `>` or `<` is a sort key; anything else is the row limit, and a negative limit takes from the
-end. A bare column name goes through `xasc`/`xdesc`, so the result keeps the `` `s `` attribute
-where that applies; any other expression is computed over the result and graded. On a keyed
+end; two numbers are a first row and a count, as q's (a null, or a negative in a pair, is `'type`).
+A bare column name goes through `xasc`/`xdesc`, so the result keeps the `` `s `` attribute where
+that applies; any other expression is computed over the result and graded. On a keyed
 (by-clause) result the spec is applied to the rows and the key is put back. The bracket is
 accepted by the bare prompt form and by `sel"…"` alike, and only after `select`, since `exec`,
 `update` and `delete` take no bracket in q.

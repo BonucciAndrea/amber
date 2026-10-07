@@ -612,6 +612,10 @@ t[`intLessUnchanged;(1 2<2 1;-1<1;<2 1 3);(1 0;1b;1 0 2)]
 t[`binCharInList;(," ")'(0x80;"");(0;!0)]
 t[`binCharInList2;(" ",0x80)'(0xff;"");(1;!0)]
 t[`binIntInList;1 3 5'(2;4 6);(0;1 2)]
+/ ---- binary search on symbols, in <'s order, as q's bin; a float list with a symbol is 'type, as an int list (#20 row 13) ----
+tv[`binSyms;"(`a`c`e'`b;`a`c`e'`e`f`a`A;(0#`)'`a;`a`c`e'(`b;`d`f))";(0;2 2 0 -1;-1;(0;1 2))]
+tv[`binSymsMany;"{(x'y)~{-1++/~y<x}[x]'y}[{x@<x}`$\"x\",/:$!3000;`$\"x\",/:$-50+!3100]";1b]
+t[`binFloatSym;5#.[{(,0.5)'x};,`a;{x}];"'type"]
 
 
 / ---- the fused compare idioms order chars as the unfused ones do (unsigned among chars) ----
@@ -759,6 +763,9 @@ t[`parseIntMax;`I$"9223372036854775807";9223372036854775807]
 t[`parseIntMin;`I$"-9223372036854775807";-9223372036854775807]
 t[`parseIntZeros;`I$"0000000000000000000000012";12]
 t[`parseIntVec;`I$("12";"99999999999999999999";"x");12 0N 0N]
+/ blanks (space, tab, CR) round the digits are skipped and a leading + is read, as q (#20 row 4)
+t[`parseIntBlanks;`I$(" 12";"+12";"  +12  ";"\t12\r";" -12";" +9223372036854775807";"++12";"-+12";"--12";"+-+-12");12 12 12 12 -12 9223372036854775807 12 -12 12 12]
+t[`parseIntBlanksBad;`I$("+ 12";"+";" ";"\n12";"1 2";" +9223372036854775808";"-";"+-";"- 12");9#0N]
 
 
 / ---- JSON escapes of control characters ----
@@ -779,6 +786,11 @@ t[`jsonLongInt;(`j@3000000000;`j@(3000000000;1));("3000000000";"[3000000000,1]")
 / ---- a symbol that is not an identifier prints quoted, with its bytes as they are ----
 t[`symDigitFirst;`k@`$"1a";"`\"1a\""]
 t[`symUtf8;`k@`$`c$195 169;"`\"",(`c$195 169),"\""]
+
+/ ---- `$ trims the blanks (space, tab, CR) round the text, as q; a JSON key keeps them (#20 row 3) ----
+t[`symCastTrim;`$(" a ";" ";"\ta\r";"a b";"a\n");(`a;`;`a;`$"a b";`$"a\n")]
+t[`symCastTrimChar;`$" ";`]
+t[`symJsonKeyBlanks;`k@!`j?"{\" a \":1}";",`\" a \""]
 t[`symIdent;`k@`abc;"`abc"]
 t[`symList;`k@`$("1a";"b");"`\"1a\"`b"]
 tv[`symBack;"{x~. `k@x}@`$(\"1a\";\"a b\";\"\";\"a\";((`c$1),\"x\");(\"a\",`c$233))";1b]
@@ -1323,7 +1335,7 @@ tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 ppeV:5 6
 t[`ppeStale;?{."{[ab]ab}",x;."(ppeV-1)",x}'(!100)#\:" ";,4 5]
 
-hexpect[843]
+hexpect[851]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

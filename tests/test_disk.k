@@ -16,7 +16,7 @@ LOAD DIR,"/../temporal.k"
 LOAD DIR,"/../sys.k"
 LOAD DIR,"/../hdb.k"
 LOAD DIR,"/harness.k"
-T:"/tmp/amber_disk_",$*1?999999999
+T:"/tmp/amber_disk_",$`t[]   / the microsecond clock: the seed is fixed, so a random name was the same in every run
 rm:{`x(("/bin/rm";"-rf";x);"");}
 rm T
 

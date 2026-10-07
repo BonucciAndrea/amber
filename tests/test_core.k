@@ -325,6 +325,21 @@ t[`rollCharsSmall;#5?" ";5]
 
 t[`rollNullChars;0N?" ";""]
 
+/ ---- `prng n replays the stream whatever was drawn before it: a full-range roll (and so a char roll or a roll
+/ of a power of two) left its buffered word behind, and the next draw after the reseed took it ----
+t[`prngReplayFullRoll;{2?0;`prng 5;c:3?1.0;`prng 5;c~3?1.0}[];1]
+t[`prngReplayEach;{p:("2?0";"3?-1";"3?256";"3?65536";"3?4294967296";"3?\" \"";"5?0x00";"3?100";"3?100000";"3?10000000000";"1?1.0";"-3?10";"-3?10000000000";"0N?10";"3?`a`b`c";"-2?`a`b`c";"3?\"a\"")
+ d:("3?1.0";"3?10";"3?256";"3?100000";"3?10000000000";"3?0";"-3?10";"-3?10000000000";"0N?5";"3?`a`b`c";"-2?`a`b`c";"3?\"a\"";"2?\" \"")
+ ,/{[d;x]{[x;y].x;`prng 5;c:.y;`prng 5;c~.y}[x]'d}[d]'p}[];(17*13)#1b]
+
+/ ---- a full-range roll uses up its words (#83 Q5): the next draw does not reuse the roll's last word (a float
+/ draw was its low 52 bits), and saving and restoring `prng[] around any draw replays it ----
+t[`prngRollFresh;{r:4?0;f:*1?1.0;(4503599627370496!r 3)~_f*4503599627370496}[];0]
+t[`prngRestoreFullRoll;{2?0;s:`prng[::];c:3?1.0;`prng s;c~3?1.0}[];1]
+t[`prngRestoreEach;{p:("2?0";"3?-1";"3?256";"3?65536";"3?4294967296";"3?\" \"";"5?0x00";"3?100";"3?100000";"3?10000000000";"1?1.0";"-3?10";"-3?10000000000";"0N?10";"3?`a`b`c";"-2?`a`b`c";"3?\"a\"";"0?0")
+ d:("3?1.0";"3?10";"3?256";"3?100000";"3?10000000000";"3?0";"-3?10";"-3?10000000000";"0N?5";"3?`a`b`c";"-2?`a`b`c";"3?\"a\"";"2?\" \"")
+ ,/{[d;x]{[x;y].x;s:`prng[::];c:.y;`prng s;c~.y}[x]'d}[d]'p}[];(18*13)#1b]
+
 / ---- where of counts that overflow or pass 2^32 is 'limit (as upstream ngn/k 4b1dd07e, d5099539 check; issue #10) ----
 te[`whereOverflow;"#&9223372036854775807 9223372036854775807 2"]
 t[`whereLimitSum;.[.:;,"#&4294967297 0";{(x?"\n")#x}];"'limit"]
@@ -457,6 +472,10 @@ t[`fillTemporalLeft;{.[{x^y};(x;y);{(x?"\n")#x}]}[2026.07.30;0N 1];"'type"]
 t[`fillIntFloats;(0^0n;0^1.5 0n;0^(1;0n);1b^1.5 0n;0N^1.5 0n;0^`a`b!1.5 0n);(0.0;1.5 0.0;(1;0.0);1.5 1.0;1.5 0n;`a`b!1.5 0.0)]
 / other fills of another type still make a generic list, as k; a null int atom becomes the fill
 t[`fillOtherType;(1^0N;0.5^0N;0.5^1 0N;0x00^1.5 0n;`a^1.5 0n);(1;0.5;(1;0.5);(1.5;0x00);(1.5;`a))]
+
+/ ---- an int atom filling float nulls gives its value as a float, -2147483648 too (it gave 0n) ----
+t[`fillFloatMinI32;(-2147483648^0n;-2147483648^0n 1.5;-2147483648^(0n;`a);-2147483648^`a`b!0n 1);(-2147483648.0;-2147483648 1.5;(-2147483648.0;`a);`a`b!-2147483648 1.0)]
+t[`fillFloatIntNull;(0N^0n;0N^0n 1.5;-2147483647^0n;-2147483649^0n);(0n;0n 1.5;-2147483647.0;-2147483649.0)]
 
 / ---- a missing or failing temporal formatter is an error, not the end of the process or a crash ----
 te[`fmtMissing;"$2026.07.30"]
@@ -646,6 +665,11 @@ t[`jsonInfNan;(`j@0w;`j@-0w;`j@0n;`j@1.0 0w -0w 0n);("null";"null";"null";"[1,nu
 t[`findBits;((,1)?0101010101B;(,0)?0101b;1 0?0101b;(,1)?0#01b);(0N 0 0N 0 0N 0 0N 0 0N 0;0 0N 0 0N;1 0 1 0;!0)]
 t[`exceptBits;(0101010101B^1;11B^1;0101010101B^0;11B^0);(00000b;0#01b;11111b;11b)]
 t[`exceptMixed;((0;" ")^0;(0;" ")^" ";(1;"a";`b)^"a";(1;"a")^1 2;(1;"a")^(1;"a");(1;"a";2)^1;(1;"a")^!0);(," ";,0;(1;`b);,"a";!0;("a";2);(1;"a"))]   / digest #64: a general list's chars against numbers are kept, not 'type
+/ a range is its items: except between a range and chars removes nothing, as for the ints written out (2.7.2: 'type)
+tv[`exceptRangeChars;"((!3)^\"a\";(1+!3)^\"a\";(!1)^\"\";(!3)^\"ab\")";(0 1 2;1 2 3;,0;0 1 2)]
+tv[`exceptCharsRange;"(\"abc\"^!3;\"abc\"^1+!3)";("abc";"abc")]
+tv[`exceptGenericRange;"((1;\"a\")^!3;(1;\"a\";2)^1+!3)";(,"a";,"a")]   / a general list's numbers go, its chars stay
+t[`exceptRangeNums;((!5)^3+!5;(!5)^!2;(!5)^1 3);(0 1 2;2 3 4;0 2 4)]   / the range fast paths (y covers an end of x) still run
 / Digest #6: > leaves stdin, stdout and stderr open (a failed write with no stderr to report it on looped or crashed)
 t[`closeStdHandles;(7#.[{[d]>0};,0;{x}];7#.[{[d]>1};,0;{x}];7#.[{[d]>2};,0;{x}]);3#,"'domain"]
 t[`aimRange;(7#.[{[d]`aim[!5]};,0;{x}];7#.[{[d]`aim[1000+!3]};,0;{x}]);2#,"'length"]   / Digest #11: a range is its items, not its two stored ends (read as addresses)
@@ -670,6 +694,9 @@ t[`encodeEmptyFloat;@(!0)\5.5;`F]
 t[`encodeEmptyChar;*"\n"\.[.:;,"(!0)\\\"a\"";{x}];"'type"]
 t[`encodeOneDigitChar;(,10)\"a";,7]
 t[`encodeEmptySym;*"\n"\.[.:;,"(!0)\\`a";{x}];"'type"]
+/ ---- a base of 8 or 9 divides like any other: its K text's (-8)! and (-9)! were serialise and deserialise ----
+t[`encodeBase89;(2 8\5;2 9\5;16 8\20;8 8 8\511;-8 -9\100;2 8\5 6);(0 5;0 5;2 4;7 7 7;5 1;(0 0;5 6))]
+t[`encodeAtomBase89;(8\100;9\100;-8\100;-9\-100);(1 4 4;1 2 1;2 4 4;1 8 3 8)]
 
 / ---- float to int: 0n is 0N; out of range, floor gives 0W above and 0N below, a cast 0W and -0W (as q) ----
 t[`floorNull;(_0n;_0w;_-0w);0N 9223372036854775807 0N]
@@ -692,6 +719,17 @@ t[`findCharChar;"abc"?"cb";2 1]
 t[`findIntInt;1 2 97?97 1;2 0]
 t[`findGeneric;((1;"a")?"a";(1;"a")?97);1 0N]
 t[`findNeedleKept;{n:98 99;.[{"abc"?x};,n;{x}];n}[];98 99]
+/ a dict's or a table's values are checked too (they gave nulls), with a dict haystack as well
+t[`findCharHayDict;.[.:;,"\"ab\"?`a`b!1 2";{*"\n"\x}];"'type"]
+t[`findIntHayDict;.[.:;,"1 2?`a`b!\"ab\"";{*"\n"\x}];"'type"]
+t[`findCharHayTable;.[.:;,"\"ab\"?([]a:1 2)";{*"\n"\x}];"'type"]
+t[`findIntHayTable;.[.:;,"1 2?([]a:\"ab\")";{*"\n"\x}];"'type"]
+t[`findCharHayKeyed;.[.:;,"\"ab\"?([k:`a`b]v:1 2)";{*"\n"\x}];"'type"]
+t[`findDictHayDict;.[.:;,"(`a`b!1 2)?`a`b!\"ab\"";{*"\n"\x}];"'type"]
+t[`findDictDeep;.[.:;,"\"ab\"?`a`b!(1;2)";{*"\n"\x}];"'type"]
+t[`findListOfDicts;.[.:;,"\"ab\"?(`a`b!1 2;`c`d!3 4)";{*"\n"\x}];"'type"]
+t[`findEmptyDict;.[.:;,"\"ab\"?(0#`)!!0";{*"\n"\x}];"'type"]
+t[`findDictSame;("ab"?`a`b!"ba";1 2?`a`b!2 1;"ab"?([]a:"ba"));(`a`b!1 0;`a`b!1 0;+(,`a)!,1 0)]
 
 / ---- integer literals: from 2^63 in magnitude 'limit, as q refuses them (issue #20, row 7) ----
 tv[`litIntMax;"9223372036854775807 -9223372036854775807 000000000000000000001";9223372036854775807 -9223372036854775807 1]
@@ -770,6 +808,9 @@ t[`dictRepeatKey;((`a`a!1 2)+`a!10;(`a`a!1 2)*`b!3);(`a`a!11 2;`a`a`b!1 2 3)]
 t[`dictEachJoin;(`a`b!1 2),'(1 2!3 4);(`a;`b;1;2)!1 2 3 4]
 t[`dictSameKeys;((`a`b!1 2)+`a`b!10 20;(`a`b!1 2)|`a`b!0 5;(`a`b!1 2.0)%`a`b!2 4);(`a`b!11 22;`a`b!1 5;`a`b!0.5 0.5)]
 t[`dictOneSideDiv;((`a!1)%`b!2;(`a`b!1 2)%`b`c!4 8;(`a!1.5)%`b!2);(`a`b!1 2;`a`b`c!(1;0.5;8);`a`b!(1.5;2))]   / % passes a one-sided value through, as q (it took 1%y: `a`b!1.0 0.5)
+t[`dictDisjointTypes;.[.:;,"((`a!1)|`b!`y;(`a!1)&`b!`y;(`a!1)%`b!`y;(`a!`x)|(,`b)!,1 2;((0#`)!!0)|(,`)!,`a;(`a`b!1 2)%`c!`y;(`a!2026.01.01)+`b!2026.01.02;(`a!12:00)|`b!13:00)";{x}];(`a`b!(1;`y);`a`b!(1;`y);`a`b!(1;`y);`a`b!(`x;1 2);(,`)!,`a;`a`b`c!(1;2;`y);`a`b!2026.01.01 2026.01.02;`a`b!12:00 13:00)]   / no key on both: no value meets another, so the types need not meet, as ngn/k (it was 'type; q passes the dates, times and (`a!`x)|(,`b)!,1 2 through, and is 'type for the int/symbol ones)
+t[`dictDisjointShared;*"\n"\.[.:;,"(`a`b!1 2)|`b`c!`x`y";{x}];"'type"]   / a key on both still meets the verb
+t[`dictDisjointNeg;.[.:;,"`i$(`a!2026.01.01)-`b!2026.01.02";{x}];`a`b!9497 -9498]   / a right-only value is negated, a date too, as q
 
 / ---- an error with a computed message reads its text before releasing it ----
 t[`errComputedText;*"\n"\.[{`err "ab",x};,"cd";{x}];"'abcd"]
@@ -937,6 +978,11 @@ t[`emptyIdxStaleDict;{x:(`c`d!3 4;`x);?{[x;n](x@n_n#1)~0#x}[x]'1+!20}[];,1]
 t[`emptyIdxMatch;{d:`a`a0!(,0#,,();0#,,());ks:`a`a0;ks_d;{[d;w]((!d)@w)!(.d)@w}[d;&^ks?!d];(ks_d)~{[d;w]((!d)@w)!(.d)@w}[d;&^ks?!d]}[];1]
 t[`emptyIdxEmptyList;(`k@()@!0;`k@(0#,,())@!0);("()";"0#,,()")]
 
+/ ---- an empty list whose prototype is :: (no dates left, or a list of functions) prints as 0#,(::), which reads back ----
+/ (0#,:: read back as a function: 0#, composed with ::)
+t[`emptyProtoNil;`k@'(0#2026.01.02 2026.01.03;0#({x};1);(0#2026.01.02 2026.01.03;1);,0#12:00:00.000 13:00:00.000);("0#,(::)";"0#,(::)";"(0#,(::);1)";",0#,(::)")]
+t[`emptyProtoNilBack;{x~. `k@x}'(0#2026.01.02 2026.01.03;0#({x};1);(0#2026.01.02 2026.01.03;1);([]));1 1 1 1]
+
 / ---- an elided amend, or a lambda's each, with a keyed table is 'nyi, not a crash ----
 ktA:(+(,`k)!,1 2)!+(,`v)!,3 4
 te[`amendKeyedEmptyTable;"@[0#+`a`b!(1 2;3 4);::;:;ktA]"]
@@ -1041,7 +1087,7 @@ t[`floatRound20Nines;fb `F$"9999999999999999999.9";0x43e158e460913d00]   / 20 di
 / ---- flip: an atom value is enlisted; bit lists; empty lists of tables (upstream ngn/k 7bf994cd) ----
 t[`flipAtom;`k@+(,`a)!,{x};"+(,`a)!,,{x}"]
 t[`flipCols;`k@+`a`b!(1 2;3 4);"+`a`b!(1 2;3 4)"]
-t[`flipEmptyTable;(`k@([]);#!+([]);#. +([]));("+(0#`)!0#,::";0;0)]   / ([]) stays as it was (ngn/k enlists the empty values here)
+t[`flipEmptyTable;(`k@([]);#!+([]);#. +([]));("+(0#`)!0#,(::)";0;0)]   / ([]) stays as it was (ngn/k enlists the empty values here)
 t[`flipEmptyTables;(`k@+0#,(+`a`b!(1 2;3 4));`k@+0#,,`a`b!1 2);("(0#,`a`b!0N 0N;0#,`a`b!0N 0N)";",0#,`a`b!0N 0N")]   / empty lists of tables: the prototype was read before it was set; empty lists of dicts, as in ngn/k
 t[`flipBits;(+(01B;01B);+(101B;010B));((0 0;1 1);(1 0;0 1;1 0))]   / lists of bit booleans, read as bits
 t[`flipBits8;*+8#,11B;8#1]   / each column was read as 8-byte words of the lists
@@ -1239,7 +1285,6 @@ tv[`vcondOwnIsat;"isat:{1b};?[1 0 1;1 2 3;9]";1 9 3]
 ppeV:5 6
 t[`ppeStale;?{."{[ab]ab}",x;."(ppeV-1)",x}'(!100)#\:" ";,4 5]
 
-hexpect[794]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

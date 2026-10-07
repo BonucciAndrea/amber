@@ -444,7 +444,8 @@ Z X1(fndGx,
   fndGxW(x))
  R3(tH,tI,tL,fndGxW(x)))
 // does a needle (a generic list, at any depth) hold a number for a char haystack (c), or a char for a number one?
-Z B fmx(A x,B c)_(P(xtA,F(xn,P(fmx(xa,c),1))0)c?LH(tE,xt,tF)||LH(ti,xt,tf):xtC||xtc)
+// A dict's or a table's values are looked in too, as q does ("ab"?`a`b!1 2 was `a`b!0N 0N)
+Z B fmx(A x,B c)_(P(xtmM,fmx(xy,c))P(xtA,F(xn,P(fmx(xa,c),1))0)c?LH(tE,xt,tF)||LH(ti,xt,tf):xtC||xtc)
 // amber 2.7: find in an empty general list: nothing is there, so 0N. The rank test below read the empty list's
 // placeholder slot and called an atom the wrong rank: ()?`a was 'rank. A list y keeps its old answer, one 0N.
 Z A fnd0(A y)_(P(_tt(y),y(az(NL)))U n=_N(y);A z=aL(n);F(n,zL[i]=NL)y(z))

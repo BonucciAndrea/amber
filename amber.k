@@ -123,11 +123,15 @@ rk:{$[`A~@x;$[#x;1+rk@*x;1];|/`m`M=@x;rk@. x;isatm x;0;1]}   / rank by first ite
 isda:{(isat x)&~(@x)in`o`p`q`r`u`v`w}             / A data atom: not a dict, not a function
 / 2.1: fused group aggregates. `gagg (src/o.c) does acc[group]op=v in ONE pass
 / with the same first-appearance key order as =k; each wrapper keeps the
-/ portable K definition as its fallback for shapes the kernel declines.
-gsum:{[k;v]r:`gagg(`sum;k;v);$[#r;(r 0)!r 1;{[v;i]+/v i}[v]'=k]}
-gavg:{[k;v]r:`gagg(`avg;k;v);$[#r;(r 0)!r 1;{[v;i](+/v i)%#i}[v]'=k]}
-gmin:{[k;v]r:`gagg(`min;k;v);$[#r;(r 0)!r 1;{[v;i]&/v i}[v]'=k]}
-gmax:{[k;v]r:`gagg(`max;k;v);$[#r;(r 0)!r 1;{[v;i]|/v i}[v]'=k]}
+/ portable K definition as its fallback for shapes the kernel declines; that
+/ path skips nulls as the kernel and q do: each group is reduced as before (+/ &/ |/), and only when a null shows
+/ in the answers (NaN, 0N) again with amber.k's sum avg min max, which skip them; 64-bit ints whose sum would wrap a
+/ 0N take those at once when `hnl finds one. In a general list each group is reduced as it comes out: one that stays
+/ general by +/ as before, one that comes out ints or floats by sum or avg.
+gsum:{[k;v]r:`gagg(`sum;k;v);$[#r;(r 0)!r 1;`A=@v;{[v;i]u:v i;$[`A=@u;+/u;sum u]}[v]'=k;$[`I=@v;`hnl v;0b];{[v;i]sum v i}[v]'=k;[r:{[v;i]+/v i}[v]'=k;$[|/^. r;{[v;i]sum v i}[v]'=k;r]]]}
+gavg:{[k;v]r:`gagg(`avg;k;v);$[#r;(r 0)!r 1;`A=@v;{[v;i]u:v i;$[`A=@u;(+/u)%#u;avg u]}[v]'=k;$[`I=@v;`hnl v;0b];{[v;i]avg v i}[v]'=k;[r:{[v;i](+/v i)%#i}[v]'=k;$[|/^. r;{[v;i]avg v i}[v]'=k;r]]]}
+gmin:{[k;v]r:`gagg(`min;k;v);$[#r;(r 0)!r 1;[r:{[v;i]&/v i}[v]'=k;$[|/^. r;{[v;i]min v i}[v]'=k;r]]]}
+gmax:{[k;v]r:`gagg(`max;k;v);$[#r;(r 0)!r 1;[r:{[v;i]|/v i}[v]'=k;$[|/^. r;{[v;i]max v i}[v]'=k;r]]]}
 gcount:{[k]r:`gagg(`count;k;k);$[#r;(r 0)!r 1;#:'=k]}
 gfirst:{[k;v]r:`gagg(`first;k;v);$[#r;(r 0)!r 1;{[v;i]*v i}[v]'=k]}
 glast:{[k;v]r:`gagg(`last;k;v);$[#r;(r 0)!r 1;{[v;i]*|v i}[v]'=k]}
@@ -269,7 +273,10 @@ wjK:{[m;w;c;t;q;aggs]$[&/(#t)=#:'w;::;`err"length"];c:c,();g:-1_c;tc:*|c;q:ajord
 / wj counts the quote in force at the window's start, as q's; wj1 only the quotes inside the window (digest #68)
 wj:{[w;c;t;q;aggs]wjm[1b;w;c;t;q;aggs]}
 wj1:{[w;c;t;q;aggs]wjm[0b;w;c;t;q;aggs]}
-wjm:{[m;w;c;t;q;aggs]c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;cs:wjcode'aggs[;1];$[|/cs<0;wjK[m;w;c;t;q;aggs];[b:wjbnd[g;t;q];v:qd aggs[;2];u:&(cs in 2 3)&`C=@:'v;v:@[v;u;{256!`i$x}];r:`wj(qd tc;v;cs;w 0;w 1;b 0;b 1;m);r:@[r;u;:;{[f;x]`c$@[x;&(x<0)|x>255;:;f]}'[(255 0)cs[u]-2;r u]];+(+t),(aggs[;0])!r]]}
+/ The kernel reads numbers: chars go to it as their codes (min/max back to chars), first/last of chars, symbols,
+/ temporals or a generic column read the positions and index the column (an empty window: its null), and the other
+/ reducers over a column that is not ints, floats or chars go to wjK, as K's own min/max/sum/avg on its items
+wjm:{[m;w;c;t;q;aggs]c:c,();q:ajord[c;q];qd:+q;v:qd aggs[;2];k:@:'v;cs:wjcode'aggs[;1];p:(~k=`I)&~k=`F;cs:@[cs;&(1<cs)&(cs<6)&p&~k=`C;:;-1];$[|/cs<0;wjK[m;w;c;t;q;aggs];[b:wjbnd[-1_c;t;q];u:&(1<cs)&(cs<4)&`C=k;p:&(cs<2)&p;v:@[v;u;{256!`i$x}];r:`wj(qd@*|c;$[#p;@[v;p;:;(#p)#,!#q];v];cs;w 0;w 1;b 0;b 1;m);r:@[r;u;:;{[f;x]`c$@[x;&(x<0)|x>255;:;f]}'[(255 0)cs[u]-2;r u]];r:$[#p;@[r;p;:;{x@y}'[v p;r p]];r];+(+t),(aggs[;0])!r]]}
 
 / ---- qSQL-style select / group-by --------------------------------------------
 qwhere:{[t;m]t@&m}

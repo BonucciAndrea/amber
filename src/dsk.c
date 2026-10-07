@@ -27,7 +27,7 @@
  *                  2 ser:  any other value as -8! bytes (nested lists, dicts, atoms, ...)
  *                  3 time: a list of date, time or timestamp atoms as int64 values
  *   6  u8 type     Amber type of the vector (kind 0), or of the atoms (kind 3)
- *   7  u8 attr     0 none, 1 `s, 2 `u, 3 `p, 4 `g  (trusted on the way back, as q does)
+ *   7  u8 attr     0 none, 1 `s, 2 `u, 3 `p, 4 `g  (trusted on the way back, as q does; any other byte is 'format)
  *   8  u64 count   items
  *   16 u64 bytes   payload bytes after the header
  *   24 u64 domain  kind 1: how many syms the sym file had when this was written
@@ -98,7 +98,8 @@ A rcolT(A x){
  I f=open(path,O_RDONLY);P(f<0,x(eo0()))
  struct stat st;DHdr h;
  if(fstat(f,&st)||(W)st.st_size<DHB||drall(f,&h,SZ h,0)){close(f);return x(eo0());}
- B ok=!memcmp(h.mg,"AMBC",4)&&h.ver==1&&h.kind<=KTIME&&(W)st.st_size>=DHB+h.nb;
+ // an attribute byte that names none of the four is damage too: copied into _at, `at read "\0supg" past its end
+ B ok=!memcmp(h.mg,"AMBC",4)&&h.ver==1&&h.kind<=KTIME&&h.att<5&&(W)st.st_size>=DHB+h.nb;
  if(ok)S(h.kind,
   C(KFLAT,ok=h.typ<tn&&dflat(h.typ)&&h.nb==dbytes(h.typ,h.cnt))
   C(KENUM,ok=h.nb==h.cnt*4)

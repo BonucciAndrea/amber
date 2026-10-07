@@ -30,6 +30,10 @@ rt[`colByte;1000?100]
 rt[`colBool;1000?2=1000?2]
 rt[`colChar;"hello world"]
 rt[`colEmpty;0#0.0]
+/ an attribute byte (7) that names none of the four is 'format: it was copied in, and `at read "\0supg" past its end
+x:`wcol(T,"/c/att";1 2 3;-1;0);AB:1:T,"/c/att"
+ra:{(T,"/c/att2") 1:(7#AB),(`c$x),8_AB;.[{`at@`rcol x};,T,"/c/att2";{*"\n"\x}]}
+t[`colAttrByte;ra'5 200 4;("'format";"'format";`g)]
 rt[`colNested;(1 2;"ab";`x`y)]
 rt[`colAtom;42]
 rt[`colDict;`a`b!1 2]
@@ -131,6 +135,6 @@ B:T,"/bb";(`$":",B)set 5000#"abc";B 1:get`$":",B
 t[`writeOwnGet;1:B;5000#"abc"]
 
 rm T
-hexpect[62]
+hexpect[63]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

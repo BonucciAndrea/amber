@@ -1080,7 +1080,8 @@ AA(a8,/*10..0*/A x=*a,y=a[1];
 //the check found). An item on the way is taken out of its list, so it is amended in place. z 0: .[x;y;f], f of one argument.
 //f 0: z, taken, is the item's new value (a verb's result, b.c ixca), where every level is one place that is there (ixit).
 //u: where f fails at the last place, and every level above is one that is there (0, 1, 2, 6: not a key to add), each
-//level puts back the item it took out, and *u is the value as it was (or a copy of it), so the variable can be put back
+//level puts back the item it took out, and *u is the value as it was (or a copy of it), so the variable can be put back;
+//and so where an amend by name from a symbol (3) fails, which leaves the symbol as it was
 Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u);
 Z A rbl(A),d3(A,A,A),a5(A,A,A,A,A),d3t(A,A,A),d4t(A,A,A,A),dt3(A,A,A),dt4(A,A,A,A);
 //a key (1) at the last level, or a table's column (2) in the table flipped to a dict (tb): inlined in each, so that a
@@ -1091,7 +1092,7 @@ Z __attribute__((always_inline)) inline A ixsd(A x,A y,CO UC*kd,CO L*ix,U k,U m,
  A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z,u);P(!v,u&&*u?(xy=*u,*u=tb?flp(x):x,(A)0):x(0))xy=v;x)
 Z NI A ixtc(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u/*10....00.*/)_(U r=xN;x=ixsd(flp(x),y,kd,ix,k,m,f,z,u,1);x?tfl(x,r):0)   //a column (tfl)
 A ixst(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u/*10....00.*/)_(UC t=kd[k];P(!t,ixsl(x,y,kd,ix,k,m,f,z,u))
- P(t==3,A w=k?drp(k,yR):yR;B s=k&&!_tP(x)&&_t(x)==tS;x=USQ(s?z?d4t(x,w,f,z):d3t(x,w,f):z?d8(A8(x,w,f,z),4):d8(A8(x,w,f),3));mr(w);x)   //d8, not d4: a symbol below
+ P(t==3,A w=k?drp(k,yR):yR,o=x;B s=k&&!_tP(x)&&_t(x)==tS;x=USQ(s?z?d4t(x,w,f,z):d3t(x,w,f):z?d8(A8(x,w,f,z),4):d8(A8(x,w,f),3));mr(w);P(!x&&u&&_ts(o),*u=o,(A)0)x)   //d8, not d4: a symbol below
   //the first level names a global; a symbol list there is data, and so are its items (d4t, d3t)
  P(t==9,A s=_A(y)[k],p=(A)ix[k],v=prj(z?ax(dt4,4):ax(dt3,3),(A[]){GAP,drp(k+1,yR)},2);B tb=_t(x)==tM;I(tb,x=flp(x))U n=z?5:4;A b[5]={x,s,v,f,z};   //keys above the last level:
   x=LH(tG,_t(p),tL)&&(n==4?_tt(f)||_tT(f)&&_N(f)==_n(p):_tt(f)&&(_tt(z)||_tT(z)&&_N(z)==_n(p)))?dam(x,s,cL(p),b,n):(mr(p),a8(b,n));mr(v);P(!x,0)tb?flp(x):x)   //as a8 does (Rm), the find from ixwk

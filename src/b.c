@@ -109,6 +109,9 @@ U tcc(A,A);
 //value, assigned in run (ixca): where the walk meets a symbol below the first level, or the check below where it stopped
 //(a list of indices, an elided level, a list of keys, a row) meets one with an index below it (ixsm), 512, so d4 assigns
 //it (ixca), held where the symbol can name the variable (ixch): ixst, which has items out of it, could not put it back;
+//where the walk met the symbol itself (no key to add above), 512 plus the levels walked, the last 3 (d8 there), so that
+//where it cannot name the variable ixst assigns from there, as where the walk stops short, and puts it back if the amend
+//by name fails (ixst's u: the symbol is as it was), where d4 had lost it;
 //and +256 where an amend by name can follow ixst's places (a key to add or a list of keys, or the walk stopped short
 //above the last level), so that ixca keeps the global's place while ixst assigns it
 I ixwk(A x,A y,A z,B asg,B gl,UC*kd,L*ix){if(!x)return 0;if(_t(x)==tm&&!_tMT(_y(x)))return -3;UC ry=_t(y);B at=ry>tm,ty=LH(tE,ry,tL);U m=at?1:_N(y),k=0;I a=-1;   //a: the first level with a key to add
@@ -138,7 +141,7 @@ I ixwk(A x,A y,A z,B asg,B gl,UC*kd,L*ix){if(!x)return 0;if(_t(x)==tm&&!_tMT(_y(
   else break;
   if(last){k++;break;}if(v!=x)mr(v);v=w;}
  if(k==m||k&&(kd[k-1]==3||kd[k-1]==6)){I(v!=x,mr(v))P(a>=0&&k==m&&a+2==(I)m&&!kd[a+1],kd[a]+=3;a+2)return a<0?(I)k:a+1|gl<<8;}   //7, 8: a key to add, then one index into a list
- I r;B sy;if(gl&&k){ixsm=0;r=ixck(v,y,k,z,asg);sy=_ts(v)||ixsm;}else{r=ixck(v,y,k,z,asg);sy=0;}I(v!=x,mr(v))P(r,-r)P(sy,512)P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;ix[k]=-1;return (I)(k+1|(gl&&k+1<m)<<8);}   //stopped short below the first level: d8 from there (3)
+ I r,sy;if(gl&&k){ixsm=0;r=ixck(v,y,k,z,asg);sy=_ts(v)?2:ixsm;}else{r=ixck(v,y,k,z,asg);sy=0;}I(v!=x,mr(v))P(r,-r)P(sy,sy>1&&a<0?kd[k]=3,ix[k]=-1,512|(I)(k+1):512)P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;ix[k]=-1;return (I)(k+1|(gl&&k+1<m)<<8);}   //stopped short below the first level: d8 from there (3)
 A ixst(A,A,CO UC*,CO L*,U,U,A,A,A*),ixv2(UC,A,A);
 //the item at the places ixwk found, where each is one that is there -- an int into a list (0), a key or column there
 //(1, 2: not one to add), a row then its column (6), or a table's row at the last level (3) -- so that the verb can go
@@ -189,14 +192,14 @@ I ixgn(A*p){I r=0;for(struct ixg*q=ixgs;q;q=q->n){if(q->p==p&&!q->m)return 2;r|=
 I ixgh(A*p){for(struct ixg*q=ixgs;q;q=q->n)if(q->p==p)return 1;return 0;}   //is p's global being assigned?
 I ixgi(A*p){for(struct ixg*q=ixgs;q;q=q->n)if(q->p==p&&!q->h)return 1;return 0;}   //in place (not held, h)?
 Z A ixas(A x,A y,A z,UC d,CO UC*kd,CO L*ix,I m,A*u)_(m?ixst(x,y,kd,ix,0,(U)m,av+d,z,u):_tA(y)&&_n(y)==1?a4(x,*_A(y),av+d,z):d4(x,y,av+d,z))   //one level: what d4 does, without taking it out of y
-Z NI A ixag(A*p,A x,A y,A z,UC d,CO UC*kd,CO L*ix,I m,B h){struct ixg e={p,ixgs,!m,h};ixgs=&e;x=ixas(x,y,z,d,kd,ix,m,0);ixgs=e.n;return x;}   //a global, kept in ixgs while assigned
+Z NI A ixag(A*p,A x,A y,A z,UC d,CO UC*kd,CO L*ix,I m,B h,A*u){struct ixg e={p,ixgs,!m,h};ixgs=&e;x=ixas(x,y,z,d,kd,ix,m,u);ixgs=e.n;return x;}   //a global, kept in ixgs while assigned
 //d4 on a global held, so that it amends its own copy, where ixhr finds it can be set or amended on the way: f by d4 (a
 //list of indices, an elided level, a key to add, ..), where a function item that sets the variable (or amends it) then
 //frees nothing the amend uses, and the variable is as where ixit reads the item first (h); where the walk met a symbol
 //(ixwk's 512) that can name the variable, whose amend by name is refused (d8, by ixgi) but for f (h): the amend fails,
 //and the variable is kept; and from the first level (a list of indices, an elided level: h), as d4 did it before. o:
 //its own reference, so that where an amend by name of it is made (h) and fails, which leaves the global ::, it is put back
-Z NI __attribute__((cold)) I ixfh(A*p,A x,A y,A z,UC d,B h){A o=_R(x);x=ixag(p,_R(x),y,z,d,0,0,0,h);P(!x,I(*p==au,*p=o)E(mr(o))4)I(*p,mr(*p))*p=x;mr(o);return 0;}
+Z NI __attribute__((cold)) I ixfh(A*p,A x,A y,A z,UC d,B h){A o=_R(x);x=ixag(p,_R(x),y,z,d,0,0,0,h,0);P(!x,I(*p==au,*p=o)E(mr(o))4)I(*p,mr(*p))*p=x;mr(o);return 0;}
 //can d4, amending x at y from level k (of m), call a function -- an item that f calls (# _ @: the item, .: anything in
 //it, e), here or in a global that a symbol on the way names -- or amend p's global by name, through such symbols? Then
 //p's global is held (ixfh), else d4 amends it in place, as before. Only the items at y are looked at (every one for an
@@ -236,8 +239,9 @@ Z I ixho(A*p,A x,A y,B f,UC d)_(ixhr(p,x,y,0,y==au?0:_t(y)>tm?1:_N(y),f,d==19,1,
 Z NI I ixch(A*p,A x,A y,A z,UC d,I m){B f=d==14||d==15||d==18||d==19;P(!f&&!_ts(x)&&(y==au||_t(y)>tm||_N(y)==1),-1)P(!ixho(p,x,y,f,d),-1)   //one level, no f: none (ixhr)
  return ixfh(p,x,y,z,d,m?f:1);}
 //a global where an amend by name can follow ixst (ixwk's +256), or as for ixch: else assigned by ixag (as before)
-Z I ixcg(A*p,A x,A y,A z,UC d,CO UC*kd,CO L*ix,I m){I(m==512,I r=ixch(p,x,y,z,d,512);P(r>=0,r)m=0)I(!m,I r=ixch(p,x,y,z,d,0);P(r>=0,r))
- *p=ixag(p,x,y,z,d,kd,ix,m&255,0);return 0;}
+Z I ixcg(A*p,A x,A y,A z,UC d,CO UC*kd,CO L*ix,I m){I(m>=512,I r=ixch(p,x,y,z,d,512);P(r>=0,r)m=m&255?m&255|256:0)I(!m,I r=ixch(p,x,y,z,d,0);P(r>=0,r)*p=ixag(p,x,y,z,d,kd,ix,0,0,0);return 0)   //(d4: nothing
+ //to put back)
+ A u=0;x=ixag(p,x,y,z,d,kd,ix,m&255,0,&u);P(!x&&u,*p=u;4)*p=x;return 0;}
 //a keyed table assigned by d4 (m 0): its amend (a.c's kam) fails on what ixwk does not look at (a key's lookup, a row's
 //length or columns, the value's count), so it is held while it is amended, and put back if that fails (issue #19, as q)
 Z NI __attribute__((cold)) I ixkk(A*p,A x,A y,A z,UC d,B g,UC*kd,L*ix){A o=_R(x);I r=g?ixcg(p,x,y,z,d,kd,ix,0):(*p=ixas(x,y,z,d,kd,ix,0,0),0);
@@ -252,7 +256,7 @@ I ixkn(A x,A y,UC*kd,L*ix){A ks=_x(x);UC tk=_t(ks);P(tk==tS||tk==tM||!_tMT(_y(x)
  //place is the count, which ixst adds as a8 does, the key not found a second time)
 Z NI I ixcv(A*p,A x,A y,A z,UC d,B g,UC*kd,L*ix,I m,I n){B f=d==14||d==15||d==18||d==19,o;A q=0;
  if(!n){if(m>0&&m<256){I(f||kd[m-1]==3,q=ixit(x,y,kd,ix,(U)m,&o))}   //a row with more below (where the walk stopped, or did not start):
-  else{I(m==512,I r=ixch(p,x,y,z,d,512);P(r>=0,r)m=0)   //(512: ixwk met a symbol, which can name the variable: held, or as before)
+  else{I(m>=512,I r=ixch(p,x,y,z,d,512);P(r>=0,r)m=m&255?m&255|256:0)   //(512: ixwk met a symbol, which can name the variable: held, or as before)
    if(m?m>0&&kd[(m&255)-1]==3:LH(tM,_t(x),tm)){U w=m&255;   //no symbol is met, so no global is amended by name
     if(!m&&_t(x)==tm){I r=ixkn(x,y,kd,ix);P(r<0,-r)I(r,m=1;I(f,I(ix[0]==(L)_N(_x(x)),I(g,I r=ixch(p,x,y,z,d,0);P(r>=0,r))A u=0;x=ixas(x,y,z,d,kd,ix,1,&u);P(!x&&u,*p=u;4)*p=x;return 0)
      //(# _ @ . at a key not there: a global held first where a function in it can be called (ixch, as before); else

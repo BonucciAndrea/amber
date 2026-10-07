@@ -36,10 +36,13 @@ dset:{[f;x]f:hdb.p f;`wcol(f;x;-1;0);f}
 dget:{[f]f:hdb.p f;$[hdb.amc f;`rcol f;. `c$1:f]}
 
 / ---- splayed tables -------------------------------------------------------
-/ splay["db/trades";t] writes db/trades/<col> for each column and db/trades/.d, symbols into db/sym.
+/ splay["db/trades";t] writes db/trades/<col> for each column and db/trades/.d, symbols into db/sym. One `wcol writes
+/ them all or none: each goes to its temporary file, and they are renamed only once all are written, the sym file
+/ first and .d last, so a set that fails leaves the old table (#94 Q12). The symbol columns' new names are found
+/ together, in the order they come, and the sym file grows by them once.
 hdb.atc:{[v]a:$`at v;$[#a;1+"supg"?*a;0]}                      / attribute code kept in the column file
-hdb.wc:{[f;db;v]$[`S~@v;[e:hdb.enum[db;v];`wcol(f;e 0;e 1;hdb.atc v)];`wcol(f;v;-1;0)];f}
-hdb.splay:{[dir;db;t]t:$[iskeyed t;unkey t;t];c:cols t;d:+t;{[dir;db;d;c]hdb.wc[dir,"/",$c;db;d c]}[dir;db;d]'c;`wcol(dir,"/.d";c;-1;0);dir}
+hdb.wq:{[f;s;n;v]$[`S~@v;(f;s?v;n;hdb.atc v);(f;v;-1;0)]}      / a column's (path;value;domain;attr) for `wcol
+hdb.splay:{[dir;db;t]t:$[iskeyed t;unkey t;t];c:cols t;v:(+t)c;b:`S=@'v;s:$[|/b;hdb.syms db;0#`];nw:$[|/b;[u:?,/?'v@&b;u@&~in[u;s]];0#`];s:s,nw;w:{[dir;s;n;c;v]hdb.wq[dir,"/",$c;s;n;v]}[dir;s;#s]'[c;v];w:$[#nw;(,(hdb.symf db;s;-1;0)),w;w],,(dir,"/.d";c;-1;0);`wcol w;$[#nw;hdb.symc[db;`fsz hdb.symf db;s];0];dir}
 splay:{[dir;t]dir:hdb.sl hdb.p dir;hdb.splay[dir;hdb.par dir;t]}
 hdb.dl:{[dir;s]c:`rcol dir,"/.d";+c!{[dir;s;c]`rcol(dir,"/",$c;s)}[dir;s]'c}
 hdb.old:{[dir]cs:. `c$1:dir,"/.d";+cs!{[dir;c]. `c$1:dir,"/",$c}[dir]'cs}   / a pre-2.7 text table

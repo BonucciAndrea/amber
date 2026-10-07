@@ -896,7 +896,11 @@ select sum sz by sym from trade where date=2026.01.02
 * **Columns.** A file is a 4 KB header then the data, page-aligned, so a numeric column is one
   `mmap` and its pages come in as a query reads them. Writes go to a temp file and get renamed, so
   a reader never sees half a file, and a map is private: changing the vector in Amber never
-  touches the disk. Symbols are stored as indexes into the database's `sym` file (it only grows).
+  touches the disk. A splayed table's files (and the sym file's new names) are all written before
+  any is renamed, `.d` last, so a `set` that fails leaves the old table; until the renames the disk
+  holds both tables. That holds after a `set`, not during one: a reader that loads the table while
+  the files are being renamed can still see some old and some new. Two `set`s into one database at
+  once share its `sym.tmp`, so run them one at a time. Symbols are stored as indexes into the database's `sym` file (it only grows).
   Anything nested goes in as `-8!` bytes.
 * **Partitioned tables.** `\l db` (or `loaddb`) finds `db/<date or int>/<table>/` and defines each
   table as a small dict naming its partitions. Nothing is read until a query asks.

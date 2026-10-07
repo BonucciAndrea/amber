@@ -42,14 +42,18 @@ Z L o1(L v)_(t(fco(v))+o)Z V of1LL(CO L*a,L*r,N n){F(n+3&~3,r[i]=o1(a[i]))}A1(of
 Z A of_(A x,I f)_(N n=xn;C t=xt+(tf-tl)*(1-2*f);A y=MINE(x)?AT(t,xR):an(n,t);_at(y)=0;Mx((f?of1LL:of0LL)(xV,yV,n))y)
 Z I ql(L i,L j)_(i<j?-1:i>j)
 I qf(F u,F v)_(ql(o1(*(L*)&u),o1(*(L*)&v)))
+ZN I qD(A,A);
 I qA(A x,A y/*00*/)_(I v=TS[xt]-TS[yt];P(v,v)
  X(Ril(ql(gl_(x),gl_(y)))
    Rf(qf(*xF,*yF))
    Rs(S s=su(xv);C t[8];U n=SL(s);I(n<5,s=MC(t,s,n+1))strcmp(s,su(yv)))
-   RT(F(MIN(xn,yn),A z=ii(x,i),u=ii(y,i);I d=qA(z,u);mr(z(u));P(d,d))P(!xn&&!yn&&xtA,qA(xx,yx))ql(xn,yn))//empty lists: by prototype, as ~
+   RT(P(xtC&&ytC,I d=memcmp(xV,yV,MIN(xn,yn));d?(d>0)-(d<0):ql(xn,yn))   //two strings (sorting symbols compares their names) as unsigned bytes, as their chars compare, without boxing each
+      F(MIN(xn,yn),A z=ii(x,i),u=ii(y,i);I d=qA(z,u);mr(z(u));P(d,d))P(!xn&&!yn&&xtA,qA(xx,yx))ql(xn,yn))//empty lists: by prototype, as ~
+   RmM(qD(x,y))   //a dict by its keys, then its values, and a table by its names, then its columns, as ~ and q (#94 Q5; it was by address)
    Ropqr(x=str(xR);y=str(yR);I r=x&&y?qA(x,y):!!x-!!y;I(x,mr(x))I(y,mr(y));r)   //a function whose text fails (a formatter's error) sorts first
    R(tdt,ql((I)x,(I)y))R(ttm,ql((I)x,(I)y))R(tnp,ql(*(L*)_V(x),*(L*)_V(y)))   //dates and times by their value, not their words; a timestamp by its nanoseconds, not its address
    R_(ql(x,y)))0)
+ZN I qD(A x,A y)_(I d=qA(xx,yx);d?d:qA(xy,yy))   //qA's dicts and tables, out of line: qA itself is unchanged for strings and the rest
 Z I*ascZ(CO UC*v,UC*g,I*a,I*b,I n,I w)_(U c[257];tilV(a,0,n,2);Fj(w,MS(c,0,SZ c);F(n,g[i]=v[w*a[i]+j])F(n,c[g[i]+1]++)I(c[1+*g]-n,F(255,c[i+1]+=c[i])F(n,b[c[g[i]]++]=a[i])SW(b,a)))a)
 Z A grdm(A x/*1*/,A1 f)_(A y=kv(&x);x(x1(Nx(f(y)))))
 

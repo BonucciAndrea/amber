@@ -3,6 +3,7 @@
 #if !defined(wasm)
 #include "a.h"
 #include "peachpool.h"
+#include "arena.h"
 #include <pthread.h>
 #include <stdlib.h>
 #include <sys/resource.h>
@@ -89,7 +90,7 @@ static void *worker(void *arg) {
     pthread_cond_broadcast(&P.cv_ready);
     for (;;) {
         while (P.gen == mygen && !P.shutdown) pthread_cond_wait(&P.cv_work, &P.mx);
-        if (P.shutdown) { pthread_mutex_unlock(&P.mx); return 0; }
+        if (P.shutdown) { pthread_mutex_unlock(&P.mx); arena_free(); return 0; }   /* this thread's arena (xs sorts in one) goes with it */
         mygen = P.gen;
         pthread_mutex_unlock(&P.mx);
 

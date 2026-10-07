@@ -151,6 +151,10 @@ t[`arrowSym;([]s:`a`b`c;v:10 20 30)~arrow.import arrow.export ([]s:`a`b`c;v:10 2
 t[`arrowWide;([]x:100000 200000 300000;y:9000000000 9000000001 9000000002)~arrow.import arrow.export ([]x:100000 200000 300000;y:9000000000 9000000001 9000000002);1b]
 t[`arrowRange;([]v:0+!50)~arrow.import arrow.export ([]v:0+!50);1b]
 t[`arrowPtrs;{[t]p:arrow.export t;n:#p;arrow.import p;n}[([]a:1 2 3)];2]  / export -> 2 C ABI addresses
+/ a value that is not a table is 'type: its payload was read as column pointers (a crash). In a process of its own, so a
+/ crash cannot stop the suite: the child prints each case's error
+axc:"\\l amber.k\n\\l std.k\n\\l sys.k\nd:`diag 0\n`0:{.[{arrow.export x;\"ok\"};,x;{*\"\\n\"\\x}]}'(1 2 3;(1;2);`a`b;(1 2;3 4);101b;(,`a;,`x);());`0:.[{`aex x;\"ok\"};,(`a`b;(1 2;3));{*\"\\n\"\\x}]\n"
+t[`arrowNonTable;`x(,`argv[]0;axc);"'type\n'type\n'type\n'type\n'type\n'type\n'type\n'type\n"]
 
 fails:r@&{"FAIL"~4#x}'r[;1]
 `0:"";`0:"============ EXTENDED TEST SUITE ============"

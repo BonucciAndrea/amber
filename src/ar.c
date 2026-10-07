@@ -52,6 +52,9 @@ Z S afmt(UC t){S(t,R(tB,"b")R(tG,"C")R(tH,"s")R(tI,"i")R(tL,"l")R(tF,"g")R_("l")
 A arrowExport(A x){
  P(_t(x)-tA||_n(x)-2,et(x))
  A names=((A*)_V(x))[0],cols=((A*)_V(x))[1];
+ // a table's names and columns: a symbol vector, and a general list of as many lists of one count. Anything else
+ // (arrow.export of a non-table, `aex itself) had its payload read as symbol ids and column pointers, and crashed
+ P(_t(names)-tS||_t(cols)-tA||_n(names)-_n(cols),et(x))F(_n(cols),A c=((A*)_V(cols))[i];P(!_tT(c)||_N(c)-_N(*(A*)_V(cols)),et(x)))
  L nc=_n(cols);A*colv=(A*)_V(cols);CO I*nmv=(CO I*)_V(names);L nrows=0;
  struct ArrowSchema*sc=calloc(1,sizeof*sc);
  struct ArrowArray*ar=calloc(1,sizeof*ar);

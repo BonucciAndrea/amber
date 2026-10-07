@@ -873,7 +873,8 @@ See [`examples/graphs.k`](../examples/graphs.k) for a 31-chart tour.
 ## 9d. Apache Arrow C Data Interface: `arrow.export` · `arrow.import`
 
 Zero-dependency interop with PyArrow / Polars / DuckDB over the stable Arrow C ABI (no
-`libarrow`). `arrow.export t` → `(schemaAddr; arrayAddr)` (64-bit C-ABI pointers); export is
+`libarrow`). `arrow.export t` → `(schemaAddr; arrayAddr)` (64-bit C-ABI pointers; anything but a
+table is `'type`); export is
 **zero-copy**: each Arrow child `buffers[1]` aliases the Amber column payload and a `release`
 callback drops the refcount when the consumer finishes. `arrow.import (schemaAddr; arrayAddr)`
 → Amber table (a copy: Amber's inline object header precludes aliasing a foreign buffer),

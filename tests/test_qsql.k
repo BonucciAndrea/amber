@@ -679,5 +679,12 @@ tqa[`tlitSelName;   "select time>09:35 from TT"; CL;                          ,`
 tqa[`tlitSelNameX;  "select 09:35<time from TT"; CL;                          ,`x];
 tqa[`tlitUpdName;   "update time>09:35 from TT"; CL;                          `time`n];
 
+/ a query inside a where-clause runs as one, as q's (on globals, as the string forms see)
+TW:([]n:2 3 4)
+tq[`whQuery;      "select from TN where n in (exec n from TW)";      ([]n:2 3)];
+tq[`whQueryWh;    "select from TN where n in (exec n from TW where n>2), n>1"; ([]n:,3)];
+tq[`whQueryDel;   "delete from TN where n in (select n from TW)`n";  ([]n:,1)];
+tv[`whQueryStr;   "sel\"select from TN where n in (exec n from TW)\""; ([]n:2 3)];
+
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

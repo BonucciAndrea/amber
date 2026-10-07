@@ -51,7 +51,10 @@ qfn:{[cols;e]. "{[x]",qidsub[cols;e],"}"}                                       
 / clause never fused, while the same query WITH a where clause did. ~(#t)#0b is materialised,
 / ~-identical to (#t)#1b, and fuses. (Verified: gagg with (#t)#1b -> 0 rows; with ~(#t)#0b,
 / K=K or 0<1+!#t -> the correct rows.)
-qmask:{[t;w]$[0=#w;();1=#c:qcut w;[v:qfn[cols t;*c]t;$[`I~@v;v;qwv[t;v]]];&/qloc[cols t]'1_c;&/{[t;c]v:qfn[cols t;c]t;$[`I~@v;v;qwv[t;v]]}[t]'c;qcas[t;c]]}   / Where -> boolean mask
+/ A query inside a where-clause (n in (exec n from u)) is rewritten by qrw, as at the prompt, to the string call
+/ (exq"exec n from u") that qidsub leaves alone. Only a where with a "from " in it goes to qrw, found by one call to
+/ like's C matcher (`lk), so a where with none pays that one call.
+qmask:{[t;w]$[0=#w;();1=#c:qcut$[`lk(w;"*from *");qrw w;w];[v:qfn[cols t;*c]t;$[`I~@v;v;qwv[t;v]]];&/qloc[cols t]'1_c;&/{[t;c]v:qfn[cols t;c]t;$[`I~@v;v;qwv[t;v]]}[t]'c;qcas[t;c]]}   / Where -> boolean mask
 qma:{[n;m]qwa m;a:~n#0b;$[m;a;~a]}   / a where whose value is an atom (where 1b, where 0b) keeps every row or none, as q
 / A where whose value is an atom is a boolean, as q: 0 or 1 (Amber's 1b is the int 1) keeps no row or every row, and
 / any other atom (2, 0N, 0n, `a, 1.5, "a") is 'type. A list is passed on as it was (#83 Q13, C: checking that an int

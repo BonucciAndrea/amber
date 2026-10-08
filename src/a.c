@@ -661,7 +661,7 @@ ZN U maxfU(CO U*a,U n)_(U v=0;F(n,v=MAX(v,a[i]))v)
 ZN V iG(ambcn){CO G*p=a;G*r=c;F(n,*r++=p[*b++])}
 ZN V iH(ambcn){CO H*p=a;H*r=c;F(n,*r++=p[*b++])}
 ZN V iI(ambcn){CO I*p=a;I*r=c;F(n,*r++=p[*b++])}
-ZN V iC(ambcn){CO C*p=a;C*r=c;F(n+31&-32,*r++=b[i]<m?p[b[i]]:32)}
+ZN V iC(ambcn){CO C*p=a;C*r=c;U k=n&-32;F(k,*r++=b[i]<m?p[b[i]]:32)for(U i=k;i<(n+31&-32);i++)*r++=i<n&&b[i]<m?p[b[i]]:32;}   //whole blocks of 32, then a tail that reads b only below n (it read up to 31 indices past the list)
 ZN V iS(ambcn){CO I*p=a;I*r=c;F(n+7&-8,*r++=b[i]<m?p[b[i]]: 0)}
 ZN V oG(ambcn){CO G*p=a;L*r=c;F(n+3&-4,*r++=b[i]<m?p[b[i]]:NL)}
 ZN V oH(ambcn){CO H*p=a;L*r=c;F(n+3&-4,*r++=b[i]<m?p[b[i]]:NL)}

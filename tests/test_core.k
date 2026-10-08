@@ -1447,7 +1447,11 @@ t[`allocGrowFloats;{(#x;+/x;x~0.0+!131072)}`j?"[",(","/$!131072),"]";(131072;858
 t[`allocGrowChars;{(#x;+/`i$x;-12#x)}@,/$!200000;(1088890;56866720;"199998199999")]
 t[`allocPeachFree;`x(("/bin/sh";"-c";"AMBER_THREADS=4 exec \"$0\"";`argv 0);"p:`pe({0.5*!x};40000*1+!8);s:+/'p;q:`pe({,/$!x};20000*1+!8);c:#'q;b:20000 2#!40000;p:0;q:0\n\\m\n`0:\" \"/$s,c,+/+/b\n");"399990000.0 1599980000.0 3599970000.0 6399960000.0 9999950000.0 14399940000.0 19599930000.0 25599920000.0 88890 188890 288890 388890 488890 608890 728890 848890 799980000\n"]   / in a process of its own, as \m reports the running script's own text
 
-hexpect[916]
+/ ---- a char gather stops reading the index list at its end: it read it in blocks of 32, up to 31 indices past (the answers were right) ----
+t[`gatCharTail;("abc"@0 5 1;"abc"@4!!35;"abc"@4!!70001);("a b";35#"abc ";70001#"abc ")]
+
+
+hexpect[917]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

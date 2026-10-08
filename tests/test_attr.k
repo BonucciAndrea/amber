@@ -565,6 +565,10 @@ ta[`a538;"attr (`s#()),`s#()";"`s"]   / join s empty general, s empty general
 ta[`a539;"attr (),`s#(1 2;3 4)";"`s"]   / join empty general, s general
 ta[`a540;"attr (),`s#1 2";"`s"]   / join empty general, s ints
 
-hexpect[543]
+/ not a q case: a lookup in an `s dict of symbols or chars held its keys once too many. \m (the heap check) prints a
+/ !refc line for each object counted more than it is held; it reads stdin, so this runs in a process of its own
+t[`leakSortedDictLookup;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"(`s#`a`c!1 2)`b;\n(`s#`a`c!1 2)`b`d;\n(`s#\"ac\"!1 2)\"b\";\n\\m\n");""]
+
+hexpect[544]
 hreport"AMBER ATTRIBUTES vs q"
 $[FAILN;`exit 1;]

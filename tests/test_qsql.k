@@ -320,6 +320,7 @@ t[`qaggMinMax;  (min 0N 5;min 0n 1.0;max 0n 1.0;max 0N 0N;min 0N 0N); (5;1.0;1.0
 t[`qaggScans;   (mins 0n 1.0 0.5;maxs 0N 5 3);                        (0w 1.0 0.5;-9223372036854775807 5 5)]
 QW:([]g:`a`b`a`b;f:1.5 0n -2.0 3.0;v:5 0N -7 0N)
 t[`qaggGrouped; value sel"select mxf:max f, mnf:min f, af:avg f, sf:sum f, s:sum v, a:avg v, mn:min v, mx:max v by g from QW";+`mxf`mnf`af`sf`s`a`mn`mx!(1.5 3.0;-2.0 3.0;-0.25 3.0;-0.5 3.0;-2 0;-1.0 0n;-7 9223372036854775807;5 -9223372036854775807)]
+t[`qvdInfMean; value sel"select r:var v, s:dev v by k from ([]k:0 0 1 1 2 2 3 3 4; v:0w 0w 1 2 0n 0n 0w -0w -0w)"; +`r`s!(0.0 0.25 0n 0.0 0.0;0.0 0.5 0n 0.0 0.0)]   / an infinite (or 0w and -0w's NaN) group mean: 0f, as var and q (#83 Q10; was 0n); all nulls: 0n
 
 / Guard against a silently skipped block (see tests/harness.k): this is the
 / exact number of assertions this file is expected to record. Bump it when

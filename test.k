@@ -87,6 +87,7 @@ t[`listFnDictErr;{5#.[*x;1_x;{x}]}'((flip;`a`b`c!3 1 4);(next;`a`b!1 2);(rotate;
 t[`listFnTable;{(fills x;sums x;mins x;flip `a`b!(1;2 3))}@+`a`b!(0N 3 1;1 0N 2);(+`a`b!(0N 3 1;1 1 2);+`a`b!(0 3 4;1 1 3);+`a`b!(9223372036854775807 3 1;1 1 1);+`a`b!(1 1;2 3))]   / by column, as q; fills was a dict of tables
 t[`listFnKeyed;{(fills x;deltas fills x;differ x)}(+(,`k)!,`x`y`z)!+`a`b!(3 0N 4;1 1 2);((+(,`k)!,`x`y`z)!+`a`b!(3 3 4;1 1 2);(+(,`k)!,`x`y`z)!+`a`b!(3 0 1;1 0 1);(+(,`k)!,`x`y`z)!111b)]   / by the value table, as q; all were 'nyi
 t[`differRatiosEmptyTable;{(differ x;ratios x;differ (+(,`k)!,!0)!x;ratios (+(,`k)!,!0)!x)}@+(,`a)!,!0;(!0;+(,`a)!,0#0.0;(+(,`k)!,!0)!!0;(+(,`k)!,!0)!+(,`a)!,0#0.0)]   / as q; were the table and an empty float list
+t[`listFnDictEmpty;(.[xprev;(1;()!());{x}];.[xprev;(1;(!0)!!0);{x}];5#.[xprev;(1;(0#`)!!0);{x}];differ ()!();differ ();differ 0#,1 2);(();!0;"'type";()!!0;!0;!0)]   / #94 Q7: as q; were 'type, 'type, 'type, ()!0#,!0, 0#,!0, 0#,0N 0N
 t[`fillsNested;(fills (1 0N;0N 2);fills `a`b!(1 0N;0N 2);fills ("ab";" c");fills@+`a`b!(0N 3 1;(1 2;0N 0N;0N 3));fills (1;0N;`a;`);fills (1 0N;0n 2.0);fills (1.5 0n;0N 2));((1 0N;1 2);`a`b!(1 0N;1 2);("ab";"ac");+`a`b!(0N 3 1;(1 2;1 2;1 3));(1;1;`a;`a);(1 0N;1 2.0);(1.5 0n;1.5 2.0))]   / a list of lists fills position by position, as q; was indexed with nested indices
 t[`listFnNullFill;{(prds `a`b`c!x;maxs `a`b`c!x;prds@+`a`b!(x;1 0N 2);maxs@+`a`b!(x;1 0N 2))}0N 3 1;(`a`b`c!1 3 3;`a`b`c!-9223372036854775807 3 3;+`a`b!(1 3 3;1 1 2);+`a`b!(-9223372036854775807 3 3;1 1 2))]   / nulls filled in a dict or table, as q; were 0N 0N 0N, 0N 3 3 (dict)
 t[`listFnKeyedMore;{(ratios x;prev x;sums x;mins x;5#.[next;,x;{x}];5#.[xprev;(1;x);{x}])}(+(,`k)!,`x`y`z)!+`a`b!(3 0N 4;1 1 2);((+(,`k)!,`x`y`z)!+`a`b!(3.0 0n 0n;1.0 1.0 2.0);(+(,`k)!,`x`y`z)!+`a`b!(0N 3 0N;0N 1 1);(+(,`k)!,`x`y`z)!+`a`b!(3 3 7;1 2 4);(+(,`k)!,`x`y`z)!+`a`b!(3 3 3;1 1 1);"'type";"'type")]   / as q (xprev: q 'length); were 'length, 'nyi, 3 -9223372036854775805 .., 3 0N 0N, 'nyi, 'nyi
@@ -178,6 +179,7 @@ t[`pjNulls;((+pj[+`k`a!(1 2 3;0N 20 30);xkey[`k;+`k`a!(1 3;1 2)]])`a;(+pj[+`k`a!
 / Digest #45: a column t lacks takes kt's values as they are; key columns must agree in type
 t[`pjNewColKinds;{(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`c!(1 3;x)]])`c}'("xy";(10 20;30 40);`p`q);("x",(`c$0),"y";(10 20;!0;30 40);`p``q)]
 t[`pjKeyType;.[pj;(+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`b!(`x`y;5 6)]);{5#x}];"'type"]
+t[`pjCharsBoth;{5#.[pj;(+`k`c!(1 2 3;"abc");xkey[`k;+`k`c!x]);{x}]}'((1 3;"xy");(!0;""));2#,"'type"]   / as q's + of chars; were 217 98 220 and 97 98 99 (ints)
 t[`pjNewColFloat;(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`b!(1 3;1.5 2.5)]])`b;1.5 0.0 2.5]
 t[`ej;#ej[`s;+`s`p!(`a`b`a;1 2 3);+`s`x!(`a`b`d;10 20 30)];3]
 t[`ejAllMatches;ej[`s;+`s`n!(`a`b;1 2);+`s`v!(`a`a`b;10 11 20)];+`s`n`v!(`a`a`b;1 1 2;10 11 20)]

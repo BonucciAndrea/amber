@@ -480,6 +480,11 @@ ta[`a443;"attr (`u#([]a:1 1;b:2 2))`a";"ERR type"]   / table u dup
 ta[`a444;"attr (`p#([]a:1 1 2;b:1 2 3))`a";"ERR type"]   / table p
 ta[`a445;"attr (`g#([]a:2 1 2;b:1 2 3))`a";"ERR type"]   / table g
 ta[`a446;"count `s#([]a:1 2 3;b:3 2 1)";"3"]   / table s keeps rows
+ta[`a446a;"attr (`s#([]a:((1;2);(3;4));b:5 6))`a";"`s"]   / table s, a general first column: `s (`p takes no general list)
+ta[`a446b;"attr (`s#([]a:enlist {x};b:enlist 1))`a";"`"]   / table s, a general first column of one row: none
+ta[`a446c;"attr (`s#([]a:(1;`a);b:5 6))`a";"`s"]   / table s, mixed first column
+ta[`a446d;"attr (`s#([]a:enlist \"ab\";b:enlist 1))`a";"`"]   / table s, strings, one row
+ta[`a446e;"attr (`s#([]a:(\"ab\";\"cd\");b:1 2))`a";"`s"]   / table s, strings
 ta[`a447;"attr (`s#([]a:`a`b`c))`a";"`s"]   / table s sym
 ta[`a448;"(`s#([]a:1 2 3;b:3 2 1))~([]a:1 2 3;b:3 2 1)";"1"]   / table s data
 ta[`a449;"attr `s#([]a:1 2 3)";"`s"]   / attr of table after s
@@ -605,6 +610,6 @@ t[`leakSortedDictLookup;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"(`s#`a`c!1 2)
 / stderr, dropped), and the step lookup after one
 t[`leakSortedDictAssign;`x(("/bin/sh";"-c";"exec \"$0\" 2>/dev/null";`argv 0);"{d:`s#`a`c`e!1 2 3;d[`c]:9;d`d}[];\n{d:`s#`a`c`e!1 2 3;d[`b]:9}[];\n{d:`s#1 3 5!`a`b`c;d[`x]:9}[];\n{d:`s#1 3 5!10 20 30;d[3]+:1;d[4]+:1}[];\nH:`s#1 3 5!`a`b`c;.[`H;,4;:;`z];\n.[`H;,3;:;`q];H:0;\n{k:`s#([k:1 3 5]v:`a`b`c);k[3]:,`q;k[4]:,`z}[];\n\\m\n");""]
 
-hexpect[577]
+hexpect[582]
 hreport"AMBER ATTRIBUTES vs q"
 $[FAILN;`exit 1;]

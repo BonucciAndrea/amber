@@ -920,7 +920,8 @@ Z A atkeys(A y,UC lone){   //the keys of a sorted dict or keyed table: a list `s
  P(_t(y)!=tM,atlist('s',y))
  A r=K1("{v:. +x;o:`xs(v;0b);o:$[#o;o;<x];o~!#x}",_R(y));P(!r,y(0))B ok=gl(r);P(!ok,y(err0("s-fail")))
  A d=_A(y)[1];U n=_n(d);P(!n||(n==1&&_N(_A(d)[0])<2),atset(y,1))   //a one-column table of 0 or 1 rows: no column attribute, as q
- A c0=atlist(n==1&&lone?'s':'p',_R(_A(d)[0]));P(!c0,y(0))
+ A f=_A(d)[0],c0=_t(f)==tA?_N(f)<2?_R(f):atlist('s',_R(f)):atlist(n==1&&lone?'s':'p',_R(f));P(!c0,y(0))   //a general first column,
+ //which `p refuses ('type): `s, sorted as the table is, and none for one row, as q
  A v=aA(n);F(n,_A(v)[i]=i?_R(_A(d)[i]):c0)A z=aV(tM,2,A(_R(_A(y)[0]),v));mr(y);_at(z)=1;return z;}
 // amber 2.7: x within (lo;hi) in one pass for a numeric vector and two number bounds (q's within took four);
 // anything else (atoms, symbols, a NaN bound) gives back 0N and amber.k's within does it as before

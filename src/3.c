@@ -148,7 +148,7 @@ A3(arf,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzfc)Q(ztZFC)
  ZB(z=cG(zR);z(arf(x,y,z)))
  G(&dexf,admf,subf,admf,___f,___f,mmmf,mmmf,___f,___f,___f)[xv](x,y,z))
 
-Z A3(___s,/*010*/U i=!y;A u;I(i,y=ii(z,0);u=enl(yR))E(yR;u=emp(tG))U n=zn;W(i<n,y=y(x2(y,ii(z,i++)));P(!y,u(0))PSH(u,yR))y(u))
+Z A3(___s,/*010*/U i=!y;A u;I(i,y=ii(z,0);u=enl(yR))E(u=emp(tG))U n=zn;W(i<n,y=y(x2(y,ii(z,i++)));P(!y,u(0))PSH(u,yR))y(u))
 Z A3(dexs,/*010*/I(y,y(0))zR)
 Z A3(adms,/*010*/L w=y?gl(y):x==MUL;U n=zn;I b=1;L v=w;C t=tG+zw-3;A u=an(n,t);
  //the running total wraps in W, as the folds and K arithmetic do (in L an overflow is undefined behaviour)
@@ -182,7 +182,7 @@ Z A3(mmmsf,/*010*/B i=xv==7;
 // float -\: x0, x0-x1, (x0-x1)-x2, ...: in order, as {x-y}\ does (a seed y starts it: y-x0, ...)
 Z A3(subsf,/*010*/U n=zn;A u=an(n,tF);F*RES r=uF;F v=y?gf(cF(y)):0;z=cF(zR);CO F*RES q=zV;
  Mz(F(n,r[i]=v=i||y?v-q[i]:q[i]))u)
-Z A3(eqls,/*010*/U n=zn,i=!y;L v=gl(y?y:io(z,0)),a=v;A u=aG(n);S4(zw-3,W(i<n,ug=v=v==zg;i++),W(i<n,ug=v=v==zh;i++),W(i<n,ug=v=v==zi;i++),W(i<n,ug=v=v==zl;i++))y||!n?u:a4(u,ai(0),av,az(a)))
+Z A3(eqls,/*010*/U n=zn,i=!y;L v=gl(y?y:io(z,0)),a=v;A u=aG(n);S4(zw-3,W(i<n,ug=v=v==zg;i++),W(i<n,ug=v=v==zh;i++),W(i<n,ug=v=v==zi;i++),W(i<n,ug=v=v==zl;i++))y||!n?u:(y=az(a),y(a4(u,ai(0),av,y))))   //a4 borrows the item
 A3(ars,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzfc)Q(ztZFC)
  ZE(z=gZ(zR);z(ars(x,y,z)))
  ZB(z=cG(zR);z(ars(x,y,z)))

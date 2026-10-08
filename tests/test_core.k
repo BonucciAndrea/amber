@@ -582,6 +582,7 @@ t[`maskCmpX86;`k@{[x;c]+/x@&c>0}[MD;1000#1 -1];`k@{[x;c]{+/x}x@&c>0}[MD;1000#1 -
 t[`maskSumIntAtom;*"\n"\.[.:;,"+/0@&0 1";{x}];"'type"]
 t[`maskFmaIntAtom;*"\n"\.[.:;,"+/(1+2*3)@&0 1";{x}];"'type"]
 t[`maskCmpIntAtom;*"\n"\.[.:;,"+/0@&(0 1)>0";{x}];"'type"]
+t[`maskCmpFirst;{*"\n"\.[.:;,x;{x}]}'("{[x] +/(x*1 2)@&x<`a}[3 1 4 1 5]";"{[x] +/(1.0+2*x*1 2)@&x>`a}[3 1 4 1 5]");2#,"'type"]   / the comparison before the masked value, as unfused: x<`a's 'type (it was x*1 2's 'length)
 
 / ---- -/ of floats is the left fold x0-x1-.. ----
 t[`minusFoldInf;(-/0w 1.0;-/-0w 5.0;{x-y}/0w 1.0);0w -0w 0w]
@@ -1447,7 +1448,7 @@ t[`allocGrowFloats;{(#x;+/x;x~0.0+!131072)}`j?"[",(","/$!131072),"]";(131072;858
 t[`allocGrowChars;{(#x;+/`i$x;-12#x)}@,/$!200000;(1088890;56866720;"199998199999")]
 t[`allocPeachFree;`x(("/bin/sh";"-c";"AMBER_THREADS=4 exec \"$0\"";`argv 0);"p:`pe({0.5*!x};40000*1+!8);s:+/'p;q:`pe({,/$!x};20000*1+!8);c:#'q;b:20000 2#!40000;p:0;q:0\n\\m\n`0:\" \"/$s,c,+/+/b\n");"399990000.0 1599980000.0 3599970000.0 6399960000.0 9999950000.0 14399940000.0 19599930000.0 25599920000.0 88890 188890 288890 388890 488890 608890 728890 848890 799980000\n"]   / in a process of its own, as \m reports the running script's own text
 
-hexpect[916]
+hexpect[917]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

@@ -437,10 +437,6 @@ Z A shiftC(L code,A x){B s=code>=300;code-=s?300:200;B fl=code>=16;L op=code&15;
  #undef SHGET
  #undef SHOP
  return z;}
-// ---- amber 2.3: masks that are comparisons, fused (F12) --------------------
-// +/x@&(c OP k): code 28+op, four arguments (code;x;c;k)
-Z A fredcmp(I op,A x,A c,A k){
- A m=v2[8+op](c,_R(k));P(!m,0)A fa[3];fa[0]=az(18);fa[1]=x;fa[2]=m;A r=fredC(fa,3);mr(m);return r;}
 // ---- amber 2.3: _x%y on integers -- floor division in one integer pass ------
 // `_x%y` is how k spells integer division, and it used to be three passes and
 // two temporaries: x widened to doubles, divided, floored back to int64. For an
@@ -471,8 +467,7 @@ Z A fdivC(A x,A y){UC t=_t(x);
    if(ok)return z;
    mr(z);}}
  A u=v2[4](x,_R(y));P(!u,0)return flr(u);}
-AA(fredC,/*10..0*/P(n!=3&&n!=4,en(*a))L d=gl(*a);A x=a[1],y=a[2];
- I(n==4,P(d<28||d>30,en0())return fredcmp((I)d-28,x,y,a[3]))
+AA(fredC,/*10..0*/P(n!=3,en(*a))L d=gl(*a);A x=a[1],y=a[2];
  I(d==40,return fdivC(x,y))
  I(d>=200&&d<400,return shiftC(d,x))
  I(d==19,return fcntC(x))
@@ -530,14 +525,7 @@ Z A fmsslow(L sb,A x,A sc,A b,A m){
  A u=fmaC(fa,4);if(!u)return 0;
  A fr[3];fr[0]=az(18);fr[1]=u;fr[2]=m;
  A r=fredC(fr,3);mr(u);return r;}
-// amber 2.3: six arguments (code;a;s;b;c;k), code = sub + 2*op: the mask c OP k
-// is built by the verb, then summed by the five-argument path below, whose sum is
-// exact (a kernel that built the mask inside its own loop was slower than this).
-Z A fmscmp(L code,A x,A sc,A b,A c,A k){I sub=(I)(code&1),op=(I)(code>>1);
- A m=v2[8+op](c,_R(k));P(!m,0)
- A fa[5];fa[0]=az(sub);fa[1]=x;fa[2]=sc;fa[3]=b;fa[4]=m;A r=fmsC(fa,5);mr(m);return r;}
-AA(fmsC,/*10..0*/P(n!=5&&n!=6,en(*a))L sb=gl(*a);A x=a[1],sc=a[2],b=a[3],m=a[4];
- I(n==6,return fmscmp(sb,x,sc,b,m,a[5]))
+AA(fmsC,/*10..0*/P(n!=5,en(*a))L sb=gl(*a);A x=a[1],sc=a[2],b=a[3],m=a[4];
  I(_tF(x)&&_tF(b)&&xn==_n(b)&&(_tf(sc)||_tz(sc))&&!_tP(m)&&_t(m)==tG&&_n(m)&&_n(m)<=xn,
   F sv=_tf(sc)?*_F(sc):(F)gl_(sc);int bad=0;
   F r=simd_masksum_fma_f64(xV,sv,_V(b),_V(m),_n(m),(int)sb,&bad);

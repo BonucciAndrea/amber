@@ -898,7 +898,12 @@ select sum sz by sym from trade where date=2026.01.02
 * **Columns.** A file is a 4 KB header then the data, page-aligned, so a numeric column is one
   `mmap` and its pages come in as a query reads them. Writes go to a temp file and get renamed, so
   a reader never sees half a file, and a map is private: changing the vector in Amber never
-  touches the disk. A splayed table's files (and the sym file's new names) are all written before
+  touches the disk. But the column's pages still come from the file, so anything else that writes a
+  column file should also write a new file and rename it over the old one, as `set` does: a column
+  already loaded then keeps the old file. A file rewritten in place under a loaded column (by `0:`
+  or `1:`, `cp`, an append from q or another tool) can show through in the column (on Linux it
+  does), and one cut short can make reading the column fault (SIGBUS on Linux).
+  A splayed table's files (and the sym file's new names) are all written before
   any is renamed, `.d` last, so a `set` that fails leaves the old table; until the renames the disk
   holds both tables. That holds after a `set`, not during one: a reader that loads the table while
   the files are being renamed can still see some old and some new. Two `set`s into one database at

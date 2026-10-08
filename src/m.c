@@ -506,7 +506,10 @@ Z B bdir(S s)_(struct stat st;!stat(s,&st)&&S_ISDIR(st.st_mode))
 #else
 Z B bdir(S s)_((V)s;0)
 #endif
-Z A bsl1(S s)_(P(bdir(s),K1("{loaddb x;}",aCz(s)))I f=open(s,0,0);A x=u1c(ai(f));close(f);N(x);P(!xn,x(au))C*p=xC,*e=p+xn-1;P(*e-10,x(err0("eoleof")))*e=0;I(*p=='#'&&p[1]=='!',p=strchrnul(p,10);p+=!!*p)
+// 2.7.3: the source text of each script being run (a \l inside a script nests), and its qSQL rewrite; \m counts
+// them as held (RTS), or a script's \m reported its own text as an object nobody holds. Per thread: peach workers \l too
+Z AM_TLS_IE struct ld{A x,y;struct ld*n;}*ld;
+Z A bsl1(S s)_(P(bdir(s),K1("{loaddb x;}",aCz(s)))I f=open(s,0,0);A x=u1c(ai(f));close(f);N(x);P(!xn,x(au))C*p=xC,*e=p+xn-1;P(*e-10,x(err0("eoleof")))*e=0;I(*p=='#'&&p[1]=='!',p=strchrnul(p,10);p+=!!*p)struct ld l={x,0,ld};ld=&l;
   // amber 2.0.0: run the source through the K qSQL rewriter (qrwf, qsql.k) so
   // bare `select .. from ..` works in a .k file exactly as it does at the REPL
   // prompt -- no sel"..." wrapper. Guarded so nothing changes until qsql.k is
@@ -516,7 +519,7 @@ Z A bsl1(S s)_(P(bdir(s),K1("{loaddb x;}",aCz(s)))I f=open(s,0,0);A x=u1c(ai(f))
   // The qrwf lookup is deferred inside {qrwf x} so `.`'s handler also catches
   // the undefined-variable error during bootstrap (before qsql.k defines qrwf);
   // `diag is toggled off around the probe so that recovered error never prints.
-  A rw=K1("{d:`diag 0;r:.[{qrwf x};,x;{`ERR}];`diag d;r}",aCz(p));A r=_t(rw)==tC?(rw=str0(rw),evs(_C(rw),1)):evs(p,1);mr(rw);x(r))
+  A rw=K1("{d:`diag 0;r:.[{qrwf x};,x;{`ERR}];`diag d;r}",aCz(p));A r=_t(rw)==tC?(l.y=rw=str0(rw),evs(_C(rw),1)):evs(p,1);ld=l.n;mr(rw);x(r))
 // a script that loads itself (or two that load each other) nested evs and bsl on the C stack with no limit and
 // crashed it; the VM counts its own depth (run), but a \l line does not go through it. 'stack after 512, as q's
 // 'stack after 500 (per thread, as run's count)
@@ -605,6 +608,6 @@ A1(binfo,L tot=0,nr=0;F(nreg,I(reg[i].p,tot+=reg[i].n;nr++))A a[]={al(tot),al(nr
 #define RGS(a...) F(nreg,B f=reg[i].f;V*p=reg[i].p,*q=f?p:p+reg[i].n;a)
 #define OBS(a...) RGS(A z=(A)(p+HD*!f+pg*f),y=(A)q;W(z<y,A x=z+((W)_cl(z)<<6);a;z+=HD<<_b(z)))
 #define XYS(a...) OBS(I(xtR,F(xn|!xn,A y=xa;a)))
-#define RTS(a...) {A x=cns;a;F(gn,I(x=gv[i],a))}
+#define RTS(a...) {A x=cns;a;F(gn,I(x=gv[i],a))struct ld*l=ld;W(l,x=l->x;a;I(l->y,x=l->y;a)l=l->n)}
 A bsm(S s)_(XYS(I(!ytP,yr--))RTS(I(!xtP,xr--))OBS(I(xr,os("!refc:");ox(x)))RTS(I(!xtP,xr++))XYS(I(!ytP,yr++))
  OBS(I(xT>=tn,os("!type:");ox(x)))OBS(I(xtA&&!xn&&!xx,os("!prot:");ox(x)))XYS(I(!yt,os("!dngl:");ox(x);ox(y)))au)

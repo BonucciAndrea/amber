@@ -63,7 +63,7 @@ out=$(printf '2+2\n\\\\\n' | ./a 2>&1)
 case "$out" in *"[ext-probe]"*) ok "banner_tag_shown" PASS;; *) ok "banner_tag_shown" FAIL;; esac
 
 # the engine's own suite must be unaffected by the presence of an extension
-if ./amber test.k 2>/dev/null | grep -q '0 failures'; then ok "core_suite_unaffected" PASS
+if ./amber test.k 2>/dev/null | grep -Eq '^[0-9]+ tests run, 0 failures$'; then ok "core_suite_unaffected" PASS
 else ok "core_suite_unaffected" FAIL; fi
 
 # ---- 2. uninstall ----------------------------------------------------------

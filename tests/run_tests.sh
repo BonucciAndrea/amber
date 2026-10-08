@@ -40,6 +40,9 @@ for a in "$@"; do case "$a" in --asan) ASAN=1;; --tsan) TSAN=1;; --quick) QUICK=
 
 fail=0
 say(){ printf '\n\033[1m== %s\033[0m\n' "$*"; }
+# A suite's report line is "N tests run, M failures". Match it whole: a bare
+# '0 failures' also matched "10 failures".
+nofail(){ echo "$1" | grep -Eq '^[0-9]+ tests run, 0 failures$'; }
 run_k(){ # run_k <binary> <script> <label>
   # Amber renders a diagnostic to stderr even for errors that .[f;a;h] goes on
   # to trap, and the suites deliberately provoke many such errors (te[...]), so
@@ -49,7 +52,7 @@ run_k(){ # run_k <binary> <script> <label>
   # Three independent gates: the suite must exit 0, it must actually print a
   # report (a suite that dies mid-file prints nothing at all), and that report
   # must say 0 failures.
-  if [ "$rc" = 0 ] && echo "$out" | grep -Eq 'tests run' && echo "$out" | grep -Eq '0 failures'
+  if [ "$rc" = 0 ] && nofail "$out"
   then echo "  -> PASS ($3)"
   else echo "  -> FAIL ($3) rc=$rc"; sed -n '1,40p' "$err"; fail=1; fi
   rm -f "$err"
@@ -223,7 +226,7 @@ if [ "$ASAN" = 1 ]; then
       echo "$out" | grep -E 'runtime error:|AddressSanitizer:|LeakSanitizer:' | head -20
       echo "$out" | grep -E '^ +#[0-9]+ .* in .* src/' | head -12
       echo "  -> FAIL (sanitizer diagnostics above)"; fail=1
-    elif [ "$rc" = 0 ] && echo "$out" | grep -Eq '0 failures'; then echo "  -> PASS"
+    elif [ "$rc" = 0 ] && nofail "$out"; then echo "  -> PASS"
     else echo "  -> FAIL rc=$rc"; fail=1; fi
   done
   say "dynamic C API under sanitizers"
@@ -261,7 +264,7 @@ if [ "$TSAN" = 1 ]; then
       echo "$out" | grep -E 'ThreadSanitizer: (data race|lock-order|deadlock)' | head -20
       echo "$out" | grep -E '^ +#[0-9]+ .* in .* src/' | head -12
       echo "  -> FAIL (ThreadSanitizer diagnostics above)"; fail=1
-    elif echo "$out" | grep -Eq '0 failures'; then echo "  -> PASS (0 races)"
+    elif nofail "$out"; then echo "  -> PASS (0 races)"
     else echo "  -> FAIL rc=$rc"; fail=1; fi
   done
 fi

@@ -320,15 +320,43 @@ A cvmC(A x){
  I(fp&&fq,cvmFF(_V(p),_V(q),n,o))J(fp,cvmFL(_V(p),_V(q),n,o))J(fq,cvmLF(_V(p),_V(q),n,o))E(cvmLL(_V(p),_V(q),n,o))
  mr(p);mr(q);return r;}
 
+// `dlt of a general list of int lists of one length (a dict's values, a nested column; a range or a bit list is first
+// made its items) goes row by row. Where a row or the one above it is 64 bits wide, one pass as in dltC below, an item
+// or the one above it null giving 0N (k's - wrapped it); two narrower rows (no null) and the first row take k's -. Any
+// other general list: each item less the one before by k's -, without the shifted copy, the first item less 0^0*
+// itself (an int list less 0), then squeezed, as amber.k's x-(0^0*1#x),-1_x was. Chars: dltc. Anything else: dlk0,
+// that expression by the same primitives.
+#define DLP(T) Fj(m,L u=w[j];o[j]=u==NL?NL:(L)((W)u-(W)(L)((CO T*)h)[j]))   //this row 64-bit, the one above narrower
+#define DLQ(T) Fj(m,L u=w[j];o[j]=u==NL?NL:(L)((W)(L)((CO T*)h)[j]-(W)u))   //the row above 64-bit, this one narrower
+Z U dlk(CO A*a,U n)_(U m=_tP(*a)?0:_n(*a),k=0;W(k<n&&!_tP(a[k])&&LH(tG,_t(a[k]),tL)&&_n(a[k])==m,k++)k)   //the rows before the first that is not an int list of a's length
+Z B dlE(A e)_(!_tP(e)&&(_t(e)==tE||_t(e)==tB))   //a range or a bit list
+Z A dlk0(A x){A o=az(1),z=az(0),m=az(-1),r=0,f=hsh(o,_R(x));I(f,f=mul(z,f))I(f,f=crt(z,f))   //x-(0^0*1#x),-1_x
+ I(f,A d=und(m,_R(x));A y=d?cat(f,d):0;mr(f);I(y,r=sub(x,y)))mr(o);mr(z);mr(m);mr(x);return r;}
+Z A dl0(A p){A z=az(0),f=mul(z,_R(p));I(f,f=crt(z,f))mr(z);return f?sub(p,f):0;}   //p-0^0*p
+Z A dltc(A x){CO C*RES p=(CO C*)_V(x);U n=_n(x);A r=an(n,tI);P(!r,mr(x);0)I*RES o=(I*)_V(r);o[0]=p[0];   //chars: ints, signed, as - gave
+ for(U i=1;i<n;i++)o[i]=(I)p[i]-(I)p[i-1];mr(x);return r;}
+Z A dltA(A x){A*a=_A(x);B il=!_tP(*a)&&LH(tE,_t(*a),tL);U n=_n(x),k=il?dlk(a,n):0;
+ I(il&&k<n,U h=k;W(h<n&&!dlE(a[h]),h++)   //a range or bit list among the rows is made its items, as dltC does, and the rows looked at again
+  I(h<n,A y=an(n,tA);P(!y,mr(x);0)A*b=_A(y);B f=0;F(n,A e=a[i];b[i]=f?az(0):dlE(e)?_t(e)==tE?gZ(_R(e)):cG(_R(e)):_R(e);I(!b[i],f=1;b[i]=az(0)))
+   mr(x);P(f,mr(y);0)x=y;a=b;k=dlk(a,n)))
+ B g=k<n;U m=g?0:_n(*a);A r=an(n,tA);P(!r,mr(x);0)   //g: not all rows int lists of one length, so every pair by k's -
+ F(n,A p=a[i];UC s=_t(p),t=i?_t(a[i-1]):0;A d;
+  I(g||!i||(s-tL&&t-tL),d=i?sub(p,_R(a[i-1])):il?sub(p,az(0)):dl0(p);I(!d,for(U j=i;j<n;j++)_A(r)[j]=az(0);mr(r);mr(x);return 0;))
+  E(d=an(m,tL);I(!d,for(U j=i;j<n;j++)_A(r)[j]=az(0);mr(r);mr(x);return 0;)L*RES o=(L*)_V(d);
+   I(s==tL&&t==tL,CO L*RES w=(CO L*)_V(p);CO L*RES v=(CO L*)_V(a[i-1]);Fj(m,L u=w[j],b=v[j];L e=(L)((W)u-(W)b);o[j]=(u==NL)|(b==NL)?NL:e))
+   J(s==tL,CO L*RES w=(CO L*)_V(p);CO V*h=_V(a[i-1]);I(t==tI,DLP(I))J(t==tH,DLP(H))E(DLP(G)))
+   E(CO L*RES w=(CO L*)_V(a[i-1]);CO V*h=_V(p);I(s==tI,DLQ(I))J(s==tH,DLQ(H))E(DLQ(G))))
+  _A(r)[i]=d)
+ mr(x);return g&&!il?sqz(r):r;}
 // `dlt x -- deltas of an int list in one pass, with no shifted copy and no join: x[i]-x[i-1], the first item as it
 // is. Only a 64-bit list can hold 0N, and there an item or the one before it null gives 0N, as q (k's - wraps it);
 // the select is branch-free, so the loop vectorises. A narrower list keeps its width, and a difference that does not
 // fit it redoes one width wider, as - does; a range or a bit list is first made its items. One thread, as k's int -.
-// amber.k's deltas, ints only.
+// amber.k's deltas of any list but floats and tables: ints here; general lists, chars and the rest above.
 #define DLN(T) {CO T*RES p=(CO T*)_V(x);T*RES o=(T*)_V(r);I ov=0;o[0]=p[0];for(U i=1;i<n;i++){L d=(L)p[i]-(L)p[i-1];o[i]=(T)d;ov|=d!=(L)(T)d;}P(ov,mr(r);x=ct(t+1,x);P(!x,0)dltC(x))}
 A dltC(A x){
  UC t=_t(x);P(!_tP(x)&&t==tE,x=gZ(x);P(!x,0)dltC(x))P(!_tP(x)&&t==tB,x=cG(x);P(!x,0)dltC(x))
- P(_tP(x)||!LH(tG,t,tL)||!_n(x),K1("{x-(0*1#x),-1_x}",x))
+ P(_tP(x)||!LH(tG,t,tL)||!_n(x),_tP(x)||!_n(x)?dlk0(x):t==tA?dltA(x):t==tC?dltc(x):dlk0(x))
  U n=_n(x);A r=an(n,t);P(!r,mr(x);0)
  I(t==tL,CO L*RES p=(CO L*)_V(x);L*RES o=(L*)_V(r);o[0]=p[0];for(U i=1;i<n;i++){L a=p[i],b=p[i-1];L d=(L)((W)a-(W)b);o[i]=(a==NL)|(b==NL)?NL:d;})
  J(t==tI,DLN(I))J(t==tH,DLN(H))E(DLN(G))

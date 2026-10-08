@@ -266,12 +266,15 @@ Z NI __attribute__((cold)) I ixkk(A*p,A x,A y,A z,UC d,B g,UC*kd,L*ix){A o=_R(x)
  I(r,mr(o);return r)I(!*p,*p=o;return 4)mr(o);return 0;}
 //x[k]f:y and .[`x;,k;f;y] at a key that is there of a dict whose keys are not symbols, where ixwk stops (d4 amended it,
 //and a verb that failed lost x): its place, as ixwk records a symbol key's (kd 1), so that the verb goes first, at the
-//place (ixst), and its failure leaves x as it was. Only where the amend has a verb; a list of keys, or more levels: 0,
-//as before. -4: the lookup's error ('rank), x untouched
-I ixkn(A x,A y,UC*kd,L*ix){A ks=_x(x);UC tk=_t(ks);P(tk==tS||tk==tM||!_tMT(_y(x)),0)B o=!_tt(y)&&!_tA(y);
+//place (ixst), and its failure leaves x as it was; likewise a key not there (an int into symbols, too), which ixst adds
+//after the verb. Only where the amend has a verb; a list of keys, or more levels: 0, as before. -4: the lookup's error
+//('rank), x untouched
+Z NI I ixkm(A x,A y,UC*kd,L*ix){A ks=_x(x);UC tk=_t(ks);P(tk==tM||!_tMT(_y(x)),0)B o=!_tt(y)&&!_tA(y);
  A s=_tt(y)?y:_tT(y)&&_N(y)==1?o?ii(y,0):*_A(y):0;P(!s,0)P(!_tt(s)||s==au,I(o,mr(s))0)A f=fnd(ks,_R(s));I(o,mr(s))P(!f,-4)
  P(!_tt(f),mr(f);0)L j=gl_(f);mr(f);I(j<0||j>=(L)_N(ks),j=_N(ks))kd[0]=1;ix[0]=j;return 1;}   //(a key not there: its
  //place is the count, which ixst adds as a8 does, the key not found a second time)
+I ixkn(A x,A y,UC*kd,L*ix){A s=_tA(y)&&_n(y)==1?*_A(y):y;return _t(_x(x))!=tS||_tt(s)&&s!=au||!_tA(y)&&_tT(y)&&_n(y)==1?ixkm(x,y,kd,ix):0;}   //(keys that are
+ //symbols: ixkm only for one key, which may be another; else 0 at once, as before, not a call)
 Z NI I ixcv(A*p,A x,A y,A z,UC d,B g,UC*kd,L*ix,I m,I n){B f=d==14||d==15||d==18||d==19,o;A q=0;
  if(!n){if(m>0&&m<256){I(f||kd[m-1]==3,q=ixit(x,y,kd,ix,(U)m,&o))}   //a row with more below (where the walk stopped, or did not start):
   else{I(m>=512,I r=ixch(p,x,y,z,d,512);P(r>=0,r)m=m&255?m&255|256:0)   //(512: ixwk met a symbol, which can name the variable: held, or as before)

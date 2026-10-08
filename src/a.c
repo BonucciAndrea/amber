@@ -1086,16 +1086,23 @@ AA(a8,/*10..0*/A x=*a,y=a[1];
 Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u);
 Z inline B ixnf(A,A,A);A ixal(A,A,A,A,A*);   //(one index, a list, at the last level below a stop short (3): as at the first, so that a
 //verb that fails there is put back too, where it can fail)
+I ixkn(A,A,UC*,L*);   //(b.c: one key of a dict ixwk stops at, below a stop short (3) too, where the amend has a verb: its place, as at the first level)
 Z A rbl(A),d3(A,A,A),a5(A,A,A,A,A),d3t(A,A,A),d4t(A,A,A,A),dt3(A,A,A),dt4(A,A,A,A);
 //a key (1) at the last level, or a table's column (2) in the table flipped to a dict (tb): inlined in each, so that a
 //dict's has nothing of the table's (its old row count, kept across the amend for tfl)
 Z __attribute__((always_inline)) inline A ixsd(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u,B tb/*10....00..*/)_(x=mut(x);
- I(ix[k]==_N(xx),u=0;A s=_tt(y)?_R(y):_tA(y)?_R(_A(y)[k]):ii(y,k);PSH(xx,s);PSH(xy,ie(f,xy)))   //a key not there (the last level): added, as a8
-  //does (ii's item is made, not borrowed: an int key, from ixkn, may be boxed)
+ I(ix[k]==_N(xx),A e=ie(f,xy),r=!f?z:z&&f==av?_R(z):USQ(z?_8(f,A8(_R(e),_R(z)),2):_8(f,A8(_R(e)),1));   //a key not there (the last level): f
+  //first, on the item the key adds (ie), as ixsl does it once added, so that where f fails, or gives a column of another
+  //count, x is as it was (*u); then the key and the item are added, as a8 does (ii's item is made, not borrowed: an int
+  //key, from ixkn, may be boxed), and ixsl assigns f's result there (f 0)
+  I(r&&kd[k]==2&&_n(xy)&&!_tP(r)&&_tT(r)&&_N(r)!=_N(*_A(xy)),mr(r);r=el0())P(!r,mr(e);u?(*u=tb?flp(x):x,(A)0):x(0))
+  A s=_tt(y)?_R(y):_tA(y)?_R(_A(y)[k]):ii(y,k);PSH(xx,s);PSH(xy,e);f=0;z=r)
  A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z,u);P(!v,u&&*u?(xy=*u,*u=tb?flp(x):x,(A)0):x(0))xy=v;x)
 Z NI A ixtc(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u/*10....00.*/)_(U r=xN;x=ixsd(flp(x),y,kd,ix,k,m,f,z,u,1);x?tfl(x,r):0)   //a column (tfl)
 A ixst(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u/*10....00.*/)_(UC t=kd[k];P(!t,ixsl(x,y,kd,ix,k,m,f,z,u))
- P(t==3,A w=k?drp(k,yR):yR,o=x;B s=k&&!_tP(x)&&_t(x)==tS;x=USQ(s?z?d4t(x,w,f,z):d3t(x,w,f):u&&_tA(w)&&_n(w)==1&&_t(x)<=tm&&!ixnf(_t(x)==tm?_y(x):x,f,z)?ixal(x,*_A(w),f,z,u):z?d8(A8(x,w,f,z),4):d8(A8(x,w,f),3));mr(w);P(!x&&u&&_ts(o),*u=o,(A)0)x)   //d8, not d4: a symbol below
+ P(t==3,A w=k?drp(k,yR):yR,o=x;UC kn[1];L jn[1];I n_=u&&f&&f!=av&&_t(x)==tm?ixkn(x,w,kn,jn):0;P(n_,I(n_>0,x=ixst(x,w,kn,jn,0,1,f,z,u))E(*u=x;x=0)mr(w);x)   //a key of
+  //a dict whose keys are not symbols, there or to add (ixkn): f at its place, so a failure is put back (ixst, ixsd)
+B s=k&&!_tP(x)&&_t(x)==tS;x=USQ(s?z?d4t(x,w,f,z):d3t(x,w,f):u&&_tA(w)&&_n(w)==1&&_t(x)<=tm&&!ixnf(_t(x)==tm?_y(x):x,f,z)?ixal(x,*_A(w),f,z,u):z?d8(A8(x,w,f,z),4):d8(A8(x,w,f),3));mr(w);P(!x&&u&&_ts(o),*u=o,(A)0)x)   //d8, not d4: a symbol below
   //the first level names a global; a symbol list there is data, and so are its items (d4t, d3t)
  P(t==9,A s=_A(y)[k],p=(A)ix[k],v=prj(z?ax(dt4,4):ax(dt3,3),(A[]){GAP,drp(k+1,yR)},2);B tb=_t(x)==tM;I(tb,x=flp(x))U n=z?5:4;A b[5]={x,s,v,f,z};   //keys above the last level:
   x=LH(tG,_t(p),tL)&&(n==4?_tt(f)||_tT(f)&&_N(f)==_n(p):_tt(f)&&(_tt(z)||_tT(z)&&_N(z)==_n(p)))?dam(x,s,cL(p),b,n,0):(mr(p),a8(b,n));mr(v);P(!x,0)tb?flp(x):x)   //as a8 does (Rm), the find from ixwk

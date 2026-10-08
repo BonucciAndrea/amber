@@ -1455,7 +1455,10 @@ t[`gatCharTail;("abc"@0 5 1;"abc"@4!!35;"abc"@4!!70001);("a b";35#"abc ";70001#"
 t[`scanNegCount;(-2{x+0}\0;-1{x+1}\5;-9{x,1}\`a);(,0;,5;,`a)]
 
 
-hexpect[918]
+/ ---- distinct of long sparse int lists: the parallel hash gives up (more keys per thread than the 65536 it keeps, at 2 to 29 threads) and the serial path answers; the give-up flag is a relaxed atomic ----
+t[`pdqGiveUp;{(?x)~x@&(!#x)=x?x}'(2000000?1000000000000;1000000*2000000?1000000);11b]
+
+hexpect[919]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

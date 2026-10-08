@@ -366,10 +366,10 @@ static void pdq_lmin(void*c_,int i){PDQ*c=c_;uint64_t ch=c->rg/(uint64_t)c->nt,l
 #define PDQ_GOLD 0x9E3779B97F4A7C15ull
 static void pdq_hash(void*c_,int i){PDQ*c=c_;uint64_t lo,hi;pdq_rng(c->pn,c->nt,i,&lo,&hi);
  uint32_t cap=PDQ_CAP*2,lg=17,used=0;uint64_t*k_=calloc(cap,8);uint32_t*v_=malloc((size_t)cap*4);c->hk[i]=k_;c->hv[i]=v_;c->h0[i]=0xffffffffu;
- if(!k_||!v_){c->stop=1;return;}
+ if(!k_||!v_){__atomic_store_n(&c->stop,1,__ATOMIC_RELAXED);return;}
  PDQ_W(uint64_t k=(uint64_t)v+1;if(!k){if(c->h0[i]==0xffffffffu)c->h0[i]=(uint32_t)j;continue;}
   uint64_t s=(k*PDQ_GOLD)>>(64-lg);while(k_[s]&&k_[s]!=k)s=(s+1)&(cap-1);
-  if(!k_[s]){if(++used>PDQ_CAP||(used&1023)==0&&__atomic_load_n(&c->stop,__ATOMIC_RELAXED)){c->stop=1;break;}k_[s]=k;v_[s]=(uint32_t)j;})
+  if(!k_[s]){if(++used>PDQ_CAP||(used&1023)==0&&__atomic_load_n(&c->stop,__ATOMIC_RELAXED)){__atomic_store_n(&c->stop,1,__ATOMIC_RELAXED);break;}k_[s]=k;v_[s]=(uint32_t)j;})
  c->hcnt[i]=used;}
 typedef struct{uint32_t ix;int64_t v;}PDQE;
 static int pdq_cmp(const void*a,const void*b){uint32_t p=((const PDQE*)a)->ix,q=((const PDQE*)b)->ix;return p<q?-1:p>q;}

@@ -1451,8 +1451,9 @@ t[`allocPeachFree;`x(("/bin/sh";"-c";"AMBER_THREADS=4 exec \"$0\"";`argv 0);"p:`
 LK:{`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);x,"\n\\m\n")}
 t[`leakTableLiteral;LK"([]a:1 2 3);\n.[.:;,\"([a:1 2]b:1 2;c:1 2\";{x}];\n.[.:;,\"([]a:1 2;3)\";{x}];";""]   / an unkeyed literal's empty key group, and the parts parsed before a 'parse
 t[`leakGroupFloat;LK"x:1.0 2.0 1.0;=x;\n=1.0 2.0;\n=`a`b!1.0 2.0;";""]   / group of floats held its argument once too many
+t[`leakDistinctFloat;LK"?0.5*!5000;\nx:0.5*!5000;?x;";""]   / distinct of a float vector past a page held its argument once too many
 
-hexpect[918]
+hexpect[919]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

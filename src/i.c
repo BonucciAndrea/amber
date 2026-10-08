@@ -63,7 +63,7 @@ void am_ln_sb_capture(const char*,unsigned long);// ln.c: tee stdout into the st
 Z A fws(I f,S s,N n)_(I(f==1,am_ln_sb_capture(s,n))W(n>0,L k=write(f,s,n);P(k<0,eo0())P(!k,au)s+=k;n-=k)au)                                                         // write stream (fd 1 -> also scroll-back)
 Z A fwm(I f,S s,N n)_(N o=0;W(o<n,L k=pwrite(f,s+o,MIN(n-o,(N)1<<30),(off_t)o);I(k<0&&errno==EINTR,continue)P(k<=0,o=ftruncate(f,0);eo0())o+=k)P(ftruncate(f,n),eo0())au)   // write a file from its start, a GiB a call (macOS refuses more than INT_MAX), then cut it to n
 // not through a shared map, whose copy was SIGBUS when the disk was full: a failed write is 'io and leaves the file empty. No O_TRUNC: y can map this file (f 1: 1:f)
-Z X2(fw,Ril(I f=gl_(x);My(x=(f<3||!S_ISREG(fm(f))?fws:fwm)(f,yV,yn))x)R_(I f=N(o(xR,O_RDWR|O_CREAT));A z=v1c(ai(f),y);I(f>2,close(f))z))                   // write
+Z X2(fw,Ril(I f=gl_(x);My(x=(f<3||!S_ISREG(fm(f))?fws:fwm)(f,yV,yn))x)R_(I f=N(o(xR,O_RDWR|O_CREAT),mr(y));A z=v1c(ai(f),y);I(f>2,close(f))z))                   // write
 ZN A dle()_(C*e=dlerror();I(e,os(e);os("\n"))eo0())
 A1(opn,Xz(x)ai(N(o(x,O_RDWR|O_CREAT))))                                                                                     // <s
 A cls(L n)_(P(n!=(I)n||n>=0&&n<3,ed0())P(close(n)<0,eo0())au)   /*Digest #6: stdin/out/err stay open (an error with no stderr to report it looped), and a bad close is an error; an int past 32 bits (0N) is no descriptor, and close() would take its low half*/                                                                                                    // >i

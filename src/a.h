@@ -110,7 +110,10 @@ static inline const void*amb_alchk(const void*p_,const char*f_,int l_){
 #define AMBER_VERSION_PATCH 2
 #define AMBER_VERSION M2(AMBER_VERSION_MAJOR) "." M2(AMBER_VERSION_MINOR) "." M2(AMBER_VERSION_PATCH)
 #define REFB  1
-#define MINE(x) (_r(x)==REFB)
+// sole owner. Peach workers change counts atomically (RC_INC, RC_DECV), so the count is read with a relaxed atomic
+// load: the same instruction as a plain one. Only a holder of a counted reference raises a count, so a count of REFB
+// read by its holder is that holder's alone: no other thread holds the object or can raise the count meanwhile
+#define MINE(x) (__atomic_load_n(&_r(x),__ATOMIC_RELAXED)==REFB)
 
 // ---- scoped atomic refcounting (ray_rc_sync) -----------------------------
 // A single thread-local flag flips retain/release between the fast serial path

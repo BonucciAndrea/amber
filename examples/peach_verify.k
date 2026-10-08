@@ -11,7 +11,7 @@
 / binary IPC on the hot path. -8!/-9! (src/ser.c) stays as the `!`-verb
 / serializer and is still verified here in its own right.
 / 
-/ Seven things are checked, in order:
+/ Eight things are checked, in order:
 /   1. (-9! -8! x) ~ x  over every shape the serializer claims to support.
 /   2. peach returns exactly what serial each returns, for every result shape
 /      (atoms, symbols, nested lists, dicts, tables) -- the thread pool is
@@ -27,6 +27,8 @@
 /      the same () as one thread when it declines the values.
 /   7. a primitive written in k, first called by several workers at once, is
 /      compiled once and gives what serial each gives.
+/   8. workers that amend, join, drop from and take roots of their own copies of
+/      shared globals get what serial each gets, and the globals are unchanged.
 / Exits non-zero if anything fails, so it can be wired into CI as-is.
 / ============================================================================
 dir:{$[#p:"/"/-1_"/"\x;p;"."]}`argv 1
@@ -198,6 +200,22 @@ ok["gsum falls back"         ;(gsum[gk;G#"abc"])~+/'(G#"abc")@=gk]
 sec"7. a primitive's lambda first compiled in workers"
 pw:peach[fw:{s:{x+1}/[20000;0];(<+`a`b!(x,s,1;2 1 1);&(1 0;x,1))};1+!8]   / before f' (k runs right to left)
 ok["grade a table, where of lists";pw~fw'1+!8]
+
+/ ---- 8. workers write in place only into their own copies ------------------
+/ A primitive writes into its argument in place when the argument's count says
+/ this thread holds it alone (MINE in src/a.h). Workers share the globals and the
+/ lambda's constants below and amend, join, drop and take roots of their own
+/ copies: each copy is written in place only once its count is the worker's alone,
+/ and nothing shared changes. Only a holder raises a count, so a count of one seen
+/ by its holder cannot be another thread's; the read is a relaxed atomic load, as
+/ the other threads' changes to counts are atomic (ThreadSanitizer flagged it).
+sec"8. workers write in place only into their own copies"
+gv:!100;gd:`a`b!(1 2 3;"xyz");gl:(1 2;3 4);gf:1.5 2.5 3.5;gt:+`n`m!(!6;6-!6)
+fo:{a:gv;a[0]:x;b:gv,x;c:@[gv;1;+;x];d:gd;d[`a]:x;e:gd[`a],x;k:gl;k[0;1]:x;u:gf;u[1]:x;o:+gt;o[`n]:x;
+ (a 0;*|b;c 1;d`a;*|e;k[0;1];+/u;+/%gf;-1+#a;1_b;-1_gv,x;(+gt)`n)}
+po:{peach[fo;!64]}'!40
+ok["in-place writes on own copies";&/(fo'!64)~/:po]
+ok["shared values unchanged";(gv;gd;gl;gf;gt)~(!100;`a`b!(1 2 3;"xyz");(1 2;3 4);1.5 2.5 3.5;+`n`m!(!6;6-!6))]
 
 / ---- summary ----------------------------------------------------------------
 `0:""

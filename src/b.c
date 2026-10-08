@@ -163,16 +163,21 @@ I ixwk(A x,A y,A z,B asg,B gl,UC*kd,L*ix){if(!x)return 0;if(_t(x)==tm&&!_tMT(_y(
 A ixst(A,A,CO UC*,CO L*,U,U,A,A,A*),ixv2(UC,A,A),ixal(A,A,A,A,A*);
 //the item at the places ixwk found, where each is one that is there -- an int into a list (0), a key or column there
 //(1, 2: not one to add), a row then its column (6), or a table's row at the last level (3) -- so that the verb can go
-//first, on it, and its result be assigned with :, and a verb that fails touches nothing. Else 0 (the amend goes as before).
+//first, on it, and its result be assigned with :, and a verb that fails touches nothing; or, at a key or column to add
+//at the last level (1, 2), the item the amend adds there (ie, as a8 makes it), for # _ @ . (ixcv calls ixit there for
+//them alone): never a function, so the verb goes first on it too, and a verb that fails touches nothing (d4 had added
+//the key, then lost the variable). Else 0 (the amend goes as before).
 //Borrowed from a general list (*o 0), else made, an atom or a row (*o 1): no count is touched on the way down x.
 //Where the walk stopped at a table's row (3) with more levels below, or did not start (m 0: d4) at one at the first
 //level (then kd[0] 3), the rest is read too, where each level below is one that is there (ixrr)
-Z A ixrr(A,A,U,U);
+Z A ixrr(A,A,U,U);A ixit(A,A,UC*,CO L*,U,B*);
+//is the key or column at the last level (1, 2) of m levels one to add? (d8q, a.c, which goes as before there)
+NI __attribute__((cold)) B ixna(A x,A y,UC*kd,CO L*ix,U m){B o=0;A c=m>1?ixit(x,y,kd,ix,m-1,&o):x;P(!c,0)B r=ix[m-1]>=(L)_N(_x(c));I(o,mr(c))return r;}
 NI __attribute__((cold)) A ixit(A x,A y,UC*kd,CO L*ix,U m,B*o){UC ry=_t(y);U my=ry>tm?1:_N(y);A v=x,w,c;B vo=0,wo;
  if(!m){P(ry!=tA||my<2||_t(x)!=tM||!_tz(*_A(y)),0)v=ixrr(x,y,0,my);I(v,kd[0]=3;*o=1)return v;}
  for(U k=0;k<m;k++){UC t=kd[k];L j=ix[k];   //c: the list the item is in
   c=!t?v:t<3?j<(L)_N(_x(v))?_y(v):0:t==6?_A(_y(v))[ix[k+1]]:t==3&&j>=0&&k+1==my&&_t(v)==tM&&(LH(tE,ry,tL)||(ry>tm?_tz(y):ry==tA&&_tz(_A(y)[k])))?v:0;   //3: a row,
-  if(!c){w=t==3&&k+1==m&&ry==tA&&_t(v)==tM&&_tz(_A(y)[k])?ixrr(v,y,k,my):0;I(vo,mr(v))I(w,*o=1)return w;}   //or the rest below one
+  if(!c){w=t==3&&k+1==m&&ry==tA&&_t(v)==tM&&_tz(_A(y)[k])?ixrr(v,y,k,my):t&&t<3&&k+1==m?ie(av,_y(v)):0;I(vo,mr(v))I(w,*o=1)return w;}   //or the rest below one
   wo=!_tA(c);w=wo?ii(c,(U)j):_A(c)[j];I(vo,I(!wo,w=_R(w);wo=1)mr(v))v=w;vo=wo;}   //not where the walk stopped short
  *o=vo;return v;}
 //from row y[k] of table x on, each level one index that is there, as ixwk walks it: an int in range of a list (a

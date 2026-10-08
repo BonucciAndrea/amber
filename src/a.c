@@ -647,7 +647,8 @@ A1(parT,
 Z A1(sam,x)V_;T_;U _K(A x/*0*/)_(X(R2(tu,tw,1)Rv(2)Rx(x>>48&15)Ropqr(xk)RA(rnk(x)))0)
 X1(mkn,RmMA(e1f(mkn,x))Rt(x(_R(cn[xt])))R_(x(rsz(xN,_R(cn[xt])))))
 A1(iei,/*0*/0x2332211004>>(xv*(xtv&&xv<10u)<<2)&15)
-Y2(iex,/*01*/RmMA(r2f(iex,x,y))RT_A(rsz(yN,iex(x,fir(y))))Rs(as(0))Rc(ac(xtv&&xv-6<4u?-(xv==6||xv==9):"\0\1\x7f\x80 "[iei(x)]))Rf(y(af(A(0.,1.,WF,-WF,NF)[iei(x)])))R_(y(az(G(0ll,1,WL,-WL,NL)[iei(x)]))))
+NI A2(iex,/*01*/P(!x,y)Y(RmMA(r2f(iex,x,y))RT_A(rsz(yN,iex(x,fir(y))))Rs(as(0))Rc(ac(xtv&&xv-6<4u?-(xv==6||xv==9):"\0\1\x7f\x80 "[iei(x)]))Rf(y(af(A(0.,1.,WF,-WF,NF)[iei(x)])))R_(y(az(G(0ll,1,WL,-WL,NL)[iei(x)]))))0)   //x 0: y, ixsd's item at a key to add where the verb went first
+//(f 0), which ixsl replaces with its result. NI: out of line, as it was, and the test not split off into its callers
 A2(ie,/*00*/x==CAT?emp(yt):iex(x,fir(yR)))
 Z __attribute__((always_inline)) inline A prj_(A x,CO A*a,U n)_(XmMA(x8(a,n))U k=MAX(n,xK);F(n,k-=a[i]!=GAP)x=(xtp?val:aA1)(xR);I i=0,j=1;W(i<n&&j<xn,I(xA[j]==GAP,xA[j]=a[i++])j++)W(i<n,PSH(x,a[i++]))P(xn>9,ez(x))AT(tp,AK(k,x)))
 AX(prj,prj_(x,a,n))   //prj_: inlined into d3s, d4s (an amend at more than one level), as prj(DOT,..) was
@@ -1201,13 +1202,13 @@ A4(d4,/*1000*/d4s(x,y,z,u,0))
 Z __attribute__((cold)) A3(d3t,/*100*/d3s(x,y,z,1))   //s a constant in each, so d3, d4 inline prj_ as they did prj(DOT,..); a symbol list's
 Z __attribute__((cold)) A4(d4t,/*1000*/d4s(x,y,z,u,1))   //own amend is rare (cold: kept out of the way of the hot code, at the binary's end)
 Z AA(d8_,/*10..0*/A x=*a,y=a[1],z=a[2];P(n==4,d4(x,y,z,a[3]))P(n==3,d3(x,y,z))en(x))
-I ixwk(A,A,A,B,B,UC*,L*),ixgn(A*),ixgh(A*);A ixit(A,A,UC*,CO L*,U,B*);
+I ixwk(A,A,A,B,B,UC*,L*),ixgn(A*),ixgh(A*);A ixit(A,A,UC*,CO L*,U,B*);B ixna(A,A,UC*,CO L*,U);
 //d8, where the walk found nothing to assign (w_ 0): read the item first, as d8 does at a row, where it is a table's row with
 //more below it, or, in an assignment by d4 (g_ found again here, so d8 need not keep it) of another global (gd), where the
 //walk finds it: its new value is then assigned with : at the places found (ixst), not by d4, which would copy the global as
 //it is held here; ixst there never amends by name. *h 0: not so, and d8 goes on as before (b as it was)
 Z NI __attribute__((cold)) A d8q(A*p,A*b,A*a,I n,UC*kd,L*ix,B*h){I g_=ixgn(p);B gd=g_&&!ixgh(p),o;I w=gd?ixwk(*b,a[1],n==4?a[3]:au,0,0,kd,ix):0;
- P(w<0||!gd&&(g_||_t(*b)!=tM),*h=0,(A)0)A q=ixit(*b,a[1],kd,ix,(U)w,&o);P(!(*h=!!q),I(w>0&&kd[w-1]==9,mr((A)ix[w-1]))(A)0)I(!w,w=1)   //(the find for a list of keys, 9, unused)
+ P(w<0||!gd&&(g_||_t(*b)!=tM)||w>0&&kd[w-1]-1u<2u&&ixna(*b,a[1],kd,ix,(U)w),*h=0,(A)0)A q=ixit(*b,a[1],kd,ix,(U)w,&o);P(!(*h=!!q),I(w>0&&kd[w-1]==9,mr((A)ix[w-1]))(A)0)I(!w,w=1)   //(the find for a list of keys, 9, unused)
  I(!o,_R(q))A r=USQ(n>3?_8(a[2],A8(q,_R(a[3])),2):_8(a[2],A8(q),1));P(!r,I(*p&&*p!=au,mr(*b))E(*p=*b);0)I(*p&&*p!=au,mr(*p);*p=au)   //as d8 does
  A u=0;q=ixst(*b,a[1],kd,ix,0,(U)w,av,r,&u);mr(r);P(!q,I(u,*p=u)(A)0)return *p=_R(q);}   //(u: a result that does not fit puts the value back)
 //d8 on a dict marked `s (d8 tests the mark), after the walk (w, where it found no error: that comes first, as for

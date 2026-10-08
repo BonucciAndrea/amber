@@ -20,6 +20,13 @@ Z AM_TLS C b[4096];Z AM_TLS C*r;Z AM_TLS U d;
 // the compact caret text is unaffected -- it is buffered in b[] and still
 // handed to the trap handler and to `err, so nothing is lost.
 I amdiag=-1;
+// Per thread: set while a load probes its source for qSQL (bsl, m.c), so the errors
+// the probe provokes and catches print no diagnostic. The probe used to switch
+// `diag off and back, and peach workers loading at once lost a restore.
+AM_TLS I amdiagq=0;
+// resolve amdiag from $AMBER_DIAG, as eD does at the first error; peachC calls it before
+// the workers start, so no two of them resolve it at once
+V amdiag0(V){amdiag=({S d=getenv("AMBER_DIAG");!d||*d!='0';});}
 // amber 1.9.4: set to 1 by eS() once a rich diagnostic has been written to
 // stderr for the CURRENT error, cleared by err0() when a new error starts and
 // by try() when one is consumed. epr() consults it so an uncaught error is
@@ -115,7 +122,7 @@ NI V eQ(S s,U n,U i){
 // AMBER_DIAG=0 or `diag 0 suppresses the report, in which case epr() falls back
 // to printing the compact form so an error is never silently swallowed.
 NI V eD(CO C*esrc,U en,U i){I(amdiag<0,amdiag=({S d=getenv("AMBER_DIAG");!d||*d!='0';}))
- I(amdiag,
+ I(amdiag&&!amdiagq,
   C sb[1024];U n=en<SZ sb-1?en:SZ sb-1;MC(sb,esrc,n);sb[n]=0;U io=i<n?i:n;
   // recover the category name err0() just wrote as "'<name>\n"
   // NOTE: locals here deliberately avoid g.h's bare accessor-macro namespace

@@ -515,8 +515,9 @@ Z A bsl1(S s)_(P(bdir(s),K1("{loaddb x;}",aCz(s)))I f=open(s,0,0);A x=u1c(ai(f))
   // qrwf returns a char vector (type tC); the ternary distinguishes the two.
   // The qrwf lookup is deferred inside {qrwf x} so `.`'s handler also catches
   // the undefined-variable error during bootstrap (before qsql.k defines qrwf);
-  // `diag is toggled off around the probe so that recovered error never prints.
-  A rw=K1("{d:`diag 0;r:.[{qrwf x};,x;{`ERR}];`diag d;r}",aCz(p));A r=_t(rw)==tC?(rw=str0(rw),evs(_C(rw),1)):evs(p,1);mr(rw);x(r))
+  // amdiagq keeps that recovered error from printing on this thread; `diag is left
+  // alone (switching it off and back lost a restore when peach workers loaded at once).
+  I q=amdiagq;amdiagq=1;A rw=K1("{.[{qrwf x};,x;{`ERR}]}",aCz(p));amdiagq=q;A r=_t(rw)==tC?(rw=str0(rw),evs(_C(rw),1)):evs(p,1);mr(rw);x(r))
 // a script that loads itself (or two that load each other) nested evs and bsl on the C stack with no limit and
 // crashed it; the VM counts its own depth (run), but a \l line does not go through it. 'stack after 512, as q's
 // 'stack after 500 (per thread, as run's count)

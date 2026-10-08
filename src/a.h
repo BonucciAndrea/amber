@@ -236,9 +236,10 @@ L cfm(CO A*,I),gl_(A),gl(A),iw(A,U,L),now(),pl(S*),maxfZ(L,A),minfZ(L,A),addfB(C
 S su(U),pID(S);
 W pu(S*);
 F gf(A);
-EX I amdiag;//stderr-diagnostic switch (e.c); see `diag
+EX I amdiag;V amdiag0(V);//stderr-diagnostic switch (e.c), and its default from $AMBER_DIAG; see `diag
 CO C*edinfo(CO C*,I);//error-catalogue accessor for the `dgn self-test (e.c)
 V eD(CO C*,U,U);//render a rich diagnostic from raw source bytes (e.c)
+EX AM_TLS I amdiagq;//set while a load's qSQL probe runs: no diagnostic on this thread (e.c)
 EX AM_TLS I amdiagshown;//set when a rich diagnostic was already rendered for the current error (e.c), per thread
 EX A1*v1[];EX A2*v2[];EX AA*v8[];EX A gv[65536],cns,cn[],ci[2][5];EX I pg;EX TY(CO C[])vc,TS,Tw,TR,TT,TX,Tk;EX S*argv,*env;
 

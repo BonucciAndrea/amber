@@ -11,7 +11,7 @@
 / binary IPC on the hot path. -8!/-9! (src/ser.c) stays as the `!`-verb
 / serializer and is still verified here in its own right.
 / 
-/ Eight things are checked, in order:
+/ Nine things are checked, in order:
 /   1. (-9! -8! x) ~ x  over every shape the serializer claims to support.
 /   2. peach returns exactly what serial each returns, for every result shape
 /      (atoms, symbols, nested lists, dicts, tables) -- the thread pool is
@@ -29,6 +29,8 @@
 /      compiled once and gives what serial each gives.
 /   8. workers that amend, join, drop from and take roots of their own copies of
 /      shared globals get what serial each gets, and the globals are unchanged.
+/   9. scripts loaded by workers at once leave the diagnostics setting (`diag)
+/      as it was.
 / Exits non-zero if anything fails, so it can be wired into CI as-is.
 / ============================================================================
 dir:{$[#p:"/"/-1_"/"\x;p;"."]}`argv 1
@@ -216,6 +218,18 @@ fo:{a:gv;a[0]:x;b:gv,x;c:@[gv;1;+;x];d:gd;d[`a]:x;e:gd[`a],x;k:gl;k[0;1]:x;u:gf;
 po:{peach[fo;!64]}'!40
 ok["in-place writes on own copies";&/(fo'!64)~/:po]
 ok["shared values unchanged";(gv;gd;gl;gf;gt)~(!100;`a`b!(1 2 3;"xyz");(1 2;3 4);1.5 2.5 3.5;+`n`m!(!6;6-!6))]
+
+/ ---- 9. a load in workers leaves `diag as it was ---------------------------
+/ Every \l probes its script for qSQL, catching the error the probe may raise.
+/ The probe switched `diag off and back, and workers loading at once lost a
+/ restore, so diagnostics were left off. The script here does nothing; the
+/ setting must be 1 after each peach of loads, ten times over.
+sec"9. a load in workers leaves `diag as it was"
+pf:-1_`x(("/bin/sh";"-c";"f=$(mktemp /tmp/amber_pv.XXXXXX) && echo '/ nothing' >\"$f\" && echo \"$f\"");"")
+dg:`diag 1
+ok["`diag kept by loads in workers";&/{`diag 1;r:peach[{. "\\l ",pf};!256];`diag 1}'!10]
+`diag dg
+`x(("/bin/rm";"-f";pf);"");
 
 / ---- summary ----------------------------------------------------------------
 `0:""

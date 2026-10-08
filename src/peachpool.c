@@ -78,6 +78,7 @@ static void *worker(void *arg) {
     long idx = (long)arg;
     ray_rc_sync = true;                    /* a worker only ever runs peach work */
     par_prng_perturb((W)(idx + 1));        /* its own decorrelated random stream */
+    acs((U)(idx + 1));                     /* its own colours for large blocks (m.c) */
     pthread_mutex_lock(&P.mx);
     int mygen = P.gen;
     /* Announce we have latched our baseline generation and are about to park.

@@ -124,6 +124,9 @@ names write the binary format too and still read the old text files (AMBER.md §
   databases (`par.txt` across disks), compression, on-disk `aj` over partitions, and map-reduce for
   aggregates that span partitions without grouping by the partition column (those copy the
   columns they need into one table first).
+- **Differs from q:** `count` of a partitioned table (a name `loaddb` defines) is the count of the
+  dict that names it (6, its keys), where q gives its rows; `sel"select count i from t"` gives them.
+  Telling that dict apart in `count` would cost every call.
 - **Still missing:** appending to a table on disk. There is no `upsert`, so no
   `` `:db/t/ upsert t `` (q appends the rows to the column files), and amber.k's `insert` takes the
   table itself, not a name or a path as q's `` `t insert r `` does (#94 Q13).

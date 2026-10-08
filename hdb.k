@@ -9,7 +9,8 @@
 /   partsave / partload / parts   the older value-partitioned layout
 / Since 2.7 the files are binary. `wcol writes a column and `rcol maps it back (src/dsk.c), so a numeric
 / column costs one mmap to load and its pages come in as a query reads them. Symbol columns are kept as
-/ indexes into the database's sym file, like q. Files written before 2.7 (Amber text) still read.
+/ indexes into the database's sym file, like q. Files written before 2.7 (Amber text) still read through dget and
+/ dload, which evaluate them; get reads only the binary format.
 / ============================================================================
 
 / ---- paths ----------------------------------------------------------------
@@ -35,10 +36,13 @@ dset:{[f;x]f:hdb.p f;`wcol(f;x;-1;0);f}
 dget:{[f]f:hdb.p f;$[hdb.amc f;`rcol f;. `c$1:f]}
 
 / ---- splayed tables -------------------------------------------------------
-/ splay["db/trades";t] writes db/trades/<col> for each column and db/trades/.d, symbols into db/sym.
+/ splay["db/trades";t] writes db/trades/<col> for each column and db/trades/.d, symbols into db/sym. One `wcol writes
+/ them all or none: each goes to its temporary file, and they are renamed only once all are written, the sym file
+/ first and .d last, so a set that fails leaves the old table (#94 Q12). The symbol columns' new names are found
+/ together, in the order they come, and the sym file grows by them once.
 hdb.atc:{[v]a:$`at v;$[#a;1+"supg"?*a;0]}                      / attribute code kept in the column file
-hdb.wc:{[f;db;v]$[`S~@v;[e:hdb.enum[db;v];`wcol(f;e 0;e 1;hdb.atc v)];`wcol(f;v;-1;0)];f}
-hdb.splay:{[dir;db;t]t:$[iskeyed t;unkey t;t];c:cols t;d:+t;{[dir;db;d;c]hdb.wc[dir,"/",$c;db;d c]}[dir;db;d]'c;`wcol(dir,"/.d";c;-1;0);dir}
+hdb.wq:{[f;s;n;v]$[`S~@v;(f;s?v;n;hdb.atc v);(f;v;-1;0)]}      / a column's (path;value;domain;attr) for `wcol
+hdb.splay:{[dir;db;t]t:$[iskeyed t;unkey t;t];c:cols t;v:(+t)c;b:`S=@'v;s:$[|/b;hdb.syms db;0#`];nw:$[|/b;[u:?,/?'v@&b;u@&~in[u;s]];0#`];s:s,nw;w:{[dir;s;n;c;v]hdb.wq[dir,"/",$c;s;n;v]}[dir;s;#s]'[c;v];w:$[#nw;(,(hdb.symf db;s;-1;0)),w;w],,(dir,"/.d";c;-1;0);`wcol w;$[#nw;hdb.symc[db;`fsz hdb.symf db;s];0];dir}
 splay:{[dir;t]dir:hdb.sl hdb.p dir;hdb.splay[dir;hdb.par dir;t]}
 hdb.dl:{[dir;s]c:`rcol dir,"/.d";+c!{[dir;s;c]`rcol(dir,"/",$c;s)}[dir;s]'c}
 hdb.old:{[dir]cs:. `c$1:dir,"/.d";+cs!{[dir;c]. `c$1:dir,"/",$c}[dir]'cs}   / a pre-2.7 text table
@@ -46,8 +50,12 @@ dload:{[dir]dir:hdb.sl hdb.p dir;$[hdb.amc dir,"/.d";hdb.dl[dir;hdb.syms hdb.par
 
 / ---- the q names ----------------------------------------------------------
 / `a set 5 and get`a are globals; `:path set x writes a file, and a path ending in / splays a table.
-set:{[h;v]$[(`s~@h)&~":"=*$h;[.[h;();:;v];h];[p:hdb.p h;$["/"~*|p;splay[p;v];dset[p;v]];h]]}
-get:{[h]$[(`s~@h)&~":"=*$h;. h;[p:hdb.sl hdb.p h;$[-2=`fsz p;dload p;dget p]]]}
+/ A keyed table is 'type to splay, as q's set (it was written unkeyed); `:f set kt writes it whole, keyed. Amber's own
+/ splay still writes a keyed table's unkeyed table
+set:{[h;v]$[(`s~@h)&~":"=*$h;[.[h;();:;v];h];[p:hdb.p h;$["/"~*|p;$[iskeyed v;`err"type";splay[p;v]];dset[p;v]];h]]}
+/ get reads only the binary format: a file or a table in any other is 'format, never evaluated (q's get never runs a
+/ file). dget and dload, Amber's own names, still read the text files Amber wrote before 2.7. A missing file is 'io, as before
+get:{[h]$[(`s~@h)&~":"=*$h;. h;[p:hdb.sl hdb.p h;$[-2=`fsz p;$[hdb.amc p,"/.d";hdb.dl[p;hdb.syms hdb.par p];`err"format"];hdb.amc p;`rcol p;-1=`fsz p;`err"io";`err"format"]]]}
 
 / ---- partitioned databases ------------------------------------------------
 / db/<partition>/<table>/<col>, partitions named by a date (2026.01.02) or an int, symbols in db/sym.
@@ -55,7 +63,7 @@ hdb.pv:{[p]$p}                                                  / partition valu
 hdb.pok:{[s]d:in[s;"0123456789"];$[0=#s;0;&/d;1;(10=#s)&(".."~s 4 7)&&/d 0 1 2 3 5 6 8 9;1;0]}   / looks like a partition
 hdb.pcn:{[p]$[`d~@p;`date;`int]}                                / the partition column's name
 Q.en:{[d;t]d:hdb.sl hdb.p d;dd:+t;{[d;dd;c]$[`S~@dd c;hdb.enum[d;dd c];0]}[d;dd]'cols t;t}
-Q.dpft:{[d;p;f;t]d:hdb.sl hdb.p d;v:. t;v:$[iskeyed v;unkey v;v];v:xasc[f;v];dd:+v;dd:@[dd;f;{`pa x}];hdb.splay[d,"/",(hdb.pv p),"/",$t;d;+dd];t}
+Q.dpft:{[d;p;f;t]d:hdb.sl hdb.p d;v:. t;$[iskeyed v;`err"type";0];v:xasc[f;v];dd:+v;dd:@[dd;f;{`pa x}];c:!dd;c:(,f),c@&~c=f;hdb.splay[d,"/",(hdb.pv p),"/",$t;d;+c!dd c];t}   / f first, as q
 
 / A partitioned table is a dict naming where it lives: database, table, partition column, the partitions that
 / hold it and its columns. Nothing is read until a query asks: qpsel (select, exec) and ptab map what they need.

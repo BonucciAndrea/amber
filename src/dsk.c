@@ -60,27 +60,47 @@ Z I drall(I f,V*b,W n,W off){C*p=b;while(n){W k0=n>((W)1<<30)?((W)1<<30):n;ssize
 // `wcol(path;value;domain;attr): write one column file. domain -1 picks the kind from the value; domain>=0
 // says the value is an int vector of indexes into a sym file of that many names (kind 1), and attr is the
 // symbol column's attribute. Returns the path.
-A wcolT(A x){
- P(_t(x)!=tA||_n(x)!=4,x(et0()))
+// `wcol of a list of such quadruples writes them all or none: each to its .tmp file, and only once every one is
+// written are they renamed, in the list's order. A splayed table is written so (the sym file first, .d last), and a
+// set that fails before the renames leaves the old table as it was (#94 Q12). Returns the paths. A path named twice is
+// 'domain. A reader during the renames can still see some files old and some new.
+// One quadruple x to its .tmp file: 1 when written; 0 when not, with the error raised and no .tmp left of it.
+Z B dwt(A x,C*path,C*tmp){
+ P(_t(x)!=tA||_n(x)!=4,et0(),0)
  A*a=_A(x);A pth=a[0],v=a[1];L dn=gl_(a[2]),atr=gl_(a[3]);
- C path[4096],tmp[4100];P(!dpath(pth,path,SZ path-8),x(et0()))
+ P(!dpath(pth,path,4096-8),et0(),0)
  UC t=_t(v),kind,typ=t,att=0;W cnt,nb;CO V*src;A body=0;
- if(dn>=0){P(_tP(v)||!(t==tG||t==tH||t==tI||t==tL),x(et0()))
-  if(t!=tI){body=cI(_R(v));P(!body,x(0))v=body;}   //find gives the narrowest int that holds the indexes
+ if(dn>=0){P(_tP(v)||!(t==tG||t==tH||t==tI||t==tL),et0(),0)
+  if(t!=tI){body=cI(_R(v));P(!body,0)v=body;}   //find gives the narrowest int that holds the indexes
   kind=KENUM;typ=tI;cnt=_n(v);nb=cnt*4;src=_V(v);att=(UC)(atr>=0&&atr<5?atr:0);}
  else if(!_tP(v)&&dflat(t)){kind=KFLAT;cnt=_n(v);nb=dbytes(t,cnt);src=_V(v);att=_at(v);}
  else{I k=_tP(v)?0:tjk(v);
   if(k==tdt||k==ttm||k==tnp){kind=KTIME;typ=(UC)k;body=tjn(v);cnt=_n(body);nb=cnt*8;src=_V(body);}
-  else{kind=KSER;typ=0;body=ser8(_R(v));P(!body,x(0))cnt=_n(body);nb=cnt;src=_V(body);}}
+  else{kind=KSER;typ=0;body=ser8(_R(v));P(!body,0)cnt=_n(body);nb=cnt;src=_V(body);}}
  C hdr[DHB];MS(hdr,0,DHB);DHdr*h=(DHdr*)hdr;MC(h->mg,"AMBC",4);h->ver=1;h->kind=kind;h->typ=typ;h->att=att;h->cnt=cnt;h->nb=nb;h->dom=dn>=0?(W)dn:0;
- snprintf(tmp,SZ tmp,"%s.tmp",path);
+ snprintf(tmp,4100,"%s.tmp",path);
  I f=open(tmp,O_WRONLY|O_CREAT|O_TRUNC,0644);
  if(f<0&&errno==ENOENT&&!dmkp(tmp))f=open(tmp,O_WRONLY|O_CREAT|O_TRUNC,0644);
- if(f<0){if(body)mr(body);return x(eo0());}
+ if(f<0){if(body)mr(body);eo0();return 0;}
  I bad=dwall(f,hdr,DHB)||(nb&&dwall(f,src,nb));bad|=close(f);
  if(body)mr(body);
- if(bad||rename(tmp,path)){unlink(tmp);return x(eo0());}
- A r=_R(pth);mr(x);return r;}
+ if(bad){unlink(tmp);eo0();return 0;}
+ return 1;}
+// the names of quadruple x, written already, and the unlink of .tmp files i to j-1 of a list
+Z V dwnm(A x,C*path,C*tmp){dpath(_A(x)[0],path,4096-8);snprintf(tmp,4100,"%s.tmp",path);}
+Z V dwun(A x,U i,U j,C*path,C*tmp){for(;i<j;i++){dwnm(_A(x)[i],path,tmp);unlink(tmp);}}
+// two quadruples naming one path would share its .tmp file, and one of them would be lost: 'domain before any write
+Z B dwdup(A x){U n=_n(x);F(n,A a=_A(x)[i];P(_t(a)!=tA||_n(a)!=4,0)A p=*_A(a);P(_t(p)!=tC,0)
+ for(U j=0;j<i;j++){A q=*_A(_A(x)[j]);if(_n(q)==_n(p)&&!memcmp(_V(q),_V(p),_n(p)))return 1;})return 0;}
+Z A wcolN(A x){U n=_n(x);C path[4096],tmp[4100];P(dwdup(x),x(ed0()))
+ for(U i=0;i<n;i++)if(!dwt(_A(x)[i],path,tmp)){dwun(x,0,i,path,tmp);return x(0);}
+ for(U i=0;i<n;i++){dwnm(_A(x)[i],path,tmp);if(rename(tmp,path)){dwun(x,i,n,path,tmp);return x(eo0());}}
+ A r=aA(n);F(n,_A(r)[i]=_R(*_A(_A(x)[i])))mr(x);return r;}
+A wcolT(A x){
+ P(_t(x)==tA&&_n(x)&&_t(*_A(x))==tA,wcolN(x))
+ C path[4096],tmp[4100];P(!dwt(x,path,tmp),x(0))
+ if(rename(tmp,path)){unlink(tmp);return x(eo0());}
+ A r=_R(*_A(x));mr(x);return r;}
 
 // the payload of a column file as a vector of type t and count n: mapped when it can be, read otherwise
 Z A dload(I f,UC t,W n,W nb){
@@ -96,8 +116,10 @@ A rcolT(A x){
  if(_t(x)==tA&&_n(x)==2){pth=_A(x)[0];dom=_A(x)[1];P(_t(dom)!=tS,x(et0()))}
  C path[4096];P(!dpath(pth,path,SZ path),x(et0()))
  I f=open(path,O_RDONLY);P(f<0,x(eo0()))
- struct stat st;DHdr h;
- if(fstat(f,&st)||(W)st.st_size<DHB||drall(f,&h,SZ h,0)){close(f);return x(eo0());}
+ struct stat st;DHdr h;I e=fstat(f,&st);
+ // a file that opens but is too short for the header is damage, 'format (#94 Q14); 'io is a failed open, stat or
+ // read, and a directory
+ if(e||(W)st.st_size<DHB||drall(f,&h,SZ h,0)){close(f);return x(!e&&S_ISREG(st.st_mode)&&(W)st.st_size<DHB?err0("format"):eo0());}
  // an attribute byte that names none of the four is damage too: copied into _at, `at read "\0supg" past its end
  B ok=!memcmp(h.mg,"AMBC",4)&&h.ver==1&&h.kind<=KTIME&&h.att<5&&(W)st.st_size>=DHB+h.nb;
  if(ok)S(h.kind,

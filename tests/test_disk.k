@@ -54,6 +54,11 @@ t[`colWritePrivate;(`rcol T,"/c/big")0;big 0]
 te[`colMissing;"`rcol T,\"/c/nope\""]
 (T,"/c/junk") 1:"not a column file at all, just some text that is long enough"
 te[`colNotOurs;"`rcol T,\"/c/junk\""]
+/ a file that opens but is shorter than the header page is 'format, as other damage; 'io is a file that cannot be
+/ opened or read, and a directory (#94 Q14)
+x:`wcol(T,"/c/ff";1 2 3;-1;0);(T,"/c/gg") 1:4000#1:T,"/c/ff";(T,"/c/hh") 1:""
+rc:{.[{`rcol x};,T,"/c/",x;{*"\n"\x}]}
+t[`colShort;rc'("gg";"hh";"junk";"nope";"");("'format";"'format";"'format";"'io";"'io")]
 t[`fszMissing;`fsz T,"/c/nope";-1]
 t[`fszDir;`fsz T,"/c";-2]
 t[`ldir;(`ldir T)1;()]
@@ -67,6 +72,21 @@ t[`symFile;dget T,"/db/sym";`a`b`c]
 x:splay[T,"/db/t2";([]sym:`d`a`e;v:1 2 3)]
 t[`symGrows;dget T,"/db/sym";`a`b`c`d`e]
 t[`oldStillReads;dload T,"/db/t";dt]
+/ a set that fails partway leaves the old table and the sym file: every file is written before any is renamed
+/ (#94 Q12). A directory where s's temporary file goes makes its write fail, after a's and the sym file's
+h:`$":",T,"/db/f/";x:h set ([]a:1 2;s:`x`y);x:mkd T,"/db/f/s.tmp";z:dget T,"/db/sym"
+x:.[set;(h;([]a:!5;s:5#`zp`zq));{*"\n"\x}]
+t[`splayFailOld;(x;.[get;,h;{*"\n"\x}];z~dget T,"/db/sym";`ldir T,"/db/f");("'io";([]a:1 2;s:`x`y);1;(,"s.tmp";(".d";,"a";,"s")))]
+wa:{x:`wcol((T,"/c/w1";1 2;-1;0);(T,"/c/w2";`k;-1;0));(x;`rcol T,"/c/w1";`rcol T,"/c/w2")}
+tv[`wcolAll;"wa[]";((T,"/c/w1";T,"/c/w2");1 2;`k)]   / a list of quadruples: all written, then renamed
+wd:{x:.[{`wcol((T,"/c/w3";1 2;-1;0);(T,"/c/w3";3 4;-1;0))};,0;{*"\n"\x}];(x;`fsz T,"/c/w3";`fsz T,"/c/w3.tmp")}
+tv[`wcolDup;"wd[]";("'domain";-1;-1)]   / a path named twice: nothing is written
+/ set of a keyed table to a splay is 'type, as q's set (it wrote the unkeyed table), and so is Q.dpft of one (q: 'nyi); nothing
+/ is written. One file keeps a keyed table whole
+kt:([k:1 2]v:3 4)
+t[`splayKeyed;(.[set;(`$":",T,"/db/k/";kt);{*"\n"\x}];`fsz T,"/db/k";.[Q.dpft;(T,"/hdbk";2026.01.01;`v;`kt);{*"\n"\x}];`fsz T,"/hdbk");("'type";-1;"'type";-1)]
+x:splay[T,"/db/k2";kt]
+t[`setKeyedFile;(get(`$":",T,"/kf") set kt;dload T,"/db/k2");(kt;([]k:1 2;v:3 4))]   / Amber's splay still writes it unkeyed
 x:mkd T,"/old";(T,"/old/x") 1:`k 1 2 3
 t[`oldTextFile;dget T,"/old/x";1 2 3]
 h:`$":",T,"/db/u/"
@@ -76,6 +96,13 @@ x:(`$":",T,"/f") set 1 2 3
 t[`setFile;get`$":",T,"/f";1 2 3]
 x:`zzdisk set 7
 t[`setGlobal;get`zzdisk;7]
+/ get reads only the binary format: a text file or table is 'format and never run (#94 Q11). dget and dload still
+/ read the files Amber wrote before 2.7, by running them
+x:mkd T,"/old/tt";(T,"/old/tt/.d") 1:`k@,`a;(T,"/old/tt/a") 1:"zzrun:1;5 6";(T,"/old/run") 1:"zzrun:42;1+2"
+ge:{.[get;,`$":",T,x;{*"\n"\x}]}
+t[`getText;(ge"/old/run";ge"/old/tt";ge"/old/nope";.[.:;,`zzrun;{"unset"}]);("'format";"'format";"'io";"unset")]
+x:dget T,"/old/run";y:dload T,"/old/tt"
+t[`getTextDget;(x;y);(3;+(,`a)!,5 6)]
 
 / ---- a partitioned database ------------------------------------------------
 trade:([]sym:`ibm`msft`ibm`aapl;px:10 20 11 30.0;sz:100 200 300 400)
@@ -94,6 +121,8 @@ te[`ptDelete;"del\"delete from trade where px>0\""]
 t[`ptab;#ptab[`trade;()];12]
 t[`ptabSome;#ptab[`trade;,2026.01.03];4]
 t[`ptSortedSym;attr (sel"select from trade where date=2026.01.02")`sym;`p]
+trade2:([]px:1.5 2.5;sym:`z`y;sz:1 2);x:Q.dpft[T,"/hdb2";2026.01.03;`sym;`trade2]
+t[`dpftOrder;(`rcol T,"/hdb2/2026.01.03/trade2/.d";`rcol T,"/hdb2/2026.01.03/trade2/px");(`sym`px`sz;2.5 1.5)]   / the parted column first, as q's .Q.dpft
 x:loaddb T,"/hdb"
 t[`reload;#sel"select from trade";12]
 
@@ -135,6 +164,6 @@ B:T,"/bb";(`$":",B)set 5000#"abc";B 1:get`$":",B
 t[`writeOwnGet;1:B;5000#"abc"]
 
 rm T
-hexpect[63]
+hexpect[72]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

@@ -157,6 +157,11 @@ EX AM_TLS_IE bool ray_rc_sync;
 // atomically drop one reference, yielding the PREVIOUS count (post-decrement
 // semantics, matching _r(x)-- ). A result of REFB means "I was the last owner".
 #define RC_DECV(x) (ray_rc_sync?__atomic_fetch_sub(&_r(x),1u,__ATOMIC_ACQ_REL):_r(x)--)
+// take n references at once, or give back n of them, never the last one (each's atom arguments, src/w.c e8).
+// The take is relaxed, as RC_INC: a new reference orders nothing. The give-back is acq-rel, as RC_DECV, so this
+// thread's reads of x come before a later owner's last release.
+#define RC_ADDN(x,n) do{if(ray_rc_sync)__atomic_fetch_add(&_r(x),(U)(n),__ATOMIC_RELAXED);else _r(x)+=(U)(n);}while(0)
+#define RC_SUBN(x,n) do{if(ray_rc_sync)__atomic_fetch_sub(&_r(x),(U)(n),__ATOMIC_ACQ_REL);else _r(x)-=(U)(n);}while(0)
 
 TD void V;TD bool B;TD char G,C;TD char unsigned UC;TD CO C*S;TD short H;TD unsigned short UH;TD int I;TD unsigned int U;TD long long L;TD double F;TD size_t N;
 TD unsigned long long W,A,A0(),A1(A),A2(A,A),A3(A,A,A),A4(A,A,A,A),AA(CO A*,U),AX(A,CO A*,U);

@@ -789,6 +789,10 @@ t[`peachSmallN;     `pe({x*x};!7);                                   {x*x}'!7]
 / workers used to parse over each other (file-static parser state): 'parse, then a segfault
 t[`peachEval;       `pe({. "1+",$x};!3000);                         1+!3000]
 t[`peachEvalLambda; `pe({. "{x*y}[",($x),";2]"};!2000);             2*!2000]
+/ an each of three or more arguments took its atom's references with a plain +=, so workers sharing one (a global) lost counts: 'UNMAP or a segfault
+PA:1.5
+t[`peachEachAtom;   {+/`pe({+/{x+y+z}'[PA;!100;!100]};!512)}'!200;   200#5145600.0]
+t[`peachEachAtomKept; PA;                                            1.5]
 / ---- 2.3: float each-prior through the vector kernels ----
 t[`eachPriorFsub;   -':1.5 4.0 2.5;                                  1.5 2.5 -1.5]
 t[`eachPriorFeq;    =':1.0 1.0 2.0 0n 0n;                            0 1 0 0 1]

@@ -176,8 +176,14 @@ t[`readSmallCut;sub"M 1:5000#\"x\";v:1:M;M 1:\"zz\";`0:$v~5000#\"x\"";"1\n"]
 t[`readSmallMany;sub"M 1:100#\"x\";v:{1:M}'!1100;`0:$(#v;+/#'v)";"1100\n110000\n"]
 M 1:65535#"ab";v:1:M;M 1:65536#"cd"
 t[`readSmallEdge;(v;1:M;1:(M;65530 10);1:(M;4096 3));(65535#"ab";65536#"cd";"cdcdcd";"cdc")]
+/ a big read still maps, and the table (1024, the heap's regions among them) still fills: then 1: is 'MMAP, which a
+/ trap catches (it ended the process), and the maps come back when the reads are freed; `rcol (get) reads the file
+/ instead of mapping it
+t[`readMapsFull;sub"M 1:70000#\"x\";`0:*\"\\n\"\\.[{{1:M}'!x};,1100;::];v:{1:M}'!1000;`0:$#v";"'MMAP\n1000\n"]
+G:T,"/g";x:`wcol(G;1 2 3 300;-1;0)
+t[`rcolMapsFull;sub"v:{1:M}'!1000;G:\"",G,"\";w:{`rcol G}'!1100;`0:$(#w;+/w 1099;1 2 3 300~w 0)";"1100\n306\n1\n"]
 
 rm T
-hexpect[76]
+hexpect[78]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

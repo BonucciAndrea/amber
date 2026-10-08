@@ -1160,6 +1160,9 @@ t[`takeEmptyDictFirst;`k@'(0#((,`a)!,0;0);0#(1 2!3 4;0);0#(`a`b!1 2;`c`d!3 4));(
 t[`takeEmptyDictShape;*0#(`a`b!(0;0 0);0N);`a`b!(0N;0N 0N)]
 t[`takeEmptyTable;`k@'(0#(`a`b!1 2;`a`b!3 4);0#,`a`b!1 2);("+`a`b!(!0;!0)";"+`a`b!(!0;!0)")]
 t[`dropEmptyDictFirst;`k@2_((,`a)!,0;1 2);"0#,(,`a)!,0N"]
+/ deleting keys of the other kind (chars against numbers) removes nothing, as ngn/k: it was 'type, and a list of them leaked
+t[`dropDictOtherKind;((1 2!3 4)_("a";"b");(1 2!3 4)_"a";(1 2!3 4)_(1;" ");("ab"!3 4)_1 2;(`a`b!3 4)_(0;1);(1 2!3 4)_2;(`a`b!3 4)_`a);(1 2!3 4;1 2!3 4;(,2)!,4;"ab"!3 4;`a`b!3 4;(,1)!,3;(,`b)!,4)]
+t[`dropDictOtherKindLeak;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"(1 2!3 4)_(\"a\";\"b\");\n.[_;((!0)!!0;(0#`)!\"\");::];\n\\m\n");""]   / and a dict on the right, still an error, does not leak
 / reshaping such a list is 'nyi, as reshaping a table is (it read a table as rows of a list: crashes, heap addresses, a loop)
 t[`reshapeEmptyDicts;4#.[.:;,"2 0#0#(`a`b!1 2;0)";{x}];"'nyi"]
 t[`reshapeDroppedDicts;4#.[.:;,"2 0N#2_(`a`b!1 2;3)";{x}];"'nyi"]
@@ -1458,7 +1461,7 @@ t[`leakSortedDictLookup;LK"(`s#`a`c!1 2)`b;\n(`s#`a`c!1 2)`b`d;\n(`s#\"ac\"!1 2)
 t[`leakScanSeed;LK"(1.5)<\\1 2;\n(0N)%\\1.0 2.0;\n(1.5)=\\1 2;\n(1.5)!\\1 2;\n=\\0N 0N 5;";""]   / a boxed seed of the generic scan (and =\'s boxed first item) was held once too many; ! is 'type
 t[`leakWsumInts;LK"\\l amber.k\n`wsm(1 2;3 4);\nwsum[1 2;3 4];\nwavg[1 2 4;!3];";""]   / the fused sum of two narrow int lists held the first once too many
 
-hexpect[923]
+hexpect[925]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

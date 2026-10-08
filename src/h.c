@@ -38,7 +38,8 @@ Z A2(cut,/*01*/Q(xtZ)Q(ytMT)K2("{y$[|/0<':x,#y;`err\"domain\";x+!'1_-':x,#y]}",x
 A2(und,/*01*/
  Xz(drp(gl_(x),y))
  XU(flt(x,y,0))
- Xm(A z=N(fnd(xx,yR));Zz(y(0);y=Nz(und(xx,zR));z=Ny(und(xy,z));am(y,z))ZZ(z(0);K2("_/",x,y))z(en(y)))
+ Xm(A z=fnd(xx,yR);P(!z,P(!_tA(xx)&&!_tM(xx)&&(ytA?({B o=1;F(yn,o&=_tt(ya))o;}):cxn_(_t(xx),yt)),ecl();ytA?K2("_/",x,y):y(xR))y(0))   //keys of the other kind (chars against numbers: find's 'type) remove nothing, as ngn/k; a general list of atoms, key by key
+  Zz(y(0);y=Nz(und(xx,zR));z=Ny(und(xy,z));am(y,z))ZZ(z(0);K2("_/",x,y))z(en(y)))
  P(xtZ&&ytMT,cut(x,y))
  P(xtMT&&ytz,rmv(xR,gl(y)))
  Ym(K2("{((!y)^x)#y}",x,y))

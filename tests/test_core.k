@@ -1465,7 +1465,11 @@ t[`leakWsumInts;LK"\\l amber.k\n`wsm(1 2;3 4);\nwsum[1 2;3 4];\nwavg[1 2 4;!3];"
 / ---- `wtn (amber.k's within) with a bound that needs a boxed int: the two bounds leaked, a call ----
 t[`withinBoxedBoundLeak;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"`wtn(1 2;0 1099511627776);\n`wtn(-32768 -13953 1;0N 2);\n`wtn(!5;1 1099511627776);\n`wtn(1.5 2;0 1099511627776);\n`0:,`k@`wtn(!5;0N 2);\n\\m\n");"1 1 1 0 0\n"]
 
-hexpect[926]
+
+/ ---- splice ?[x;(i;j);y] with an empty x or y: its prototype leaked; and a bound past an int's packed range ('index) ----
+t[`spliceEmptyLeak;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"`0:,`k?[0#0n;(0;0);0];\n`0:,`k?[?[(0 0;0);(0;0);0];(0;1);0#(0 0;0)];\n.[?;(1 2;(0;1099511627776);0);::];\n\\m\n");",0\n(0 0;0)\n"]
+
+hexpect[927]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

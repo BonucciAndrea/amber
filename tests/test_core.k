@@ -1455,7 +1455,11 @@ t[`gatCharTail;("abc"@0 5 1;"abc"@4!!35;"abc"@4!!70001);("a b";35#"abc ";70001#"
 t[`scanNegCount;(-2{x+0}\0;-1{x+1}\5;-9{x,1}\`a);(,0;,5;,`a)]
 
 
-hexpect[918]
+/ ---- \cd alone prints the working directory, as q's does (getcwd's test was the wrong way round: it was 'io) ----
+t[`cdBare;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"\\cd\n");"\"",(-1_`x(("/bin/sh";"-c";"pwd -P");"")),"\"\n"]
+
+
+hexpect[919]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

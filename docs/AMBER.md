@@ -1106,7 +1106,7 @@ Type `\` for the menu, then a topic: `\q` (scalars, aggregation, sets, strings),
 
 **Session commands** (one-liners in the `\` menu itself, no separate topic page):
 `\l file.k` load a script, `\d ns` switch/show namespace, `\t:n expr` time `n` runs, `\f` list
-functions, `\cd path` change directory, `\grid MODE` set the table border
+functions, `\cd path` change directory (`\cd` alone prints it), `\grid MODE` set the table border
 (`clean`/`rounded`/`sharp`/`heavy`), `\clear` clear the screen, `\a` print the licence, `\\` exit.
 
 **Diagnostics:** `\v` a rich workspace inspector (every global as a Name/Type/Shape/Memory

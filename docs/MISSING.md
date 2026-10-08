@@ -225,7 +225,7 @@ secondary threads buy you. `AMBER_THREADS` is the knob.
 ## 13. Console / environment niceties: partial
 `\ts` (via `ts`) and number formatting `.Q.f`/`.Q.fmt` are done.
 - **Still missing:** `\c` console dims, a real `\w` (workspace) report (`Q.w` is a placeholder),
-  `system"…"`, `getenv`/`setenv`, `\cd`, and editor tooling / a language server.
+  `system"…"`, `getenv`/`setenv`, and editor tooling / a language server.
 
 ## 14. Known engine bugs: both fixed in 2.0.0
 - ~~**Bare `/` comment line silently truncates the rest of the file.**~~ **Fixed in 2.0.0.**

@@ -498,7 +498,7 @@ S try_rewrite(S raw, C *buf, N n) {
 
 Z A bs0(S s)_(en0())
 Z A bsbs(S s)_(exit(0);0)
-Z A bscd(S s)_(P(!*s,C b[256];getcwd(b,SZ b)?eo0():aCz(b))chdir(s)?eo0():au)
+Z A bscd(S s)_(P(!*s,C b[4096];getcwd(b,SZ b)?aCz(b):eo0())chdir(s)?eo0():au)   //\cd alone: the working directory, as q
 Z A bsd(S s)_(P(!*s,as(gd))s+=*s=='.';gd=us(s);au)
 // amber 2.7: \l on a directory maps a database (hdb.k's loaddb), as q's \l db does
 #if !defined(wasm)

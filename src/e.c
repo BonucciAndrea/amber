@@ -27,8 +27,9 @@ I amdiag=-1;
 // creation time AND the legacy ngn/k caret block in b[] was dumped to stderr
 // again on the way out, so every failing script printed the same error twice in
 // two different formats. The buffer b[] itself is untouched -- .[f;a;h] handlers
-// and `err still receive the identical string they always did.
-I amdiagshown=0;
+// and `err still receive the identical string they always did. Per thread, as
+// b[] is: peach workers that fail set and clear it at once.
+AM_TLS I amdiagshown=0;
 
 // ---- error catalogue -------------------------------------------------------
 // One row per category in a.h's ERR macro. err0() has already written the

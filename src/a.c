@@ -678,7 +678,7 @@ Z V gat(V(*f)(ambcn),U es,CO V*a,U m,CO U*b,V*c,U n){int nt=n<PGAT_MIN?1:par_thr
  if(nt<2){f(a,m,b,c,n);return;}GJ j={f,a,m,b,(C*)c,n,(U)nt,es};par_run(nt,gat_w,&j);}
 // amber 2.7: a dict made `s (q's `s#d) looks up by steps: the value at the last key not above y, null below the
 // first key. bin does numbers; other keys (symbols, by name) count the keys not above y.
-Z A dstep(A k,A y)_(UC t=_t(k);P(LH(tB,t,tL)||t==tF,bin(k,y))K2("{[k;v]{[k;v]-1++/~v<k}[k]'v}",_R(k),y))
+Z A dstep(A k,A y)_(UC t=_t(k);P(LH(tB,t,tL)||t==tF,bin(k,y))K2("{[k;v]{[k;v]-1++/~v<k}[k]'v}",k,y))   //K2 borrows k
 A2(i1,/*01*/P(y==GAP||y==au,xR)
  X(Rt(y(xR))
    RE(x=gZ(xR);x(i1(x,y)))

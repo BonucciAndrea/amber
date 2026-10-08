@@ -1454,8 +1454,9 @@ t[`leakGroupFloat;LK"x:1.0 2.0 1.0;=x;\n=1.0 2.0;\n=`a`b!1.0 2.0;";""]   / group
 t[`leakDistinctFloat;LK"?0.5*!5000;\nx:0.5*!5000;?x;";""]   / distinct of a float vector past a page held its argument once too many
 t[`leakSortedDictLookup;LK"(`s#`a`c!1 2)`b;\n(`s#`a`c!1 2)`b`d;\n(`s#\"ac\"!1 2)\"b\";";""]   / a `s dict's symbol or char keys were held once too many by a lookup
 t[`leakScanSeed;LK"(1.5)<\\1 2;\n(0N)%\\1.0 2.0;\n(1.5)=\\1 2;\n(1.5)!\\1 2;\n=\\0N 0N 5;";""]   / a boxed seed of the generic scan (and =\'s boxed first item) was held once too many; ! is 'type
+t[`leakWsumInts;LK"\\l amber.k\n`wsm(1 2;3 4);\nwsum[1 2;3 4];\nwavg[1 2 4;!3];";""]   / the fused sum of two narrow int lists held the first once too many
 
-hexpect[921]
+hexpect[922]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

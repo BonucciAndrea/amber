@@ -138,6 +138,8 @@ PX:-1<`fsz"/proc/version";PV:(1b;"Linux";,"Linux";"version")
 t[`procRead;$[PX;(ER[{0<#1:x};,"/proc/self/status"];ER[{5#1:x};,"/proc/version"];ER[{0:x};,"/proc/sys/kernel/ostype"];ER[{1:x};,("/proc/version";6 7)]);PV];PV]
 E0:T,"/io/empty";E0 1:""
 t[`readEmpty;(1:E0;0:E0;1:(E0;5 3);ER[{1:x};,(E0;-1 3)]);("";();"";"'io")]
+/ 1:(path;i n) and 0:(path;i n) free the (i;n) pair: \m reported it on every call (in a process of its own)
+t[`readRangeFree;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"x:1:(\"",P0,"\";0 2);x:0:(\"",P0,"\";1 2);x:1:(\"",P0,"\";i:1 2);\n\\m\n");""]
 
 / ---- a partitioned database ------------------------------------------------
 trade:([]sym:`ibm`msft`ibm`aapl;px:10 20 11 30.0;sz:100 200 300 400)
@@ -202,6 +204,6 @@ B:T,"/bb";(`$":",B)set 5000#"abc";$[LK;wo[B;get`$":",B];B 1:5000#"abc"]
 t[`writeOwnGet;1:B;5000#"abc"]
 
 rm T
-hexpect[84]
+hexpect[85]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

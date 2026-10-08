@@ -76,7 +76,7 @@ ZN A dle()_(C*e=dlerror();I(e,os(e);os("\n"))eo0())
 A1(opn,Xz(x)ai(N(o(x,O_RDWR|O_CREAT))))                                                                                     // <s
 A cls(L n)_(P(n!=(I)n||n>=0&&n<3,ed0())P(close(n)<0,eo0())au)   /*Digest #6: stdin/out/err stay open (an error with no stderr to report it looped), and a bad close is an error; an int past 32 bits (0N) is no descriptor, and close() would take its low half*/                                                                                                    // >i
 A1(u0c,spl(N(u1c(x))))                                                                                                      // 0:x
-X1(u1c,RA(P(xn-2,el(x))P(!_tZ(xy),et(x))P(_n(xy)-2,el(x))A y=kv(&x);N i=gl(ii(y,0)),n=gl(ii(y,1));fr(x,i,n))R_(fr(x,0,-1))) // 1:x
+X1(u1c,RA(P(xn-2,el(x))P(!_tZ(xy),et(x))P(_n(xy)-2,el(x))A y=kv(&x);N i=gl(ii(y,0)),n=gl(ii(y,1));y(fr(x,i,n)))R_(fr(x,0,-1))) // 1:x
 A1(u2c,en(x))                                                                                                               // 2:x
 Y2(v0c,RA(v0c(x,N(jc(10,y))))RC(v1c(x,apc(y,10)))R_(et(y)))                                                                 // x 0:y
 Y2(v1c,RC(fw(x,y))R_(et(y)))                                                                                                // x 1:y

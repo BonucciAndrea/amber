@@ -185,6 +185,7 @@ A aa(U,A),ii(A,U),io(A,L),aE(L,L),af(F),aCm(S,S),aCn(S,U),apc(A,C),an(U,C),aV(C,
 V cyc(V*,U,U),eS(A,U),eQ(S,U,U),exit(I),hexC(S,U,C*),kargs(I,S*),kinit(),*memmem(CO V*,N,CO V*,N),mrn(U,CO A*),mRn(U,CO A*),repl(),tilV(V*,L,L,U);
 B id0(UC),mtc_(A,A),tru(A);
 V par_prng_perturb(W);//decorrelate a peach worker's thread-local prng stream (r.c)
+V acs(U);//start a peach worker's colour counter (m.c)
 A peach_pool(A,A,U,I);//persistent thread-pool morsel-driven peach (src/peachpool.c)
 CO C*peach_errmsg(V);//error category raised by the first failing item of the last peach dispatch
 CO C*errtext(V);//the calling thread's current error text (e.c)
@@ -247,7 +248,7 @@ enum                 {tA=1,tE,tB,tG,tH,tI,tL,tF,tC,tS,tM,tm,ti,tl,tf,tc,ts,to,tp
 #define TP(t) ((1<<ti|1<<tc|1<<ts|1<<tu|1<<tv|1<<tw|1<<tx|1<<tdt|1<<ttm)>>(t)&1)//packed types (+ date/time atoms)
 #define TU(t) LH(to,t,tx)                                         //function types (to..tx exactly; temporal tags sit above)
 
-//header bytes: b....... XXXXXXXX ....OEkt rrrrnnnn
+//header bytes: bc...... XXXXXXXX ....OEkt rrrrnnnn
 #define _V(x) ((V*)(x))       //pointer to data
 #define _n(x) (*(U *)((x)- 4))//length
 #define _r(x) (*(U *)((x)- 8))//refcount
@@ -258,6 +259,7 @@ enum                 {tA=1,tE,tB,tG,tH,tI,tL,tF,tC,tS,tM,tm,ti,tl,tf,tc,ts,to,tp
 #define _at(x) (*(UC*)((x)-13))//amber attribute: 0=none 1=sorted(`s)
 #define _X(x) (*(A *)((x)-24))//ptr to next chunk in bucket
 #define _b(x) (*(UC*)((x)-32))//bucket index
+#define _cl(x) (*(UC*)((x)-31))//colour: 64-byte lines a large payload sits into its block (m.c); a coloured payload's _b is one less than its block's
 
 //tagged value bits (t=type,v=value,o=srcoffset,k=arity,x=ptr):
 // tttttttt........................vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv tc,ti,tu,tv,tw

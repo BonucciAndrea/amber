@@ -171,6 +171,7 @@ Z X1(grq,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et
  // (246 ms on 10M rows of 10 symbols). Dense codes first: the distinct symbols (first-seen order), each row's
  // index in them, and the codes grouped by their small range (~70 ms). The keys come out in the same order.
  RS(P(!xn,K1("{x!0#,!0}",x))A u=unq(_R(x));P(!u,x(0))A k=fnd(u,x);P(!k,mr(u);0)A d=grq(k);P(!d,mr(u);0)A v=kv(&d);mr(d);am(u,v))
+ RB(grq(cG(x)))   //a bit mask (1010B, or tag 3 from -9! or a column file) groups as the 0/1 bytes it holds: =1 0 1 0's answer (#94 Q6)
  // amber item 7, REVERTED after measurement. The "optimisation" here was to
  // hoist the group payload pointers into an rp[256] array before the scatter,
  // on the theory that `_I(r[v])` was a dependent load. It is not: A is an

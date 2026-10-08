@@ -94,6 +94,8 @@ x:h set dt
 t[`setSplays;get`$":",T,"/db/u";dt]
 x:(`$":",T,"/f") set 1 2 3
 t[`setFile;get`$":",T,"/f";1 2 3]
+x:(`$":",T,"/fb") set 1010B
+t[`setBitsGroup;.[{(-8!x;=x)};,get`$":",T,"/fb";{x}];(-8!1010B;=1 0 1 0)]   / a bit mask comes back one, and = takes it (#94 Q6)
 x:`zzdisk set 7
 t[`setGlobal;get`zzdisk;7]
 / get reads only the binary format: a text file or table is 'format and never run (#94 Q11). dget and dload still
@@ -167,6 +169,6 @@ B:T,"/bb";(`$":",B)set 5000#"abc";$[LK;wo[B;get`$":",B];B 1:5000#"abc"]
 t[`writeOwnGet;1:B;5000#"abc"]
 
 rm T
-hexpect[72]
+hexpect[73]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

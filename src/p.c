@@ -80,7 +80,7 @@ Z A0(pp,P(*s-'[',au)A x=N(pSw(';',1));s=pw(s);P(*s-']'||!xn,ep(x))P(xN>8,ez(x))s
 Z S pws(S s)_(W(*s==32||*s==10,s++)s)                                                               //skip spaces and newlines
 Z A amkl(CO A*e,U n)_(A x=aA1(MKL);F(n,PSH(x,e[i]))x)                                                //make-list node (e0;e1;..)
 Z A amcg(C end,U*np)_(I nm[256];A ex[256];U n=0;s=pws(s);                                            //parse `name:expr;..` group up to end -> (names ! (e0;e1;..))
- W(*s-end,P(!id0(*s),F(n,mr(ex[i]))ep0())A y=str0(N(ps(),F(n,mr(ex[i]))));nm[n]=us(yC);y(0);s=pws(s);P(*s-':',F(n,mr(ex[i]))ep0())s++;
+ W(*s-end,P(n==L(ex),F(n,mr(ex[i]))ez0())P(!id0(*s),F(n,mr(ex[i]))ep0())A y=str0(N(ps(),F(n,mr(ex[i]))));nm[n]=us(yC);y(0);s=pws(s);P(*s-':',F(n,mr(ex[i]))ep0())s++;
   C v=0;A e=N(pe(0,&v),F(n,mr(ex[i])));ex[n++]=e;s=pws(s);I(*s==';',s++)s=pws(s))                //an error frees the columns parsed so far
  s++;*np=n;aA3(EXC,qte(aV(tS,n,nm)),n?amkl(ex,n):emp(tA)))                                       //no columns: () as the values, not an empty make-list (whose prototype was ::)
 Z A0(amtbl,s++;U nk,nv;A kd=N(amcg(']',&nk)),vd=N(amcg(')',&nv),mr(kd));                             //table literal ([keys]cols) ; s at '['

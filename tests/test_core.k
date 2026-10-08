@@ -1446,6 +1446,8 @@ t[`parenEmptyKept;{*"\n"\.[{`k@. x};,x;{x}]}'("()";"(1;2)";"{x+y}[1;]2";"[1;;2]"
 t[`allocGrowFloats;{(#x;+/x;x~0.0+!131072)}`j?"[",(","/$!131072),"]";(131072;8589869056.0;1b)]
 t[`allocGrowChars;{(#x;+/`i$x;-12#x)}@,/$!200000;(1088890;56866720;"199998199999")]
 t[`allocPeachFree;`x(("/bin/sh";"-c";"AMBER_THREADS=4 exec \"$0\"";`argv 0);"p:`pe({0.5*!x};40000*1+!8);s:+/'p;q:`pe({,/$!x};20000*1+!8);c:#'q;b:20000 2#!40000;p:0;q:0\n\\m\n`0:\" \"/$s,c,+/+/b\n");"399990000.0 1599980000.0 3599970000.0 6399960000.0 9999950000.0 14399940000.0 19599930000.0 25599920000.0 88890 188890 288890 388890 488890 608890 728890 848890 799980000\n"]   / in a process of its own, as \m reports the running script's own text
+/ ---- a table literal holds at most 256 columns, in its keys or its values: one more is 'limit (it overran the parser's arrays and crashed) ----
+t[`tableLiteralLimit;{*"\n"\.[{`k@#!. x};,x;{x}]}'(("([]",(";"/{"a",($x),":1"}'!256),")");("([]",(";"/{"a",($x),":1"}'!300),")");("([",(";"/{"a",($x),":1"}'!257),"]b:1)"));("256";"'limit";"'limit")]
 
 / ---- leaks: \m (the heap check) prints a !refc line for each object counted more than it is held; it reads stdin, so each runs in a process of its own ----
 LK:{`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);x,"\n\\m\n")}
@@ -1456,7 +1458,7 @@ t[`leakSortedDictLookup;LK"(`s#`a`c!1 2)`b;\n(`s#`a`c!1 2)`b`d;\n(`s#\"ac\"!1 2)
 t[`leakScanSeed;LK"(1.5)<\\1 2;\n(0N)%\\1.0 2.0;\n(1.5)=\\1 2;\n(1.5)!\\1 2;\n=\\0N 0N 5;";""]   / a boxed seed of the generic scan (and =\'s boxed first item) was held once too many; ! is 'type
 t[`leakWsumInts;LK"\\l amber.k\n`wsm(1 2;3 4);\nwsum[1 2;3 4];\nwavg[1 2 4;!3];";""]   / the fused sum of two narrow int lists held the first once too many
 
-hexpect[922]
+hexpect[923]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

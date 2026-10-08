@@ -334,6 +334,11 @@ behaviour shows up as a test failure rather than a silent regression.
   q gives `'rank` for these (`` t[`a]:9 ``, `` @[t;`a;:;9] ``, `` @[t;`a`b;:;9] ``).
 - **Find gives `0N` for no match**, as in ngn/k: `1 2 3?5` is `0N`, where q gives the count, `3`.
   amber.k's `in` and `ij` rely on it.
+- **Find in a list whose items differ in rank looks for `y` as one item first** (#105 Q2), so it
+  finds what `=` groups by (`` =(1;"ab") `` is `` (1;"ab")!(,0;,1) ``): `(1;"ab")?"ab"` is `1`,
+  `(1;2 3;"ab";4)?"ab"` is `2` and `((1;2 3);4)?4` is `1`. Only where `y` is not an item does find map
+  over it, as q and ngn/k always do: `(1;"ab")?"cd"` is `0N 0N`. q gives `2 2`, `4 4` and `2` for the
+  three (each char, not found; `=` groups as Amber does), and ngn/k `0N 0N`, `0N 0N` and `'rank`.
 - **A take from an empty general list gives empty strings**: `3#()` is `("";"";"")`, since an empty
   general list keeps a string as its type witness (CHANGELOG, "Empty general lists keep their type
   witness"); q gives `(();();())`.

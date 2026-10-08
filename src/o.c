@@ -104,7 +104,11 @@ A1(ascA,N n=xn;A z=aI(n);I*p=zI;tilV(p,0,n,2);P(n<17,cis(x,p,n,p);x(z))N m=n/2;A
 // order-preserving copy of the vector -- exactly the two costs rdxg() removes.
 Z A1(ascB,P(xtF,asc(of1(x)))
  x=N(K1("{x-&/x}",x));N n=xn;A y=aC(n),z=aI(n),u=aI(n);Mx(My(u=ascZ(xV,yV,zV,uV,n,(1ll<<xw)+7>>3)==zV?u(z):z(u)))u)
-X1(asc,Rt(opn(x))Rm(grdm(x,asc))RM(K1("{(!#x){x@<y x}/|.+x}",x))RS(asc(str(x)))RA(P(xn-(I)xn,ez(x))A g=xn>1?ascT(x):0;g?x(g):ascA(x))RE(Lij x(0);aE(0,j-i))
+// A table by its rows: its columns from the last, each graded in the order the next leaves the rows (the grade is
+// stable). Each column is indexed in C: K's y x applied a column of two or three functions as a train ('rank, or a
+// wrong order from what the train gave)
+Z A ascM(A x)_(A g=aE(0,xN);CO A*c=_A(xy);for(N j=_n(xy);j--;){A o=asc(N(i1(c[j],_R(g)),mr(g);mr(x)));P(!o,mr(g);x(0))A h=i1(g,o);mr(g);g=Nx(h);}x(g))
+X1(asc,Rt(opn(x))Rm(grdm(x,asc))RM(ascM(x))RS(asc(str(x)))RA(P(xn-(I)xn,ez(x))A g=xn>1?ascT(x):0;g?x(g):ascA(x))RE(Lij x(0);aE(0,j-i))
  RGC(P(xn-(I)xn,ez(x))N n=xn;I c[257]={};B u=xtC;I*b=c+(u?1:129),*d=c+(u?0:128);F(n,b[u?(UC)xg:xg]++)F(256,c[i+1]+=c[i])A y=aI(n);Mx(F(n,yI[d[u?(UC)xg:xg]++]=i))ct(tZ(n-1),y))//chars sort as unsigned bytes
  // amber batch 2: 16/32/64-bit integers and IEEE-754 doubles go through the
  // key-carrying LSD radix in src/v.c -- one sequential pass per SIGNIFICANT key
@@ -116,7 +120,7 @@ X1(asc,Rt(opn(x))Rm(grdm(x,asc))RM(K1("{(!#x){x@<y x}/|.+x}",x))RS(asc(str(x)))R
   I(_at(x)==1,A y=aI((U)n);I*RES o=yI;for(N i=0;i<n;i++)o[i]=(I)i;return x(ct(tZ(n-1),y));)
   A y=cntgrd(x);I(!y,y=rdxg(x))P(!y,ascB(x))x(ct(tZ(n-1),y)))
  R_(P(xn-(I)xn,ez(x))ascB(x)))
-X1(dsc,RMT(x=rev(asc(rev(x)));sub(ai(xN-1),x))Rm(grdm(x,dsc))Ril(cls(gl(x)))R_(et(x)))
+X1(dsc,RMT(x=rev(N(asc(rev(x))));sub(ai(xN-1),x))Rm(grdm(x,dsc))Ril(cls(gl(x)))R_(et(x)))
 // amber: O(n) direct-indexed group for a 32-bit int vector.  This is the hot
 // case: SYMBOLS reach it through cSI (tS is stored as interned 4-byte ids), so
 // every `select ... by sym` lands here, as do the group_* benchmarks whose keys

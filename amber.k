@@ -93,7 +93,7 @@ next:{$[`m~@x;`err"type";isat x;x;1_x,,x@#x]}   / A dict or keyed table: 'type a
 rank:{$[1=#x;$[isda x;`err"rank";<<x];<<x]}   / An atom: 'rank as q (<5 is 5; <`a opens a file); a function: the primitive's 'type; isda only when #x is 1
 iasc:{$[1=#x;$[isda x;`err"rank";<x];<x]}
 idesc:{$[1=#x;$[isda x;`err"rank";>x];>x]}
-dsrt:{k:!x;v:. x;i:$[y;>v;<v];(k i)!v i}         / a dict sorted by value: its keys go with their values (x@<x would look each key up again)
+dsrt:{$[y;|`srt@|x;`srt x]}                     / a dict sorted by value: its keys go with their values (x@<x would look each key up again); `srt indexes both in C, as k i applied keys or values of two or three functions as a train; > is |<| (ties in index order)
 asc:{$[`m~@x;dsrt[x;0];1=#x;$[isda x;`err"rank";`srt x];`srt x]}
 desc:{$[`m~@x;dsrt[x;1];1=#x;$[isda x;`err"rank";x@>x];x@>x]}
 xrank:{$[$[1=#y;isda y;0b];`err"rank";_y*x%#y:<<y]}
@@ -180,9 +180,8 @@ xcols:{[c;t]c:c,();e:(k:cols t)^c;$[(#k)=(#c)+#e;0;hasc[c;t]];+(c,e)#+t}   / a c
 / the DISTINCT ids), which is the collation `<` on a symbol vector gives and the
 / one ajsorted's contiguity note assumes.  Descending is the same sort with
 / complemented keys, which reproduces `>`'s "ties in ascending index order".
-xsg:{[cs;d]{[d;o;v]o@$[d;>v o;<v o]}[d]/[!#*cs;|cs]}   / Each column's own order, the last key first (stable); the rows' grade squeezed one-item rows (digest #58)
-xasc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;0b);o:$[#o;o;xsg[(+t)c;0b]];t:t@o;d:+t;+d,(1#c)!`sa'd@1#c}
-xdesc:{[c;t]c:c,();hasc[c;t];o:`xs(value c#+t;1b);o:$[#o;o;xsg[(+t)c;1b]];t@o}
+xasc:{[c;t]c:c,();hasc[c;t];s:c#+t;o:`xs(value s;0b);o:$[#o;o;<+s];t:t@o;d:+t;+d,(1#c)!`sa'd@1#c}
+xdesc:{[c;t]c:c,();hasc[c;t];s:c#+t;o:`xs(value s;1b);o:$[#o;o;>+s];t@o}
 fills:{$[|/`m`M=@x;dcv[fills;x];$[2>#x;$[#x;isat x;1b];0b];x;`A=@x;$[`A=@n:^x;fln\x;x@|\(!#x)*~n];x@|\(!#x)*~^x]}   / each null takes the last value before it, as q; a dict by its values, a table by column
 fln:{$[isat x;$[(`f=@x)&`I=@y;x^0.0+y;x^y];isat y;$[^y;x;y];~(#x)=#y;`err"length";`A=@n:^y;fln'[x;y];[t:(@x),@y;x:$[t~`I`F;0.0+x;x];y:$[t~`F`I;0.0+y;y];@[y;i;:;x i:&n]]]}   / a list of lists fills position by position from the item before, as q's ^\ (the nulls of y take x's; ints with floats: floats, as q)
 attr:{`at x}                                         / q's attr: `s `u `p `g, or ` for none

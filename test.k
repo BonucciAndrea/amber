@@ -99,6 +99,8 @@ t[`desc;desc 1 3 2;3 2 1]
 t[`iasc;iasc 30 10 20;1 2 0]
 t[`rank;rank 30 10 20;2 0 1]
 t[`gradeDicts;{a:`x!1;b:`y!2;c:`x!0;(asc(a;b;c);desc(a;b;c);iasc(a;b;c);idesc(a;b;c);rank(a;b;c))}[];((`x!0;`x!1;`y!2);(`y!2;`x!1;`x!0);2 0 1;1 0 2;1 2 0)]   / by keys, then values (#94 Q5)
+t[`sortFns;.[{t:+(,`a)!,({x};{x};{y});d:`a`b!(+/;-:);(iasc t;rank t;`a xdesc +(,`a)!,(+;-);`a xasc +(,`a)!,({y};{x});asc d;desc `a`b!({x};{y}))};,0;{x}];(0 1 2;0 1 2;+(,`a)!,(-;+);+(,`a)!,({x};{y});`a`b!(+/;-:);`b`a!({y};{x}))]   / a column, or a dict's values, of two or three functions: not applied as a train
+t[`srtDict;(`srt@`a`b`b!3 1 2;`srt@`a`b!({y};{x});desc `a`b`c!1 1 0;desc `a`b`c!(0n;1.0;0n));(`b`b`a!1 2 3;`b`a!({x};{y});`a`b`c!1 1 0;`b`a`c!1.0 0n 0n)]   / `srt of a dict is its asc, as q (keys and values indexed in C); desc keeps ties in index order
 t[`distinct;distinct 1 1 2 3 3;1 2 3]
 t[`inMem;in[3 5;1 2 3 4];10b]
 t[`inCharInt;*"\n"\.[in;(97;"abc");{x}];"'type"]   / a char and a number are 'type, as in q (issue #20, row 12)

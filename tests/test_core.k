@@ -1327,6 +1327,10 @@ t[`gradeDictValue;{a:`x!1;b:`y!2;c:`x!0;(<(a;b;c);<(c;b;a);>(b;c;a))}[];(2 0 1;0
 t[`gradeTableValue;{a:+(,`a)!,,2;b:+(,`a)!,,1;(<(a;b);<(b;a))}[];(1 0;0 1)]
 t[`gradeTableEqual;{a:+`a`b!(1 3;0 0);b:+`a`b!(1 2;5 5);c:+`a`b!(1 2;5 5);(<(a;b;c);<(c;b;a))}[];(1 2 0;0 1 2)]
 t[`gradeKeyedTable;{a:(+(,`k)!,1 2)!+(,`v)!,10 20;b:(+(,`k)!,1 2)!+(,`v)!,10 5;(<(a;b);>(a;b))}[];(1 0;0 1)]
+/ a table whose column is a list of two or three functions, by its rows: K's y x applied the column as a train ('rank,
+/ a wrong order; > crashed, so its cases run in a process of their own)
+tv[`gradeTableFns;"{t:+(,`a)!,({x};{x};{y});u:+(,`a)!,(+/;-:);v:+`a`b!(0 0 1;({x};{y};{x}));k:(+(,`k)!,0 1 2)!+(,`a)!,({x};{x};{y});(<t;<u;>u;<v;<k;(`s#t)~t)}[]";(0 1 2;0 1;1 0;0 1 2;+(,`k)!,0 1 2;1)]
+t[`gradeTableFnsDesc;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);">+(,`a)!,({x};{x};{y})\n>+`a`b!(0 0 1;({x};{y};{x}))\n>(+(,`k)!,0 1 2)!+(,`a)!,(+;-;+)\n");"2 0 1\n2 1 0\n+(,`k)!,1 0 2\n"]
 t[`distinctGroupDicts;{(#?(1 6!9 6;9 8!6 3;1 6!9 6);#=(1 6!9 6;9 8!6 3;1 6!9 6);?(`a`b!1 2;`c`d!3 4;`a`b!1 2);=(`a`b!1 2;`c`d!3 4;`a`b!1 2))}'!20;20#,(2;2;(`a`b!1 2;`c`d!3 4);(`a`b!1 2;`c`d!3 4)!(0 2;,1))]   / equal dicts are neighbours in the grade, so distinct and group put them together (by address, the count varied with what ran before)
 t[`distinctGroupTables;{x:(+(,`a)!,1 2;+(,`b)!,3 4;+(,`a)!,1 2);(#?x;#=x;#?|x;#=|x;?x)}'!20;20#,(2;2;2;2;(+(,`a)!,1 2;+(,`b)!,3 4))]   / tables too
 t[`distinctGroupDictsMatch;{x:(`a`b!(-0.0;0n);`a`b!(0.0;0%0);`a`c!1 2;`a`b!(1;2.0);`a`b!1 2;`a`b!(1;2);`a`b!10b;`a`b!1 0;`a`c!({x};1);`a`c!({x};1));(#?x;=x;#?-2_x;=-2_x)}[];(6;(`a`b!-0.0 0n;`a`c!1 2;`a`b!(1;2.0);`a`b!1 2;`a`b!1 0;`a`c!({x};1))!(0 1;,2;,3;4 5;6 7;8 9);5;(`a`b!-0.0 0n;`a`c!1 2;`a`b!(1;2.0);`a`b!1 2;`a`b!1 0)!(0 1;,2;,3;4 5;6 7))]   / items that match (~) group together: either zero, any NaN, ints of any width, bools and ints, a function (when one is in the list too)
@@ -1467,7 +1471,7 @@ t[`allocGrowFloats;{(#x;+/x;x~0.0+!131072)}`j?"[",(","/$!131072),"]";(131072;858
 t[`allocGrowChars;{(#x;+/`i$x;-12#x)}@,/$!200000;(1088890;56866720;"199998199999")]
 t[`allocPeachFree;`x(("/bin/sh";"-c";"AMBER_THREADS=4 exec \"$0\"";`argv 0);"p:`pe({0.5*!x};40000*1+!8);s:+/'p;q:`pe({,/$!x};20000*1+!8);c:#'q;b:20000 2#!40000;p:0;q:0\n\\m\n`0:\" \"/$s,c,+/+/b\n");"399990000.0 1599980000.0 3599970000.0 6399960000.0 9999950000.0 14399940000.0 19599930000.0 25599920000.0 88890 188890 288890 388890 488890 608890 728890 848890 799980000\n"]   / in a process of its own, as \m reports the running script's own text
 
-hexpect[932]
+hexpect[934]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

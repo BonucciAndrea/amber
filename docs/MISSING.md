@@ -347,3 +347,7 @@ behaviour shows up as a test failure rather than a silent regression.
   table is the table, as k's `,/` (q: its last row, as a dict); `flip ()!()` is an empty table with
   no columns (q: `'rank`); `` fills `a`b`c!(1;`x;0N) `` is `` `a`b`c!(1;`x;`x) `` (q: `'type`); and
   `xprev` of a keyed table is `'type` (q: `'length`).
+- **`insert` is `t,r` (#94 Q1).** It does not line a row up by column name or check its types, as
+  q's does. With `` u:+`a`b!(1 2;3 4) ``, `` insert[u;`b`a!5 6] `` is a list of three dicts (q: `u`
+  with the row `a` 6, `b` 5), and `` insert[u;`a`b!(5;`x)] `` makes `b` a general column (q:
+  `'type`). Doing it would cost an insert of rows already in the table's order.

@@ -76,8 +76,17 @@ Z I ixkv(A x,L j,A y,U k,A z,B asg,A g){A vs=_y(x);I r;B in=j>=0&&j<(L)_N(vs);  
 //prototype where the keyed tables are empty and there are no columns). A column name, which makes it a keyed table (its
 //flip), is left to the amend, as a keyed table's own amend is. Out of ixkd, which only tests the keys' type for it
 Z NI I ixkl(A x,A y,U k,A z,B asg){A q=_tA(y)?_A(y)[k]:ii(y,k);I r=_ts(q)||_t(q)==tS?0:ixcq(x,q,y,k,z,asg);I(!_tA(y),mr(q))return r;}
-Z I ixkd(A x,A y,U k,A z,B asg){P(_t(x)==tm&&(_tt(y)?y!=au:_tA(y)&&k+1==_n(y)&&_tt(_A(y)[k])&&_A(y)[k]!=au),0)   //one key at a
- //dict's last level, which any may be (a global's d[k]:v with keys not symbols, where ixwk stops): nothing to look at
+//a key of chars into keys of numbers, or a number into keys of chars or bytes, is 'type to the lookup the amend makes (fnd,
+//issue #20 row 12): such a key is looked up here, so that the check gives its error (4) before the variable is touched.
+//Only such a key: one of the keys' own kind (a char into chars, a number into numbers) is not looked up twice
+Z NI __attribute__((cold)) I ixkc(A ks,A q){A f=fnd(ks,_R(q));P(!f,4)mr(f);return 0;}
+#define IXKC(ks,q) ({UC tk_=_t(ks),tq_=_t(q);U m_=tk_==tC?~(1u<<tc|1u<<tC):1u<<tc|1u<<tC|(tk_==tG||tk_==tB?1u<<tA|1u<<tm|1u<<tM:LH(tH,tk_,tS)?0:1u<<tG);\
+ m_>>tq_&1?ixkc(ks,q):0;})   //(keys of ints held as bits or bytes, tB tG, are numbers: a key of chars, or a list or dict that may
+ //hold chars, is looked up there; a number, which the lookup takes, is not; keys of other numbers or symbols: a key of chars)
+Z I ixc0(A,A,U,A,B);
+Z I ixkd(A x,A y,U k,A z,B asg){P(_t(x)==tm&&(_tt(y)?y!=au:_tA(y)&&k+1==_n(y)&&_tt(_A(y)[k])&&_A(y)[k]!=au),IXKC(_x(x),_tt(y)?y:_A(y)[k]))   //one key at a
+ //dict's last level, which any may be (a global's d[k]:v with keys not symbols, where ixwk stops): nothing to look at, but a key
+ //of the other kind (IXKC)
  A ks=_x(x),vs=_y(x),f=0;B dn=k+1<_N(y);UC tk=_t(ks);I r=0;P(tk==tM,_t(x)==tM?ixkl(x,y,k,z,asg):0)A q=_tA(y)?_A(y)[k]:ii(y,k);   //(a keyed table: left to the amend)
  if(_t(x)==tM){U nc=_N(vs);L rows=nc?_N(_A(vs)[0]):0;
   if(_ts(q)){if(!dn)r=asg&&nc&&ixzc(z,(U)rows)&&!(nc==1&&!fI(_I(ks),1,_v(q)))?2:0;   //a column needs the row count (for :), unless it is the only column, which may take another
@@ -90,12 +99,16 @@ Z I ixkd(A x,A y,U k,A z,B asg){P(_t(x)==tm&&(_tt(y)?y!=au:_tA(y)&&k+1==_n(y)&&_
   else if(q==au||_tz(q)||!_tP(q)&&LH(tE,_t(q),tL)){B e=q==au,o=!e&&_tt(q);U c=e?(U)rows:o?1:_N(q);I(!o&&ixzc(z,c),r=2)   //rows
    B nd=dn&&ixnd(y,k+1,o||!_tP(z)&&_t(z)==tA?z:au);f=nd?ixkf(x,y,k+1):0;   //something below a row to check, for any of them
    for(U i=0;i<c&&!r&&(!e||nd);i++){L v=e?(L)i:o?gl_(q):ixe(q,i);if(v<0||v>=rows)r=1;else if(nd)r=ixkr(x,v,f,y,k+1,o?z:ixzi(z,i),asg);}}
-  else if(nc)r=ixcq(x,q,y,k,z,asg);}   //any other index: the table as a list of its rows (blw)
+  else r=nc?ixcq(x,q,y,k,z,asg):ixc0(q,y,k,z,asg);}   //any other index: the table as a list of its rows (blw); with no columns, none
  else if(q==au)r=ixck(vs,y,k,z,asg);   //every key: the values, elided at this level
- else if(!dn){if(!_tP(q)&&_tT(q)&&!_tA(q)&&tk!=tA&&ixzc(z,_N(q)))r=2;}   //the last level: any key may be set
+ else if(!dn){if(!_tP(q)&&_tT(q)&&!_tA(q)&&tk!=tA&&ixzc(z,_N(q)))r=2;else r=IXKC(ks,q);}   //the last level: any key may be set
+  //(but one of the other kind)
  else{f=fnd(ks,_R(q));if(!f)r=4;else if(_tP(f)||_tt(f))r=ixkv(x,gl_(f),y,k,z,asg,0);
   else if(LH(tG,_t(f),tL)){U c=_N(f);if(ixzc(z,c))r=2;else{A g=_t(vs)==tM?ixkf(vs,y,k+1):0;for(U i=0;i<c&&!r;i++)r=ixkv(x,ixe(f,i),y,k,ixzi(z,i),asg,g);I(g,mr(g))}}}
  I(f,mr(f))I(!_tA(y),mr(q))return r;}
+//a table with no columns has no rows: an index that is not a column, a row or every row is checked as into an empty list
+//(blw makes it one), where a float is 'type and a char 'index (out of range), as the amend gives them
+Z NI __attribute__((cold)) I ixc0(A q,A y,U k,A z,B asg){A e=emp(tA);I r=ixcq(e,q,y,k,z,asg);mr(e);return r;}
 //The check and then the assignment (d4) each looked up every key and column on the way down, so where every level of y
 //is one index that is there -- an int in range of a list or of a table's rows, or a key of a dict of symbol keys or a
 //column of a table, which may also be one to add -- ixwk walks y down x once, which checks it, and records in kd what

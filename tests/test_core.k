@@ -1451,7 +1451,11 @@ t[`allocPeachFree;`x(("/bin/sh";"-c";"AMBER_THREADS=4 exec \"$0\"";`argv 0);"p:`
 t[`gatCharTail;("abc"@0 5 1;"abc"@4!!35;"abc"@4!!70001);("a b";35#"abc ";70001#"abc ")]
 
 
-hexpect[917]
+/ ---- a scan with a count below 0 runs no step and gives ,x; below -1 it reserved room for 2^32 items (the count plus 1, unsigned) ----
+t[`scanNegCount;(-2{x+0}\0;-1{x+1}\5;-9{x,1}\`a);(,0;,5;,`a)]
+
+
+hexpect[918]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

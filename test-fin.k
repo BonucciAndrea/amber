@@ -61,7 +61,7 @@ t[`symstats;#symstats trades;10]
 
 / ---- O(1) group index correctness ----
 g:bysym trades
-t[`idxCorrect;(symrows[trades;g;`AAPL])~qwhere[trades;trades[`sym]=`AAPL]]
+t[`idxCorrect;(symrows[trades;g;`AAPL])~qwhere[trades;trades[`sym]=`AAPL];1]
 
 fails:r@&{"FAIL"~4#x}'r[;1]
 `0:"";`0:"============ FIN / HFT TEST SUITE ============"

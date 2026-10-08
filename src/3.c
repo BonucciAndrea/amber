@@ -283,7 +283,7 @@ Z A rgE(A x,A1*f){A*a=_A(x);P(_t(a[0])-tE&&_t(a[1])-tE,et(x))A p=_t(a[0])==tE?gZ
 A wsmC(A x){
  if(_t(x)!=tA||_n(x)!=2) return et(x);
  A*a=_A(x);A p=a[0],q=a[1];U n=_n(p);
- if(_n(q)!=n) return rgE(x,wsmC);
+ if(_n(q)!=n) return _t(p)-tE&&_t(q)-tE?el(x):rgE(x,wsmC);   //lists of different lengths: 'length, as q (a range is made a list first)
  if(_t(p)==tF&&_t(q)==tF){F r=par_bdot_f64((CO F*)_V(p),(CO F*)_V(q),n);mr(x);return af(r);}
  // ints: only a 64-bit list can hold 0N, so two narrower ones are k's +/x*y and one is widened; a null on either side gives 0N, so
  // amber.k's wsum knows to take the pairs instead (an int 0N*y wraps, it doesn't stay null) - digest #43

@@ -30,6 +30,10 @@ rt[`colByte;1000?100]
 rt[`colBool;1000?2=1000?2]
 rt[`colChar;"hello world"]
 rt[`colEmpty;0#0.0]
+/ an attribute byte (7) that names none of the four is 'format: it was copied in, and `at read "\0supg" past its end
+x:`wcol(T,"/c/att";1 2 3;-1;0);AB:1:T,"/c/att"
+ra:{(T,"/c/att2") 1:(7#AB),(`c$x),8_AB;.[{`at@`rcol x};,T,"/c/att2";{*"\n"\x}]}
+t[`colAttrByte;ra'5 200 4;("'format";"'format";`g)]
 rt[`colNested;(1 2;"ab";`x`y)]
 rt[`colAtom;42]
 rt[`colDict;`a`b!1 2]
@@ -93,7 +97,44 @@ t[`ptSortedSym;attr (sel"select from trade where date=2026.01.02")`sym;`p]
 x:loaddb T,"/hdb"
 t[`reload;#sel"select from trade";12]
 
+/ ---- \l of a script that loads itself ---------------------------------------
+/ each level nested the loader on the C stack with no limit and crashed (SIGSEGV); now 'stack after 512 levels, as q's
+/ 'stack after 500. Run in a process of its own, so a crash cannot stop the suite: the child prints the trapped error
+/ (printed already, so "") and how many levels ran (511 under the script's own load)
+x:mkd T,"/l";(T,"/l/rec.k") 0:("n+:1";"\\l ",T,"/l/rec.k")
+(T,"/l/top.k") 0:("n:0";"r:.[.:;,\"\\\\l ",T,"/l/rec.k\";{x}]";"`0:(`k r),\"/\",$n")
+t[`loadSelf;`x((`argv[]0;T,"/l/top.k");"");"\"\"/511\n"]
+(T,"/l/cnd.k") 0:("m+:1";"$[m<300;. \"\\\\l ",T,"/l/cnd.k\";]")
+m:0;x:.[.:;,"\\l ",T,"/l/cnd.k";{x}]
+t[`loadNested300;m;300]   / a load that stops is not limited before 512
+
+/ ---- 1: past 32 bits: file sizes and offsets are 64-bit ----------------------
+/ they were cut to 32 bits: an offset of 2^32+k read at k, a negative one a page below 2^32 mapped far past the end
+/ (SIGBUS on Linux, so in a process of its own), and a file of 2 to 4 GiB read as ""
+x:mkd T,"/big";F1:T,"/big/ff";F1 1:"hello world"
+rd:{.[{1:x};,x;{*"\n"\x}]}
+t[`readOffset4G;rd(F1;4294967297 3);""]   / past the end, as 1:(F1;20 3); it was "ell"
+t[`readOffsetNeg;rd'((F1;-1 3);(F1;-9223372036854775807 1));("'io";"'io")]   / the second was ,"e"
+t[`readOffsetNegPage;`x(,`argv[]0;"`0:.[{1:x};,(\"",F1,"\";-4096 3);{*\"\\n\"\\x}]\n");"'io\n"]
+/ big files, sparse: only where the file system keeps them so (a 64 MiB probe takes no blocks), or they would be written
+dd:{[f;n;s]`x(("/bin/dd";"of=",f;"bs=1";"seek=",$n;$[#s;"conv=notrunc";"count=0"]);s);f}
+SP:64>. *"\t"\`x(("/usr/bin/du";"-sk";dd[T,"/big/probe";67108864;""]);"")
+S2:$[SP;dd[T,"/big/s2g";2147483648;""];""];S4:$[SP;dd[dd[T,"/big/s4g";4294967301;""];4294967296;"XY"];""]
+t[`readSize2G;$[SP;#1:S2;2147483648];2147483648]   / it was 0
+t[`readSize4G;$[SP;rd S4;"'limit"];"'limit"]   / a vector's count is 32 bits; it was 5
+t[`readOffset4GBig;$[SP;rd(S4;4294967296 2);"XY"];"XY"]   / it read at 0
+rm T,"/big"
+
+/ ---- x 1: y over the file y was read from: written from its start, not truncated first (Linux: y's pages, a map of
+/ the file, were zeros by the time they were copied, and the file was all NULs; "bb" 1: get`:bb was SIGBUS) ----
+W:T,"/w";W 1:"original";W 1:1:W
+t[`writeOwnRead;1:W;"original"]
+v:1:W;W 1:v
+t[`writeOwnReadKept;(v;1:W);2#,"original"]
+B:T,"/bb";(`$":",B)set 5000#"abc";B 1:get`$":",B
+t[`writeOwnGet;1:B;5000#"abc"]
+
 rm T
-hexpect[51]
+hexpect[63]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

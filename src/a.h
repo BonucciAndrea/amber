@@ -180,7 +180,7 @@ TD A TAL(L);TAL al,az,cls,rndF;
 TD A TALA(L,A);TALA drp,rnd,rsz;
 TD A TAQ(S);TAQ aCz,bsl,bsm,die,sym;
 A aa(U,A),ii(A,U),io(A,L),aE(L,L),af(F),aCm(S,S),aCn(S,U),apc(A,C),an(U,C),aV(C,U,CO V*),cts(A,S,U),e1f(A1,A),e2f(A2,A,A),err0(S),evs(S,B),
- k1(A*,S,A),k2(A*,S,A,A),k8(A*,S,CO A*,U),jc(C,A),jC(S,U,A),kv(A*),r2f(A2,A,A),l2f(A2,A,A),mf(U,U,U),pk(S*,C),pen(A,A1*),slc(A,U,U),unhC(S,U),wdn(A,U,U,U),
+ k1(A*,S,A),k2(A*,S,A,A),k8(A*,S,CO A*,U),jc(C,A),jC(S,U,A),kv(A*),r2f(A2,A,A),l2f(A2,A,A),mf(U,W,W),pk(S*,C),pen(A,A1*),slc(A,U,U),unhC(S,U),wdn(A,U,U,U),
  AT(W,A),AW(C,A),AK(C,A),AO(UC,A),AN(U,A),w1(U,A,A),w2(U,A,A,A),w8(U,A,CO A*,U),*gp(A);
 V cyc(V*,U,U),eS(A,U),eQ(S,U,U),exit(I),hexC(S,U,C*),kargs(I,S*),kinit(),*memmem(CO V*,N,CO V*,N),mrn(U,CO A*),mRn(U,CO A*),repl(),tilV(V*,L,L,U);
 B id0(UC),mtc_(A,A),tru(A);

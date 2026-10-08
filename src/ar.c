@@ -52,7 +52,14 @@ Z S afmt(UC t){S(t,R(tB,"b")R(tG,"C")R(tH,"s")R(tI,"i")R(tL,"l")R(tF,"g")R_("l")
 A arrowExport(A x){
  P(_t(x)-tA||_n(x)-2,et(x))
  A names=((A*)_V(x))[0],cols=((A*)_V(x))[1];
+ // a table's names and columns: a symbol vector, and a general list of as many lists of one count. Anything else
+ // (arrow.export of a non-table, `aex itself) had its payload read as symbol ids and column pointers, and crashed
+ P(_t(names)-tS||_t(cols)-tA||_n(names)-_n(cols),et(x))F(_n(cols),A c=((A*)_V(cols))[i];P(!_tT(c)||_N(c)-_N(*(A*)_V(cols)),et(x)))
  L nc=_n(cols);A*colv=(A*)_V(cols);CO I*nmv=(CO I*)_V(names);L nrows=0;
+ // a column with an Arrow format of its own: numbers, ranges, symbols (and an empty general list, an empty table's
+ // column, as int64 still). A char or byte vector, a general list (strings, temporal values) was exported as int64 over
+ // its payload: 8 bytes a row from 1, or the items' addresses and words
+ F(nc,A c=colv[i];UC t=_t(c);P(!LH(tE,t,tF)&&t-tS&&(t-tA||_n(c)),en(x)))
  struct ArrowSchema*sc=calloc(1,sizeof*sc);
  struct ArrowArray*ar=calloc(1,sizeof*ar);
  sc->format="+s";sc->n_children=nc;sc->children=calloc(nc?nc:1,sizeof(V*));sc->release=relSchema;
@@ -70,19 +77,26 @@ A arrowExport(A x){
  L addr[2]={(L)sc,(L)ar};
  return x(aV(tL,2,addr));}
 
-// build one Amber column from an Arrow child buffer (copy); apply validity bitmap as nulls
-Z A mkcol(S fmt,CO V*data,CO UC*valid,L n){A c;C f=fmt?*fmt:'l';
+// build one Amber column from an Arrow child buffer (copy); apply validity bitmap as nulls. o: the array's offset, in
+// items (so far only a boolean's, below, reads it)
+Z A mkcol(S fmt,CO V*data,CO UC*valid,L n,L o){A c;C f=fmt?*fmt:'l';
  S(f,C('i',c=aI(n);I(data,MC(_V(c),data,4*n)))
      C('l',c=aL(n);I(data,MC(_V(c),data,8*n)))
      C('g',c=aF(n);I(data,MC(_V(c),data,8*n)))
      C('s',c=an(n,tH);I(data,MC(_V(c),data,2*n)))
-     C('b',c=an(n,tG);I(data,MC(_V(c),data,n)))
+     // a boolean is a bit a row, from bit o: it was copied a byte a row, so the packed bytes came back as numbers and
+     // n bytes were read from a buffer of (n+7)/8. A null is 0, as Amber's booleans have none
+     C('b',c=an(n,tG);C*g=(C*)_V(c);CO UC*d=data;I(d,F(n,L j=o+i;g[i]=d[j>>3]>>(j&7)&1))E(MS(g,0,n))I(valid,F(n,L j=o+i;I(!(valid[j>>3]>>(j&7)&1),g[i]=0))))
      C('C',c=an(n,tG);I(data,MC(_V(c),data,n)))
      D(c=aL(n);I(data,MC(_V(c),data,8*n))))
  // A null int32 cell: the column goes 64-bit with 0N, as int32 has no null (1<<31 was an ordinary number: digest #35)
  I(valid&&f=='i',B nu=0;F(n,I(!(valid[i>>3]>>(i&7)&1),nu=1;break))I(nu,c=cL(c)))
  I(valid,F(n,I(!(valid[i>>3]>>(i&7)&1),S(f,C('i',((L*)_V(c))[i]=NL)C('l',((L*)_V(c))[i]=NL)C('g',((F*)_V(c))[i]=NF)D()))))
  return c;}
+
+// a utf8 value of 256 bytes or more as a symbol, from a buffer of its own (it was cut to 255 bytes); out of line, off
+// the per-row path of the short ones
+Z NI U uslong(CO C*s,L l){C*b=malloc(l+1);MC(b,s,l);b[l]=0;U r=us(b);free(b);return r;}
 
 // arrow.import: x=(schemaAddr; arrayAddr) -> (names; cols).  Copies buffers, then releases the Arrow structs.
 A arrowImport(A x){
@@ -95,8 +109,8 @@ A arrowImport(A x){
  for(L i=0;i<nc;i++){struct ArrowSchema*cs=sc->children[i];struct ArrowArray*ca=ar->children[i];
   nv[i]=us(cs->name?cs->name:"");
   if(cs->format&&*cs->format=='u'){CO I*offs=(CO I*)ca->buffers[1];CO C*dt=(CO C*)ca->buffers[2];A s=aS(nrows);I*sv=(I*)_V(s);
-   F(nrows,C tmp[256];L l=offs[i+1]-offs[i];I(l>255,l=255)MC(tmp,dt+offs[i],l);tmp[l]=0;sv[i]=us(tmp))cv[i]=s;}//utf8 -> symbols
-  else{CO UC*valid=ca->n_buffers>1?(CO UC*)ca->buffers[0]:0;CO V*data=ca->n_buffers>1?ca->buffers[1]:0;cv[i]=mkcol((S)cs->format,data,valid,nrows);}}
+   F(nrows,C tmp[256];L l=offs[i+1]-offs[i];I(l>255,sv[i]=uslong(dt+offs[i],l);continue)MC(tmp,dt+offs[i],l);tmp[l]=0;sv[i]=us(tmp))cv[i]=s;}//utf8 -> symbols
+  else{CO UC*valid=ca->n_buffers>1?(CO UC*)ca->buffers[0]:0;CO V*data=ca->n_buffers>1?ca->buffers[1]:0;cv[i]=mkcol((S)cs->format,data,valid,nrows,ca->offset);}}
  if(ar->release)ar->release(ar);
  if(sc->release)sc->release(sc);
  free(ar);free(sc);

@@ -42,6 +42,7 @@
 #include<stdlib.h>
 #include"arena.h"
 #include<unistd.h>
+#include<errno.h>
 #include"inspect.h" // \v rich variable inspector
 #include"ast.h"     // \ast AST visualizer
 #include"trace.h"   // \trace execution profiler
@@ -148,9 +149,11 @@ I(nreg==L(reg),mc();I(nreg==L(reg),die("MMAP")))reg[nreg++]=(TY(*reg)){p,n,f};AU
 // (Windows sections don't nest), so the MAP_FIXED below always failed there and
 // every 0:, 1: and \l read came back 'io. When it fails, read into a plain vector.
 #if !defined(wasm)
-Z A mfr(U f,U i,U n)_(A x=an(n,tC);U o=0;W(o<n,L r=pread(f,(C*)_V(x)+o,n-o,(off_t)i+o);P(r<=0,mr(x);eo0())o+=(U)r)x)
+// (a GiB a call: macOS's pread refuses more than INT_MAX bytes, so a read of 2 GiB or more was 'io; again after a signal,
+// as the line editor's SIGWINCH handler is not SA_RESTART)
+Z A mfr(U f,W i,W n)_(A x=an((U)n,tC);W o=0;W(o<n,L r=pread(f,(C*)_V(x)+o,MIN(n-o,(W)1<<30),(off_t)(i+o));I(r<0&&errno==EINTR,continue)P(r<=0,mr(x);eo0())o+=(W)r)x)
 #else
-Z A mfr(U f,U i,U n)_(eo0())
+Z A mfr(U f,W i,W n)_(eo0())
 #endif
 // amber 2.7: the on-disk columns (src/dsk.c). n>0 bytes of file f from offset i (a multiple of the page size)
 // mapped as a payload, a header page in front, 64-bit sizes; 0 when the map fails and the caller reads instead.
@@ -162,7 +165,8 @@ A mfw(I f,W i,W n){P(!n||i%(W)pg,0)V*p=mm(pg+n,1);P(!p,0)
 #else
 A mfw(I f,W i,W n){(V)f;(V)i;(V)n;return 0;}
 #endif
-A mf(U f,U i,U n)_(V*p=mm(pg+n,1);P(!p,eo0())P(mmap(p+pg,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_FIXED,f,i)!=p+pg,mu(p);mfr(f,i,n))A x=AP(p+pg);xb=0;xr=REFB;xT=tC;xn=n;x)
+// n<2^32 bytes of file f from offset i: both 64-bit (they were unsigned int, so an offset of 2^32+k read at k)
+A mf(U f,W i,W n)_(V*p=mm(pg+n,1);P(!p,eo0())P(mmap(p+pg,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_FIXED,f,(off_t)i)!=p+pg,mu(p);mfr(f,i,n))A x=AP(p+pg);xb=0;xr=REFB;xT=tC;xn=(U)n;x)
 
 // Per-thread size-class free lists: each peach worker recycles chunks on its
 // OWN lists with zero locking. Thread-local storage is initial-exec here (no
@@ -466,7 +470,7 @@ Z B bdir(S s)_(struct stat st;!stat(s,&st)&&S_ISDIR(st.st_mode))
 #else
 Z B bdir(S s)_((V)s;0)
 #endif
-  A bsl(S s)_(P(bdir(s),K1("{loaddb x;}",aCz(s)))I f=open(s,0,0);A x=u1c(ai(f));close(f);N(x);P(!xn,x(au))C*p=xC,*e=p+xn-1;P(*e-10,x(err0("eoleof")))*e=0;I(*p=='#'&&p[1]=='!',p=strchrnul(p,10);p+=!!*p)
+Z A bsl1(S s)_(P(bdir(s),K1("{loaddb x;}",aCz(s)))I f=open(s,0,0);A x=u1c(ai(f));close(f);N(x);P(!xn,x(au))C*p=xC,*e=p+xn-1;P(*e-10,x(err0("eoleof")))*e=0;I(*p=='#'&&p[1]=='!',p=strchrnul(p,10);p+=!!*p)
   // amber 2.0.0: run the source through the K qSQL rewriter (qrwf, qsql.k) so
   // bare `select .. from ..` works in a .k file exactly as it does at the REPL
   // prompt -- no sel"..." wrapper. Guarded so nothing changes until qsql.k is
@@ -477,6 +481,10 @@ Z B bdir(S s)_((V)s;0)
   // the undefined-variable error during bootstrap (before qsql.k defines qrwf);
   // `diag is toggled off around the probe so that recovered error never prints.
   A rw=K1("{d:`diag 0;r:.[{qrwf x};,x;{`ERR}];`diag d;r}",aCz(p));A r=_t(rw)==tC?(rw=str0(rw),evs(_C(rw),1)):evs(p,1);mr(rw);x(r))
+// a script that loads itself (or two that load each other) nested evs and bsl on the C stack with no limit and
+// crashed it; the VM counts its own depth (run), but a \l line does not go through it. 'stack after 512, as q's
+// 'stack after 500 (per thread, as run's count)
+  A bsl(S s)_(Z AM_TLS_IE I d;P(d>=512,es0())d++;A r=bsl1(s);d--;r)
 Z A bsf(S s)_(K1("{`0:($!h),'\":\",'`k'. h:(&x=^`o`p`q`r`u`v`w`x?@'h)#h:``repl_.:0#`}",ai(!s)))
 Z A bst(S s)_(L n=s[-1]=='t'&&*s==':'?++s,pl(&s):1;S p=s;A x=N(pk(&p,10));x=N(cpl(aCm(s,p),x,0));L t=now();F(n,mr(Nx(run(x,0,0))))x(az((now()-t+500)/1000)))
 // \v: walk the global symbol table (gk/gn/gd -- file-local to m.c) and hand

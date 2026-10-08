@@ -687,6 +687,8 @@ tv[`exceptGenericRange;"((1;\"a\")^!3;(1;\"a\";2)^1+!3)";(,"a";,"a")]   / a gene
 t[`exceptRangeNums;((!5)^3+!5;(!5)^!2;(!5)^1 3);(0 1 2;2 3 4;0 2 4)]   / the range fast paths (y covers an end of x) still run
 / Digest #6: > leaves stdin, stdout and stderr open (a failed write with no stderr to report it on looped or crashed)
 t[`closeStdHandles;(7#.[{[d]>0};,0;{x}];7#.[{[d]>1};,0;{x}];7#.[{[d]>2};,0;{x}]);3#,"'domain"]
+/ an int past 32 bits is no descriptor: close() took its low half, so >0N or >4294967296 closed stdin
+t[`closeWideInt;(7#.[{[d]>0N};,0;{x}];7#.[{[d]>4294967296};,0;{x}];7#.[{[d]>-4294967296};,0;{x}]);3#,"'domain"]
 t[`aimRange;(7#.[{[d]`aim[!5]};,0;{x}];7#.[{[d]`aim[1000+!3]};,0;{x}]);2#,"'length"]   / Digest #11: a range is its items, not its two stored ends (read as addresses)
 t[`modBigFloat;(7!1e19;5!-0w;5!0w;7!-7.0;7!8.5;1%3!-0.0);(3.0;0n;0n;0.0;1.5;-0w)]   / Digest #15: the float remainder is exact, 0 to x (infinities: 0n)
 t[`findEmptyGeneric;(-8!1.0 2.0?();-8!1000000 2?();5#.[{[d]1.0 2.0?"a"};,0;{x}]);(-8!1 2?();-8!1 2?();"'type")]   / Digest #30
@@ -1438,7 +1440,7 @@ t[`jsonMonadBack;`j?`j@(-:);"-:"]
 t[`parenEmptyItem;{*"\n"\.[{`k@. x};,x;{x}]}'("(1;;2)";"(;)";"(1;)";"(;1)";"(;;)";"(1;(;))";"{(;x)}3";"(1;\n2)";"( )");("(1;::;2)";"(::;::)";"(1;::)";"(::;1)";"(::;::;::)";"(1;(::;::))";"(::;3)";"(1;::;2)";"()")]
 t[`parenEmptyKept;{*"\n"\.[{`k@. x};,x;{x}]}'("()";"(1;2)";"{x+y}[1;]2";"[1;;2]";"(1;2";"(1;;2");("()";"1 2";,"3";,"2";"'parse";"'parse")]
 
-hexpect[912]
+hexpect[913]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

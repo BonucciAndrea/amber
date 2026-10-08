@@ -35,6 +35,7 @@
 #include<fcntl.h>
 #include<arpa/inet.h>
 #include<unistd.h>
+#include<errno.h>
 #include<sys/ioctl.h>   // TIOCGWINSZ / struct winsize: cap plots to the terminal size
 #include<sys/time.h>
 #undef __USE_EXTERN_INLINES
@@ -53,15 +54,19 @@ Z I fm(I f)_(ST stat s;fstat(f,&s)<0?0:s.st_mode)                               
 Z A frd(I f,N i,N n)_(P(i||n+1,en0())DIR*a=fdopendir(f);P(!a,ei0())A x=emp(tC);ST dirent*e;W((e=readdir(a)),S s=e->d_name;x=apc(cts(x,s,SL(s)),10))closedir(a);x) // read dir
 Z A frS(I f,N n)_(C b[1024];A x=emp(tC);W(n,I k=read(f,b,MIN(SZ b,n));P(k<0,eo(x))n-=k;x=cts(x,b,k);P(k-SZ b,x))x)                                                // read stream (only length)
 Z A frs(I f,N i,N n)_(I(i&&lseek(f,i,SEEK_CUR)<0,mr(N(frS(f,i))))frS(f,n))                                                                                        // read stream (offset too)
-Z A frm(I f,N i,N n)_(L m=lseek(f,0,SEEK_END);P(m<0,eo0())n=MIN(n,MAX(0,m-i));n?mf(f,i,n):emp(tC))                                                                // read through mmap
+// read through mmap. 64-bit throughout: MAX(0,m-i) took the int's type and cut m-i to 32 bits, so a file of 2 to 4 GiB
+// read as "" and a bigger one as its size mod 2^32. A negative offset is 'io (one a page below 2^32 mapped past the end:
+// SIGBUS on Linux), and 2^32 bytes or more 'limit, as a vector's count is 32 bits
+Z A frm(I f,N i,N n)_(L m=lseek(f,0,SEEK_END);P(m<0||(L)i<0,eo0())n=MIN(n,(N)MAX(m-(L)i,0));P(n>>32,ez0())n?mf(f,i,n):emp(tC))
 Z A fr(A x/*1*/,N i,N n)_(Xz(frs(gl(x),i,n))I f=N(o(x,O_RDONLY));P(f<3,frs(f,i,n))I m=fm(f);x=(S_ISDIR(m)?frd:S_ISREG(m)?frm:frs)(f,i,n);close(f);x)              // read
 void am_ln_sb_capture(const char*,unsigned long);// ln.c: tee stdout into the status-bar scroll-back ring
 Z A fws(I f,S s,N n)_(I(f==1,am_ln_sb_capture(s,n))W(n>0,L k=write(f,s,n);P(k<0,eo0())P(!k,au)s+=k;n-=k)au)                                                         // write stream (fd 1 -> also scroll-back)
-Z A fwm(I f,S s,N n)_(ftruncate(f,n);V*p=mmap(0,n,PROT_READ|PROT_WRITE,MAP_SHARED,f,0);MC(p,s,n);munmap(p,n);au)                                                  // write through mmap
-Z X2(fw,Ril(I f=gl_(x);My(x=(f<3||!S_ISREG(fm(f))?fws:fwm)(f,yV,yn))x)R_(I f=N(o(xR,O_RDWR|O_CREAT|O_TRUNC));A z=v1c(ai(f),y);I(f>2,close(f))z))                   // write
+Z A fwm(I f,S s,N n)_(N o=0;W(o<n,L k=pwrite(f,s+o,MIN(n-o,(N)1<<30),(off_t)o);I(k<0&&errno==EINTR,continue)P(k<=0,o=ftruncate(f,0);eo0())o+=k)P(ftruncate(f,n),eo0())au)   // write a file from its start, a GiB a call (macOS refuses more than INT_MAX), then cut it to n
+// not through a shared map, whose copy was SIGBUS when the disk was full: a failed write is 'io and leaves the file empty. No O_TRUNC: y can map this file (f 1: 1:f)
+Z X2(fw,Ril(I f=gl_(x);My(x=(f<3||!S_ISREG(fm(f))?fws:fwm)(f,yV,yn))x)R_(I f=N(o(xR,O_RDWR|O_CREAT));A z=v1c(ai(f),y);I(f>2,close(f))z))                   // write
 ZN A dle()_(C*e=dlerror();I(e,os(e);os("\n"))eo0())
 A1(opn,Xz(x)ai(N(o(x,O_RDWR|O_CREAT))))                                                                                     // <s
-A cls(L n)_(P(n>=0&&n<3,ed0())P(close(n)<0,eo0())au)   /*Digest #6: stdin/out/err stay open (an error with no stderr to report it looped), and a bad close is an error*/                                                                                                    // >i
+A cls(L n)_(P(n!=(I)n||n>=0&&n<3,ed0())P(close(n)<0,eo0())au)   /*Digest #6: stdin/out/err stay open (an error with no stderr to report it looped), and a bad close is an error; an int past 32 bits (0N) is no descriptor, and close() would take its low half*/                                                                                                    // >i
 A1(u0c,spl(N(u1c(x))))                                                                                                      // 0:x
 X1(u1c,RA(P(xn-2,el(x))P(!_tZ(xy),et(x))P(_n(xy)-2,el(x))A y=kv(&x);N i=gl(ii(y,0)),n=gl(ii(y,1));fr(x,i,n))R_(fr(x,0,-1))) // 1:x
 A1(u2c,en(x))                                                                                                               // 2:x

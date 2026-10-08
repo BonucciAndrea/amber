@@ -166,7 +166,18 @@ t[`writeOwnReadKept;(v;1:W);2#,"original"]
 B:T,"/bb";(`$":",B)set 5000#"abc";$[LK;wo[B;get`$":",B];B 1:5000#"abc"]
 t[`writeOwnGet;1:B;5000#"abc"]
 
+/ ---- 1: of less than 64 KB is a copy, not a map: a live read takes no slot of the 1024-map table (a thousand were
+/ 'MMAP and an exit), and keeps its value when the file is written again (Linux showed the new bytes, and a shorter
+/ file was SIGBUS, so in a process of its own) ----
+M:T,"/m";M 1:5000#"x";v:1:M;M 1:5000#"y"
+t[`readSmallKept;3#v;"xxx"]
+sub:{`x(,`argv[]0;"M:\"",M,"\";",x,"\n")}
+t[`readSmallCut;sub"M 1:5000#\"x\";v:1:M;M 1:\"zz\";`0:$v~5000#\"x\"";"1\n"]
+t[`readSmallMany;sub"M 1:100#\"x\";v:{1:M}'!1100;`0:$(#v;+/#'v)";"1100\n110000\n"]
+M 1:65535#"ab";v:1:M;M 1:65536#"cd"
+t[`readSmallEdge;(v;1:M;1:(M;65530 10);1:(M;4096 3));(65535#"ab";65536#"cd";"cdcdcd";"cdc")]
+
 rm T
-hexpect[72]
+hexpect[76]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

@@ -166,7 +166,14 @@ A mfw(I f,W i,W n){P(!n||i%(W)pg,0)V*p=mm(pg+n,1);P(!p,0)
 A mfw(I f,W i,W n){(V)f;(V)i;(V)n;return 0;}
 #endif
 // n<2^32 bytes of file f from offset i: both 64-bit (they were unsigned int, so an offset of 2^32+k read at k)
-A mf(U f,W i,W n)_(V*p=mm(pg+n,1);P(!p,eo0())P(mmap(p+pg,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_FIXED,f,(off_t)i)!=p+pg,mu(p);mfr(f,i,n))A x=AP(p+pg);xb=0;xr=REFB;xT=tC;xn=(U)n;x)
+// Below 64 KB a read is a copy (one pread into a block): no reg[] slot per live read, and no live map, which on
+// Linux showed later writes to the file and was SIGBUS once it was cut short. Bigger reads stay maps.
+#if !defined(wasm)
+#define MFC ((W)1<<16)
+#else
+#define MFC 0//mfr is 'io there; 0.c's mmap copies anyway
+#endif
+A mf(U f,W i,W n)_(P(n<MFC,mfr(f,i,n))V*p=mm(pg+n,1);P(!p,eo0())P(mmap(p+pg,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_FIXED,f,(off_t)i)!=p+pg,mu(p);mfr(f,i,n))A x=AP(p+pg);xb=0;xr=REFB;xT=tC;xn=(U)n;x)
 
 // Per-thread size-class free lists: each peach worker recycles chunks on its
 // OWN lists with zero locking. Thread-local storage is initial-exec here (no

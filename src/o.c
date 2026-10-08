@@ -53,7 +53,14 @@ I qA(A x,A y/*00*/)_(I v=TS[xt]-TS[yt];P(v,v)
    Ropqr(x=str(xR);y=str(yR);I r=x&&y?qA(x,y):!!x-!!y;I(x,mr(x))I(y,mr(y));r)   //a function whose text fails (a formatter's error) sorts first
    R(tdt,ql((I)x,(I)y))R(ttm,ql((I)x,(I)y))R(tnp,ql(*(L*)_V(x),*(L*)_V(y)))   //dates and times by their value, not their words; a timestamp by its nanoseconds, not its address
    R_(ql(x,y)))0)
-ZN I qD(A x,A y)_(I d=qA(xx,yx);d?d:qA(xy,yy))   //qA's dicts and tables, out of line: qA itself is unchanged for strings and the rest
+// qD's keys and values (and their items), in qA's order without boxing every item: an object is equal to itself at
+// once, and two lists of one simple type box items only where their bits differ (equal bits are equal items to qA)
+Z I qV(A x,A y)_(P(x==y,0)UC t=xt;P(t-yt||!_tT(x),qA(x,y))U n=MIN(xn,yn);P(!n,qA(x,y))
+ I(t==tA,F(n,A u=xA[i],w=yA[i];I d=u==w?0:_tT(u)?qV(u,w):qA(u,w);P(d,d))return ql(xn,yn);)
+ P(!LH(tG,t,tS),qA(x,y))U b=1u<<Tw[t]>>3;
+ F(n,I(b==8?xL[i]!=yL[i]:b==4?xI[i]!=yI[i]:b==2?xH[i]!=yH[i]:xG[i]!=yG[i],A u=ii(x,i),w=ii(y,i);I d=qA(u,w);mr(u);mr(w);P(d,d)))
+ ql(xn,yn))
+ZN I qD(A x,A y)_(P(x==y,0)I d=qV(xx,yx);d?d:qV(xy,yy))   //qA's dicts and tables, out of line: qA itself is unchanged for strings and the rest
 Z I*ascZ(CO UC*v,UC*g,I*a,I*b,I n,I w)_(U c[257];tilV(a,0,n,2);Fj(w,MS(c,0,SZ c);F(n,g[i]=v[w*a[i]+j])F(n,c[g[i]+1]++)I(c[1+*g]-n,F(255,c[i+1]+=c[i])F(n,b[c[g[i]]++]=a[i])SW(b,a)))a)
 Z A grdm(A x/*1*/,A1 f)_(A y=kv(&x);x(x1(Nx(f(y)))))
 
@@ -158,9 +165,27 @@ Z A grpI(A x){
 // (one value each, as find and ~ take them); every other double kept bit for bit.
 // A copy; the caller still emits the original doubles.
 Z A fcanon(A x)_(U n=xn;A y=aF(n);CO W*RES p=(CO W*)xV;W*RES q=(W*)yV;F(n,W v=p[i];q[i]=v==0x8000000000000000ull?0:v<<1>0xffe0000000000000ull?0x7ff8000000000000ull:v)y)   //one key for both zeros, and one for every NaN, as find matches them
-// = and ? of a generic list of dates, times or timestamps, through frT; 0 for any other list
-Z A grpT(A x){A u=frT(x);P(!u,0)A d=grpI(u);mr(u);P(!d,0)A v=kv(&d);return am(i1(x,d),v);}
-Z A unqT(A x){A u=frT(x);P(!u,0)N m=0;I*RES r=_I(u);F(xn,I(r[i]==(I)i,r[m++]=(I)i))A j=aV(tI,(U)m,r);mr(u);return i1(x,j);}
+// A generic list that starts with a dict or table, for = and ?: matching items (~) need only be neighbours, not in
+// qA's order, so the list is graded by a hash of what ~ reads (ints of any width by value, floats as qA canonicalises
+// them, dicts and tables by keys and values) and the items of one hash are told apart with ~. Each item is named by
+// the least index of the items it matches, as in frT. 0, for the general path, on an item of a kind not hashed (a
+// function), more than 8 kinds in one hash, or two items of one hash that qA puts together and ~ apart.
+Z W hm(W h,W v)_(h=(h^v)*0x9e3779b97f4a7c15ull;h^h>>29)
+Z W hA(A x,B*e){UC t=xt;W h=t;
+ P(t==ti||t==tl,hm('i',gl_(x)))P(t==tf,hm(t,fco(*(L*)xV)))P(t==tnp,hm(t,*(L*)xV))P(_tP(x),hm(t,(U)x))
+ P(t==tm||t==tM,hm(hm(h,hA(xx,e)),hA(xy,e)))P(t==tE,x=gZ(xR);h=hA(x,e);mr(x);h)P(!LH(tA,t,tS),*e=1;0)N n=xn;h=hm(LH(tB,t,tL)?'I':t,n);   //a range (!n) as its ints, as ~
+ switch(t){case tA:F(n,h=hm(h,hA(xa,e)))break;case tB:F(n,h=hm(h,xG[i>>3]>>(i&7)&1))break;case tG:case tC:F(n,h=hm(h,xG[i]))break;
+  case tH:F(n,h=hm(h,xH[i]))break;case tI:case tS:F(n,h=hm(h,xI[i]))break;case tL:F(n,h=hm(h,xL[i]))break;default:F(n,h=hm(h,fco(xL[i]))) }
+ return h;}
+Z A frH(A x){N n=xn;CO A*a=xA;P(!LH(tM,_t(*a),tm),0)A k=aL((U)n);L*RES v=_L(k);B e=0;F(n,W h=hA(a[i],&e);v[i]=(L)(U)(h^h>>32))
+ A g=e?0:kG(_R(k));P(!g,mr(k);0)A u=aI((U)n);I*RES r=_I(u);CO I*RES p=_I(g);I s[8];
+ for(N j=0;j<n&&!e;){N m=j;U c=0;W(!e&&m<n&&v[p[m]]==v[p[j]],I q=p[m++],f=-1;F(c,I(mtc_(a[q],a[s[i]]),f=s[i];break))
+   I(f<0,F(c,I(!qA(a[q],a[s[i]]),e=1))I(c==8,e=1)I(!e,s[c++]=f=q))r[q]=f)j=m;}
+ mr(g);mr(k);P(e,mr(u);0)return u;}
+// = and ? of a generic list of dates, times or timestamps, through frT, or one starting with a dict or table, through
+// frH; 0 for any other list
+Z A grpT(A x){A u=frT(x);I(!u,u=frH(x))P(!u,0)A d=grpI(u);mr(u);P(!d,0)A v=kv(&d);return am(i1(x,d),v);}
+Z A unqT(A x){A u=frT(x);I(!u,u=frH(x))P(!u,0)N m=0;I*RES r=_I(u);F(xn,I(r[i]==(I)i,r[m++]=(I)i))A j=aV(tI,(U)m,r);mr(u);return i1(x,j);}
 Z A cSI(A);// amber 2.0.0: symbol<->int-id reinterpret (defined just below), used by grp's tS fast path
 Z X1(grq,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x))
  // amber 2.0.0: group a SYMBOL vector by its interned 4-byte id (tS is stored as

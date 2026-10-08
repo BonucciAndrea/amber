@@ -876,6 +876,8 @@ t[`bitWhereNot;&~01B;!1]
 t[`bitNotMatch2;(~01B)~10B;1]
 / indexing by a range crashed
 t[`bitRange;(1111B@!2;0110B@1+!2);(1 1;1 1)]
+/ = (and so group) of a bit mask, as written or read back by -9!, is =1 0 1 0's answer, byte for byte (#94 Q6; it was 'type)
+tv[`bitGroupMask;"(=1010B;=-9!-8!1010B;-8!=1010B;=0#1010B;=-2_0000111100001111B)";(=1 0 1 0;=1 0 1 0;-8!=1 0 1 0;=0#1 0;0 1!(0 1 2 3 8 9 10 11;4 5 6 7 12 13))]
 
 / ---- tail calls reuse the frame: no depth limit, and nothing freed twice ----
 / A call whose result is the function's result runs in the caller's frame, so
@@ -1455,7 +1457,7 @@ t[`gatCharTail;("abc"@0 5 1;"abc"@4!!35;"abc"@4!!70001);("a b";35#"abc ";70001#"
 t[`scanNegCount;(-2{x+0}\0;-1{x+1}\5;-9{x,1}\`a);(,0;,5;,`a)]
 
 
-hexpect[918]
+hexpect[919]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

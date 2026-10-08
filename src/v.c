@@ -306,7 +306,7 @@ A mwC(A x){
  P(_tP(c),x(emp(tA)))                           // atom: use the K path
  A ce=0;if(_t(c)==tE)ce=c=gZ(_R(c));            // a range (!n, i+!n) is filled in
  UC t=_t(c);N n=_n(c);if(w>(L)n)w=(L)n+1;       // any w past n is n+1: (N)w fits in 32 bits
- P(!(t==tG||t==tH||t==tI||t==tL||t==tF),x(emp(tA)))
+ P(!(t==tG||t==tH||t==tI||t==tL||t==tF)&&(t-tB||n),x(emp(tA)))   // an EMPTY bit mask goes on to the typed empty below (mmin/mmax: a bit mask; mminK/mmaxK's each gave ()), a non-empty one to the K path (#94 Q6)
  B iz=code==MWCNT||(code==MWSUM&&t!=tF);        // an int result
  P(!n,(ce?mr(ce):0,x(an(0,iz?tL:code<=MWDEV?tF:t))))
  // amber 2.1: a float input is read IN PLACE (mwld used to memcpy 80 MB of

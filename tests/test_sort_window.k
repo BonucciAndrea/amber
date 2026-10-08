@@ -149,6 +149,7 @@ t[`mdevNonNeg; |/(mdev[7;gflt 500])<0; 0b]
 t[`mvarNonNeg; |/(mvar[7;gflt 500])<0; 0b]
 t[`msumEmpty; #msum[3;0#0.0]; 0]
 t[`mminEmpty; #mmin[3;0#0];   0]
+t[`mwEmptyBits; (mmin[3;0#1010B];mmax[3;0#1010B];-8!mmax[3;0#1010B]); (!0;!0;-8!0#1010B)]   / an empty bit mask: a typed empty, not () (#94 Q6)
 
 / ---- nulls are ABSENT, not contagious: 0n must not poison the whole tail ----
 / (mmin and mmax take 0n as the smallest value, as & and | do: q's answers)
@@ -315,6 +316,6 @@ t[`mmaxKeyN;    mmax[2;(+(,`k)!,1 2 3)!+`a`b!(0N 0N 3;0n 0n 6.0)]; (+(,`k)!,1 2 
 t[`mminDictE;   mmin[2;(0#`)!0#0];                  (0#`)!0#0]
 t[`mmaxDictE;   mmax[2;(0#`)!0#0.0];                (0#`)!0#0.0]
 
-hexpect[398]
+hexpect[399]
 hreport"AMBER SORT / WINDOW DIFFERENTIAL"
 $[FAILN;`exit 1;]

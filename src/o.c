@@ -183,7 +183,7 @@ Z X1(grq,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et
  RI(P(!xn,K1("{x!0#,!0}",x))
   {A g_=grpI(x);P(g_,x(g_))}   /* O(n) counting group; 0 = range too wide, sort instead */
   K1("{$[x;x[*'g]!g@:<g:(&~(~*s)=':s:x i)_i:<x;x!0#,!0]}",x))
- RF(P(!xn,K1("{x!0#,!0}",x))K2("{x[*'g]!g@:<g:(&1,~(1_s)=(-1)_s:y i)_i:<y}",x,fcanon(x)))   //floats: 2.3.0's canonical keys (first spelling, indices in order)
+ RF(P(!xn,K1("{x!0#,!0}",x))x(K2("{x[*'g]!g@:<g:(&1,~(1_s)=(-1)_s:y i)_i:<y}",x,fcanon(x))))   //floats: 2.3.0's canonical keys (first spelling, indices in order); K2 borrows x
  R(tA,I(xn>1,A z=grpT(x);P(z,x(z)))K1("{$[#x;{b:~x~':x i:<x;i:i@<i+(#x)*-1++\\b;g:(&b)_i;g:g@<g;x[*'g]!g}x;x!0#,!0]}",x))   //generic lists (which may hold floats): ~ joins -0.0 with 0.0 (and NaNs), which grade keeps apart, so the indices are sorted within each run of matching items (one grade, by run then index)
  R3(tE,tL,tM,K1("{$[#x;x[*'g]!g@:<g:(&~x~':x i)_i:<x;x!0#,!0]}",x)))
 //the keys of a group are distinct x, so they take the attribute distinct gives, as q: `s stays, `u and `g give `u,

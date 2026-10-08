@@ -88,9 +88,13 @@ if [ "$QUICK" = 0 ]; then
   CC="${CC:-cc}"
   # test_simd.c and test_parallel.c are deliberately standalone; test_ast.c links
   # the whole interpreter except 0.c (which owns main()).  See each file's header.
+  # The interpreter's sources need build.sh's -fsigned-char and -fwrapv, as in the
+  # ASan and TSan legs: char is unsigned on Linux arm64, where the -1s in src/b.c's
+  # stack-delta tables (ds, ks) read as 255, and {x+1} or a:3;a*2 failed with 'limit.
+  SF="-fsigned-char -fwrapv"
   for t in tests/test_simd.c tests/test_parallel.c; do
     b="o/t/$(basename "${t%.c}")"
-    if $CC -w -O2 -std=c99 -Isrc -pthread -o "$b" "$t" src/simd.c src/parallel.c -lm 2>/dev/null && "$b" >/dev/null 2>&1
+    if $CC $SF -w -O2 -std=c99 -Isrc -pthread -o "$b" "$t" src/simd.c src/parallel.c -lm 2>/dev/null && "$b" >/dev/null 2>&1
     then echo "  -> PASS ($t)"; else echo "  -> FAIL ($t)"; fail=1; fi
   done
   # test_ast.c links the whole interpreter and supplies its own main(). src/0.c
@@ -100,17 +104,17 @@ if [ "$QUICK" = 0 ]; then
   objs=""
   for f in src/*.c; do
     d=""; [ "$(basename "$f")" = "0.c" ] && d="-Dldstatic"
-    $CC -w -O2 -pthread $d -c "$f" -o "o/t/$(basename "${f%.c}").o" 2>/dev/null || true
+    $CC $SF -w -O2 -pthread $d -c "$f" -o "o/t/$(basename "${f%.c}").o" 2>/dev/null || true
     objs="$objs o/t/$(basename "${f%.c}").o"; done
-  if $CC -w -O2 -std=c99 -Isrc -pthread -o o/t/test_ast tests/test_ast.c $objs -lm -ldl 2>/dev/null \
-     || $CC -w -O2 -std=c99 -Isrc -pthread -o o/t/test_ast tests/test_ast.c $objs -lm 2>/dev/null
+  if $CC $SF -w -O2 -std=c99 -Isrc -pthread -o o/t/test_ast tests/test_ast.c $objs -lm -ldl 2>/dev/null \
+     || $CC $SF -w -O2 -std=c99 -Isrc -pthread -o o/t/test_ast tests/test_ast.c $objs -lm 2>/dev/null
   then if o/t/test_ast >/dev/null 2>&1; then echo "  -> PASS (tests/test_ast.c)"
        else echo "  -> FAIL (tests/test_ast.c)"; fail=1; fi
   else echo "  -> SKIP (tests/test_ast.c did not link)"; fi
   # test_alloc.c links the same objects: it calls src/m.c's allocator directly
   # (the colouring of large blocks, frees and resizes) and prints what failed.
-  if $CC -w -O2 -std=c99 -Isrc -pthread -o o/t/test_alloc tests/test_alloc.c $objs -lm -ldl 2>/dev/null \
-     || $CC -w -O2 -std=c99 -Isrc -pthread -o o/t/test_alloc tests/test_alloc.c $objs -lm 2>/dev/null
+  if $CC $SF -w -O2 -std=c99 -Isrc -pthread -o o/t/test_alloc tests/test_alloc.c $objs -lm -ldl 2>/dev/null \
+     || $CC $SF -w -O2 -std=c99 -Isrc -pthread -o o/t/test_alloc tests/test_alloc.c $objs -lm 2>/dev/null
   then if out=$(o/t/test_alloc 2>&1); then echo "  -> PASS (tests/test_alloc.c)"
        else echo "$out" | head -20; echo "  -> FAIL (tests/test_alloc.c)"; fail=1; fi
   else echo "  -> SKIP (tests/test_alloc.c did not link)"; fi

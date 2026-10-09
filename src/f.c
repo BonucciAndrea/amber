@@ -10,10 +10,37 @@ Z U fH(CO H*a,U n,H v)_(U i=0;W(i<n&&a[i]!=v,i++)i)
   U fI(CO I*a,U n,I v)_(U i=0;W(i<n&&a[i]!=v,i++)i)
   U fL(CO L*a,U n,L v)_(U i=0;W(i<n&&a[i]!=v,i++)i)
 
+// find's scans (fGL..fLL), under clang: the first 8 items one by one, as before (a key there costs no more), then 64
+// bytes at a time in a loop with no exit inside it, which clang vectorises (the least of item^v, unsigned, is 0 where one
+// matched: an eor and a umin a vector; at 64 bits an and of item!=v, as arm64 has no vector unsigned min there), then the
+// item in the block that matched, one by one, as is the tail. clang leaves the plain loop scalar (a key in a big
+// dict, or a few looked up there); gcc vectorises it as it is, early exit and all, and makes the
+// blocks a scalar loop, so it keeps it. Bytes keep the plain loop under both: a byte list is found through fnd's
+// 256-entry table, not these scans
+#if defined(__clang__)
+#define FBK(T,UT,f) Z U f(CO T*RES a,U n,T v)_(U i=0;W(i<n&&i<8,B(a[i]==v)i++)P(i<8,i)enum{K=64/SZ(T)};for(;i+K<=n;i+=K){UT m=(UT)-1;for(U j=0;j<K;j++){UT d=(UT)a[i+j]^(UT)v;m=d<m?d:m;}B(!m)}W(i<n&&a[i]!=v,i++)i)
+FBK(H,UH,fHv)FBK(I,U,fIv)
+Z U fLv(CO L*RES a,U n,L v)_(U i=0;W(i<n&&i<8,B(a[i]==v)i++)P(i<8,i)for(;i+8<=n;i+=8){W m=-1;for(U j=0;j<8;j++)m&=a[i+j]!=v?~0ull:0;B(!m)}W(i<n&&a[i]!=v,i++)i)
+#else
+#define FBK(T,UT,f) Z U f(CO T*RES a,U n,T v)_(U i=0;W(i<n&&a[i]!=v,i++)i)
+FBK(H,UH,fHv)FBK(I,U,fIv)FBK(L,W,fLv)
+#endif
+#undef FBK
 Z L fGL(CO V*a,U n,L v)_(P(v!=(G)v,NL)U i=fG(a,n,v);i<n?i:NL)
-Z L fHL(CO V*a,U n,L v)_(P(v!=(H)v,NL)U i=fH(a,n,v);i<n?i:NL)
-Z L fIL(CO V*a,U n,L v)_(P(v!=(I)v,NL)U i=fI(a,n,v);i<n?i:NL)
-Z L fLL(CO V*a,U n,L v)_(             U i=fL(a,n,v);i<n?i:NL)
+Z L fHL(CO V*a,U n,L v)_(P(v!=(H)v,NL)U i=fHv(a,n,v);i<n?i:NL)
+Z L fIL(CO V*a,U n,L v)_(P(v!=(I)v,NL)U i=fIv(a,n,v);i<n?i:NL)
+Z L fLL(CO V*a,U n,L v)_(             U i=fLv(a,n,v);i<n?i:NL)
+#if defined(__clang__)
+// x of 16 items or fewer (a small dict's keys): the plain loops, with no test for the blocks on each call (at most
+// one block's worth, which saves less than the tests cost)
+Z L fGLs(CO V*a,U n,L v)_(P(v!=(G)v,NL)U i=fG(a,n,v);i<n?i:NL)
+Z L fHLs(CO V*a,U n,L v)_(P(v!=(H)v,NL)U i=fH(a,n,v);i<n?i:NL)
+Z L fILs(CO V*a,U n,L v)_(P(v!=(I)v,NL)U i=fI(a,n,v);i<n?i:NL)
+Z L fLLs(CO V*a,U n,L v)_(             U i=fL(a,n,v);i<n?i:NL)
+#define FSC(m) ((m)<=16?G(&fGLs,fHLs,fILs,fLLs):G(&fGL,fHL,fIL,fLL))
+#else
+#define FSC(m) G(&fGL,fHL,fIL,fLL)
+#endif
 
 //amber 2.2: find on FLOATS went through fLL, which compares the raw 64-bit
 // words -- so -0.0 and 0.0 were two different values, while `=`, `~`, `in` and
@@ -541,7 +568,7 @@ X2(fnd,
    // amber 2.3: SORTED only. `p (parted) was also sent here, but parted means
    // equal values are contiguous, not that they are ordered: `pa 3 3 1 1 2 found
    // 1 at 0N. A parted vector takes the ordinary hash/LUT path.
-   B srt=!_tP(x)&&xt!=tF&&xt!=tS&&_at(x)==1;TY(fGL)*f=xt==tF?fFL:(srt?G(&bGL,bHL,bIL,bLL):G(&fGL,fHL,fIL,fLL))[xw-3];V*a=xV;U m=xn;
+   B srt=!_tP(x)&&xt!=tF&&xt!=tS&&_at(x)==1;TY(fGL)*f=xt==tF?fFL:(srt?G(&bGL,bHL,bIL,bLL):FSC(xn))[xw-3];V*a=xV;U m=xn;
    Yt(az(f(a,m,gl(y))))
    A zl_=fndL(x,y,srt);P(zl_,zl_)
    U n=yn;

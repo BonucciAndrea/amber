@@ -1620,7 +1620,12 @@ t[`findStrHashRank;{(x?y)~{x?y}[x]'y}[$!300;(50#,,"5"),$(50?300)];1b]
 t[`findStrHashLateWidth;`ser@($!1000)?$(999-!20),5000;0x414d420105001500000000000000e703e603e503e403e303e203e103e003df03de03dd03dc03db03da03d903d803d703d603d503d403e803]
 t[`findStrHashLeak;LK"x:$!100;x?$50+!100;(x,`a)?x;(`a`b!$`a`b)?$`a`b`c`d`e`f`g`h;x:0";""]
 
-hexpect[1031]
+
+/ ---- find's scans take a block of items at a time past the first 8 (clang): an item at every place around the blocks, and misses ----
+t[`findScanBlocks;&/,/{[x;m]{[x;v](x?v)~*(&x=v),#x}[x]'(x 0 7 8 9 15 16 63 64 65 99),m}.'((-5000+!100;-50000 5000);(-50000+!100;-5 1000000);(1000000000000*!100;-5 7);(`$"k",'$!100;`zz`k100));1b]
+t[`findScanSmall;{x?y}'[16 17 33 100#\:1000+!100;1015 1016 1032 1099];15 16 32 99]
+
+hexpect[1033]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

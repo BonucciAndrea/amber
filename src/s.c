@@ -101,6 +101,6 @@ X1(kst,R_(x(aCz("???")))
  Rq(raz(N(ek(val(x)))))
  Rr(x=val(x);A y=_R(xy),u=Ny(kw(fir(x)));cat11(u,Nu(str(y))))   //a formatter's error passes up
  Ru(apc(kst(au^av^x),':'))
- Rv(P(x==GAP,emp(tC))A y=aCn(vc+xv,1);xv<20?y:apc(y,':'))
+ Rv(P(x==GAP,emp(tC))P(x==INS,aCn((S)"insert",6))A y=aCn(vc+xv,1);xv<20?y:apc(y,':'))
  Rw(aCn(&"':/:\\:"[xv%3*2],1+xv/3)))
 A1(out,P(x==au,x)A s=xtA&&1<xn?({A e=ek(xR);e?par(jC("\n ",2,e)):0;}):kst(xR);P(!s,epr(0);x)mr(v0c(ai(1),s));x)   //a formatter's error: printed (the caller frees x)

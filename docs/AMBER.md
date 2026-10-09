@@ -399,7 +399,7 @@ directly, exactly as `test.k` and every script under `examples/` already do.
 | `xgroup[k;t]`        | `` `k xgroup t`` (keyed by k, nested values)    |
 | `ungroup x`          | flatten nested columns                          |
 | `fby[(f;d);g]`       | `(f;d) fby g`, where `g` may be one column, a list of columns, or a table; works inside a where-clause |
-| `insert[t;r]`        | append rows                                     |
+| `insert[t;r]`        | append rows, as q: a row dict or a table of `t`'s columns in any order, lined up by name, or a list of values, one per column, by position; each item of its column's type (`'type`); a column a row or a table lacks takes item `0N` of `t`'s column, as `aj` fills (`0N`, `0n`, `` ` ``, `" "`, and `::` for a temporal column); a keyed `t` takes only new keys (`'insert`) |
 
 `a` (the aggregate spec) is a dictionary from result‑name to a function that receives the group
 sub‑table and returns a value:
@@ -1086,6 +1086,7 @@ kernels    `memb (membership) `gagg (group aggregate) `srt (value sort) `mw (win
            `ejx (the rows of an equi-join; amber.k's ej uses it)
            `hh `mm `sec (hour, minute, second of a time or of ms; amber.k's hh mm sec use them)
            `tjn (a list of dates, times or timestamps alone as its numbers; temporal.k's tdays uses it)
+           `ins (the verb amber.k's insert is: `` `ins[] `` hands it out, so a call is a verb's, not a name's)
 moving     mcount msum mavg mprd mvar mdev mmin mmax   (std.k, O(n) prefix)
 math       dot mmu (matrix multiply)                   (std.k)
 parse/ser  parse eval reval ser deser protect          (std.k; text serialise)

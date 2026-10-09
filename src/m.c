@@ -373,7 +373,7 @@ B am_infix_dyad(S p,U n){
      * immediate value -- a scalar, or a built-in verb like `+` which is already
      * infix -- must NOT be dereferenced there; a non-zero _t0 flags those, so we
      * bail before _k(v) reads a wild address. */
-    return !_t0(v) && TU(_T(v)) && _k(v) == 2;
+    return v == INS || (!_t0(v) && TU(_T(v)) && _k(v) == 2);   // INS: insert, a dyad with no glyph (#94 Q1)
 }
 
 // amber 2.2: is `p[0..n)` a global that is BOUND to something which is NOT a
@@ -402,7 +402,7 @@ B am_name_nonfn(S p, U n) {
     i = fL(gk, gn, k);
     if (i >= gn || !gv[i]) return 0;        // unbound: leave the keyword list alone
     v = gv[i];
-    return !(!_t0(v) && TU(_T(v)) && _k(v) == 2);
+    return !(v == INS || (!_t0(v) && TU(_T(v)) && _k(v) == 2));
 }
 
 // ---- 1.9.5: workspace introspection -----------------------------------------

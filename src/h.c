@@ -52,6 +52,43 @@ X1(enl,R5(ti,tl,tf,tc,ts,x(aV(TT[xt],1,TP(xt)?&x:xV)))Rm(A y=kv(&x);aM(x,e1f(enl
 A kcl(A x,A y/*00*/)_(P(mtc_(xx,yx),_R(y))P(_N(xx)-_N(yx),ed0())A p=N(cL(fnd(yx,_R(xx))));F(_n(p),P(_L(p)[i]==NL,mr(p);ed0()))aM(_R(xx),i1(yy,p)))
 Z A kct(A x,A y/*10*/)_(P(!_tM(yx),et(x))A k=Nx(kcl(xx,yx)),v=kcl(xy,yy);P(!v,mr(k);x(0))
  K("{[x;k;v]i:(!x)?k;w:&^i;f:&~^i;((!x),k w)!@[.x;i f;:;v f],v w}",x,k,v))
+//insert[t;r] (amber.k's insert is this verb, #94 Q1): q's insert, which lines r up with t by column name and checks
+//its types. A row dict, or a table, of t's columns in t's order whose items surely fit them (insk), into an unkeyed t,
+//is t,r, as before, after one look at each column; a keyed table of t's key and value columns in t's order, into a
+//keyed t, is the two tables joined, after the same look and one find of r's keys (any there: 'insert), as t,r did it.
+//Anything else (a row in another order, a column missing or extra, an item that may not fit, a list of values, which
+//lines up by position) goes to insx, as q: a column t lacks 'mismatch; one a row or a table lacks takes item 0N of t's
+//column, as aj fills (a key column: an error named after it); an item that does not fit 'type; a key t has 'insert.
+//A t that is not a table, an r that is no list, dict or table, or an empty list: t,r, as before
+Z CO UC insQ[32]={0,0,1,1,1,1,1,1,2,3,4,0,0,1,1,2,3,4};   //a type's kind: int, float, char, symbol (0: another)
+#define insq(t) insQ[(UC)(t)&31]
+//does an item of a row (of type u: an atom, or a typed list's type; 0 for a list) or r's column w surely fit t's column
+//c? A typed column: of its kind. A general one: anything, but where its first item is a date, a time or a timestamp, the
+//same type (a date column, which Amber keeps in a general list; insx looks at the whole column). 0: insx looks again
+Z B insk(A c,UC u,A w)_(UC t=_t(c);P(t-tA,UC k=insq(t);k&&k==insq(w?_t(w):u))P(!_n(c),1)UC f=_t(*_A(c));P(!LH(tdt,f,tnp),1)P(!w,u==f)P(_t(w)-tA,0)
+ F(_n(w),P(_t(_A(w)[i])-f,0))1)
+Z B insn(A s,A q)_(P(s==q,1)P(_t(q)-tS||_n(q)-_n(s),0)CO U*a=_V(s),*b=_V(q);F(_n(s),P(a[i]-b[i],0))1)   //t's column names s, and r's q, the same?
+Z B insc(A c,A w)_(F(_n(c),P(!insk(_A(c)[i],0,_A(w)[i]),0))1)   //each of t's columns c and r's w
+//a row dict's values v into t's n columns c: as insk, item by item, its type read once where v is typed
+Z B insr(A c,A v,U n){CO A*p=_A(c);UC t=_t(v);if(t!=tA){UC k=insq(t);if(!k)return 0;F(n,UC u=_t(p[i]);P(u==tA?!insk(p[i],t,0):insq(u)!=k,0))return 1;}
+ CO A*q=_A(v);F(n,A e=q[i];P(!insk(p[i],_tt(e)?_t(e):0,0),0))return 1;}
+Z A insx(A x,A y/*01*/)_(A r=K("{[t;r]q:`m=@t;k:$[q;!!t;0#`];u:$[q;+(+!t),+.t;t];c:!u;r:$[|/`m`M=@r;r;&/{(\"a\"<*$@x)&~`m=@x}'r;c!r;+c!r];"
+  "e:(`m=@r)&~`M=@!r;s:$[`M=@r;r;e;,r;+(+!r),+.r];d:!s;m:c^d;"
+  "$[#d^c;`mismatch;#j:m^m^k;*j;(#s)&~&/{$[`A=@x;$[#x;$[(|/`d`t`n=@*x)&&/(@*x)=@'x;&/(@*x)=@'y;1];1];(@x)~@y]}'[(+u)d;(+s)d];`type;"
+  "[s:c#$[#m;+(+s),m!{x@y#0N}[;#s]'(+u)m;s];$[q;$[|/~^(!t)?j:k#s;`insert;((!t),j)!(.t),(c^k)#s];u,s]]]}",xR,y);P(r&&_ts(r),err0(su(_v(r))))r)   //a symbol: its error, raised here, at insert
+//the rest of insert: everything but a row dict or a table of t's columns in t's order into an unkeyed t (ins2)
+ZN A insS(A x,A y/*01*/)_(P(_tP(x)||_tP(y),cat(x,y))B k=xtm&&_tM(xx);P(!xtM&&!k,cat(x,y))
+ P(_t(y)<tM,U n=k?_n(_x(xx))+_n(_x(xy)):_n(xx);P(!_n(y),cat(x,y))P(_N(y)-n,y(el0()))insx(x,y))   //a list of values: one per column, by position
+ P(!ytm&&!ytM,cat(x,y))
+ P(k&&!(ytm&&_tM(yx)&&mtc_(_x(xx),_x(yx))&&mtc_(_x(xy),_x(yy))&&(!yN||insc(_y(xx),_y(yx))&&insc(_y(xy),_y(yy)))),insx(x,y))
+ P(k,A f=fnd(xx,_R(yx));I(f&&_tt(f),f=enl(f))I(f,f=cL(f))P(!f,y(0))B o=0;F(_n(f),I(_L(f)[i]!=NL,o=1;break))mr(f);   //keyed, in t's order: as kct,
+  P(o,y(err0("insert")))A a=N(cat(xx,_R(yx)),y(0)),b=N(cat(xy,_R(yy)),mr(a);y(0));y(am(a,b)))   //every key new
+ P(ytm&&_tM(yx),y(et0()))   //a keyed r into an unkeyed t: 'type, as t,r and q
+ insx(x,y))
+//the plain case first, and nothing else here: a row dict, or a table, of an unkeyed t's columns in t's order whose
+//items surely fit them is t,r, after one look at each column; the rest goes to insS
+A2(ins2,/*01*/I(!_tP(x)&&!_tP(y)&&xtM,A s=xx;I(ytm?insn(s,yx)&&insr(xy,yy,_n(s)):ytM&&insn(s,yx)&&(!yN||insc(xy,yy)),return cat(x,y)))
+ insS(x,y))
 A2(cat10,
  XE(cat10(gZ(x),y))
  YE(y=gZ(yR);y(cat10(x,y)))

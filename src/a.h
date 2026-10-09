@@ -191,11 +191,11 @@ TD unsigned long long W,A,A0(),A1(A),A2(A,A),A3(A,A,A),A4(A,A,A,A),AA(CO A*,U),A
 #define AA(f,b...) A f(    CO A*a,U n  )_(DBG(Q(n<=8));b)
 A1 _R,aA1,asc,kabs,AZ,blw,cB,cG,cC,cF,cH,cI,cL,cS,dsc,emaC,enl,epr,err,fir,flp,flr,frk,gZ,gg,grp,hex,imx,imn,inv,jS,js0,js1,kcos,kexp,klog,ksin,kst,las,len,m0,m1,mkn,mRa,mr,mut,
  neg,not,nul,of0,of1,opn,out,peachC,prng,qkmp,qpri,qte,raz,rev,rs0,spl,sqr,sqz,sqzZ,str,str0,til,typ,u0c,u1c,u2c,unh,unq,val,whr,wjc,mkdt,mktm,mknp,hhC,mmC,secC,tjnC,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,mwC,xsC,rdlC,sbbC,sbtC,wsmC,cvmC,dltC,srtC,srtdC,gaggC,gaggT,sencT,membC,ejxC,wcolT,rcolT,fszT,ldirT,wtnT;
-A2 _1,aA2,aM,add,am,psh,ari,bin,ct,cat,cat10,cat11,dlr,dex,dot,dvd,eql,exc,crt,fil,fnd,gtn,gtu,ltu,mnu,mxu,hsh,ie,i1,ltn,mod,mnm,mtc,mul,mxm,que,sub,und,v0c,v1c,v2c,cmprC,no2;
+A2 _1,aA2,aM,add,am,psh,ari,bin,ct,cat,cat10,cat11,dlr,dex,dot,dvd,eql,exc,crt,fil,fnd,gtn,gtu,ltu,mnu,mxu,hsh,ie,i1,ltn,mod,mnm,mtc,mul,mxm,que,sub,und,v0c,v1c,v2c,cmprC,no2,ins2;
 A3 _2,aA3,arf,arp,arpF,ars,cpl,e2,r2,try;
 A4 ara,a4,d4;
 AX _8,e8,f8,prj,run;
-AA a8,d8,ins,no8,bng,fredC,fmaC,fmsC;
+AA a8,d8,ins,no8,ins8,bng,fredC,fmaC,fmsC;
 TD A TAU(U);TAU aA0,aA,aB,aG,aC,aF,aI,aL,aS,gns,emp;
 TD A TAL(L);TAL al,az,cls,rndF;
 TD A TALA(L,A);TALA drp,rnd,rsz;
@@ -312,16 +312,17 @@ enum                 {tA=1,tE,tB,tG,tH,tI,tL,tF,tC,tS,tM,tm,ti,tl,tf,tc,ts,to,tp
 #define antp(v) AT(tnp,al(v))     //timestamp atom (heap int64): ns since 2000.01.01
 #define ax(v,k) (Lt(tx)|(W)(k)<<48|(W)(v)<<16>>16)
 #define V_ A1*v1[]={sam,flp,neg,fir,sqr,til,whr,rev,asc,dsc,grp,not,enl,nul,len,flr,str,unq,typ,val,u0c,u1c,u2c,las,imn,imx,out,srtC,srtdC,en,en,en};\
-           A2*v2[]={dex,add,sub,mul,dvd,exc,mnu,mxu,ltu,gtu,eql,mtc,cat,crt,hsh,und,dlr,que, _1,dot,v0c,v1c,v2c,dex,dex,dex,dex,cmprC,no2,no2,no2,no2};\
-           AA*v8[]={no8,no8,no8,no8,no8,bng,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,ins, a8, d8,no8,no8,no8,no8,no8,no8,no8,fredC,fmaC,fmsC,no8,no8};\
+           A2*v2[]={dex,add,sub,mul,dvd,exc,mnu,mxu,ltu,gtu,eql,mtc,cat,crt,hsh,und,dlr,que, _1,dot,v0c,v1c,v2c,dex,dex,dex,dex,cmprC,no2,no2,ins2,no2};\
+           AA*v8[]={no8,no8,no8,no8,no8,bng,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,ins, a8, d8,no8,no8,no8,no8,no8,no8,no8,fredC,fmaC,fmsC,ins8,no8};\
          CO C vc[]={':','+','-','*','%','!','&','|','<','>','=','~',',','^','#','_','$','?','@','.','0','1','2','3','4','5','6',0};
 // amber 2.1: verb slots 27..31 have no source character; they are reached only
 // through bytecode the compiler emits for recognised idioms (src/b.c cr()):
 //   27  monad srtC   x@<x        dyad cmprC  x@&y        triad fredC  +/x*y family
 //   28  monad srtdC  x@>x                                 tetrad fmaC  a+s*b, a-s*b
 //   29                                                    5-ary  fmsC  +/(a+-s*b)@&m
+//   30            dyad ins2 (INS): amber.k's insert, bound to it by `ins (#94 Q1); printed as insert; 3+ args: 'rank
 enum         {au=Lt(tu),FLP,NEG,FIR,SQR,TIL,WHR,REV,ASC,DSC,GRP,NOT,ENL,NUL,LEN,FLR,STR,UNQ,TYP,VAL,U0C,U1C,U2C,LAS,IMN,IMX,OUT,SRT,SRTD,
-              av=Lt(tv),ADD,SUB,MUL,DVD,EXC,MNM,MXM,LTN,GTN,EQL,MTC,CAT,CRT,RSH,UND,DLR,QUE,AP1,DOT,V0C,V1C,V2C,V3C,V4C,MKL,GAP,FUS1,FUS2,FUS3,
+              av=Lt(tv),ADD,SUB,MUL,DVD,EXC,MNM,MXM,LTN,GTN,EQL,MTC,CAT,CRT,RSH,UND,DLR,QUE,AP1,DOT,V0C,V1C,V2C,V3C,V4C,MKL,GAP,FUS1,FUS2,FUS3,INS,
               aw=Lt(tw)};
 #define NFL 0x7ff8000000000000ll
 #define WFL 0x7ff0000000000000ll

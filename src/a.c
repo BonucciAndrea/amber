@@ -1054,7 +1054,7 @@ Z A dam(A x,A y,A z,CO A*a,U n,A*u/*10100.*/)_(x=mut(x);U m=0;F(zn,m+=zL[i]==NL)
 //stays empty), as update and the amend while a list column remains do. Lists replacing every column still give their
 //count (t[`a]:7 8 on a one-column table: two rows). Not in flip, which knows no row count (+`a`b!1 2 is one row)
 ZN A tfa(A x,U r/*1.*/)_(A y=xy;P(!_n(y),flp(x))A v=aA(_n(y));F(_n(y),_A(v)[i]=rsz(r,ii(y,i)))x=mut(x);mr(xy);xy=v;flp(x))   //every column an atom: r of each (no column: as before)
-Z A tfl(A x,U r/*1.*/)_(A y=xy;I(_tA(y),F(_n(y),P(!_tt(_A(y)[i]),flp(x))))tfa(x,r))   //a column a list (the first, nearly always): flip
+Z __attribute__((always_inline)) inline A tfl(A x,U r/*1.*/)_(A y=xy;I(_tA(y),F(_n(y),P(!_tt(_A(y)[i]),flp(x))))tfa(x,r))   //a column a list (the first, nearly always): flip
 A tky(A,A,B*);//f.c
 //amend a keyed table at keys (issue #19, as q): keys not there are added first, each once and in order, with a row of
 //nulls, then its value table is amended at the keys' rows. A list given to one key is its row's values in column order
@@ -1067,6 +1067,11 @@ Z A kam(A x,CO A*a,U n/*10..0*/)_(A y=a[1],z=Nx(fnd(xx,_R(y)));B t=_tt(z),m=0;I(
   P(_N(w)-_N(c),mr(w);z(x(el0())))v=t?am(_R(c),w):aM(_R(c),w))E(v=rsz(zn,_R(a[3]));P(!v,z(x(0)))))   //an atom at keys: one per row, so 'type
   //below, as q (an unkeyed table's rows take it whole, a8's trw)
  Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);I(v,b[3]=v)xy=au;A u=a8(b,n);mr(z);I(v,mr(v))P(!u,x(0))xy=u;P(!_tM(u),x(et0()))x)
+//@[t;c;f(;z)], c a column or a list of them (and .[t;(c;..);..], which comes here): 'length where one came out a dict,
+//as q (#105 Q4), which its rows would index by key (x, the table's columns amended, as a dict; columns that all came out
+//dicts of the same keys squeeze to a table)
+Z NI B tcd(A x,A y/*00*/)_(A k=_x(x),v=_y(x);P(_tM(v),1)P(!_tA(v),0)B s=_ts(y);F(s?1:_n(y),U j=fI(_I(k),_n(k),s?_v(y):_I(y)[i]);P(j<_n(k)&&_tm(_A(v)[j]),1))0)
+Z NI A tcv(A*b,U n,A y,U r)_(A u=N(a8(b,n));P(tcd(u,y),mr(u);el0())tfl(u,r))   //a8's amend of the columns (b), then tcd
 //t[i]:z and @[t;i;:;z], i a row, a list of rows or :: (every row), z an atom or a dict (not a keyed table): each row
 //takes z, an atom in every column, as q (#105 Q3); the rows were a list, so an atom replaced its row and a dict's
 //values went one per row. Made a dict for a row, a table of them for rows, which a8 then amends as before
@@ -1081,7 +1086,8 @@ AA(a8,/*10..0*/A x=*a,y=a[1];
       P(_tM(xx),_tM(xy)?kam(x,a,n):x(en(yR)))   //at a keyed table's keys (keys a table, values not: 'nyi, as before)
       A z=Nx(fnd(xx,yR));ZT(P(LH(tG,zt,tL)&&(n==3||n==4&&(_tt(a[3])||_tT(a[3])&&_N(a[3])==zn)||n==5&&_tt(a[3])&&(_tt(a[4])||_tT(a[4])&&_N(a[4])==zn)),dam(x,y,cL(z),a,n,0))z(0);mRn(n-1,a+1);f8(AP1,a,n))x=mut(x);I(ztl,z=mut(z);F(zN,I(zl==NL,zl=xN;PSH(xx,ztt?yR:ii(y,i));PSH(xy,ie(a[2],xy)))))
     Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);xy=au;xy=Nx(z(a8(b,n)));x)
-   RM(Ab8;AC(b,a,n);YsS(U r=xN;*b=flp(x);tfl(N(a8(b,n)),r))
+   RM(Ab8;AC(b,a,n);YsS(U r=xN;*b=flp(x);P(a[2]!=av,tcv(b,n,y,r))tfl(N(a8(b,n)),r))   //a dict made a column by a verb or
+    //function (tcv); : is as before, unchecked: its value is not looked at, so that @[t;c;:;v] costs what it did (#105 Q4)
     P(n==4&&a[2]==av&&(_tt(a[3])||_tm(a[3])&&!_tM(_x(a[3]))&&!_tz(y))&&(y==au||ytZ||_tz(y))&&_tS(xx),trw(x,y,a[3]))   //rows filled (trw; not a list of keyed tables, which squeezes to keys that are a table)
     B e=!xN;*b=blw(e?_R(x):x);A p=e?_R(*_A(*b)):0;A u=a8(b,n);P(!u,e?(mr(p),x(0)):0)P(!e,sqz(u))   //p: the prototype of an empty table's rows, its null row
     B m=_tA(u)&&!_n(u)&&_tm(ux)&&mtc_(ux,p);mr(p);m?u(x):x(sqz(u)))   //no amend reached the null row: the table as it was (one that did comes back a table already)
@@ -1114,13 +1120,31 @@ Z __attribute__((always_inline)) inline A ixsd(A x,A y,CO UC*kd,CO L*ix,U k,U m,
   I(r&&kd[k]==2&&_n(xy)&&!_tt(r)&&_N(r)!=_N(*_A(xy)),mr(r);r=el0())P(!r,mr(e);u?(*u=tb?flp(x):x,(A)0):x(0))
   A s=_tt(y)?_R(y):_tA(y)?_R(_A(y)[k]):ii(y,k);PSH(xx,s);PSH(xy,e);f=0;z=r)
  A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z,u);P(!v,u&&*u?(xy=*u,*u=tb?flp(x):x,(A)0):x(0))xy=v;x)
-Z NI A ixtc(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u/*10....00.*/)_(U r=xN;x=ixsd(flp(x),y,kd,ix,k,m,f,z,u,1);x?tfl(x,r):0)   //a column (tfl)
+//by name, f a verb whose result could be a dict as a column (ixdc) -- z a dict, f not a primitive verb, f ! or of one
+//argument; for a list of columns, z a table or a list with a dict in it -- where the column is gone by the time f's result
+//is known: 'length (as q, #105 Q4), and t put back (*u). : is checked before (b.c ixwk), as other verbs at a column there are
+//(ixsl). t[`c]f:z, c a column to add: in place, as ixsd, but the column taken off again where ixsl refuses (ixtn);
+//t[`a;]f:z: f on the column alone, which is put in only if it fits (ixtv); t[`c;]f:z and t[`c`d;]f:z: by value on the
+//table as it was (ixtd, d3, d4), whose check (a8's tcd) refuses one. t[`c`d]f:z (ixal) is as before, unchecked: holding
+//the table to check it cost that amend more than it is worth (#105 Q4 leaves it)
+Z NI __attribute__((cold)) A ixtn(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u/*10....00.*/)_(U r=xN;x=mut(flp(x));
+ A s=_tt(y)?_R(y):_tA(y)?_R(_A(y)[k]):ii(y,k);PSH(xx,s);PSH(xy,ie(f,xy));A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z,u);
+ I(v&&_tA(v)&&_n(v)>1,A c=_A(v)[_n(v)-1];I(!_tP(c)&&_tM(c)&&_N(c)!=r,I(u,*u=v)E(mr(v));v=el0()))   //(a table of another count, (),d: the flip back would refuse it)
+ P(!v,u&&*u?(xy=*u,xx=drp(-1,xx),xy=drp(-1,xy),*u=flp(x),(A)0):x(0))xy=v;tfl(x,r))
+Z NI __attribute__((cold)) A ixtv(A x,A y,CO L*ix,U k,A f,A z,A*u/*1.....*/)_(U j=(U)ix[k],r=xN;A w=drp(k+1,yR),c=_R(_A(xy)[j]);
+ A v=z?d4(c,w,f,z):d3(c,w,f);mr(w);I(v&&(_tP(v)||_tt(v)),v=rsz(r,v))   //(an atom fills the column, as tfl makes it)
+ I(v&&!_tP(v)&&(_tm(v)||(_tT(v)||_tM(v))&&_n(xy)>1&&_N(v)!=r),mr(v);v=el0())P(!v,u?(*u=x,(A)0):x(0))x=mut(x);xy=mut(xy);A*p=_A(xy)+j;mr(*p);*p=v;x)
+Z NI __attribute__((cold)) A ixtd(A x,A y,U k,A f,A z,A*u/*1....*/)_(A w=k?drp(k,yR):yR,r=z?d4(_R(x),w,f,z):d3(_R(x),w,f);mr(w);P(!r,u?(*u=x,(A)0):x(0))x(r))
+#define ixcn(y,k) (_tA(y)&&_n(y)==(k)+2&&_A(y)[(k)+1]==au)   //:: below c, the last index
+B ixzd(A);Z inline B ixdc(A f,A z,B l)_(f&&f!=av&&(!z||!_tv(f)||_v(f)==5||_tm(z)||l&&(_tM(z)||_tA(z)&&ixzd(z))))   //(b.c ixzd: a dict in z)
+Z NI A ixtc(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u/*10....00.*/)_(P(__builtin_expect(f!=av,0)&&f&&(k+1==m?ix[k]==_N(xx):ixcn(y,k))&&ixdc(f,z,0),k+1==m?ixtn(x,y,kd,ix,k,m,f,z,u):ixtv(x,y,ix,k,f,z,u))
+ U r=xN;x=ixsd(flp(x),y,kd,ix,k,m,f,z,u,1);x?tfl(x,r):0)   //a column (tfl)
 A ixst(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u/*10....00.*/)_(UC t=kd[k];P(!t,ixsl(x,y,kd,ix,k,m,f,z,u))
  P(t==3,A w=k?drp(k,yR):yR,o=x;UC kn[1];L jn[1];I n_=u&&f&&f!=av&&_t(x)==tm?ixkn(x,w,kn,jn):0;P(n_,I(n_>0,x=ixst(x,w,kn,jn,0,1,f,z,u))E(*u=x;x=0)mr(w);x)   //a key of
   //a dict whose keys are not symbols, there or to add (ixkn): f at its place, so a failure is put back (ixst, ixsd)
 B s=k&&!_tP(x)&&_t(x)==tS;x=USQ(s?z?d4t(x,w,f,z):d3t(x,w,f):u&&_tA(w)&&_n(w)==1&&_t(x)<=tm&&!ixnf(_t(x)==tm?_y(x):x,f,z)?ixal(x,*_A(w),f,z,u):z?d8(A8(x,w,f,z),4):d8(A8(x,w,f),3));mr(w);P(!x&&u&&_ts(o),*u=o,(A)0)x)   //d8, not d4: a symbol below
   //the first level names a global; a symbol list there is data, and so are its items (d4t, d3t)
- P(t==9,A s=_A(y)[k],p=(A)ix[k],v=prj(z?ax(dt4,4):ax(dt3,3),(A[]){GAP,drp(k+1,yR)},2);B tb=_t(x)==tM;I(tb,x=flp(x))U n=z?5:4;A b[5]={x,s,v,f,z};   //keys above the last level:
+ P(t==9,P(__builtin_expect(f!=av,0)&&f&&_t(x)==tM&&ixcn(y,k)&&ixdc(f,z,1),mr((A)ix[k]);ixtd(x,y,k,f,z,u))A s=_A(y)[k],p=(A)ix[k],v=prj(z?ax(dt4,4):ax(dt3,3),(A[]){GAP,drp(k+1,yR)},2);B tb=_t(x)==tM;I(tb,x=flp(x))U n=z?5:4;A b[5]={x,s,v,f,z};   //keys above the last level:
   x=LH(tG,_t(p),tL)&&(n==4?_tt(f)||_tT(f)&&_N(f)==_n(p):_tt(f)&&(_tt(z)||_tT(z)&&_N(z)==_n(p)))?dam(x,s,cL(p),b,n,0):(mr(p),a8(b,n));mr(v);P(!x,0)tb?flp(x):x)   //as a8 does (Rm), the find from ixwk
  P(t==6,U j=(U)ix[k+1];x=mut(x);xy=mut(xy);A c=_A(xy)[j];_A(xy)[j]=au;c=ixsl(c,y,kd,ix,k,k+1,f,z,u);P(!c,u&&*u?(_A(xy)[j]=*u,*u=x,(A)0):x(0))_A(xy)[j]=c;   //a row then a column: that column
   F(_n(xy),A*p=_A(xy)+i;I(_tA(*p),*p=rbl(*p)))x)   //amended at the row, as d4 does it (tca)
@@ -1128,7 +1152,7 @@ B s=k&&!_tP(x)&&_t(x)==tS;x=USQ(s?z?d4t(x,w,f,z):d3t(x,w,f):u&&_tA(w)&&_n(w)==1&
   PSH(xx,_R(s));PSH(xy,ie(av,xy));A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z,u);   //then an index into its value, the first value nulled (as for d4's
   //projection, ie gives the nulled first value for :), which keeps its count; where f fails there (u), the key and value are dropped again
   I(!v,I(u&&*u,xy=*u;x=ixtr(x,c,tk,ak,tv,av_,k0,v0);*u=t==8?flp(x):x;return 0)I(k0,mr(k0);mr(v0))return x(0))I(k0,mr(k0);mr(v0))xy=v;t==8?flp(x):x)
- P(t>3,I(t==5,x=flp(x))x=mut(x);A s=_tA(y)?_A(y)[k]:ii(y,k),v=prj(z?ax(dt4,4):ax(dt3,3),(A[]){GAP,drp(k+1,yR)},2);   //a key to add above the last level:
+ P(t>3,P(t==5&&__builtin_expect(f!=av,0)&&f&&ixcn(y,k)&&ixdc(f,z,0),ixtd(x,y,k,f,z,u))I(t==5,x=flp(x))x=mut(x);A s=_tA(y)?_A(y)[k]:ii(y,k),v=prj(z?ax(dt4,4):ax(dt3,3),(A[]){GAP,drp(k+1,yR)},2);   //a key to add above the last level:
   P(_t(xy)<tM,A e=ie(v,xy),r=USQ(z?_8(v,A8(_R(e),_R(f),_R(z)),3):_8(v,A8(_R(e),_R(f)),2));mr(v);P(!r,mr(e);u?(*u=t==5?flp(x):x,(A)0):x(0))   //values a list:
    PSH(xx,_R(s));PSH(xy,e);xy=set(mut(xy),ix[k],r);t==5?flp(x):x)   //the rest first, on the value the key adds (as a8 does it there: Yzc, d4's
    //projection), so that a failure leaves x as it was (*u), then the key and value added, and the result set there
@@ -1137,7 +1161,8 @@ B s=k&&!_tP(x)&&_t(x)==tS;x=USQ(s?z?d4t(x,w,f,z):d3t(x,w,f):u&&_tA(w)&&_n(w)==1&
  P(t==2,ixtc(x,y,kd,ix,k,m,f,z,u))ixsd(x,y,kd,ix,k,m,f,z,u,0))   //a column: in the table flipped to a dict (ixtc)
 Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u)_(U i=(U)ix[k];I(_t(x)==tE,x=gZ(x))P(_t(x)==tM,x=ixsl(blw(x),y,kd,ix,k,m,f,z,u);I(!x&&u&&*u,*u=sqz(*u))x?sqz(x):0)x=mut(x);
  P(k+1==m,A r=!f?z:z&&f==av?_R(z):USQ(z?_8(f,A8(ii(x,i),_R(z)),2):_8(f,A8(ii(x,i)),1));   //the item at the last place: f applied to it (: needs not read it)
-  I(__builtin_expect(kd[k]==2,0)&&r&&_n(x)>1&&!_tP(r)&&_tT(r)&&_N(r)!=_N(_A(x)[!i]),mr(r);r=el0())   //a table's column (2): a list of another count does not fit
+  I(__builtin_expect(kd[k]==2,0)&&r&&!_tP(r)&&(_tT(r)?_n(x)>1&&_N(r)!=_N(_A(x)[!i]):_tm(r)),mr(r);r=el0())   //a table's column (2): a list of another count does not fit,
+  //nor a dict, as q (#105 Q4: its rows would index it by key)
   P(!r,u?(*u=x,(A)0):x(0))set(x,i,r))
  A w;I(_t(x)==tA,w=_A(x)[i];_A(x)[i]=au)E(w=ii(x,i))w=ixst(w,y,kd,ix,k+1,m,f,z,u);P(!w,u&&*u?(_tA(x)?(V)(_A(x)[i]=*u):mr(*u),*u=x,(A)0):x(0))set(x,i,w))
 A ixv2(UC d,A q,A z/*00.*/)_(USQ(v2[d](q,_R(z))))   //b.c ixca: the verb on the item ixit read, which it goes first on

@@ -281,9 +281,12 @@ cols t               / `sym`px`sz
 
 Assigning to a table's columns:
 
-- `` t[`px]:v `` or `` @[t;`px;f] ``: an atom fills every row (an empty table stays empty); a list or dict
-  must have the row count, unless every column is replaced (`` t[`px]:7 8 `` on a one-column table gives
-  two rows).
+- `` t[`px]:v `` or `` @[t;`px;f] ``: an atom fills every row (an empty table stays empty); a list must
+  have the row count, unless every column is replaced (`` t[`px]:7 8 `` on a one-column table gives
+  two rows). A dict is `'length`, as q: a column is a list. So is any amend that would leave a dict as a
+  column (`` t[`px;]:d ``, a verb's or a function's result, `` t[`px]+:d ``), but two, left unchecked for
+  their speed, which make the dict a column as before: `` @[t;`px;:;d] `` by value, and a verb at a list
+  of columns by name (`` t[`px`sz]+:(d;e) ``).
 - `` .[t;(::;`px);:;v] `` amends every row; with no rows the table is kept when `v` is an atom or empty,
   else `'length`.
 

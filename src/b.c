@@ -75,6 +75,7 @@ Z I ixkv(A x,L j,A y,U k,A z,B asg,A g){A vs=_y(x);I r;B in=j>=0&&j<(L)_N(vs);  
 //as the list of its rows (blw), each a keyed table: checked so (ixcq), its rows read as a8 reads them (from the columns'
 //prototype where the keyed tables are empty and there are no columns). A column name, which makes it a keyed table (its
 //flip), is left to the amend, as a keyed table's own amend is. Out of ixkd, which only tests the keys' type for it
+NI B ixzd(A z){F(_n(z),P(_tm(_A(z)[i]),1))return 0;}   //a general list z with a dict in it (and a.c ixdc)
 Z NI I ixkl(A x,A y,U k,A z,B asg){A q=_tA(y)?_A(y)[k]:ii(y,k);I r=_ts(q)||_t(q)==tS?0:ixcq(x,q,y,k,z,asg);I(!_tA(y),mr(q))return r;}
 //a key of chars into keys of numbers, or a number into keys of chars or bytes, is 'type to the lookup the amend makes (fnd,
 //issue #20 row 12): such a key is looked up here, so that the check gives its error (4) before the variable is touched.
@@ -89,10 +90,11 @@ Z I ixkd(A x,A y,U k,A z,B asg){P(_t(x)==tm&&(_tt(y)?y!=au:_tA(y)&&k+1==_n(y)&&_
  //of the other kind (IXKC)
  A ks=_x(x),vs=_y(x),f=0;B dn=k+1<_N(y);UC tk=_t(ks);I r=0;P(tk==tM,_t(x)==tM?ixkl(x,y,k,z,asg):0)A q=_tA(y)?_A(y)[k]:ii(y,k);   //(a keyed table: left to the amend)
  if(_t(x)==tM){U nc=_N(vs);L rows=nc?_N(_A(vs)[0]):0;
-  if(_ts(q)){if(!dn)r=asg&&nc&&ixzc(z,(U)rows)&&!(nc==1&&!fI(_I(ks),1,_v(q)))?2:0;   //a column needs the row count (for :), unless it is the only column, which may take another
+  if(_ts(q)){if(!dn)r=asg&&nc&&(ixzc(z,(U)rows)&&!(nc==1&&!fI(_I(ks),1,_v(q)))||_tm(z))?2:0;   //a column needs the row count (for :), unless it is the only column, which may take another
    else{f=fnd(ks,_R(q));r=f?ixkv(x,gl_(f),y,k,z,asg,0):4;}}   //(no columns: one added is the prototype nulled, an empty list)
   else if(_t(q)==tS){U c=_N(q);if(ixzc(z,c))r=2;
-   else if(!dn){if(asg&&!_tP(z)&&_t(z)==tA){f=fnd(q,_R(ks));I(!f,r=4)J(LH(tG,_t(f),tL),B o=0;for(U i=0;i<nc&&!o;i++){L p=ixe(f,i);o=p<0||p>=(L)c;}L n=o?rows:-1;A d=fnd(q,_R(q));B u1=1;   //columns of one count: one left
+   else if(!dn){if(asg&&!_tP(z)&&(_tM(z)||_t(z)==tA&&ixzd(z)))r=2;   //dicts as columns: 'length (#105 Q4)
+    else if(asg&&!_tP(z)&&_t(z)==tA){f=fnd(q,_R(ks));I(!f,r=4)J(LH(tG,_t(f),tL),B o=0;for(U i=0;i<nc&&!o;i++){L p=ixe(f,i);o=p<0||p>=(L)c;}L n=o?rows:-1;A d=fnd(q,_R(q));B u1=1;   //columns of one count: one left
      I(d&&LH(tG,_t(d),tL),for(U i=0;i<c&&u1;i++)u1=ixe(d,i)==(L)i)I(d,mr(d))   //out keeps the row count, which each new list needs; else the new lists, one
      for(U i=0;i<c&&u1&&!r;i++){A u=_A(z)[i];I(!_tP(u)&&!_tt(u),I(n<0,n=_N(u))J(ixzc(u,(U)n),r=2))})}}   //count (a column named twice: not checked, the last one counts)
    else{f=fnd(ks,_R(q));I(!f,r=4)J(LH(tG,_t(f),tL),for(U i=0;i<c&&!r;i++)r=ixkv(x,ixe(f,i),y,k,ixzi(z,i),asg,0))}}
@@ -144,15 +146,18 @@ I ixwk(A x,A y,A z,B asg,B gl,UC*kd,L*ix){if(!x)return 0;if(_t(x)==tm&&!_tMT(_y(
   else if((t==tm||t==tM)&&_t(_x(v))==tS&&(t==tm||_N(_y(v)))){A ks=_x(v),vs=_y(v);
    if(!ty&&_t(s)==ts&&a<0){A f=fnd(ks,_R(s));j=gl_(f);mr(f);
     if(j<0||j>=(L)_N(ks)){j=_N(ks);if(!last){kd[k]=t==tm?4:5;ix[k]=j;I(a<0,a=(I)k)   //a key not there, which the assignment adds: above the last level with the
-      if(t==tM){A c=ii(vs,0);I r=ixck(c,y,k+1,z,asg);mr(c);I(v!=x,mr(v))P(r,-r)return a+1|gl<<8;}   //first value nulled, so the check goes on in the
+      if(t==tM){A c=ii(vs,0);I r=ixck(c,y,k+1,z,asg);I(!r&&asg&&_tm(z)&&k+2==m&&_tA(y)&&_A(y)[k+1]==au&&!_tP(c)&&_tT(c),r=2)mr(c);I(v!=x,mr(v))P(r,-r)   //(t[`c;]:d:
+       //a dict as a column, #105 Q4)
+       return a+1|gl<<8;}   //first value nulled, so the check goes on in the
       w=_N(vs)?ii(vs,0):fir(_R(vs));P(!w,I(v!=x,mr(v))-4)}}   //first value (no values: their prototype; a table's first column, from where a8 goes on)
-    if(!w){if(t==tM&&last&&asg&&ixzc(z,_N(_A(vs)[0]))&&!(_N(ks)==1&&!j))break;   //a column assigned with : needs the row count
+    if(!w){if(t==tM&&last&&asg&&(ixzc(z,_N(_A(vs)[0]))&&!(_N(ks)==1&&!j)||_tm(z)))break;   //a column assigned with : needs the row count, and not a dict (#105 Q4)
      kd[k]=t==tm?1:2;ix[k]=j;I(!last,w=ii(vs,(U)j))}}
    else if(t==tM&&(ty||_tz(s))){if(j<0||j>=(L)_N(_A(vs)[0])||!last&&!(k+2==m&&_tA(y)&&_t(_A(y)[k+1])==ts))break;kd[k]=3;ix[k]=j;
     if(!last){U c=tcc(v,_A(y)[k+1]);I(c,kd[k]=6;ix[k+1]=c-1)}k++;break;}   //a row then a column that d4 would amend on its own (tca, a.c): 6, which ixst does so
    else if(!last&&a<0&&!ty&&_t(s)==tS){A f=fnd(ks,_R(s));U c=_N(s);I r=ixzc(z,c)?2:0;A e=k+2==m&&_tz(_A(y)[k+1])?_A(y)[k+1]:0,h_=0;I(gl,ixsm=0)   //a list of keys above the last level: found
     for(U i=0;i<c&&!r;i++){L q=ixe(f,i);B kin=q>=0&&q<(L)_N(ks);A u=_tA(vs)&&(kin||_N(vs))?_A(vs)[kin?q:0]:0,zw_=ixzi(z,i);   //once, and its places (f) passed to ixst (9); z of its count first
      if(e&&u&&!_tP(u)&&_tT(u)){L g=gl_(e);I(g<0||g>=(L)_N(u),r=1)}   //one int into a list below: its range, as ixck checks it, without taking the list
+     else if(asg&&t==tM&&k+2==m&&_A(y)[k+1]==au&&(_tm(zw_)||_tM(z))&&u&&!_tP(u)&&_tT(u))r=2;   //t[`c`d;]:(d;e): a dict as a column (#105 Q4)
      else I(_t(vs)!=tM||ixnd(y,k+1,zw_),I(_t(vs)==tM&&!h_,h_=ixkf(vs,y,k+1))r=ixkv(v,kin?q:-1,y,k,zw_,asg,h_))}I(h_,mr(h_))   //else as ixkd checks it (a column not there: the first, nulled): values that are
      //dicts of the same keys (held as a table) are rows, read where there is something below to check (their columns found once, then)
     I(v!=x,mr(v))P(r,mr(f);-r)P(gl&&ixsm,mr(f);512)kd[k]=9;ix[k]=(L)f;return (I)(k+1|gl<<8);}   //as ixkd checks it: a missing key above the last level adds it, the first value nulled
@@ -160,7 +165,9 @@ I ixwk(A x,A y,A z,B asg,B gl,UC*kd,L*ix){if(!x)return 0;if(_t(x)==tm&&!_tMT(_y(
   else break;
   if(last){k++;break;}if(v!=x)mr(v);v=w;}
  if(k==m||k&&(kd[k-1]==3||kd[k-1]==6)){I(v!=x,mr(v))P(a>=0&&k==m&&a+2==(I)m&&!kd[a+1],kd[a]+=3;a+2)return a<0?(I)k:a+1|gl<<8;}   //7, 8: a key to add, then one index into a list
- I r,sy;if(gl&&k){ixsm=0;r=ixck(v,y,k,z,asg);sy=_ts(v)?2:ixsm;}else{r=ixck(v,y,k,z,asg);sy=0;}I(v!=x,mr(v))P(r,-r)P(sy,sy>1&&a<0?kd[k]=3,ix[k]=-1,512|(I)(k+1):512)P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;ix[k]=-1;return (I)(k+1|(gl&&k+1<m)<<8);}   //stopped short below the first level: d8 from there (3)
+ I r,sy;if(gl&&k){ixsm=0;r=ixck(v,y,k,z,asg);sy=_ts(v)?2:ixsm;}else{r=ixck(v,y,k,z,asg);sy=0;}
+ I(!r&&asg&&_tm(z)&&k&&k+1==m&&kd[k-1]==2&&_tA(y)&&_A(y)[k]==au&&!_tP(v)&&_tT(v),r=2)   //t[`c;]:d: a dict as a column (#105 Q4)
+ I(v!=x,mr(v))P(r,-r)P(sy,sy>1&&a<0?kd[k]=3,ix[k]=-1,512|(I)(k+1):512)P(a>=0,a+1|gl<<8)P(!k,0)kd[k]=3;ix[k]=-1;return (I)(k+1|(gl&&k+1<m)<<8);}   //stopped short below the first level: d8 from there (3)
 A ixst(A,A,CO UC*,CO L*,U,U,A,A,A*),ixv2(UC,A,A),ixal(A,A,A,A,A*);
 //the item at the places ixwk found, where each is one that is there -- an int into a list (0), a key or column there
 //(1, 2: not one to add), a row then its column (6), or a table's row at the last level (3) -- so that the verb can go

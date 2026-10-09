@@ -229,17 +229,44 @@ enum{MWSUM,MWAVG,MWVAR,MWDEV,MWMIN,MWMAX,MWCNT};
   if(i>=w){F o=p[i-w];if(o==o){s-=o;if(NEEDSS)ss-=o*o;c--;}}}
 #define MWRECOMP(NEEDSS) {F a_=0,q_=0;N k_=0;                                     \
   for(N j=i+1-w;j<=i;j++){F u=p[j];if(u==u){a_+=u;if(NEEDSS)q_+=u*u;k_++;}}s=a_;ss=q_;c=k_;}
+// Where four blocks and the w items before them hold no NaN (one vectorised test), every `v==v` above is true and
+// c is w, so a step is s+=v, s-=o: the same additions in the same order, so the same results, without the two
+// compare-selects in each lane's add chain or the count. That group runs out of line
+// (NM##G), so the per-item loops above, all that a short vector runs, stay as they were. A group with a NaN runs
+// the interleaved code above, also out of line (NM##O) and with MWSTEPN for MWSTEP: a group starts at B>=w, so
+// MWSTEP's i>=w is always true there. The test stops at the first NaN it finds, and after a group with a NaN the
+// next `skip` groups go to NM##O untested: skip is 0 after the first, then 1, 2, 4... after each further tested
+// group with a NaN, and a tested NaN-free group resets the count. So a lone NaN costs only its own group, and a
+// vector with a NaN in every group is tested in about log2 of its groups, where the test would only have added
+// to the old code.
+#define MWSTEPN(NEEDSS) {F v=p[i];if(v==v){s+=v;if(NEEDSS)ss+=v*v;c++;}            \
+  F o=p[i-w];if(o==o){s-=o;if(NEEDSS)ss-=o*o;c--;}}
+#define MWSTEPF(NEEDSS) {F v=p[i],o=p[i-w];s+=v;if(NEEDSS)ss+=v*v;s-=o;if(NEEDSS)ss-=o*o;}
+#define MWRECOMPF(NEEDSS) {F a_=0,q_=0;for(N j=i+1-w;j<=i;j++){F u=p[j];a_+=u;if(NEEDSS)q_+=u*u;}s=a_;ss=q_;}
+#define MWLANE(NEEDSS,EMIT,b,j) {N i=(k+(b))*B+(j);F s=S_[b],ss=Q_[b];MWSTEPF(NEEDSS)r[i]=(EMIT);S_[b]=s;Q_[b]=ss;}
+Z NI B mwnan(CO F*RES p,N n){N i=0;
+  for(;i+64<=n;i+=64){U a=0;for(N j=0;j<64;j++)a|=p[i+j]!=p[i+j];if(a)return 1;}
+  U a=0;for(;i<n;i++)a|=p[i]!=p[i];return a!=0;}
 #define MWRUN(NM,NEEDSS,EMIT)                                                  \
+Z NI V NM##G(CO F*RES p,F*RES r,N k,N w){CO N B=(N)MW_RESYNC;                  \
+  F S_[4],Q_[4];CO N c=w;(V)c;                                                 \
+  for(U b=0;b<4;b++){N i=(k+b)*B;F s,ss;MWRECOMPF(NEEDSS)r[i]=(EMIT);S_[b]=s;Q_[b]=ss;}\
+  for(N j=1;j<B;j++)for(U b=0;b<4;b++)MWLANE(NEEDSS,EMIT,b,j)}                 \
+Z NI V NM##O(CO F*RES p,F*RES r,N k,N w){CO N B=(N)MW_RESYNC;                  \
+  F S_[4],Q_[4];N C_[4];                                                       \
+  for(U b=0;b<4;b++){N i=(k+b)*B;F s,ss;N c;MWRECOMP(NEEDSS)r[i]=(EMIT);S_[b]=s;Q_[b]=ss;C_[b]=c;}\
+  for(N j=1;j<B;j++)for(U b=0;b<4;b++){N i=(k+b)*B+j;F s=S_[b],ss=Q_[b];N c=C_[b];\
+    MWSTEPN(NEEDSS)r[i]=(EMIT);S_[b]=s;Q_[b]=ss;C_[b]=c;}}                      \
 Z V NM(CO F*RES p,F*RES r,N n,N w){                                            \
   CO N B=(N)MW_RESYNC;                                                          \
   if(w>B){F s=0,ss=0;N c=0;for(N i=0;i<n;i++){MWSTEP(NEEDSS)r[i]=(EMIT);}return;}\
   {F s=0,ss=0;N c=0;N e=n<B?n:B;for(N i=0;i<e;i++){MWSTEP(NEEDSS)r[i]=(EMIT);}} \
-  N nb=(n+B-1)/B,k=1;                                                          \
+  N nb=(n+B-1)/B,k=1,skip=0,nx=0;                                              \
   for(;k+4<=nb&&(k+4)*B<=n;k+=4){                                              \
-    F S_[4],Q_[4];N C_[4];                                                     \
-    for(U b=0;b<4;b++){N i=(k+b)*B;F s,ss;N c;MWRECOMP(NEEDSS)r[i]=(EMIT);S_[b]=s;Q_[b]=ss;C_[b]=c;}\
-    for(N j=1;j<B;j++)for(U b=0;b<4;b++){N i=(k+b)*B+j;F s=S_[b],ss=Q_[b];N c=C_[b];\
-      MWSTEP(NEEDSS)r[i]=(EMIT);S_[b]=s;Q_[b]=ss;C_[b]=c;}}                     \
+    if(skip)skip--;                                                            \
+    else if(mwnan(p+k*B-w,4*B+w)){skip=nx;nx=nx?2*nx:1;}                       \
+    else{nx=0;NM##G(p,r,k,w);continue;}                                        \
+    NM##O(p,r,k,w);}                                                           \
   for(;k<nb;k++){N i0=k*B,e=n<i0+B?n:i0+B;F s,ss;N c;                            \
     {N i=i0;MWRECOMP(NEEDSS)r[i]=(EMIT);}                                       \
     for(N i=i0+1;i<e;i++){MWSTEP(NEEDSS)r[i]=(EMIT);}}}
@@ -290,16 +317,50 @@ MWDQ(G,G,0) MWDQ(H,H,0) MWDQ(I,I,0) MWDQ(L,L,0) MWDQ(F,F,v!=v)
 // 0.0 against -0.0. NaN is the one case it does not model (the deque skips it
 // as absent): a float column with a NaN is reported, and mmax is redone by the
 // deque, mmin patched where a window holds the NaN.
-#define MWVH(NM,T,GT,IDV,CHK)                                                  \
+#define MWVH(NM,T,GT,IDV,CHK,GRP)                                              \
+  MWVHN##GRP(NM,T,GT,IDV,CHK)                                                  \
 Z I NM(CO T*RES p,T*RES r,N n,N w,T*RES suf){                                  \
+  MWVHC##GRP(NM)                                                               \
   N m=w<n?w:n;I bad=0;for(N j=0;j<=m;j++)suf[j]=IDV;                           \
   for(N b=0;b<n;b+=w){N ln=n-b<w?n-b:w;T run=IDV;CO T*RES q=p+b;T*RES o=r+b;   \
     for(N j=0;j<ln;j++){T v=q[j];CHK;run=(run GT v)?run:v;T u=suf[j+1];o[j]=(u GT run)?u:run;}\
     if(ln==w&&b+w<n){T s=IDV;for(N j=w;j-->0;){T v=q[j];s=(v GT s)?v:s;suf[j]=s;}}}\
   return bad;}
-#define MWVH2(T,SFX,LO,HI,CHK) MWVH(mvmax##SFX,T,>,LO,CHK) MWVH(mvmin##SFX,T,<,HI,CHK)
-MWVH2(G,G,(G)-128,(G)127,) MWVH2(H,H,(H)-32768,(H)32767,) MWVH2(I,I,(I)(-2147483647-1),(I)2147483647,)
-MWVH2(L,L,(L)NL,(L)WL,) MWVH2(F,F,-WF,WF,bad|=v!=v)
+// Each block's scans are one chain of compare-selects, and with the blocks done one at a time nothing overlaps
+// them. For MWVHLO<=w<=MWVHHI (the blocks short enough that MWVHB of them and their suffixes stay in L1/L2) MWVHB
+// blocks go together: their MWVHB backward suffix scans in one loop, then their forward scans, each block
+// combining with the suffix of the block before it (the group's first with the last group's, kept in sf[0]). The
+// same compares in the same order per block, so the same results, ties and NaN reports included. The suffix
+// buffer is then (MWVHB+1)*(w+1) items (mwvhs). Narrower windows keep the one-block loop: their chains are short.
+// So do 8-, 16- and 32-bit ints (GRP 0): their one-block loop is no slower than the grouped one.
+#define MWVHB 8u
+#define MWVHLO 64u
+#define MWVHHI 4096u
+#define mwvhg(n,w) ((w)>=MWVHLO&&(w)<=MWVHHI&&(n)>=2*MWVHB*(w))
+#define mwvhs(t,n,w) (((t)==tF||(t)==tL)&&mwvhg(n,w)?(MWVHB+1)*((w)+1):((w)<(n)?(w):(n))+1)
+#define MWVHN0(NM,T,GT,IDV,CHK)
+#define MWVHC0(NM)
+#define MWVHC1(NM) if(mwvhg(n,w))return NM##8(p,r,n,w,suf);
+#define MWVHN1(NM,T,GT,IDV,CHK)                                                \
+Z NI I NM##8(CO T*RES p,T*RES r,N n,N w,T*RES sbuf){                           \
+  I bad=0;T*sf[MWVHB+1];for(U b=0;b<=MWVHB;b++)sf[b]=sbuf+b*(w+1);              \
+  for(N j=0;j<=w;j++)sf[0][j]=IDV;                                             \
+  for(U b=1;b<=MWVHB;b++)sf[b][w]=IDV;                                         \
+  N nf=n/w,g=0;                                                                \
+  for(;g+MWVHB<=nf;g+=MWVHB){                                                  \
+    {T s_[MWVHB];for(U b=0;b<MWVHB;b++)s_[b]=IDV;                              \
+     for(N j=w;j-->0;)for(U b=0;b<MWVHB;b++){T v=p[(g+b)*w+j];T s=s_[b];s=(v GT s)?v:s;s_[b]=s;sf[b+1][j]=s;}}\
+    {T u_[MWVHB];for(U b=0;b<MWVHB;b++)u_[b]=IDV;                              \
+     for(N j=0;j<w;j++)for(U b=0;b<MWVHB;b++){N i=(g+b)*w+j;T v=p[i];CHK;T run=u_[b];run=(run GT v)?run:v;u_[b]=run;\
+       T u=sf[b][j+1];r[i]=(u GT run)?u:run;}}                                 \
+    {T*t=sf[0];sf[0]=sf[MWVHB];sf[MWVHB]=t;}}                                   \
+  for(N b=g*w;b<n;b+=w){N ln=n-b<w?n-b:w;T run=IDV;CO T*RES q=p+b;T*RES o=r+b;  \
+    for(N j=0;j<ln;j++){T v=q[j];CHK;run=(run GT v)?run:v;T u=sf[0][j+1];o[j]=(u GT run)?u:run;}\
+    if(ln==w&&b+w<n){T s=IDV;for(N j=w;j-->0;){T v=q[j];s=(v GT s)?v:s;sf[0][j]=s;}}}\
+  return bad;}
+#define MWVH2(T,SFX,LO,HI,CHK,GRP) MWVH(mvmax##SFX,T,>,LO,CHK,GRP) MWVH(mvmin##SFX,T,<,HI,CHK,GRP)
+MWVH2(G,G,(G)-128,(G)127,,0) MWVH2(H,H,(H)-32768,(H)32767,,0) MWVH2(I,I,(I)(-2147483647-1),(I)2147483647,,0)
+MWVH2(L,L,(L)NL,(L)WL,,1) MWVH2(F,F,-WF,WF,bad|=v!=v,1)
 
 // Widen any supported numeric vector to double, mapping the integer nulls onto
 // 0n so the sum kernels see one uniform "absent" marker.
@@ -366,7 +427,7 @@ A mwC(A x){
    // amber 2.3: van Herk / Gil-Werman (MWVH above), with the deque kept for
    // the one input it does not model -- a float column holding a NaN.
    y=an((U)n,t);V*r=_V(y);CO V*p=_V(c);int mx=code==MWMAX;
-   N m=(N)w<n?(N)w:n;A sa=an((U)m+1,t);V*sf=_V(sa);I bad=0;
+   A sa=an((U)mwvhs(t,n,(N)w),t);V*sf=_V(sa);I bad=0;
    switch(t){
      case tG: bad=mx?mvmaxG(p,r,n,(N)w,sf):mvminG(p,r,n,(N)w,sf);break;
      case tH: bad=mx?mvmaxH(p,r,n,(N)w,sf):mvminH(p,r,n,(N)w,sf);break;

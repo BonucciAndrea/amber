@@ -343,16 +343,20 @@ A sym(S s)_(as(us(s)))
 // reads it; untouched pages cost nothing. Past the last, gi() returns slot 0 and sets gfull, which
 // the compiler and gp() turn into a trappable 'limit.
 Z U gd,gn;Z W gk[65536];A gv[65536];B gfull;
+//ki compiles a call site's lambda with grt set: its names go to the root, on that thread only (\d is the process's,
+//and peach workers read it as they run). GD is \d's namespace for a name, read only when \d is not the root
+Z AM_TLS_IE B groot;B grt(B r)_(B o=groot;groot=r;o)
+#define GD (gd&&!groot?gd:0)
 Z W gkk(A x/*0*/)_(Xs((U)xv)Q(xtS)xn?(W)_v(jS(drp(-1,xR)))<<32|(U)_v(ii(x,xn-1)):0)
 // gi() appends a new name when it has not been seen; a lambda compiled inside a
 // peach worker (`value`, a projection built at run time) reaches it concurrently,
 // so the lookup+append runs under the allocator lock (a no-op outside peach).
-U gi(A x/*0*/)_(W k=gkk(x);I(!(k>>32)&&id0(*su(k)),k|=(W)gd<<32)ALK();U i=fL(gk,gn,k);P(i<gn,AUL();i)P(gn>=L(gv),AUL();gfull=1;0)gk[gn]=k;gv[gn]=0;gn++;AUL();i)
+U gi(A x/*0*/)_(W k=gkk(x);I(!(k>>32)&&id0(*su(k)),k|=(W)GD<<32)ALK();U i=fL(gk,gn,k);P(i<gn,AUL();i)P(gn>=L(gv),AUL();gfull=1;0)gk[gn]=k;gv[gn]=0;gn++;AUL();i)
 A gg(A x/*1*/)_(//get value of global
  P(xtS&&!xn,x(0);A x=emp(tS),y=emp(tA);F(gn,I(gv[i],L k=gk[i];PSH(x,k-(U)k?jS(aV(tS,2,A((I)(k>>32),k))):as(k));PSH(y,_R(gv[i]))))am(x,y))//special case for 0#`
  W k=gkk(x);x(0);U i=fL(gk,gn,k);i<gn&&gv[i]?_R(gv[i]):ev0())
 A*gp(A x/*1*/)_(U i=gi(x);x(0);P(gfull,gfull=0;ez0();(A*)0)gv+i)//get pointer to global; 0 (and 'limit) when the table is full
-A*gq(A x/*0*/)_(W k=gkk(x);I(!(k>>32)&&id0(*su(k)),k|=(W)gd<<32)U i=fL(gk,gn,k);i<gn?gv+i:0)//as gp, but 0 where x names none yet (none added)
+A*gq(A x/*0*/)_(W k=gkk(x);I(!(k>>32)&&id0(*su(k)),k|=(W)GD<<32)U i=fL(gk,gn,k);i<gn?gv+i:0)//as gp, but 0 where x names none yet (none added)
 A gns(U k)_(U n=0;F(gn,n+=gk[i]>>32==k)A y=an(n,tS);n=0;F(gn,I(gk[i]>>32==k,_I(y)[n++]=(I)gk[i]))y)//list namespace (built on the heap: the table no longer fits a stack array)
 // amber 2.0.0: is `p[0..n)` the name of an already-defined rank-2 (dyadic) global
 // function?  The parser (p.c) uses this to make ANY binary library verb infix --
@@ -365,7 +369,7 @@ B am_infix_dyad(S p,U n){
     if (!n || n >= sizeof b) return 0;
     MC(b, p, n); b[n] = 0;
     k = us(b);
-    if (!(k >> 32)) k |= (W)gd << 32;
+    if (!(k >> 32)) k |= (W)GD << 32;
     i = fL(gk, gn, k);
     if (i >= gn || !gv[i]) return 0;
     v = gv[i];
@@ -398,7 +402,7 @@ B am_name_nonfn(S p, U n) {
     if (!n || n >= sizeof b) return 0;
     MC(b, p, n); b[n] = 0;
     k = us(b);
-    if (!(k >> 32)) k |= (W)gd << 32;
+    if (!(k >> 32)) k |= (W)GD << 32;
     i = fL(gk, gn, k);
     if (i >= gn || !gv[i]) return 0;        // unbound: leave the keyword list alone
     v = gv[i];

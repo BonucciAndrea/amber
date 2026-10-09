@@ -97,6 +97,23 @@ tq[`execAgg;      "exec sum px from trades";          210.0];
 tq[`execWhere;    "exec px from trades where px>35";  40 50 60.0];
 tqa[`execEmpty;    "exec px from none";                NR; 0];
 tq[`execSym;      "exec sym from trades";             `a`b`a`b`c`a];
+/ exec with no item is the last row, one named item a dict, and ?[t;c;();a] (by ()) an exec, as q's
+tq[`execNoItem;   "exec from trades";                 `sym`px`sz!(`a;60.0;6)];
+tq[`execNoItemWh; "exec from trades where px<25";     `sym`px`sz!(`b;20.0;2)];
+tq[`execNamed;    "exec p:px from trades where px>45"; (,`p)!,50 60.0];
+tv[`fExecCol;     "?[trades;();();`sz]";              1 2 3 4 5 6];
+tv[`fExecRow;     "?[trades;,(>;`px;45);();()]";      `sym`px`sz!(`a;60.0;6)];
+tv[`fExecDict;    "?[trades;();();`p`s!(`px;(sum;`sz))]"; `p`s!(10 20 30 40 50 60.0;21)];
+/ a by that is a column or tree (not a dict) is q's exec by: a dict from its values, sorted; a symbol list is q's
+/ application (`sym`sz is sym[sz]), so ?[t;();();`sz`sym] is 'type, as q's
+tv[`fExecBy;      "?[trades;();`sym;`sz]";             `a`b`c!(1 3 6;2 4;,5)];
+tv[`fExecByTree;  "?[trades;();`sym;(sum;`sz)]";       `a`b`c!10 6 5];
+tv[`fExecByDict;  "?[trades;();`sym;`s`p!`sz`px]";     `a`b`c!+`s`p!((1 3 6;2 4;,5);(10 30 60.0;20 40.0;,50.0))];
+tv[`fExecByWh;    "?[trades;,(>;`px;15);`sym;`i]";     `a`b`c!(2 5;1 3;,4)];
+tv[`fExecBySyms;  "?[trades;();`sym`sz;`sz]";          ``a`b`c!(,6;2 5;1 3;,4)];
+te[`fExecSyms;    "?[trades;();();`sz`sym]"];
+tv[`fExecDictSyms; "?[trades;();();(,`x)!,`sz`sz]";      (,`x)!,2 3 4 5 6 0N];
+tv[`fExecByAtom;  "?[trades;();,`sym;`sz]";            (,`sym)!,1 2 3 4 5 6];
 
 / ============================ 5. update ======================================
 tqa[`updNewCols;   "update d:px*2 from trades";        CL; `sym`px`sz`d];
@@ -204,6 +221,15 @@ t[`byBare;     . qrw"select sum sz by sym from trades"; . qrw"select sum sz by s
 tqa[`aggName;    "select last px by sym from trades"; cols; `sym`px];
 tqa[`aggNameSum; "select sum sz by sym from trades";  cols; `sym`sz];
 tqa[`aggNameWide;"select wavg[sz;px] by sym from trades"; cols; `sym`sz];   / q names it by the first argument (digest #56)
+/ wavg by group, fused: a row with a null value or weight adds no weight, as wavg's pairs and q's (it gave 5/3)
+TWN:([]sym:`a`a`a`b;sz:1 2 3 4.0;px:1 0n 3 5.0;iz:1 2 3 4;ip:1 0N 3 5)
+tq[`wavgByNull;    "select v:sz wavg px by sym from TWN";             (+(,`sym)!,`a`b)!+(,`v)!,2.5 5.0];
+tq[`wavgByNullInt; "select v:iz wavg ip by sym from TWN";             (+(,`sym)!,`a`b)!+(,`v)!,2.5 5.0];
+tq[`wavgByNullMix; "select v:iz wavg px by sym from TWN";             (+(,`sym)!,`a`b)!+(,`v)!,2.5 5.0];
+tq[`wavgByNullWh;  "select v:sz wavg px by sym from TWN where iz<4";  (+(,`sym)!,,`a)!+(,`v)!,,2.5];
+/ and the bracket form wavg[w;x] is fused as w wavg x: one answer for both (#94 Q10)
+TWB:([]sym:(`a`b`c`d)4!!100000;sz:1.0+0.001*997!!100000;px:100.0+0.01*1000!!100000)
+t[`wavgByForms;    sel"select v:wavg[sz;px] by sym from TWB";         sel"select v:sz wavg px by sym from TWB"];
 / Digest #56 #61: q's column names and repeats; an atom beside a list is extended, as update
 tqa[`nameRepeats;"select max px, min px, 2*px, sum px*sz from trades"; cols; `px`px1`x`px2];
 tqa[`selectExtend;"select px, s:sum sz from trades"; {(+x)`s}; 6#21];
@@ -332,6 +358,15 @@ t[`byEmptyLast; @(.(sel"select by sym from ft where px>1000"))`px; `F]
 TT:([]sym:`a`b;n:1 2;d:10:00:00.000 11:00:00.000)
 t[`byEmptyTemporal;  (.(sel"select mx:max d, mn:min d, s:sum d by sym from TT where n>5"))@/:`mx`mn`s; (();();())]
 t[`byEmptyTemporal0; `k@(.(sel"select mx:max d, c:count d, l:last n by sym from 0#TT"))@/:`mx`c`l; "(();!0;!0)"]
+/ avg, dev and wavg of it are floats, as q's (they were (), and with no by 'type)
+tqa[`byEmptyTempAvg; "select a:avg d, s:dev d, w:wavg[n;d] by sym from TT where n>5"; {`k@(. x)@/:`a`s`w}; "(0#0n;0#0n;0#0n)"]
+tq[`selEmptyTempAvg; "select a:avg d, s:dev d, w:wavg[n;d] from TT where n>5"; ([]a:,0n;s:,0n;w:,0n)]
+/ and avg of a temporal column is the average of its numbers (ms, days, ns), as q's (it was 'type)
+TTA:([]sym:`a`b`a;d:(10:00:00.000;11:00:00.000;12:00:00.000))
+tq[`selTempAvg;      "select a:avg d from TTA";            ([]a:,39600000.0)]
+tq[`byTempAvg;       "select a:avg d by sym from TTA";     (+(,`sym)!,`a`b)!+(,`a)!,39600000.0 39600000.0]
+tv[`avgTempDate;     "avg(2026.01.01;2026.01.04)";          9498.5]
+tv[`avgTempStamp;    "avg(2026.01.01D10:00;2026.01.01D11:00)"; 820578600000000000.0]
 
 / ---- digest #39: constraints cascade, as q's (each sees the rows the earlier ones kept); #40: a leading minus ----
 tq[`whereCascade;     "select from trades where sym=`a, px=max px";   ([]sym:,`a; px:,60.0; sz:,6)];
@@ -414,6 +449,14 @@ tq[`byNameFused;  "select s:sum sz,p:max px by sz:sz mod 2 from trades where px>
 tq[`byNameOther;  "select s:sum sz by sym:sz mod 2 from trades";     (+(,`sym)!,0 1)!+(,`s)!,12 9];
 tq[`byNameLast;   "select by sz:sz mod 2 from trades";                (+(,`sz)!,0 1)!+`sym`px!(`a`c;60 50.0)];
 tq[`byNameExec;   "exec sum sz by sz:sz mod 2 from trades";          0 1!12 9];
+/ a column named as a given or bare by-key is q's 'dup (the column was dropped); exec has no 'dup and keeps it, one
+/ item with no name as its values, else as a table
+tqe[`byDupBare;   "select sum sz by sz from trades"];
+tqe[`byDupGiven;  "select sz:sum sz by sz:sym from trades"];
+tqe[`byDupWhere;  "select sz, px by sym,sz from trades where px>25"];
+tq[`byDupNot;     "select s:sum sz by sz from trades where sz<3";    (+(,`sz)!,1 2)!+(,`s)!,1 2];
+tq[`byDupExec;    "exec s:sum sz by sz from trades where sz<3";      1 2!+(,`s)!,1 2];
+tq[`byDupExecBare; "exec sum sz by sz from trades where sz<3";       1 2!1 2];
 tqa[`byIKey;      "select c:count sz by i from trades"; CL;          `x`c];
 tqa[`byIAll;      "select by i from trades"; CL;                      `x`sym`px`sz];
 tq[`byTwoSame;    "select s:sum sz by sz mod 2,sz mod 3 from trades"; (+`sz`sz1!(0 0 0 1 1 1;0 1 2 0 1 2))!+(,`s)!,6 4 2 3 1 5];
@@ -458,6 +501,22 @@ tqa[`updByGenOther;  "update n:sums n by sym from TG"; {(+x)`n};                
 TD:0#([]sym:`a`b`a;n:1 2 3;d:2026.01.01 2026.01.02 2026.01.03)
 tv[`fupdByUnifTemporal; "(+![TD;();(,`sym)!,`sym;(,`n)!,(sums;`n)])`n";   !0];
 t[`fupdByNoRow;      (+![trades;,(>;`px;100);(,`sym)!,`sym;(,`m)!,(max;`sz)])`m;   6#0N];
+/ the same without by: a value that changes a typed column's type is 'type, as q's; a general column takes anything
+tqe[`updType;        "update sz:2.5 from trades where px>25"];
+tqe[`updTypeSym;     "update sym:\"c\" from trades where px>25"];
+te[`fupdType;        "![trades;,(>;`px;25);0b;(,`sz)!,2.5]"];
+tqa[`updTypeSame;    "update sz:0 from trades where px>25"; {(+x)`sz};          1 2 0 0 0 0];
+TGW:([]n:1 2 3;g:(1 2;3 4;5 6))
+tqa[`updTypeGen;     "update g:7 from TGW where n>1"; {(+x)`g};                 (1 2;7;7)];
+/ also when the where keeps no row, and into a temporal column (a general list: its first item's type), by or not
+tqe[`updTypeNoRow;   "update sz:2.5 from trades where px>100"];
+tqa[`updTypeNoRowOk; "update sz:sz+1 from trades where px>100"; {(+x)`sz};      1 2 3 4 5 6];
+TTU:([]sym:`a`b`a;n:1 2 3;d:2026.01.01 2026.01.02 2026.01.03)
+tqe[`updTypeTemp;    "update d:2.5 from TTU where n>1"];
+tqe[`updTypeTempBy;  "update d:2.5 by sym from TTU where n>1"];
+tqa[`updTypeTempOk;  "update d:2026.01.05 from TTU where n>2"; {(+x)`d};  (2026.01.01;2026.01.02;2026.01.05)];
+TMX:([]n:1 2 3;g:(2026.01.01;"ab";`c))
+tqa[`updTypeMixed;   "update g:2.5 from TMX where n>1"; {(+x)`g};               (2026.01.01;2.5;2.5)];
 
 / ---- qSQL on a keyed table runs on its rows, as q's: select (no columns, no by), update and delete keep the key ----
 KT:([s:`a`b`c]n:1 2 3;m:4 5 6)
@@ -488,7 +547,7 @@ tq[`colonStrItem;  "select n,\"a:b\" from TC";                        ([]n:1 2 3
 tqa[`colonSymBy;   "select c:count n by f=`:b from TC"; {value(+value x)`c}; 2 1];
 tq[`colonSymExBy;  "exec n by f=`:b from TC";                         01b!(1 3;,2)];
 tq[`colonLambda;   "exec {x:1;x+y}[n;n] from TC";                     2 3 4];
-tq[`colonNamed;    "exec a:f=`:b from TC";                            010b];
+tq[`colonNamed;    "exec a:f=`:b from TC";                            (,`a)!,010b];
 
 / a comma inside ( ), { } or a string does not split an item or a constraint
 TM:([]n:1 2 3 4)
@@ -645,6 +704,13 @@ tq[`tlitStampExec;  "exec ts>2026.01.02D09:30:00.000000000 from TV";          0 
 tqa[`tlitSelName;   "select time>09:35 from TT"; CL;                          ,`time];
 tqa[`tlitSelNameX;  "select 09:35<time from TT"; CL;                          ,`x];
 tqa[`tlitUpdName;   "update time>09:35 from TT"; CL;                          `time`n];
+
+/ a query inside a where-clause runs as one, as q's (on globals, as the string forms see)
+TW:([]n:2 3 4)
+tq[`whQuery;      "select from TN where n in (exec n from TW)";      ([]n:2 3)];
+tq[`whQueryWh;    "select from TN where n in (exec n from TW where n>2), n>1"; ([]n:,3)];
+tq[`whQueryDel;   "delete from TN where n in (select n from TW)`n";  ([]n:,1)];
+tv[`whQueryStr;   "sel\"select from TN where n in (exec n from TW)\""; ([]n:2 3)];
 
 hreport"AMBER qSQL MATRIX"
 $[FAILN;`exit 1;]

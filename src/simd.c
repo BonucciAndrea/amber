@@ -1056,3 +1056,25 @@ AMB_MV int64_t simd_masksum_u8(const unsigned char *m, size_t n, unsigned *orv) 
         s += s32; o |= oo; }
     *orv = o; return s;
 }
+
+/* ==== amber (#94 Q10): out = a*b, each product as simd_mul_f64 makes it, and whether one is NaN, in the same pass.
+ * qSQL's fused wavg by group needs both (a null value adds no weight), and a second pass looking for the NaN cost
+ * about as much as the multiply. Returns 1 when a product is NaN. */
+AMB_MV int simd_mulnan_f64(const double *__restrict a, const double *__restrict b, double *__restrict out, size_t n) {
+    int r = 0; size_t i = 0;
+#if defined(AMB_VEC)
+    const size_t L = VBYTES / sizeof(double);
+    vi64 m = {0};
+    for (; i + L <= n; i += L) {
+        vf64 va, vb, vo;
+        __builtin_memcpy(&va, a + i, VBYTES);
+        __builtin_memcpy(&vb, b + i, VBYTES);
+        vo = va * vb;
+        __builtin_memcpy(out + i, &vo, VBYTES);
+        m |= (vi64)(vo != vo);
+    }
+    { size_t k; for (k = 0; k < L; k++) r |= m[k] != 0; }
+#endif
+    for (; i < n; i++) { double p = a[i] * b[i]; out[i] = p; r |= p != p; }
+    return r;
+}

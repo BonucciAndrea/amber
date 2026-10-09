@@ -984,8 +984,8 @@ Z A1(lkT,P(_t(x)-tA||_n(x)-2||_t(_A(x)[1])-tC,et(x))A s=*_A(x),p=_A(x)[1];CO UC*
  A r=an(m,tG);UC*o=(UC*)_V(r);F(m,A e=_A(s)[i];u=_t(e);c=(UC)_v(e);P(u-tC&&u-tc,mr(r);et(x))o[i]=u==tC?lkq((CO UC*)_V(e),_n(e),q,n):lkq(&c,1,q,n))x(r))
 Z A1(sumnT,P(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);U n=_n(x);W t=0;F(n,L v=p[i];t+=(W)(v==NL?0:v))x(az((L)t)))K1("{+/x}",x))
 Z A1(qins,x(INS))   //`ins: the insert verb (h.c ins2), which amber.k binds to insert once (#94 Q1)
-ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","dlt","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl","abs","wcol","rcol","fsz","ldir","wtn","senc","hh","mm","sec","tjn","exit","lk","ins"};
- G(&kst,js1,qp,qt,frk,hex,err,qa,qe,dltC,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,wcolT,rcolT,fszT,ldirT,wtnT,sencT,hhC,mmC,secC,tjnC,qx,lkT,qins,ed)[fI((V*)s,L(s),v)](x))   //found by a scan in this order: dlt (amber.k's deltas, each call) early, exit last
+ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","dlt","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl","abs","wcol","rcol","fsz","ldir","wtn","senc","hh","mm","sec","tjn","exit","lk","ins","wmul"};
+ G(&kst,js1,qp,qt,frk,hex,err,qa,qe,dltC,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,wcolT,rcolT,fszT,ldirT,wtnT,sencT,hhC,mmC,secC,tjnC,qx,lkT,qins,wmulT,ed)[fI((V*)s,L(s),v)](x))   //found by a scan in this order: dlt (amber.k's deltas, each call) early, exit last
 /* ---- tacit trains: hook (f g) and fork (f g h) --------------------------
  * A general list of length 2 or 3 whose every element is a function becomes a
  * TRAIN when it is applied (a `::` in it is data, as in ngn/k, so such a list is
@@ -1245,7 +1245,10 @@ Z A4(dt4,/*1111*/A r=_tP(x)||_tU(x)||_t(x)==ts?d8((A[]){x,y,z,u},4):_t(x)==tS?d4
 Z __attribute__((cold)) A3(ds3,/*111*/A r=d3t(x,y,z);mr(y);mr(z);r)
 Z __attribute__((cold)) A4(ds4,/*1111*/A r=d4t(x,y,z,u);mr(y);mr(z);mr(u);r)
 //a name that does not evaluate (a missing formatter): its error (0), not die
-ZN A ki(A*p,S s)_(plk(1);A f=*p;I(!f&&(f=evs(s,0)),PSH(cns,f);__atomic_store_n(p,f,__ATOMIC_RELEASE))plk(0);f)
+//A call site's lambda is compiled in the root, whatever \d is at its first call: the compiler puts a name in the
+//namespace current then, and the lambda is kept for the life of the process (![t;c;b;a]'s qfupd, \l's qrwf).
+//grt (m.c) sets that for this thread alone, so a peach worker's first call leaves the others' \d alone
+ZN A ki(A*p,S s)_(plk(1);A f=*p;I(!f,B r=grt(1);f=evs(s,0);grt(r);I(f,PSH(cns,f);__atomic_store_n(p,f,__ATOMIC_RELEASE)))plk(0);f)
 //k1 k2 k8: the lambda is compiled on first use under the parse lock in a peach scope, so two workers reaching
 //it first do not both compile it and push it to cns at once (digest #10); outside peach plk does nothing. The
 //slot is read with an acquire load that pairs with ki's release store: a worker that sees it set sees the whole lambda

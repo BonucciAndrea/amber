@@ -51,7 +51,10 @@ qfn:{[cols;e]. "{[x]",qidsub[cols;e],"}"}                                       
 / clause never fused, while the same query WITH a where clause did. ~(#t)#0b is materialised,
 / ~-identical to (#t)#1b, and fuses. (Verified: gagg with (#t)#1b -> 0 rows; with ~(#t)#0b,
 / K=K or 0<1+!#t -> the correct rows.)
-qmask:{[t;w]$[0=#w;();1=#c:qcut w;[v:qfn[cols t;*c]t;$[`I~@v;v;qwv[t;v]]];&/qloc[cols t]'1_c;&/{[t;c]v:qfn[cols t;c]t;$[`I~@v;v;qwv[t;v]]}[t]'c;qcas[t;c]]}   / Where -> boolean mask
+/ A query inside a where-clause (n in (exec n from u)) is rewritten by qrw, as at the prompt, to the string call
+/ (exq"exec n from u") that qidsub leaves alone. Only a where with a "from " in it goes to qrw, found by one call to
+/ like's C matcher (`lk), so a where with none pays that one call.
+qmask:{[t;w]$[0=#w;();1=#c:qcut$[`lk(w;"*from *");qrw w;w];[v:qfn[cols t;*c]t;$[`I~@v;v;qwv[t;v]]];&/qloc[cols t]'1_c;&/{[t;c]v:qfn[cols t;c]t;$[`I~@v;v;qwv[t;v]]}[t]'c;qcas[t;c]]}   / Where -> boolean mask
 qma:{[n;m]qwa m;a:~n#0b;$[m;a;~a]}   / a where whose value is an atom (where 1b, where 0b) keeps every row or none, as q
 / A where whose value is an atom is a boolean, as q: 0 or 1 (Amber's 1b is the int 1) keeps no row or every row, and
 / any other atom (2, 0N, 0n, `a, 1.5, "a") is 'type. A list is passed on as it was (#83 Q13, C: checking that an int
@@ -171,8 +174,10 @@ qsimp:`sum`avg`min`max`count`first`last`dev`var
 / columns, is also fused -- qaggf answers it with two `gagg sum passes (over w*c and over w)
 / and one divide, instead of dropping the whole query onto the per-group path. Without this,
 / one weighted average in the select list de-optimised every other aggregate beside it.
+/ The bracket form wavg[w;c] (no spaces) is fused as w wavg c, so both forms give one answer (#94 Q10).
 qwagg:`wavg`wsum
-qsagg:{[C;e]w:" "vs trim e;$[2=#w;$[(in[`$w 0;qsimp])&in[`$w 1;C];(`$w 0;`$w 1);(w~("count";,"i"))&0<#C;(`count;*C);()];3=#w;$[(in[`$w 1;qwagg])&(in[`$w 0;C])&in[`$w 2;C];(`$w 1;`$w 0;`$w 2);()];()]}
+qsagg:{[C;e]w:" "vs trim e;$[2=#w;$[(in[`$w 0;qsimp])&in[`$w 1;C];(`$w 0;`$w 1);(w~("count";,"i"))&0<#C;(`count;*C);()];3=#w;$[(in[`$w 1;qwagg])&(in[`$w 0;C])&in[`$w 2;C];(`$w 1;`$w 0;`$w 2);()];1=#w;qswb[C;*w];()]}
+qswb:{[C;e]$[("wavg["~5#e)&"]"=*|e;[a:`$";"\-1_5_e;$[(2=#a)&&/in[a;C];(`wavg;a 0;a 1);()]];()]}
 / the by-branch of sel, split out so sel itself stays under the bytecode limit
 / the by-branch of sel, split out so sel itself stays under the bytecode limit.
 / u is the UNFILTERED table and m the where-mask: the fused path hands the mask
@@ -187,18 +192,21 @@ qbyl:{[C;byp]$[~^C?`$byp;1;qbyf[C;byp];1;qbyo[C;byp]]}
 qbyf:{[C;byp]$[|/~^"([{`\":"?byp;0;&/{[C;e]t:t@&0<#'t:" "\e;$[1=#t;qbop[C;*t];3=#t;$[~^`mod`div`xbar?`$t 1;qbop[C;t 0]&qbop[C;t 2];0];0]}[C]'","\byp]}   / by-items that are each a column, i, a number, or two of those around mod, div or xbar keep to their row, read without the checks
 qbop:{[C;w]$[(*w)<":";$[(*w)>"/";$[|/w="_";0;&/qword[0+w]|w="."];0];~^(C,`i)?`$w]}   / a column, i, or a number (word characters and ., no _: not 0+|n)
 qbyo:{[C;byp]e:(qname'qcut byp)@\:1;&/qlb[C]'[e;{qlit qblank x}'e]}
-qselby:{[u;m;hw;byp;it;d]$[#m;$[qbyl[cols u;byp];;:qselby[qflt[u;m;hw];();0;byp;it;d]];];r:qbyx[u;byp];sg:qsagg[cols r 0]'{(qname x)1}'it;fa:$[~&/{0<#x}'sg;();$[#m;|/m;1];qaggf[r 0;r 1;(!d)!sg;m];()];qbyr[;r]$[#fa;qks fa;[t:$[#m;qwk[2=hw;r 0;m];r 0];qby[qproj[t;(r 1),(,/qrefs[cols t]'{(qname x)1}'it)];r 1;d]]]}
+qselby:{[u;m;hw;byp;it;d]$[#m;$[qbyl[cols u;byp];;:qselby[qflt[u;m;hw];();0;byp;it;d]];];r:qbyx[u;byp];$[|/in[!d;r 3];`err"dup";];sg:qsagg[cols r 0]'{(qname x)1}'it;fa:$[~&/{0<#x}'sg;();$[#m;|/m;1];qaggf[r 0;r 1;(!d)!sg;m];()];qbyr[;r]$[#fa;qks fa;[t:$[#m;qwk[2=hw;r 0;m];r 0];qby[qproj[t;(r 1),(,/qrefs[cols t]'{(qname x)1}'it)];r 1;d]]]}   / a column named as a given or bare by-key is 'dup, as q (exec's columns come with hidden names, qexby)
 / gag1: one select-list item -> one fused result triple (head;values;first-row-indices).
 / (agg;col)        -> a single `gagg pass, as before.
 / (wavg|wsum;w;c)  -> two `gagg sum passes over the same keys and mask, so the group order
 /                     matches, then divide for wavg. Returns () if either pass declines,
-/                     which keeps the existing "cannot fuse -> fall back" contract.
+/                     which keeps the existing "cannot fuse -> fall back" contract. A row with a
+/                     null value or weight adds no weight, as wavg's pairs: `wmul (src/o.c) gives w*c
+/                     and whether a product is null in one pass (a float product is null then); two
+/                     int columns take k's * and a scan of c, as an int product need not be (0N*2 is 0).
 qgg:{[o;k;v;m]$[#m;`gagg(o;k;v;m);`gagg(o;k;v)]}   / an empty mask is every row (no where-clause)
 / 2.7.2: a big symbol key read by more than one `gagg pass is hashed once, to codes (`senc, on the threads; () on
 / one thread, where each pass hashing as it goes is cheaper). The group keys still come from the rows, so the
 / codes never show
 qsc:{[k]e:`senc(k);$[#e;e 1;k]}
-gag1:{[d;k;m;p]$[(2=#p)&in[p 0;`dev`var];qvd[d;k;m;p];2=#p;qgg[p 0;k;d p 1;m];[wv:d p 1;a:qgg[`sum;k;wv*d p 2;m];$[(p 0)~`wsum;a;$[0=#a;();[b:qgg[`sum;k;wv;m];$[0=#b;();(a 0;(a 1)%b 1;a 2)]]]]]]}
+gag1:{[d;k;m;p]$[(2=#p)&in[p 0;`dev`var];qvd[d;k;m;p];2=#p;qgg[p 0;k;d p 1;m];[wv:d p 1;r:$[(p 0)~`wsum;();`wmul(wv;d p 2)];a:qgg[`sum;k;pv:$[#r;r 0;wv*d p 2];m];$[(p 0)~`wsum;a;$[0=#a;();[b:qgg[`sum;k;$[#r;$[r 1;wv*~^pv;wv];`hnl d p 2;wv*~^d p 2;wv];m];$[0=#b;();(a 0;(a 1)%b 1;a 2)]]]]]]}
 / 2.7.2: dev and var by group as var does it, avg of the squared distance from the mean: one pass for the group
 / means, each row's mean found by its key, one pass for the average square. A group whose mean is infinite (or 0w and
 / -0w's NaN) has no square that is not NaN: 0f there, as var gives (#83 Q10), where the group has an item that is not null
@@ -271,17 +279,26 @@ qpt:{[u]$[`m~@u;in[`amberpt;!u];0]}
 
 / ---- exec  (return one column / expression, not a table) ------------------
 / exec splits its select-list the SAME way select does (qcut, honouring brackets):
-/   one item  -> the bare vector          exec px from t        exec spread:px-ask from t
+/   one item  -> the bare vector          exec px from t        exec px-ask from t
 /   many      -> a dict name!(vectors)     exec px,ask from t -> `px`ask!(..;..)
 / so `exec a,b` yields two named columns (q semantics) instead of joining them into
 / one vector, which is what lets `plot exec px,ask ...` draw a line per column.
-exq:{[s]s:qnorm s;s:$[(4#s)~"exec";trim 4_s;s];r:qsplit[s;" where "];r2:qsplit[r 0;" from "];r:$[r 2;$[|/"sedu"=*r2 1;qnw[r;r2 1];(r2 1;r 1)];(r2 1;"")];wh:r 1;u:unkey@. qtry r 0;eb:qsplit0[r2 0;" by "];k:qik[qiq[eb 0;eb 1;eb 2;0<#wh];u];pq:$[qpt u;qpexec[u;r2 0;wh];(u;wh)];u:pq 0;wh:pq 1;$[eb 2;qexby[k;u;wh;eb];[t:$[#wh;qwk[k;u;qmask[u;wh]];u];C:cols t;it:qcut trim r2 0;v:{[C;t;e]qfn[C;(qname e)1]t}[C;t]'it;$[1=#it;*v;(qnms[C;it])!v]]]}
+/ As q's, one item with a name (exec s:px-ask from t) is a dict too, and no item (exec from t) is the last row.
+exq:{[s]s:qnorm s;s:$[(4#s)~"exec";trim 4_s;s];r:qsplit[s;" where "];h:r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r:$[r 2;$[|/"sedu"=*r2 1;qnw[r;r2 1];(r2 1;r 1)];(r2 1;"")];wh:r 1;u:unkey@. qtry r 0;eb:qsplit0[r2 0;" by "];k:qik[qiq[eb 0;eb 1;eb 2;0<#wh];u];pq:$[qpt u;qpexec[u;r2 0;wh];(u;wh)];u:pq 0;wh:pq 1;$[eb 2;qexby[k;u;wh;eb];[t:$[#wh;qwk[k;u;qmask[u;wh]];u];$[#r2 0;[C:cols t;it:qcut trim r2 0;v:{[C;t;e]qfn[C;e 1]t}[C;t]'p:qname'it;$[(1=#it)&~#**p;*v;(qnms[C;it])!v]];last t]]]}
 / exec e by b: a dict from the groups to e, as q (through select, then the key column and the value column)
-qexby:{[h;u;wh;eb]r:qdi[h]qsi[h;u;wh;0<#wh;(eb 0;eb 1;1b);""];k:+key r;v:+value r;$[1=#!k;k@*!k;key r]!$[1=#!v;v@*!v;value r]}
+qexby:{[h;u;wh;eb]$[#eb 0;[it:qcut eb 0;e:{(qname x)1}'it;b:","/{"(",($y),"):",x}'[e;!#it]];b:""];r:qdi[h]qsi[h;u;wh;0<#wh;(b;eb 1;1b);""];k:+key r;v:+value r;k:$[1=#!k;k@*!k;key r];$[~#b;k!$[1=#!v;v@*!v;value r];(1=#it)&~#*qname@*it;k!v@*!v;k!+(qnms[cols u;it])!. v]}   / the items go in under hidden names (0) (1)..., so none meets a key's name; one item with no name gives its values, else a table under the items' names, as q
 
 / ---- update  (add / replace columns; optional where and by) ---------------
-qasg:{[t;idx;nm;v]@[$[in[nm;cols t];(+t)nm;(#t)#qnull v];idx;:;v]}
-qasgby:{[t;nm;f;gi;rc;w]tp:$[#rc;qproj[t;rc];t];$[0=#gi;:qasg0[t;nm;f;tp;w];];gv:{[t;f;iv]v:f atr[t;iv];$[isat v;(#iv)#v;v]}[tp;f]'gi;rv:raze gv;ri:raze gi;$[~w;rv@<ri;[e:in[nm;cols t];c:$[e;(+t)nm;(#t)#qnull[*gv]];r:@[c;ri;:;rv];$[e&(~`A~@c)&~(@r)~@c;`err"type";r]]]}   / each group once; every row: back in row order, else one scatter into the column (a value that changes a typed column's type is 'type, as q)
+/ qty: a value of another type than its column's is 'type, as q's amend, rows or none: the column's kind is its type, a
+/ temporal column's (a general list) that of its first item (qkd); a general column takes anything, and so does an
+/ empty general value (update n:() ..., and so update n:d ... where no row is kept, which q refuses; nor is an empty
+/ temporal column refused, from 0#t: its items are gone). Run once per column, before the amend, and only when the
+/ types differ: a value of the column's type or an atom of its first item's, and in a general column a value whose
+/ first item has the type of the column's first item, is amended with no call.
+qkd:{$[`A~t:@x;$[#x;$[(u:@*x)in`d`t`n;u;`A];`A];t]}
+qty:{[c;v]k:qkd c;$[`A~k;;k~w:qkd v;;(`$_$k)~`$_$w;;(`A~w)&0=#v;;(`A~@c)&~&/k=@'c;;`err"type"]}   / the same type passes at one match; an atom's (`f for `F) by name; a general column of mixed kinds takes anything: looked at only before a 'type
+qasg:{[t;idx;nm;v]$[in[nm;cols t];[c:(+t)nm;$[(@c)~@v;$[`A~@c;$[(@*c)~@*v;;qty[c;v]];];(@*c)~@v;;qty[c;v]];@[c;idx;:;v]];@[(#t)#qnull v;idx;:;v]]}
+qasgby:{[t;nm;f;gi;rc;w]tp:$[#rc;qproj[t;rc];t];$[0=#gi;:qasg0[t;nm;f;tp;w];];gv:{[t;f;iv]v:f atr[t;iv];$[isat v;(#iv)#v;v]}[tp;f]'gi;rv:raze gv;ri:raze gi;$[~w;rv@<ri;[e:in[nm;cols t];c:$[e;(+t)nm;(#t)#qnull[*gv]];$[~e;;(@c)~@rv;$[`A~@c;$[(@*c)~@*rv;;qty[c;rv]];];(@*c)~@rv;;qty[c;rv]];@[c;ri;:;rv]]]}   / each group once; every row: back in row order, else one scatter into the column (a value of another type is 'type, qty)
 / no groups (an empty table, or a where that keeps no row): the column is typed by the expression on no rows, as q's:
 / an atom's type, or a typed vector itself while no column it reads is general (first st of no strings is "", q ());
 / anything else (an error, a general list) is (), and a new column is filled
@@ -297,7 +314,7 @@ del:{[s]s:qnorm s;s:$[(6#s)~"delete";trim 6_s;s];b:$[(5#s)~"from ";("";trim 5_s)
 / ---- functional form ------------------------------------------------------
 / q's ?[t;c;b;a] (select) and ![t;c;b;a] (update, delete) over parse trees: a symbol is a column (or a global),
 / a one-item list like enlist`a is that item as a value, (f;x;y) applies f. c's clauses cascade, each on the
-/ rows the last kept; b is 0b (no groups), 1b (distinct) or a dict of names to trees; a is () or a dict.
+/ rows the last kept; b is 0b (no groups), () (an exec, qfx), 1b (distinct) or a dict of names to trees; a is () or a dict.
 qfv:{in[@x;`o`p`q`r`u`v`w`x]}
 qfe:{[t;e]$[`s~@e;$[in[e;cols t];(+t)e;e~`i;$[in[qI;cols t];(+t)qI;!#t];. e];(`S~@e)&1=#e;*e;(`A~@e)&0<#e;$[qfv[*e];(*e) . qfe[t]'1_e;1=#e;*e;e];e]}
 qfi:{[t;c]C:cols t;v:qfe[t;*c];i:$[isat v;qfw[#t;v];&v];{[t;C;i;w]v:qfe[qtk[$[qfhi w;~|/in[`i,qI;C];0];t;i];w];$[isat v;i@qfw[#i;v];i@&v]}[t;C]/[i;1_c]}   / a later constraint's i reads the rows it sees
@@ -309,7 +326,13 @@ qfsg:{[t;e]$[(`A~@e)&2=#e;[f:*e;c:e 1;$[(`s~@c)&in[c;cols t];$[f~sum;(`sum;c);f~
 qfby:{[t;b;a]bk:!b;h:qbyh[bk;bk~'value b];x:(();h;bk);t2:+(+t),h!qfe[t]'value b;sg:$[0<#a;qfsg[t]'value a;()];fa:$[(0<#sg)&&/{0<#x}'sg;qaggf[t2;h;(!a)!sg;()];()];$[#fa;:qbyr[qks fa;x];];qbyr[;x]$[0=#a;[nk:except[cols t;bk];qby[t2;h;nk!qlastf'nk]];qby[t2;h;(!a)!{[e]{[e;x]qfe[x;e]}[e]}'value a]]}   / computed keys hidden as qbyx's
 qfhi:{$[`s~@x;x~`i;`S~@x;in[`i;x];`m~@x;qfhi@. x;(`A~@x)&0<#x;$[(2=#x)&(count~*x)&`i~x 1;0;|/qfhi'x];0]}   / does a parse tree read i's values (count i does not)
 qfin:{[c;b;a]$[(`m~@b)|0<#c;qfhi[a]|(0<#c)&qfhi b;0]}   / does a functional query read i on rows c or b cut
-qfsel:{[t;c;b;a]t:$[`s~@t;. t;t];kk:$[((b~0b)|b~())&0=#a;keys t;0#`];$[(b~1b)&(0=#a)&iskeyed t;`err"type";];t:unkey t;k:qik[qfin[c;b;a];t];t:qai[k&0=#c;t];t:$[0=#c;t;qtk[k;t;qfi[t;c]]];qkx[kk]qdi[k]$[(b~0b)|b~();$[0=#a;t;qfa[t;a]];b~1b;?qdi[k]$[0=#a;t;qfa[t;a]];qfby[t;b;a]]}
+qfsel:{[t;c;b;a]t:$[`s~@t;. t;t];kk:$[((b~0b)|b~())&0=#a;keys t;0#`];$[(b~1b)&(0=#a)&iskeyed t;`err"type";];t:unkey t;k:qik[qfin[c;b;a];t];t:qai[k&0=#c;t];t:$[0=#c;t;qtk[k;t;qfi[t;c]]];qkx[kk]qdi[k]$[b~0b;$[0=#a;t;qfa[t;a]];b~();qfx[t;a];b~1b;?qdi[k]$[0=#a;t;qfa[t;a]];`m~@b;qfby[t;b;a];qfxb[t;b;a]]}
+qfx:{[t;a]$[`m~@a;(!a)!qfsa[t]'value a;0=#a;last t;qfsa[t;a]]}   / b () is q's exec: a column or tree is its value, a dict a dict of them, () the last row
+/ b a column or tree (not a dict) is q's exec by: a dict from its values, sorted, to a's on each group's rows (a dict
+/ a: a table of them; a (): q's 'nyi; an atom b, such as ,`sym, one group; i the rows' numbers, kept as qI). A symbol list, as a or b or a value of
+/ a's dict, is read as q reads it, an application: `sym`n is sym[n]
+qfxb:{[t;b;a]$[(0=#a)&~`m~@a;`err"nyi";];t:$[(qfhi[a]|qfhi b)&~in[qI;cols t];qai[1;t];t];v:qfsa[t;b];g:=$[isat v;(#t)#v;v];k:!g;o:<k;gi:(. g)o;(k o)!$[`m~@a;+(!a)!{[t;gi;e]{[t;e;i]qfsa[t i;e]}[t;e]'gi}[t;gi]'. a;{[t;a;i]qfsa[t i;a]}[t;a]'gi]}
+qfsa:{[t;e]$[(`S~@e)&1<#e;(qfe[t;*e]). qfe[t]'1_e;qfe[t;e]]}
 qfcs:{[C;e]$[`s~@e;$[in[e;C];,e;(e~`i)&in[qI;C];,qI;0#`];(`A~@e)&0<#e;?,/qfcs[C]'e;0#`]}   / the columns a parse tree names (as qrefs for a string)
 qfub:{[t;idx;b;a]k:+(!b)!qfe[t idx]'value b;gi:idx@value(=rows k);+((+t),(!a)!{[t;gi;w;n;e]qasgby[t;n;{[e;x]qfe[x;e]}[e];gi;qfcs[cols t;e];w]}[t;gi;(#idx)<#t]'[!a;value a])}
 qfupd:{[t;c;b;a]t:$[`s~@t;. t;t];kk:keys t;t:unkey t;k:qik[qfin[c;b;a];t];t:qai[k&`m~@b;t];idx:$[0=#c;!#t;qfi[t;c]];qkx[kk]qdi[k]$[`S~@a;$[0=#a;t@&~@[(#t)#0b;idx;:;1b];+(except[cols t;a])#+t];((b~0b)|b~())&0=#c;+((+t),(!a)!{[t;e]v:qfe[t;e];$[isat v;(#t)#v;v]}[t]'value a);(b~0b)|b~();+((+t),(!a)!{[k;t;idx;n;e]qasg[t;idx;n;qfe[qtk[k;t;idx];e]]}[k;t;idx]'[!a;value a]);qfub[t;idx;b;a]]}

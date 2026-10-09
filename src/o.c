@@ -1,6 +1,7 @@
 #include"a.h"
 #include <stdlib.h>   // Amber 2.5 (exp): malloc/calloc/qsort/free for the parallel kernels
 #include"parallel.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+#include"simd.h"     // `wmul multiplies with simd_mul_f64, the kernel k's * calls
 #include"arena.h"
 
 // amber: NaN-aware float compare for `~` (match).
@@ -546,6 +547,32 @@ Z I penc(A k,int nt,A*pu,A*pcd){N n=_n(k);UC kt=_t(k);U wk=kt==tL?3:2;
 A sencT(A x){P(_tP(x)||_t(x)!=tS||_n(x)<PGAG_MIN||par_thread_count(_n(x))<2,x(emp(tA)))
  A u=0,cd=0;P(penc(x,par_thread_count(_n(x)),&u,&cd),x(emp(tA)))
  return x(aV(tA,2,A(u,cd)));}
+// ---- `wmul (w;x): qSQL's fused wavg by group (qsql.k gag1) needs w*x and whether a product is null, so that a row
+// with a null value or weight adds no weight: both in one pass, (w*x;0 or 1), where k's * then a null scan made two.
+// A float list times a float list, or an int list (0N as 0n, as cF makes it) beside a float one; () otherwise (two
+// int lists: k's * and a scan of the values, in qsql.k). Each product is w[i]*x[i] rounded, as k's *. Long lists are
+// cut into one slice per thread, as k's * cuts them.
+TD struct{CO F*f;CO V*v;F*o;U w;B ff;N n;int nt;B z[PAR_MAX_THREADS];}WM;
+// a slice: two float lists through simd_mulnan_f64 (k's * kernel, simd_mul_f64, with the NaN test in the same pass);
+// an int list a block at a time, widened to floats first (gcc vectorises no loop over GARD's per-row switch)
+#define WM_BK 2048
+Z V wm1(V*c_,int t){WM*c=c_;N s=c->n*(N)t/(N)c->nt,e=c->n*(N)(t+1)/(N)c->nt;F*o=c->o;CO F*f=c->f;int z=0;F b[WM_BK];
+ if(c->ff){c->z[t]=e>s&&simd_mulnan_f64(f+s,(CO F*)c->v+s,o+s,e-s);return;}
+ for(N i=s;i<e;i+=WM_BK){N m=e-i<WM_BK?e-i:WM_BK;
+  S4(c->w,{CO G*v=(CO G*)c->v+i;for(N k=0;k<m;k++)b[k]=(F)v[k];},{CO H*v=(CO H*)c->v+i;for(N k=0;k<m;k++)b[k]=(F)v[k];},
+     {CO I*v=(CO I*)c->v+i;for(N k=0;k<m;k++)b[k]=(F)v[k];},{CO L*v=(CO L*)c->v+i;for(N k=0;k<m;k++)b[k]=v[k]==NL?NF:(F)v[k];})
+  z|=simd_mulnan_f64(f+i,b,o+i,m);}
+ c->z[t]=!!z;}
+A wmulT(A x){
+ P(_t(x)-tA||_n(x)-2,et(x))
+ A p=_A(x)[0],q=_A(x)[1];UC tp=_t(p),tq=_t(q);
+ P(_tP(p)||_tP(q)||_n(p)!=_n(q)||!(tp==tF&&(tq==tF||LH(tG,tq,tL))||tq==tF&&LH(tG,tp,tL)),x(emp(tA)))
+ N n=_n(p);A r=an(n,tF);P(!r,x(0))A v=tp==tF?q:p;
+ WM c={.f=_V(tp==tF?p:q),.v=_V(v),.o=_F(r),.w=_t(v)==tG?0:_t(v)==tH?1:_t(v)==tI?2:3,.ff=tp==tF&&tq==tF,.n=n,.nt=par_thread_count(n)};
+ if(c.nt<1)c.nt=1;if(c.nt>PAR_MAX_THREADS)c.nt=PAR_MAX_THREADS;
+ if(c.nt>1)par_run(c.nt,wm1,&c);else wm1(&c,0);
+ B z=0;for(int t=0;t<c.nt;t++)z|=c.z[t];
+ return x(aV(tA,2,A(r,ai(z))));}
 A gaggT(A x){
  P(_t(x)-tA||(_n(x)-3&&_n(x)-4),gaggC(x))
  A*e=_A(x);A op=e[0],k=e[1],v=e[2],m=_n(x)==4?e[3]:0;

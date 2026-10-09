@@ -29,6 +29,7 @@ void simd_sub_i64(const int64_t *a, const int64_t *b, int64_t *out, size_t n);
 void simd_sub_f64(const double  *a, const double  *b, double  *out, size_t n);
 void simd_mul_i64(const int64_t *a, const int64_t *b, int64_t *out, size_t n);
 void simd_mul_f64(const double  *a, const double  *b, double  *out, size_t n);
+int  simd_mulnan_f64(const double *a, const double *b, double *out, size_t n);   /* out=a*b; 1 if a product is NaN */
 void simd_div_f64(const double  *a, const double  *b, double  *out, size_t n);
 /* out[i] = v - b[i] */
 void simd_subs_f64(double  v, const double  *b, double  *out, size_t n);

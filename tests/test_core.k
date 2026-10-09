@@ -1527,7 +1527,10 @@ t[`cdBare;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"\\cd\n");"\"",(-1_`x(("/bin
 t[`symGroupWidth;{i:4097#0 1 2;a:`$"grpwidthFirst";h:`$"grpwidthPad",/:$!5000;b:`$"grpwidthSecond";c:`$"grpwidthThird";d:`$"grpwidthD";e:`$"grpwidthE";f:`$"grpwidthF";s:(a;b;c);u:(d;e;f);((-8!.=s@i)~-8!.=u@i;(-8!s?s@i)~-8!u?u@i;-8!s?a,`grpwidthNone)}[];(1b;1b;-8!0 0N)]
 
 
-hexpect[960]
+/ ---- a dict joined to a table of other columns is a list of dicts, as t,d (#105 Q1); it was 'domain. Keys that match: a table, as before ----
+t[`dictJoinTableOther;((`b!1),+(,`a)!,2 3;(`b`a!5 6),+`a`b!(1 2;3 4);(`c!5),0#+`a`b!(1 2;3 4);(`a`b!5 6),+`a`b!(1 2;3 4));(((,`b)!,1;(,`a)!,2;(,`a)!,3);(`b`a!5 6;`a`b!1 3;`a`b!2 4);+(,`c)!,,5;+`a`b!(5 1 2;6 3 4))]
+
+hexpect[961]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

@@ -343,9 +343,9 @@ behaviour shows up as a test failure rather than a silent regression.
   q assumes the table is sorted, so its answer there is unspecified (it gives 40).
 - **A table joined to a table of other columns is `'domain`** (issue #19): `` (+`a!,1 2),+`b!,3 4 ``,
   and `` (+`a!,1 2),,`b!3 `` (the row enlisted, a one-row table). A row dict of other columns makes
-  a list of dicts: `` (+`a!,1 2),`b!3 ``. q gives `'mismatch` for all three
-  (`` ([]a:1 2),([]b:3 4) ``, `` ([]a:1 2),enlist(enlist`b)!enlist 3 ``, `` ([]a:1 2),(enlist`b)!enlist 3 ``),
-  and ngn/k a list of dicts.
+  a list of dicts, on either side (#105 Q1): `` (+`a!,1 2),`b!3 `` and `` (`b!3),+`a!,1 2 ``. q gives
+  `'mismatch` for all four (`` ([]a:1 2),([]b:3 4) ``, `` ([]a:1 2),enlist(enlist`b)!enlist 3 ``,
+  `` ([]a:1 2),(enlist`b)!enlist 3 ``, `` ((enlist`b)!enlist 3),([]a:1 2) ``), and ngn/k a list of dicts.
 - **Four q-named functions keep Amber's answer where q's differs (#83 Q10, #94 Q3).** `"ab" ss ""` is
   `0 1 2` (q: `'length`) and `` 0 1 in 0#` `` is `0 0` (q: `'type`): Amber answers where q refuses.
   `differ 1 1.00000000000001 1` is `1 1 1` (q: `100b`), since Amber has no comparison tolerance

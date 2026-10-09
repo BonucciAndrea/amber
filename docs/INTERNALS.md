@@ -143,7 +143,9 @@ boundary. Kind 0 is the raw payload of a B/G/H/I/L/F/C vector and loads through 
 page for Amber's header with the file mapped right after it, private and copy-on-write. Kind 1 is a
 symbol column as int32 indexes into the database's `sym` file; kind 2 is any other value as `-8!`
 bytes; kind 3 is a list of dates, times or timestamps as int64. Writers go to `name.tmp` and rename,
-so a reader holding the old map keeps old data. Everything above that (splay, the sym file, `set`/
+so a reader holding the old map keeps old data; a writer that rewrites the file in place instead
+(`0:`/`1:`, `cp`, an append from q) shows through a live map on Linux, and a truncation makes it
+SIGBUS (AMBER.md §9e). Everything above that (splay, the sym file, `set`/
 `get`, `Q.dpft`, `loaddb`, partition pruning in `select`) is k in `hdb.k`; `` `fsz `` and `` `ldir `` are
 the two file-system helpers it uses.
 

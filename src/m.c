@@ -140,11 +140,13 @@ Z A mu(V*p){ALK();F(nreg,I(reg[i].p==p,pnd[npnd++]=i;AUL();return 0;))AUL();retu
 // fresh 4K page costs a fault each (1-4us under a hypervisor: WSL2, cloud VMs),
 // so a program that touches 80MB of new vectors paid 20k faults before it did
 // any work; with 2MB pages that is 40. No-op where THP is "never" or absent.
+// A full table ends the process when the heap needs a region (as any failed allocation), but a file's
+// map (f) is not the heap's: mm gives 0, and 1: says 'MMAP, an error a trap catches, and get reads the file instead.
 Z V*mm(W n,U f){ALK();V*p=mmap(0,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_ANON,-1,0);I(p==MAP_FAILED,AUL();return(V*)0;)
 #ifdef MADV_HUGEPAGE
  I(n>=(W)1<<21,madvise(p,n,MADV_HUGEPAGE);)
 #endif
-I(nreg==L(reg),mc();I(nreg==L(reg),die("MMAP")))reg[nreg++]=(TY(*reg)){p,n,f};AUL();return p;}
+I(nreg==L(reg),mc();I(nreg==L(reg),P(f,munmap(p,n);AUL();(V*)0)die("MMAP")))reg[nreg++]=(TY(*reg)){p,n,f};AUL();return p;}
 // amber 2.3: Cygwin can't lay a file view over part of an anonymous mapping
 // (Windows sections don't nest), so the MAP_FIXED below always failed there and
 // every 0:, 1: and \l read came back 'io. When it fails, read into a plain vector.
@@ -166,7 +168,14 @@ A mfw(I f,W i,W n){P(!n||i%(W)pg,0)V*p=mm(pg+n,1);P(!p,0)
 A mfw(I f,W i,W n){(V)f;(V)i;(V)n;return 0;}
 #endif
 // n<2^32 bytes of file f from offset i: both 64-bit (they were unsigned int, so an offset of 2^32+k read at k)
-A mf(U f,W i,W n)_(V*p=mm(pg+n,1);P(!p,eo0())P(mmap(p+pg,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_FIXED,f,(off_t)i)!=p+pg,mu(p);mfr(f,i,n))A x=AP(p+pg);xb=0;xr=REFB;xT=tC;xn=(U)n;x)
+// Below 64 KB a read is a copy (one pread into a block): no reg[] slot per live read, and no live map, which on
+// Linux showed later writes to the file and was SIGBUS once it was cut short. Bigger reads stay maps.
+#if !defined(wasm)
+#define MFC ((W)1<<16)
+#else
+#define MFC 0//mfr is 'io there; 0.c's mmap copies anyway
+#endif
+A mf(U f,W i,W n)_(P(n<MFC,mfr(f,i,n))V*p=mm(pg+n,1);P(!p,ALK();B u=nreg==L(reg);AUL();u?err0("MMAP"):eo0())P(mmap(p+pg,n,PROT_READ|PROT_WRITE,MAP_NORESERVE|MAP_PRIVATE|MAP_FIXED,f,(off_t)i)!=p+pg,mu(p);mfr(f,i,n))A x=AP(p+pg);xb=0;xr=REFB;xT=tC;xn=(U)n;x)
 
 // Per-thread size-class free lists: each peach worker recycles chunks on its
 // OWN lists with zero locking. Thread-local storage is initial-exec here (no

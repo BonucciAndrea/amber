@@ -511,14 +511,14 @@ Z A bscd(S s)_(P(!*s,C b[4096];getcwd(b,SZ b)?aCz(b):eo0())chdir(s)?eo0():au)   
 Z A bsd(S s)_(P(!*s,as(gd))s+=*s=='.';gd=us(s);au)
 // amber 2.7: \l on a directory maps a database (hdb.k's loaddb), as q's \l db does
 #if !defined(wasm)
-Z B bdir(S s)_(struct stat st;!stat(s,&st)&&S_ISDIR(st.st_mode))
+Z I bdir(S s)_(struct stat st;stat(s,&st)?0:S_ISDIR(st.st_mode)?1:2*!!S_ISFIFO(st.st_mode))   // 1 a directory, 2 a FIFO
 #else
-Z B bdir(S s)_((V)s;0)
+Z I bdir(S s)_((V)s;0)
 #endif
 // 2.7.3: the source text of each script being run (a \l inside a script nests), and its qSQL rewrite; \m counts
 // them as held (RTS), or a script's \m reported its own text as an object nobody holds. Per thread: peach workers \l too
 Z AM_TLS_IE struct ld{A x,y;struct ld*n;}*ld;
-Z A bsl1(S s)_(P(bdir(s),K1("{loaddb x;}",aCz(s)))I f=open(s,0,0);A x=u1c(ai(f));close(f);N(x);P(!xn,x(au))C*p=xC,*e=p+xn-1;P(*e-10,x(err0("eoleof")))*e=0;I(*p=='#'&&p[1]=='!',p=strchrnul(p,10);p+=!!*p)struct ld l={x,0,ld};ld=&l;
+Z A bsl1(S s)_(I b=bdir(s);P(b==1,K1("{loaddb x;}",aCz(s)))I f=open(s,0,0);A x=b>1?frf(f):u1c(ai(f));close(f);N(x);P(!xn,x(au))C*p=xC,*e=p+xn-1;P(*e-10,x(err0("eoleof")))*e=0;I(*p=='#'&&p[1]=='!',p=strchrnul(p,10);p+=!!*p)struct ld l={x,0,ld};ld=&l;
   // amber 2.0.0: run the source through the K qSQL rewriter (qrwf, qsql.k) so
   // bare `select .. from ..` works in a .k file exactly as it does at the REPL
   // prompt -- no sel"..." wrapper. Guarded so nothing changes until qsql.k is
@@ -529,7 +529,7 @@ Z A bsl1(S s)_(P(bdir(s),K1("{loaddb x;}",aCz(s)))I f=open(s,0,0);A x=u1c(ai(f))
   // the undefined-variable error during bootstrap (before qsql.k defines qrwf);
   // amdiagq keeps that recovered error from printing on this thread; `diag is left
   // alone (switching it off and back lost a restore when peach workers loaded at once).
-  I q=amdiagq;amdiagq=1;A rw=K1("{.[{qrwf x};,x;{`ERR}]}",aCz(p));amdiagq=q;A r=_t(rw)==tC?(l.y=rw=str0(rw),evs(_C(rw),1)):evs(p,1);ld=l.n;mr(rw);x(r))
+  I q=amdiagq;amdiagq=1;A rw=K1("{.[{qrwf x};,x;{`ERR}]}",aCm(p,e));amdiagq=q;A r=_t(rw)==tC?(l.y=rw=str0(rw),evn(_C(rw),_C(rw)+_n(rw),1)):evn(p,e,1);ld=l.n;mr(rw);x(r))
 // a script that loads itself (or two that load each other) nested evs and bsl on the C stack with no limit and
 // crashed it; the VM counts its own depth (run), but a \l line does not go through it. 'stack after 512, as q's
 // 'stack after 500 (per thread, as run's count)
@@ -547,7 +547,10 @@ Z A bsast(S s)_(ast_cmd(s))
 Z A bstrc(S s)_(trace_cmd(s))
 // \disasm <expr>: compile-only bytecode disassembler (vm.h). Never runs `s`.
 Z A bsvmd(S s)_(vm_disasm_cmd(s))
-Z A bs_(S*p)_(C b[256];S s=*p,e=strchrnul(s,10);P(e-s+1>=L(b),ez0())MC(b,s,e-s);b[e-s]=0;*p=e+!!*e;C c=*b,d=b[1];P(c=='c'&&d=='d'&&(!b[2]||b[2]==32),bscd(b+2+(b[2]==32)))
+// t: the text's end, where it is known (. of a string, \l of a script, a line of the REPL; evn), else 0. A system command
+// (\l, \cd, a shell command) whose line stops at a NUL before it would take the name before the NUL for its path
+// ('domain, #94 Q16: ."\\l ab\000zz" loaded ab), so the line is refused before it runs; code is cut there as before
+Z A bs_(S*p,S t)_(C b[256];S s=*p,e=strchrnul(s,10);P(e<t&&!*e,ed0())P(e-s+1>=L(b),ez0())MC(b,s,e-s);b[e-s]=0;*p=e+!!*e;C c=*b,d=b[1];P(c=='c'&&d=='d'&&(!b[2]||b[2]==32),bscd(b+2+(b[2]==32)))
  P(!strncmp(b,"trace",5)&&(!b[5]||b[5]==32),bstrc(b+5+(b[5]==32)))
  P(!strncmp(b,"disasm",6)&&(!b[6]||b[6]==32),bsvmd(b+6+(b[6]==32)))
  P(!strncmp(b,"ast",3)&&(!b[3]||b[3]==32),bsast(b+3+(b[3]==32)))
@@ -562,7 +565,7 @@ Z A bs_(S*p)_(C b[256];S s=*p,e=strchrnul(s,10);P(e-s+1>=L(b),ez0())MC(b,s,e-s);
  I(am_ext_bs,A amrv=am_ext_bs(b);P(amrv,amrv))
  K1("0x0a\\`x(,,\"/bin/sh\"),,:",aCz(b)))
 
-Z A evs1(S*p)_(S s=*p;P(*s=='\\',++*p;bs_(p))A x=pk((V*)p,10);N(x);x=N(cpl(aCm(s,*p),x,0));x(run(x,0,0)))
+Z A evs1(S*p,S t)_(S s=*p;P(*s=='\\',++*p;bs_(p,t))A x=pk((V*)p,10);N(x);x=N(cpl(aCm(s,*p),x,0));x(run(x,0,0)))
 // arena: rewind the HFT scratchpad at the end of EVERY statement, on every
 // exit -- including the library-mode early return that hands back the final
 // statement's value. That early return (`P(!*s,x)`) used to skip the rewind
@@ -573,16 +576,17 @@ Z A evs1(S*p)_(S s=*p;P(*s=='\\',++*p;bs_(p))A x=pk((V*)p,10);N(x);x=N(cpl(aCm(s
 // `. "expr"` reaches it through val() in src/a.c, and a full reset there would
 // stomp scratch the OUTER expression still has live. A mark frees exactly what
 // this statement took and nothing older, and marks nest LIFO by construction.
-A evs(S s,B r)_(W(*s,ArenaMark am_=arena_mark();A x=evs1(&s);P(!x,I(r,s=strchrnul(s,10);s+=!!*s;epr(0))arena_release(am_);0)I(r,x(out(x)))E(P(!*s,arena_release(am_);x)x(0))mc();arena_release(am_))au)
+A evn(S s,S t,B r)_(W(*s,ArenaMark am_=arena_mark();A x=evs1(&s,t);P(!x,I(r,s=strchrnul(s,10);s+=!!*s;epr(0))arena_release(am_);0)I(r,x(out(x)))E(P(!*s,arena_release(am_);x)x(0))mc();arena_release(am_))au)
+A evs(S s,B r)_(evn(s,0,r))   // text whose end is not known: s is cut at its first NUL
 // amber 1.9.5: the bare REPL (./amber with no script) reads through the native
 // line editor (src/ln.c) -- editing, history and Tab completion -- and falls
 // back to the historical raw read(2) only when stdin is not a terminal.
-B rep()_(I(am_ln_interactive(),N x=0;C*p=am_repl_getline("",&x);P(!p,0)evs(p,1);free(p);1)
+B rep()_(I(am_ln_interactive(),N x=0;C*p=am_repl_getline("",&x);P(!p,0)evn(p,p+x,1);free(p);1)
  Z C*b;Z W m,k;C*q;//b holds m bytes; its first k are an incomplete line, kept until its newline is read
  I(!b,P(!(b=malloc(m=256)),die("OOM")))
  W(1,I(k==m,C*t=realloc(b,2*m);P(!t,die("OOM"))b=t;m*=2)//a line longer than the buffer: grow it
      L n=read(0,b+k,m-k);P(n<=0,0)q=memchr(b+k,10,n);k+=n;
-     P(q,C*p=b;W(q,*q=0;evs(p,1);p=q+1;q=memchr(p,10,b+k-p))k=b+k-p;memmove(b,p,k);1))1)
+     P(q,C*p=b;W(q,*q=0;evn(p,q,1);p=q+1;q=memchr(p,10,b+k-p))k=b+k-p;memmove(b,p,k);1))1)
 V repl(){W(rep())}
 
 A cns,cn[tn];Z A ce[tn];S*argv,*env;

@@ -259,16 +259,21 @@ I ixkn(A x,A y,UC*kd,L*ix){A ks=_x(x);UC tk=_t(ks);P(tk==tS||tk==tM||!_tMT(_y(x)
  A s=_tt(y)?y:_tT(y)&&_N(y)==1?o?ii(y,0):*_A(y):0;P(!s,0)P(!_tt(s)||s==au,I(o,mr(s))0)A f=fnd(ks,_R(s));I(o,mr(s))P(!f,-4)
  P(!_tt(f),mr(f);0)L j=gl_(f);mr(f);I(j<0||j>=(L)_N(ks),j=_N(ks))kd[0]=1;ix[0]=j;return 1;}   //(a key not there: its
  //place is the count, which ixst adds as a8 does, the key not found a second time)
+B ixsk(A,A),ixsq(A,A,CO UC*,CO L*,I);Z AM_TLS_IE A ixmk;Z NI I ixcm(A*,A,A,A,UC,B,UC*,L*,I,I);   //a dict marked `s: ixcm, below
+Z __attribute__((always_inline)) inline I ixcz(A*,A,A,A,UC,B,UC*,L*,I,I,B,A,B*);
 Z NI I ixcv(A*p,A x,A y,A z,UC d,B g,UC*kd,L*ix,I m,I n){B f=d==14||d==15||d==18||d==19,o;A q=0;
  if(!n){if(m>0&&m<256){I(f||kd[m-1]==3,q=ixit(x,y,kd,ix,(U)m,&o))}   //a row with more below (where the walk stopped, or did not start):
   else{I(m>=512,I r=ixch(p,x,y,z,d,512);P(r>=0,r)m=m&255?m&255|256:0)   //(512: ixwk met a symbol, which can name the variable: held, or as before)
    if(m?m>0&&kd[(m&255)-1]==3:LH(tM,_t(x),tm)){U w=m&255;   //no symbol is met, so no global is amended by name
-    if(!m&&_t(x)==tm){I r=ixkn(x,y,kd,ix);P(r<0,-r)I(r,m=1;I(f,I(ix[0]==(L)_N(_x(x)),I(g,I r=ixch(p,x,y,z,d,0);P(r>=0,r))A u=0;x=ixas(x,y,z,d,kd,ix,1,&u);P(!x&&u,*p=u;4)*p=x;return 0)
+    if(!m&&_t(x)==tm){I r=ixkn(x,y,kd,ix);P(r<0,-r)P(__builtin_expect(_at(x)==1,0)&&x!=ixmk,ixcm(p,x,y,z,d,g,kd,ix,r?-2:-1,n))I(r,m=1;I(f,I(ix[0]==(L)_N(_x(x)),I(g,I r=ixch(p,x,y,z,d,0);P(r>=0,r))A u=0;x=ixas(x,y,z,d,kd,ix,1,&u);P(!x&&u,*p=u;4)*p=x;return 0)
      //(# _ @ . at a key not there: a global held first where a function in it can be called (ixch, as before); else
      //ixst adds the key, found once)
      q=ixit(x,y,kd,ix,1,&o)))}   //a key of a dict whose keys are not symbols:
     else{q=ixit(x,y,kd,ix,w,&o);I(q,m=w?(I)w:1)}}}}   //as a symbol key is (ixkn), so a verb that fails touches nothing
- if(q){B h=f&&g;I(h,RC_INC(x))A r=ixv2(d,q,z);I(o,mr(q))   //f, or at a table's row: the verb first, on the item
+ return ixcz(p,x,y,z,d,g,kd,ix,m,n,f,q,&o);}
+//ixcv's rest, from the item it read (q): inlined in it, and in ixcm for a dict marked `s whose key ixkn found
+Z __attribute__((always_inline)) inline I ixcz(A*p,A x,A y,A z,UC d,B g,UC*kd,L*ix,I m,I n,B f,A q,B*o){   //(*o: read only with q)
+ if(q){B h=f&&g;I(h,RC_INC(x))A r=ixv2(d,q,z);I(*o,mr(q))   //f, or at a table's row: the verb first, on the item
   if(h&&*p!=x){P(!r,mr(x);4)I(*p,mr(*p))*p=x;}E(I(h,(V)RC_DECV(x))P(!r,4))   //f set the variable: if f failed, it keeps that; else
   B rw=kd[m-1]==3;A u=0;A w=ixst(x,y,kd,ix,0,(U)m,rw?av:0,r,rw?0:&u);I(rw,mr(r))P(!w&&u,*p=u;4)*p=w;return 0;}   //the assignment is made on x, as before (held). ixst takes r,
  //but for a row (d8); a result that does not fit (a column's count) is its error, and x is put back (u)
@@ -279,9 +284,29 @@ Z NI I ixcv(A*p,A x,A y,A z,UC d,B g,UC*kd,L*ix,I m,I n){B f=d==14||d==15||d==18
  //verb in place, item by item): a list of ints, of keys there, of columns, where a verb that fails puts back what it did (a.c).
  //A global too, not by ixcg: the verb calls no function, and at one level no symbol is followed, so nothing amends it by name
  P(m>255||g&&!m,ixcg(p,x,y,z,d,kd,ix,m))A u=0;x=ixas(x,y,z,d,kd,ix,m,&u);P(!x&&u,*p=u;4)*p=x;return 0;}   //else 0; 4: the verb's error, and *p as it was (or as f set it)
+//ixca's rest, from the walk's m on: inlined in it, and in ixcm for a dict marked `s
+Z __attribute__((always_inline)) inline I ixct(A*p,A x,A y,A z,UC d,B g,UC*kd,L*ix,I m,I n){P(d,ixcv(p,x,y,z,d,g,kd,ix,m,n))P(m<0,-m)   //a verb, which can fail: ixcv
+ P(!m&&x&&_tm(x)&&(_tM(_x(x))||__builtin_expect(_at(x)==1,0)&&x!=ixmk),_at(x)==1&&x!=ixmk?ixcm(p,x,y,z,0,g,kd,ix,0,n):ixkk(p,x,y,z,0,g,kd,ix))   //a keyed table: ixkk; marked: ixcm
+ P(m>255||g&&!m,ixcg(p,x,y,z,0,kd,ix,m))*p=ixas(x,y,z,0,kd,ix,m,0);return 0;}   //: assigns z, which ixwk checked fits
+//x[y]f:z on a variable whose value is a dict marked `s: sent here, out of line, by a test of the mark where ixca (or
+//ixcv) already goes on knowing the value is a container (ixwk found a place: m>0) or a dict (no place, a key not a
+//symbol: m 0 from ixca, for :; from ixcv, after ixkn, -2 where it found the key's place, else -1). A new key at the
+//first level, the dict held by nothing else: 'step, as in q (ixsk, a.c), the variable untouched. Where the walk or ixkn
+//found the place of y's one key (for :, ixkn looks here), that says whether the key is new, so it is not found again
+//(ixsq, a.c: ixsk then looks only to say which error); else ixsk looks. Then the assignment as for any dict, from there (ixct, or ixcv's rest;
+//ixmk: not this one), and where it was made in place (x held by nothing else) and the keys are still the same list, the
+//mark goes back on the variable's value, as q keeps it there. An amend of a value, or of a dict below the first level, drops it
+Z NI __attribute__((cold)) I ixcm(A*p,A x,A y,A z,UC d,B g,UC*kd,L*ix,I m,I n){I(!m&&!n,I r=ixkn(x,y,kd,ix);P(r<0,-r)I(r,m=-3))
+ I(ixsq(x,y,kd,ix,m<-1?1:m),I w=(m&255)-1;I(m>0&&w>=0&&kd[w]==9,mr((A)ix[w]))return 4)   //(the find for keys, 9, unused)
+ B s=MINE(x),f=d==14||d==15||d==18||d==19,o;A k=_R(_x(x)),v=ixmk,q=0;ixmk=x;I r;
+ I(m==-1,r=ixcv(p,x,y,z,d,g,kd,ix,0,n))E(I(m==-2,I(f,I(ix[0]==(L)_N(_x(x)),I(g,r=ixch(p,x,y,z,d,0);I(r>=0,goto e))A u=0;x=ixas(x,y,z,d,kd,ix,1,&u);r=!x&&u?(*p=u,4):(*p=x,0);goto e)
+   q=ixit(x,y,kd,ix,1,&o))r=ixcz(p,x,y,z,d,g,kd,ix,1,n,f,q,&o))   //as ixcv goes on from ixkn's place
+  E(r=ixct(p,x,y,z,d,g,kd,ix,m==-3?1:m,n)))
+ e:ixmk=v;v=*p;I(s&&v&&!_tP(v)&&_t(v)==tm&&_x(v)==k&&MINE(v),_at(v)=1)mr(k);return r;}
 Z NI I ixca(A*p,A x,A y,A z,UC d,B g){UC kd[8];L ix[8];I n=g&&ixgs?ixgn(p):0;P(n>1,3)
- I m=n?_t(x)==tm&&!_tMT(_y(x))?-3:-ixck(x,y,0,z,!d):ixwk(x,y,z,!d,g,kd,ix);P(d,ixcv(p,x,y,z,d,g,kd,ix,m,n))P(m<0,-m)   //a verb, which can fail: ixcv
- P(!m&&x&&_tm(x)&&_tM(_x(x)),ixkk(p,x,y,z,0,g,kd,ix))P(m>255||g&&!m,ixcg(p,x,y,z,0,kd,ix,m))*p=ixas(x,y,z,0,kd,ix,m,0);return 0;}   //: assigns z, which ixwk checked fits
+ I m=n?_t(x)==tm&&!_tMT(_y(x))?-3:-ixck(x,y,0,z,!d):ixwk(x,y,z,!d,g,kd,ix);
+ P(__builtin_expect(m>0&&_at(x)==1,0)&&_t(x)==tm&&x!=ixmk,ixcm(p,x,y,z,d,g,kd,ix,m,n))   //marked: ixcm
+ return ixct(p,x,y,z,d,g,kd,ix,m,n);}
 Z NI __attribute__((cold)) V noupd(A*s){mr(*s);*s=err0("noupdate");}
 //g f:y, f a global that # _ @ or . calls (bM), which can set g: g held while f runs, as for g[i]f:y (ixfh); 0: f's error
 Z NI __attribute__((cold)) I bmh(A*p,A x,A y,UC d){y=v2[d](_R(x),y);mr(x);P(!y,0)I(*p,mr(*p))*p=y;return 1;}

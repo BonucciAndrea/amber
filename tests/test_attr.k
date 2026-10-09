@@ -1,9 +1,9 @@
 / ============================================================================
-/ tests/test_attr.k  -  attributes, case by case against kdb+/q 4.1.
+/ tests/test_attr.k  -  attributes, case by case against kdb+/q (4.1; cases added later, 5.0).
 / GNU AGPLv3 - see LICENSE and NOTICE.
 / ----------------------------------------------------------------------------
 / Every line is one q expression and the answer q.exe gave for it: an attribute, a value or an error name. The
-/ same text ran through kdb+ 4.1 and Amber: `s#x `u#x `p#x `g#x and `#x on every list type, atoms, tables, dicts,
+/ same text ran through kdb+ (4.1, later 5.0) and Amber: `s#x `u#x `p#x `g#x and `#x on every list type, atoms, tables, dicts,
 / keyed tables, update, and what each operation keeps. The one place Amber differs on purpose: an unparted `p#
 / is 'p-fail here, where q says 'u-fail.
 / Run it from anywhere:  ./amber tests/test_attr.k
@@ -529,7 +529,7 @@ ta[`a492;"(`s#1.0 2.0!`a`b) 1.5";"`a"]   / dict s float keys
 ta[`a493;"attr exec a from update `u#a from ([]a:1 2)";"`u"]   / update u
 ta[`a494;"attr exec a from update `u#a from ([]a:1 1)";"ERR u-fail"]   / update u fail
 ta[`a495;"attr `a xasc ([]a:3 1 2)";"`"]   / xasc table attr
-ta[`a496;"attr (`s#`a`b!1 2),`c!3";"ERR type"]   / s then append dict
+ta[`a496;"attr (`s#`a`b!1 2),(enlist `c)!enlist 3";"`"]   / s then append dict
 ta[`a497;"attr (select a from ([]a:`s#1 2 3))`a";"`s"]   / select keeps
 ta[`a498;"attr (select a from ([]a:`s#1 2 3) where a>1)`a";"`"]   / select where keeps
 ta[`a499;"attr exec a from ([]a:`s#1 2 3)";"`s"]   / exec keeps
@@ -564,7 +564,47 @@ ta[`a537;"attr (),`s#()";"`"]   / join empty general, s empty general
 ta[`a538;"attr (`s#()),`s#()";"`s"]   / join s empty general, s empty general
 ta[`a539;"attr (),`s#(1 2;3 4)";"`s"]   / join empty general, s general
 ta[`a540;"attr (),`s#1 2";"`s"]   / join empty general, s ints
+ta[`a574;"(`s#1 3 5!`a`b`c),(enlist 9)!enlist `q";"1 3 5 9!`a`b`c`q"]   / s dict join
+ta[`a575;"attr key (`s#1 3 5!`a`b`c),(enlist 9)!enlist `q";"`"]   / s dict join keys
+ta[`a576;"attr (`s#1 3 5!`a`b`c),`s#1 3 5!`a`b`c";"`"]   / s dict join same keys
+ta[`a577;"attr key (`s#1 3 5!`a`b`c),`s#1 3 5!`a`b`c";"`s"]   / s dict join same keys keys
+ta[`a578;"((`s#1 3 5!`a`b`c),`s#1 3 5!`a`b`c) 4";"`"]   / s dict join no step
+ta[`a579;"(`s#`a`b!1 2),()";"+`a`b!(,1;,2)"]   / s dict join empty (ngn/k)
+ta[`a580;"attr (`s#1 3 5!`a`b`c),()!()";"`"]   / s dict join empty dict
+ta[`a581;"{d:`s#1 3 5!`a`b`c;d[3]:`q;attr d}[]";"`s"]   / s dict assign keeps
+ta[`a582;"{d:`s#1 3 5!`a`b`c;d[3]:`q;d 4}[]";"`q"]   / s dict assign steps
+ta[`a583;"{d:`s#1 3 5!`a`b`c;d[4]:`z;d}[]";"ERR step"]   / s dict assign new key
+ta[`a584;"{d:`s#1 3 5!`a`b`c;d[3 4]:`q`r;d}[]";"ERR step"]   / s dict assign keys one new
+ta[`a585;"{d:`s#1 3 5!`a`b`c;e:d;d[4]:`z;attr d}[]";"`"]   / s dict shared new key
+ta[`a586;"{d:`s#1 3 5!`a`b`c;e:d;d[4]:`z;d}[]";"1 3 5 4!`a`b`c`z"]   / s dict shared new key value
+ta[`a587;"{d:`s#1 3 5!10 20 30;d[1 3]+:1;d 4}[]";"21"]   / s dict assign verb keeps
+ta[`a588;"{d:`s#`a`c!1 2;d[`c]:5;d`b}[]";"1"]   / s dict sym assign keeps
+ta[`a589;"{d:`s#`a`c!1 2;d[`b]:5;d}[]";"ERR step"]   / s dict sym assign new key
+ta[`a590;"{d:`s#1 3 5!`a`b`c;attr @[d;3;:;`z]}[]";"`"]   / s dict amend copy
+ta[`a591;"{d:`s#1 3 5!10 20 30;d[4]+:1;d}[]";"ERR step"]   / s dict assign verb new key
+ta[`a592;"ad:`s#1 3 5!`a`b`c;.[`ad;enlist 4;:;`z]";"ERR step"]   / s dict amend by name new key
+ta[`a593;"{k:`s#([k:1 3 5]v:`a`b`c);k[3]:enlist `q;attr k}[]";"`s"]   / s keyed assign keeps
+ta[`a594;"{k:`s#([k:1 3 5]v:`a`b`c);k[4]:enlist `z;k}[]";"ERR step"]   / s keyed assign new key
+ta[`a595;"{k:`s#([k:1 3 5]v:`a`b`c);k[([]k:3 4)]:([]v:`x`y);k}[]";"ERR step"]   / s keyed assign keys one new
+ta[`a596;"{k:`s#([k:1 3 5]v:`a`b`c);e:k;k[4]:enlist `z;attr k}[]";"`"]   / s keyed shared new key
+ta[`a597;"{k:`s#([k:1 3 5]v:10 20 30);k[4;`v]:99;k}[]";"(+(,`k)!,1 3 5 4)!+(,`v)!,10 20 30 99"]   / s keyed new row, two levels (q keeps `s)
+ta[`a598;"{d:`s#1 3 5!(1 2;3 4;5 6);d[4;0]:9;d}[]";"1 3 5 4!(1 2;3 4;5 6;9 0N)"]   / s dict new key, two levels (q: 'length)
+ta[`a599;"{d:`s#1 3 5!`a`b`c;d[`x]:`z;d}[]";"ERR type"]   / s dict assign key of another type
+ta[`a600;"{d:`s#1 3 5!`a`b`c;d[3.0]:`z;d}[]";"ERR type"]   / s dict assign float key
+ta[`a601;"{d:`s#1 3 5!`a`b`c;d[3 4]:1 2 3;d}[]";"ERR length"]   / s dict assign keys one new, length off (q: 'step)
+ta[`a602;"ad:`s#1 3 5!`a`b`c;.[`ad;enlist 3 4;:;1 2 3]";"ERR length"]   / s dict amend by name keys one new, length off (q: 'step)
+ta[`a603;"{d:`s#2020.01.01 2020.01.03!1 2;d[3]:9;d}[]";"ERR type"]   / s date dict assign int key
+ta[`a604;"{d:`s#2020.01.01 2020.01.03!1 2;d[`q]:9;d}[]";"ERR type"]   / s date dict assign sym key
+ta[`a605;"{d:`s#2020.01.01 2020.01.03!1 2;d[2020.01.02]:9;d}[]";"ERR step"]   / s date dict assign new date
 
-hexpect[543]
+/ not a q case: a lookup in an `s dict of symbols or chars held its keys once too many. \m (the heap check) prints a
+/ !refc line for each object counted more than it is held; it reads stdin, so this runs in a process of its own
+t[`leakSortedDictLookup;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"(`s#`a`c!1 2)`b;\n(`s#`a`c!1 2)`b`d;\n(`s#\"ac\"!1 2)\"b\";\n\\m\n");""]
+
+/ and the paths an assignment to one takes (kept, 'step, 'type, a verb, by name, a keyed table; their errors go to
+/ stderr, dropped), and the step lookup after one
+t[`leakSortedDictAssign;`x(("/bin/sh";"-c";"exec \"$0\" 2>/dev/null";`argv 0);"{d:`s#`a`c`e!1 2 3;d[`c]:9;d`d}[];\n{d:`s#`a`c`e!1 2 3;d[`b]:9}[];\n{d:`s#1 3 5!`a`b`c;d[`x]:9}[];\n{d:`s#1 3 5!10 20 30;d[3]+:1;d[4]+:1}[];\nH:`s#1 3 5!`a`b`c;.[`H;,4;:;`z];\n.[`H;,3;:;`q];H:0;\n{k:`s#([k:1 3 5]v:`a`b`c);k[3]:,`q;k[4]:,`z}[];\n\\m\n");""]
+
+hexpect[577]
 hreport"AMBER ATTRIBUTES vs q"
 $[FAILN;`exit 1;]

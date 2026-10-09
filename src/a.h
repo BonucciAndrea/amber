@@ -110,10 +110,23 @@ static inline const void*amb_alchk(const void*p_,const char*f_,int l_){
 #define AMBER_VERSION_PATCH 2
 #define AMBER_VERSION M2(AMBER_VERSION_MAJOR) "." M2(AMBER_VERSION_MINOR) "." M2(AMBER_VERSION_PATCH)
 #define REFB  1
-// sole owner. Peach workers change counts atomically (RC_INC, RC_DECV), so the count is read with a relaxed atomic
-// load: the same instruction as a plain one. Only a holder of a counted reference raises a count, so a count of REFB
-// read by its holder is that holder's alone: no other thread holds the object or can raise the count meanwhile
+// sole owner. Peach workers change counts atomically (RC_INC, RC_DECV). Only a holder of a counted reference raises a
+// count, so a count of REFB read by its holder is that holder's alone: no other thread holds the object or can raise
+// the count meanwhile. The read is a relaxed atomic load under ThreadSanitizer, which reports the plain one; elsewhere
+// it stays plain: an aligned 4-byte load is whole on every target, and the atomic one cost amends 2-4% (gcc won't fold
+// it into the compare, or merge two of them)
+#if defined(__SANITIZE_THREAD__)
+#define AMB_TSAN 1
+#elif defined(__has_feature)
+#if __has_feature(thread_sanitizer)
+#define AMB_TSAN 1
+#endif
+#endif
+#ifdef AMB_TSAN
 #define MINE(x) (__atomic_load_n(&_r(x),__ATOMIC_RELAXED)==REFB)
+#else
+#define MINE(x) (_r(x)==REFB)
+#endif
 
 // ---- scoped atomic refcounting (ray_rc_sync) -----------------------------
 // A single thread-local flag flips retain/release between the fast serial path

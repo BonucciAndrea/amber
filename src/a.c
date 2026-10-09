@@ -1063,9 +1063,15 @@ Z A kam(A x,CO A*a,U n/*10..0*/)_(A y=a[1],z=Nx(fnd(xx,_R(y)));B t=_tt(z),m=0;I(
  I(m,B o;A k=tky(xx,_R(y),&o);P(!k,z(x(0)))   //the keys not there: as a table, the new keys, null rows and their places
   A r=K("{[k;v;z;u]w:&^z;n:#k;u:u w;d:u?u;f:&d=!#u;(k,u f;v,v(#f)#0N;@[z;w;:;n+f?d])}",_R(xx),_R(xy),t?enl(z):z,aM(_R(_x(xx)),k));P(!r,x(0))
   mr(xx);xx=ii(r,0);mr(xy);xy=ii(r,1);z=ii(r,2);mr(r);I(t,z=z(ii(z,0))))
- A v=0;I(n==4&&a[2]==av&&!_tm(a[3])&&!_tM(a[3])&&(t||!_tt(a[3])),A c=_x(xy),w=t&&_tt(a[3])?enl(_R(a[3])):t?_R(a[3]):flp(_R(a[3]));P(!w,z(x(0)))   //as a row, or rows
-  P(_N(w)-_N(c),mr(w);z(x(el0())))v=t?am(_R(c),w):aM(_R(c),w))
+ A v=0;I(n==4&&a[2]==av&&!_tm(a[3])&&!_tM(a[3]),I(t||!_tt(a[3]),A c=_x(xy),w=t&&_tt(a[3])?enl(_R(a[3])):t?_R(a[3]):flp(_R(a[3]));P(!w,z(x(0)))   //as a row, or rows
+  P(_N(w)-_N(c),mr(w);z(x(el0())))v=t?am(_R(c),w):aM(_R(c),w))E(v=rsz(zn,_R(a[3]));P(!v,z(x(0)))))   //an atom at keys: one per row, so 'type
+  //below, as q (an unkeyed table's rows take it whole, a8's trw)
  Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);I(v,b[3]=v)xy=au;A u=a8(b,n);mr(z);I(v,mr(v))P(!u,x(0))xy=u;P(!_tM(u),x(et0()))x)
+//t[i]:z and @[t;i;:;z], i a row, a list of rows or :: (every row), z an atom or a dict (not a keyed table): each row
+//takes z, an atom in every column, as q (#105 Q3); the rows were a list, so an atom replaced its row and a dict's
+//values went one per row. Made a dict for a row, a table of them for rows, which a8 then amends as before
+Z NI __attribute__((cold)) A trw(A x,A y,A z/*100*/)_(A d=Nx(_tt(z)?am(_R(xx),rsz(_N(xx),_R(z))):_R(z));P(_tz(y),A r=a8(A8(x,y,av,d),4);mr(d);r)
+ U c=y==au?xN:_N(y);d=Nx(rsz(c,enl(d)));A w=y==au?aE(0,c):_R(y);A r=a8(A8(x,w,av,d),4);mr(w);mr(d);r)
 AA(a8,/*10..0*/A x=*a,y=a[1];
  X(RE(Ab8;*b=gZ(x);AC(b+1,a+1,n-1);a8(b,n))
    RT_E(P(y==au,mRn(n-2,a+2);Ab8;*b=a[2];b[1]=x;AC(b+2,a+3,n-3);USQ(e8(AP1,b,n-1)))
@@ -1075,7 +1081,9 @@ AA(a8,/*10..0*/A x=*a,y=a[1];
       P(_tM(xx),_tM(xy)?kam(x,a,n):x(en(yR)))   //at a keyed table's keys (keys a table, values not: 'nyi, as before)
       A z=Nx(fnd(xx,yR));ZT(P(LH(tG,zt,tL)&&(n==3||n==4&&(_tt(a[3])||_tT(a[3])&&_N(a[3])==zn)||n==5&&_tt(a[3])&&(_tt(a[4])||_tT(a[4])&&_N(a[4])==zn)),dam(x,y,cL(z),a,n,0))z(0);mRn(n-1,a+1);f8(AP1,a,n))x=mut(x);I(ztl,z=mut(z);F(zN,I(zl==NL,zl=xN;PSH(xx,ztt?yR:ii(y,i));PSH(xy,ie(a[2],xy)))))
     Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);xy=au;xy=Nx(z(a8(b,n)));x)
-   RM(Ab8;AC(b,a,n);YsS(U r=xN;*b=flp(x);tfl(N(a8(b,n)),r))B e=!xN;*b=blw(e?_R(x):x);A p=e?_R(*_A(*b)):0;A u=a8(b,n);P(!u,e?(mr(p),x(0)):0)P(!e,sqz(u))   //p: the prototype of an empty table's rows, its null row
+   RM(Ab8;AC(b,a,n);YsS(U r=xN;*b=flp(x);tfl(N(a8(b,n)),r))
+    P(n==4&&a[2]==av&&(_tt(a[3])||_tm(a[3])&&!_tM(_x(a[3]))&&!_tz(y))&&(y==au||ytZ||_tz(y))&&_tS(xx),trw(x,y,a[3]))   //rows filled (trw; not a list of keyed tables, which squeezes to keys that are a table)
+    B e=!xN;*b=blw(e?_R(x):x);A p=e?_R(*_A(*b)):0;A u=a8(b,n);P(!u,e?(mr(p),x(0)):0)P(!e,sqz(u))   //p: the prototype of an empty table's rows, its null row
     B m=_tA(u)&&!_n(u)&&_tm(ux)&&mtc_(ux,p);mr(p);m?u(x):x(sqz(u)))   //no amend reached the null row: the table as it was (one that did comes back a table already)
    RU(mRn(n-1,a+1);x(USQ(x8(a+1,n-1))))
    R_(et(x)))0)

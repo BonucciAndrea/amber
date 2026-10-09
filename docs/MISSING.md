@@ -332,6 +332,14 @@ behaviour shows up as a test failure rather than a silent regression.
 - **An amend that leaves no column of a table a list fills each to the table's row count**
   (`` t[`a]:9 `` with `t:([]a:1 2 3)` gives `9 9 9`; an empty table stays empty), as `update` does;
   q gives `'rank` for these (`` t[`a]:9 ``, `` @[t;`a;:;9] ``, `` @[t;`a`b;:;9] ``).
+- **A table's rows take an atom or a dict as q's do (#105 Q3), but are otherwise a list of dicts.**
+  `` @[t;0 1;:;9] ``, `` t[0]:9 `` and `` t[]:`a`b!5 6 `` fill those rows, as q. The row is not checked
+  against the columns: with `` t:+`a`b!(1 2;3 4) ``, `` @[t;0;:;9.5] `` makes general columns (q: `'type`),
+  and a dict of other keys or of the keys in another order makes that row a dict of its own
+  (`` @[t;0;:;`b`a!7 8] `` is a list of two dicts; q lines it up by name, or gives `'mismatch`). A list at
+  rows goes one item per row (`` @[t;0 1;:;7 8] `` is `7 8`; q: each row `7 8`), and a dict with a verb
+  other than `:` one value per row (`` @[t;0 1;+;`a`b!1 2] `` adds `1` to row 0 and `2` to row 1; q adds the
+  dict to each row).
 - **Find gives `0N` for no match**, as in ngn/k: `1 2 3?5` is `0N`, where q gives the count, `3`.
   amber.k's `in` and `ij` rely on it.
 - **Find in a list whose items differ in rank looks for `y` as one item first** (#105 Q2), so it

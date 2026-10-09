@@ -287,6 +287,12 @@ Assigning to a table's columns:
 - `` .[t;(::;`px);:;v] `` amends every row; with no rows the table is kept when `v` is an atom or empty,
   else `'length`.
 
+Assigning to a table's rows:
+
+- `` t[i]:v `` or `` @[t;i;:;v] ``, `i` a row, a list of rows or elided (`` t[]:v ``): an atom fills those
+  rows in every column, and a dict fills each of them (its keys the columns), as q; a dict of other keys
+  makes those rows dicts of their own. Any other value goes one item per row.
+
 Table / keyed‑table toolkit (all in `amber.k`):
 
 | function            | meaning                                                     |

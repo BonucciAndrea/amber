@@ -96,7 +96,8 @@ Z I ixkd(A x,A y,U k,A z,B asg){P(_t(x)==tm&&(_tt(y)?y!=au:_tA(y)&&k+1==_n(y)&&_
      I(d&&LH(tG,_t(d),tL),for(U i=0;i<c&&u1;i++)u1=ixe(d,i)==(L)i)I(d,mr(d))   //out keeps the row count, which each new list needs; else the new lists, one
      for(U i=0;i<c&&u1&&!r;i++){A u=_A(z)[i];I(!_tP(u)&&!_tt(u),I(n<0,n=_N(u))J(ixzc(u,(U)n),r=2))})}}   //count (a column named twice: not checked, the last one counts)
    else{f=fnd(ks,_R(q));I(!f,r=4)J(LH(tG,_t(f),tL),for(U i=0;i<c&&!r;i++)r=ixkv(x,ixe(f,i),y,k,ixzi(z,i),asg,0))}}
-  else if(q==au||_tz(q)||!_tP(q)&&LH(tE,_t(q),tL)){B e=q==au,o=!e&&_tt(q);U c=e?(U)rows:o?1:_N(q);I(!o&&ixzc(z,c),r=2)   //rows
+  else if(q==au||_tz(q)||!_tP(q)&&LH(tE,_t(q),tL)){B e=q==au,o=!e&&_tt(q);U c=e?(U)rows:o?1:_N(q);I(!o&&ixzc(z,c)&&!(asg&&!dn&&tk==tS&&_tm(z)&&!_tM(_x(z))),r=2)   //rows (a dict
+   //assigned to them with : fills each, as an atom does: a8's trw)
    B nd=dn&&ixnd(y,k+1,o||!_tP(z)&&_t(z)==tA?z:au);f=nd?ixkf(x,y,k+1):0;   //something below a row to check, for any of them
    for(U i=0;i<c&&!r&&(!e||nd);i++){L v=e?(L)i:o?gl_(q):ixe(q,i);if(v<0||v>=rows)r=1;else if(nd)r=ixkr(x,v,f,y,k+1,o?z:ixzi(z,i),asg);}}
   else r=nc?ixcq(x,q,y,k,z,asg):ixc0(q,y,k,z,asg);}   //any other index: the table as a list of its rows (blw); with no columns, none

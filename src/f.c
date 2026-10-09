@@ -148,6 +148,14 @@ Z I fndrun(FJ*c,V(*fn)(V*,int))_(int nt=c->n<PFND_MIN?1:par_thread_count(c->n);c
 Z AM_TLS A fqx,fqr;
 #define FQW(T) {T*RES r=(T*)_V(u);S4(wz,F(n,G k=_G(z)[i];r[i]=(T)(k<0?(L)m:k)),F(n,H k=_H(z)[i];r[i]=(T)(k<0?(L)m:k)),\
   F(n,I k=_I(z)[i];r[i]=(T)(k<0?(L)m:k)),F(n,L k=_L(z)[i];r[i]=(T)(k<0?(L)m:k)))}
+//FPMAX: items of y scanned for, at most, where fndL would build a table (of 32 keys or more: below that the table is cheap):
+//past them the scans of items x lacks cost more instructions than the table (under clang about 1 an item of x each at 32
+//bits, 2 at 64; the hash about 28). gcc's own vector scan costs more an item than clang's blocks
+#if defined(__clang__)
+#define FPMAX(w) ((w)<3?12:8)
+#else
+#define FPMAX(w) ((w)<3?9:8)
+#endif
 Z A fndL(A x,A y,B srt)_(
  P(srt,0)
  UC s=TST(xt);P(!(s==tH||s==tI||s==tL||xtS),0)   //a temporal list as its ints. amber 2.1: symbol vectors too (interned 32-bit ids, compared by value)
@@ -163,7 +171,11 @@ Z A fndL(A x,A y,B srt)_(
  B useH=!useL&&scan>8*(nn+mm);           /* else: hash worth its build?      */
  P(!useL&&!useH,0)
  C tz=tZ((L)m-1);U wz=tz-tG;A z=an(n,tz);I miss=0;  // tZ(m-1): the width every index fits
- I(useL,
+ // a few items (FPMAX) are scanned for, a vector at a time, and not looked up in a table of x's keys that costs a pass
+ // over x to build (a hash for 10 keys into 1M, 24 MB of table, was several times all the scans). The table's answer:
+ // the same width, -1 for a miss, as below
+ I(n<=FPMAX(wx)&&m>=32,TY(fGL)*f=G(&fGL,fHL,fIL,fLL)[wx];F(n,L k=f(a,m,RD(wy,b,i));k=k==NL?-1:k;miss|=k<0;S4(wz,_G(z)[i]=(G)k,_H(z)[i]=(H)k,_I(z)[i]=(I)k,_L(z)[i]=k)))
+ J(useL,
    I*lut=amal((N)rg*SZ(I));P(!lut,mr(z);0)
    MS(lut,0xff,(N)rg*SZ(I));
    for(U i=m;i--;)lut[(W)RD(wx,a,i)-(W)lo]=(I)i;
@@ -188,6 +200,7 @@ Z A fndL(A x,A y,B srt)_(
 #undef FNDW
 #undef FQW
 #undef FNDP
+#undef FPMAX
 
 // ---- amber: O(n) integer `?x` (distinct) -----------------------------------
 // unq's tH/tI/tL arm in src/o.c fell out of C into the K expression

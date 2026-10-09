@@ -156,12 +156,53 @@ Z AM_TLS A fqx,fqr;
 #else
 #define FPMAX(w) ((w)<3?9:8)
 #endif
+// FEW PROBES against a long haystack (n*32 <= m, as bench.k's 5,000 look-ups into 5M): the table is built over the
+// distinct probes, not over the haystack, and the haystack is read once, forward, keeping each probe's first hit and
+// stopping once every probe has one. Indexing the haystack instead cost a table of 2m slots (16M for 5M items, far
+// outside the caches) for a few thousand look-ups. A bitmap of 8 bits per table slot (16 KB for 5,000 probes, in L1)
+// tells most haystack items from the probes before the table is read: its bit is the hash's next three bits below
+// the slot's. f[i] gets the index of probe i's first hit (-1 for none); the result is 1 when some probe had none, 0 when
+// all were found, -1 when out of memory (nothing written then).
+#define FEWN 0x7fffffff
+#define FEWB 3
+#define FEWP(T) {CO T*RES p=(CO T*)h;for(U i0=0;i0<m;i0+=64){U e=m-i0<64?m-i0:64;W mk=0; \
+  for(U k=0;k<e;k++){W q=((W)(L)p[i0+k]*GOLD)>>sb;mk|=((bm[q>>6]>>(q&63))&1)<<k;} \
+  while(mk){U i=i0+(U)__builtin_ctzll(mk);mk&=mk-1;L v=(L)p[i]; \
+   for(W j=((W)v*GOLD)>>(64-lg);hv[j]>=0;j=(j+1)&msk)if(hk[j]==v){if(hv[j]==FEWN){hv[j]=(I)i;if(++fd==nd)goto all;}break;}}}}
+ZN I fndfew(CO V*h,U m,U wh,CO V*pr,U n,U wp,I*f){
+ W cap=16;U lg=4;while(cap<2*(W)n){cap<<=1;lg++;}
+ W msk=cap-1,nb=cap<<FEWB;U sb=64-(lg+FEWB);
+ L*hk=amal((N)cap*SZ(L));I*hv=hk?amal((N)cap*SZ(I)):0;U*sl=hv?amal((N)n*SZ(U)):0;W*bm=sl?amal((N)(nb>>6)*SZ(W)):0;
+ if(!bm){free(hk);free(hv);free(sl);return -1;}
+ MS(hv,0xff,(N)cap*SZ(I));MS(bm,0,(N)(nb>>6)*SZ(W));
+ U nd=0,fd=0;
+ for(U i=0;i<n;i++){L v=RD(wp,pr,i);W q=((W)v*GOLD)>>sb,j=q>>FEWB;
+  while(hv[j]>=0&&hk[j]!=v)j=(j+1)&msk;
+  if(hv[j]<0){hk[j]=v;hv[j]=FEWN;nd++;bm[q>>6]|=1ull<<(q&63);}   // FEWN: a probe not yet found
+  sl[i]=(U)j;}
+ // 64 items at a time: their bitmap bits into one word without a branch (most items are no probe, and a test per
+ // item mispredicted on every bitmap hit), then the table for each bit set, in order, so the first hit stays first
+ S4(wh,FEWP(G),FEWP(H),FEWP(I),FEWP(L))
+ all:;
+ I ms=0;for(U i=0;i<n;i++){I k=hv[sl[i]];k=k==FEWN?-1:k;f[i]=k;ms|=k<0;}
+ free(hk);free(hv);free(sl);free(bm);
+ return ms?1:0;}
+#undef FEWP
+#undef FEWB
+#undef FEWN
+// fndL's few probes, out of line: x's data a (m items, width wa), the probes b (n, width wb); the result as fndL's (the
+// narrowest width that holds an index into x, or 64 bits with 0N when one is missing); 0 when out of memory
+ZN A fndF(CO V*a,U m,U wa,CO V*b,U n,U wb){I*f=amal((N)n*SZ(I));if(!f)return 0;I ms=fndfew(a,m,wa,b,n,wb,f);if(ms<0){free(f);return 0;}
+ C tz=tZ((L)m-1);U wz=tz-tG;A z=ms?aL(n):an(n,tz);if(!z){free(f);return 0;}
+ I(ms,F(n,zL[i]=f[i]<0?NL:f[i]))E(S4(wz,F(n,_G(z)[i]=(G)f[i]),F(n,_H(z)[i]=(H)f[i]),F(n,_I(z)[i]=(I)f[i]),F(n,_L(z)[i]=f[i])))
+ free(f);return z;}
 Z A fndL(A x,A y,B srt)_(
  P(srt,0)
  UC s=TST(xt);P(!(s==tH||s==tI||s==tL||xtS),0)   //a temporal list as its ints. amber 2.1: symbol vectors too (interned 32-bit ids, compared by value)
  U wx=xw-3,wy=yw-3,m=xn,n=yn;
  P(wx>3||wy>3||!m||!n,0)
  CO V*a=xV;CO V*b=yV;
+ I(n>FPMAX(wx)&&(W)n*32<=(W)m&&(W)n*m>8*((W)n+m),A z=fndF(a,m,wx,b,n,wy);P(!z,0)return y(z);)   // few probes (fndfew), past the scans' (FPMAX); below, x is indexed
  L lo,hi;rngW(a,m,wx,&lo,&hi);
  P(hi<lo,0)
  W rg=(W)hi-(W)lo+1,nn=(W)n,mm=(W)m,scan=nn*mm;
@@ -376,13 +417,28 @@ Z V memb_hash(V*c_,int t){MSLICE W*tab=c->tab;U sh=c->sh;W msk=c->msk;B has0=c->
 #undef MHS
 #undef MSLICE
 Z V membrun(MJ*c,V(*fn)(V*,int)){int nt=c->n<PFND_MIN?1:par_thread_count(c->n);c->nt=(U)nt;I(nt<2,fn(c,0))E(par_run(nt,fn,c))}
+Z V ambinH(CO H*RES,U,CO L*RES,L*RES,U,U),ambinI(CO I*RES,U,CO L*RES,L*RES,U,U),ambinL(CO L*RES,U,CO L*RES,L*RES,U,U);   //bin's batched search, below
+// membC's few probes (n*32 <= m), out of line: the probes a (width wa) in y's data b (width wb, m items). membs: y sorted
+// (`s), a lockstep binary search per probe, as bin's. membf: y's range too wide for the bitmap, so the probes are
+// indexed and y read once (fndfew), where membC's hash is built over all of y for a few look-ups. 0: out of memory
+ZN A membs(CO V*b,U m,U wb,CO V*a,U n,U wa){A z=an(n,tG);G*RES r=_V(z);L*pr=amal((N)n*SZ(L)),*o=pr?amal((N)n*SZ(L)):0;
+ if(!o){free(pr);mr(z);return 0;}
+ F(n,pr[i]=RD(wa,a,i))U st=(U)(64-CLZ((W)m|1))+1;
+ S4(wb,,ambinH(b,m,pr,o,n,st),ambinI(b,m,pr,o,n,st),ambinL(b,m,pr,o,n,st))F(n,r[i]=o[i]>=0&&RD(wb,b,o[i])==pr[i])
+ free(pr);free(o);return z;}
+ZN A membf(CO V*b,U m,U wb,CO V*a,U n,U wa){A z=an(n,tG);G*RES r=_V(z);I*f=amal((N)n*SZ(I));
+ if(!f){mr(z);return 0;}
+ I ms=fndfew(b,m,wb,a,n,wa,f);if(ms<0){free(f);mr(z);return 0;}
+ F(n,r[i]=f[i]>=0)free(f);return z;}
 A1(membC,P(_t(x)-tA||_n(x)-2,et(x))A v=_A(x)[0],y=_A(x)[1];
  B va=_tz(v);UC vt=va?tl:_t(v),yt_=_t(y);
  P(_tP(y)||!(yt_==tH||yt_==tI||yt_==tL||yt_==tS)||!(va||vt==tH||vt==tI||vt==tL||vt==tS)||(vt==tS)!=(yt_==tS),x(emp(tA)))   //symbols against numbers: declined (an interned id is not a number: in[``;0] was 11b)
  U wy=_w(y)-3,m=_n(y),n=va?1:_n(v),wv=va?3:_w(v)-3;CO V*b=_V(y);L sv=va?gl_(v):0;CO V*a=va?&sv:_V(v);
  I(!m,I(va,return x(ai(0)))A z=an(n,tG);MS(_V(z),0,n);return x(z);)
+ I(n&&(W)n*32<=(W)m&&_at(y)==1&&yt_!=tS,A z=membs(b,m,wy,a,n,wv);P(!z,x(emp(tA)))return x(va?({A r_=ai(_G(z)[0]);mr(z);r_;}):z);)   //`s on symbols orders their names, not their ids
  L lo,hi;rngW(b,m,wy,&lo,&hi);
  W rg=(W)hi-(W)lo+1;
+ I(n&&(W)n*32<=(W)m&&!(rg&&rg<=BMDOM),A z=membf(b,m,wy,a,n,wv);P(!z,x(emp(tA)))return x(va?({A r_=ai(_G(z)[0]);mr(z);r_;}):z);)
  A z=an(n,tG);G*RES r=_V(z);
  I(rg&&rg<=BMDOM,N nb=(N)((rg+63)>>6);W*bm=amal(nb*SZ(W));P(!bm,mr(z);x(emp(tA)))MS(bm,0,nb*SZ(W));
   F(m,W s=(W)RD(wy,b,i)-(W)lo;bm[s>>6]|=1ull<<(s&63))

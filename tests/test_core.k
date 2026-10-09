@@ -424,6 +424,15 @@ t[`distinctIntEdges;{(?x)~x@&(x?x)=!#x}(2147483647-!1000),-2147483648 2147483647
 t[`distinctSparseMinus1;{(?x)~x@&(x?x)=!#x}[-1,(1000#7 3 9 -1)*1000000000000];1b]
 t[`findRangeEdges;{(x?y)~{x?y}[x]'y}[2147483647-!2000;2147483647 2147481648 2147481647 0 -1];1b]
 t[`inRangeEdges;{(`memb(y;x))~{|/x=y}[x]'y}[|-32768+!1000;-32768 -32767 -31769 -31768 0 -1 300];1b]
+/ ---- find and in with few probes against a long list: the probes are indexed and the list read once (n*32 <= m), or searched when sorted (in, as `memb) ----
+/ each answer is checked against the probes looked up one at a time (a scan each). findFewSym's 10 symbols are scanned for under clang (up to 12 probes); gcc scans up to 9, so it takes x's table there
+t[`findFewFirst;{(x?y)~{x?y}[x]'y}[1000000*2000#3 1 4 1 5 9 2 6;1000000*9 2 6 5 1 3 7 8 0 4 11 12 13 14];1b]
+t[`findFewNull;{(x?y)~{x?y}[x]'y}[0N,(1000#1 2 3),0N;0N 3 5 2 1 9 8 7 6 4];1b]
+t[`findFewWide;{(x?y)~{x?y}[x]'y}[1000000000000*!1000;1000000000000*5 7 9 999 1000 3 2 1 0];1b]
+t[`findFewSym;{(x?y)~{x?y}[x]'y}[`$"s",'$!1000;`s5`s6`s7`s8`s9`s10`s11`s12`s13`zz];1b]
+t[`inFewWide;{(`memb(y;x))~{|/x=y}[x]'y}[1000000000000*!1000;(1000000000000*1 2 3 5 8 13 21 34 55),7];1b]
+t[`inFewSorted;{(`memb(y;x))~{|/x=y}[x]'y}[`s#{x@<x}300+1000?1000;-1 0 300 301 302 303 400 500 700 1299 1300 2000];1b]
+t[`inFewSortedAtom;{(`memb(x 500;x);`memb(-5;x))}`s#{x@<x}1000?100000;10b]
 
 / ---- distinct of a generic list keeps the first of matching items ----
 / (compared as text, since ~ takes -0.0 for 0.0)
@@ -1631,7 +1640,7 @@ t[`findFewScan;{(x?y)~{x?y}[x]'y}[997!13*!1000;(!10),1000];1b]
 t[`findFewScanWidth;(`ser@(1000#!1000)?100+!10;`ser@(1000#1000000000000*!1000)?1000000000000*100+!8;`ser@(`$"s",'$!1000)?`$"s",'$100+!12;`ser@(40#!40)?3 5 7);(0x414d420105000a000000000000006400650066006700680069006a006b006c006d00;0x414d4201070008000000000000006400000000000000650000000000000066000000000000006700000000000000680000000000000069000000000000006a000000000000006b00000000000000;0x414d420105000c000000000000006400650066006700680069006a006b006c006d006e006f00;0x414d420104000300000000000000030507)]
 t[`findFewScanMiss;`ser@(997!13*!1000)?(!10),1000;0x414d420105000b000000000000000000ff02190233014d004c03660280019a009903e803]
 
-hexpect[1036]
+hexpect[1043]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

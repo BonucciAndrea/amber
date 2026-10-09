@@ -1599,7 +1599,15 @@ t[`catOwnKinds;{a:1 2;a,:2.5;b:`x`y;b,:`z;c:1 2;c,:!3;d:(1;"a");d,:`q;e:01b;e,:1
 t[`catOwnGlobal;{gz0::1 2;w:gz0;gz0,:3;gz0,:4;(gz0;w)}[];(1 2 3 4;1 2)]
 t[`catOwnTable;{t:([]a:1 2;b:`x`y);u:t;t,:([]a:,3;b:,`z);t,:([]a:,4;b:,`w);c:1 2;s:([]a:c);s,:([]a:,3);(t;u;c;s)}[];(([]a:1 2 3 4;b:`x`y`z`w);([]a:1 2;b:`x`y);1 2;([]a:1 2 3))]
 
-hexpect[1016]
+/ grouped aggregation (`gagg) on both sides of the chunked loops' threshold (512 rows) and across their chunks (4096 rows):
+/ every op; direct and hashed keys, symbols and keys past 32 bits; int and float values; with and without a mask; and
+/ every row a new group, so the group tables and the hash grow; against the groups' indices from =
+gaggRef:{[o;k;v;w]g:=k@w;i:w@. g;(!g;$[o~`count;#:'i;o~`sum;+/'v@i;o~`avg;(+/'v@i)%#:'i;o~`min;&/'v@i;o~`max;|/'v@i;o~`first;v@{*x}'i;v@{*|x}'i];$[o~`last;{*|x}'i;{*x}'i])}
+gaggOne:{[m;k;v],/{[v;m;k;o]((`gagg(o;k;v))~gaggRef[o;k;v;!#k];(`gagg(o;k;v;m))~gaggRef[o;k;v;&m])}[v;m;k]'`sum`count`avg`min`max`first`last}
+gaggChk:{[n]h:1000003!7919*!n;v:-500+1000!104729*!n;m:0<3!h;,/,/{[m;vs;k]gaggOne[m;k]'vs}[m;(v;0.5*v)]'(10!h;1000003*100!h;`$'$'7!h;5000000000+10!h;1000003*h)}
+t[`gaggChunks;&/,/gaggChk'511 512 513 4095 4096 4097 8193;1b]
+
+hexpect[1017]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

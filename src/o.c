@@ -335,68 +335,94 @@ NI Z I gagg_par(I code,CO V*kp,U wk,CO V*vp,U wv,B vf,CO UC*mp,N n,L lo,W rg,B d
 // tight loop per op runs over the numbers. Same groups, same order, same adds in the same order as the row loop in
 // gaggC, so the same bits; it only drops the per-row switches and the second load of the old hash. Symbol keys are
 // what gain most: 4-letter names are ids a billion apart, so they always hashed.
+// Each phase is a function of its own, and the tables grow out of line (gsnew, gsrh): in one body the tables'
+// growth (realloc, the hash rehashed through pointers to its fields) kept the tables' bases and the hash's fields on
+// the stack, read again for every row. Only count reads gc, so only count keeps it.
 #define GS_CH 4096
-#define GS_MIN 4096
-#define GS_GROW() I(ng==cap,U nc=cap*2;L*a1=realloc(gk,(N)nc*SZ(L));I(a1,gk=a1)I*a2=realloc(gf,(N)nc*SZ(I));I(a2,gf=a2)\
- F*a3=realloc(af,(N)nc*SZ(F));I(a3,af=a3)L*a4=realloc(al_,(N)nc*SZ(L));I(a4,al_=a4)L*a5=realloc(gc,(N)nc*SZ(L));I(a5,gc=a5)\
- I(!a1||!a2||!a3||!a4||!a5,fail=1;goto done)cap=nc;)
-#define GS_NEW(key,r) {GS_GROW();g=(I)ng++;gk[g]=key;gf[g]=(I)(r);gc[g]=0;af[g]=a0f;al_[g]=a0l;}
-#define GS_DIR(key,r) {W q_=(W)key-(W)lo;g=slot[q_]-1;if(g<0){GS_NEW(key,r)slot[q_]=g+1;}}
-#define GS_HSH(key,r) {W j_=((W)key*GOLD)>>(64-hlg);while(hg[j_]&&hk[j_]!=key)j_=(j_+1)&(hcap-1);\
- if(hg[j_])g=hg[j_]-1;else{GS_NEW(key,r)hk[j_]=key;hg[j_]=g+1;if((W)ng*2>=hcap&&gsrh(&hk,&hg,&hcap,&hlg)){fail=1;goto done;}}}
-// masked: the chunk's chosen rows are listed first, without a branch (a random mask mispredicts every other row)
-#define GS_A(KT,MAP,MSK) {CO KT*RES kk=(CO KT*)kp; if(MSK){U m_=0;for(N i=s;i<e;i++){ix[m_]=(I)i;m_+=mp[i]!=0;}for(U j=0;j<m_;j++){N i=(N)ix[j];L key=(L)kk[i];I g;MAP(key,i)cd[j]=g;}nc=m_;} else{for(N i=s;i<e;i++){L key=(L)kk[i];I g;MAP(key,i)cd[nc++]=g;}}}
-#define GS_B(ROW) {if(mp){for(U j=0;j<nc;j++){I g=cd[j];N r=(N)ix[j];gc[g]++;ROW}}else{for(U j=0;j<nc;j++){I g=cd[j];N r=s+j;gc[g]++;ROW}}}
-#define GS_AK(KT) {if(direct){if(mp)GS_A(KT,GS_DIR,1)else GS_A(KT,GS_DIR,0)}else{if(mp)GS_A(KT,GS_HSH,1)else GS_A(KT,GS_HSH,0)}}
-#define GS_VT(T,ROW) {CO T*RES vT=vp;GS_B(L d=(L)vT[r];ROW)}
-#define GS_IW(ROW) switch(wv){case 0:GS_VT(G,ROW)break;case 1:GS_VT(H,ROW)break;case 2:GS_VT(I,ROW)break;default:GS_VT(L,ROW)}
+#define GS_MIN 512
+// the group tables (key, first or last row, the two accumulators, count) and the key index
+TD struct{L*gk;I*gf;F*af;L*al;L*gc;U cap,ng;L lo;I*slot;L*hk;I*hg;W hcap;U hlg;L a0l;F a0f;}GS;
+// a new group for key, first row r, the tables grown 2x when full: its number, -1 out of memory
+ZN I gsnew(GS*t,L key,N r){
+ if(t->ng==t->cap){U nc=t->cap*2;L*a1=realloc(t->gk,(N)nc*SZ(L));if(a1)t->gk=a1;I*a2=realloc(t->gf,(N)nc*SZ(I));if(a2)t->gf=a2;
+  F*a3=realloc(t->af,(N)nc*SZ(F));if(a3)t->af=a3;L*a4=realloc(t->al,(N)nc*SZ(L));if(a4)t->al=a4;L*a5=realloc(t->gc,(N)nc*SZ(L));if(a5)t->gc=a5;
+  if(!a1||!a2||!a3||!a4||!a5)return -1;t->cap=nc;}
+ I g=(I)t->ng++;t->gk[g]=key;t->gf[g]=(I)r;t->gc[g]=0;t->af[g]=t->a0f;t->al[g]=t->a0l;return g;}
 // grows the hash 2x, the keys rehashed into their new slots
 Z I gsrh(L**phk,I**phg,W*phc,U*phl){W nc=*phc<<1;U nl=*phl+1;L*nk=malloc((N)nc*SZ(L));I*ng_=calloc((N)nc,SZ(I));
  I(!nk||!ng_,free(nk);free(ng_);return 1;)L*hk=*phk;I*hg=*phg;
  for(W i=0;i<*phc;i++)if(hg[i]){W j=((W)hk[i]*GOLD)>>(64-nl);while(ng_[j])j=(j+1)&(nc-1);nk[j]=hk[i];ng_[j]=hg[i];}
  free(hk);free(hg);*phk=nk;*phg=ng_;*phc=nc;*phl=nl;return 0;}
+// a new group in line while the tables have room (gsnew grows them). The tables and their count are the phase-1
+// function's locals, written back around gsnew and on every exit, so a new group keeps the count in a register
+// rather than storing it and reading it back (a chain through memory when nearly every row is a new group).
+#define GS_NEW {if(__builtin_expect(ng<cap,1)){g=(I)ng++;gk[g]=key;gf[g]=(I)i;gc[g]=0;af[g]=a0f;al[g]=a0l;}\
+ else{t->ng=ng;g=gsnew(t,key,i);if(g<0)return -1;ng=t->ng;cap=t->cap;gk=t->gk;gf=t->gf;af=t->af;al=t->al;gc=t->gc;}}
+#define GS_DIR {W q_=(W)key-(W)lo;g=slot[q_]-1;if(__builtin_expect(g<0,0)){GS_NEW slot[q_]=g+1;}}
+#define GS_HSH {W j_=((W)key*GOLD)>>sh;while(hg[j_]&&hk[j_]!=key)j_=(j_+1)&msk;\
+ if(__builtin_expect(hg[j_]!=0,1))g=hg[j_]-1;else{GS_NEW hk[j_]=key;hg[j_]=g+1;\
+  if((W)ng*2>msk){if(gsrh(&t->hk,&t->hg,&t->hcap,&t->hlg)){t->ng=ng;return -1;}hk=t->hk;hg=t->hg;msk=t->hcap-1;sh=64-t->hlg;}}}
+// phase 1: rows [s,e) to group numbers in cd (masked: the chosen rows listed in ix first, without a branch, as a
+// random mask mispredicts every other row); the count of numbers, -1 out of memory. One function per key width,
+// index and mask
+#define GS_P1(NM,KT,MAP,MSK) ZN I NM(GS*t,CO V*kp,CO UC*RES mp,N s,N e,I*RES cd,I*RES ix){CO KT*RES kk=(CO KT*)kp;\
+ I*RES slot=t->slot;L lo=t->lo;L*hk=t->hk;I*hg=t->hg;W msk=t->hcap-1;U sh=64-t->hlg;(V)slot;(V)lo;(V)hk;(V)hg;(V)msk;(V)sh;U nc=0;\
+ U ng=t->ng,cap=t->cap;L*gk=t->gk;I*gf=t->gf;F*af=t->af;L*al=t->al;L*gc=t->gc;L a0l=t->a0l;F a0f=t->a0f;\
+ if(MSK){U m_=0;for(N i=s;i<e;i++){ix[m_]=(I)i;m_+=mp[i]!=0;}for(U j=0;j<m_;j++){N i=(N)ix[j];L key=(L)kk[i];I g;MAP cd[j]=g;}nc=m_;}\
+ else{I*RES c_=cd;for(CO KT*p_=kk+s,*pe_=kk+e;p_<pe_;p_++){L key=(L)*p_;I g;\
+  {N i=(N)(p_-kk);(V)i;MAP}*c_++=g;}nc=(U)(c_-cd);}t->ng=ng;return (I)nc;}
+#define GS_P1K(KT,X) GS_P1(gsd##X,KT,GS_DIR,0)GS_P1(gsdm##X,KT,GS_DIR,1)GS_P1(gsh##X,KT,GS_HSH,0)GS_P1(gshm##X,KT,GS_HSH,1)
+GS_P1K(G,0)GS_P1K(H,1)GS_P1K(I,2)GS_P1K(L,3)
+TD int(*GSP1)(GS*,CO V*,CO UC*,N,N,I*,I*);
+Z CO GSP1 gsp1[4][4]={{gsd0,gsdm0,gsh0,gshm0},{gsd1,gsdm1,gsh1,gshm1},{gsd2,gsdm2,gsh2,gshm2},{gsd3,gsdm3,gsh3,gshm3}};
+// phase 2: one tight loop per op and value type over the chunk's numbers (row r: ix[j] masked, s+j else)
+#define GS_B(ROW) {if(ix){for(U j=0;j<nc;j++){I g=cd[j];N r=(N)ix[j];(V)r;ROW}}else{for(U j=0;j<nc;j++){I g=cd[j];N r=s+j;(V)r;ROW}}}
+#define GS_VT(T,ROW) {CO T*RES vT=vp;GS_B(L d=(L)vT[r];ROW)}
+#define GS_IW(ROW) switch(wv){case 0:GS_VT(G,ROW)break;case 1:GS_VT(H,ROW)break;case 2:GS_VT(I,ROW)break;default:GS_VT(L,ROW)}
+ZN V gsupd(I code,B vf,U wv,CO V*vp,CO I*RES cd,CO I*RES ix,N s,U nc,I*RES gf,F*RES af,L*RES al_,L*RES gc){CO F*RES vF=vp;
+ switch(code){
+  case GA_CNT:GS_B(gc[g]++;)break;
+  case GA_FST:break;   //the first row is the group's row in gf from phase 1
+  case GA_LST:GS_B(gf[g]=(I)r;)break;
+  // issue #14: sum avg min max skip nulls, as gaggC's row loop
+  case GA_SUM:if(vf)GS_B(F d=vF[r];if(d==d)af[g]+=d;)else GS_IW(if(d!=NL)al_[g]+=d;)break;
+  case GA_AVG:if(vf)GS_B(F d=vF[r];if(d==d){af[g]+=d;al_[g]++;})else GS_IW(if(d!=NL){af[g]+=(F)d;al_[g]++;})break;
+  case GA_MIN:if(vf)GS_B(F d=vF[r];F a=af[g];af[g]=d<a?d:a;)else GS_IW(if(d!=NL&&d<al_[g])al_[g]=d;)break;
+  case GA_MAX:if(vf)GS_B(F d=vF[r];F a=af[g];af[g]=d>a?d:a;)else GS_IW(if(d!=NL&&d>al_[g])al_[g]=d;)break;}}
 // 0: the tables are filled (the caller frees them); -1: not taken, or out of memory
 NI Z I gaggS(I code,CO V*kp,U wk,CO V*vp,U wv,B vf,CO UC*mp,N n,L gmn,L gmx,L**pgk,I**pgf,F**paf,L**pal,L**pgc,U*png){
  // the key range: 4096 sampled keys first, the full scan only when they span a direct table's worth
  L lo,hi;B direct=0;
+ // (up to 4 chunks the full scan alone: the sample would read every key, or close to it)
  {N sd=n/4096;sd+=!sd;
-  lo=hi=GARD(wk,kp,0);for(N i=0;i<n;i+=sd){L v=GARD(wk,kp,i);if(v<lo)lo=v;if(v>hi)hi=v;}
+  lo=hi=GARD(wk,kp,0);if(n>4*GS_CH)for(N i=0;i<n;i+=sd){L v=GARD(wk,kp,i);if(v<lo)lo=v;if(v>hi)hi=v;}
   if((W)hi-(W)lo<((W)1<<22)){
    if(wk<2){for(N i=0;i<n;i++){L v=GARD(wk,kp,i);if(v<lo)lo=v;if(v>hi)hi=v;}}
    else if(wk==2){CO I*RES p=kp;I a=(I)lo;I b=(I)hi;for(N i=0;i<n;i++){I v=p[i];a=v<a?v:a;b=v>b?v:b;}lo=a;hi=b;}
    else{CO L*RES p=kp;L a=lo;L b=hi;for(N i=0;i<n;i++){L v=p[i];a=v<a?v:a;b=v>b?v:b;}lo=a;hi=b;}
    W rg=(W)hi-(W)lo+1;direct=rg&&rg<=((W)1<<22)&&rg<=8*(W)n+1024;}}
- L a0l=code==GA_MIN?(vf?gmn:WL):code==GA_MAX?(vf?gmx:NL+1):0;F a0f=code==GA_MIN?WF:code==GA_MAX?-WF:0;
- U cap=1024,ng=0;B fail=0;
- L*gk=malloc(cap*SZ(L));I*gf=malloc(cap*SZ(I));F*af=malloc(cap*SZ(F));L*al_=malloc(cap*SZ(L));L*gc=malloc(cap*SZ(L));
- I*slot=direct?calloc((N)((W)hi-(W)lo+1),SZ(I)):0;W hcap=direct?0:2048;U hlg=11;L*hk=direct?0:malloc(2048*SZ(L));I*hg=direct?0:calloc(2048,SZ(I));
- I*cd=malloc(GS_CH*SZ(I));I*ix=mp?malloc(GS_CH*SZ(I)):0;
- I(!gk||!gf||!af||!al_||!gc||(direct?!slot:!hk||!hg)||!cd||mp&&!ix,fail=1;goto done)
- {CO F*RES vF=vp;CO L*RES vL=vp;
- for(N s=0;s<n;s+=GS_CH){N e=s+GS_CH<n?s+GS_CH:n;U nc=0;
-  switch(wk){case 0:GS_AK(G)break;case 1:GS_AK(H)break;case 2:GS_AK(I)break;default:GS_AK(L)}
-  switch(code){
-   case GA_CNT:case GA_FST:GS_B();break;
-   case GA_LST:GS_B(gf[g]=(I)r;);break;
-   // issue #14: sum avg min max skip nulls, as gaggC's row loop
-   case GA_SUM:if(vf)GS_B(F d=vF[r];if(d==d)af[g]+=d;)else GS_IW(if(d!=NL)al_[g]+=d;)break;
-   case GA_AVG:if(vf)GS_B(F d=vF[r];if(d==d){af[g]+=d;al_[g]++;})else GS_IW(if(d!=NL){af[g]+=(F)d;al_[g]++;})break;
-   case GA_MIN:if(vf)GS_B(F d=vF[r];F a=af[g];af[g]=d<a?d:a;)else GS_IW(if(d!=NL&&d<al_[g])al_[g]=d;)break;
-   case GA_MAX:if(vf)GS_B(F d=vF[r];F a=af[g];af[g]=d>a?d:a;)else GS_IW(if(d!=NL&&d>al_[g])al_[g]=d;)break;}}}
+ GS t={0};t.a0l=code==GA_MIN?(vf?gmn:WL):code==GA_MAX?(vf?gmx:NL+1):0;t.a0f=code==GA_MIN?WF:code==GA_MAX?-WF:0;
+ t.cap=n<1024?(U)n:1024;t.lo=lo;B fail=0;
+ t.gk=malloc(t.cap*SZ(L));t.gf=malloc(t.cap*SZ(I));t.af=malloc(t.cap*SZ(F));t.al=malloc(t.cap*SZ(L));t.gc=malloc(t.cap*SZ(L));
+ t.slot=direct?calloc((N)((W)hi-(W)lo+1),SZ(I)):0;t.hcap=direct?1:2048;t.hlg=11;t.hk=direct?0:malloc(2048*SZ(L));t.hg=direct?0:calloc(2048,SZ(I));
+ N ch_=n<GS_CH?n:GS_CH;I*cd=malloc((mp?2:1)*ch_*SZ(I));I*ix=mp&&cd?cd+ch_:0;   //masked: ix after cd, one block
+ if(!t.gk||!t.gf||!t.af||!t.al||!t.gc||(direct?!t.slot:!t.hk||!t.hg)||!cd){fail=1;goto done;}
+ {GSP1 p1=gsp1[wk][(direct?0:2)+!!mp];
+  for(N s=0;s<n;s+=GS_CH){N e=s+GS_CH<n?s+GS_CH:n;I nc=p1(&t,kp,mp,s,e,cd,ix);if(nc<0){fail=1;goto done;}
+   gsupd(code,vf,wv,vp,cd,mp?ix:0,s,(U)nc,t.gf,t.af,t.al,t.gc);}}
  // float min and max ran as doubles (a NaN never compares, so it is skipped, as the row loop skips it); the order
  // keys only differ there for -0.0 against 0.0, which are one value: either comes out 0.0, as o0(o1(.)) gives
- if(vf&&(code==GA_MIN||code==GA_MAX))for(U q=0;q<ng;q++){F d=af[q];if(d==0)d=0;L b;MC(&b,&d,SZ b);al_[q]=o1(b);}
+ if(vf&&(code==GA_MIN||code==GA_MAX))for(U q=0;q<t.ng;q++){F d=t.af[q];if(d==0)d=0;L b;MC(&b,&d,SZ b);t.al[q]=o1(b);}
  done:
- free(slot);free(hk);free(hg);free(cd);free(ix);
- I(fail,free(gk);free(gf);free(af);free(al_);free(gc);return -1;)
- *pgk=gk;*pgf=gf;*paf=af;*pal=al_;*pgc=gc;*png=ng;return 0;}
-#undef GS_GROW
+ free(t.slot);free(t.hk);free(t.hg);free(cd);
+ if(fail){free(t.gk);free(t.gf);free(t.af);free(t.al);free(t.gc);return -1;}
+ *pgk=t.gk;*pgf=t.gf;*paf=t.af;*pal=t.al;*pgc=t.gc;*png=t.ng;return 0;}
 #undef GS_NEW
 #undef GS_DIR
 #undef GS_HSH
-#undef GS_A
+#undef GS_P1
+#undef GS_P1K
 #undef GS_B
-#undef GS_AK
 #undef GS_VT
 #undef GS_IW
 // gagg's answer from the group tables: (keys; aggregates; first rows), 0 on an error

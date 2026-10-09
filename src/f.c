@@ -581,6 +581,24 @@ Z A tfd(A x,A y)_(P(ytA&&!yn,y(aL(0)))B o;y=N(tky(x,y,&o));A c=xy;
  A z=N(K2("{[a;b]n:1+#*a;({[a;b;n;s;i]c:a i;u:(n*s 0)+c?c;(u?u;u?(n*(n-1)^s 1)+(n-1)^c?b i)}[a;b;n]/[((*a)?*a;(*a)?*b);1_!#a])1}",c,y));
  L m=_N(x);I(_tz(z),P(gl_(z)==m,z(az(NL))))E(I(_t(z)==tL,z=mut(z);F(_n(z),I(_L(z)[i]==m,_L(z)[i]=NL)))E(I(LH(tG,_t(z),tI),z=cL(z);F(_n(z),I(_L(z)[i]==m,_L(z)[i]=NL)))))   //its ? gives the count for a miss (q's, 2.9.0): 0N here, as fnd
  o?z(ii(z,0)):z)
+// A sorted (`s) haystack looked up with a list: the probes are searched SFL at a time in lockstep, a branchless
+// lower bound whose halving steps depend on the haystack's count alone, so the SFL loads of a step are independent
+// (the core overlaps their misses, as bin's batched search does) and no probe calls the search through a pointer.
+// Each probe is widened into z, searched there and overwritten with its index (or 0N): the first one equal to it,
+// as bGL..bLL give. A probe out of a narrow haystack's range is below or above every item, so it misses as there.
+#define SFL 16
+#define SFND(KT) {CO KT*RES h=(CO KT*)a;U i=0; \
+ for(;i+SFL<=n;i+=SFL){U o[SFL];for(U b=0;b<SFL;b++)o[b]=0; \
+  for(U k=m;k>1;){U d=k>>1;for(U b=0;b<SFL;b++)o[b]+=(L)h[o[b]+d]<r[i+b]?d:0;k-=d;} \
+  for(U b=0;b<SFL;b++){L v=r[i+b];U j=o[b]+((L)h[o[b]]<v);r[i+b]=j<m&&(L)h[j]==v?(L)j:NL;}} \
+ for(;i<n;i++){L v=r[i];U o=0;for(U k=m;k>1;){U d=k>>1;o+=(L)h[o+d]<v?d:0;k-=d;}U j=o+((L)h[o]<v);r[i]=j<m&&(L)h[j]==v?(L)j:NL;}}
+ZN A fndS(CO V*a,U m,U wx,A y)_(U n=yn;A z=aL(n);P(!z,y(0))L*RES r=zL;
+ S4(yw-3,F(n,r[i]=yg),F(n,r[i]=yh),F(n,r[i]=yi),F(n,r[i]=yl))mr(y);
+ I(!m,F(n,r[i]=NL)return z;)
+ S4(wx,,SFND(H),SFND(I),SFND(L))
+ z)
+#undef SFND
+#undef SFL
 #define FSN(T) for(;i<n;i++){L k=f(a,m,p[i]);B(k==NL)((T*)_V(z))[i]=(T)k;}   //fnd's symbol scan, at the narrow width T until a miss
 ZN A fndD(A x,A y/*01*/)_(B t=ytM;A v=kv(&y);v=Ny(fnd(x,v));t?aM(y,v):am(y,v))   //fnd's dict of () or table of no rows, out of line
 ZN A fndM(A x,A y/*01*/)_(ytm&&_tA(yy)&&!_n(yy)||ytM&&!yN?fndD(x,y):r2f(fnd,x,y))   //fnd's dict, table or general list: its tests out of line too (in fnd they moved the code of every find)
@@ -653,6 +671,7 @@ X2(fnd,
      I(i<n,A u=aL(n);P(!u,mr(z);mr(y);0)L*RES r=_L(u);S4(wz,Fj(i,r[j]=_G(z)[j]),Fj(i,r[j]=_H(z)[j]),Fj(i,r[j]=_I(z)[j]),Fj(i,r[j]=_L(z)[j]))
        mr(z);z=u;for(;i<n;i++)r[i]=f(a,m,p[i]);)
      mr(y);return z;)
+   P(srt&&n>1,fndS(a,m,xw-3,y))   //sorted: the probes searched together (one is searched as an atom is)
    A z=aL(n);My(S4(yw-3,F(n,zl=f(a,m,yg)),F(n,zl=f(a,m,yh)),F(n,zl=f(a,m,yi)),F(n,zl=f(a,m,yl))))z)
   fN(y)))
 #undef FSN

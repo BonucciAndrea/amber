@@ -1036,7 +1036,7 @@ Z A set(A x,L i,A y/*1i1*/)_(Q(MINE(x));
 //With every key present that is one amend of the values. Otherwise the keys go in order, as the fold over them did:
 //a key not yet in the dict is added at its first use, with the value ie gives from the values at that point.
 //Deeper (n==5, .[d;(k;i);f;y]) the keys always go in order, squeezing as the fold did: after each atom, not at the end
-Z A ixfl(A,A,A,A,A*);   //u: the amend at every key there by ixfl, where f can fail (ixal); then x put back in *u
+Z A ixtr(A,L,UC,UC,UC,UC,A,A),ixfl(A,A,A,A,A*);   //u: the amend at every key there by ixfl, where f can fail (ixal); then x put back in *u
 Z A dam(A x,A y,A z,CO A*a,U n,A*u/*10100.*/)_(x=mut(x);U m=0;F(zn,m+=zL[i]==NL)
  P(!m&&n<5,P(u,A v=xy;xy=au;v=ixfl(v,z,a[2],n>3?a[3]:0,u);mr(z);P(!v,I(*u,xy=*u;*u=x)E(mr(x))(A)0)xy=v;x)Ab8;*b=xy;b[1]=z;AC(b+2,a+2,n-2);xy=au;xy=Nx(z(a8(b,n)));x)
  A w=aL(m);m=0;F(zn,I(zL[i]==NL,_L(w)[m++]=i))A k=i1(y,_R(w)),p=k?fnd(k,_R(k)):0;I(k,mr(k))I(p,p=cL(p))P(!p,mr(w);z(x(0)))
@@ -1084,6 +1084,10 @@ AA(a8,/*10..0*/A x=*a,y=a[1];
 //level puts back the item it took out, and *u is the value as it was (or a copy of it), so the variable can be put back;
 //and so where an amend by name from a symbol (3) fails, which leaves the symbol as it was
 Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u);
+//dict x, keys pushed from count c (k0, v0: its empty keys and values, held where c is 0): its keys and values back to c, of
+//their types and attributes before (a push clears an attribute), where an amend that added them failed
+Z NI __attribute__((cold)) A ixtr(A x,L c,UC tk,UC ak,UC tv,UC av,A k0,A v0){I(k0,mr(xx);xx=k0;mr(xy);xy=v0;return x)I(_N(xx)>c,xx=rsz(c,xx);xy=rsz(c,xy))
+ I(_t(xx)!=tk,xx=sqz(xx))_at(xx)=ak;I(_t(xy)!=tv,xy=sqz(xy))_at(xy)=av;return x;}
 Z inline B ixnf(A,A,A);A ixal(A,A,A,A,A*);   //(one index, a list, at the last level below a stop short (3): as at the first, so that a
 //verb that fails there is put back too, where it can fail)
 I ixkn(A,A,UC*,L*);   //(b.c: one key of a dict ixwk stops at, below a stop short (3) too, where the amend has a verb: its place, as at the first level)
@@ -1093,9 +1097,9 @@ Z A rbl(A),d3(A,A,A),a5(A,A,A,A,A),d3t(A,A,A),d4t(A,A,A,A),dt3(A,A,A),dt4(A,A,A,
 Z __attribute__((always_inline)) inline A ixsd(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u,B tb/*10....00..*/)_(x=mut(x);
  I(ix[k]==_N(xx),A e=ie(f,xy),r=!f?z:z&&f==av?_R(z):USQ(z?_8(f,A8(_R(e),_R(z)),2):_8(f,A8(_R(e)),1));   //a key not there (the last level): f
   //first, on the item the key adds (ie), as ixsl does it once added, so that where f fails, or gives a column of another
-  //count, x is as it was (*u); then the key and the item are added, as a8 does (ii's item is made, not borrowed: an int
-  //key, from ixkn, may be boxed), and ixsl assigns f's result there (f 0)
-  I(r&&kd[k]==2&&_n(xy)&&!_tP(r)&&_tT(r)&&_N(r)!=_N(*_A(xy)),mr(r);r=el0())P(!r,mr(e);u?(*u=tb?flp(x):x,(A)0):x(0))
+  //count (a list, dict or table, which the flip back refuses), x is as it was (*u); then the key and the item are added, as
+  //a8 does (ii's item is made, not borrowed: an int key, from ixkn, may be boxed), and ixsl assigns f's result there (f 0)
+  I(r&&kd[k]==2&&_n(xy)&&!_tt(r)&&_N(r)!=_N(*_A(xy)),mr(r);r=el0())P(!r,mr(e);u?(*u=tb?flp(x):x,(A)0):x(0))
   A s=_tt(y)?_R(y):_tA(y)?_R(_A(y)[k]):ii(y,k);PSH(xx,s);PSH(xy,e);f=0;z=r)
  A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z,u);P(!v,u&&*u?(xy=*u,*u=tb?flp(x):x,(A)0):x(0))xy=v;x)
 Z NI A ixtc(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u/*10....00.*/)_(U r=xN;x=ixsd(flp(x),y,kd,ix,k,m,f,z,u,1);x?tfl(x,r):0)   //a column (tfl)
@@ -1108,10 +1112,16 @@ B s=k&&!_tP(x)&&_t(x)==tS;x=USQ(s?z?d4t(x,w,f,z):d3t(x,w,f):u&&_tA(w)&&_n(w)==1&
   x=LH(tG,_t(p),tL)&&(n==4?_tt(f)||_tT(f)&&_N(f)==_n(p):_tt(f)&&(_tt(z)||_tT(z)&&_N(z)==_n(p)))?dam(x,s,cL(p),b,n,0):(mr(p),a8(b,n));mr(v);P(!x,0)tb?flp(x):x)   //as a8 does (Rm), the find from ixwk
  P(t==6,U j=(U)ix[k+1];x=mut(x);xy=mut(xy);A c=_A(xy)[j];_A(xy)[j]=au;c=ixsl(c,y,kd,ix,k,k+1,f,z,u);P(!c,u&&*u?(_A(xy)[j]=*u,*u=x,(A)0):x(0))_A(xy)[j]=c;   //a row then a column: that column
   F(_n(xy),A*p=_A(xy)+i;I(_tA(*p),*p=rbl(*p)))x)   //amended at the row, as d4 does it (tca)
- P(t>6,I(t==8,x=flp(x))x=mut(x);A s=_tA(y)?_A(y)[k]:ii(y,k);PSH(xx,_R(s));PSH(xy,ie(av,xy));A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z,0);P(!v,x(0))xy=v;t==8?flp(x):x)   //a key to add,
-  //then an index into its value, the first value nulled (as for d4's projection, ie gives the nulled first value for :), which keeps its count
- P(t>3,I(t==5,x=flp(x))x=mut(x);A s=_tA(y)?_A(y)[k]:ii(y,k),v=prj(z?ax(dt4,4):ax(dt3,3),(A[]){GAP,drp(k+1,yR)},2);PSH(xx,_R(s));PSH(xy,ie(v,xy));   //a key to add above the last level:
-  A w=xy;xy=au;w=z?a8(A8(w,az(ix[k]),v,f,z),5):a8(A8(w,az(ix[k]),v,f),4);mr(v);P(!w,x(0))xy=w;t==5?flp(x):x)   //the rest as a8 does it (d4's projection), without finding the key again
+ P(t>6,I(t==8,x=flp(x))x=mut(x);A s=_tA(y)?_A(y)[k]:ii(y,k);L c=_N(xx);UC tk=_t(xx),ak=_at(xx),tv=_t(xy),av_=_at(xy);A k0=c?0:_R(xx),v0=c?0:_R(xy);   //a key to add,
+  PSH(xx,_R(s));PSH(xy,ie(av,xy));A v=xy;xy=au;v=ixsl(v,y,kd,ix,k,m,f,z,u);   //then an index into its value, the first value nulled (as for d4's
+  //projection, ie gives the nulled first value for :), which keeps its count; where f fails there (u), the key and value are dropped again
+  I(!v,I(u&&*u,xy=*u;x=ixtr(x,c,tk,ak,tv,av_,k0,v0);*u=t==8?flp(x):x;return 0)I(k0,mr(k0);mr(v0))return x(0))I(k0,mr(k0);mr(v0))xy=v;t==8?flp(x):x)
+ P(t>3,I(t==5,x=flp(x))x=mut(x);A s=_tA(y)?_A(y)[k]:ii(y,k),v=prj(z?ax(dt4,4):ax(dt3,3),(A[]){GAP,drp(k+1,yR)},2);   //a key to add above the last level:
+  P(_t(xy)<tM,A e=ie(v,xy),r=USQ(z?_8(v,A8(_R(e),_R(f),_R(z)),3):_8(v,A8(_R(e),_R(f)),2));mr(v);P(!r,mr(e);u?(*u=t==5?flp(x):x,(A)0):x(0))   //values a list:
+   PSH(xx,_R(s));PSH(xy,e);xy=set(mut(xy),ix[k],r);t==5?flp(x):x)   //the rest first, on the value the key adds (as a8 does it there: Yzc, d4's
+   //projection), so that a failure leaves x as it was (*u), then the key and value added, and the result set there
+  PSH(xx,_R(s));PSH(xy,ie(v,xy));A w=xy;xy=au;w=z?a8(A8(w,az(ix[k]),v,f,z),5):a8(A8(w,az(ix[k]),v,f),4);mr(v);P(!w,x(0))xy=w;t==5?flp(x):x)   //else the rest
+  //as a8 does it (d4's projection), without finding the key again
  P(t==2,ixtc(x,y,kd,ix,k,m,f,z,u))ixsd(x,y,kd,ix,k,m,f,z,u,0))   //a column: in the table flipped to a dict (ixtc)
 Z A ixsl(A x,A y,CO UC*kd,CO L*ix,U k,U m,A f,A z,A*u)_(U i=(U)ix[k];I(_t(x)==tE,x=gZ(x))P(_t(x)==tM,x=ixsl(blw(x),y,kd,ix,k,m,f,z,u);I(!x&&u&&*u,*u=sqz(*u))x?sqz(x):0)x=mut(x);
  P(k+1==m,A r=!f?z:z&&f==av?_R(z):USQ(z?_8(f,A8(ii(x,i),_R(z)),2):_8(f,A8(ii(x,i)),1));   //the item at the last place: f applied to it (: needs not read it)

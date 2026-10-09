@@ -678,7 +678,7 @@ Z V gat(V(*f)(ambcn),U es,CO V*a,U m,CO U*b,V*c,U n){int nt=n<PGAT_MIN?1:par_thr
  if(nt<2){f(a,m,b,c,n);return;}GJ j={f,a,m,b,(C*)c,n,(U)nt,es};par_run(nt,gat_w,&j);}
 // amber 2.7: a dict made `s (q's `s#d) looks up by steps: the value at the last key not above y, null below the
 // first key. bin does numbers; other keys (symbols, by name) count the keys not above y.
-Z A dstep(A k,A y)_(UC t=_t(k);P(LH(tB,t,tL)||t==tF,bin(k,y))K2("{[k;v]{[k;v]-1++/~v<k}[k]'v}",_R(k),y))
+Z A dstep(A k,A y)_(UC t=_t(k);P(LH(tB,t,tL)||t==tF,bin(k,y))K2("{[k;v]{[k;v]-1++/~v<k}[k]'v}",k,y))   //K2 borrows k
 A2(i1,/*01*/P(y==GAP||y==au,xR)
  X(Rt(y(xR))
    RE(x=gZ(xR);x(i1(x,y)))
@@ -925,13 +925,13 @@ Z A atkeys(A y,UC lone){   //the keys of a sorted dict or keyed table: a list `s
 // anything else (atoms, symbols, a NaN bound) gives back 0N and amber.k's within does it as before
 A wtnT(A x){P(_t(x)!=tA||_n(x)!=2,x(al(NL)))A v=_A(x)[0],r=_A(x)[1];UC t=_t(v);
  I(!_tP(v)&&t==tE&&!_tP(r)&&_n(r)==2&&(_t(r)==tG||_t(r)==tH||_t(r)==tI||_t(r)==tL),   //a range i..j (til n, the virtual i): one fill
-   L i0=*(CO L*)_V(v),j0=((CO L*)_V(v))[1],lo=gl_(ii(r,0)),hi=gl_(ii(r,1));U n=(U)(j0-i0);A z=an(n,tG);MS(_V(z),0,n);
+   L i0=*(CO L*)_V(v),j0=((CO L*)_V(v))[1],lo=gl(ii(r,0)),hi=gl(ii(r,1));U n=(U)(j0-i0);A z=an(n,tG);MS(_V(z),0,n);
    L a=MAX(lo,i0),b=MIN(hi,j0-1);I(a<=b,MS((G*)_V(z)+(a-i0),1,(N)(b-a+1)))return x(z);)
  P(_tP(v)||!(t==tG||t==tH||t==tI||t==tL||t==tF)||_tP(r)||_n(r)!=2||!(_t(r)==tG||_t(r)==tH||_t(r)==tI||_t(r)==tL||_t(r)==tF),x(al(NL)))
  U n=_n(v);A z=an(n,tG);G*RES o=(G*)_V(z);UC rt=_t(r);
- I(t==tF,F lo=rt==tF?((CO F*)_V(r))[0]:(F)gl_(ii(r,0)),hi=rt==tF?((CO F*)_V(r))[1]:(F)gl_(ii(r,1));
+ I(t==tF,F lo=rt==tF?((CO F*)_V(r))[0]:(F)gl(ii(r,0)),hi=rt==tF?((CO F*)_V(r))[1]:(F)gl(ii(r,1));
    P(lo!=lo||hi!=hi,mr(z);x(al(NL)))CO F*RES p=(CO F*)_V(v);F(n,o[i]=p[i]>=lo&&p[i]<=hi)return x(z);)
- P(rt==tF,mr(z);x(al(NL)))L lo=gl_(ii(r,0)),hi=gl_(ii(r,1));
+ P(rt==tF,mr(z);x(al(NL)))L lo=gl(ii(r,0)),hi=gl(ii(r,1));
  S(t,C(tG,CO G*RES p=(CO G*)_V(v);F(n,o[i]=p[i]>=lo&&p[i]<=hi))C(tH,CO H*RES p=(CO H*)_V(v);F(n,o[i]=p[i]>=lo&&p[i]<=hi))
      C(tI,CO I*RES p=(CO I*)_V(v);F(n,o[i]=p[i]>=lo&&p[i]<=hi))C(tL,CO L*RES p=(CO L*)_V(v);F(n,o[i]=p[i]>=lo&&p[i]<=hi)))
  return x(z);}

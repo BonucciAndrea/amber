@@ -1163,6 +1163,9 @@ t[`takeEmptyDictFirst;`k@'(0#((,`a)!,0;0);0#(1 2!3 4;0);0#(`a`b!1 2;`c`d!3 4));(
 t[`takeEmptyDictShape;*0#(`a`b!(0;0 0);0N);`a`b!(0N;0N 0N)]
 t[`takeEmptyTable;`k@'(0#(`a`b!1 2;`a`b!3 4);0#,`a`b!1 2);("+`a`b!(!0;!0)";"+`a`b!(!0;!0)")]
 t[`dropEmptyDictFirst;`k@2_((,`a)!,0;1 2);"0#,(,`a)!,0N"]
+/ deleting keys of the other kind (chars against numbers) removes nothing, as ngn/k: it was 'type, and a list of them leaked
+t[`dropDictOtherKind;((1 2!3 4)_("a";"b");(1 2!3 4)_"a";(1 2!3 4)_(1;" ");("ab"!3 4)_1 2;(`a`b!3 4)_(0;1);(1 2!3 4)_2;(`a`b!3 4)_`a);(1 2!3 4;1 2!3 4;(,2)!,4;"ab"!3 4;`a`b!3 4;(,1)!,3;(,`b)!,4)]
+t[`dropDictOtherKindLeak;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"(1 2!3 4)_(\"a\";\"b\");\n.[_;((!0)!!0;(0#`)!\"\");::];\n\\m\n");""]   / and a dict on the right, still an error, does not leak
 / reshaping such a list is 'nyi, as reshaping a table is (it read a table as rows of a list: crashes, heap addresses, a loop)
 t[`reshapeEmptyDicts;4#.[.:;,"2 0#0#(`a`b!1 2;0)";{x}];"'nyi"]
 t[`reshapeDroppedDicts;4#.[.:;,"2 0N#2_(`a`b!1 2;3)";{x}];"'nyi"]
@@ -1449,6 +1452,8 @@ t[`parenEmptyKept;{*"\n"\.[{`k@. x};,x;{x}]}'("()";"(1;2)";"{x+y}[1;]2";"[1;;2]"
 t[`allocGrowFloats;{(#x;+/x;x~0.0+!131072)}`j?"[",(","/$!131072),"]";(131072;8589869056.0;1b)]
 t[`allocGrowChars;{(#x;+/`i$x;-12#x)}@,/$!200000;(1088890;56866720;"199998199999")]
 t[`allocPeachFree;`x(("/bin/sh";"-c";"AMBER_THREADS=4 exec \"$0\"";`argv 0);"p:`pe({0.5*!x};40000*1+!8);s:+/'p;q:`pe({,/$!x};20000*1+!8);c:#'q;b:20000 2#!40000;p:0;q:0\n\\m\n`0:\" \"/$s,c,+/+/b\n");"399990000.0 1599980000.0 3599970000.0 6399960000.0 9999950000.0 14399940000.0 19599930000.0 25599920000.0 88890 188890 288890 388890 488890 608890 728890 848890 799980000\n"]   / in a process of its own, as \m reports the running script's own text
+/ ---- a table literal holds at most 256 columns, in its keys or its values: one more is 'limit (it overran the parser's arrays and crashed) ----
+t[`tableLiteralLimit;{*"\n"\.[{`k@#!. x};,x;{x}]}'(("([]",(";"/{"a",($x),":1"}'!256),")");("([]",(";"/{"a",($x),":1"}'!300),")");("([",(";"/{"a",($x),":1"}'!257),"]b:1)"));("256";"'limit";"'limit")]
 
 / ---- a char gather stops reading the index list at its end: it read it in blocks of 32, up to 31 indices past (the answers were right) ----
 t[`gatCharTail;("abc"@0 5 1;"abc"@4!!35;"abc"@4!!70001);("a b";35#"abc ";70001#"abc ")]
@@ -1467,6 +1472,23 @@ t[`pdqGiveUp;{(?x)~x@&(!#x)=x?x}'(2000000?1000000000000;1000000*2000000?1000000)
 / ---- \m in a script file counts the script's own text (and a \l'd script's) as held; it reported it as held by nobody ----
 t[`heapCheckScript;`x(("/bin/sh";"-c";"d=$(mktemp -d) || exit 1; printf %s \"$1\" >\"$d/i.k\"; printf '\\\\l %s/i.k\n\\\\m\n' \"$d\" >\"$d/o.k\"; \"$0\" \"$d/i.k\" </dev/null; \"$0\" \"$d/o.k\" </dev/null; rm -rf \"$d\"";`argv 0;"a:1 2 3\n\\m\n");"");""]
 t[`heapCheckPeachLoad;`x(("/bin/sh";"-c";"d=$(mktemp -d) || exit 1; echo '+/!1000;' >\"$d/p.k\"; printf 'r:`pe({. \"\\\\\\\\l %s/p.k\"};!256)\n\\\\m\n' \"$d\" | AMBER_THREADS=4 \"$0\"; rm -rf \"$d\"";`argv 0);"");""]
+
+/ ---- leaks: \m (the heap check) prints a !refc line for each object counted more than it is held; it reads stdin, so each runs in a process of its own ----
+LK:{`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);x,"\n\\m\n")}
+t[`leakTableLiteral;LK"([]a:1 2 3);\n.[.:;,\"([a:1 2]b:1 2;c:1 2\";{x}];\n.[.:;,\"([]a:1 2;3)\";{x}];";""]   / an unkeyed literal's empty key group, and the parts parsed before a 'parse
+t[`leakGroupFloat;LK"x:1.0 2.0 1.0;=x;\n=1.0 2.0;\n=`a`b!1.0 2.0;";""]   / group of floats held its argument once too many
+t[`leakDistinctFloat;LK"?0.5*!5000;\nx:0.5*!5000;?x;";""]   / distinct of a float vector past a page held its argument once too many
+t[`leakSortedDictLookup;LK"(`s#`a`c!1 2)`b;\n(`s#`a`c!1 2)`b`d;\n(`s#\"ac\"!1 2)\"b\";";""]   / a `s dict's symbol or char keys were held once too many by a lookup
+t[`leakScanSeed;LK"(1.5)<\\1 2;\n(0N)%\\1.0 2.0;\n(1.5)=\\1 2;\n(1.5)!\\1 2;\n=\\0N 0N 5;";""]   / a boxed seed of the generic scan (and =\'s boxed first item) was held once too many; ! is 'type
+t[`leakWsumInts;LK"\\l amber.k\n`wsm(1 2;3 4);\nwsum[1 2;3 4];\nwavg[1 2 4;!3];";""]   / the fused sum of two narrow int lists held the first once too many
+
+
+/ ---- `wtn (amber.k's within) with a bound that needs a boxed int: the two bounds leaked, a call ----
+t[`withinBoxedBoundLeak;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"`wtn(1 2;0 1099511627776);\n`wtn(-32768 -13953 1;0N 2);\n`wtn(!5;1 1099511627776);\n`wtn(1.5 2;0 1099511627776);\n`0:,`k@`wtn(!5;0N 2);\n\\m\n");"1 1 1 0 0\n"]
+
+
+/ ---- splice ?[x;(i;j);y] with an empty x or y: its prototype leaked; and a bound past an int's packed range ('index) ----
+t[`spliceEmptyLeak;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"`0:,`k?[0#0n;(0;0);0];\n`0:,`k?[?[(0 0;0);(0;0);0];(0;1);0#(0 0;0)];\n.[?;(1 2;(0;1099511627776);0);::];\n\\m\n");",0\n(0 0;0)\n"]
 
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]

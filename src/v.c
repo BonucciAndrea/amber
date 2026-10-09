@@ -91,6 +91,7 @@ Y2(fil,RmMA(e2f(fil,x,y))Rt(P(yt>=tdt,et(y))YU(y-au?y:xR)fir(fil(x,enl(y))))RF(P
 //Chars against ints or floats share no item: except removes nothing, as 2.3.1, ngn/k and q (find of one in the
 //other is 'type since issue #20 row 12, and except inherited it - digest #64); a range (tE) counts as its ints
 Z B cxn(UC a,UC b)_(B ca=a==tC||a==tc,cb=b==tC||b==tc,na=LH(tE,a,tF)||a==ti||a==tl||a==tf,nb=LH(tE,b,tF)||b==ti||b==tl||b==tf;ca&&nb||na&&cb)
+B cxn_(UC a,UC b)_(cxn(a,b))//for und's dict drop (h.c), on its error path; except keeps the static one
 X2(crt,Rt(P(LH(tdt,xt,tnp),et(y))fil(x,y))R_(en(y))
  RT(P(cxn(xt,yt),y(xR))I v=rnk(y);P(!v,crt(x,enl(y)))
   P(v>0&&rnk(x)==v,I(xtE&&ytE,Lij L k=*yL,l=yL[1];P(k<=i,y(0);aE(MAX(i,l),MAX(j,l)))P(j<=l,y(0);aE(i,MIN(j,k))))

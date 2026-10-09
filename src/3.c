@@ -148,7 +148,7 @@ A3(arf,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzfc)Q(ztZFC)
  ZB(z=cG(zR);z(arf(x,y,z)))
  G(&dexf,admf,subf,admf,___f,___f,mmmf,mmmf,___f,___f,___f)[xv](x,y,z))
 
-Z A3(___s,/*010*/U i=!y;A u;I(i,y=ii(z,0);u=enl(yR))E(yR;u=emp(tG))U n=zn;W(i<n,y=y(x2(y,ii(z,i++)));P(!y,u(0))PSH(u,yR))y(u))
+Z A3(___s,/*010*/U i=!y;A u;I(i,y=ii(z,0);u=enl(yR))E(u=emp(tG))U n=zn;W(i<n,y=y(x2(y,ii(z,i++)));P(!y,u(0))PSH(u,yR))y(u))
 Z A3(dexs,/*010*/I(y,y(0))zR)
 Z A3(adms,/*010*/L w=y?gl(y):x==MUL;U n=zn;I b=1;L v=w;C t=tG+zw-3;A u=an(n,t);
  //the running total wraps in W, as the folds and K arithmetic do (in L an overflow is undefined behaviour)
@@ -182,7 +182,7 @@ Z A3(mmmsf,/*010*/B i=xv==7;
 // float -\: x0, x0-x1, (x0-x1)-x2, ...: in order, as {x-y}\ does (a seed y starts it: y-x0, ...)
 Z A3(subsf,/*010*/U n=zn;A u=an(n,tF);F*RES r=uF;F v=y?gf(cF(y)):0;z=cF(zR);CO F*RES q=zV;
  Mz(F(n,r[i]=v=i||y?v-q[i]:q[i]))u)
-Z A3(eqls,/*010*/U n=zn,i=!y;L v=gl(y?y:io(z,0)),a=v;A u=aG(n);S4(zw-3,W(i<n,ug=v=v==zg;i++),W(i<n,ug=v=v==zh;i++),W(i<n,ug=v=v==zi;i++),W(i<n,ug=v=v==zl;i++))y||!n?u:a4(u,ai(0),av,az(a)))
+Z A3(eqls,/*010*/U n=zn,i=!y;L v=gl(y?y:io(z,0)),a=v;A u=aG(n);S4(zw-3,W(i<n,ug=v=v==zg;i++),W(i<n,ug=v=v==zh;i++),W(i<n,ug=v=v==zi;i++),W(i<n,ug=v=v==zl;i++))y||!n?u:(y=az(a),y(a4(u,ai(0),av,y))))   //a4 borrows the item
 A3(ars,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzfc)Q(ztZFC)
  ZE(z=gZ(zR);z(ars(x,y,z)))
  ZB(z=cG(zR);z(ars(x,y,z)))
@@ -287,7 +287,7 @@ A wsmC(A x){
  if(_t(p)==tF&&_t(q)==tF){F r=par_bdot_f64((CO F*)_V(p),(CO F*)_V(q),n);mr(x);return af(r);}
  // ints: only a 64-bit list can hold 0N, so two narrower ones are k's +/x*y and one is widened; a null on either side gives 0N, so
  // amber.k's wsum knows to take the pairs instead (an int 0N*y wraps, it doesn't stay null) - digest #43
- if(LH(tB,_t(p),tL)&&LH(tB,_t(q),tL)){I(_t(p)!=tL&&_t(q)!=tL,A wp=_R(p),wq=_R(q);mr(x);return K2("{+/x*y}",wp,wq);)   //No null possible: k's own fused +/x*y
+ if(LH(tB,_t(p),tL)&&LH(tB,_t(q),tL)){I(_t(p)!=tL&&_t(q)!=tL,A wp=_R(p),wq=_R(q);mr(x);A r=K2("{+/x*y}",wp,wq);mr(wp);return r;)   //No null possible: k's own fused +/x*y (K2 borrows wp)
   A wp=_t(p)==tL?_R(p):cL(_R(p)),wq=_t(q)==tL?_R(q):cL(_R(q));mr(x);P(!wp||!wq,mr(wp);mr(wq);0)
   CO L*RES wa=_V(wp),*RES wb=_V(wq);W w0=0,w1=0;I wz=0;U i=0;
   for(;i+2<=n;i+=2){L a0=wa[i],a1=wa[i+1],b0=wb[i],b1=wb[i+1];wz|=(a0==NL)|(a1==NL)|(b0==NL)|(b1==NL);w0+=(W)a0*(W)b0;w1+=(W)a1*(W)b1;}

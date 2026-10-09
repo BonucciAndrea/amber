@@ -38,7 +38,8 @@ Z A2(cut,/*01*/Q(xtZ)Q(ytMT)K2("{y$[|/0<':x,#y;`err\"domain\";x+!'1_-':x,#y]}",x
 A2(und,/*01*/
  Xz(drp(gl_(x),y))
  XU(flt(x,y,0))
- Xm(A z=N(fnd(xx,yR));Zz(y(0);y=Nz(und(xx,zR));z=Ny(und(xy,z));am(y,z))ZZ(z(0);K2("_/",x,y))z(en(y)))
+ Xm(A z=fnd(xx,yR);P(!z,P(!_tA(xx)&&!_tM(xx)&&(ytA?({B o=1;F(yn,o&=_tt(ya))o;}):cxn_(_t(xx),yt)),ecl();ytA?K2("_/",x,y):y(xR))y(0))   //keys of the other kind (chars against numbers: find's 'type) remove nothing, as ngn/k; a general list of atoms, key by key
+  Zz(y(0);y=Nz(und(xx,zR));z=Ny(und(xy,z));am(y,z))ZZ(z(0);K2("_/",x,y))z(en(y)))
  P(xtZ&&ytMT,cut(x,y))
  P(xtMT&&ytz,rmv(xR,gl(y)))
  Ym(K2("{((!y)^x)#y}",x,y))
@@ -83,7 +84,7 @@ A cts(A x/*1*/,S s,U m)_(Q(xtC);     U n=xn;x=aa(n+m,x);MC(xV+n,s,m);x)
 Z A insL(A x,L i,L j,A y/*1ij0*/)_(
  P(i>=(W)(j+1)||j>=(W)(xN+1),ei(x))
  A z=an(xn-j+i+yn,xt);U w=xw-3;MC(zV,xV,(W)i<<w);MC(zV+(i<<w),yV,(W)yn<<w);MC(zV+(i+yn<<w),xV+((W)j<<w),(W)(xn-j)<<w);
- I(xtR,I(!zn,zx=emp(tC))I(MINE(x),mrn(j-i,xA+i);AZ(x))E(mRn(i,xA);mRn(xn-j,xA+j))I(MINE(y),AZ(y))E(mRa(y))z=sqz(z))
+ I(xtR,I(!zn,zx=emp(tC))I(MINE(x)&&xn,mrn(j-i,xA+i);AZ(x))E(mRn(i,xA);mRn(xn-j,xA+j))I(MINE(y)&&yn,AZ(y))E(mRa(y))z=sqz(z))   //an empty x or y is released whole: AZ (the container only) leaked its prototype
  x(z))
 // a q condition: booleans (ints of 0 and 1 here). 1: y and z each an atom or as long as it; 2: one is not, and ins3 gives 'length,
 // as q (#83 Q3); 0: x is not 0s and 1s, a splice, which stops at x's first other item. x is read as before, an item at a time
@@ -96,6 +97,6 @@ A3(ins3,/*100*/
  XM(P(!ztM,et(x))P(!mtc_(xx,zx),ed(x))y=prj(QUE,A8((A)GAP,yR,GAP),3);A u=Nx(y(e2(y,xy,_R(zy))));x(aM(_R(xx),u)))
  P(xtZ&&ztZ&&xt-zt,zR;N(sup(&x,&z));z(ins3(x,y,z)))
  P(xt-zt,z=blw(zR);z(ins3(blw(x),y,z)))
- Y(Ril(L i=gl_(y);insL(x,i,i,z))REGHIL(P(yn-2,el(x))insL(x,gl_(ii(y,0)),gl_(ii(y,1)),z))R_(et(x)))0)
+ Y(Ril(L i=gl_(y);insL(x,i,i,z))REGHIL(P(yn-2,el(x))insL(x,gl(ii(y,0)),gl(ii(y,1)),z))R_(et(x)))0)
 AA(ins,/*10..0*/P(n==3,ins3(*a,a[1],a[2]))P(n==4,K("{[t;c;b;a]qfsel[t;c;b;a]}",*a,_R(a[1]),_R(a[2]),_R(a[3])))en(*a))   //2.7: ?[t;c;b;a], q's functional select (qsql.k)
 AA(bng,/*10..0*/P(n==4,K("{[t;c;b;a]qfupd[t;c;b;a]}",*a,_R(a[1]),_R(a[2]),_R(a[3])))no8(a,n))   //2.7: ![t;c;b;a], q's functional update and delete

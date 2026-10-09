@@ -468,6 +468,7 @@ Z A tfd(A x,A y)_(P(ytA&&!yn,y(aL(0)))B o;y=N(tky(x,y,&o));A c=xy;
  P(_N(c)==1,A z=ii(y,0);mr(y);P(!o,fnd(*_A(c),z))y=ii(z,0);mr(z);P(urnk(y)+1<urnk(*_A(c)),y(az(NL)))fnd(*_A(c),y))
  A z=N(K2("{[a;b]n:1+#*a;({[a;b;n;s;i]c:a i;u:(n*s 0)+c?c;(u?u;u?(n*(n-1)^s 1)+(n-1)^c?b i)}[a;b;n]/[((*a)?*a;(*a)?*b);1_!#a])1}",c,y));
  o?z(ii(z,0)):z)
+#define FSN(T) for(;i<n;i++){L k=f(a,m,p[i]);B(k==NL)((T*)_V(z))[i]=(T)k;}   //fnd's symbol scan, at the narrow width T until a miss
 X2(fnd,
  R_(et(y))
  Rm(i1(xx,N(fnd(xy,y))))
@@ -498,8 +499,22 @@ X2(fnd,
    B srt=!_tP(x)&&xt!=tF&&xt!=tS&&_at(x)==1;TY(fGL)*f=xt==tF?fFL:(srt?G(&bGL,bHL,bIL,bLL):G(&fGL,fHL,fIL,fLL))[xw-3];V*a=xV;U m=xn;
    Yt(az(f(a,m,gl(y))))
    A zl_=fndL(x,y,srt);P(zl_,zl_)
-   U n=yn;A z=aL(n);My(S4(yw-3,F(n,zl=f(a,m,yg)),F(n,zl=f(a,m,yh)),F(n,zl=f(a,m,yi)),F(n,zl=f(a,m,yl))))z)
+   U n=yn;
+   // symbols: the width fndL gives, an index into x's (64 bits with 0N on a miss), here too. Which of the two a symbol
+   // vector takes is set by its ids' range, so by the order its names were interned: =x's lists were 16 or 32 bits by it
+   // A few items are looked up into o first, so the result is made once, at the width they need. More are written at the
+   // narrow width until a miss, and from there at 64 bits (the items before it widened once)
+   I(xtS,C tz=tZ((L)m-1);U wz=tz-tG;CO I*RES p=yV;
+     I(n<=128,L o[128];B ms=0;F(n,L k=f(a,m,p[i]);ms|=k==NL;o[i]=k)mr(y);A z=ms?aL(n):an(n,tz);P(!z,0)
+       I(ms,MC(_V(z),o,(N)n*SZ(L)))E(S4(wz,F(n,_G(z)[i]=(G)o[i]),F(n,_H(z)[i]=(H)o[i]),F(n,_I(z)[i]=(I)o[i]),F(n,_L(z)[i]=o[i])))return z;)
+     A z=an(n,tz);P(!z,mr(y);0)U i=0;
+     S4(wz,FSN(G),FSN(H),FSN(I),FSN(L))
+     I(i<n,A u=aL(n);P(!u,mr(z);mr(y);0)L*RES r=_L(u);S4(wz,Fj(i,r[j]=_G(z)[j]),Fj(i,r[j]=_H(z)[j]),Fj(i,r[j]=_I(z)[j]),Fj(i,r[j]=_L(z)[j]))
+       mr(z);z=u;for(;i<n;i++)r[i]=f(a,m,p[i]);)
+     mr(y);return z;)
+   A z=aL(n);My(S4(yw-3,F(n,zl=f(a,m,yg)),F(n,zl=f(a,m,yh)),F(n,zl=f(a,m,yi)),F(n,zl=f(a,m,yl))))z)
   fN(y)))
+#undef FSN
 X2(que,Rs(Z CO C s[][4] __attribute__((aligned(4)))={"j","k","hex"};G(&js0,val,unh,ed)[fI((V*)s,L(s),xv)](y))Ril(rnd(gl_(x),y))R_(fnd(x,y)))
 
 Z A2 binF;

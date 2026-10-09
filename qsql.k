@@ -200,8 +200,9 @@ qgg:{[o;k;v;m]$[#m;`gagg(o;k;v;m);`gagg(o;k;v)]}   / an empty mask is every row 
 qsc:{[k]e:`senc(k);$[#e;e 1;k]}
 gag1:{[d;k;m;p]$[(2=#p)&in[p 0;`dev`var];qvd[d;k;m;p];2=#p;qgg[p 0;k;d p 1;m];[wv:d p 1;a:qgg[`sum;k;wv*d p 2;m];$[(p 0)~`wsum;a;$[0=#a;();[b:qgg[`sum;k;wv;m];$[0=#b;();(a 0;(a 1)%b 1;a 2)]]]]]]}
 / 2.7.2: dev and var by group as var does it, avg of the squared distance from the mean: one pass for the group
-/ means, each row's mean found by its key, one pass for the average square
-qvd:{[d;k;m;p]v:d p 1;a:qgg[`avg;k;v;m];$[0=#a;();[e:v-(a 1)@(a 0)?k;b:qgg[`avg;k;e*e;m];$[0=#b;();(b 0;$[`dev~p 0;sqrt b 1;b 1];b 2)]]]}
+/ means, each row's mean found by its key, one pass for the average square. A group whose mean is infinite (or 0w and
+/ -0w's NaN) has no square that is not NaN: 0f there, as var gives (#83 Q10), where the group has an item that is not null
+qvd:{[d;k;m;p]v:d p 1;a:qgg[`avg;k;v;m];$[0=#a;();[e:v-(a 1)@(a 0)?k;b:qgg[`avg;k;e*e;m];$[0=#b;();[r:b 1;r:$[^&/r;@[r;&(^r)&0<(qgg[`sum;k;0+~^v;m])1;:;0.0];r];(b 0;$[`dev~p 0;sqrt r;r];b 2)]]]]}
 qaggf:{[t;b;sg;m]d:+t;bc:d b;k:$[1=#b;*bc;qcard[bc]<qEXACT;qenc bc;()];k:$[(1=#b)&1<+/{1+(2<#x)|in[*x;`dev`var]}'value sg;qsc k;k];$[0=#k;();[rs:gag1[d;k;m]'sg;$[&/value[{0<#x}'rs];[fr:(*value[rs])2;(+b!bc@\:fr)!+{v:x 1;$[`I=@v;`i$v;v]}'rs];()]]]}
 
 

@@ -1490,6 +1490,14 @@ t[`withinBoxedBoundLeak;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"`wtn(1 2;0 10
 / ---- splice ?[x;(i;j);y] with an empty x or y: its prototype leaked; and a bound past an int's packed range ('index) ----
 t[`spliceEmptyLeak;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"`0:,`k?[0#0n;(0;0);0];\n`0:,`k?[?[(0 0;0);(0;0);0];(0;1);0#(0 0;0)];\n.[?;(1 2;(0;1099511627776);0);::];\n\\m\n");",0\n(0 0;0)\n"]
 
+/ ---- \cd alone prints the working directory, as q's does (getcwd's test was the wrong way round: it was 'io) ----
+t[`cdBare;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"\\cd\n");"\"",(-1_`x(("/bin/sh";"-c";"pwd -P");"")),"\"\n"]
+
+
+/ ---- = and ? of a symbol vector store their indices at one width, whatever order the symbols were interned in: the find under = took a 64-bit path when the ids' range was wide (=x's lists were then 16-bit, not 32) ----
+t[`symGroupWidth;{i:4097#0 1 2;a:`$"grpwidthFirst";h:`$"grpwidthPad",/:$!5000;b:`$"grpwidthSecond";c:`$"grpwidthThird";d:`$"grpwidthD";e:`$"grpwidthE";f:`$"grpwidthF";s:(a;b;c);u:(d;e;f);((-8!.=s@i)~-8!.=u@i;(-8!s?s@i)~-8!u?u@i;-8!s?a,`grpwidthNone)}[];(1b;1b;-8!0 0N)]
+
+
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

@@ -32,6 +32,7 @@ t[`sumsNull;   (sums 1 0n 2;sums 1 0N 2;prds 2 0n 3;prds 2 0N 3);   (1 1 3.0;1 1
 t[`prdNull;    (prd 2 0n 3;prd 2 0N 3;prd 2 0N 3 2147483648);     (6.0;6;6*2147483648)]
 t[`wsumNull;   (wsum[1 2 3.0;1 0n 2];wsum[1 2 3;1 0N 2];wsum[1 2 3;1 0n 2];wsum[1 2 3+2147483648;1 0N 2]);   (7.0;7.0;7.0;`f$7+3*2147483648)]
 t[`wavgNull;   (wavg[1 2 3;1 0n 2];wavg[1 2 3;1 0N 2];wavg[1 2 3.0;4 5 6.0]);   (1.75;1.75;32%6)]
+t[`wsumLength;{*"\n"\.[x;y;{x}]}'[(wsum;wsum;wsum;wavg;wavg;wsum);((1 2;3 4 5);(1.0 2.0;3 4 5.0);(1 0N;3 4 5);(1 2;3 4 5);(1.0 2.0;3 4 5.0);(!3;3 4))];6#,"'length"]   / lists of different lengths: 'length, as q (it was 'type)
 t[`svarNull;   (svar 1 2 0n;sdev 1 2 0n);   (0.5;sqrt 0.5)]
 t[`covNull;    (cov[1 2 3;1 2 0n];scov[1 2 3;1 2 0n];cor[1 2 3;1 2 0n];cov[1 2 3 0n;0n 2 3 4]);   (0.25;0.5;1.0;0.25)]
 t[`scovNoPair; (scov[0n 0n;1 2.0];scov[0#0;0#0];scov[1 0N;0N 2];scov[,1.0;,2.0];svar 0#0.0;svar@,1);   (0n;0n;0n;0n;0n;0n)]   / none or one pair left: 0n, as q (2.5.0-2.7.2: -0.0 for none)

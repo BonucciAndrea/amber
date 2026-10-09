@@ -366,12 +366,6 @@ Z B numlit(A x)_(_tz(x)||_tf(x))                                                
 Z A shv(A t,L k)_(P(!_tA(t)||_n(t)!=3||_A(t)[0]!=UND,0)A l=_A(t)[1],v=_A(t)[2];P(!_tz(l)||gl_(l)!=k||!_tS(v),0)v)
 // (1_v) and ((-1)_v) of the SAME variable, either way round: -1 none, else flip
 Z I shpair(A oa,A ob)_(A u=shv(oa,1),w=shv(ob,-1);P(u&&w&&mtc_(u,w),0)u=shv(oa,-1);w=shv(ob,1);P(u&&w&&mtc_(u,w),1)-1)
-// amber 2.3: is m a comparison node `c OP k`? -> op (0 <, 1 >, 2 =), c and k set;
-// else -1. A literal on the LEFT is moved right (`50<x` is `x>50`) so that it
-// reaches the scalar form of the kernel; a literal has no side effect, so the
-// order in which the two operands are then evaluated cannot matter.
-Z I cmpn(A m,A*c,A*k)_(P(!_tA(m)||_n(m)!=3,-1)A d=_A(m)[0];I op=d==LTN?0:d==GTN?1:d==EQL?2:-1;P(op<0,-1)
- A p=_A(m)[1],q=_A(m)[2];P(!fnode(p,0)||!fnode(q,0),-1)I(numlit(p)&&!numlit(q),SW(p,q)I(op<2,op^=1))*c=p;*k=q;op)
 // ---- amber 2.5 (exp): fusion. An element-wise tree of + - * % & | (< > = at the root) over variables and number literals
 // (two operations or more, or one under +/) compiles to  bF j c p  followed by the usual code for it. bF gives
 // the program (constant c: its bytes, then the literals) to fzrun (src/2.c), which takes it only for float
@@ -403,7 +397,8 @@ Z I fus(A x,B r){U n=xn;A y=xx;I o=xo;                                          
    I(fl>=0,cc(au,xo);Nr(shv(_A(z)[1],fl?-1:1),1)cc(ai(300+_v(d)+16*fl),xo);cc(FUS1,xo);M(ba)M(3)I(!r,M(bP))return OK;)))
   I(_tA(z)&&_n(z)==3,A d=_A(z)[0];I(d==MUL||d==EQL||d==LTN||d==GTN,A oa=_A(z)[1],ob=_A(z)[2];
    I(fnode(oa,0)&&fnode(ob,0),Nr(ob,1)Nr(oa,1)cc(ai(_v(d)),xo);cc(FUS1,xo);M(ba)M(3)I(!r,M(bP))return OK;))
-   // +/x@&m : sum of the masked elements, no compressed vector
+   // +/x@&m : sum of the masked elements, no compressed vector. The mask m, a comparison or not, is computed before x, as
+   // in x@&m (2.3 compared c OP k inside the op, after x, so x's error came first: +/(x*1 2)@&x<`a was 'length, not 'type)
    I(d==AP1,A oa=_A(z)[1],w=_A(z)[2];I(_tA(w)&&_n(w)==2&&_A(w)[0]==WHR&&fnode(oa,0)&&fnode(_A(w)[1],0),
     // amber 2.2: and when the thing being masked is itself `a +- s*b` with a
     // literal scalar, the arithmetic joins the same pass -- otherwise the FMA
@@ -414,13 +409,7 @@ Z I fus(A x,B r){U n=xn;A y=xx;I o=xo;                                          
      I(_tA(zm)&&_n(zm)==3&&_A(zm)[0]==MUL,A p=_A(zm)[1],q=_A(zm)[2];
       A sc=numlit(p)?p:numlit(q)?q:0,ob=sc==p?q:p;
       I(sc&&fnode(aa,0)&&fnode(ob,0)&&!numlit(ob),
-       // amber 2.3: the mask a comparison too -- +/(a+-s*b)@&(c OP k), six arguments
-       A c_=0,k_=0;I op_=cmpn(_A(w)[1],&c_,&k_);
-       I(op_>=0,Nr(k_,1)Nr(c_,1)Nr(ob,1)Nr(sc,1)Nr(aa,1)cc(ai((_A(oa)[0]==SUB)+2*op_),xo);cc(FUS3,xo);M(ba)M(6)I(!r,M(bP))return OK;)
        Nr(_A(w)[1],1)Nr(ob,1)Nr(sc,1)Nr(aa,1)cc(ai(_A(oa)[0]==SUB),xo);cc(FUS3,xo);M(ba)M(5)I(!r,M(bP))return OK;)))
-    // amber 2.3: +/x@&(c OP k) -- the mask computed in the summing loop
-    A c_=0,k_=0;I op_=cmpn(_A(w)[1],&c_,&k_);
-    I(op_>=0,Nr(k_,1)Nr(c_,1)Nr(oa,1)cc(ai(28+op_),xo);cc(FUS1,xo);M(ba)M(4)I(!r,M(bP))return OK;)
     Nr(_A(w)[1],1)Nr(oa,1)cc(ai(18),xo);cc(FUS1,xo);M(ba)M(3)I(!r,M(bP))return OK;))))
  // _x%y : floor division, one exact integer pass for integer data (amber 2.3)
  I(n==2&&y==FLR,A z=xy;I(_tA(z)&&_n(z)==3&&_A(z)[0]==DVD&&fnode(_A(z)[1],0)&&fnode(_A(z)[2],0),

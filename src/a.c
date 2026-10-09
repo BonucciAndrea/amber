@@ -1097,9 +1097,17 @@ Z NI __attribute__((cold)) A a8t(A x,CO A*a)_(A e_=enl(_R(a[1]));A r_=try(x,e_,a
 AA(a8q,/*10..0*/A x=*a;P(n==3&&(_t(x)==to&&_k(x)==1||_tz(x)&&_t(a[2])>=to),a8t(x,a))
  P(n==4&&_t(x)==ts,A b[4];*b=x;b[1]=enl(a[1]);b[2]=a[2];b[3]=a[3];d8(b,4))   //2.9.0: @[`v;i;f;y] amends the global v, as q and as .[`v;,i;f;y] ('type)
  a8(a,n))   //2.9.0: and @[h;msg;f] with h a handle, as q
+//x[]f:z, every item of a list of numbers x, f one of + - * % & | and z a number or a list of numbers of x's count: f(x;z)
+//at once, which is what f item by item gave (f is atomic). aaw: the result at the width the items'
+//results were gathered to, ints at 32 bits where they all fit, else 64 (floats as they are). Not for x-0n or x-0N (below)
+ZN B aaq(A x,A f,A z)_(UC t=_t(x),u=_t(z);P(!(LH(tB,t,tL)||t==tF)||!_n(x)||!(_t(f)==tv&&0xde>>_v(f)&1),0)
+ P(_v(f)==2&&(u==tf?*_F(z)!=*_F(z):(u==ti||u==tl)&&gl_(z)==NL),0)   //x-0n is x+-0n on a list, so its NaNs have the sign bit, unlike each item's
+ u==ti||u==tl||u==tf||(LH(tB,u,tL)||u==tF)&&_n(z)==_n(x))
+Z A aaw(A r)_(P(!r,0)UC t=_t(r);P(t==tF||t==tI,r)I(t==tE,r=gZ(r);t=_t(r))P(t==tL,CO L*p=_L(r);U n=_n(r);F(n,P(p[i]!=(I)p[i],r))cI(r))LH(tB,t,tH)?cI(r):r)
+ZN A aav(A x,A f,A z/*100*/)_(aaw(USQ(_8(f,A8(x,_R(z)),2))))   //out of line, as aaq: a8 is on every amend
 AA(a8,/*10..0*/A x=*a,y=a[1];
  X(RE(Ab8;*b=gZ(x);AC(b+1,a+1,n-1);a8(b,n))
-   RT_E(P(y==au,mRn(n-2,a+2);Ab8;*b=a[2];b[1]=x;AC(b+2,a+3,n-3);USQ(e8(AP1,b,n-1)))
+   RT_E(P(y==au,P(n==4&&aaq(x,a[2],a[3]),aav(x,a[2],a[3]))mRn(n-2,a+2);Ab8;*b=a[2];b[1]=x;AC(b+2,a+3,n-3);USQ(e8(AP1,b,n-1)))
     Yzc(L i=gl_(y);P(i>=(W)xn,ei(x))x=mut(x);Ab8;*b=ii(x,i);AC(b+1,a+3,n-3);mRn(n-3,b+1);A z=a[2];set(x,i,Nx(USQ(z8(b,n-2)))))
     I(ytZC&&n==4,A z=a[2],u=a[3];P(xtZ&&ztv&&utzZ&&(0xcf&1<<zv),ara(x,y,z,u))P(xtC&&z==av&&utcC,cC(N(ara(x,y,z,u)))))Yt(et(x))mRn(n-1,a+1);nsq++;A r_=f8(AP1,a,n);nsq--;r_?sqz(r_):0)
    Rm(P(y==au,A k=_R(xx);Ab8;*b=x;b[1]=k;AC(b+2,a+2,n-2);x=a8(b,n);mr(k);x)   //:: is every key, as it is when reading d[::;..]: the keys (!d), as d[!d;..]

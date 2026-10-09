@@ -1064,6 +1064,11 @@ te[`amendKeyedPlus;"@[1 2;::;+;ktA]"]
 te[`eachKeyedThree;"{x+y+z}'[ktA;ktA;ktA]"]
 t[`amendDictElided;(@[1 2;::;:;`a`b!1 2];@[1 2;::;+;`a`b!3 4]);(`a`b!1 2;`a`b!4 6)]
 
+/ ---- x[]f:z on a list of numbers, f one of + - * % & |: f(x;z) at once, the same items at the same int width (`ser keeps it) as f item by item ----
+t[`amendAllNumbers;{X:(0101b;-1 2 127 4;1 2 300 4;1 2 100000 4;1 2 3000000000 4;0N 1 2 3;1.5 0n 2 -0w);F:(+;-;*;%;&;|);Z:(1;-1;0N;0n;2.5;2147483647;0 1 2 3;3 0N 1 2;1 0n 2 3.);&~,/{[X;Z;f],/{[f;Z;x]{[f;x;z](`ser@[x;::;f;z])~`ser$[z~*z;f[;z]'x;f'[x;z]]}[f;x]'Z}[f;Z]'X}[X;Z]'F}[];!0]   / bools, every int width, nulls, floats; an atom or a list
+t[`amendAllNumbersSyntax;{a:1 2 300;b:1.5 2 3;c:0101b;a[]+:1;b[]*:b;c[]-:0011b;`ser'(a;b;c)}[];`ser'({x+1}'1 2 300;{x*x}'1.5 2 3;-'[0101b;0011b])]
+t[`amendAllLessNaN;`ser{x[]-:0n;x}1.5 2 3;`ser@{x-0n}'1.5 2 3]   / x-0n on a list gives NaNs with the sign bit; item by item they have none
+
 / ---- each over dicts whose keys cannot be joined is 'domain ----
 / The values line up on the union of the keys; keys of another type are an
 / error, which leaked the union built so far (the loop takes that path many
@@ -1599,7 +1604,7 @@ t[`catOwnKinds;{a:1 2;a,:2.5;b:`x`y;b,:`z;c:1 2;c,:!3;d:(1;"a");d,:`q;e:01b;e,:1
 t[`catOwnGlobal;{gz0::1 2;w:gz0;gz0,:3;gz0,:4;(gz0;w)}[];(1 2 3 4;1 2)]
 t[`catOwnTable;{t:([]a:1 2;b:`x`y);u:t;t,:([]a:,3;b:,`z);t,:([]a:,4;b:,`w);c:1 2;s:([]a:c);s,:([]a:,3);(t;u;c;s)}[];(([]a:1 2 3 4;b:`x`y`z`w);([]a:1 2;b:`x`y);1 2;([]a:1 2 3))]
 
-hexpect[1016]
+hexpect[1019]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

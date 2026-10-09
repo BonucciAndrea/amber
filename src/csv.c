@@ -30,6 +30,11 @@
  * The results are bit-identical to the old reader, which is kept below as
  * ref_cols(): `csv0 checks the two against each other on a fixture battery
  * and on random files, and `csvx "path" does it for any file.
+ *
+ * #94 Q15 (both readers): bytes after a closing quote stay in the field, the
+ * quote with them ("a"b is a"b, as q), where they used to end the row; and a
+ * NUL is an ordinary byte, where it used to end the file (the old reader
+ * read it as a C string).
  */
 #if !defined(wasm)
 /* Portability preamble, same as a.c/arena.c: must precede every system
@@ -72,56 +77,80 @@
 static int csv_quiet;
 #define CSV_MSG(...) do { if (!csv_quiet) fprintf(stderr, __VA_ARGS__); } while (0)
 
+/* [s,s+n), a whole number strtoll has read whole: is it within 64 bits?
+ * strtoll clamps one past them (0W, or 0N below), and errno says so only on
+ * some libcs (wasm's sets none), so count its digits: blanks, a sign and
+ * leading zeros left off, at most 19, and 19 no more than 2^63-1 (2^63 for
+ * a negative one, which is 0N). */
+static int csv_fits(const char *s, size_t n) {
+    const char *e = s + n;
+    while (s < e && (*s == ' ' || (unsigned)(*s - '\t') < 5)) s++;
+    int neg = s < e && *s == '-';
+    if (s < e && (*s == '-' || *s == '+')) s++;
+    while (s < e && *s == '0') s++;
+    size_t d = (size_t)(e - s);
+    return d < 19 || (d == 19 && memcmp(s, neg ? "9223372036854775808" : "9223372036854775807", 19) <= 0);
+}
+
 /* ======================================================================
- * Reference reader:the 2.2.0 implementation, unchanged apart from names
- * and returning its two halves instead of the table. Only the self-test
- * and `csvx call it. It is the oracle csv_cols() must match bit for bit.
+ * Reference reader: the 2.2.0 implementation, unchanged apart from names,
+ * returning its two halves instead of the table, and #94 Q15's two rules:
+ * it reads by length (a field is its start and length, NUL-terminated after
+ * it for strtoll/strtod/sym), and bytes after a closing quote stay in the
+ * field. Only the self-test and `csvx call it. It is the oracle csv_cols()
+ * must match bit for bit.
  * ====================================================================== */
 
-static char *ref_field(char **pp, char *delim) {
+typedef struct { char *s; size_t n; } RefF;
+
+static RefF ref_field(char **pp, char *end, char *delim) {
     char *p = *pp;
     char *out = p;
     if (*p == '"') {
         char *w = p, *r = p + 1;
-        while (*r && !(*r == '"' && r[1] != '"')) {
+        while (r < end && !(*r == '"' && r[1] != '"')) {
             if (*r == '"' && r[1] == '"') { *w++ = '"'; r += 2; }
             else *w++ = *r++;
         }
-        if (*r == '"') r++;
-        *w = 0;
+        if (r < end) r++;
+        if (r < end && *r != ',' && *r != '\n' && *r != '\r') {   /* the quote and what follows it, "" as one quote */
+            *w++ = '"';
+            while (r < end && *r != ',' && *r != '\n' && *r != '\r') { if (*r == '"' && r[1] == '"') r++; *w++ = *r++; }
+        }
         *delim = *r;
+        *w = 0;
         *pp = r;
-        return out;
+        return (RefF){ out, (size_t)(w - out) };
     }
-    while (*p && *p != ',' && *p != '\n' && *p != '\r') p++;
+    while (p < end && *p != ',' && *p != '\n' && *p != '\r') p++;
     *delim = *p;
     *p = 0;
     *pp = p;
-    return out;
+    return (RefF){ out, (size_t)(p - out) };
 }
 
-static char ***ref_grid(char *data, U *nrows_out, U *ncols_out) {
+static RefF **ref_grid(char *data, char *end, U *nrows_out, U *ncols_out) {
     /* 2.2.0 counted only '\n' here, but a lone '\r' ends a row too, so a file
      * with old-Mac line endings wrote past this table (heap corruption, then
      * garbage columns). Counting both bytes is a true upper bound. */
     U maxlines = 1;
-    for (char *p = data; *p; p++) if (*p == '\n' || *p == '\r') maxlines++;
-    char ***rows = (char ***)arena_alloc(maxlines * sizeof(char **));
+    for (char *p = data; p < end; p++) if (*p == '\n' || *p == '\r') maxlines++;
+    RefF **rows = (RefF **)arena_alloc(maxlines * sizeof(RefF *));
     U nrows = 0;
     char *p = data;
-    if ((unsigned char)p[0] == 0xEF && (unsigned char)p[1] == 0xBB && (unsigned char)p[2] == 0xBF) p += 3;
+    if (end - p >= 3 && (unsigned char)p[0] == 0xEF && (unsigned char)p[1] == 0xBB && (unsigned char)p[2] == 0xBF) p += 3;
     U ncols = 0;
-    while (*p) {
+    while (p < end) {
         if (*p == '\r' && p[1] == '\n') { p += 2; continue; }
         if (*p == '\n') { p++; continue; }
         U cap = ncols ? ncols : 32, cnt = 0;
-        char **fields = (char **)arena_alloc(cap * sizeof(char *));
+        RefF *fields = (RefF *)arena_alloc(cap * sizeof(RefF));
         char delim = 0;
         for (;;) {
-            char *f = ref_field(&p, &delim);
+            RefF f = ref_field(&p, end, &delim);
             if (cnt >= cap) {
-                char **grown = (char **)arena_alloc(cap * 2 * sizeof(char *));
-                memcpy(grown, fields, cnt * sizeof(char *));
+                RefF *grown = (RefF *)arena_alloc(cap * 2 * sizeof(RefF));
+                memcpy(grown, fields, cnt * sizeof(RefF));
                 fields = grown; cap *= 2;
             }
             fields[cnt++] = f;
@@ -132,9 +161,9 @@ static char ***ref_grid(char *data, U *nrows_out, U *ncols_out) {
         else if (delim == '\n') p++;
         if (!ncols) { ncols = cnt; }
         if (cnt < ncols) {
-            char **padded = (char **)arena_alloc(ncols * sizeof(char *));
-            memcpy(padded, fields, cnt * sizeof(char *));
-            for (U i = cnt; i < ncols; i++) padded[i] = (char *)"";
+            RefF *padded = (RefF *)arena_alloc(ncols * sizeof(RefF));
+            memcpy(padded, fields, cnt * sizeof(RefF));
+            for (U i = cnt; i < ncols; i++) padded[i] = (RefF){ (char *)"", 0 };
             fields = padded;
         }
         rows[nrows++] = fields;
@@ -146,23 +175,25 @@ static char ***ref_grid(char *data, U *nrows_out, U *ncols_out) {
 
 enum { COL_LONG, COL_FLOAT, COL_SYM };
 
-static int ref_is_long(const char *s, long long *out) {
-    if (!*s) return 1;
+/* the whole field must be read: a NUL inside it stops strtoll short of its end. A whole number past 64 bits is no
+ * Long (strtoll gave 0W or 0N), so its column reads as Float */
+static int ref_is_long(RefF f, long long *out) {
+    if (!f.n) return 1;
     char *end;
-    long long v = strtoll(s, &end, 10);
-    if (end == s || *end) return 0;
+    long long v = strtoll(f.s, &end, 10);
+    if (end == f.s || end != f.s + f.n || !csv_fits(f.s, f.n)) return 0;
     *out = v;
     return 1;
 }
-static int ref_is_float(const char *s, double *out) {
-    if (!*s) return 1;
+static int ref_is_float(RefF f, double *out) {
+    if (!f.n) return 1;
     char *end;
-    double v = strtod(s, &end);
-    if (end == s || *end) return 0;
+    double v = strtod(f.s, &end);
+    if (end == f.s || end != f.s + f.n) return 0;
     *out = v;
     return 1;
 }
-static int ref_classify(char **rows_col, U nrows) {
+static int ref_classify(RefF *rows_col, U nrows) {
     int could_long = 1, could_float = 1;
     for (U r = 0; r < nrows; r++) {
         long long li; double fv;
@@ -188,20 +219,20 @@ static int ref_cols(S path, A *names_out, A *cols_out) {
     fclose(fp);
     data[got] = 0;
     U nrows_total, ncols;
-    char ***rows = ref_grid(data, &nrows_total, &ncols);
+    RefF **rows = ref_grid(data, data + got, &nrows_total, &ncols);
     if (nrows_total == 0 || ncols == 0) {
         arena_reset();
         CSV_MSG("csv: '%s' is empty\n", path);
         return 0;
     }
-    char **header = rows[0];
+    RefF *header = rows[0];
     U nrows = nrows_total - 1;
     A names = aS(ncols);
     I *namev = (I *)_V(names);
-    for (U c = 0; c < ncols; c++) namev[c] = (I)sym(header[c]);
+    for (U c = 0; c < ncols; c++) namev[c] = (I)sym(header[c].s);
     A cols = aA(ncols);
     A *colv = _A(cols);
-    char **coldata = (char **)arena_alloc((nrows ? nrows : 1) * sizeof(char *));
+    RefF *coldata = (RefF *)arena_alloc((nrows ? nrows : 1) * sizeof(RefF));
     for (U c = 0; c < ncols; c++) {
         for (U r = 0; r < nrows; r++) coldata[r] = rows[r + 1][c];
         int kind = nrows ? ref_classify(coldata, nrows) : COL_SYM;
@@ -210,17 +241,17 @@ static int ref_cols(S path, A *names_out, A *cols_out) {
             vec = aL(nrows); L *v = _V(vec);
             for (U r = 0; r < nrows; r++) {
                 long long li;
-                v[r] = (*coldata[r] && ref_is_long(coldata[r], &li)) ? (L)li : NL;
+                v[r] = (coldata[r].n && ref_is_long(coldata[r], &li)) ? (L)li : NL;
             }
         } else if (kind == COL_FLOAT) {
             vec = aF(nrows); F *v = _V(vec);
             for (U r = 0; r < nrows; r++) {
                 double fv;
-                v[r] = (*coldata[r] && ref_is_float(coldata[r], &fv)) ? (F)fv : NF;
+                v[r] = (coldata[r].n && ref_is_float(coldata[r], &fv)) ? (F)fv : NF;
             }
         } else {
             vec = aS(nrows); I *v = (I *)_V(vec);
-            for (U r = 0; r < nrows; r++) v[r] = (I)sym(coldata[r]);
+            for (U r = 0; r < nrows; r++) v[r] = (I)sym(coldata[r].s);
         }
         colv[c] = vec;
     }
@@ -234,27 +265,26 @@ static int ref_cols(S path, A *names_out, A *cols_out) {
  *
  * Lexing rules, restated from the reference so the two can be compared
  * line by line. Positions are bounded by an explicit end instead of a NUL
- * terminator; the reference stops at the first NUL byte, so the effective
- * length here is the offset of the first NUL (or the file size).
+ * terminator, and a NUL is an ordinary byte (#94 Q15).
  *   row start  skip "\n" and "\r\n" (blank lines); a lone "\r" there is a
  *              row holding one empty field
  *   field      '"' opens a quoted field that runs to a '"' not followed by
  *              another '"'; "" inside is a literal quote. Anything else runs
- *              to ',', '\n', '\r' or the end
- *   after it   ',' starts the next field; "\r\n", "\r" or "\n" ends the row;
- *              any other byte (possible only after a closing quote) ends the
- *              row too and is where the next row starts
+ *              to ',', '\n', '\r' or the end. Bytes after the closing quote
+ *              (#94 Q15) stay in the field, the quote with them, up to ',',
+ *              '\n', '\r' or the end; "" there is one quote too
+ *   after it   ',' starts the next field; "\r\n", "\r" or "\n" ends the row
  * ====================================================================== */
 
 enum { CM_LONG, CM_FLOAT, CM_SYM };           /* ordered: promotion only goes up */
 #define NLB ((uint64_t)1 << 63)               /* bits of NL */
 #define NFB ((uint64_t)0x7ff8000000000000ull) /* bits of NF (NFL, a.h) */
 #define CSV_DROP ((size_t)16 << 20)           /* release mapped input every 16 MB */
-#define CSV_NONE ((size_t)-1)                /* no NUL / no quote seen (the wasm libc has no SIZE_MAX) */
+#define CSV_NONE ((size_t)-1)                /* no quote seen (the wasm libc has no SIZE_MAX) */
 
 typedef struct {
     const char *b;      /* file bytes */
-    size_t len;         /* effective length (first NUL or file size) */
+    size_t len;         /* bytes read (the file size) */
     size_t fsz;         /* mapped/read size */
     int mapped;
     size_t page;
@@ -262,7 +292,7 @@ typedef struct {
     int nk;             /* chunks */
     size_t cb[PAR_MAX_THREADS + 1];   /* chunk byte bounds */
     size_t cr[PAR_MAX_THREADS + 1];   /* first row of each chunk; cr[nk] = rows */
-    size_t nul[PAR_MAX_THREADS], quo[PAR_MAX_THREADS], cnt[PAR_MAX_THREADS];
+    size_t quo[PAR_MAX_THREADS], cnt[PAR_MAX_THREADS];
     unsigned char *lm;  /* nk*nc: each chunk's mode for each column */
     unsigned char *uns; /* nk*nc: a Long cell there is not (double)-convertible */
     uint64_t **col;     /* nc column payloads, 8 bytes a row */
@@ -298,10 +328,23 @@ static const char *skip_blank(const char *p, const char *e) {
     }
 }
 
+/* r follows a closing quote, and is not a delimiter: the bytes up to the
+ * next one stay in the field, the quote with them ("a"b is a"b, as q), so
+ * the content runs to there; field_str collapses "" pairs there too. */
+__attribute__((noinline, cold))   /* rare: kept out of the lexer that phase 1 inlines */
+static const char *lex_tail(const char *r, const char *e, const char **t, int *esc) {
+    for (; r < e && *r != ',' && *r != '\n' && *r != '\r'; r++)
+        if (*r == '"' && r + 1 < e && r[1] == '"') *esc = 1;
+    *t = r;
+    return r;
+}
+
 /* Lexes the field starting at p. [*s,*t) is its content with the quotes
  * stripped; *esc says it holds "" pairs still to be collapsed. Returns the
- * position of the byte that ended it (== e at the end). */
-static const char *lex_field(const char *p, const char *e, const char **s, const char **t, int *esc) {
+ * position of the byte that ended it (== e at the end). Inlined at every
+ * call, as before the test after a closing quote: with it, gcc called it out
+ * of line, a call per field in phase 1 and in the symbols' pass. */
+static inline __attribute__((always_inline)) const char *lex_field(const char *p, const char *e, const char **s, const char **t, int *esc) {
     if (p < e && *p == '"') {
         const char *r = p + 1;
         *esc = 0; *s = r;
@@ -314,6 +357,7 @@ static const char *lex_field(const char *p, const char *e, const char **s, const
         }
         *t = r;
         if (r < e) r++;  /* the closing quote */
+        if (r < e && *r != ',' && *r != '\n' && *r != '\r') r = lex_tail(r, e, t, esc);
         return r;
     }
     const char *q = p;
@@ -380,6 +424,27 @@ static const char *fast_long(const char *p, const char *e, L *v, int *negz) {
     return p;
 }
 
+/* [s,t) as [+-]?0*[0-9]{1,19}, at most 19 digits after its leading zeros,
+ * within 64 bits (2^63-1, or 2^63 when negative): the Longs fast_long leaves
+ * to strtoll, 19 digits (nanosecond timestamps, 64-bit ids) or zero-padded.
+ * Out of line, so the short numbers' path stays as it was. *uns for the two
+ * (double) would not turn into strtod's Float: -2^63, 0N's bits, and a
+ * negative zero (strtod's -0.0). */
+__attribute__((noinline))
+static int long19(const char *s, const char *t, L *v, unsigned char *uns) {
+    int neg = s < t && *s == '-';
+    if (s < t && (*s == '-' || *s == '+')) s++;
+    const char *d = s;
+    while (s < t && *s == '0') s++;
+    if (t == d || t - s > 19) return 0;
+    uint64_t w = 0;
+    for (; s < t; s++) { if ((unsigned)(*s - '0') > 9) return 0; w = w * 10 + (unsigned)(*s - '0'); }
+    if (w > ((uint64_t)1 << 63) - 1 + (uint64_t)neg) return 0;
+    *v = neg ? (L)(0 - w) : (L)w;
+    if (neg && (!w || w >> 63)) *uns = 1;
+    return 1;
+}
+
 /* [+-]?digits[.digits][(e|E)[+-]?digits] at p, at most 19 significant
  * digits and a decimal exponent the table covers. Returns the byte after it
  * and the correctly rounded value, or 0 when the string is outside that
@@ -435,15 +500,16 @@ static const char *fast_float(const char *p, const char *e, F *v) {
 }
 
 /* strtoll/strtod over [s,s+n) exactly as the reference calls them: the whole
- * string must be consumed. */
+ * string must be consumed (a NUL in it stops them short), and a Long must be
+ * within 64 bits (csv_fits). */
 static int libc_num(const char *s, size_t n, int fl, L *lv, F *fv) {
     char sb[128];
     char *buf = n < sizeof sb ? sb : (char *)malloc(n + 1);
     if (!buf) return 0;
     memcpy(buf, s, n); buf[n] = 0;
     char *end; int ok;
-    if (fl) { double d = strtod(buf, &end); ok = end != buf && !*end; if (ok) *fv = d; }
-    else { long long d = strtoll(buf, &end, 10); ok = end != buf && !*end; if (ok) *lv = (L)d; }
+    if (fl) { double d = strtod(buf, &end); ok = end != buf && end == buf + n; if (ok) *fv = d; }
+    else { long long d = strtoll(buf, &end, 10); ok = end != buf && end == buf + n && csv_fits(buf, n); if (ok) *lv = (L)d; }
     if (buf != sb) free(buf);
     return ok;
 }
@@ -453,6 +519,7 @@ static int libc_num(const char *s, size_t n, int fl, L *lv, F *fv) {
 static int cell_long(const char *s, const char *t, L *v, unsigned char *uns) {
     int nz;
     if (fast_long(s, t, v, &nz) == t) { if (nz) *uns = 1; return 1; }
+    if (t - s >= 19 && long19(s, t, v, uns)) return 1;
     if (libc_num(s, (size_t)(t - s), 0, v, 0)) { *uns = 1; return 1; }
     return 0;
 }
@@ -1266,25 +1333,25 @@ F csv_float(const char *s, const char *t) {
 
 static inline uint64_t null_bits(int m) { return m == CM_LONG ? NLB : m == CM_FLOAT ? NFB : 0; }
 
-/* ---- phase 0: find NULs and quotes, count rows ------------------------- */
+/* ---- phase 0: find quotes, count rows ---------------------------------- */
 
 /* Counts chunk k's rows assuming it holds no quote (true unless quo[] says
- * otherwise, and then the count is discarded). Stops at a NUL. */
+ * otherwise, and then the count is discarded): so it stops at the first
+ * quote, as rechunk_quoted counts the whole file again with the lexer. */
 static void phase0(void *ctx, int k) {
     Csv *cv = (Csv *)ctx;
     const char *b = cv->b, *p = b + cv->cb[k], *ce = b + cv->cb[k + 1], *fe = b + cv->len;
-    size_t rows = 0, nul = CSV_NONE, quo = CSV_NONE, dropped = cv->cb[k];
+    size_t rows = 0, quo = CSV_NONE, dropped = cv->cb[k];
     while (p < ce) {
         char ch = *p;
         if (ch == '\n') { p++; continue; }
         if (ch == '\r' && p + 1 < fe && p[1] == '\n') { p += 2; continue; }
-        if (!ch) { nul = (size_t)(p - b); break; }
         rows++;
         for (; p < ce; p++) {
             ch = *p;
+            if ((unsigned char)ch > '"') continue;   /* most bytes: one compare */
             if (ch == '\n' || ch == '\r') break;
-            if (ch == '"') { if (quo == CSV_NONE) quo = (size_t)(p - b); }
-            else if (!ch) { nul = (size_t)(p - b); goto done; }
+            if (ch == '"') { quo = (size_t)(p - b); goto done; }
         }
         if (p < ce) {
             if (*p == '\r') { p++; if (p < fe && *p == '\n') p++; }
@@ -1292,9 +1359,9 @@ static void phase0(void *ctx, int k) {
         }
         if ((size_t)(p - b) - dropped >= CSV_DROP) { drop_pages(cv, dropped, (size_t)(p - b)); dropped = (size_t)(p - b); }
     }
-done:
     drop_pages(cv, dropped, cv->cb[k + 1]);
-    cv->nul[k] = nul; cv->quo[k] = quo; cv->cnt[k] = rows;
+done:
+    cv->quo[k] = quo; cv->cnt[k] = rows;
 }
 
 /* Files with quotes past the header: one sequential pass with the real lexer
@@ -1505,7 +1572,6 @@ static int csv_cols(S path, A *names_out, A *cols_out) {
     char *sbuf = 0; size_t scap = 0;
     int ok = 0;
 
-restart:;
     const char *e = b + cv.len, *p = b;
     if (cv.len >= 3 && (unsigned char)b[0] == 0xEF && (unsigned char)b[1] == 0xBB && (unsigned char)b[2] == 0xBF) p += 3;
     p = skip_blank(p, e);
@@ -1530,9 +1596,6 @@ restart:;
     }
     size_t ds = (size_t)(p - b);
     cv.nc = nc;
-    /* phase 0 below looks for NULs in the data only; the header is ours */
-    const char *hn = ds ? (const char *)memchr(b, 0, ds) : 0;
-    if (hn) { cv.len = (size_t)(hn - b); goto restart; }
 
     /* chunks: one per thread, starting just after a '\n' */
     size_t span = cv.len - ds;
@@ -1552,16 +1615,6 @@ restart:;
 
     par_run(nk, phase0, &cv);
 
-    /* the reference stops at the first NUL byte */
-    size_t nul = CSV_NONE;
-    int kn = 0;
-    for (; kn < nk; kn++) if (cv.nul[kn] != CSV_NONE) { nul = cv.nul[kn]; break; }
-    if (nul != CSV_NONE) {
-        cv.len = nul;
-        if (nul < ds) goto restart;  /* inside the header: start over on the shorter file */
-        for (int k = 0; k <= nk; k++) if (cv.cb[k] > nul) cv.cb[k] = nul;
-        for (int k = kn + 1; k < nk; k++) cv.cnt[k] = 0;
-    }
     int quoted = 0;
     for (int k = 0; k < nk; k++) if (cv.quo[k] < cv.len) quoted = 1;
     if (quoted) rechunk_quoted(&cv, ds);
@@ -1727,7 +1780,7 @@ static CO char *const st_odd[] = { "", "-", "+", ".", "-.", "e5", "1e", "1e+", "
     "99999999999999999999", "-99999999999999999999", "9223372036854775807", "-9223372036854775808",
     "9223372036854775808", "0x1p3", "0X10", "nan", "NaN", "inf", "-Infinity", " 5", "5 ", "\t7", "1,5", "1_0",
     "00000000000000000000000001", "0.000000000000000000000000001", "1e22", "1e23", "9007199254740993e22",
-    "12345678901234567890e-5", "0.1", "0.3", "2.2250738585072011e-308", "2.2250738585072014e-308", "+.5", "5." };
+    "12345678901234567890e-5", "-0000000000000000000", "0.1", "0.3", "2.2250738585072011e-308", "2.2250738585072014e-308", "+.5", "5." };
 #define ST_NODD (sizeof st_odd / sizeof *st_odd)
 
 /* A random numeric-looking string, biased to the shapes that matter: the
@@ -1740,7 +1793,7 @@ static size_t st_number(char *o) {
     size_t n = 0;
     U sg = st_below(4);
     if (sg == 1) o[n++] = '-'; else if (sg == 2) o[n++] = '+';
-    U lead = st_below(5) == 0 ? st_below(4) : 0;
+    U lead = st_below(5) == 0 ? (st_below(4) ? st_below(4) : st_below(24)) : 0;
     for (U i = 0; i < lead; i++) o[n++] = '0';
     U di = st_below(5) == 0 ? st_below(24) : st_below(10);
     for (U i = 0; i < di; i++) o[n++] = (char)('0' + st_below(10));
@@ -1772,7 +1825,7 @@ static int st_numbers(long count) {
         s[n] = 0;
         if (!n) continue;
         char *end;
-        long long rl = strtoll(s, &end, 10); int okl = end != s && !*end;
+        long long rl = strtoll(s, &end, 10); int okl = end != s && !*end && csv_fits(s, n);
         double rd = strtod(s, &end); int okd = end != s && !*end;
         L lv = 0; F fv = 0; unsigned char uns = 0;
         int ml = cell_long(s, s + n, &lv, &uns), mf = cell_float(s, s + n, &fv);
@@ -1800,7 +1853,10 @@ static CO StFix st_fix[] = {
     FX("a,b\n1,2\r3,4\r\r5,6\n"),         /* lone CRs */
     FX("a\n\r\r\n1\n"),
     FX("q,n\n\"x,y\",1\n\"he said \"\"hi\"\"\",2\n\"multi\nline\",3\n\"\",4\n"),
-    FX("q\n\"ab\"cd,ef\n1\n"),            /* bytes after a closing quote start a new row */
+    FX("q\n\"ab\"cd,ef\n1\n"),            /* bytes after a closing quote stay in the field: ab"cd */
+    FX("x,y\n\"a\"b,c\n1,2\n"),
+    FX("x,y\n\"1\"2,3\n4,\"5\" \n6,\"7\"\"\"8\"\"9\r\n\"a\"\"b\"c\"\"d,\"e\"f"),   /* "" after the quote is one quote */
+    FX("x,y\n\"a\"\"\"b\n\"\",\"\"\"\n"),
     FX("q,r\n\"unterminated,1\n2,3\n"),
     FX("\"h1\",\"h,2\"\n1,2\n"),          /* quoted header */
     FX("\"multi\nline header\",b\n1,2\n"),
@@ -1809,6 +1865,14 @@ static CO StFix st_fix[] = {
     FX("f\n1e-320\n4.9e-324\n1e308\n1e309\n-1e309\n"),
     FX("i\n9007199254740993\n9223372036854775807\n"),
     FX("i\n99999999999999999999\n-99999999999999999999\n"),
+    FX("i\n9223372036854775808\n1\n"),       /* past 64 bits: Float */
+    FX("i\n1\n-9223372036854775809\n2\n"),
+    FX("i\n12345678901234567890\nx\n"),
+    FX("i\n1234567890123456789\n-9223372036854775808\n0009223372036854775807\n"),   /* 19 digits; -2^63 (0N) */
+    FX("i\n0000000000000000000123\n-0000000000000000000000\n-0009223372036854775808\n1.5\n"),   /* zero-padded */
+    FX("i\n-9223372036854775808\n1.5\n"),
+    FX("i\n-0000000000000000000\n1.5\n"),     /* 19 digits of -0: strtod's -0.0 */
+    FX("i\n9223372036854775807\n-9223372036854775807\n-0\n"),
     FX("i,f\n+5,+1.5\n-7,-.5\n"),
     FX("a,b\n,\n,\n"),                    /* all-empty columns */
     FX("m\n1\n2\n3.5\n4\n"),              /* int then float */
@@ -1817,9 +1881,16 @@ static CO StFix st_fix[] = {
     FX("m\n 5\n6 \n"),                    /* whitespace: strtoll takes the leading, not the trailing */
     FX("m\n\" 7\"\n\"\n8\"\n"),
     FX("a,b\n1,2\n3,\"4\"\"\"\n"),
-    FX("a,b\n1,2\n3\x00" "4,5\n6,7\n"),   /* NUL: the reference stops there */
+    FX("a,b\n1,2\n3\x00" "4,5\n6,7\n"),   /* NUL: an ordinary byte */
     FX("a\x00" "b,c\n1,2\n"),
     FX("\x00" "a,b\n"),
+    FX("x,y\n1,2\n3,\x00" "4\n5,6\n"),
+    FX("x,y\n1,2\n\x00\n5,\"6\x00\"\n7,8\x00"),
+    FX("s\nab\x00" "c\nab\nab\x00" "d\n"),
+    FX("a,b\n1,2\n3,4\x00\x00\x00"),       /* NULs at the end: data too */
+    FX("a,b\n1,2\n3,4\n\x00\x00\r\n\x00\n"),
+    FX("a,b\n1,2\n\x00\n3,4\n"),          /* a NUL line inside: data */
+    FX("a\n1\n\r"),
     FX("s\nAAPL\nMSFT\n\nAAPL\n,\n"),
     FX("x,x\n1,2\n"),                     /* duplicate names */
     FX("a,b\n1,2,\"3,\n4\"\n5,6\n"),      /* quoted newline in a clipped field */

@@ -1503,6 +1503,7 @@ t[`cdBare;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"\\cd\n");"\"",(-1_`x(("/bin
 t[`symGroupWidth;{i:4097#0 1 2;a:`$"grpwidthFirst";h:`$"grpwidthPad",/:$!5000;b:`$"grpwidthSecond";c:`$"grpwidthThird";d:`$"grpwidthD";e:`$"grpwidthE";f:`$"grpwidthF";s:(a;b;c);u:(d;e;f);((-8!.=s@i)~-8!.=u@i;(-8!s?s@i)~-8!u?u@i;-8!s?a,`grpwidthNone)}[];(1b;1b;-8!0 0N)]
 
 
+hexpect[942]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

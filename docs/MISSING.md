@@ -206,7 +206,10 @@ Amber text via `` `k``, inverted by `eval`) and `protect` (like `.Q.trp`). Amber
   out of scope and raise `'type`. Verified by `examples/peach_verify.k` (60 cases).
 - **Still missing:** `-18!` (compress), `-11!`
   (replay log), the full `$` cast matrix (guid, byte), typed file reader `("SIF";",")0:file`,
-  `vs`/`sv` for base-N and temporal, `md5`, `.Q.btoa` (base64).
+  `vs`/`sv` for base-N and temporal, `md5`, `.Q.btoa` (base64), and the CSV writer `","0:t`, a
+  table's lines of delimited text (q: `` ","0:([]a:1 2;s:`x`y) `` is `("a,s";"1,x";"2,y")`, a cell
+  holding the delimiter in quotes, nulls empty, floats at `\P`'s precision, dates as `2026-01-01`;
+  Amber gives `'type`). `` `csvr `` reads CSV, and `x 0: y` writes lines of text.
 - **Differs from q:** `$` of a null or a float gives text that reads back as the same value, which
   the `` `k `` round trip relies on: `$0N` is `"0N"` and `$0n` is `"0n"` (q's `string` gives `""`),
   and `$1%3` is `"0.3333333333333333"` and `$1e20` is `"1e20"` (q writes the display precision,

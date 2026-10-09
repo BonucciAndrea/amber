@@ -88,6 +88,12 @@ V free(V*);
 I posix_memalign(V**,N,N);
 Z V*amal(N b)_(V*p=0;P(posix_memalign(&p,64,b),(V*)0)p)
 #define RD(w,p,i) ((w)==0?(L)((CO G*)(p))[i]:(w)==1?(L)((CO H*)(p))[i]:(w)==2?(L)((CO I*)(p))[i]:((CO L*)(p))[i])
+// The key range of find's, distinct's and in's integer keys (n>0): one loop per width, so no width is tested per item
+// and the compiler vectorises the min/max (RD in the loop tested the width on every item, and the pass was most of
+// ?x when the keys fill a small range)
+#define RNGP(T) {CO T*RES p=(CO T*)a;T l=p[0],h=l;for(U i=1;i<n;i++){T v=p[i];l=v<l?v:l;h=v>h?v:h;}*lo=l;*hi=h;}
+ZN V rngW(CO V*a,U n,U w,L*lo,L*hi){S4(w,RNGP(G),RNGP(H),RNGP(I),RNGP(L))}
+#undef RNGP
 // amber 2.3: the probe loops are specialised per (probe width, result width),
 // so no width is re-tested per element, and the result is written at the
 // narrowest width that holds an index into x -- 2 bytes for a 1000-key table,
@@ -121,8 +127,7 @@ Z A fndL(A x,A y,B srt)_(
  U wx=xw-3,wy=yw-3,m=xn,n=yn;
  P(wx>3||wy>3||!m||!n,0)
  CO V*a=xV;CO V*b=yV;
- L lo=RD(wx,a,0),hi=lo;
- F(m,L v=RD(wx,a,i);I(v<lo,lo=v)I(v>hi,hi=v))
+ L lo,hi;rngW(a,m,wx,&lo,&hi);
  P(hi<lo,0)
  W rg=(W)hi-(W)lo+1,nn=(W)n,mm=(W)m,scan=nn*mm;
  // rg==0: the keys span the whole 64-bit line and hi-lo+1 wrapped (amber 2.3: this
@@ -174,7 +179,6 @@ Z A fndL(A x,A y,B srt)_(
 //
 // Returns 0 -- "not handled, use the existing path" -- for any non-integer
 // type, a degenerate length, or an allocation failure. Never dies.
-#define UNQW(z,i,v,w) S4(w,((G*)(z))[i]=(G)(v),((H*)(z))[i]=(H)(v),((I*)(z))[i]=(I)(v),((L*)(z))[i]=(L)(v))
 
 // amber 2.3: SATURATION. Once as many distinct values have been seen as the
 // range [lo,hi] can hold, no later element can be new, and the scan stops -- a
@@ -203,35 +207,41 @@ Z A unqLUT(A x,L lo,W rg,U wx){
 // sized to 2n slots up front -- 256 MB for a 10M-element input, random-access
 // bound even when the input held a few thousand distinct values).
 #define BMDOM ((W)1<<26)
-Z A unqBM(A x,L lo,W rg,U wx){
+#define UNQBP(T) {CO T*RES p=(CO T*)a;T*RES q=(T*)r;for(U i=0;i<n;i++){T v=p[i];W s=(W)(L)v-(W)lo;W b=1ull<<(s&63);W*w=bm+(s>>6); \
+  if(!(*w&b)){*w|=b;q[m++]=v;if((W)m==rg)break;}}}   // saturated: see unqLUT
+ZN A unqBM(A x,L lo,W rg,U wx){
  U n=xn;CO V*a=xV;N nb=(N)((rg+63)>>6);
  W*bm=amal(nb*SZ(W));
  if(!bm)return 0;
  MS(bm,0,nb*SZ(W));
  A z=an(n,xt);V*r=zV;U m=0;
- for(U i=0;i<n;i++){L v=RD(wx,a,i);W s=(W)v-(W)lo;W b=1ull<<(s&63);W*w=bm+(s>>6);
-  if(!(*w&b)){*w|=b;UNQW(r,m,v,wx);m++;if((W)m==rg)break;}}   // saturated: see unqLUT
+ S4(wx,UNQBP(G),UNQBP(H),UNQBP(I),UNQBP(L))   // one loop per width, as unqLUT's
  free(bm);
  return AN(m,z);}
-Z A unqHASH(A x,U wx){
+#undef UNQBP
+// unqHASH's growth: a table twice the size, every stored key rehashed; the old one freed (0 when out of memory)
+ZN W*unqgrow(W*tab,W*cap,U*lg){
+ W ncap=*cap<<1;U nlg=*lg+1;W*nt=amal((N)ncap*SZ(W));if(!nt){free(tab);return 0;}
+ MS(nt,0,(N)ncap*SZ(W));
+ for(W s=0;s<*cap;s++)if(tab[s]){W kk=tab[s],j=(kk*GOLD)>>(64-nlg);while(nt[j])j=(j+1)&(ncap-1);nt[j]=kk;}
+ free(tab);*cap=ncap;*lg=nlg;return nt;}
+#define UNQHP(T) {CO T*RES p=(CO T*)a;T*RES q=(T*)r;for(U i=0;i<n;i++){T v=p[i];W k=(W)(L)v+1; \
+  if(!k){if(!has0){has0=1;q[m++]=v;}continue;} \
+  if((W)used*2>=cap){tab=unqgrow(tab,&cap,&lg);if(!tab){mr(z);return 0;}}   /* grow: rehash every stored key */ \
+  W j=(k*GOLD)>>(64-lg),msk=cap-1; \
+  while(tab[j]&&tab[j]!=k)j=(j+1)&msk; \
+  if(!tab[j]){tab[j]=k;used++;q[m++]=v;}}}
+ZN A unqHASH(A x,U wx){
  U n=xn;CO V*a=xV;
  W cap=1024;U lg=10;
  W*tab=amal((N)cap*SZ(W));
  if(!tab)return 0;
  MS(tab,0,(N)cap*SZ(W));
  A z=an(n,xt);V*r=zV;U m=0,used=0;B has0=0;
- for(U i=0;i<n;i++){L v=RD(wx,a,i);W k=(W)v+1;
-  if(!k){if(!has0){has0=1;UNQW(r,m,v,wx);m++;}continue;}
-  if((W)used*2>=cap){                         // grow: rehash every stored key
-   W ncap=cap<<1;U nlg=lg+1;W*nt=amal((N)ncap*SZ(W));if(!nt){free(tab);mr(z);return 0;}
-   MS(nt,0,(N)ncap*SZ(W));
-   for(W s=0;s<cap;s++)if(tab[s]){W kk=tab[s],j=(kk*GOLD)>>(64-nlg);while(nt[j])j=(j+1)&(ncap-1);nt[j]=kk;}
-   free(tab);tab=nt;cap=ncap;lg=nlg;}
-  W j=(k*GOLD)>>(64-lg),msk=cap-1;
-  while(tab[j]&&tab[j]!=k)j=(j+1)&msk;
-  if(!tab[j]){tab[j]=k;used++;UNQW(r,m,v,wx);m++;}}
+ S4(wx,UNQHP(G),UNQHP(H),UNQHP(I),UNQHP(L))   // one loop per width, as unqLUT's
  free(tab);
  return AN(m,z);}
+#undef UNQHP
 
 // amber: the same value-based idea as v.c's cntrangeF, applied to DISTINCT.
 // unqL below rejected every float outright (`if(!(xtH||xtI||xtL))return 0;`), so
@@ -331,8 +341,7 @@ A1(membC,P(_t(x)-tA||_n(x)-2,et(x))A v=_A(x)[0],y=_A(x)[1];
  P(_tP(y)||!(yt_==tH||yt_==tI||yt_==tL||yt_==tS)||!(va||vt==tH||vt==tI||vt==tL||vt==tS)||(vt==tS)!=(yt_==tS),x(emp(tA)))   //symbols against numbers: declined (an interned id is not a number: in[``;0] was 11b)
  U wy=_w(y)-3,m=_n(y),n=va?1:_n(v),wv=va?3:_w(v)-3;CO V*b=_V(y);L sv=va?gl_(v):0;CO V*a=va?&sv:_V(v);
  I(!m,I(va,return x(ai(0)))A z=an(n,tG);MS(_V(z),0,n);return x(z);)
- L lo=RD(wy,b,0),hi=lo;
- F(m,L t=RD(wy,b,i);I(t<lo,lo=t)I(t>hi,hi=t))
+ L lo,hi;rngW(b,m,wy,&lo,&hi);
  W rg=(W)hi-(W)lo+1;
  A z=an(n,tG);G*RES r=_V(z);
  I(rg&&rg<=BMDOM,N nb=(N)((rg+63)>>6);W*bm=amal(nb*SZ(W));P(!bm,mr(z);x(emp(tA)))MS(bm,0,nb*SZ(W));
@@ -419,8 +428,7 @@ A unqL(A x){
  if(n<2||wx>3)return 0;
  I(n>=PDQ_MIN,A z_=unqP(x);I(z_,return z_;))   //2.5 (exp): parallel, the same answer; 0 when it declines
  CO V*a=xV;
- L lo=RD(wx,a,0),hi=lo;
- for(U i=1;i<n;i++){L v=RD(wx,a,i);if(v<lo)lo=v;if(v>hi)hi=v;}
+ L lo,hi;rngW(a,n,wx,&lo,&hi);
  W rg=(W)hi-(W)lo+1;
  // rg==0 means the span wrapped the whole 64-bit line (lo=LLONG_MIN,
  // hi=LLONG_MAX); treat that as "sparse", never as a 0-slot table.

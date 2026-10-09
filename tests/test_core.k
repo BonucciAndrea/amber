@@ -416,6 +416,15 @@ t[`distinctNanLength;{#?3000#x,(-x),1.0}0n;2]
 t[`findZeroStill;1.0 -0.0?0.0;1]
 t[`paNansOneValue;*"\n"\.[{`at(`pa x)};,0n 1.0 -0n;{x}];"p-fail"]   / `pa: every NaN is one value, in two runs here
 
+/ ---- distinct, find and in take the keys' range at every width: the extremes, -1 and a range that wraps ----
+/ ?x is checked against its first occurrences (x?x), find and in against the probes looked up one at a time
+t[`distinctWrap;?0N 9223372036854775807 -9223372036854775807 0 9223372036854775807 0N;0N 9223372036854775807 -9223372036854775807 0]
+t[`distinctShortEdges;{(?x)~x@&(x?x)=!#x}(-32768+7*!1000),32767 -32768;1b]
+t[`distinctIntEdges;{(?x)~x@&(x?x)=!#x}(2147483647-!1000),-2147483648 2147483647;1b]
+t[`distinctSparseMinus1;{(?x)~x@&(x?x)=!#x}[-1,(1000#7 3 9 -1)*1000000000000];1b]
+t[`findRangeEdges;{(x?y)~{x?y}[x]'y}[2147483647-!2000;2147483647 2147481648 2147481647 0 -1];1b]
+t[`inRangeEdges;{(`memb(y;x))~{|/x=y}[x]'y}[|-32768+!1000;-32768 -32767 -31769 -31768 0 -1 300];1b]
+
 / ---- distinct of a generic list keeps the first of matching items ----
 / (compared as text, since ~ takes -0.0 for 0.0)
 t[`distinctFirstPos;`k@?(0;0.0;-1*0.0);"(0;0.0)"]
@@ -1599,7 +1608,7 @@ t[`catOwnKinds;{a:1 2;a,:2.5;b:`x`y;b,:`z;c:1 2;c,:!3;d:(1;"a");d,:`q;e:01b;e,:1
 t[`catOwnGlobal;{gz0::1 2;w:gz0;gz0,:3;gz0,:4;(gz0;w)}[];(1 2 3 4;1 2)]
 t[`catOwnTable;{t:([]a:1 2;b:`x`y);u:t;t,:([]a:,3;b:,`z);t,:([]a:,4;b:,`w);c:1 2;s:([]a:c);s,:([]a:,3);(t;u;c;s)}[];(([]a:1 2 3 4;b:`x`y`z`w);([]a:1 2;b:`x`y);1 2;([]a:1 2 3))]
 
-hexpect[1016]
+hexpect[1022]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

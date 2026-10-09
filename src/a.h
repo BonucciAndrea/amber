@@ -110,7 +110,10 @@ static inline const void*amb_alchk(const void*p_,const char*f_,int l_){
 #define AMBER_VERSION_PATCH 2
 #define AMBER_VERSION M2(AMBER_VERSION_MAJOR) "." M2(AMBER_VERSION_MINOR) "." M2(AMBER_VERSION_PATCH)
 #define REFB  1
-#define MINE(x) (_r(x)==REFB)
+// sole owner. Peach workers change counts atomically (RC_INC, RC_DECV), so the count is read with a relaxed atomic
+// load: the same instruction as a plain one. Only a holder of a counted reference raises a count, so a count of REFB
+// read by its holder is that holder's alone: no other thread holds the object or can raise the count meanwhile
+#define MINE(x) (__atomic_load_n(&_r(x),__ATOMIC_RELAXED)==REFB)
 
 // ---- scoped atomic refcounting (ray_rc_sync) -----------------------------
 // A single thread-local flag flips retain/release between the fast serial path
@@ -233,10 +236,11 @@ L cfm(CO A*,I),gl_(A),gl(A),iw(A,U,L),now(),pl(S*),maxfZ(L,A),minfZ(L,A),addfB(C
 S su(U),pID(S);
 W pu(S*);
 F gf(A);
-EX I amdiag;//stderr-diagnostic switch (e.c); see `diag
+EX I amdiag;V amdiag0(V);//stderr-diagnostic switch (e.c), and its default from $AMBER_DIAG; see `diag
 CO C*edinfo(CO C*,I);//error-catalogue accessor for the `dgn self-test (e.c)
 V eD(CO C*,U,U);//render a rich diagnostic from raw source bytes (e.c)
-EX I amdiagshown;//set when a rich diagnostic was already rendered for the current error (e.c)
+EX AM_TLS I amdiagq;//set while a load's qSQL probe runs: no diagnostic on this thread (e.c)
+EX AM_TLS I amdiagshown;//set when a rich diagnostic was already rendered for the current error (e.c), per thread
 EX A1*v1[];EX A2*v2[];EX AA*v8[];EX A gv[65536],cns,cn[],ci[2][5];EX I pg;EX TY(CO C[])vc,TS,Tw,TR,TT,TX,Tk;EX S*argv,*env;
 
 //                    0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25

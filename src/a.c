@@ -1199,11 +1199,14 @@ Z A3(dt3,/*111*/A r=_tP(x)||_tU(x)||_t(x)==ts?d8((A[]){x,y,z},3):_t(x)==tS?d3t(x
 Z A4(dt4,/*1111*/A r=_tP(x)||_tU(x)||_t(x)==ts?d8((A[]){x,y,z,u},4):_t(x)==tS?d4t(x,y,z,u):d4(x,y,z,u);mr(y);mr(z);mr(u);r)
 Z __attribute__((cold)) A3(ds3,/*111*/A r=d3t(x,y,z);mr(y);mr(z);r)
 Z __attribute__((cold)) A4(ds4,/*1111*/A r=d4t(x,y,z,u);mr(y);mr(z);mr(u);r)
-ZN A ki(A*p,S s)_(*p=evs(s,0);P(!*p,0)PSH(cns,*p))   //a name that does not evaluate (a missing formatter): its error, not die
+//a name that does not evaluate (a missing formatter): its error (0), not die
+ZN A ki(A*p,S s)_(plk(1);A f=*p;I(!f&&(f=evs(s,0)),PSH(cns,f);__atomic_store_n(p,f,__ATOMIC_RELEASE))plk(0);f)
 //k1 k2 k8: the lambda is compiled on first use under the parse lock in a peach scope, so two workers reaching
-//it first do not both compile it and push it to cns at once (digest #10); outside peach plk does nothing
-A k1(A*p,S s,A x)_(I(!*p,plk(1);I(!*p,ki(p,s))plk(0))P(!*p,x(0))_1(*p,x))
-A k2(A*p,S s,A x,A y)_(I(!*p,plk(1);I(!*p,ki(p,s))plk(0))P(!*p,mr(y);0)_2(*p,x,y))   //x borrowed on every path, as _2 borrows it (digest #9)
-A k8(A*p,S s,CO A*a,U n)_(I(!*p,plk(1);I(!*p,ki(p,s))plk(0))P(!*p,mrn(n,(A*)a);0)n?_8(*p,a,n):*p)
+//it first do not both compile it and push it to cns at once (digest #10); outside peach plk does nothing. The
+//slot is read with an acquire load that pairs with ki's release store: a worker that sees it set sees the whole lambda
+#define KF(p,s) ({A f_=__atomic_load_n(p,__ATOMIC_ACQUIRE);f_?f_:ki(p,s);})
+A k1(A*p,S s,A x)_(A f=KF(p,s);P(!f,x(0))_1(f,x))
+A k2(A*p,S s,A x,A y)_(A f=KF(p,s);P(!f,mr(y);0)_2(f,x,y))   //x borrowed on every path, as _2 borrows it (digest #9)
+A k8(A*p,S s,CO A*a,U n)_(A f=KF(p,s);P(!f,mrn(n,(A*)a);0)n?_8(f,a,n):f)
 AA(no8,/*10..0*/en(*a))
 A2(no2,/*01*/y(en0()))//amber 2.1: unused fused-verb dyad slots

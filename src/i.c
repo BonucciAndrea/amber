@@ -131,6 +131,8 @@ A peachC(A x){P(_t(x)-tA||_n(x)-2,et(x))A fn=ii(x,0),dat=ii(x,1);
  // Warm the lazily-initialised float format tables (src/s.c I5/P5) on THIS parent thread,
  // so no worker is ever the first to touch them and race on their one-time build.
  {C wb[64];L wd;F wv=1.5;MC(&wd,&wv,8);sf(wb,wd);}
+ // Likewise `diag's default, which eD reads from $AMBER_DIAG at the first error: a worker's error must not be the first.
+ I(amdiag<0,amdiag0())
  A r=peach_pool(fn,dat,n,nw);
  mr(fn);mr(dat);
  // re-raise the error the first failing item hit ('noupdate, 'type, ...), which is

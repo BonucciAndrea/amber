@@ -1460,6 +1460,8 @@ t[`scanNegCount;(-2{x+0}\0;-1{x+1}\5;-9{x,1}\`a);(,0;,5;,`a)]
 / ---- x 0: y and x 1: y whose path does not open (a missing directory, a host:port that refuses, a name of the wrong
 / type) free y: \m reported it (in a process of its own, as \m reports the running script's own text)
 t[`writeOpenFailFree;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"y:\"abc\";z:(\"ab\";\"cd\");f:\"/nonexistent/dir/f\";.[{f 1: x};,y;{x}];.[{(`$f) 1: x};,y;{x}];.[{f 0: x};,z;{x}];.[{\"127.0.0.1:1\" 1: x};,y;{x}];.[{(1 2) 1: x};,y;{x}];\n\\m\n");""]
+/ ---- distinct of long sparse int lists: the parallel hash gives up (more keys per thread than the 65536 it keeps, at 2 to 29 threads) and the serial path answers; the give-up flag is a relaxed atomic ----
+t[`pdqGiveUp;{(?x)~x@&(!#x)=x?x}'(2000000?1000000000000;1000000*2000000?1000000);11b]
 
 hexpect[919]
 hreport"AMBER CORE"

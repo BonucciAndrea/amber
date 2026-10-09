@@ -11,7 +11,7 @@
 / binary IPC on the hot path. -8!/-9! (src/ser.c) stays as the `!`-verb
 / serializer and is still verified here in its own right.
 / 
-/ Six things are checked, in order:
+/ Nine things are checked, in order:
 /   1. (-9! -8! x) ~ x  over every shape the serializer claims to support.
 /   2. peach returns exactly what serial each returns, for every result shape
 /      (atoms, symbols, nested lists, dicts, tables) -- the thread pool is
@@ -25,6 +25,12 @@
 /      allocator + symbol-intern lock -- results must still be exact.
 /   6. `gagg on 64K+ symbol keys (hashed to codes on the threads) hands back
 /      the same () as one thread when it declines the values.
+/   7. a primitive written in k, first called by several workers at once, is
+/      compiled once and gives what serial each gives.
+/   8. workers that amend, join, drop from and take roots of their own copies of
+/      shared globals get what serial each gets, and the globals are unchanged.
+/   9. scripts loaded by workers at once leave the diagnostics setting (`diag)
+/      as it was.
 / Exits non-zero if anything fails, so it can be wired into CI as-is.
 / ============================================================================
 dir:{$[#p:"/"/-1_"/"\x;p;"."]}`argv 1
@@ -186,6 +192,44 @@ ok["gagg declines an atom"   ;()~`gagg(`sum;gk;5)]
 ok["gagg first, an atom"     ;()~`gagg(`first;gk;5)]
 ok["gagg declines short mask";()~`gagg(`sum;gk;G#1;(G-1)#1b)]
 ok["gsum falls back"         ;(gsum[gk;G#"abc"])~+/'(G#"abc")@=gk]
+
+/ ---- 7. a primitive's lambda first compiled in workers ---------------------
+/ A primitive written in k (a C call site's lambda, K/K1/K2 in src/a.h) is compiled
+/ at its first call and kept. When that first call came from several workers at
+/ once, they read the kept lambda unlocked while one of them wrote it (a C data
+/ race, seen only under ThreadSanitizer: run_tests.sh --tsan). The lambdas here
+/ are first called in this section, by the workers, after the same work in each.
+sec"7. a primitive's lambda first compiled in workers"
+pw:peach[fw:{s:{x+1}/[20000;0];(<+`a`b!(x,s,1;2 1 1);&(1 0;x,1))};1+!8]   / before f' (k runs right to left)
+ok["grade a table, where of lists";pw~fw'1+!8]
+
+/ ---- 8. workers write in place only into their own copies ------------------
+/ A primitive writes into its argument in place when the argument's count says
+/ this thread holds it alone (MINE in src/a.h). Workers share the globals and the
+/ lambda's constants below and amend, join, drop and take roots of their own
+/ copies: each copy is written in place only once its count is the worker's alone,
+/ and nothing shared changes. Only a holder raises a count, so a count of one seen
+/ by its holder cannot be another thread's; the read is a relaxed atomic load, as
+/ the other threads' changes to counts are atomic (ThreadSanitizer flagged it).
+sec"8. workers write in place only into their own copies"
+gv:!100;gd:`a`b!(1 2 3;"xyz");gl:(1 2;3 4);gf:1.5 2.5 3.5;gt:+`n`m!(!6;6-!6)
+fo:{a:gv;a[0]:x;b:gv,x;c:@[gv;1;+;x];d:gd;d[`a]:x;e:gd[`a],x;k:gl;k[0;1]:x;u:gf;u[1]:x;o:+gt;o[`n]:x;
+ (a 0;*|b;c 1;d`a;*|e;k[0;1];+/u;+/%gf;-1+#a;1_b;-1_gv,x;(+gt)`n)}
+po:{peach[fo;!64]}'!40
+ok["in-place writes on own copies";&/(fo'!64)~/:po]
+ok["shared values unchanged";(gv;gd;gl;gf;gt)~(!100;`a`b!(1 2 3;"xyz");(1 2;3 4);1.5 2.5 3.5;+`n`m!(!6;6-!6))]
+
+/ ---- 9. a load in workers leaves `diag as it was ---------------------------
+/ Every \l probes its script for qSQL, catching the error the probe may raise.
+/ The probe switched `diag off and back, and workers loading at once lost a
+/ restore, so diagnostics were left off. The script here does nothing; the
+/ setting must be 1 after each peach of loads, ten times over.
+sec"9. a load in workers leaves `diag as it was"
+pf:-1_`x(("/bin/sh";"-c";"f=$(mktemp /tmp/amber_pv.XXXXXX) && echo '/ nothing' >\"$f\" && echo \"$f\"");"")
+dg:`diag 1
+ok["`diag kept by loads in workers";&/{`diag 1;r:peach[{. "\\l ",pf};!256];`diag 1}'!10]
+`diag dg
+`x(("/bin/rm";"-f";pf);"");
 
 / ---- summary ----------------------------------------------------------------
 `0:""

@@ -1215,7 +1215,7 @@ Z A a5(A x,A y,A z,A u,A v/*10000*/)_(a8(A8(x,y,z,u,v),5))
 //its attribute (so only without one; one inside a column that is a table is kept, as by t[c;i]:y) and builds each
 //generic column again item by item, as psh does: rbl
 U tcc(A x,A s/*00*/)_(P(!_tS(xx),0)F(_n(xy),A c=_A(xy)[i];P(_at(c)||!_tT(c)&&!_tM(c),0))U j=fI(_I(xx),_n(xx),_v(s));j<_n(xx)?j+1:0)   //column s of t, +1 (0: not this way)
-Z U tci(A x,A y/*00*/)_(P(!xtM||!ytA||yn<2||!_tz(*yA)||!_ts(yA[1]),0)tcc(x,yA[1]))
+Z U tci(A x,A y/*00*/)_(P(!xtM||!ytA||yn<2||!_tz(*yA)||!_ts(yA[1]),0)U j=tcc(x,yA[1]);P(j||!_tS(xx)||fI(_I(xx),_n(xx),_v(yA[1]))<_n(xx),j)-1)   //-1: a column not there (d4s: tcs)
 Z A1(rbl,A y=enl(_R(*xA));F(xn-1,PSH(y,_R(xA[i+1])))x(y))
 Z A d3(A,A,A);Z A tca(A x,A y,A z,A u,U n,U j/*10000.*/)_(A w=aA(yn-1);*_A(w)=_R(*yA);F(yn-2,_A(w)[i+1]=_R(yA[i+2]))
  x=mut(x);xy=mut(xy);A c=_A(xy)[j];_A(xy)[j]=au;c=n==4?d4(c,w,z,u):d3(c,w,z);mr(w);P(!c,x(0))_A(xy)[j]=c;F(_n(xy),A*p=_A(xy)+i;I(_tA(*p),*p=rbl(*p)))x)
@@ -1226,11 +1226,15 @@ Z B tnr(A x,A y,A z,A u/*0000*/)_(xtM&&ytA&&*yA==au&&!xN&&(_tt(z)||!_N(z))&&(!u|
 //an amend at more than one level amends each item at the first with the rest of the indices, by a projection of a
 //function that does what . does there (dt3, dt4), but for a symbol list, which is data (. takes it as a name), and so
 //are its items (s: x is such a list, and ds3, ds4 do its items)
-Z A ds3(A,A,A),ds4(A,A,A,A);
-Z __attribute__((always_inline)) inline A d3s(A x,A y,A z,B s/*100.*/)_(U m=yN;P(y==au||!m,z1(x))P(m==1,y=fir(yR);y(a3(x,y,z)))U j=tci(x,y);P(j,tca(x,y,z,0,3,j-1))P(tnr(x,y,z,0),x)A u=s?prj(ax(ds3,3),(A[]){GAP,drp(1,yR)},2):prj_(ax(dt3,3),(A[]){GAP,drp(1,yR)},2);y=fir(yR);y(u(a4(x,y,u,z))))
-Z __attribute__((always_inline)) inline A d4s(A x,A y,A z,A u,B s/*1000.*/)_(U m=yN;P(y==au||!m,x(z2(x,uR)))P(m==1,y=fir(yR);y(a4(x,y,z,u)))U j=tci(x,y);P(j,tca(x,y,z,u,4,j-1))P(tnr(x,y,z,u),x)A v=s?prj(ax(ds4,4),(A[]){GAP,drp(1,yR)},2):prj_(ax(dt4,4),(A[]){GAP,drp(1,yR)},2);y=fir(yR);A r=y(a5(x,y,v,z,u));mr(v);r)
+Z A ds3(A,A,A),ds4(A,A,A,A),tcs(A,A,A,A);
+Z __attribute__((always_inline)) inline A d3s(A x,A y,A z,B s/*100.*/)_(U m=yN;P(y==au||!m,z1(x))P(m==1,y=fir(yR);y(a3(x,y,z)))U j=tci(x,y);I(j,P(j+1,tca(x,y,z,0,3,j-1)))P(tnr(x,y,z,0),x)A u=s?prj(ax(ds3,3),(A[]){GAP,drp(1,yR)},2):prj_(ax(dt3,3),(A[]){GAP,drp(1,yR)},2);y=fir(yR);y(u(a4(x,y,u,z))))
+Z __attribute__((always_inline)) inline A d4s(A x,A y,A z,A u,B s/*1000.*/)_(U m=yN;P(y==au||!m,x(z2(x,uR)))P(m==1,y=fir(yR);y(a4(x,y,z,u)))U j=tci(x,y);I(j,P(j+1,tca(x,y,z,u,4,j-1))P(z==av,tcs(x,y,z,u)))P(tnr(x,y,z,u),x)A v=s?prj(ax(ds4,4),(A[]){GAP,drp(1,yR)},2):prj_(ax(dt4,4),(A[]){GAP,drp(1,yR)},2);y=fir(yR);A r=y(a5(x,y,v,z,u));mr(v);r)
 Z A3(d3,/*100*/d3s(x,y,z,0))
 A4(d4,/*1000*/d4s(x,y,z,u,0))
+//.[t;(i;c),p;:;u] with c a column not there assigns .[t;(c;i),p;:;u], which adds it (its other rows null), as the
+//column-first form does (#105 Q5); as t's row, it made that row a dict of other keys, and so t a list of dicts. Another
+//verb is as before (column first, it would meet the nulls: 0N+1)
+Z NI __attribute__((cold)) A tcs(A x,A y,A z,A u/*1000*/)_(A w=aA(yn);F(yn,_A(w)[i]=_R(yA[i^(i<2)]))A r=d4(x,w,z,u);mr(w);r)
 Z __attribute__((cold)) A3(d3t,/*100*/d3s(x,y,z,1))   //s a constant in each, so d3, d4 inline prj_ as they did prj(DOT,..); a symbol list's
 Z __attribute__((cold)) A4(d4t,/*1000*/d4s(x,y,z,u,1))   //own amend is rare (cold: kept out of the way of the hot code, at the binary's end)
 Z AA(d8_,/*10..0*/A x=*a,y=a[1],z=a[2];P(n==4,d4(x,y,z,a[3]))P(n==3,d3(x,y,z))en(x))

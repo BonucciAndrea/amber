@@ -332,6 +332,11 @@ behaviour shows up as a test failure rather than a silent regression.
 - **An amend that leaves no column of a table a list fills each to the table's row count**
   (`` t[`a]:9 `` with `t:([]a:1 2 3)` gives `9 9 9`; an empty table stays empty), as `update` does;
   q gives `'rank` for these (`` t[`a]:9 ``, `` @[t;`a;:;9] ``, `` @[t;`a`b;:;9] ``).
+- **A cell assigned in a column not there adds the column, in either order** (#105 Q5): with
+  `` t:+`a`b!(1 2;3 4) ``, `` t[0;`c]:9 `` and `` t[`c;0]:9 `` both give `` +`a`b`c!(1 2;3 4;9 0N) ``, where q
+  gives `'mismatch` and `'type`. With a verb other than `:`, the row-first form still makes that row a
+  dict of other keys (`` t[0;`c]+:1 `` is a list of two dicts), since the column-first one would apply the
+  verb to the new column's null.
 - **A table's rows take an atom or a dict as q's do (#105 Q3), but are otherwise a list of dicts.**
   `` @[t;0 1;:;9] ``, `` t[0]:9 `` and `` t[]:`a`b!5 6 `` fill those rows, as q. The row is not checked
   against the columns: with `` t:+`a`b!(1 2;3 4) ``, `` @[t;0;:;9.5] `` makes general columns (q: `'type`),

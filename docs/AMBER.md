@@ -287,6 +287,7 @@ Assigning to a table's columns:
   column (`` t[`px;]:d ``, a verb's or a function's result, `` t[`px]+:d ``), but two, left unchecked for
   their speed, which make the dict a column as before: `` @[t;`px;:;d] `` by value, and a verb at a list
   of columns by name (`` t[`px`sz]+:(d;e) ``).
+- `` t[`c;i]:v `` or `` t[i;`c]:v `` with a column `c` not there adds it, nulls in the other rows.
 - `` .[t;(::;`px);:;v] `` amends every row; with no rows the table is kept when `v` is an atom or empty,
   else `'length`.
 

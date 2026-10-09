@@ -1608,7 +1608,19 @@ t[`catOwnKinds;{a:1 2;a,:2.5;b:`x`y;b,:`z;c:1 2;c,:!3;d:(1;"a");d,:`q;e:01b;e,:1
 t[`catOwnGlobal;{gz0::1 2;w:gz0;gz0,:3;gz0,:4;(gz0;w)}[];(1 2 3 4;1 2)]
 t[`catOwnTable;{t:([]a:1 2;b:`x`y);u:t;t,:([]a:,3;b:,`z);t,:([]a:,4;b:,`w);c:1 2;s:([]a:c);s,:([]a:,3);(t;u;c;s)}[];(([]a:1 2 3 4;b:`x`y`z`w);([]a:1 2;b:`x`y);1 2;([]a:1 2 3))]
 
-hexpect[1022]
+
+/ ---- x?y of a general list with many items of y: x's items are hashed (8+ items of y, one per 16 of x); the answers, and the width, are the scans' ----
+t[`findStrHash;{(x?y)~{x?y}[x]'y}[$1000?50;$(!60),3 3 7];1b]
+t[`findStrHashMixed;{(x?y)~{x?y}[x]'y}[(`a;1;"x";2.5;"x";`a),$!20;("x";`a;1;2.5;"zz";"3"),$!10];1b]
+t[`findStrHashWidth;(`ser@($!20)?$19-!10;`ser@($!20)?$(19-!10),99);(0x414d420106000a00000000000000130000001200000011000000100000000f0000000e0000000d0000000c0000000b0000000a000000;0x414d420104000b00000000000000131211100f0e0d0c0b0a14)]
+t[`dictStrKeys;{k:$!40;j:$20+!40;a:k!!40;b:j!100+!40;s:(`$k)!!40;t:(`$j)!100+!40;((`$!a,b)~!s,t;(.a,b)~.s,t;(`$!a+b)~!s+t;(.a+b)~.s+t)}[];1111b]
+t[`findStrHashLate;{(x?y)~{x?y}[x]'y}[$!1000;$(100?1000),2000 3000];1b]   / the scans pass m items read, and the hash takes the rest
+t[`findStrHashUnhashed;{(x?y)~{x?y}[x]'y}[(`a;{x}),$!300;$(50?300),`a,999];1b]   / x holds a function: the rest are scanned
+t[`findStrHashRank;{(x?y)~{x?y}[x]'y}[$!300;(50#,,"5"),$(50?300)];1b]
+t[`findStrHashLateWidth;`ser@($!1000)?$(999-!20),5000;0x414d420105001500000000000000e703e603e503e403e303e203e103e003df03de03dd03dc03db03da03d903d803d703d603d503d403e803]
+t[`findStrHashLeak;LK"x:$!100;x?$50+!100;(x,`a)?x;(`a`b!$`a`b)?$`a`b`c`d`e`f`g`h;x:0";""]
+
+hexpect[1031]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

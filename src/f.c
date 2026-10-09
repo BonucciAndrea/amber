@@ -488,6 +488,30 @@ Z A tfd(A x,A y)_(P(ytA&&!yn,y(aL(0)))B o;y=N(tky(x,y,&o));A c=xy;
 #define FSN(T) for(;i<n;i++){L k=f(a,m,p[i]);B(k==NL)((T*)_V(z))[i]=(T)k;}   //fnd's symbol scan, at the narrow width T until a miss
 ZN A fndD(A x,A y/*01*/)_(B t=ytM;A v=kv(&y);v=Ny(fnd(x,v));t?aM(y,v):am(y,v))   //fnd's dict of () or table of no rows, out of line
 ZN A fndM(A x,A y/*01*/)_(ytm&&_tA(yy)&&!_n(yy)||ytM&&!yN?fndD(x,y):r2f(fnd,x,y))   //fnd's dict, table or general list: its tests out of line too (in fnd they moved the code of every find)
+// x?y, x a general list and y a list of its items (a dict's keys looked up by another's: , + = of two dicts with string
+// keys): a hash over x's items, built once, where each item of y was a scan of x with ~ (quadratic). hA (o.c) hashes what ~
+// reads, so the items ~ matches hash alike; equal hashes are told apart with ~, and x's first match is kept, as the scan
+// gave. For 8 items of y or more (FAQ; fewer scan, as before), and only once scans grow dear: the items are scanned for
+// first, as before, until the scans have read m items of x in all (an item found early costs little, and the hash costs
+// about two passes over x); the hash then takes the rest. Scans, as before: all of y where an item of y has another rank
+// than x's (0: find looks for it whole, or for its items); the rest where x holds an item of a kind not hashed (a
+// function); an item of y of such a kind
+#define FAQ(n) ((n)>=8)
+#define FAP(v) {L v_=(v);I(v_==NL&&!w,w=aL(n);Fj(i,_L(w)[j]=_I(z)[j]))I(w,_L(w)[i]=v_)E(_I(z)[i]=(I)v_)}   //32 bits, 64 from the first miss (w), as the scans' results were pushed
+ZN A fndA(A x,A y,U k)_(P(_tmM(y),0)U m=xn,n=yN;P(!FAQ(n),0)B g=ytA;CO A*a=xA;
+ I(g,F(n,P(urnk(yA[i])+1!=k,0)))E(P(k-1,0))
+ A z=aI(n),w=0;U i=0;W rd=0;
+ for(;i<n&&rd<m;i++){A u=g?yA[i]:ii(y,i);U j=0;W(j<m&&!mtc_(a[j],u),j++)rd+=j+1;I(!g,mr(u))FAP(j<m?(L)j:NL)}
+ I(i<n,W cap=16;U lg=4;W(cap<2*(W)m,cap<<=1;lg++)W msk=cap-1;U sh=64-lg;
+  W*hh=malloc((N)cap*(SZ(W)+SZ(I)));I*ix=hh?(I*)(hh+cap):0;B e=!hh;
+  I(hh,MS(ix,0xff,(N)cap*SZ(I));F(m,W h=hA(a[i],&e);B(e)W j=(h*GOLD)>>sh;W(ix[j]>=0,B(hh[j]==h&&mtc_(a[ix[j]],a[i]))j=(j+1)&msk)I(ix[j]<0,hh[j]=h;ix[j]=(I)i)))
+  for(;i<n;i++){A u=g?yA[i]:ii(y,i);B f=e;W h=f?0:hA(u,&f);L v=NL;
+   I(f,Fj(m,I(mtc_(a[j],u),v=j;break)))
+   E(W j=(h*GOLD)>>sh;W(ix[j]>=0,I(hh[j]==h&&mtc_(a[ix[j]],u),v=ix[j];break)j=(j+1)&msk))
+   I(!g,mr(u))FAP(v)}
+  free(hh);)
+ I(w,mr(z);z=w)y(z))
+#undef FAP
 X2(fnd,
  R_(et(y))
  Rm(i1(xx,N(fnd(xy,y))))
@@ -496,7 +520,7 @@ X2(fnd,
  // The rank of x's first item says whether y is one item or a list of them; when the items differ in rank, y may be
  // one of them all the same, so it is looked for whole first ((1;"ab")?"ab" is 1, it was 0N 0N). An x of one rank
  // never matches there, so it is only a scan more on these two paths (digest #29)
- RA(U k=urnk(x),l=urnk(y);I(k-l-1,F(xn,P(mtc_(xa,y),y(az(i)))))P(k<l+1,r2f(fnd,x,y))P(k>l+1,xn?er(y):fnd0(y))
+ RA(U k=urnk(x),l=urnk(y);I(k-l-1,F(xn,P(mtc_(xa,y),y(az(i)))))P(k<l+1,A z=k==l&&FAQ(_n(y))?fndA(x,y,k):0;z?z:r2f(fnd,x,y))P(k>l+1,xn?er(y):fnd0(y))   //(the count test in line, y being a list (l>0): fndA's frame costs a few dozen instructions)
   X(RA(F(xn,P(mtc_(xa,y),y(az(i))))y(az(NL)))
     R_(F(xN,A z=ii(x,i);I m=mtc_(z,y);z(0);P(m,y(az(i))))y(az(NL))))0)
  RB(x=cG(xR);x(fnd(x,y)))

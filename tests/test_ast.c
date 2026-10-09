@@ -29,20 +29,23 @@
  *   mkdir -p /tmp/ast_test_o
  *   for f in src/\*.c; do
  *     [ "$(basename "$f")" = "0.c" ] && continue
- *     cc -w -O2 -Isrc -c "$f" -o "/tmp/ast_test_o/$(basename "${f%.c}").o"
+ *     cc -fsigned-char -fwrapv -w -O2 -Isrc -c "$f" -o "/tmp/ast_test_o/$(basename "${f%.c}").o"
  *   done
  *   # 0.c needs -Dldstatic to compile its shared globals (pg, the wasm
  *   # js_eval() stub) WITHOUT its main() -- see 0.c's own `#ifndef ldstatic`
  *   # guard around `I main(...)`.
- *   cc -w -O2 -Isrc -Dldstatic -c src/0.c -o /tmp/ast_test_o/0.o
- *   cc -std=c99 -Wall -Wextra -O2 -Isrc /tmp/ast_test_o/\*.o tests/test_ast.c \
+ *   cc -fsigned-char -fwrapv -w -O2 -Isrc -Dldstatic -c src/0.c -o /tmp/ast_test_o/0.o
+ *   cc -fsigned-char -std=c99 -Wall -Wextra -O2 -Isrc /tmp/ast_test_o/\*.o tests/test_ast.c \
  *      -o /tmp/test_ast -lm -lpthread -ldl
  *   /tmp/test_ast
  *
  * (`-w` matches build.sh's own convention of silencing the core interpreter
  * files' pre-existing warnings, e.g. the a.h TU()/LH() sign-compare note
  * documented in ast.c -- this test file itself compiles warning-clean under
- * -Wall -Wextra and does not need -w for its own code.)
+ * -Wall -Wextra and does not need -w for its own code. -fsigned-char and
+ * -fwrapv are build.sh's too, and the interpreter needs them: char is unsigned
+ * on Linux arm64, where without the flag {x+1} failed with 'limit (src/b.c's
+ * stack-delta tables hold -1s in plain chars).)
  */
 #include "a.h"
 #include "ast.h"

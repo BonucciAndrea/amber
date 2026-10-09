@@ -141,7 +141,7 @@ jobs:
           set -e
           out=$(./amber test.k)
           echo "$out" | tail -5
-          echo "$out" | grep -Eq '0 failures'
+          echo "$out" | grep -Eq '^[0-9]+ tests run, 0 failures$'
 
   # ------------------------------------------------------------------ Linux + macOS
   # The real matrix: both operating systems, and on each of them BOTH a GCC and
@@ -364,7 +364,7 @@ jobs:
           set -e
           out=$(./amber test.k)
           echo "$out"
-          echo "$out" | grep -Eq '0 failures'
+          echo "$out" | grep -Eq '^[0-9]+ tests run, 0 failures$'
 
       - name: Combinatorial matrix + qSQL matrix + fuzz + C unit tests
         run: |

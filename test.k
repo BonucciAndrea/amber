@@ -3,7 +3,7 @@
 / Amber test suite. run:  ./amber test.k
 / ============================================================================
 r:()
-t:{r,:,($x;$[y~z;"ok";"FAIL got<",($y),"> exp<",($z),">"])}
+t:{r,:,($x;$[y~z;"ok";"FAIL got<",(`k y),"> exp<",(`k z),">"])}
 / xasc orders a char column as < does: unsigned bytes (issue #17)
 t[`xascChars;(+xasc[`c;+`c`v!(0x806100;1 2 3)])`v;3 2 1]
 

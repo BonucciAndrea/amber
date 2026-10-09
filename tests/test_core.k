@@ -1463,7 +1463,10 @@ t[`writeOpenFailFree;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"y:\"abc\";z:(\"a
 / ---- distinct of long sparse int lists: the parallel hash gives up (more keys per thread than the 65536 it keeps, at 2 to 29 threads) and the serial path answers; the give-up flag is a relaxed atomic ----
 t[`pdqGiveUp;{(?x)~x@&(!#x)=x?x}'(2000000?1000000000000;1000000*2000000?1000000);11b]
 
-hexpect[919]
+/ ---- \m in a script file counts the script's own text (and a \l'd script's) as held; it reported it as held by nobody ----
+t[`heapCheckScript;`x(("/bin/sh";"-c";"d=$(mktemp -d) || exit 1; printf %s \"$1\" >\"$d/i.k\"; printf '\\\\l %s/i.k\n\\\\m\n' \"$d\" >\"$d/o.k\"; \"$0\" \"$d/i.k\" </dev/null; \"$0\" \"$d/o.k\" </dev/null; rm -rf \"$d\"";`argv 0;"a:1 2 3\n\\m\n");"");""]
+t[`heapCheckPeachLoad;`x(("/bin/sh";"-c";"d=$(mktemp -d) || exit 1; echo '+/!1000;' >\"$d/p.k\"; printf 'r:`pe({. \"\\\\\\\\l %s/p.k\"};!256)\n\\\\m\n' \"$d\" | AMBER_THREADS=4 \"$0\"; rm -rf \"$d\"";`argv 0);"");""]
+
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

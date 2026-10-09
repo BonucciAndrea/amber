@@ -1,7 +1,7 @@
 \l amber.k
 \l fin.k
 r:()
-t:{r,:,($x;$[y~z;"ok";"FAIL got<",($y),"> exp<",($z),">"])}
+t:{r,:,($x;$[y~z;"ok";"FAIL got<",(`k y),"> exp<",(`k z),">"])}
 
 / ---- attributes u / p / g (C-level) ----
 t[`attrS;`at(`sa 1 2 3);`s]
@@ -61,7 +61,7 @@ t[`symstats;#symstats trades;10]
 
 / ---- O(1) group index correctness ----
 g:bysym trades
-t[`idxCorrect;(symrows[trades;g;`AAPL])~qwhere[trades;trades[`sym]=`AAPL]]
+t[`idxCorrect;(symrows[trades;g;`AAPL])~qwhere[trades;trades[`sym]=`AAPL];1]
 
 fails:r@&{"FAIL"~4#x}'r[;1]
 `0:"";`0:"============ FIN / HFT TEST SUITE ============"

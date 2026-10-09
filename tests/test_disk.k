@@ -158,7 +158,7 @@ FA:FB:0;x:ER[.:;,"\\l ",FF[T,"/io/p3";"FA:1\\n";"FB:2\\n"]]
 t[`fifoLoad;FA,FB;1 2]
 / #94 Q17: a regular file whose size the kernel does not report (Linux's /proc: size 0, or lseek refuses it) is read as
 / a stream ('io or "" before). Only where /proc is; an empty file still reads as "", and a negative offset is 'io
-PX:-1<`fsz"/proc/version";PV:(1b;"Linux";,"Linux";"version")
+PX:.[{"Linux"~5#1:x};,"/proc/version";{0b}];PV:(1b;"Linux";,"Linux";"version")
 t[`procRead;$[PX;(ER[{0<#1:x};,"/proc/self/status"];ER[{5#1:x};,"/proc/version"];ER[{0:x};,"/proc/sys/kernel/ostype"];ER[{1:x};,("/proc/version";6 7)]);PV];PV]
 E0:T,"/io/empty";E0 1:""
 t[`readEmpty;(1:E0;0:E0;1:(E0;5 3);ER[{1:x};,(E0;-1 3)]);("";();"";"'io")]
@@ -240,7 +240,9 @@ t[`readSmallEdge;(v;1:M;1:(M;65530 10);1:(M;4096 3));(65535#"ab";65536#"cd";"cdc
 / a big read still maps, and the table (1024, the heap's regions among them) still fills: then 1: is 'MMAP, which a
 / trap catches (it ended the process), and the maps come back when the reads are freed; `rcol (get) reads the file
 / instead of mapping it
-t[`readMapsFull;sub"M 1:70000#\"x\";`0:*\"\\n\"\\.[{{1:M}'!x};,1100;::];v:{1:M}'!1000;`0:$#v";"'MMAP\n1000\n"]
+/ Cygwin never maps a file (1: reads it into a vector), so its map table never fills
+CY:like[.[{`x(("/usr/bin/uname";"-s");"")};,0;{""}];"CYGWIN*"]
+t[`readMapsFull;$[CY;"'MMAP\n1000\n";sub"M 1:70000#\"x\";`0:*\"\\n\"\\.[{{1:M}'!x};,1100;::];v:{1:M}'!1000;`0:$#v"];"'MMAP\n1000\n"]
 G:T,"/g";x:`wcol(G;1 2 3 300;-1;0)
 t[`rcolMapsFull;sub"v:{1:M}'!1000;G:\"",G,"\";w:{`rcol G}'!1100;`0:$(#w;+/w 1099;1 2 3 300~w 0)";"1100\n306\n1\n"]
 

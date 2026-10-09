@@ -2,7 +2,7 @@
 A1(rs0,rsz(0,x))
 ZN A flt(A x,A y,B b/*01b*/)_(P(xK-1,er(y))Ym(K("{(!y)[i]!(.y)i:&z~/:x@.y}",xR,y,ai(b)))
  x=Ny(x1(yR));x=xN?Ny(cL(x)):x(emp(tG));P(!xtt&&xN-yN,el(x(y)))A z=rs0(yR);F(yN,L n=gl(ii(x,i));B(b&&n-(U)n,z=ed(z))Fj(b?n:!n,PSH(z,ii(y,i))))x(y(z)))
-V cyc(V*a,U m,U n){Q(m);W(2*m<=n,MC(a+m,a,m);m*=2)I(n>m,MC(a+m,a,n-m))}
+V cyc(V*a,N m,N n){Q(m);W(2*m<=n,MC(a+m,a,m);m*=2)I(n>m,MC(a+m,a,n-m))}   //m and n in bytes, 64 bits: in 32, 2^31 bytes or more wrapped (a crash) and 2^32 were cut (most of the result left unwritten)
 Z V cpyB(W*x,U j,CO W*y,U k,U n) {P(!n)x+=j>>6;y+=k>>6;j&=63;k&=63; // x[j..j+n] = y[k..k+n] (bits; from upstream ngn/k fe213831..78383dd3)
  I(j,W a=*y>>k;I(k&&n>64-k,a|=y[1]<<64-k);*x=(*x&(1ULL<<j)-1)|a<<j;P(n<=64-j)++x;k+=64-j;y+=k>>6;k&=63;n-=64-j) // align x
  I(!k,MC(x,y,n+7>>3))E(W a=*y++>>k,b;F(n>>6,b=*y++;*x++=a|b<<64-k;a=b>>k);I(n&63,b=(n&63)>64-k?*y:0;*x++=a|b<<64-k))}
@@ -16,7 +16,7 @@ A rsz(L n,A x/*1*/)_(
    Rm(A y=kv(&x);x=Ny(rsz(n,x));y=Nx(rsz(n,y));am(x,y))
    RE(Lij P(n>j-i||n<i-j,rsz(n,gZ(x)))x(0);n>=0?aE(i,i+n):aE(j+n,j))
    R_(P(n==NL||n==(L)xn||n==-(L)xn,x)P(!xn,rsz(n,enl(fir(x))))   //2.7: taking all of it is it, attribute and all, as in q
-      I r=n<0;n*=1-2*r;P((W)n-(U)n,ez(x))A y=an(n,xt);N w=MAX(0,xw-3),m=xn<<w,k=n%xn<<w,l=n<<w;
+      I r=n<0;n*=1-2*r;P((W)n-(U)n,ez(x))A y=an(n,xt);N w=MAX(0,xw-3),m=(N)xn<<w,k=n%xn<<w,l=n<<w;   //m in 64 bits: a source of 4 GB or more was cut (and -n# read before it)
       XB(cycB(yV,xV,r?m-k:0,m,l);x(y))                                        //bits: cycled bit by bit (it was 'nyi)
       I(!r,MC(yV,xV,MIN(m,l)))J(l<=m,MC(yV,xV+m-l,l))E(MC(yV,xV+m-k,k);MC(yV+k,xV,m-k))
       cyc(yV,m,l);I(!n&&ytA,yx=mkn(_R(xx)))x(ytA?sqz(mRa(y)):y)))0)
@@ -92,18 +92,18 @@ A2(ins2,/*01*/I(!_tP(x)&&!_tP(y)&&xtM,A s=xx;I(ytm?insn(s,yx)&&insr(xy,yy,_n(s))
 A2(cat10,
  XE(cat10(gZ(x),y))
  YE(y=gZ(yR);y(cat10(x,y)))
- P(xtB&&ytB,U m=xn,n=yn,d=m&63;x=aa(m+n,x);P(!d,MC(xV+(m>>3),yV,n+63>>6<<3);x)
+ P(xtB&&ytB,U m=xn,n=yn,d=m&63;P(m+n<m,ez(x))x=aa(m+n,x);P(!d,MC(xV+(m>>3),yV,n+63>>6<<3);x)
   L*a=xL+(m>>6),*b=yL,v=*a&~(~0ull<<d);F(n+63>>6,v|=(W)*b<<d;*a++=v;v=(W)*b++>>64-d;)*a=v;x)
  P(xtT&&ytT,P(!yn,x)P(!xn,x(yR))P(xt-yt,P(xtZ&&ytZ,yR;N(sup(&x,&y));cat11(x,y))cat11(blw(x),blw(yR)))P(xtB||ytB,en(x))
-  U m=xn,n=yn,w=xw-3;x=aa(m+n,x);
+  U m=xn,n=yn,w=xw-3;P(m+n<m,ez(x))x=aa(m+n,x);   //a count past 32 bits: 'limit, as take's (it wrapped: a crash)
   MC(xV+((W)m<<w),yV,(W)n<<w);I(ytA,mRa(y))x)
- P(xtm&&ytm,_tM(xx)?!_tM(xy)?en(x):!_tM(yx)?et(x):!_tM(yy)?en(x):kct(x,y):a4(x,yx,av,yy))   //keyed tables: kct (keys a table, values not: 'nyi, as before)
- Xmt(P(xtm&&_tM(xx)&&(ytM?!_tM(yx):ytT&&!yn),ytA?x:et(x))cat10(enl(x),y))   //a keyed table and an unkeyed one, either way round: 'type, as q (issue #19); with an empty list, as q: kt,() and (),kt are kt, a typed one 'type
- Ymt(P(ytm&&_tM(yx)&&(xtM?!_tM(xx):xtT&&!xn),xtA?x(yR):et(x))psh(x,yR))
+ P(xtm&&ytm,_tM(xx)?!_tM(xy)?en(x):!_tM(yx)?et(x):!_tM(yy)?en(x):kct(x,y):_tM(yx)?et(x):a4(x,yx,av,yy))   //keyed tables: kct (keys a table, values not: 'nyi, as before); a dict and a keyed table: 'type (#94 Q8; it was 'index or a dict)
+ Xmt(P(xtm&&_tM(xx)&&(ytM||ytT&&!yn),ytA?x:et(x))cat10(enl(x),y))   //a keyed table and an unkeyed one, either way round: 'type, as q (issue #19), and so with a table of keyed tables, (K;K) (#94 Q8; it took K as a row); with an empty list, as q: kt,() and (),kt are kt, a typed one 'type
+ Ymt(P(ytm&&_tM(yx)&&(xtM||xtT&&!xn),xtA?x(yR):et(x))psh(x,yR))
  P(xtM||ytM,P(!yN,x)P(!xN,x(yR))P(xtT||ytT,x=N(blw(x));y=Nx(blw(yR));cat11(x,y))P(!xtM||!ytM,et(x))P(!mtc_(xx,yx),ed(x))A z=e2f(cat,xy,_R(yy));x(z?aM(_R(xx),z):0))Q(0);0)
 A2(cat11,y(cat10(x,y)))
 A2(cat,/*01*/P(!_tP(x)&&_t(x)==tm&&_at(x)==1,cat11(mut(xR),y))P(!_tP(x)&&_t(x)==tA&&!_n(x)&&_t(xx)==tC&&!_n(xx)&&!_tP(y)&&_t(y)<tM,I(_t(y)==tA&&!_n(y)&&_at(y)-_at(x),y=mut(y);_at(y)=_at(x))y)   /*2.7: (),y is y, but ()'s attribute when y is empty too, as q; not 0#,1 2 (its prototype joins)*/cat11(xR,y))   //a dict made `s: joined without the mark (a copy), as in q
-A2(psh,/*11*/Q(xtMT);U n=xN;P(!n,enl(x(y)))
+A2(psh,/*11*/Q(xtMT);U n=xN;P(!n,enl(x(y)))P(!~n,y(ez(x)))   //no room for one more in 32 bits: 'limit
  P(xtE,psh(gZ(x),y))   //a range has no room to push into: its items do (sup below keeps it a range, so it looped)
  P(xtG&&yti&&yv==(G)yv||xtC&&ytc,apc(x,yv))
  P(xtH&&yti&&yv==(H)yv ,x=aa(n+1,x);xH[n]=yv;x)
@@ -120,7 +120,8 @@ A apc(A x/*1*/,C c    )_(Q(xtC||xtG);U n=xn;x=aa(n+1,x);xC[n]=c;x)
 A cts(A x/*1*/,S s,U m)_(Q(xtC);     U n=xn;x=aa(n+m,x);MC(xV+n,s,m);x)
 Z A insL(A x,L i,L j,A y/*1ij0*/)_(
  P(i>=(W)(j+1)||j>=(W)(xN+1),ei(x))
- A z=an(xn-j+i+yn,xt);U w=xw-3;MC(zV,xV,(W)i<<w);MC(zV+(i<<w),yV,(W)yn<<w);MC(zV+(i+yn<<w),xV+((W)j<<w),(W)(xn-j)<<w);
+ P(xn-j+i+yn>>32,ez(x))A z=an(xn-j+i+yn,xt);U w=xw-3;   //a count past 32 bits: 'limit (it was cut)
+ MC(zV,xV,(W)i<<w);MC(zV+(i<<w),yV,(W)yn<<w);MC(zV+(i+yn<<w),xV+((W)j<<w),(W)(xn-j)<<w);
  I(xtR,I(!zn,zx=emp(tC))I(MINE(x)&&xn,mrn(j-i,xA+i);AZ(x))E(mRn(i,xA);mRn(xn-j,xA+j))I(MINE(y)&&yn,AZ(y))E(mRa(y))z=sqz(z))   //an empty x or y is released whole: AZ (the container only) leaked its prototype
  x(z))
 // a q condition: booleans (ints of 0 and 1 here). 1: y and z each an atom or as long as it; 2: one is not, and ins3 gives 'length,

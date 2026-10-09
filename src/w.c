@@ -33,8 +33,9 @@ Z AX(l8,/*01..1*/Ab8;MC(b,a,n*SZ(A));*b=GAP;x=prj(x,b,n);x(e1(x,*a)))
 //them up can fail ('nyi for table keys): check each
 U urnk(A);
 // + - * % & | and ,' on two dicts line them up by key: x's keys in order (a repeat kept, as ngn/k and q), then y's
-// new ones; a key on both sides gets f, a key on one side passes its value through (+ - * with their identity, so
-// 0-y; % as it is, as q and ngn/k: (`a!1)%`b!2 is `a`b!1 2). They were looked up in the union of the keys, so a missing key read a null
+// new ones; a key on both sides gets f, a key on one side passes its value through as it is, as ngn/k (#14), and -
+// gives 0-y: (`a!1)%`b!2 is `a`b!1 2, (`a!"x")+`b!"y" `a`b!"xy" (+ - * applied their identity, 0+y: `a`b!120 121);
+// keyed tables (kar, t) keep the identity under + - * (0+y), as q's columns meet it. They were looked up in the union of the keys, so a missing key read a null
 // shaped like the other dict's first value (| and ,' mangled lists, bytes became ints), an empty dict was 'length
 // and a repeated key of x went (digest #23-#26). The same keys: just f on the two value lists. Two empty dicts:
 // f on the two value lists too (each for ,'), so their types combine as for lists, either way round, with x's keys
@@ -42,12 +43,13 @@ U urnk(A);
 #define u0(v) (_tA(v)&&!_n(v)&&_t(_x(v))==tC&&!_n(_x(v)))
 //dkey's K rule; r: the values of the keys on both sides. Dicts with no key in common skip f (it was 'type for (`a!1)|`b!`y,
 //as no value meets another); keyed tables (t, from kar) still apply it to the empty slices, so columns that do not meet
-//are 'type, as q
-#define DK(r) "{[c;kx;vx;ky;vy]yo:$[#kx;&^kx?ky;!#ky];iy:$[#ky;ky?kx;(#kx)#0N];iy:$[#kx;@[iy;&~(kx?kx)=!#kx;:;0N];iy];b:&~^iy;xo:&^iy;f:(+;-;*;%;&;|;,)c;u:c>1;r:" r ";(kx,ky yo)!($[c<3;f[vx xo;u];vx xo],r,$[c<3;f[u;vy yo];vy yo])@<xo,b,(#kx)+!#yo}"
+//are 'type, as q. For dicts, - negates y's one-sided values only when there are some (0-0#` was 'type, so an empty dict
+//of symbols gave 'type, not the other)
+#define DK(r,o) "{[c;kx;vx;ky;vy]yo:$[#kx;&^kx?ky;!#ky];iy:$[#ky;ky?kx;(#kx)#0N];iy:$[#kx;@[iy;&~(kx?kx)=!#kx;:;0N];iy];b:&~^iy;xo:&^iy;f:(+;-;*;%;&;|;,)c;u:c>1;r:" r ";(kx,ky yo)!(" o ")@<xo,b,(#kx)+!#yo}"
 Z A dkey(I c,A2 f,A x,A y,B t/*0f010*/)_(B e=!_n(xx)&&!_n(yx);P(e&&u0(yx)&&u0(yy),y(_R(x)))P(e&&u0(xx)&&u0(xy),y)
  P(e||c<6&&mtc_(xx,yx),A v=c<6?f(xy,_R(yy)):e2f(f,xy,_R(yy));y(v?am(_R(e&&u0(xx)?yx:xx),v):0))
- A v=t?K(DK("f[vx b;vy iy b]"),az(c),_R(xx),_R(xy),_R(yx),_R(yy))
-      :K(DK("$[c=6;f'[vx b;vy iy b];#b;f[vx b;vy iy b];()]"),az(c),_R(xx),_R(xy),_R(yx),_R(yy));y(v))
+ A v=t?K(DK("f[vx b;vy iy b]","$[c<3;f[vx xo;u];vx xo],r,$[c<3;f[u;vy yo];vy yo]"),az(c),_R(xx),_R(xy),_R(yx),_R(yy))
+      :K(DK("$[c=6;f'[vx b;vy iy b];#b;f[vx b;vy iy b];()]","(vx xo),r,$[(#yo)&c=1;0-vy yo;vy yo]"),az(c),_R(xx),_R(xy),_R(yx),_R(yy));y(v))
 A kcl(A,A);//h.c
 //two keyed tables, or dicts keyed by tables (issue #19): dkey's rule over the union of the keys, a row for a row; y's key
 //and value columns go by name (h.c's kcl, as for ,), other columns 'domain; values a table on one side only 'type, as q
@@ -98,7 +100,7 @@ Z A3(ls2,/*010*/Y(Ril(ns(x,gl(y),zR))RU(y(ws(x,y,zR)))R_(et(y)))0)
 Z A3(lf2,/*010*/Y(Ril(nf(x,gl(y),zR))RU(y(wf(x,y,zR)))R_(et(y)))0)
 Z AX(ls8,/*01..1*/A y=*a;P(n==2,A z=a[1];z(ls2(x,y,z)))Y(Ril(nS(x,gl(y),a+1,n-1))RU(y(wS(x,y,a+1,n-1))))et8(a,n))
 Z AX(lf8,/*01..1*/A y=*a;P(n==2,A z=a[1];z(lf2(x,y,z)))Y(Ril(nF(x,gl(y),a+1,n-1))RU(y(wF(x,y,a+1,n-1))))et8(a,n))
-X1(raz,RA(P(xn==1&&!_tP(xx)&&_t(xx)<tM,A r=_R(xx);x(r))U n=0;   /*2.7: raze of one list is that list, as q*/ F(xn,n+=_N(xa))A y=xx;y=ytT&&!ytA?AN(0,an(n,ytE?tG:yt)):ytm?am(emp(tS),emp(tA)):aA0(n);F(xn,y=Nx(cat10(y,xa)))x(y))Rm(raz(val(x)))R_(x))   //a list of dicts joins into a dict (upstream ngn/k db497dc5)
+X1(raz,RA(P(xn==1&&!_tP(xx)&&_t(xx)<tM,A r=_R(xx);x(r))U n=0;   /*2.7: raze of one list is that list, as q*/ F(xn,n+=_N(xa))A y=xx;y=ytT&&!ytA?AN(0,an(n,ytE?tG:yt)):ytm?_tM(yx)?rsz(0,_R(y)):am(emp(tS),emp(tA)):aA0(n);F(xn,y=Nx(cat10(y,xa)))x(y))Rm(raz(val(x)))RM(P(!_tM(xx)||!xN,x)U n=xN;A y=ii(x,0);F(n-1,A z=ii(x,i+1);y=cat10(y,z);mr(z);P(!y,x(0)))x(y))R_(x))   //a list of dicts joins into a dict (upstream ngn/k db497dc5); one that starts with a keyed table from none of its rows, as kt,() is kt (an empty dict amended at its key table: 'index); keyed tables of one key, held as a table of them, join one by one, as q's raze (it was that table)
 A ucb(A),cub(A);
 #define MMC (xtv&&xv-6<2u)                   //& |: of chars only, unsigned, a char back, as the verb does with two chars (issue #17)
 #define CA (xtv&&xv<11&&xv&&xv-5&&xv-8>1u)  //+ - * % & | =: f/ f\ read chars as ints, as the verb does with a number

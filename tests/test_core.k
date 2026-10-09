@@ -748,6 +748,9 @@ t[`findDictDeep;.[.:;,"\"ab\"?`a`b!(1;2)";{*"\n"\x}];"'type"]
 t[`findListOfDicts;.[.:;,"\"ab\"?(`a`b!1 2;`c`d!3 4)";{*"\n"\x}];"'type"]
 t[`findEmptyDict;.[.:;,"\"ab\"?(0#`)!!0";{*"\n"\x}];"'type"]
 t[`findDictSame;("ab"?`a`b!"ba";1 2?`a`b!2 1;"ab"?([]a:"ba"));(`a`b!1 0;`a`b!1 0;+(,`a)!,1 0)]
+/ a dict of (), or a table of no rows, in numbers: the same at every width, as the byte haystack and ngn/k (ints of 16 bits and up, and floats, were 'type)
+t[`findDictEmptyWidths;{.[{`k@x?(0#`)!()};,x;{x}]}'(0 0 -1;0 0 300;0 0 100000;0 0 10000000000;1.5 2;`a`b);6#,"(0#`)!0#,!0"]
+t[`findTableNoRows;{.[{`k@0 0 300?x};,x;{x}]}'(+`a`b!(!0;());+(0#`)!();((0#`)!();(0#`)!()));("+`a`b!(!0;0#,!0)";"+(0#`)!0#,!0";"+(0#`)!0#,(!0;!0)")]
 
 / ---- integer literals: from 2^63 in magnitude 'limit, as q refuses them (issue #20, row 7) ----
 tv[`litIntMax;"9223372036854775807 -9223372036854775807 000000000000000000001";9223372036854775807 -9223372036854775807 1]
@@ -835,8 +838,11 @@ t[`dictEachJoin;(`a`b!1 2),'(1 2!3 4);(`a;`b;1;2)!1 2 3 4]
 t[`dictSameKeys;((`a`b!1 2)+`a`b!10 20;(`a`b!1 2)|`a`b!0 5;(`a`b!1 2.0)%`a`b!2 4);(`a`b!11 22;`a`b!1 5;`a`b!0.5 0.5)]
 t[`dictOneSideDiv;((`a!1)%`b!2;(`a`b!1 2)%`b`c!4 8;(`a!1.5)%`b!2);(`a`b!1 2;`a`b`c!(1;0.5;8);`a`b!(1.5;2))]   / % passes a one-sided value through, as q (it took 1%y: `a`b!1.0 0.5)
 t[`dictDisjointTypes;.[.:;,"((`a!1)|`b!`y;(`a!1)&`b!`y;(`a!1)%`b!`y;(`a!`x)|(,`b)!,1 2;((0#`)!!0)|(,`)!,`a;(`a`b!1 2)%`c!`y;(`a!2026.01.01)+`b!2026.01.02;(`a!12:00)|`b!13:00)";{x}];(`a`b!(1;`y);`a`b!(1;`y);`a`b!(1;`y);`a`b!(`x;1 2);(,`)!,`a;`a`b`c!(1;2;`y);`a`b!2026.01.01 2026.01.02;`a`b!12:00 13:00)]   / no key on both: no value meets another, so the types need not meet, as ngn/k (it was 'type; q passes the dates, times and (`a!`x)|(,`b)!,1 2 through, and is 'type for the int/symbol ones)
+t[`dictEmptyOtherTypes;.[.:;,"(((,0N)!,0.0)+(0#`)!0#`;((0#`)!0#`)+`a!1.0;((,0N)!,0.0)-(0#`)!0#`;((0#`)!0#`)-`a!1.0;((,0N)!,0.0)*(0#`)!0#`;((0#`)!0#`)*`a!1.0;(`a!\"x\")+(0#`)!0#`;(`a!\"x\")-(0#`)!0#`)";{x}];((,0N)!,0.0;(,`a)!,1.0;(,0N)!,0.0;(,`a)!,-1.0;(,0N)!,0.0;(,`a)!,1.0;(,`a)!,"x";(,`a)!,"x")]   / an empty dict gives the other whatever its values' type (- negated the empty side, 0-0#` 'type; q: 'type, ngn/k: the other)
 t[`dictDisjointShared;*"\n"\.[.:;,"(`a`b!1 2)|`b`c!`x`y";{x}];"'type"]   / a key on both still meets the verb
 t[`dictDisjointNeg;.[.:;,"`i$(`a!2026.01.01)-`b!2026.01.02";{x}];`a`b!9497 -9498]   / a right-only value is negated, a date too, as q
+t[`dictDisjointPass;.[.:;,"((`a!\"x\")+`b!\"y\";(`a!\"x\")-`b!\"y\";(`a!\"x\")*`b!\"y\";(`a`b!\"xy\")+`b`c!\"zw\";(`a!1)+`b!`y;(`a!0x01)+`b!0x02;(`a!-0.0)+`b!1.0)";{x}];(`a`b!"xy";`a`b!("x";-121);`a`b!"xy";`a`b`c!("x";243;"w");`a`b!(1;`y);`a`b!0x0102;`a`b!-0.0 1.0)]   / + - * pass a one-sided value through, as ngn/k (#14): they applied their identity, so chars and bytes became ints and a symbol was 'type
+t[`keyedDisjointIdentity;((+(,`k)!,1 2)!+(,`v)!,"ab")+/:((+(,`k)!,3 4)!+(,`v)!,"cd";(+(,`k)!,3 4)!+(,`v)!,1 2);((+(,`k)!,1 2 3 4)!+(,`v)!,97 98 99 100;(+(,`k)!,1 2 3 4)!+(,`v)!,97 98 1 2)]   / keyed tables keep the identity, as q's columns meet it (#19)
 
 / ---- an error with a computed message reads its text before releasing it ----
 t[`errComputedText;*"\n"\.[{`err "ab",x};,"cd";{x}];"'abcd"]
@@ -957,6 +963,8 @@ t[`temporalListLoopLength;ER"(2026.07.30;2026.07.31)=(2026.07.30;2026.07.31;2026
 / 2026.07.30<12:00:00.000 1): a date and a time are 'type, a date against a timestamp is its midnight, exactly (no date
 / wraps past the timestamp range), and a timestamp against a time is its time of day to the millisecond, as `time$
 t[`temporalKindsType;ER'("2026.07.30=12:00:00.000";"2026.07.30<12:00:00.000";"12:00:00.000>2026.07.30";"(2026.07.30;2026.07.31)=12:00:00.000");4#,"'type"]
+/ a temporal against a symbol is 'type, as q (its intern index was compared: 2000.01.01=` was 1, 2026.07.30>`a 1)
+t[`temporalSymType;ER'("2000.01.01=`";"2026.07.30>`a";"`a<2026.07.30";"12:00:00.000<`a";"`a<2000.01.01D00:00";"2000.01.01=`a`b";"(2000.01.01;2000.01.02)=`a";"2000.01.01=(`a;1)");8#,"'type"]
 t[`dateStampCmp;(2026.07.30=2026.07.30D00:00:00.000000000;2026.07.30D00:00:00.000000000=2026.07.30;2026.07.30<2026.07.30D00:00:00.000000001;2026.07.30=2026.07.30D12:00:00.000000000;2026.07.30>2026.07.29D23:59:59.999999999;2026.07.30D12:00:00.000000000>2026.07.30;1707.09.21<1707.09.22D00:12:43.145224193;2292.04.11>2292.04.10D23:47:16.854775807;5881610.07.11>2026.07.30D00:00:00.000000000;2000.01.01=2000.01.01D00:00:00.000000000);1 1 1 0 1 1 1 1 1 1]
 t[`timeStampCmp;(12:00:00.000=2026.07.30D12:00:00.000000000;2026.07.30D12:00:00.000999999=12:00:00.000;12:00:00.000<2026.07.30D12:00:00.001000000;12:00:00.000<2026.07.30D00:00:00.000000000;36:00:00.000=2000.01.02D12:00:00.000000000;11:59:59.999=1999.12.31D11:59:59.999999999;2026.07.30D13:00:00.000000000>12:00:00.000);1 1 1 0 0 1 1]
 t[`temporalKindsList;((2026.07.30;2026.07.31)=2026.07.30D00:00:00.000000000;2026.07.30D12:00:00.000000000<(11:00:00.000;13:00:00.000);(2026.07.30;12:00:00.000)=(2026.07.30D00:00:00.000000000;2026.07.30D12:00:00.000000000))~(1 0;0 1;1 1);1]
@@ -1325,6 +1333,19 @@ t[`distinctEmpties;?(1;0#,1 2;();0#,1 2);(1;0#,0N 0N;())]
 t[`distinctEmptiesCount;#?(();0#,1 2;();0#,1 2;0#,"ab");3]
 t[`gradeEmpties;<(0#,1 2;();0#,1 2);1 0 2]
 t[`gradeEmptiesSorted;{s:x@<x;(<s)~!#s}@(0#,1 2;();0#,1 2;();0#,"ab");1b]
+/ dicts by keys, then values, and tables by names, then columns, as ~ (#94 Q5; they went by address)
+t[`gradeDictValue;{a:`x!1;b:`y!2;c:`x!0;(<(a;b;c);<(c;b;a);>(b;c;a))}[];(2 0 1;0 2 1;0 2 1)]
+t[`gradeTableValue;{a:+(,`a)!,,2;b:+(,`a)!,,1;(<(a;b);<(b;a))}[];(1 0;0 1)]
+t[`gradeTableEqual;{a:+`a`b!(1 3;0 0);b:+`a`b!(1 2;5 5);c:+`a`b!(1 2;5 5);(<(a;b;c);<(c;b;a))}[];(1 2 0;0 1 2)]
+t[`gradeKeyedTable;{a:(+(,`k)!,1 2)!+(,`v)!,10 20;b:(+(,`k)!,1 2)!+(,`v)!,10 5;(<(a;b);>(a;b))}[];(1 0;0 1)]
+/ a table whose column is a list of two or three functions, by its rows: K's y x applied the column as a train ('rank,
+/ a wrong order; > crashed, so its cases run in a process of their own)
+tv[`gradeTableFns;"{t:+(,`a)!,({x};{x};{y});u:+(,`a)!,(+/;-:);v:+`a`b!(0 0 1;({x};{y};{x}));k:(+(,`k)!,0 1 2)!+(,`a)!,({x};{x};{y});(<t;<u;>u;<v;<k;(`s#t)~t)}[]";(0 1 2;0 1;1 0;0 1 2;+(,`k)!,0 1 2;1)]
+t[`gradeTableFnsDesc;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);">+(,`a)!,({x};{x};{y})\n>+`a`b!(0 0 1;({x};{y};{x}))\n>(+(,`k)!,0 1 2)!+(,`a)!,(+;-;+)\n");"2 0 1\n2 1 0\n+(,`k)!,1 0 2\n"]
+t[`distinctGroupDicts;{(#?(1 6!9 6;9 8!6 3;1 6!9 6);#=(1 6!9 6;9 8!6 3;1 6!9 6);?(`a`b!1 2;`c`d!3 4;`a`b!1 2);=(`a`b!1 2;`c`d!3 4;`a`b!1 2))}'!20;20#,(2;2;(`a`b!1 2;`c`d!3 4);(`a`b!1 2;`c`d!3 4)!(0 2;,1))]   / equal dicts are neighbours in the grade, so distinct and group put them together (by address, the count varied with what ran before)
+t[`distinctGroupTables;{x:(+(,`a)!,1 2;+(,`b)!,3 4;+(,`a)!,1 2);(#?x;#=x;#?|x;#=|x;?x)}'!20;20#,(2;2;2;2;(+(,`a)!,1 2;+(,`b)!,3 4))]   / tables too
+t[`distinctGroupDictsMatch;{x:(`a`b!(-0.0;0n);`a`b!(0.0;0%0);`a`c!1 2;`a`b!(1;2.0);`a`b!1 2;`a`b!(1;2);`a`b!10b;`a`b!1 0;`a`c!({x};1);`a`c!({x};1));(#?x;=x;#?-2_x;=-2_x)}[];(6;(`a`b!-0.0 0n;`a`c!1 2;`a`b!(1;2.0);`a`b!1 2;`a`b!1 0;`a`c!({x};1))!(0 1;,2;,3;4 5;6 7;8 9);5;(`a`b!-0.0 0n;`a`c!1 2;`a`b!(1;2.0);`a`b!1 2;`a`b!1 0)!(0 1;,2;,3;4 5;6 7))]   / items that match (~) group together: either zero, any NaN, ints of any width, bools and ints, a function (when one is in the list too)
+t[`distinctGroupDictsRange;{x:(`a`b!(!3;1);`a`b!(!4;1);`a`b!(!3;1);`c!1;`a`b!(0 1 2;1));(#?x;=x)}[];(3;(`a`b!(0 1 2;1);`a`b!(0 1 2 3;1);(,`c)!,1)!(0 2 4;,1;,3))]   / a range matches its ints, and not a longer range
 
 / ---- a dict whose keys are an empty generic list prints so it reads back ----
 t[`dictKeysEmptyText;`k@(0#,,1)!();"(0#,,0N)!()"]
@@ -1392,9 +1413,12 @@ t[`keyedUpsertByName;({k:([k:1 2]v:3 4;w:`a`b);k,([k:2 3]w:`z`y;v:9 9)}[];kM,([b
 t[`keyedUpsertUnkeyed;{*"\n"\.[.:;,x;{x}]}'("kL,([])";"([]),kL";"kL,0#([]a:1 2)";"kL,([]a:1 2)";"([]k:4 5;v:1 2),kL";"(0#kL),([]k:1 2;v:3 4)");6#,"'type"]   / a keyed table and an unkeyed one, either way, empty or not: 'type, as q
 t[`keyedJoinEmpty;(kL,();(),kL;(0#kL),();(),0#kL;kL,0#,1 2;{d:(+(,`a)!,1 2)!3 4;(d,();(),d)}[]);(kL;kL;0#kL;0#kL;kL;2#,(+(,`a)!,1 2)!3 4)]   / () is no rows: a keyed table joined to it, either way, is the keyed table, as q (and a dict keyed by a table)
 t[`keyedJoinTypedEmpty;{$[`C~@r:.[.:;,x;{x}];*"\n"\r;""]}'("kL,!0";"kL,\"\"";"kL,0#`";"(!0),kL";"\"\",kL";"(!0),(+(,`a)!,1 2)!3 4");6#,"'type"]   / a typed empty list: 'type, as q
+t[`razeKeyedEmpty;{.[{,/x};,x;{x}]}'((kL;());(kL;();kL);(kL;0#kL);(kL;([k:3 4]v:33 44));(kL;kL);,kL);(kL;kL;kL;([k:1 2 3 4]v:10 20 33 44);kL;kL)]   / raze of keyed tables joins them as , does, as q: kt,() is kt (it was 'index), and (kt;kt), held as a table of them, is kt (it was that table)
 / a dict whose keys are a table and values a list stays 'nyi in an amend at keys and in , (it was not a keyed table)
 t[`keyedListValues;{*"\n"\.[.:;,x;{x}]}'(("dL:(+(,`a)!,1 2)!3 4;",)'("dL[,1]:9";"dL[,3]:9";"@[dL;,1;:;9]";"dL,(+(,`a)!,,3)!,5";"dL,(+(,`a)!,,3)!5"),("kL,(+(,`k)!,,3)!,5";"{d:(+(,`a)!,1 2)!3 4;d[,1]:9;d}[]"));7#,"'nyi"]
 t[`keyedUpsertErr;{*"\n"\.[.:;,x;{x}]}'("kL,`k`v!4 40";"kL,(,`v)!,5";"kL,([k:,3]w:,1)";"kL,([j:,3]v:,1)");("'type";"'type";"'domain";"'domain")]
+/ a dict joined to a keyed table, or a keyed table to a list of them (held as a table of keyed tables), either way: 'type, as q (#94 Q8; they were 'index, a dict, and a table of one-row tables)
+t[`keyedJoinDictType;{$[`C~@r:.[.:;,x;{x}];*"\n"\r;r]}'("(kL;kL),kL";"kL,(kL;kL)";"(`k`v!4 40),kL";"(`k!4),kL";"(1 2!3 4),kL");5#,"'type"]
 t[`keyedAmend;(@[kL;1;:;,7];@[kL;5;:;,7];.[kL;(9;`v);:;99];@[kL;1;+;1];@[kL;1;:;5];@[kL;(,5;,5);:;(,1;,2)]);(([k:1 2 3]v:7 20 30);([k:1 2 3 5]v:10 20 30 7);([k:1 2 3 9]v:10 20 30 99);([k:1 2 3]v:11 20 30);([k:1 2 3]v:5 20 30);([k:1 2 3 5]v:10 20 30 2))]
 t[`keyedAmendCols;{k:([k:1 2]v:3 4;w:`a`b);(@[k;2;:;(99;`z)];@[k;9;:;(98;`y)];@[k;(,1;,8);:;((1;`m);(2;`n))];@[k;([]k:1 8);:;([]v:5 6;w:`r`s)])}[];(([k:1 2]v:3 99;w:`a`z);([k:1 2 9]v:3 4 98;w:`a`b`y);([k:1 2 8]v:1 4 2;w:`m`b`n);([k:1 2 8]v:5 4 6;w:`r`b`s))]
 t[`keyedAmendLocal;{k:kL;k[3]:,99;k[4]:,98;k[2;`v]:5;k[7;`v]:6;k[1]+:,1;m:kM;m[(3;`q)]:,51;(k;m)}[];(([k:1 2 3 4 7]v:11 5 99 98 6);([a:1 2 3;b:`x`y`q]v:5 6 51))]
@@ -1503,7 +1527,6 @@ t[`cdBare;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"\\cd\n");"\"",(-1_`x(("/bin
 t[`symGroupWidth;{i:4097#0 1 2;a:`$"grpwidthFirst";h:`$"grpwidthPad",/:$!5000;b:`$"grpwidthSecond";c:`$"grpwidthThird";d:`$"grpwidthD";e:`$"grpwidthE";f:`$"grpwidthF";s:(a;b;c);u:(d;e;f);((-8!.=s@i)~-8!.=u@i;(-8!s?s@i)~-8!u?u@i;-8!s?a,`grpwidthNone)}[];(1b;1b;-8!0 0N)]
 
 
-hexpect[942]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

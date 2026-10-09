@@ -60,7 +60,7 @@ Z C*snp(C*s,L v)_(P(v==NL,MC(s,"0N",2)+2)L d=v/86400000000000,r=v%86400000000000
 Z A tfm(L v,C*(*f)(C*,L))_(A y=aC(32);AN(f(yC,v)-yC,y))   //a temporal atom as text, in C (issue #18), whether temporal.k and amber.k are loaded or not: their dstr, pstr and stime give the same text
 X1(str,Rilf(A y=aC(24);TY(sf)*f=xtf?sf:sl;AN(f(yC,gl(x))-yC,y))R(tdt,tfm((I)x,sdt))R(ttm,tfm((I)x,stm))R(tnp,L v_=*(L*)_V(x);x(tfm(v_,snp)))Rs(aCz(su(xv)))Rc(enl(x))RU(kst(x))R_(e1f(str,x)))
 V hexC(S s,U n,C*r){Z S q="0123456789abcdef";F(n,C c=*s++;*r++=q[(UC)c>>4];*r++=q[c&15])}
-X1(hex,RmMA(e1f(hex,x))RC(A y=aC(2*xn);Mx(hexC(xV,xn,yV))y)R_(et(x)))
+X1(hex,RmMA(e1f(hex,x))RC(P(xn>>31,ez(x))A y=aC(2*xn);Mx(hexC(xV,xn,yV))y)R_(et(x)))
 ZN V unh0(C*q){MS(q,-1,256);F(10,q['0'+i]=i)F(6,q['A'+i]=q['a'+i]=10+i)}
 A unhC(S s,U n)_(P(n&1,el0())Z C q[256];I(!*q,unh0(q))C v=0;F(n,v|=q[(UC)s[i]])P(v<0,ed0())A x=aC(n>>1);F(xn,xc=q[*s]<<4|q[s[1]];s+=2)x)
 X1(unh,RmMA(e1f(unh,x))RC(x(unhC(xV,xn)))R_(et(x)))
@@ -70,8 +70,8 @@ Z A1(par,apc(pre('(',x),')'))
 Z A1(ek,e1f(kst,x))
 Z A kss_(A x,B r)_(                                                                                   //"string" (r: raw bytes, never 0x.., as a symbol needs)
  Z CO C e[128]={'0',['\t']='t',['\n']='n',['\r']='r',['"']='"',['\\']='\\'};
- U n=xn+2;F(xn,C c=xc;P(!r&&(c>126u||(c<32&&!e[c])),cat11(aCz("0x"),hex(x)))n+=(UC)c<128&&e[c])
- A y=aC(n);C*s=yC;*s++='"';F(xn,C c=xc;I((UC)c<128&&e[c],*s++='\\';c=e[c])*s++=c)*s='"';x(y))
+ W n=(W)xn+2;F(xn,C c=xc;P(!r&&(c>126u||(c<32&&!e[c])),({A a=aCz("0x"),h=N(hex(x),mr(a));cat11(a,h);}))n+=(UC)c<128&&e[c])
+ P(n>>32,ez(x))A y=aC(n);C*s=yC;*s++='"';F(xn,C c=xc;I((UC)c<128&&e[c],*s++='\\';c=e[c])*s++=c)*s='"';x(y))   //text past 32 bits of count: 'limit (it wrapped: a crash)
 Z A1(kss,kss_(x,0))
 Z A kp(A x,S p,S q,S s)_(C t=TS[xt];U n=_N(x);B b=strchr(p,t)?n==1:strchr(q,t)?n<2:!!strchr(s,t);x=N(kst(x));b?par(x):x)   //kst's error (a failing formatter) passes up; n: the count (a range holds its two ends)
 A1(kl,P(xtA&&!xn,x=N(kst(x));*xC-'('?par(x):x)kp(x,"AC","IFS","Mmqruvw"))//keys: an empty generic list prints as () or 0#,.. which needs parentheses
@@ -103,4 +103,4 @@ X1(kst,R_(x(aCz("???")))
  Ru(apc(kst(au^av^x),':'))
  Rv(P(x==GAP,emp(tC))P(x==INS,aCn((S)"insert",6))A y=aCn(vc+xv,1);xv<20?y:apc(y,':'))
  Rw(aCn(&"':/:\\:"[xv%3*2],1+xv/3)))
-A1(out,P(x==au,x)A s=xtA&&1<xn?({A e=ek(xR);e?par(jC("\n ",2,e)):0;}):kst(xR);P(!s,epr(0);x)mr(v0c(ai(1),s));x)   //a formatter's error: printed (the caller frees x)
+A1(out,P(x==au,x)A s=xtA&&1<xn?({A e=ek(xR);e?par(jC("\n ",2,e)):0;}):kst(xR);P(!s,epr(0);x)s=v0c(ai(1),s);P(!s,epr(0);x)mr(s);x)   //a formatter's error, or the write's ('io: stdout closed): printed (the caller frees x)

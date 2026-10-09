@@ -917,7 +917,7 @@ Z A atlist(UC c,A y){
  return y(et0());}
 Z A atkeys(A y,UC lone){   //the keys of a sorted dict or keyed table: a list `s, a table in row order
  P(_t(y)!=tM,atlist('s',y))
- A r=K1("{v:. +x;o:`xs(v;0b);o:$[#o;o;{[o;v]o@<v o}/[!#x;|v]];o~!#x}",_R(y));P(!r,y(0))B ok=gl(r);P(!ok,y(err0("s-fail")))
+ A r=K1("{v:. +x;o:`xs(v;0b);o:$[#o;o;<x];o~!#x}",_R(y));P(!r,y(0))B ok=gl(r);P(!ok,y(err0("s-fail")))
  A d=_A(y)[1];U n=_n(d);P(!n||(n==1&&_N(_A(d)[0])<2),atset(y,1))   //a one-column table of 0 or 1 rows: no column attribute, as q
  A c0=atlist(n==1&&lone?'s':'p',_R(_A(d)[0]));P(!c0,y(0))
  A v=aA(n);F(n,_A(v)[i]=i?_R(_A(d)[i]):c0)A z=aV(tM,2,A(_R(_A(y)[0]),v));mr(y);_at(z)=1;return z;}
@@ -952,7 +952,10 @@ Z A1(qdiag,I(amdiag<0,amdiag=({S dgev=getenv("AMBER_DIAG");!dgev||*dgev!='0';}))
 // when the value range is small relative to n, and otherwise reproduces the
 // previous K definition of asc verbatim, so semantics (collation, the `s
 // attribute, every non-integer type) are unchanged.
-Z A1(qsrt,srtC(x))
+// `srt of a dict (amber.k's asc of one, q's): in the order of its values, the keys going with them; both indexed in C,
+// as K's k i applied keys or values of two or three functions as a train. desc is |`srt@|x, > being that order
+Z A dsrt(A x)_(A g=asc(_R(xy));P(!g,x(0))A k=i1(xx,_R(g));P(!k,mr(g);x(0))A v=i1(xy,g);P(!v,mr(k);x(0))x(am(k,v)))
+Z A1(qsrt,xtm?dsrt(x):srtC(x))
 Z A1(qat,UC a=(_tP(x)||_tt(x)||_t(x)==tE)?0:_at(x);x(0);a?({C b[2]={"\0supg"[a],0};sym(b);}):as(0))//amber: get attribute
 ZN AX(ext,P(n-xK,er8(a,n))V*f=(V*)(x&-1ull>>16);S(n,R(1,((A1*)f)(a[0]))R(2,((A2*)f)(a[0],a[1]))R(3,((A3*)f)(a[0],a[1],a[2]))R(4,((A4*)f)(a[0],a[1],a[2],a[3]))R_(en8(a,n)))0)
 // `sumn x: +/x with the int null counted as 0, in one pass (amber.k's q-style sum). Only a 64-bit int

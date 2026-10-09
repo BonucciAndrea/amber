@@ -68,7 +68,7 @@ Z A fr(A x/*1*/,N i,N n)_(Xz(frs(gl(x),i,n,0))I f=N(of(x,O_RDONLY));P(f<3,frs(f,
 // a negative offset stays frm's 'io)
 A frf(I f)_(frs(f,0,-1,1))   // \l of a FIFO (m.c): to its end
 void am_ln_sb_capture(const char*,unsigned long);// ln.c: tee stdout into the status-bar scroll-back ring
-Z A fws(I f,S s,N n)_(I(f==1,am_ln_sb_capture(s,n))W(n>0,L k=write(f,s,n);P(k<0,eo0())P(!k,au)s+=k;n-=k)au)                                                         // write stream (fd 1 -> also scroll-back)
+Z A fws(I f,S s,N n)_(I(f==1,am_ln_sb_capture(s,n))W(n>0,L k=write(f,s,MIN(n,(N)1<<30));P(k<0,eo0())P(!k,au)s+=k;n-=k)au)                                         // write stream (fd 1 -> also scroll-back); at most 1GB a call (macOS refuses 2GB: 'io)
 Z A fwm(I f,S s,N n)_(N o=0;W(o<n,L k=pwrite(f,s+o,MIN(n-o,(N)1<<30),(off_t)o);I(k<0&&errno==EINTR,continue)P(k<=0,o=ftruncate(f,0);eo0())o+=k)P(ftruncate(f,n),eo0())au)   // write a file from its start, a GiB a call (macOS refuses more than INT_MAX), then cut it to n
 // not through a shared map, whose copy was SIGBUS when the disk was full: a failed write is 'io and leaves the file empty. No O_TRUNC: y can map this file (f 1: 1:f)
 Z X2(fw,Ril(I f=gl_(x);My(x=(f<3||!S_ISREG(fm(f))?fws:fwm)(f,yV,yn))x)R_(I f=N(of(xR,O_RDWR|O_CREAT),mr(y));A z=v1c(ai(f),y);I(f>2,close(f))z))                   // write

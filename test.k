@@ -101,6 +101,9 @@ t[`ascAttr;`at asc 3 1 2;`s]
 t[`desc;desc 1 3 2;3 2 1]
 t[`iasc;iasc 30 10 20;1 2 0]
 t[`rank;rank 30 10 20;2 0 1]
+t[`gradeDicts;{a:`x!1;b:`y!2;c:`x!0;(asc(a;b;c);desc(a;b;c);iasc(a;b;c);idesc(a;b;c);rank(a;b;c))}[];((`x!0;`x!1;`y!2);(`y!2;`x!1;`x!0);2 0 1;1 0 2;1 2 0)]   / by keys, then values (#94 Q5)
+t[`sortFns;.[{t:+(,`a)!,({x};{x};{y});d:`a`b!(+/;-:);(iasc t;rank t;`a xdesc +(,`a)!,(+;-);`a xasc +(,`a)!,({y};{x});asc d;desc `a`b!({x};{y}))};,0;{x}];(0 1 2;0 1 2;+(,`a)!,(-;+);+(,`a)!,({x};{y});`a`b!(+/;-:);`b`a!({y};{x}))]   / a column, or a dict's values, of two or three functions: not applied as a train
+t[`srtDict;(`srt@`a`b`b!3 1 2;`srt@`a`b!({y};{x});desc `a`b`c!1 1 0;desc `a`b`c!(0n;1.0;0n));(`b`b`a!1 2 3;`b`a!({x};{y});`a`b`c!1 1 0;`b`a`c!1.0 0n 0n)]   / `srt of a dict is its asc, as q (keys and values indexed in C); desc keeps ties in index order
 t[`distinct;distinct 1 1 2 3 3;1 2 3]
 t[`inMem;in[3 5;1 2 3 4];10b]
 t[`inCharInt;*"\n"\.[in;(97;"abc");{x}];"'type"]   / a char and a number are 'type, as in q (issue #20, row 12)
@@ -116,6 +119,7 @@ t[`inTableRows;{$[`C~@r:.[in;x;{x}];*"\n"\r;r]}'((+`a`b!(1 2;3 4);+`a`b!(1 5;3 6
 t[`exceptInterTable;(except[(1;"a");`x`y!1 2];except[1 2 3;`a`b!"ab"];except[+`a`b!(1 2;3 4);+`a`b!(1 5;3 6)];inter[+`a`b!(1 2;3 4);+`a`b!(1 5;3 6)];except[1 2 3;`a`b!1 2];inter[1 2 3;`a`b!1 2];except[(1;`a);`a`b!(1;`x)]);(,"a";1 2 3;+`a`b!(,2;,4);+`a`b!(,1;,3);,3;1 2;,`a)]   / as q (digest #101: was 'nyi)
 t[`exceptInterEmptyGeneric;(except[(1 2;3 4);(1 2;3 4)];except[("ab";"cd");("ab";"cd")];except[(1;`a);(1;`a)];inter[(1 2;3);(5 6;7)];inter[(1 2;3 4);(5 6;7 8)];except[1 2;1 2];except[`a`b;`a`b];except[2024.01.01 2024.01.02;2024.01.01 2024.01.02]);(();();();();();!0;0#`;())]   / none of a general list is (), as q; a typed one keeps its type (digest #102: was 0#,0N 0N)
 t[`union;union[1 2 3;3 4 5];1 2 3 4 5]
+t[`gradeStrings;{s:("b";"ab";"";"a";,`c$128;"ab",`c$255;"ab";"a",`c$0;,`c$127);(iasc s;idesc s;rank s;iasc`$s)}[];(2 7 1 6 5 8 4 3 0;0 3 4 8 5 1 6 7 2;8 2 0 7 6 4 3 1 5;2 3 7 1 6 5 0 8 4)]   / strings by their chars as unsigned bytes, a prefix first, equal ones in place (symbols by their names)
 t[`sublistPos;sublist[3;1 2 3 4 5];1 2 3]
 t[`sublistCap;sublist[9;1 2 3];1 2 3]
 t[`sublistNeg;sublist[-2;1 2 3 4 5];4 5]

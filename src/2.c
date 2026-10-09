@@ -392,9 +392,10 @@ Z A tari(A x,A y,U op)_(UC ka=_t(x),kb=_t(y);B qa=ka>=tdt,qb=kb>=tdt;P(!op,y)
  I(op<8,B ia=ka==ti||ka==tl,ib=kb==ti||kb==tl;
   B ok=qa&&qb?((op==2||op==6||op==7)&&ka==kb)||(op==1&&ka==ttm&&kb==ttm):(op==1||op==2)&&(qa?ib:ia);P(!ok,et(y))
   P(!(qa&&qb)&&(qa?tval(y):tval(x))==NL,ed(y)))
- E(L va,vb;   //a comparison: each stored number as tval reads it; a float sent to tcf, from the arm a float takes anyway, and two temporal kinds to tkc, from y's temporal arms (#83 Q9)
+ E(L va,vb;U tmk=1<<ts|1<<tdt|1<<ttm|1<<tnp;   //a comparison: each stored number as tval reads it; a float sent to tcf, from the arm a float takes anyway, and two temporal kinds to tkc, from y's temporal arms (#83 Q9)
   I(_t0(x),va=(I)x)E(P(ka==tf,tcf(x,y,op))va=*(L*)_V(x))   //packed (an int, a date, a time) or on the heap (a long, a timestamp, a float)
-  I(_t0(y),vb=(I)y;P(kb>=tdt&&kb-ka&&qa,tkc(x,y,ka,kb,op)))E(P(kb==tf,tcf(x,y,op))vb=*(L*)_V(y);P(kb==tnp&&kb-ka&&qa,tkc(x,y,ka,kb,op)))
+  I(_t0(y),vb=(I)y;P(__builtin_expect(tmk>>kb&1&&tmk>>ka&1&&kb-ka,0),ka==ts||kb==ts?et(y):tkc(x,y,ka,kb,op)))E(P(kb==tf,tcf(x,y,op))vb=*(L*)_V(y);P(__builtin_expect(kb==tnp&&kb-ka&&tmk>>ka&1,0),ka==ts?et(y):tkc(x,y,ka,kb,op)))
+  //a symbol is 'type, as q (#18; its intern index was compared: 2000.01.01=` was 1): tmk is the temporal kinds and the symbol, so the tests that sent two temporal kinds to tkc take it too, and no test is added
   mr(y);return ai((I)(op==8?va<vb:op==9?va>vb:va==vb));)   //(it read the float's bits: date<2.5 was 1)
  L va=tval(x),vb=tval(y);mr(y);
  L vv=op==1?(L)((W)va+(W)vb):op==2?(L)((W)va-(W)vb):op==3?va*vb:op==6?MIN(va,vb):op==7?MAX(va,vb):va;

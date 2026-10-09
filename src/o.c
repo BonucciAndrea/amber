@@ -42,14 +42,25 @@ Z L o1(L v)_(t(fco(v))+o)Z V of1LL(CO L*a,L*r,N n){F(n+3&~3,r[i]=o1(a[i]))}A1(of
 Z A of_(A x,I f)_(N n=xn;C t=xt+(tf-tl)*(1-2*f);A y=MINE(x)?AT(t,xR):an(n,t);_at(y)=0;Mx((f?of1LL:of0LL)(xV,yV,n))y)
 Z I ql(L i,L j)_(i<j?-1:i>j)
 I qf(F u,F v)_(ql(o1(*(L*)&u),o1(*(L*)&v)))
+ZN I qD(A,A);
 I qA(A x,A y/*00*/)_(I v=TS[xt]-TS[yt];P(v,v)
  X(Ril(ql(gl_(x),gl_(y)))
    Rf(qf(*xF,*yF))
    Rs(S s=su(xv);C t[8];U n=SL(s);I(n<5,s=MC(t,s,n+1))strcmp(s,su(yv)))
-   RT(F(MIN(xn,yn),A z=ii(x,i),u=ii(y,i);I d=qA(z,u);mr(z(u));P(d,d))P(!xn&&!yn&&xtA,qA(xx,yx))ql(xn,yn))//empty lists: by prototype, as ~
+   RT(P(xtC&&ytC,I d=memcmp(xV,yV,MIN(xn,yn));d?(d>0)-(d<0):ql(xn,yn))   //two strings (sorting symbols compares their names) as unsigned bytes, as their chars compare, without boxing each
+      F(MIN(xn,yn),A z=ii(x,i),u=ii(y,i);I d=qA(z,u);mr(z(u));P(d,d))P(!xn&&!yn&&xtA,qA(xx,yx))ql(xn,yn))//empty lists: by prototype, as ~
+   RmM(qD(x,y))   //a dict by its keys, then its values, and a table by its names, then its columns, as ~ and q (#94 Q5; it was by address)
    Ropqr(x=str(xR);y=str(yR);I r=x&&y?qA(x,y):!!x-!!y;I(x,mr(x))I(y,mr(y));r)   //a function whose text fails (a formatter's error) sorts first
    R(tdt,ql((I)x,(I)y))R(ttm,ql((I)x,(I)y))R(tnp,ql(*(L*)_V(x),*(L*)_V(y)))   //dates and times by their value, not their words; a timestamp by its nanoseconds, not its address
    R_(ql(x,y)))0)
+// qD's keys and values (and their items), in qA's order without boxing every item: an object is equal to itself at
+// once, and two lists of one simple type box items only where their bits differ (equal bits are equal items to qA)
+Z I qV(A x,A y)_(P(x==y,0)UC t=xt;P(t-yt||!_tT(x),qA(x,y))U n=MIN(xn,yn);P(!n,qA(x,y))
+ I(t==tA,F(n,A u=xA[i],w=yA[i];I d=u==w?0:_tT(u)?qV(u,w):qA(u,w);P(d,d))return ql(xn,yn);)
+ P(!LH(tG,t,tS),qA(x,y))U b=1u<<Tw[t]>>3;
+ F(n,I(b==8?xL[i]!=yL[i]:b==4?xI[i]!=yI[i]:b==2?xH[i]!=yH[i]:xG[i]!=yG[i],A u=ii(x,i),w=ii(y,i);I d=qA(u,w);mr(u);mr(w);P(d,d)))
+ ql(xn,yn))
+ZN I qD(A x,A y)_(P(x==y,0)I d=qV(xx,yx);d?d:qV(xy,yy))   //qA's dicts and tables, out of line: qA itself is unchanged for strings and the rest
 Z I*ascZ(CO UC*v,UC*g,I*a,I*b,I n,I w)_(U c[257];tilV(a,0,n,2);Fj(w,MS(c,0,SZ c);F(n,g[i]=v[w*a[i]+j])F(n,c[g[i]+1]++)I(c[1+*g]-n,F(255,c[i+1]+=c[i])F(n,b[c[g[i]]++]=a[i])SW(b,a)))a)
 Z A grdm(A x/*1*/,A1 f)_(A y=kv(&x);x(x1(Nx(f(y)))))
 
@@ -93,7 +104,11 @@ A1(ascA,N n=xn;A z=aI(n);I*p=zI;tilV(p,0,n,2);P(n<17,cis(x,p,n,p);x(z))N m=n/2;A
 // order-preserving copy of the vector -- exactly the two costs rdxg() removes.
 Z A1(ascB,P(xtF,asc(of1(x)))
  x=N(K1("{x-&/x}",x));N n=xn;A y=aC(n),z=aI(n),u=aI(n);Mx(My(u=ascZ(xV,yV,zV,uV,n,(1ll<<xw)+7>>3)==zV?u(z):z(u)))u)
-X1(asc,Rt(opn(x))Rm(grdm(x,asc))RM(K1("{(!#x){x@<y x}/|.+x}",x))RS(asc(str(x)))RA(P(xn-(I)xn,ez(x))A g=xn>1?ascT(x):0;g?x(g):ascA(x))RE(Lij x(0);aE(0,j-i))
+// A table by its rows: its columns from the last, each graded in the order the next leaves the rows (the grade is
+// stable). Each column is indexed in C: K's y x applied a column of two or three functions as a train ('rank, or a
+// wrong order from what the train gave)
+Z A ascM(A x)_(A g=aE(0,xN);CO A*c=_A(xy);for(N j=_n(xy);j--;){A o=asc(N(i1(c[j],_R(g)),mr(g);mr(x)));P(!o,mr(g);x(0))A h=i1(g,o);mr(g);g=Nx(h);}x(g))
+X1(asc,Rt(opn(x))Rm(grdm(x,asc))RM(ascM(x))RS(asc(str(x)))RA(P(xn-(I)xn,ez(x))A g=xn>1?ascT(x):0;g?x(g):ascA(x))RE(Lij x(0);aE(0,j-i))
  RGC(P(xn-(I)xn,ez(x))N n=xn;I c[257]={};B u=xtC;I*b=c+(u?1:129),*d=c+(u?0:128);F(n,b[u?(UC)xg:xg]++)F(256,c[i+1]+=c[i])A y=aI(n);Mx(F(n,yI[d[u?(UC)xg:xg]++]=i))ct(tZ(n-1),y))//chars sort as unsigned bytes
  // amber batch 2: 16/32/64-bit integers and IEEE-754 doubles go through the
  // key-carrying LSD radix in src/v.c -- one sequential pass per SIGNIFICANT key
@@ -105,7 +120,7 @@ X1(asc,Rt(opn(x))Rm(grdm(x,asc))RM(K1("{(!#x){x@<y x}/|.+x}",x))RS(asc(str(x)))R
   I(_at(x)==1,A y=aI((U)n);I*RES o=yI;for(N i=0;i<n;i++)o[i]=(I)i;return x(ct(tZ(n-1),y));)
   A y=cntgrd(x);I(!y,y=rdxg(x))P(!y,ascB(x))x(ct(tZ(n-1),y)))
  R_(P(xn-(I)xn,ez(x))ascB(x)))
-X1(dsc,RMT(x=rev(asc(rev(x)));sub(ai(xN-1),x))Rm(grdm(x,dsc))Ril(cls(gl(x)))R_(et(x)))
+X1(dsc,RMT(x=rev(N(asc(rev(x))));sub(ai(xN-1),x))Rm(grdm(x,dsc))Ril(cls(gl(x)))R_(et(x)))
 // amber: O(n) direct-indexed group for a 32-bit int vector.  This is the hot
 // case: SYMBOLS reach it through cSI (tS is stored as interned 4-byte ids), so
 // every `select ... by sym` lands here, as do the group_* benchmarks whose keys
@@ -154,9 +169,27 @@ Z A grpI(A x){
 // (one value each, as find and ~ take them); every other double kept bit for bit.
 // A copy; the caller still emits the original doubles.
 Z A fcanon(A x)_(U n=xn;A y=aF(n);CO W*RES p=(CO W*)xV;W*RES q=(W*)yV;F(n,W v=p[i];q[i]=v==0x8000000000000000ull?0:v<<1>0xffe0000000000000ull?0x7ff8000000000000ull:v)y)   //one key for both zeros, and one for every NaN, as find matches them
-// = and ? of a generic list of dates, times or timestamps, through frT; 0 for any other list
-Z A grpT(A x){A u=frT(x);P(!u,0)A d=grpI(u);mr(u);P(!d,0)A v=kv(&d);return am(i1(x,d),v);}
-Z A unqT(A x){A u=frT(x);P(!u,0)N m=0;I*RES r=_I(u);F(xn,I(r[i]==(I)i,r[m++]=(I)i))A j=aV(tI,(U)m,r);mr(u);return i1(x,j);}
+// A generic list that starts with a dict or table, for = and ?: matching items (~) need only be neighbours, not in
+// qA's order, so the list is graded by a hash of what ~ reads (ints of any width by value, floats as qA canonicalises
+// them, dicts and tables by keys and values) and the items of one hash are told apart with ~. Each item is named by
+// the least index of the items it matches, as in frT. 0, for the general path, on an item of a kind not hashed (a
+// function), more than 8 kinds in one hash, or two items of one hash that qA puts together and ~ apart.
+Z W hm(W h,W v)_(h=(h^v)*0x9e3779b97f4a7c15ull;h^h>>29)
+Z W hA(A x,B*e){UC t=xt;W h=t;
+ P(t==ti||t==tl,hm('i',gl_(x)))P(t==tf,hm(t,fco(*(L*)xV)))P(t==tnp,hm(t,*(L*)xV))P(_tP(x),hm(t,(U)x))
+ P(t==tm||t==tM,hm(hm(h,hA(xx,e)),hA(xy,e)))P(t==tE,x=gZ(xR);h=hA(x,e);mr(x);h)P(!LH(tA,t,tS),*e=1;0)N n=xn;h=hm(LH(tB,t,tL)?'I':t,n);   //a range (!n) as its ints, as ~
+ switch(t){case tA:F(n,h=hm(h,hA(xa,e)))break;case tB:F(n,h=hm(h,xG[i>>3]>>(i&7)&1))break;case tG:case tC:F(n,h=hm(h,xG[i]))break;
+  case tH:F(n,h=hm(h,xH[i]))break;case tI:case tS:F(n,h=hm(h,xI[i]))break;case tL:F(n,h=hm(h,xL[i]))break;default:F(n,h=hm(h,fco(xL[i]))) }
+ return h;}
+Z A frH(A x){N n=xn;CO A*a=xA;P(!LH(tM,_t(*a),tm),0)A k=aL((U)n);L*RES v=_L(k);B e=0;F(n,W h=hA(a[i],&e);v[i]=(L)(U)(h^h>>32))
+ A g=e?0:kG(_R(k));P(!g,mr(k);0)A u=aI((U)n);I*RES r=_I(u);CO I*RES p=_I(g);I s[8];
+ for(N j=0;j<n&&!e;){N m=j;U c=0;W(!e&&m<n&&v[p[m]]==v[p[j]],I q=p[m++],f=-1;F(c,I(mtc_(a[q],a[s[i]]),f=s[i];break))
+   I(f<0,F(c,I(!qA(a[q],a[s[i]]),e=1))I(c==8,e=1)I(!e,s[c++]=f=q))r[q]=f)j=m;}
+ mr(g);mr(k);P(e,mr(u);0)return u;}
+// = and ? of a generic list of dates, times or timestamps, through frT, or one starting with a dict or table, through
+// frH; 0 for any other list
+Z A grpT(A x){A u=frT(x);I(!u,u=frH(x))P(!u,0)A d=grpI(u);mr(u);P(!d,0)A v=kv(&d);return am(i1(x,d),v);}
+Z A unqT(A x){A u=frT(x);I(!u,u=frH(x))P(!u,0)N m=0;I*RES r=_I(u);F(xn,I(r[i]==(I)i,r[m++]=(I)i))A j=aV(tI,(U)m,r);mr(u);return i1(x,j);}
 Z A cSI(A);// amber 2.0.0: symbol<->int-id reinterpret (defined just below), used by grp's tS fast path
 Z X1(grq,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et(x))
  // amber 2.0.0: group a SYMBOL vector by its interned 4-byte id (tS is stored as

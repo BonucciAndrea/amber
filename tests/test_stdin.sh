@@ -47,4 +47,12 @@ check "long lines" "$tmp/long.k" "$tmp/long.want"
 printf '{[ab]ab}\n4 5\n' > "$tmp/params.want"
 check "a line after a lambda's parameters" "$tmp/params.k" "$tmp/params.want"
 
+# 4. with stdout closed, printing a result is 'io on stderr, and the session goes on
+#    (the failed write freed nothing it could: a crash)
+printf '1\n2\n' | AMBER_DIAG=0 "$AMBER" >&- 2> "$tmp/got"; rc=$?
+printf "'io\n'io\n" > "$tmp/closed.want"
+if [ $rc = 0 ] && cmp -s "$tmp/got" "$tmp/closed.want"
+then echo "  PASS stdout closed"
+else echo "  FAIL stdout closed (exit $rc)"; fail=1; fi
+
 exit $fail

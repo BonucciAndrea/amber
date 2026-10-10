@@ -332,8 +332,26 @@ behaviour shows up as a test failure rather than a silent regression.
 - **An amend that leaves no column of a table a list fills each to the table's row count**
   (`` t[`a]:9 `` with `t:([]a:1 2 3)` gives `9 9 9`; an empty table stays empty), as `update` does;
   q gives `'rank` for these (`` t[`a]:9 ``, `` @[t;`a;:;9] ``, `` @[t;`a`b;:;9] ``).
+- **A cell assigned in a column not there adds the column, in either order** (#105 Q5): with
+  `` t:+`a`b!(1 2;3 4) ``, `` t[0;`c]:9 `` and `` t[`c;0]:9 `` both give `` +`a`b`c!(1 2;3 4;9 0N) ``, where q
+  gives `'mismatch` and `'type`. With a verb other than `:`, the row-first form still makes that row a
+  dict of other keys (`` t[0;`c]+:1 `` is a list of two dicts), since the column-first one would apply the
+  verb to the new column's null.
+- **A table's rows take an atom or a dict as q's do (#105 Q3), but are otherwise a list of dicts.**
+  `` @[t;0 1;:;9] ``, `` t[0]:9 `` and `` t[]:`a`b!5 6 `` fill those rows, as q. The row is not checked
+  against the columns: with `` t:+`a`b!(1 2;3 4) ``, `` @[t;0;:;9.5] `` makes general columns (q: `'type`),
+  and a dict of other keys or of the keys in another order makes that row a dict of its own
+  (`` @[t;0;:;`b`a!7 8] `` is a list of two dicts; q lines it up by name, or gives `'mismatch`). A list at
+  rows goes one item per row (`` @[t;0 1;:;7 8] `` is `7 8`; q: each row `7 8`), and a dict with a verb
+  other than `:` one value per row (`` @[t;0 1;+;`a`b!1 2] `` adds `1` to row 0 and `2` to row 1; q adds the
+  dict to each row).
 - **Find gives `0N` for no match**, as in ngn/k: `1 2 3?5` is `0N`, where q gives the count, `3`.
   amber.k's `in` and `ij` rely on it.
+- **Find in a list whose items differ in rank looks for `y` as one item first** (#105 Q2), so it
+  finds what `=` groups by (`` =(1;"ab") `` is `` (1;"ab")!(,0;,1) ``): `(1;"ab")?"ab"` is `1`,
+  `(1;2 3;"ab";4)?"ab"` is `2` and `((1;2 3);4)?4` is `1`. Only where `y` is not an item does find map
+  over it, as q and ngn/k always do: `(1;"ab")?"cd"` is `0N 0N`. q gives `2 2`, `4 4` and `2` for the
+  three (each char, not found; `=` groups as Amber does), and ngn/k `0N 0N`, `0N 0N` and `'rank`.
 - **A take from an empty general list gives empty strings**: `3#()` is `("";"";"")`, since an empty
   general list keeps a string as its type witness (CHANGELOG, "Empty general lists keep their type
   witness"); q gives `(();();())`.
@@ -343,9 +361,9 @@ behaviour shows up as a test failure rather than a silent regression.
   q assumes the table is sorted, so its answer there is unspecified (it gives 40).
 - **A table joined to a table of other columns is `'domain`** (issue #19): `` (+`a!,1 2),+`b!,3 4 ``,
   and `` (+`a!,1 2),,`b!3 `` (the row enlisted, a one-row table). A row dict of other columns makes
-  a list of dicts: `` (+`a!,1 2),`b!3 ``. q gives `'mismatch` for all three
-  (`` ([]a:1 2),([]b:3 4) ``, `` ([]a:1 2),enlist(enlist`b)!enlist 3 ``, `` ([]a:1 2),(enlist`b)!enlist 3 ``),
-  and ngn/k a list of dicts.
+  a list of dicts, on either side (#105 Q1): `` (+`a!,1 2),`b!3 `` and `` (`b!3),+`a!,1 2 ``. q gives
+  `'mismatch` for all four (`` ([]a:1 2),([]b:3 4) ``, `` ([]a:1 2),enlist(enlist`b)!enlist 3 ``,
+  `` ([]a:1 2),(enlist`b)!enlist 3 ``, `` ((enlist`b)!enlist 3),([]a:1 2) ``), and ngn/k a list of dicts.
 - **Four q-named functions keep Amber's answer where q's differs (#83 Q10, #94 Q3).** `"ab" ss ""` is
   `0 1 2` (q: `'length`) and `` 0 1 in 0#` `` is `0 0` (q: `'type`): Amber answers where q refuses.
   `differ 1 1.00000000000001 1` is `1 1 1` (q: `100b`), since Amber has no comparison tolerance

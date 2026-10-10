@@ -281,11 +281,21 @@ cols t               / `sym`px`sz
 
 Assigning to a table's columns:
 
-- `` t[`px]:v `` or `` @[t;`px;f] ``: an atom fills every row (an empty table stays empty); a list or dict
-  must have the row count, unless every column is replaced (`` t[`px]:7 8 `` on a one-column table gives
-  two rows).
+- `` t[`px]:v `` or `` @[t;`px;f] ``: an atom fills every row (an empty table stays empty); a list must
+  have the row count, unless every column is replaced (`` t[`px]:7 8 `` on a one-column table gives
+  two rows). A dict is `'length`, as q: a column is a list. So is any amend that would leave a dict as a
+  column (`` t[`px;]:d ``, a verb's or a function's result, `` t[`px]+:d ``), but two, left unchecked for
+  their speed, which make the dict a column as before: `` @[t;`px;:;d] `` by value, and a verb at a list
+  of columns by name (`` t[`px`sz]+:(d;e) ``).
+- `` t[`c;i]:v `` or `` t[i;`c]:v `` with a column `c` not there adds it, nulls in the other rows.
 - `` .[t;(::;`px);:;v] `` amends every row; with no rows the table is kept when `v` is an atom or empty,
   else `'length`.
+
+Assigning to a table's rows:
+
+- `` t[i]:v `` or `` @[t;i;:;v] ``, `i` a row, a list of rows or elided (`` t[]:v ``): an atom fills those
+  rows in every column, and a dict fills each of them (its keys the columns), as q; a dict of other keys
+  makes those rows dicts of their own. Any other value goes one item per row.
 
 Table / keyed‑table toolkit (all in `amber.k`):
 

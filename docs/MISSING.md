@@ -97,7 +97,10 @@ and q), and so does a null float atom filled by a symbol (`` `a^0n `` is `` `a `
 
 Since 2.5 `sums prds prd wsum wavg svar sdev` skip nulls too, and `cov scov cor` drop a pair
 with a null. Still k: on a dict, `sum` and `min` count the null (`sum `a`b!0N 1` is
-`-9223372036854775807`; q gives `1`), and `avgs` and `med` treat nulls as the primitives do.
+`-9223372036854775807`; q gives `1`), and `avgs` and `med` treat nulls as the primitives do. So do
+`sums` and `sum` of a general list, which add an int null in as `+` does (#116): `sums (1;0N;2.5)` is
+`(1;-9223372036854775807;-9.223372036854776e18)` and `sum (1;0N;2.5)` is `-9.223372036854776e18`
+(q: `(1;0N;0n)` and `0n`).
 `wj` and `wj1` skip nulls in a float `sum` or `avg` and in `min`, but an int `sum` or `avg` adds
 `0N` in, as `+` does: a window of ints `0N 2` sums to `-9223372036854775806` (q: `2`). Looking for
 a null there would cost windows that have none (#94 Q4).
@@ -163,6 +166,13 @@ grouped pairs with `fin.k`'s group index
   `` `s#(2.5;1) `` succeeds where `` `s#(1;2.5) `` is `'s-fail`, the other way round from q.
   Kept because the `` `s `` check has to agree with the grade that a sorted find relies on
   (issue #83, Q14).
+- **Differs from q:** a dict marked `` `s `` keeps its mark through an indexed assignment by name
+  (`d[k]:v`, `d[k]+:v`), as in q, but other amends of one held by nothing else drop it and add a new
+  key, where q keeps the mark, or says `'step` for a new key (#115; AMBER.md §9 lists them all):
+  `` attr @[`s#1 3 5!`a`b`c;3;:;`z] `` is `` ` `` (q: `` `s ``), and `` @[`s#1 3 5!`a`b`c;4;:;`z] ``
+  is `` 1 3 5 4!`a`b`c`z `` (q: `'step`); likewise a dict below the first level of a variable
+  (`` v:(1;`s#1 3!`a`b); v[1;2]:`z ``; q: `'step`), `d,:e`, and `` .[`d;k;:;v] `` at a key `d` has.
+  Keeping the mark in these would put a test on every amend's path.
 
 ## 7. Enumerations, foreign keys, linked columns
 `` `sym$`` enumeration domains, `.Q.en`, foreign keys (`` `t$`` and dotted `order.customer.name`
@@ -185,6 +195,10 @@ Amber now provides the common members (as `.`-style names `z.*`/`Q.*`/`j.*`/`h.*
 The moving family is implemented: `mcount msum mavg mprd mvar mdev mmin mmax` (`std.k`, O(n)
 prefix sums; `mmin`/`mmax` are O(n·w) window scans) plus **`ema`** (C kernel, O(n) sweep).
 - **Amber also has:** `sums prds mins maxs deltas ratios differ prev next wsum wavg xprev`.
+- **Differs from q:** `deltas` of chars and of a general list that starts with an atom gives k's `-':`
+  answer, its first item kept (#112 Q3): `deltas "abd"` is `97 1 2` (q: `'type`), and
+  `deltas (1;2;2.5)` is `(1;1;0.5)`, keeping its `1` as `deltas 1 2 4` does (q: `(0N;1;0.5)`, though
+  `1 1 2` for `deltas 1 2 4`). ngn/k's `-':` gives the same answers.
 - **Still missing:** `wj2`, `ajf`/`ajf0` (fill as-of), `ij`/`lj` fill variants, vectorised
   `ssr`, and `rank`/`xrank` *over tables*. (`mmin`/`mmax` could also move to an O(n)
   monotonic-deque form; see BENCHMARKS.md.)
@@ -229,6 +243,9 @@ secondary threads buy you. `AMBER_THREADS` is the knob.
 `\ts` (via `ts`) and number formatting `.Q.f`/`.Q.fmt` are done.
 - **Still missing:** `\c` console dims, a real `\w` (workspace) report (`Q.w` is a placeholder),
   `system"…"`, `getenv`/`setenv`, and editor tooling / a language server.
+- **Differs from q:** `\cd` with no argument names the working directory as the operating system
+  does, where q prints `$PWD` when that names it (#116): started in `/tmp` (on macOS a link to
+  `/private/tmp`), `\cd` is `"/private/tmp"` (q: `"/tmp"`; with `PWD` unset, `"/private/tmp"` too).
 
 ## 14. Known engine bugs: both fixed in 2.0.0
 - ~~**Bare `/` comment line silently truncates the rest of the file.**~~ **Fixed in 2.0.0.**
@@ -302,6 +319,15 @@ behaviour shows up as a test failure rather than a silent regression.
   item, a char seed over no items): `"a"`, `("a";1)`, `"a"`. Kept so that `%/` and `+/` agree
   (`+/,"a"` is 97 in both); see #17 and #64. Unseeded folds and scans of no chars differ too:
   `</""` is `0N` and `<\""` is `!0`, where ngn/k gives `" "` and `""`.
+- **`+/` of floats, and an over with a float seed, sum the items four ways and add the seed last
+  (#112 Q2, #113).** The items (ints made floats, with a float seed) are summed in four running sums
+  joined at the end, and the seed is added last. The scan and `{x+y}/` fold left from the seed, adding
+  one item at a time and rounding at each, as q's `+/`, `sum` and `sums` and ngn/k's `+/` do, so the
+  over can differ from the scan's last item: `(0.1+/1 -1;*|0.1+\1 -1)` is `0.1 0.10000000000000009`;
+  with `x:4503599627370497 -4503599627370496` (2^52+1 and -2^52), `(0.1+/x;*|0.1+\x)` is `1.1 1.0`;
+  and with `y:1e16 1 1 1 1 1 1 1.0`, `(+/y;*|+\y)` is `1.0000000000000006e16 1e16`. q and ngn/k give
+  the scan's answer for both forms of each (`0.10000000000000009`, `1.0`, `1e16`). Folding left would
+  give up the fast sum.
 - **No long-typed infinity literal.** `0w`/`-0w` exist for floats; `0W`/`-0W` do not parse, so
   the identity elements of `&/`/`|/` over an empty long vector can only be obtained from the
   primitives themselves.
@@ -374,3 +400,12 @@ behaviour shows up as a test failure rather than a silent regression.
   table is the table, as k's `,/` (q: its last row, as a dict); `flip ()!()` is an empty table with
   no columns (q: `'rank`); `` fills `a`b`c!(1;`x;0N) `` is `` `a`b`c!(1;`x;`x) `` (q: `'type`); and
   `xprev` of a keyed table is `'type` (q: `'length`).
+- **`wsum` and `wavg` of a symbol list of another length are `'type` (#113).** `` wsum[1 2;`a`b`c] ``
+  and `` wavg[1 2;`a`b`c] `` are `'type`, where q gives `'length`: a symbol list goes to `+/x*y`, and
+  k's `*` checks the types before the lengths, as ngn/k's does. q's answer would cost a length test
+  in front of every call that takes that path. Lists of numbers of different lengths are `'length`,
+  as in q.
+- **A table literal holds at most 256 columns in its key group and 256 in its value group (#114).**
+  One more is `'limit`, as for the parser's other caps: `` . "([]",(";"/{"a",($x),":1"}'!257),")" ``
+  is `'limit`, where q takes a literal of any width (3,000 and 100,000 columns tried). A wider table
+  can be made with flip: `` #!+(`$"a",'$!300)!300#,,1 `` is `300`.

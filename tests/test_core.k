@@ -1544,6 +1544,7 @@ t[`amendTableDictColumnAnyName;.[{(IK["DN1:+`a`b!(1 2;3 4)";"DN1[`a;]:`x`y!5 6"]
 t[`amendTableRowNewCol;(.[+`a`b!(1 2;3 4);(0;`c);:;9];.[+`a`b!(1 2;3 4);(1;`c);:;`x];{t:+`a`b!(1 2;3 4);t[0;`c]:9;t}[];IA["NC1:+`a`b!(1 2;3 4)";"NC1[1;`c]:9"];IA["NC2:+`a`b!(`sa 1 2;3 4)";"NC2[0;`c]:9"];IA["NC3:(+`a`b!(1 2;3 4);0)";"NC3[0;0;`c]:9"];IA["NC4:`x`y!(+`a`b!(1 2;3 4);0)";"NC4[`x;1;`c]:9"];ER"NC5:+`a`b!(1 2;3 4);NC5[5;`c]:9");(+`a`b`c!(1 2;3 4;9 0N);+`a`b`c!(1 2;3 4;(0N;`x));+`a`b`c!(1 2;3 4;9 0N);(::;+`a`b`c!(1 2;3 4;0N 9));(::;+`a`b`c!(`sa 1 2;3 4;9 0N));(::;(+`a`b`c!(1 2;3 4;9 0N);0));(::;`x`y!(+`a`b`c!(1 2;3 4;0N 9);0));"'index")]
 t[`amendTableRowNewColAsBefore;(.[+`a`b!(1 2;3 4);(0;`a);:;9];{t:+`a`b!(1 2;3 4);t[0;`c]+:1;t}[];.[+`a`b!(1 2;3 4);(0;`c);{9}]);(+`a`b!(9 2;3 4);(`a`b`c!1 3 1;`a`b!2 4);(`a`b`c!1 3 9;`a`b!2 4))]   / a column there; another verb, which column first would meet the nulls with
 
+hexpect[971]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

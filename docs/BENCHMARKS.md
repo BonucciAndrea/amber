@@ -136,7 +136,8 @@ array/columnar tools (numpy + pandas), and (2) **speed benchmarks** on the same 
 It also ships two **portable harnesses** in `bench/`: `run_suite.sh` (the 25-workload
 cross-engine suite behind §2, covering Amber, numpy/pandas, Polars and DuckDB) and `run.sh`
 (the original sanity harness, which additionally runs **growler/k** the moment it is
-present on the machine).
+present on the machine). `bench/primitives.k` ([§8](#8-primitives-small-inputs-amends-printing-benchprimitivesk)) times the
+primitives themselves at small sizes: amends, indexing, adverbs, printing.
 
 [§1](#1-sanity-checks--amber-vs-numpypandas--n--1000000) comes from `bench/bench.k` +
 `bench/bench.py`; [§2](#2-speed--amber-vs-numpypandas-polars-and-duckdb-ms-per-operation-single-core)
@@ -744,6 +745,51 @@ it is about the gather, not the sort.
 Verification for this release: `tests/run_tests.sh`, `--asan` (ASan + UBSan + LeakSanitizer)
 and `--tsan` all report ALL SUITES PASSED, including a new 297-assertion differential suite
 (`tests/test_sort_window.k`) that checks every new kernel against the exact code it replaced.
+
+---
+
+## 8. Primitives: small inputs, amends, printing (`bench/primitives.k`)
+
+§2's suite times large workloads (1M-10M items, one figure each). `bench/primitives.k` times what it
+leaves out: the primitives nearly every program runs through, at sizes from 1 item up, where a fixed
+per-call cost (an extra check on a hot path, a call the compiler stopped inlining, a library call for a
+small copy) shows and a 10M-row workload hides it. Use it beside a change's own cases whenever the change
+touches something shared (the `a.h` helpers, reference counts, allocation, amend, dispatch): run it on
+both builds and compare case by case.
+
+```
+AMBER_THREADS=1 ./amber bench/primitives.k < /dev/null        # all 541 cases, about 65 s on an M2
+./amber bench/primitives.k amend.table print < /dev/null       # some families
+./amber bench/primitives.k amend .1 .10 < /dev/null            # the amends at 1 and 10 items
+./amber bench/primitives.k -list amend.dict                    # the ids a selection picks, nothing run
+```
+
+| family | what | sizes |
+|---|---|---|
+| `amend.list` `amend.nested` | `L[i]:v`, `L[i]+:v`, `L[I]+:v`, `L[]+:v`, `@[L;i;f;v]`, `.[L;p;f;v]` (by name and on a value; primitive and lambda verbs); a list of lists at depth 2 | 1 - 1m |
+| `amend.dict` | symbol and int keys: set, `+:`, `@`, `.`, by name and by value; a key added; a dict of dicts | 1 - 1m |
+| `amend.table` `amend.ktable` | a cell (`` t[`c;i] ``, `` t[i;`c] ``, `.[t;(i;`c);..]`), a column (set, `+:`, `@`, `.`), two columns, a row; a column added (once, and four in a loop); keyed tables: a cell, a row, a key added | 1 - 1m |
+| `index` `find` | list, dict, table and keyed-table lookups; `?` of an atom and of 10 items; `in` | 1 - 1m |
+| `cat` `join` | `,` of lists, dicts, tables and rows (also `t,:r`), `insert`; `lj` `ij` `ej` `uj` | 1 - 1m; 1 - 100 |
+| `adverb` | each, over, scan, each-prior, each-left/right, each-both, each with a primitive and with a lambda | 1 - 10k |
+| `arith` | `+ - *` of dicts (same keys, disjoint keys, an atom), `=` `~` `+` of tables, `+` of keyed tables | 1 - 10k |
+| `sort` | `asc` `desc` `<` `>` of ints, floats, symbols, strings, a mixed list; a dict; a one-key `xasc` | 1 - 10k |
+| `qsql` `agg` | `sel` `exq` `upd` `del` with a where and a by, and `qwhere`, on 10 and 100 rows; `avg` `var` `dev` | 10, 100; 1 - 100 |
+| `print` | `` `k@ `` of ints, floats, strings, bytes, symbols, a dict, a table; `$`; `amfmt` (the display) | 1 - 10k |
+| `call` | a lambda of 1-3 arguments, a projection, an inline lambda, `.` of a string | — |
+
+Ids are `family.kind.op[.form].size` (e.g. `amend.dict.sym.add.name.10`): `name` amends through a
+variable, `val` works on a value, and the size is the item count (`1 10 100 10k 1m`). A selector picks
+every id it is a whole-component prefix of; one that starts with `.` names a size.
+
+Each line is `RESULT <id> amber <median ms> <answer>`, as `bench/suite.k` prints, and the same harness
+times it (2 warm-ups, 5 batches of about 20 ms, the median batch mean); below 1,000 items the case runs
+10 times per call and the time is divided by 10, so the harness's own call does not swamp it. Data
+come from closed formulas, as [SPEC.md](../bench/SPEC.md) asks. Every case is checked before it is timed:
+its answer is compared with one computed another way (a closed formula or a different primitive), and a
+difference prints `MISMATCH` (a failure, `ERROR`) and is counted in the last line,
+`CHECKED <n> cases: <m> mismatches or errors`. `-src` prints the selected cases as one-case blocks
+(setup lines, then `out["<id>";K;{...}]`) for a runner that times each case in a process of its own.
 
 ---
 

@@ -153,6 +153,20 @@ int fseek(FILE *f, long off, int whence) {
     return lseek(f->fd, off, whence) < 0 ? -1 : 0;
 }
 long ftell(FILE *f) { return lseek(f->fd, 0, SEEK_CUR); }
+/* round, for __builtin_round (2.c's tcf): half away from zero, as C's (JS's Math.round goes half up) */
+double round(double x) {
+    if (!(x < 4503599627370496.0 && x > -4503599627370496.0)) return x;   /* NaN, inf, or no fraction */
+    double t = (double)(long long)x, d = x - t;
+    return d >= 0.5 ? t + 1 : d <= -0.5 ? t - 1 : t;
+}
+/* pwrite (i.c writes a file from its start): lseek there, write, and put the offset back, as pwrite leaves it */
+ssize_t pwrite(int fd, const void *b, size_t n, off_t off) {
+    off_t c = lseek(fd, 0, SEEK_CUR);
+    if (lseek(fd, off, SEEK_SET) < 0) return -1;
+    int r = write(fd, b, n);
+    if (c >= 0) lseek(fd, c, SEEK_SET);
+    return r;
+}
 void _exit(int code) { exit(code); }
 
 /* ---- __int128 compiler-rt helpers --------------------------------------
@@ -279,7 +293,46 @@ int vsnprintf(char *restrict buf, size_t size, const char *restrict fmt, va_list
             if (!leftalign) out_pad(&o, &left, zero ? '0' : ' ', pad > 0 ? pad : 0);
             out_str(&o, &left, p, n);
             if (leftalign) out_pad(&o, &left, ' ', pad > 0 ? pad : 0);
-        } else if (c == 'f' || c == 'g') {
+        } else if (c == 'g') {
+            /* Amber 2.7.3: a real %g (q's `string` of a float uses %.7g): p significant digits, trailing
+             * zeros dropped, the exponent form when the exponent is below -4 or at least p, as C's %g.
+             * The digits come from double arithmetic, so the last one can differ from glibc's in a tie. */
+            double v = va_arg(ap, double);
+            int p = prec < 0 ? 6 : prec ? prec : 1;
+            char gb[48]; int gn = 0;
+            if (v != v) { gb[gn++] = 'n'; gb[gn++] = 'a'; gb[gn++] = 'n'; }
+            else {
+                if (v < 0 || (v == 0 && 1 / v < 0)) { gb[gn++] = '-'; v = -v; }
+                if (v > 1.7976931348623157e308) { gb[gn++] = 'i'; gb[gn++] = 'n'; gb[gn++] = 'f'; }
+                else if (v == 0) gb[gn++] = '0';
+                else {
+                    int e = 0; double m = v;
+                    while (m >= 10) { m /= 10; e++; }
+                    while (m < 1) { m *= 10; e--; }
+                    double s = 1; for (int i = 1; i < p; i++) s *= 10;
+                    unsigned long long d = (unsigned long long)(m * s + 0.5);
+                    if (d >= (unsigned long long)(s * 10)) { d /= 10; e++; }
+                    char db[24]; int dn = 0; for (int i = 0; i < p; i++) { db[p - 1 - i] = (char)('0' + d % 10); d /= 10; } dn = p;
+                    while (dn > 1 && db[dn - 1] == '0') dn--;
+                    if (e < -4 || e >= p) {
+                        gb[gn++] = db[0]; if (dn > 1) { gb[gn++] = '.'; for (int i = 1; i < dn; i++) gb[gn++] = db[i]; }
+                        gb[gn++] = 'e'; gb[gn++] = e < 0 ? '-' : '+'; int ae = e < 0 ? -e : e;
+                        if (ae >= 100) gb[gn++] = (char)('0' + ae / 100);
+                        gb[gn++] = (char)('0' + ae / 10 % 10); gb[gn++] = (char)('0' + ae % 10);
+                    } else if (e < 0) {
+                        gb[gn++] = '0'; gb[gn++] = '.'; for (int i = -1; i > e; i--) gb[gn++] = '0';
+                        for (int i = 0; i < dn; i++) gb[gn++] = db[i];
+                    } else {
+                        for (int i = 0; i <= e; i++) gb[gn++] = i < dn ? db[i] : '0';
+                        if (dn > e + 1) { gb[gn++] = '.'; for (int i = e + 1; i < dn; i++) gb[gn++] = db[i]; }
+                    }
+                }
+            }
+            int pad = width - gn;
+            if (!leftalign) out_pad(&o, &left, ' ', pad > 0 ? pad : 0);
+            for (int i = 0; i < gn; i++) out_pad(&o, &left, gb[i], 1);
+            if (leftalign) out_pad(&o, &left, ' ', pad > 0 ? pad : 0);
+        } else if (c == 'f') {
             double v = va_arg(ap, double);
             int neg = v < 0; if (neg) v = -v;
             int p = prec < 0 ? (c == 'g' ? 6 : 6) : prec;

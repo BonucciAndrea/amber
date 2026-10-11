@@ -7,6 +7,8 @@
 #define S_IFMT  0170000
 #define S_ISDIR(m) (((m)&S_IFMT)==S_IFDIR)
 #define S_ISREG(m) (((m)&S_IFMT)==S_IFREG)
+#define S_IFIFO 0010000
+#define S_ISFIFO(m) (((m)&S_IFMT)==S_IFIFO)   /* i.c's fr: no pipes in the VFS, so never */
 struct stat {
     long st_ino;
     unsigned int st_mode;

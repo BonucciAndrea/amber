@@ -12,6 +12,10 @@ qSQL uses the threads now, and group-by on symbols got a lot quicker on one thre
 - **Fixed**: in 2.7.1 a by-query with no where-clause took the slow path.
 - **Build**: `-fwrapv`, like ngn/k, so int maths that overflows wraps as k says (`0N*0N` is 0) instead of
   being undefined behaviour in C. No speed lost (58 benchmarks, about 1% faster overall).
+- **Quicker q code**: a query run again skips its parse (`select` on a 4-row table 20 µs to 3, `select by`
+  76 to 7), `asc`/`<` of symbols sorts only the distinct names (200 ms to 4 on 1M rows of 8 symbols), and
+  `sum` `avg` `max` `min` `count` `first each` over lots of short lists take the primitive's own each
+  (`sum each` 20 ms to 3 on 100k lists). `each` is a verb now, so any `f each x` costs a bit less.
 
 ## 2.7.1
 

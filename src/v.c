@@ -56,7 +56,9 @@ Z V whw(V*c_,int t){WHJ*c=c_;U s=(U)((W)c->n*t/c->nt),e=(U)((W)c->n*(t+1)/c->nt)
  if(c->w==1){H*RES o=c->o;for(U i=s;i<e;i++)if(m[i])o[k++]=(H)i;}else{I*RES o=c->o;for(U i=s;i<e;i++)if(m[i])o[k++]=(I)i;}}   //a store only for a 1: the serial kernel's unconditional store would write into the next thread's first slot
 Z N pwhr(CO UC*m,V*o,U n,UC w,int nt,int*bad){WHJ c;c.m=m;c.o=o;c.n=n;c.nt=nt;c.w=w;c.k[0]=0;par_run(nt,whc,&c);UC a=0;
  for(int t=0;t<nt;t++){c.k[t+1]+=c.k[t];a|=c.a[t];}if(a>1){*bad=1;return 0;}par_run(nt,whw,&c);return c.k[nt];}
-X1(whr,Ril(whr(enl(x)))RA(P(!xn,x(an(0,tI)))K1("{$[`A~@x;(,&#'*'x),,'/x@\\:!0|/#'x:o'x;,&x]}",x))Rm(A y=kv(&x);x(x1(Nx(whr(y)))))RE(whr(gZ(x)))R_(et(x))
+// where's replicate loop (&counts) ran 15-25% apart as the code before it grew or shrank (its place mod 64 moved): the
+// function on 64 and its loops on 32 keep it at its best wherever it lands (clang ignores optimize, -w quiets it)
+__attribute__((aligned(64),optimize("align-loops=32"))) X1(whr,Ril(whr(enl(x)))RA(P(!xn,x(an(0,tI)))K1("{$[`A~@x;(,&#'*'x),,'/x@\\:!0|/#'x:o'x;,&x]}",x))Rm(A y=kv(&x);x(x1(Nx(whr(y)))))RE(whr(gZ(x)))R_(et(x))
  RB(U m=xn,n=addfB(xV,m);A y=aI(n);I*r=yV;Mx(F(m+7>>3,C v=xg;I(i+1==n_&&m&7,v&=(1<<(m&7))-1)W(v,U j=CTZ(v);v&=~(1<<j);*r++=i<<3|j)))Q(r-yI==n);y)
  RGHIL(I w=xw-3;
   // amber 2.1: a 0/1 byte mask (every comparison result) is answered by one

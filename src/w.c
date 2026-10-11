@@ -83,6 +83,32 @@ AX(e8,/*01..1*/P(n==1,e1(x,*a))P(n==2,A y=*a;y(e2(x,y,a[1])))Ab8;C t[8];L m=-1;F
  P(m<0,x8(a,n))F(n,I(t[i]==1,RC_ADDN(a[i],m)))A u=0;I(!m,u=x==LEN?emp(tG):n==2&&xtv&&xv<11?_R(a[!_N(a[1])]):emp(tA))//t[i] 0:pkdatm,1:refatm,2:tA(r=1),3:tA,4:other
  Fj(m,F(n,A y=a[i];I(t[i]==2,b[i]=yA[j])I(t[i]>2,b[i]=ii(y,j)))A z=x8(b,n);B(!z,I(u,u=u(0))F(n,A y=a[i];I(t[i]==1,RC_SUBN(y,m-j-1))I(t[i]==2,mrn(m-j-1,yA+j+1))))I(!j,u=LH(ti,zt,ts)?AN(0,an(m,TT[zt])):emp(tA))PSH(u,z))
  F(n,mr(t[i]-2||!m?a[i]:AZ(a[i])))u)   //An empty list gave none of its items out: released whole (AZ, the container only, leaked an empty list's prototype item, digest #8)
+//each (ECH, verb slot 31): amber.k's each as a dyad in C, so f each y is f'y with no lambda call around it. A
+//lambda over a general list of 16 or more items asks amber.k's qewf first (count first sum max min avg take their
+//primitive's own each there); anything else, and those words over a shorter list, is f'y as it was
+A2(ech2,/*01*/P(!_tP(x)&&_t(x)==to&&!_tP(y)&&_t(y)==tA&&_n(y)>15,K2("{$[^i:qew?x;x'y;qewf[i;y]]}",x,y))A b[1]={y};e8(x,b,1))
+AA(ech8,/*10..0*/er(*a))   //each[f;x;y]: 'rank, as the lambda each was
+__attribute__((noinline,cold)) A1(qech,x(ECH))   //`ech: the each verb (w.c ech2), which amber.k binds to each once
+//`qmc: qsql.k's parsed queries, so a query run again skips the parse. (c;k) is ,v for the v kept under key k in
+//kind c (an int 0-15), or () when there is none; (c;k;v) keeps v and gives it back. 64 a kind and a full kind starts
+//over, so queries built from data (sel"... where n>",$x) never grow it. Under the parse lock: peach workers running
+//queries at once neither tear an entry nor free one another is reading (recursive, and mr takes only ALK)
+#define QMN 64
+Z A qmk[16][QMN],qmv[16][QMN];Z I qmn[16];
+__attribute__((noinline,cold)) A1(qmcT,P(_t(x)-tA||_n(x)<2||_n(x)>3||_t(xA[0])-ti,et(x))L c=gl(xA[0]);P(c<0||c>15,et(x))A k=xA[1];
+ plk(1);I n=qmn[c],i=0;while(i<n&&!mtc_(qmk[c][i],k))i++;
+ P(_n(x)==2,A r=i<n?aV(tA,1,A(_R(qmv[c][i]))):emp(tA);plk(0);x(r))
+ A v=xA[2];if(i<n){mr(qmv[c][i]);qmv[c][i]=_R(v);}else{I(n==QMN,F(n,mr(qmk[c][i]);mr(qmv[c][i]))n=0)qmk[c][n]=_R(k);qmv[c][n]=_R(v);qmn[c]=n+1;}
+ plk(0);x(_R(v)))
+U gdns(V);__attribute__((noinline,cold)) A1(nsdT,x(as(gdns())))   //`nsd: \d's namespace now (` the root)
+//`ewt: the one kind of every item of a general list, for each's aggregates (amber.k qewf): `I when each is a
+//nonempty int list (bits, any width) with no null, `J when besides none is 64-bit and none has 2^21 items (so each
+//one's sum is exact as a float), `i when some 64-bit one holds a 0N, `F when each is a nonempty float list, else `
+//(an atom, an empty list, a range, mixed kinds)
+__attribute__((noinline,cold)) A1(ewtT,P(_tP(x)||_t(x)-tA||!_n(x),x(as(0)))CO A*e=xA;I k=0,z=0,w=0;
+ F(_n(x),A v=e[i];P(_tP(v)||!_n(v),x(as(0)))UC t=_t(v);I c=LH(tB,t,tL)?1:t==tF?2:0;P(!c||k&&c-k,x(as(0)))k=c;
+  w|=t==tL||_n(v)>=1u<<21;I(t==tL&&!z,CO L*RES p=_V(v);F_(j,_n(v),z|=p[j]==NL)))
+ x(as(us((S)(k==2?"F":z?"i":w?"I":"J")))))
 
 Z A2(cs,/*01*/A z,v=yR,u=enl(yR);W(1,z=yR;y=x1(y);P(!y,mr(v);z(u(0)))B m=mtc_(y,z)||mtc_(y,v);z(0);B(m)PSH(u,yR))mr(v);y(u))
 Z A2(cf,/*01*/A z=yR,u;W(1,zR;u=x1(z);B(!u)P(mtc_(u,y)||mtc_(u,z),y(u(z)))z=z(u))y(z(u)))

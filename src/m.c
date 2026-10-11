@@ -377,7 +377,7 @@ B am_infix_dyad(S p,U n){
      * immediate value -- a scalar, or a built-in verb like `+` which is already
      * infix -- must NOT be dereferenced there; a non-zero _t0 flags those, so we
      * bail before _k(v) reads a wild address. */
-    return v == INS || (!_t0(v) && TU(_T(v)) && _k(v) == 2);   // INS: insert, a dyad with no glyph (#94 Q1)
+    return v == INS || v == ECH || (!_t0(v) && TU(_T(v)) && _k(v) == 2);   // INS: insert, ECH: each, dyads with no glyph (#94 Q1)
 }
 
 // amber 2.2: is `p[0..n)` a global that is BOUND to something which is NOT a
@@ -406,7 +406,7 @@ B am_name_nonfn(S p, U n) {
     i = fL(gk, gn, k);
     if (i >= gn || !gv[i]) return 0;        // unbound: leave the keyword list alone
     v = gv[i];
-    return !(v == INS || (!_t0(v) && TU(_T(v)) && _k(v) == 2));
+    return !(v == INS || v == ECH || (!_t0(v) && TU(_T(v)) && _k(v) == 2));
 }
 
 // ---- 1.9.5: workspace introspection -----------------------------------------
@@ -513,6 +513,7 @@ Z A bs0(S s)_(en0())
 Z A bsbs(S s)_(exit(0);0)
 Z A bscd(S s)_(P(!*s,C b[4096];getcwd(b,SZ b)?aCz(b):eo0())chdir(s)?eo0():au)   //\cd alone: the working directory, as q
 Z A bsd(S s)_(P(!*s,as(gd))s+=*s=='.';gd=us(s);au)
+U gdns(V)_(GD)   //the namespace a . "..." compiles its names in now (`nsd, qsql.k's lambda cache keys on it)
 // amber 2.7: \l on a directory maps a database (hdb.k's loaddb), as q's \l db does
 #if !defined(wasm)
 Z I bdir(S s)_(struct stat st;stat(s,&st)?0:S_ISDIR(st.st_mode)?1:2*!!S_ISFIFO(st.st_mode))   // 1 a directory, 2 a FIFO

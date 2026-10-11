@@ -153,7 +153,16 @@ raze:{$[isat x;,x;,/x]}
 sublist:{$[$[1=#y;isat y;0b];$[|/^x;`err"type";abs x;y;0#y];[n:(abs x)&#y;$[x<0;$[`I=@x;$[`m=@y;sublist[x;!y]!sublist[x;. y];[i:*x;y i+!0|x[1]&(#y)-i]];(0-n)#y];n#y]]]}   / An atom comes back as is, as q (0 sublist 5 is !0); a null or symbol count: 'type, as q; a (start;count) pair: the items from start, as q (a pair is a list, so x<0 is true for it)
 cross:{,/x,/:\:y}
 / q's adverb words, defined as q defines them (#83 Q11): last each x is last'x, and infix like any named dyad
-each:{x'y}
+/ each: count first sum max min avg over a list of nonempty int or float lists go through the primitive's own each
+/ (sum each of 100k short int lists took 19 ms, 2 in q). The answer stays the word's: an item where a null or a NaN
+/ could make the primitive's differ is the word's own (`ewt says which kind the items are, and whether an int one
+/ holds a 0N). Any other x or y, or a word redefined: x'y, as it was. each is a verb (src/w.c ech2), so a call is no lambda
+qew:(count;first;sum;max;min;avg)
+each:`ech[]   / the verb in src/w.c (ech2): f'y, and for a lambda over 16 or more items qewf first (? on a general list is 0N for a miss)
+qewf:{[i;y]$[i<2;$[i;*'y;#'y];[t:`ewt y;$[`J=t;qewi[i;y;2];`I=t;qewi[i;y;0];`i=t;qewi[i;y;1];`F=t;qewF[i;y];(qew i)'y]]]}
+qewi:{[i;y;h]$[i=2;$[h=1;qewx[2;y;&0N=&/'y;+/'y];+/'y];i=3;qewx[3;y;();|/'y];i=4;[r:&/'y;qewx[4;y;&0N=r;r]];h=2;(0.0++/'y)%#'y;[r:(+/'0.0+y)%#'y;$[h;qewx[5;y;&0N=&/'y;r];r]]]}   / ints (h 1: a 0N somewhere; 2: every sum exact as a float, so avg is it over the count)
+qewF:{[i;y]r:$[i=2;+/'y;i=3;|/'y;i=4;&/'y;(+/'y)%#'y];qewx[i;y;&^r;r]}   / floats: a NaN answer is the word's own
+qewx:{[i;y;m;r]$[i=3;$[`F=@r;@[r;&^r;:;-0w];@[r;&0N=r;:;-9223372036854775807]];#m;@[r;m;:;(qew i)'y m];r]}   / max: an all-null item is -0W (-0w), as max's
 over:{x/y}
 scan:{x\y}
 prior:{x':y}
@@ -316,7 +325,7 @@ qEXACT:9007199254740992.0
 / from indexing the raw columns with each group's first row (`*:'`) -- one
 / gather per by-column, instead of a flip over every row in the table.
 qgrp:{[t;b]d:+t;bc:d b;g:$[1=#b;=*bc;qcard[bc]<qEXACT;=qenc bc;=rows[b#+t]];iv:value g;(bc@\:*:'iv;iv)}
-qks:{[r]$[iskeyed r;[k:keys r;xkey[k;xasc[k;unkey r]]];r]}   / a grouped result in key order, as q gives it
+qks:{[r]$[iskeyed r;[k:!r;o:`xs(. +k;0b);o:$[#o;o;<k];k:+k@o;c:1#!k;(+k,c!`sa'k c)!(. r)@o];r]}   / a grouped result in key order, as q gives it: xkey[k;xasc[k;unkey r]] without the flips, both halves cut by one order, the first key `s as xasc sets it
 qby:{[t;b;a]b:b,();r:qgrp[t;b];kt:+b!r 0;iv:r 1;subs:atr[t]'iv;vt:+(!a)!{[t;subs;f]$[#subs;f'subs;qby0[f;0#t]]}[t;subs]'value a;qks kt!vt}
 qby0:{[f;e]g:{[f;e]r:.[f;,e;{`qby0err}];$[`qby0err~r;();(@r)in`i`f`c`s`d`t`n;0#,r;()]}[f];r:g e;$[r~g@+{$[(`A=@x)&~#x;0#0.0;x]}'+e;r;()]}   / no groups: a column typed by its aggregate's result (q); a plain column stays ()
 / An empty temporal column is a general list with no type left (`max` of it is -0W, an int): a type that changes when such columns are floats instead came from them, so the column stays ()

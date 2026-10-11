@@ -109,7 +109,24 @@ Z A1(ascB,P(xtF,asc(of1(x)))
 // stable). Each column is indexed in C: K's y x applied a column of two or three functions as a train ('rank, or a
 // wrong order from what the train gave)
 Z A ascM(A x)_(A g=aE(0,xN);CO A*c=_A(xy);for(N j=_n(xy);j--;){A o=asc(N(i1(c[j],_R(g)),mr(g);mr(x)));P(!o,mr(g);x(0))A h=i1(g,o);mr(g);g=Nx(h);}x(g))
-X1(asc,Rt(opn(x))Rm(grdm(x,asc))RM(ascM(x))RS(asc(str(x)))RA(P(xn-(I)xn,ez(x))A g=xn>1?ascT(x):0;g?x(g):ascA(x))RE(Lij x(0);aE(0,j-i))
+// Symbols order by their text, as qA orders two strings: unsigned bytes, then a prefix first. Every row's text went
+// through the merge sort with a qA call a compare (175 ms for 1M rows of 8 symbols, 7.6 in q). Now the distinct
+// symbols are ranked (srnk) and each row's rank takes the stable counting or radix grade, so rows of one symbol keep
+// their order, as they did. srnk keys each string on its first 8 bytes, big-endian with the top bit flipped so the
+// signed radix grade orders them unsigned (no symbol holds a 0 byte, so a shorter string's zero padding sorts it
+// first), and orders the strings that share those 8 bytes by a merge on the rest (they are distinct, so any order of
+// equals is fine). 0 when an item is not a string: the caller takes the old path
+Z I sr8(CO L*p,CO I*l,I a,I b)_(U n=MIN(l[a],l[b]);I d=n>8?memcmp((CO UC*)p[a]+8,(CO UC*)p[b]+8,n-8):0;d?(d>0)-(d<0):ql(l[a],l[b]))
+Z __attribute__((noinline,cold)) V srm(CO L*p,CO I*l,I*g,N n,I*t){P(n<2,)N m=n/2;srm(p,l,g,m,t);srm(p,l,g+m,n-m,t);N i=0,j=m,k=0;W(i<m&&j<n,t[k++]=sr8(p,l,g[i],g[j])<=0?g[i++]:g[j++])W(i<m,t[k++]=g[i++])W(j<n,t[k++]=g[j++])MC(g,t,n*SZ(I));}
+Z __attribute__((noinline,cold)) A srnk(A s/*0*/)_(N m=_n(s);CO A*e=_A(s);F(m,P(_t(e[i])-tC,(A)0))A K=aL((U)m),P_=aL((U)m),Ln=aI((U)m);L*k=_L(K),*p=_L(P_);I*l=_I(Ln);
+ F(m,CO UC*c=_V(e[i]);U n=_n(e[i]);W v=0;F_(j,8,v=v<<8|(j<n?c[j]:0))k[i]=(L)(v^(W)1<<63);p[i]=(L)(W)c;l[i]=(I)n)
+ A G=rdxg(K);mr(K);P(!G,mr(P_);mr(Ln);(A)0)I*g=_I(G);A T=0;
+ for(N i=0;i<m;){N j=i+1;CO UC*c=(CO UC*)p[g[i]];W(j<m&&l[g[i]]>=8&&l[g[j]]>=8&&!memcmp(c,(CO UC*)p[g[j]],8),j++)
+  I(j-i>1,I(!T,T=aI((U)m))srm(p,l,g+i,j-i,_I(T)))i=j;}
+ I(T,mr(T))A R=aI((U)m);F(m,_I(R)[g[i]]=(I)i)mr(G);mr(P_);mr(Ln);R)
+Z __attribute__((noinline,cold)) A sgS(A x/*1*/)_(A u=unq(_R(x));P(!u,x(0))A s=str(_R(u));P(!s,mr(u);x(0))A R=_t(s)==tA?srnk(s):0;mr(s);P(!R,mr(u);asc(str(x)))
+ A k=fnd(u,x);mr(u);P(!k,mr(R);(A)0)A r=i1(R,k);mr(R);P(!r,(A)0)asc(r))
+X1(asc,Rt(opn(x))Rm(grdm(x,asc))RM(ascM(x))RS(xn<32?asc(str(x)):sgS(x))RA(P(xn-(I)xn,ez(x))A g=xn>1?ascT(x):0;g?x(g):ascA(x))RE(Lij x(0);aE(0,j-i))
  RGC(P(xn-(I)xn,ez(x))N n=xn;I c[257]={};B u=xtC;I*b=c+(u?1:129),*d=c+(u?0:128);F(n,b[u?(UC)xg:xg]++)F(256,c[i+1]+=c[i])A y=aI(n);Mx(F(n,yI[d[u?(UC)xg:xg]++]=i))ct(tZ(n-1),y))//chars sort as unsigned bytes
  // amber batch 2: 16/32/64-bit integers and IEEE-754 doubles go through the
  // key-carrying LSD radix in src/v.c -- one sequential pass per SIGNIFICANT key

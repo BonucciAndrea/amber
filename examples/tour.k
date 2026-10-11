@@ -160,7 +160,7 @@ ex"uj[([]a:1 2;b:3 4);([]b:5 6;c:7 8)]"
 ex"ej[`sym;tr;([]sym:`a`b;ref:1 2)]"
 ex"aj[`sym`time;tr;qu]"
 ex"aj0[`sym`time;tr;qu]"
-ex"wj[(tr[`time]-3;tr`time);`sym`time;tr;qu;,(`mx;max;`bid)]"
+ex"wj[(tr[`time]-3;tr`time);`sym`time;tr;(qu;,(`mx;max;`bid))]"
 ex"asof[xasc[`sym`time;tr];`sym`time!(`a;6)]"
 
 `0:"";`0:"tour complete."

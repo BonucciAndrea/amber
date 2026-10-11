@@ -116,8 +116,15 @@ Amber follows a terse **array grammar**, which differs from q in a few ways you 
   (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) are infix as usual. An *arbitrary* user lambda is
   still bracket/prefix only (`{x+y}[a;b]`, not `a {x+y} b`); see the CHANGELOG for why lambda
   infix is excluded.
-* **No `>=` / `<=` operators.** Use `~a<b` for `a>=b` and `~a>b` for `a<=b`.
+* **`<>` `>=` `<=` work as in q (since 2.7.3)** after a name, a number or a closing bracket: `x<>y`,
+  `x>=y`. Anywhere else `<` and `>` keep their k reading (`<>x` is the grade of the grade down).
+* **`if`, `do` and `while` are there (since 2.7.3)**, as in q: `{r:0;do[3;r+:1];r}`, `while[x>1;x:x div 2]`,
+  and a `:` inside an `if` returns from the lambda. `'"msg"` at the start of an expression signals, as q's `'`.
+* **`type x` gives q's type numbers (since 2.7.3)**: `7` for an int list, `-9` a float, `98` a table.
+  `@x` still gives Amber's letters (`` `I `` `` `f `` `` `M ``).
 * **Symbols cannot contain `_`.** `` `a_b `` is a parse error; use a quoted symbol `` `"a_b" ``.
+* **qSQL inside a lambda sees its arguments and locals (since 2.7.3)**, as q: `{[c]select from t where s=c}`.
+  A column of the same name wins, as in q.
 * **Nested lambdas are not closures.** An inner `{…}` sees only its own parameters and globals,
   never the enclosing function’s locals. The library passes captured values in by projection
   (`f[captured]'list`); do the same in your own code.
@@ -452,8 +459,8 @@ Every join is a function; call it in bracket form `lj[t;kt]` or, since 2.0.0, **
 | `aj[c;x;y]`          | **as‑of** join      | last `y` row per key with time ≤ `x`.time |
 | `aj0[c;x;y]`         | as‑of, `y`’s time   | like `aj` but result time is `y`’s      |
 | `asof[t;d]`          | as‑of lookup        | single as‑of row for the dict `d`       |
-| `wj[w;c;t;q;aggs]`   | **window** join     | aggregate `q` over a window per `t` row |
-| `wj1[w;c;t;q;aggs]`  | window join, inside | like wj, but only the quotes inside the window (wj also counts the one in force at its start, as q) |
+| `wj[w;c;t;(q;aggs)]`   | **window** join     | aggregate `q` over a window per `t` row |
+| `wj1[w;c;t;(q;aggs)]`  | window join, inside | like wj, but only the quotes inside the window (wj also counts the one in force at its start, as q) |
 
 `c` is `` `key…`time``: the last name is the ordering (time) column, the rest are exact‑match keys.
 
@@ -485,7 +492,7 @@ triples `(name; aggregate‑function; column)`:
 
 ```k
 w:(trade[`time]-2; trade`time)            / a 2-unit look-back window per trade
-wj[w; `sym`time; trade; quote; ,(`mx;max;`bid)]
+wj[w; `sym`time; trade;(quote;,(`mx;max;`bid))]
 /  sym time px  mx
 /  a   3    100 10      max bid for a in [1,3]
 /  b   4    200 20      max bid for b in [2,4]

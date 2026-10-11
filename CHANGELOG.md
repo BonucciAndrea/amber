@@ -16,6 +16,13 @@ qSQL uses the threads now, and group-by on symbols got a lot quicker on one thre
   76 to 7), `asc`/`<` of symbols sorts only the distinct names (200 ms to 4 on 1M rows of 8 symbols), and
   `sum` `avg` `max` `min` `count` `first each` over lots of short lists take the primitive's own each
   (`sum each` 20 ms to 3 on 100k lists). `each` is a verb now, so any `f each x` costs a bit less.
+- **More like q**: `if` `do` `while`, `<>` `>=` `<=`, `'` to signal and `@[f;x;h]` to trap, q's casts
+  (`` `long$ `` `"J"$` `` `date$ `` `` `year$ ``...), `upsert`, `` `t insert ``, `n!t`, `xcol`, `cut`, `bin`, `avgs`,
+  `inv`, `md5`, `.Q.n` with its dot, and qSQL in a lambda sees its args and locals. Fixed quiet wrong answers:
+  `x<>y`, `"hello" ss "l"`, `1 2 3^0N 5 0N`, `7 mod -3`, `0!kt`, `mmu` of vectors, q-style `wj`. Not slower.
+- **Changed**: `type` gives q's numbers (`@x` the letter), `wj`/`wj1` take `(q;aggs..)`, two lists the same
+  length fill with `^` (else it's still except), and a trap's handler gets just the message (`"type"`).
+  An int list against a number past its width gives a byte mask, so an empty `where` is 50x quicker.
 
 ## 2.7.1
 

@@ -220,7 +220,7 @@ t[`byBare;     . qrw"select sum sz by sym from trades"; . qrw"select sum sz by s
 / the same); it used to come back as x0 whatever it was computed from.
 tqa[`aggName;    "select last px by sym from trades"; cols; `sym`px];
 tqa[`aggNameSum; "select sum sz by sym from trades";  cols; `sym`sz];
-tqa[`aggNameWide;"select wavg[sz;px] by sym from trades"; cols; `sym`sz];   / q names it by the first argument (digest #56)
+tqa[`aggNameWide;"select wavg[sz;px] by sym from trades"; cols; `sym`px];   / q names a function's column by its last argument, an operator's by its first (2.7.3; checked against q)
 / wavg by group, fused: a row with a null value or weight adds no weight, as wavg's pairs and q's (it gave 5/3)
 TWN:([]sym:`a`a`a`b;sz:1 2 3 4.0;px:1 0n 3 5.0;iz:1 2 3 4;ip:1 0N 3 5)
 tq[`wavgByNull;    "select v:sz wavg px by sym from TWN";             (+(,`sym)!,`a`b)!+(,`v)!,2.5 5.0];
@@ -279,7 +279,7 @@ t[`selLimitKeyed; #sel"select[2] s:sum px by sym from st"; 2]
 / (#20 row 17: c:0.5, and c:sz 0 in selAtomCol too)
 tq[`selFromCount; "select[1 2] from st";        st 1 2]
 tq[`selFromCountPast; "select[4 5] from st";    st 4 5]
-t[`selLimitBad;  {5#.[sel;,x;{x}]}'("select[0N] from st";"select[1 0N] from st";"select[-1 2] from st";"select[1 2 3] from st"); 4#,"'type"]
+t[`selLimitBad;  {4#.[sel;,x;{x}]}'("select[0N] from st";"select[1 0N] from st";"select[-1 2] from st";"select[1 2 3] from st"); 4#,"type"]
 t[`selAtomRow;   (sel"select c:0.5 from st";sel"select c:abs 0.5 from st"); 2#,+(,`c)!,,0.5]
 t[`selAtomAgg;   sel"select c:1+sum sz from st";  +(,`c)!,,211]
 t[`selAtomCol;   sel"select c:sz 0,d:0.5 from st"; +`c`d!(,30;,0.5)]
@@ -330,7 +330,7 @@ t[`fbyWhereCols;  (sel"select px from ft where px=(max;px) fby (sym;ex)")`px; 20
 / ---- two keyed tables: + - * % & | over the union of the keys, as dicts (issue #19); comparison 'nyi (they crashed); a keyed table with an atom works ----
 KA:(+(,`a)!,1 2 3)!4 5 6;KB:(+(,`a)!,2 3 4)!10 20 30;KE:{.[x;y;{(x?"\n")#x}]}
 t[`keyedArith;  {x[KA;KB]}'(+;-;*;%;&;|);  (+(,`a)!,1 2 3 4)!/:(4 15 26 30;4 -5 -14 -30;4 50 120 30;(4;0.5;0.3;30);4 5 6 30;4 10 20 30)]
-t[`keyedNyi;    {KE[x;(KA;KB)]}'(<;>;=);  3#,"'nyi"]
+t[`keyedNyi;    {KE[x;(KA;KB)]}'(<;>;=);  3#,"nyi"]
 t[`keyedAtom;   KA+1;                                       (+(,`a)!,1 2 3)!5 6 7]
 / ---- distinct of a table: its distinct rows, first seen first, as q (issue #19) ----
 t[`tableDistinct;   ?([]a:1 1 2 1;b:`x`x`y`x);               ([]a:1 2;b:`x`y)]
@@ -596,11 +596,11 @@ tq[`nestWhereParen; "exec n from (update c0:n from TNQ) where sym=`b";  ,2];
 tqx:{[tag;q;want]e:.[{(1b;. qrw x)};,q;{(0b;*"\n"\x)}];hpush[tag;(~e 0)&want~e 1;"FAIL want the error ",want,"  <-  ",q]}
 TFK:([]n:,0)
 QG:42
-tqx[`byFnKey;      "select count i by sym from (select c0:n from TFK)";"'rank"];
-tqx[`byFnKeyAll;   "select by sym from TFK";"'rank"];
-tqx[`byFnKey2;     "select count i by sym from ([]n:1 2)";"'rank"];
-tqx[`byFnKeyUpd;   "update c:sum n by sym from TFK";"'rank"];
-tqx[`byFnKeyExec;  "exec count i by sym from TFK";"'rank"];
+tqx[`byFnKey;      "select count i by sym from (select c0:n from TFK)";"rank"];
+tqx[`byFnKeyAll;   "select by sym from TFK";"rank"];
+tqx[`byFnKey2;     "select count i by sym from ([]n:1 2)";"rank"];
+tqx[`byFnKeyUpd;   "update c:sum n by sym from TFK";"rank"];
+tqx[`byFnKeyExec;  "exec count i by sym from TFK";"rank"];
 tq[`byDataGlobal;  "select count i by QG from TN";  (+(,`QG)!,,42)!+(,`x)!,,3];
 
 / a where whose value is an atom keeps every row (1b) or none (0b), as q: it is not a one-item mask
@@ -616,17 +616,17 @@ t[`whAtomFunc;     ?[trades;,1b;0b;()];                                 trades]
 t[`whAtomFuncLater; ?[trades;((>;`px;15);1b);0b;()];                    1_trades]
 t[`whAtomFuncDel;  ![trades;,0b;0b;0#`];                                trades]
 / any other atom is not a boolean: 'type, as q (it was every row, the first row, or 'domain), the error pinned
-tqx[`whAtomNull;   "select from trades where 0N"; "'type"];
-tqx[`whAtomFloat;  "select from trades where 1.5"; "'type"];
-tqx[`whAtomSym;    "select from trades where `a"; "'type"];
-tqx[`whAtomChar;   "exec sz from trades where \"a\""; "'type"];
-tqx[`whAtomFNull;  "update z:0 from trades where 0n"; "'type"];
-tqx[`whAtomCasFloat; "select from trades where px>15, 1.5, sz>avg sz"; "'type"];
-tqx[`whAtomCasSym;   "select from trades where px>15, `a, sz>avg sz"; "'type"];
-tqx[`whAtomCasChar;  "select from trades where px>15, \"a\", sz>avg sz"; "'type"];
-tqx[`whAtomCasFNull; "select from trades where px>15, 0n, sz>avg sz"; "'type"];
+tqx[`whAtomNull;   "select from trades where 0N"; "type"];
+tqx[`whAtomFloat;  "select from trades where 1.5"; "type"];
+tqx[`whAtomSym;    "select from trades where `a"; "type"];
+tqx[`whAtomChar;   "exec sz from trades where \"a\""; "type"];
+tqx[`whAtomFNull;  "update z:0 from trades where 0n"; "type"];
+tqx[`whAtomCasFloat; "select from trades where px>15, 1.5, sz>avg sz"; "type"];
+tqx[`whAtomCasSym;   "select from trades where px>15, `a, sz>avg sz"; "type"];
+tqx[`whAtomCasChar;  "select from trades where px>15, \"a\", sz>avg sz"; "type"];
+tqx[`whAtomCasFNull; "select from trades where px>15, 0n, sz>avg sz"; "type"];
 tqe[`whAtomCascade;  "select from trades where px>15, 0N, sz>avg sz"];
-tqx[`whAtomFuncNull;  "?[trades;((>;`px;15);0N);0b;()]"; "'type"];
+tqx[`whAtomFuncNull;  "?[trades;((>;`px;15);0N);0b;()]"; "type"];
 / a functional where over a simple column
 TH:([]a:(1 2;3 4;1 1);b:1 2 3;s:("ab";"cd";"ab"))
 t[`whFuncSimple;      ?[TH;,(>;`b;1);0b;()];                               1_TH]

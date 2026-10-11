@@ -26,6 +26,7 @@ z.exit:{}                                 / exit handler
 Q.n:"0123456789"
 Q.a:"abcdefghijklmnopqrstuvwxyz"
 Q.A:"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+Q.s1:{`k x}                                 / one line of text, as q's .Q.s1
 Q.f:{[n;x]$round[n;x]}                     / format x to n decimals -> string
 Q.fmt:{[w;n;x]w$$round[n;x]}               / format to width w, n decimals
 Q.s:{"\n"/amfmt x}                         / show as a string

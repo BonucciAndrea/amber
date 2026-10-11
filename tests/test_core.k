@@ -182,7 +182,7 @@ t[`amendByNameWorks;{.[`B4;,1;:;9];.[`B4;,0;+;10];B4}B4:1 2 3;11 9 3]
 / (statements, not one long chain of verbs, which the parser's nesting limit refuses first)
 FN:{"{",(";"/x#,"x"),"}"}
 / first, before any other error (an earlier error hid it)
-t[`fnBytes2046Msg;6#.[.:;,FN 1023;{x}];"'limit"]
+t[`fnBytes2046Msg;5#.[.:;,FN 1023;{x}];"limit"]
 t[`fnUnderLimit;#$. FN 1022;2045]   / 1022 statements (2044 bytes) compile; 2045 is the length of its text
 te[`fnBytes2046;". FN 1023"]
 t[`fnBytes2046Trap;.[.:;,FN 1023;{`t}];`t]
@@ -198,8 +198,8 @@ t[`nestedConstList;{.[.:;,x;{x}]}'("#((",(L[300;"1"]),");0)";"(0;(0;(",(L[300;"2
 
 / ---- an impossible size is 'limit, one error for all of them (issue #10) ----
 ER:{.[.:;,x;{(x?"\n")#x}]}
-t[`joinLimitError;ER"s:1048576#\"a\";#\",\"/4096#,s";"'limit"]
-t[`scanCountLimitError;ER"{x+y}\\[4294967296;1;2]";"'limit"]
+t[`joinLimitError;ER"s:1048576#\"a\";#\",\"/4096#,s";"limit"]
+t[`scanCountLimitError;ER"{x+y}\\[4294967296;1;2]";"limit"]
 
 / ---- floats order by value: the two zeros are one value, and so are the NaNs (issue #15, option A) ----
 FZ:-0.0 0.0;FN:0n -0n
@@ -218,46 +218,46 @@ t[`sqzTopInt;@2147483647 1;`I]
 
 / ---- date and time literals with fields out of range are 'parse, as q refuses them (issue #18) ----
 TL:{.[{`i$. x};,x;{`$(x?"\n")#x}]}
-t[`litDateBad;TL'("2026.02.29";"1900.02.29";"2026.13.01";"2026.00.10";"2026.04.31";"18446744073709551616.02.29");6#`$"'parse"]
-t[`litTimeBad;TL'("10:61:00.000";"10:00:60.000";"2026.07.30D10:60:00");3#`$"'parse"]
-t[`litStampDateBad;TL"2026.02.30D10:00:00";`$"'parse"]
+t[`litDateBad;TL'("2026.02.29";"1900.02.29";"2026.13.01";"2026.00.10";"2026.04.31";"18446744073709551616.02.29");6#`$"parse"]
+t[`litTimeBad;TL'("10:61:00.000";"10:00:60.000";"2026.07.30D10:60:00");3#`$"parse"]
+t[`litStampDateBad;TL"2026.02.30D10:00:00";`$"parse"]
 t[`litStampHour24;TL"2026.07.30D24:00:00.000";`i$2026.07.31D00:00:00.000]
 t[`litStampHour99;TL"2026.07.30D99:00:00.000";`i$2026.08.03D03:00:00.000]
 t[`litTemporalGood;TL'("2024.02.29";"2000.02.29";"2026.04.30";"24:00:00.000";"99:00:00.000");8825 59 9616 86400000 356400000]
 / a time is 32 bits of milliseconds: a literal past 596:31:23.647 is 'limit, as an int literal past 64 bits (issue #62; it wrapped)
-t[`litTimeLimit;TL'("596:31:23.648";"1000:00:00.000";"18446744073709551616:00:00.000");3#`$"'limit"]
+t[`litTimeLimit;TL'("596:31:23.648";"1000:00:00.000";"18446744073709551616:00:00.000");3#`$"limit"]
 t[`litTimeTop;TL'("596:31:23.647";"00000000000000000001:00:00.000");2147483647 3600000]
-t[`mktLimit;(.[{`mkt x};,2147483648;{(x?"\n")#x}];`i$`mkt -2147483648);("'limit";-2147483648)]
+t[`mktLimit;(.[{`mkt x};,2147483648;{(x?"\n")#x}];`i$`mkt -2147483648);("limit";-2147483648)]
 / a date is 32 bits of days: a literal past 5881610.07.11, and `mkd past 32 bits, is 'limit, as "D"$ (they wrapped:
 / 100000000.01.01 read as -5832990.07.06)
-t[`litDateLimit;TL'("5881610.07.12";"9999999.12.31";"100000000.01.01";"18446744073709551616.01.01");4#`$"'limit"]
+t[`litDateLimit;TL'("5881610.07.12";"9999999.12.31";"100000000.01.01";"18446744073709551616.01.01");4#`$"limit"]
 t[`litDateTop;TL'("5881610.07.11";"00000000000000000002026.07.30");2147483647 9707]
-t[`mkdLimit;(.[{`mkd x};,2147483648;{(x?"\n")#x}];.[{`mkd x};,-2147483649;{(x?"\n")#x}];`i$`mkd -2147483648);("'limit";"'limit";-2147483648)]
+t[`mkdLimit;(.[{`mkd x};,2147483648;{(x?"\n")#x}];.[{`mkd x};,-2147483649;{(x?"\n")#x}];`i$`mkd -2147483648);("limit";"limit";-2147483648)]
 / a timestamp is 64 bits of nanoseconds: a literal past 2292.04.10D23:47:16.854775807, or before 1707.09.22D00:12:43.145224192
 / (0N's), is 'limit, as "P"$ (digest #93; it wrapped: 2300.01.01D00:00:00.000 read as 1715.06.13D00:25:26.290448384)
-t[`litStampLimit;TL'("2300.01.01D00:00:00.000";"2292.04.10D23:47:16.854775808";"1707.09.22D00:12:43.145224191";"5881610.07.11D00:00:00";"2000.01.01D18446744073709551617:00:00");5#`$"'limit"]
+t[`litStampLimit;TL'("2300.01.01D00:00:00.000";"2292.04.10D23:47:16.854775808";"1707.09.22D00:12:43.145224191";"5881610.07.11D00:00:00";"2000.01.01D18446744073709551617:00:00");5#`$"limit"]
 t[`litStampTop;TL'("2292.04.10D23:47:16.854775807";"1707.09.22D00:12:43.145224193";"1707.09.22D00:12:43.145224192";"2000.01.01D2562047:47:16.854775807");9223372036854775807 -9223372036854775807 0N 9223372036854775807]
 / a minute, second, month or day of 20 digits is 'parse, as in "T"$, "D"$ and "P"$ (it wrapped: 10:18446744073709551617:00.000 read as 10:01:00.000)
-t[`litFieldDigits;TL'("10:18446744073709551617:00.000";"10:00:18446744073709551617.000";"2000.01.01D10:18446744073709551617:00";"2000.01.01D10:00:18446744073709551617";"2000.18446744073709551617.01";"2000.01.18446744073709551617";"2000.18446744073709551617.01D00:00");7#`$"'parse"]
+t[`litFieldDigits;TL'("10:18446744073709551617:00.000";"10:00:18446744073709551617.000";"2000.01.01D10:18446744073709551617:00";"2000.01.01D10:00:18446744073709551617";"2000.18446744073709551617.01";"2000.01.18446744073709551617";"2000.18446744073709551617.01D00:00");7#`$"parse"]
 t[`litFieldZeros;TL'("10:0000000000000000000000001:00.000";"0002000.0000000000000000000001.0000000000000000000002";"2000.01.01D0000000000000000000000001:00");36060000 1 3600000000000]
 / `mkd, `mkt and `mkp take an int atom: of anything else they read its bits (issue #62)
-t[`mkTemporalType;ER'("`mkd {x}";"`mkt 5.5";"`mkp 0x05";"`mkd 1 2");4#,"'type"]
+t[`mkTemporalType;ER'("`mkd {x}";"`mkt 5.5";"`mkp 0x05";"`mkd 1 2");4#,"type"]
 / "T"$, "D"$ and "P"$ read the text as the literal reader does, and refuse text that is not a time, a date or a timestamp,
 / and fields out of range, with 'parse (issue #62; they rolled over: 10:61 was 11:01, 2026.02.29 was 2026.03.01;
 / "T"$"abc" was midnight, and "D"$"abc" a date that changed from run to run); past the type's range 'limit
 TX:{.[{`i$x$y};(x;y);{(x?"\n")#x}]}
-t[`timeTextBad;TX["T"]'("10:61:00.000";"10:00:60.000";"abc";"**:00:00.000";"";"10:-5:00";"--10:00";"10:00:00.000:00";"10:00:00.5x";"10 :00";"10:";":10";"- 10:00";"10:00 x";"   ");15#,"'parse"]
+t[`timeTextBad;TX["T"]'("10:61:00.000";"10:00:60.000";"abc";"**:00:00.000";"";"10:-5:00";"--10:00";"10:00:00.000:00";"10:00:00.5x";"10 :00";"10:";":10";"- 10:00";"10:00 x";"   ");15#,"parse"]
 t[`timeTextGood;TX["T"]'("10";"10:00";"10:00:00.";"10.5";"-10:00";"23:59:59.999";"99:00";"1:2:3";"-596:31:23.648";"596:31:23.647";"00000000000000000001:00");36000000 36000000 36000000 36000500 -36000000 86399999 356400000 3723000 -2147483648 2147483647 3600000]
-t[`timeTextLimit;TX["T"]'("596:31:23.648";"-596:31:23.649";"1000:00:00.000";"99999999999999999999999");4#,"'limit"]
-t[`dateTextBad;TX["D"]'("2026.02.29";"1900.02.29";"2026.13.01";"2026.00.10";"2026.04.31";"abc";"2026.01";"2026.01.01.01";"2026-01-01";"";"2026.1.x";"-1.02.29";"--1.01.01";"18446744073709551616.02.29");14#,"'parse"]
-t[`dateTextGood;(TX["D"]'("2024.02.29";"2026.1.1";"2000.01.01";"-4.02.29";"0.02.29");TX["D";"99999999.01.01"]);(8825 9497 0 -731887 -730426;"'limit")]
-t[`stampTextBad;TX["P"]'("2026.07.30D10:61:00.000";"2026.02.29D10:00:00.000";"abc";"2026.07.30D-01:00:00.000";"2026.07.30x10:00";"2026.07.30D10:00:00.5x";"2026.07.30D10:");7#,"'parse"]
+t[`timeTextLimit;TX["T"]'("596:31:23.648";"-596:31:23.649";"1000:00:00.000";"99999999999999999999999");4#,"limit"]
+t[`dateTextBad;TX["D"]'("2026.02.29";"1900.02.29";"2026.13.01";"2026.00.10";"2026.04.31";"abc";"2026.01";"2026.01.01.01";"2026-01-01";"";"2026.1.x";"-1.02.29";"--1.01.01";"18446744073709551616.02.29");14#,"parse"]
+t[`dateTextGood;(TX["D"]'("2024.02.29";"2026.1.1";"2000.01.01";"-4.02.29";"0.02.29");TX["D";"99999999.01.01"]);(8825 9497 0 -731887 -730426;"limit")]
+t[`stampTextBad;TX["P"]'("2026.07.30D10:61:00.000";"2026.02.29D10:00:00.000";"abc";"2026.07.30D-01:00:00.000";"2026.07.30x10:00";"2026.07.30D10:00:00.5x";"2026.07.30D10:");7#,"parse"]
 t[`stampTextGood;TX["P"]'("2026.07.30";"2026.07.30D";"2026.07.30D24:00:00.000";"2026.07.30D99:00";"2026.07.30D09:30:00.123456789";"1707.09.22D00:12:43.145224192");838684800000000000 838684800000000000 838771200000000000 839041200000000000 838719000123456789 0N]
-t[`stampTextLimit;TX["P"]'("2026.07.30D2562047:00";"-1.01.01D10:00");2#,"'limit"]
-t[`temporalTextType;(TX["T";"5"];TX["T";("10:00";"11:00")];TX["D";`a];TX["P";1]);4#,"'type"]
+t[`stampTextLimit;TX["P"]'("2026.07.30D2562047:00";"-1.01.01D10:00");2#,"limit"]
+t[`temporalTextType;(TX["T";"5"];TX["T";("10:00";"11:00")];TX["D";`a];TX["P";1]);("type";36000000 39600000;"type";"type")]   / a list of strings: each, as q (2.7.3)
 / blanks around the text are skipped, as q skips them: spaces, tabs and carriage returns, not newlines; not inside the text
 t[`temporalTextBlanks;(TX["T"]'(" 10:00";"10:00 ";" \t-10:00\r");TX["D"]'(" 2026.1.1";"2026.1.1\t");TX["P"]'(" 2026.07.30D10:00 ";"2026.07.30D ";"2026.07.30 "));(36000000 36000000 -36000000;9497 9497;838720800000000000 838684800000000000 838684800000000000)]
-t[`temporalTextBlanksBad;(TX["T"]'("10:00\n";"\n10:00");TX["D"]'("2026 .1.1";"  ");TX["P"]'("2026.07.30 D10:00";"2026.07.30D 10:00";"  "));(2#,"'parse";2#,"'parse";3#,"'parse")]
+t[`temporalTextBlanksBad;(TX["T"]'("10:00\n";"\n10:00");TX["D"]'("2026 .1.1";"  ");TX["P"]'("2026.07.30 D10:00";"2026.07.30D 10:00";"  "));(2#,"parse";2#,"parse";3#,"parse")]
 / ^ of midnight, 2000.01.01 and the epoch timestamp is 0, as q's null (issue #62; they were taken for nulls). A date or a time
 / has no null of its own; a timestamp's is 0N's nanoseconds, which prints as 0N
 t[`nullTemporalZero;(^00:00:00.000;^2000.01.01;^2000.01.01D00:00:00.000000000;^(00:00:00.000;2000.01.01;01:00:00.000));(0;0;0;0 0 0)]
@@ -297,32 +297,32 @@ t[`rangeMinusPastMin;(-9223372036854775807+!3)-1;0N -9223372036854775807 -922337
 t[`rangePlusPastMaxDrop;(1_9223372036854775806+!3;-1_9223372036854775806+!3);(9223372036854775807 0N;9223372036854775806 9223372036854775807)]
 
 / ---- take: a count of 2^32 or more is 'limit (it was cut to 32 bits) ----
-t[`takeLimit;.[.:;,"4294967297#!3";{(x?"\n")#x}];"'limit"]
-t[`takeLimitNeg;.[.:;,"-4294967297#!3";{(x?"\n")#x}];"'limit"]
-t[`takeLimitCount;.[.:;,"#4294967297#!100";{(x?"\n")#x}];"'limit"]
+t[`takeLimit;.[.:;,"4294967297#!3";{(x?"\n")#x}];"limit"]
+t[`takeLimitNeg;.[.:;,"-4294967297#!3";{(x?"\n")#x}];"limit"]
+t[`takeLimitCount;.[.:;,"#4294967297#!100";{(x?"\n")#x}];"limit"]
 t[`takeBig;#100000#!3;100000]
 t[`takeCycle;5#1 2;1 2 1 2 1]
 
 
 / ---- counts: a list has at most 2^32-1 items; beyond is 'limit, never a wrapped count ----
 t[`tilBig;(#!3000000000;*|!3000000000;#!-3000000000;*!-3000000000);3000000000 2999999999 3000000000 -3000000000]
-t[`tilLimit;.[.:;,"#!1000000000000000";{(x?"\n")#x}];"'limit"]
-t[`tilLimitNeg;.[.:;,"#!-4294967296";{(x?"\n")#x}];"'limit"]
-t[`reshapeLimit;.[.:;,"2 4294967297#0";{(x?"\n")#x}];"'limit"]
-t[`rollLimit;.[.:;,"#4294967297?1.0";{(x?"\n")#x}];"'limit"]
+t[`tilLimit;.[.:;,"#!1000000000000000";{(x?"\n")#x}];"limit"]
+t[`tilLimitNeg;.[.:;,"#!-4294967296";{(x?"\n")#x}];"limit"]
+t[`reshapeLimit;.[.:;,"2 4294967297#0";{(x?"\n")#x}];"limit"]
+t[`rollLimit;.[.:;,"#4294967297?1.0";{(x?"\n")#x}];"limit"]
 t[`tilDropBig;#3000000000_!3000000001;1]
 t[`windowsSmall;3':!5;(0 1 2;1 2 3;2 3 4)]
 
 / reshape: a shape whose product passes 2^32, even by wrapping past 2^64, is 'limit; 0N with a long count keeps it
-t[`reshapeWrapLimit;*"\n"\.[.:;,"3 6148914691236517206#!5";{x}];"'limit"]
-t[`reshapeHugeLimit;*"\n"\.[.:;,"65536 65536 65536 65536#0";{x}];"'limit"]
+t[`reshapeWrapLimit;*"\n"\.[.:;,"3 6148914691236517206#!5";{x}];"limit"]
+t[`reshapeHugeLimit;*"\n"\.[.:;,"65536 65536 65536 65536#0";{x}];"limit"]
 t[`reshapeNullLongCount;(0N 4294967297#!3;0N 4294967296#!3);(,0 1 2;,0 1 2)]
 
 
 / ---- rolls of chars and of full-range ints check their count too ----
-t[`rollCharsLimit;.[.:;,"#4294967298?0x00";{(x?"\n")#x}];"'limit"]
-t[`rollFullLimit;.[.:;,"#4294967298?-1";{(x?"\n")#x}];"'limit"]
-t[`rollCharsNeg;.[.:;,"#-4294967294?\" \"";{(x?"\n")#x}];"'domain"]
+t[`rollCharsLimit;.[.:;,"#4294967298?0x00";{(x?"\n")#x}];"limit"]
+t[`rollFullLimit;.[.:;,"#4294967298?-1";{(x?"\n")#x}];"limit"]
+t[`rollCharsNeg;.[.:;,"#-4294967294?\" \"";{(x?"\n")#x}];"domain"]
 t[`rollCharsSmall;#5?" ";5]
 
 
@@ -345,13 +345,13 @@ t[`prngRestoreEach;{p:("2?0";"3?-1";"3?256";"3?65536";"3?4294967296";"3?\" \"";"
 
 / ---- where of counts that overflow or pass 2^32 is 'limit (as upstream ngn/k 4b1dd07e, d5099539 check; issue #10) ----
 te[`whereOverflow;"#&9223372036854775807 9223372036854775807 2"]
-t[`whereLimitSum;.[.:;,"#&4294967297 0";{(x?"\n")#x}];"'limit"]
+t[`whereLimitSum;.[.:;,"#&4294967297 0";{(x?"\n")#x}];"limit"]
 te[`whereLimitOne;"#&,4294967297"]
-t[`whereLimitError;.[.:;,"#&,4294967297";{(x?"\n")#x}];"'limit"]
-t[`whereOverflowLimit;.[.:;,"#&9223372036854775807 9223372036854775807 2";{(x?"\n")#x}];"'limit"]
-t[`whereNegative;.[.:;,"&1 -1";{(x?"\n")#x}];"'domain"]
+t[`whereLimitError;.[.:;,"#&,4294967297";{(x?"\n")#x}];"limit"]
+t[`whereOverflowLimit;.[.:;,"#&9223372036854775807 9223372036854775807 2";{(x?"\n")#x}];"limit"]
+t[`whereNegative;.[.:;,"&1 -1";{(x?"\n")#x}];"domain"]
 t[`whereSmall;(&1 0 2;&0#0);(0 2 2;!0)]
-t[`whereWrapNegative;*"\n"\.[.:;,"&9223372036854775807 1";{x}];"'limit"]   / a total that wraps negative was 'domain
+t[`whereWrapNegative;*"\n"\.[.:;,"&9223372036854775807 1";{x}];"limit"]   / a total that wraps negative was 'domain
 
 / ---- numeric literals: 0N among floats, and boolean tokens among numbers ----
 tv[`litNullFloat;"0N 1.5";0n 1.5]
@@ -372,8 +372,8 @@ te[`boolDotAlone;"{b:7;01b.1}[]"]
 t[`boolStrandStill;1 01b;1 0 1]
 / a bool token run into an int before a float strand (no space) is a noun of its own that the strand indexes, as before an
 / int strand and in ngn/k; run into a float it stays 'value, as in ngn/k, which reads each token of a strand by itself
-tv[`boolRunFloat;"(ER'(\"01b1 2.5\";\"01B1 0w\");`k@{x}[101b1 2 32.5+])";(2#,"'type";"1 0 11.0 2.0 32.5+")]   / 2.7.2: 'value; 101b1 2 3+ is "1 0 11 2 3+"
-t[`boolRunFloatTok;ER'("01b2.5";"01b0w";"01b0n";"01b1e2";"01b1f";"1b1.5");6#,"'value"]
+tv[`boolRunFloat;"(ER'(\"01b1 2.5\";\"01B1 0w\");`k@{x}[101b1 2 32.5+])";(2#,"type";"1 0 11.0 2.0 32.5+")]   / 2.7.2: 'value; 101b1 2 3+ is "1 0 11 2 3+"
+t[`boolRunFloatTok;ER'("01b2.5";"01b0w";"01b0n";"01b1e2";"01b1f";"1b1.5");6#,"value"]
 
 / ---- scans with a float seed, or of floats with -, are float scans ----
 t[`scanSeedAdd;1.5+\1 2;2.5 4.5]
@@ -409,7 +409,7 @@ t[`findNanMiss;{1.0 2.0?-x}0n;0N]
 t[`distinctNan;{(#?x,(-x),1.0;#?x,1.0,-x)}0n;2 2]
 t[`distinctNanLength;{#?3000#x,(-x),1.0}0n;2]
 t[`findZeroStill;1.0 -0.0?0.0;1]
-t[`paNansOneValue;*"\n"\.[{`at(`pa x)};,0n 1.0 -0n;{x}];"'p-fail"]   / `pa: every NaN is one value, in two runs here
+t[`paNansOneValue;*"\n"\.[{`at(`pa x)};,0n 1.0 -0n;{x}];"p-fail"]   / `pa: every NaN is one value, in two runs here
 
 / ---- distinct of a generic list keeps the first of matching items ----
 / (compared as text, since ~ takes -0.0 for 0.0)
@@ -435,26 +435,26 @@ t[`litLongString;#. "\"",(1300#"ab\\n"),"\"";975]
 t[`litLongSyms;#?. ,/"`s",/:$!700;700]
 t[`litLongSymsOrder;. ,/"`s",/:$!300;`$"s",/:$!300]
 / ---- a list expression of 256 or more items is 'limit, not 'compile ----
-t[`compileLimit;*"\n"\.[.:;,"a:1;(",(";"/256#,"a"),")";{x}];"'limit"]
+t[`compileLimit;*"\n"\.[.:;,"a:1;(",(";"/256#,"a"),")";{x}];"limit"]
 / the other limits of the bytecode are 'limit too: a $[..] branch over 255 bytes, more than 8 names
 / assigned at once, 9 or more arguments, 16 or more locals (14 and 15 were 'limit already; 13 compile)
-t[`limitCondJump;*"\n"\.[.:;,"{$[x;",("+"/130#,"x"),";0]}";{x}];"'limit"]
-t[`limitAssignNames;*"\n"\.[.:;,"(a;b;c;d;e;f;g;h;i):!9";{x}];"'limit"]
-t[`limitArgs;*"\n"\.[.:;,"{x}[1;2;3;4;5;6;7;8;9]";{x}];"'limit"]
-t[`limitLocals;*"\n"\.[.:;,("{",(";"/(,'"abcdefghijklmnopq"),\:":1"),"}");{x}];"'limit"]
+t[`limitCondJump;*"\n"\.[.:;,"{$[x;",("+"/130#,"x"),";0]}";{x}];"limit"]
+t[`limitAssignNames;*"\n"\.[.:;,"(a;b;c;d;e;f;g;h;i):!9";{x}];"limit"]
+t[`limitArgs;*"\n"\.[.:;,"{x}[1;2;3;4;5;6;7;8;9]";{x}];"limit"]
+t[`limitLocals;*"\n"\.[.:;,("{",(";"/(,'"abcdefghijklmnopq"),\:":1"),"}");{x}];"limit"]
 t[`limitsInside;({$[x;1;0]}1;(a;b):1 2;{x+y}[1;2];{a:1;b:2;a+b}[]);(1;1 2;3;3)]
 t[`compileUnderLimit;. "a:1;#(",(";"/100#,"a"),")";100]
 
 
 / ---- a string that ends in a backslash is 'parse (the read past the text shows only under ASan, with piped input as in #22) ----
-t[`strTrailingBackslash;.[.:;,"\"a\\";{(x?"\n")#x}];"'parse"]
+t[`strTrailingBackslash;.[.:;,"\"a\\";{(x?"\n")#x}];"parse"]
 
 / ---- temporal atoms: list verbs treat them as atoms; with a list, arithmetic goes item by item ----
 / (the bare interpreter cannot print a date, so `i$ shows the day counts)
 t[`dateTake;(`i$3#2026.07.30;`i$1#2026.07.30;`i$-2#10:00:05.000;`i$2#2026.07.30D09:30:00.000000001);(9707 9707 9707;,9707;36005000 36005000;838719000000000001 838719000000000001)]
 t[`dateAtomVerbs;(`i$|2026.07.30;`i$*2026.07.30;#2026.07.30);9707 9707 1]
-t[`dateGrade;*"\n"\.[.:;,"<2026.07.30";{x}];"'type"]   / open of a temporal atom (monadic <) crashed
-t[`dateDrop;*"\n"\.[.:;,"2_2026.07.30";{x}];"'rank"]   / drop from an atom crashed; 'rank as for an int atom
+t[`dateGrade;*"\n"\.[.:;,"<2026.07.30";{x}];"type"]   / open of a temporal atom (monadic <) crashed
+t[`dateDrop;*"\n"\.[.:;,"2_2026.07.30";{x}];"rank"]   / drop from an atom crashed; 'rank as for an int atom
 t[`dateIndexOut;((2026.07.30;2026.07.31)5;(`a`b!(2026.07.30;2026.07.31))`c)~(::;::);1]   / out of range: the null of an atom, :: (it was ,::)
 t[`datePlusList;(`i$2026.07.30+!3;`i$(!3)+2026.07.30;`i$10:00:05.000+0 1 2;`i$2026.07.30-0 1);(9707 9708 9709;9707 9708 9709;36005000 36005001 36005002;9707 9706)]
 t[`datePlusAtom;(`i$2026.07.30+1;2026.07.31-2026.07.30);9708 1]
@@ -469,12 +469,12 @@ te[`binTemporalFloat;"1.0 2.0'2026.07.30"]
 te[`binTemporalGeneric;"(1 2 3)'(2026.07.30;1)"]
 
 / a temporal atom on the left of fill is 'type too (it was 'nyi), not a fill
-t[`fillTemporalLeft;{.[{x^y};(x;y);{(x?"\n")#x}]}[2026.07.30;0N 1];"'type"]
+t[`fillTemporalLeft;{.[{x^y};(x;y);{(x?"\n")#x}]}[2026.07.30;0N 1];"type"]
 
 / ---- an int atom filling floats gives floats, as q (2.7.1's fast path; 2.7.0 and ngn/k: (1.5;0)) ----
 t[`fillIntFloats;(0^0n;0^1.5 0n;0^(1;0n);1b^1.5 0n;0N^1.5 0n;0^`a`b!1.5 0n);(0.0;1.5 0.0;(1;0.0);1.5 1.0;1.5 0n;`a`b!1.5 0.0)]
 / other fills of another type still make a generic list, as k; a null int atom becomes the fill
-t[`fillOtherType;(1^0N;0.5^0N;0.5^1 0N;0x00^1.5 0n;`a^1.5 0n);(1;0.5;(1;0.5);(1.5;0x00);(1.5;`a))]
+t[`fillOtherType;(1^0N;0.5^0N;0.5^1 0N;0x00^1.5 0n;`a^1.5 0n);(1;0.5;1.0 0.5;(1.5;0x00);(1.5;`a))]   / a float filling ints gives floats, as q (2.7.3)
 
 / ---- an int atom filling float nulls gives its value as a float, -2147483648 too (it gave 0n) ----
 t[`fillFloatMinI32;(-2147483648^0n;-2147483648^0n 1.5;-2147483648^(0n;`a);-2147483648^`a`b!0n 1);(-2147483648.0;-2147483648 1.5;(-2147483648.0;`a);`a`b!-2147483648 1.0)]
@@ -554,13 +554,13 @@ t[`dictEmptyVals;(((0#`)!())-`a`b!1 2;(`a`b!1 2)+(0#`)!());(`a`b!-1 -2;`a`b!1 2)
 t[`dictEmptyBothTyped;`k'{(x+y;y+x;y-x;y*x;y%x;y&x;y|x)}[(0#`)!0#0n;(0#`)!!0];7#,"(0#`)!0#0n"]
 t[`dictEmptyBothEach;`k'(((0#`)!!0),'(0#`)!0#0n;(!0),'0#0n);("(0#`)!0#,(0N;0n)";"0#,(0N;0n)")]
 t[`dictEmptyBothProto;`k'(((0#`)!0#0n)+(0#`)!0#,1 2;((0#`)!0#,1 2)+(0#`)!0#0n);2#,"(0#`)!0#,0n 0n"]   / 0#,1 2 is not ()
-t[`dictEmptyBothType;*"\n"\.[.:;,"((0#`)!0#`)+(0#`)!!0";{x}];"'type"]   / as (0#`)+!0 and q
+t[`dictEmptyBothType;*"\n"\.[.:;,"((0#`)!0#`)+(0#`)!!0";{x}];"type"]   / as (0#`)+!0 and q
 t[`dictEmptyBothKeys;`k'(((0#`)!!0)+(!0)!0#0n;((!0)!0#0n)+(0#`)!!0);("(0#`)!0#0n";"(!0)!0#0n")]   / x's keys, as for keys of different types with values (q: 'type)
 / ()!() gives the other dict, either way round, as q; () values alone take the list rule, () keys give way to y's
 t[`dictEmptyBothUntyped;`k'{(x+y;y+x;x-y;y-x)}[()!();(0#`)!!0];4#,"(0#`)!!0"]
 t[`dictEmptyBothUntypedSym;`k'{(x+y;y+x)}[()!();(0#`)!()];2#,"(0#`)!()"]   / q: (`symbol$())!() both ways
 t[`dictEmptyBothUntypedVals;`k'{(x+y;y+x)}[(0#`)!();(0#`)!0#0n];2#,"(0#`)!0#,0#0n"]   / as ()+0#0n
-t[`dictEmptyBothUntypedType;*"\n"\.[.:;,"((0#`)!())+(0#`)!0#`";{x}];"'type"]   / as ()+0#` (q: (`symbol$())!())
+t[`dictEmptyBothUntypedType;*"\n"\.[.:;,"((0#`)!())+(0#`)!0#`";{x}];"type"]   / as ()+0#` (q: (`symbol$())!())
 t[`dictEmptyBothUntypedKeys;`k'{(x+y;y+x)}[()!0#0n;(0#`)!!0];2#,"(0#`)!0#0n"]
 t[`dictEmptyBothUntypedEach;`k'(((0#`)!()),'(0#`)!0#0n;((0#`)!0#0n),'(0#`)!();(()!()),'(0#`)!!0;((0#`)!!0),'()!();(()!0#0n),'(0#`)!!0);(2#,"(0#`)!0#,,0n"),(2#,"(0#`)!!0"),,"(0#`)!0#,(0n;0N)"]   / q: (`symbol$())!()
 
@@ -579,10 +579,10 @@ t[`maskSumX86;`k@{[x;m]+/x@&m}[MD;1000#1 0];`k@{[x;m]{+/x}x@&m}[MD;1000#1 0]]
 t[`maskFmaX86;`k@{[a;m]+/(a+0.1*a)@&m}[MD;1000#0 1 1];`k@{[a;m]{+/x}(a+0.1*a)@&m}[MD;1000#0 1 1]]
 t[`maskCmpX86;`k@{[x;c]+/x@&c>0}[MD;1000#1 -1];`k@{[x;c]{+/x}x@&c>0}[MD;1000#1 -1]]
 / an int atom on the left is 'type, as unfused (the fused sum read it as a vector)
-t[`maskSumIntAtom;*"\n"\.[.:;,"+/0@&0 1";{x}];"'type"]
-t[`maskFmaIntAtom;*"\n"\.[.:;,"+/(1+2*3)@&0 1";{x}];"'type"]
-t[`maskCmpIntAtom;*"\n"\.[.:;,"+/0@&(0 1)>0";{x}];"'type"]
-t[`maskCmpFirst;{*"\n"\.[.:;,x;{x}]}'("{[x] +/(x*1 2)@&x<`a}[3 1 4 1 5]";"{[x] +/(1.0+2*x*1 2)@&x>`a}[3 1 4 1 5]");2#,"'type"]   / the comparison before the masked value, as unfused: x<`a's 'type (it was x*1 2's 'length)
+t[`maskSumIntAtom;*"\n"\.[.:;,"+/0@&0 1";{x}];"type"]
+t[`maskFmaIntAtom;*"\n"\.[.:;,"+/(1+2*3)@&0 1";{x}];"type"]
+t[`maskCmpIntAtom;*"\n"\.[.:;,"+/0@&(0 1)>0";{x}];"type"]
+t[`maskCmpFirst;{*"\n"\.[.:;,x;{x}]}'("{[x] +/(x*1 2)@&x<`a}[3 1 4 1 5]";"{[x] +/(1.0+2*x*1 2)@&x>`a}[3 1 4 1 5]");2#,"type"]   / the comparison before the masked value, as unfused: x<`a's 'type (it was x*1 2's 'length)
 
 / ---- -/ of floats is the left fold x0-x1-.. ----
 t[`minusFoldInf;(-/0w 1.0;-/-0w 5.0;{x-y}/0w 1.0);0w -0w 0w]
@@ -619,7 +619,7 @@ t[`binIntInList;1 3 5'(2;4 6);(0;1 2)]
 / ---- binary search on symbols, in <'s order, as q's bin; a float list with a symbol is 'type, as an int list (#20 row 13) ----
 tv[`binSyms;"(`a`c`e'`b;`a`c`e'`e`f`a`A;(0#`)'`a;`a`c`e'(`b;`d`f))";(0;2 2 0 -1;-1;(0;1 2))]
 tv[`binSymsMany;"{(x'y)~{-1++/~y<x}[x]'y}[{x@<x}`$\"x\",/:$!3000;`$\"x\",/:$-50+!3100]";1b]
-t[`binFloatSym;5#.[{(,0.5)'x};,`a;{x}];"'type"]
+t[`binFloatSym;4#.[{(,0.5)'x};,`a;{x}];"type"]
 
 
 / ---- the fused compare idioms order chars as the unfused ones do (unsigned among chars) ----
@@ -683,16 +683,16 @@ t[`exceptBits;(0101010101B^1;11B^1;0101010101B^0;11B^0);(00000b;0#01b;11111b;11b
 t[`exceptMixed;((0;" ")^0;(0;" ")^" ";(1;"a";`b)^"a";(1;"a")^1 2;(1;"a")^(1;"a");(1;"a";2)^1;(1;"a")^!0);(," ";,0;(1;`b);,"a";!0;("a";2);(1;"a"))]   / digest #64: a general list's chars against numbers are kept, not 'type
 / a range is its items: except between a range and chars removes nothing, as for the ints written out (2.7.2: 'type)
 tv[`exceptRangeChars;"((!3)^\"a\";(1+!3)^\"a\";(!1)^\"\";(!3)^\"ab\")";(0 1 2;1 2 3;,0;0 1 2)]
-tv[`exceptCharsRange;"(\"abc\"^!3;\"abc\"^1+!3)";("abc";"abc")]
+tv[`exceptCharsRange;"(\"abc\"^!2;\"abc\"^1+!2)";("abc";"abc")]
 tv[`exceptGenericRange;"((1;\"a\")^!3;(1;\"a\";2)^1+!3)";(,"a";,"a")]   / a general list's numbers go, its chars stay
-t[`exceptRangeNums;((!5)^3+!5;(!5)^!2;(!5)^1 3);(0 1 2;2 3 4;0 2 4)]   / the range fast paths (y covers an end of x) still run
+t[`exceptRangeNums;((!5)^3+!4;(!5)^!2;(!5)^1 3);(0 1 2;2 3 4;0 2 4)]   / the range fast paths (y covers an end of x) still run; lists of one count fill, as q (2.7.3)
 / Digest #6: > leaves stdin, stdout and stderr open (a failed write with no stderr to report it on looped or crashed)
-t[`closeStdHandles;(7#.[{[d]>0};,0;{x}];7#.[{[d]>1};,0;{x}];7#.[{[d]>2};,0;{x}]);3#,"'domain"]
+t[`closeStdHandles;(6#.[{[d]>0};,0;{x}];6#.[{[d]>1};,0;{x}];6#.[{[d]>2};,0;{x}]);3#,"domain"]
 / an int past 32 bits is no descriptor: close() took its low half, so >0N or >4294967296 closed stdin
-t[`closeWideInt;(7#.[{[d]>0N};,0;{x}];7#.[{[d]>4294967296};,0;{x}];7#.[{[d]>-4294967296};,0;{x}]);3#,"'domain"]
-t[`aimRange;(7#.[{[d]`aim[!5]};,0;{x}];7#.[{[d]`aim[1000+!3]};,0;{x}]);2#,"'length"]   / Digest #11: a range is its items, not its two stored ends (read as addresses)
+t[`closeWideInt;(6#.[{[d]>0N};,0;{x}];6#.[{[d]>4294967296};,0;{x}];6#.[{[d]>-4294967296};,0;{x}]);3#,"domain"]
+t[`aimRange;(6#.[{[d]`aim[!5]};,0;{x}];6#.[{[d]`aim[1000+!3]};,0;{x}]);2#,"length"]   / Digest #11: a range is its items, not its two stored ends (read as addresses)
 t[`modBigFloat;(7!1e19;5!-0w;5!0w;7!-7.0;7!8.5;1%3!-0.0);(3.0;0n;0n;0.0;1.5;-0w)]   / Digest #15: the float remainder is exact, 0 to x (infinities: 0n)
-t[`findEmptyGeneric;(-8!1.0 2.0?();-8!1000000 2?();5#.[{[d]1.0 2.0?"a"};,0;{x}]);(-8!1 2?();-8!1 2?();"'type")]   / Digest #30
+t[`findEmptyGeneric;(-8!1.0 2.0?();-8!1000000 2?();4#.[{[d]1.0 2.0?"a"};,0;{x}]);(-8!1 2?();-8!1 2?();"type")]   / Digest #30
 t[`literalPoolType;(4_5#(-8!0110B;0 1 1 0)0;4_5#{(-8!0110B;0 1 1 0)}[]0);2#,,0x03]   / Digest #36: a bit list stays a bit list next to an equal int list
 t[`dropSqueeze;({4_5#-8!-1_(0;1;())}[];(0 1)~-1_(0;1;());-1_(1;"a";2.5));(,0x04;1b;(1;"a"))]   / Digest #28: a negative drop squeezes in place too
 t[`jsonNegZero;1%(`j?"-0";`j?"[-0,-0.0,0]");(-0w;-0w -0w 0w)]   / -0 keeps its sign
@@ -709,9 +709,9 @@ t[`jsonNullOut;(`j@(::);`j@(1;::);`j@`a`b!(1;::));("null";"[1,null]";"{\"a\":1,\
 / ---- encoding with no digits is empty, and checks y as one digit does (issue #20, row 9) ----
 t[`encodeEmpty;((!0)\5;(!0)\6 7;(!0)\(3 4;5);10 10\123);(!0;0#,0N 0N;0#,(0N 0N;0N);2 3)]
 t[`encodeEmptyFloat;@(!0)\5.5;`F]
-t[`encodeEmptyChar;*"\n"\.[.:;,"(!0)\\\"a\"";{x}];"'type"]
+t[`encodeEmptyChar;*"\n"\.[.:;,"(!0)\\\"a\"";{x}];"type"]
 t[`encodeOneDigitChar;(,10)\"a";,7]
-t[`encodeEmptySym;*"\n"\.[.:;,"(!0)\\`a";{x}];"'type"]
+t[`encodeEmptySym;*"\n"\.[.:;,"(!0)\\`a";{x}];"type"]
 / ---- a base of 8 or 9 divides like any other: its K text's (-8)! and (-9)! were serialise and deserialise ----
 t[`encodeBase89;(2 8\5;2 9\5;16 8\20;8 8 8\511;-8 -9\100;2 8\5 6);(0 5;0 5;2 4;7 7 7;5 1;(0 0;5 6))]
 t[`encodeAtomBase89;(8\100;9\100;-8\100;-9\-100);(1 4 4;1 2 1;2 4 4;1 8 3 8)]
@@ -726,27 +726,27 @@ t[`castFloat;(`i$1e19;`i$-1e19);9223372036854775807 -9223372036854775807]
 t[`floorPlain;_2.5 -2.5 0.0;2 -3 0]
 
 / ---- find between chars and numbers is 'type, as in q (issue #20, row 12) ----
-t[`findCharHayIntAtom;*"\n"\.[.:;,"\"abc\"?97";{x}];"'type"]
-t[`findCharHayIntVec;*"\n"\.[.:;,"\"abc\"?98 99";{x}];"'type"]
-t[`findCharHayFloat;*"\n"\.[.:;,"\"abc\"?97.0";{x}];"'type"]
-t[`findIntHayCharAtom;*"\n"\.[.:;,"1 2 97?\"a\"";{x}];"'type"]
-t[`findIntHayCharVec;*"\n"\.[.:;,"1 2 97?\"ab\"";{x}];"'type"]
-t[`findWideHayChar;*"\n"\.[.:;,"1000 2000 97?\"a\"";{x}];"'type"]
-t[`findMixedNeedles;*"\n"\.[.:;,"\"abc\"?(97;\"b\")";{x}];"'type"]
+t[`findCharHayIntAtom;*"\n"\.[.:;,"\"abc\"?97";{x}];"type"]
+t[`findCharHayIntVec;*"\n"\.[.:;,"\"abc\"?98 99";{x}];"type"]
+t[`findCharHayFloat;*"\n"\.[.:;,"\"abc\"?97.0";{x}];"type"]
+t[`findIntHayCharAtom;*"\n"\.[.:;,"1 2 97?\"a\"";{x}];"type"]
+t[`findIntHayCharVec;*"\n"\.[.:;,"1 2 97?\"ab\"";{x}];"type"]
+t[`findWideHayChar;*"\n"\.[.:;,"1000 2000 97?\"a\"";{x}];"type"]
+t[`findMixedNeedles;*"\n"\.[.:;,"\"abc\"?(97;\"b\")";{x}];"type"]
 t[`findCharChar;"abc"?"cb";2 1]
 t[`findIntInt;1 2 97?97 1;2 0]
 t[`findGeneric;((1;"a")?"a";(1;"a")?97);1 0N]
 t[`findNeedleKept;{n:98 99;.[{"abc"?x};,n;{x}];n}[];98 99]
 / a dict's or a table's values are checked too (they gave nulls), with a dict haystack as well
-t[`findCharHayDict;.[.:;,"\"ab\"?`a`b!1 2";{*"\n"\x}];"'type"]
-t[`findIntHayDict;.[.:;,"1 2?`a`b!\"ab\"";{*"\n"\x}];"'type"]
-t[`findCharHayTable;.[.:;,"\"ab\"?([]a:1 2)";{*"\n"\x}];"'type"]
-t[`findIntHayTable;.[.:;,"1 2?([]a:\"ab\")";{*"\n"\x}];"'type"]
-t[`findCharHayKeyed;.[.:;,"\"ab\"?([k:`a`b]v:1 2)";{*"\n"\x}];"'type"]
-t[`findDictHayDict;.[.:;,"(`a`b!1 2)?`a`b!\"ab\"";{*"\n"\x}];"'type"]
-t[`findDictDeep;.[.:;,"\"ab\"?`a`b!(1;2)";{*"\n"\x}];"'type"]
-t[`findListOfDicts;.[.:;,"\"ab\"?(`a`b!1 2;`c`d!3 4)";{*"\n"\x}];"'type"]
-t[`findEmptyDict;.[.:;,"\"ab\"?(0#`)!!0";{*"\n"\x}];"'type"]
+t[`findCharHayDict;.[.:;,"\"ab\"?`a`b!1 2";{*"\n"\x}];"type"]
+t[`findIntHayDict;.[.:;,"1 2?`a`b!\"ab\"";{*"\n"\x}];"type"]
+t[`findCharHayTable;.[.:;,"\"ab\"?([]a:1 2)";{*"\n"\x}];"type"]
+t[`findIntHayTable;.[.:;,"1 2?([]a:\"ab\")";{*"\n"\x}];"type"]
+t[`findCharHayKeyed;.[.:;,"\"ab\"?([k:`a`b]v:1 2)";{*"\n"\x}];"type"]
+t[`findDictHayDict;.[.:;,"(`a`b!1 2)?`a`b!\"ab\"";{*"\n"\x}];"type"]
+t[`findDictDeep;.[.:;,"\"ab\"?`a`b!(1;2)";{*"\n"\x}];"type"]
+t[`findListOfDicts;.[.:;,"\"ab\"?(`a`b!1 2;`c`d!3 4)";{*"\n"\x}];"type"]
+t[`findEmptyDict;.[.:;,"\"ab\"?(0#`)!!0";{*"\n"\x}];"type"]
 t[`findDictSame;("ab"?`a`b!"ba";1 2?`a`b!2 1;"ab"?([]a:"ba"));(`a`b!1 0;`a`b!1 0;+(,`a)!,1 0)]
 / a dict of (), or a table of no rows, in numbers: the same at every width, as the byte haystack and ngn/k (ints of 16 bits and up, and floats, were 'type)
 t[`findDictEmptyWidths;{.[{`k@x?(0#`)!()};,x;{x}]}'(0 0 -1;0 0 300;0 0 100000;0 0 10000000000;1.5 2;`a`b);6#,"(0#`)!0#,!0"]
@@ -818,18 +818,18 @@ t[`charToSymAll;(`s$'`c$!256)~`$,'`c$!256;1b]
 t[`charToSymA;`s$"a";`a]
 
 / ---- dict arithmetic: keys of different ranks are errors, not crashes; keys that are tables add over their union ----
-t[`dictMixedRank;*"\n"\.[.:;,"(`a`b!1 2)+((1 2;3 4)!5 6)";{x}];"'domain"]
+t[`dictMixedRank;*"\n"\.[.:;,"(`a`b!1 2)+((1 2;3 4)!5 6)";{x}];"domain"]
 t[`keyedPlusKeyed;{a:(+(,`a)!,1 2 3)!4 5 6;b:(+(,`a)!,2 3 4)!10 20 30;a+b}[];(+(,`a)!,1 2 3 4)!4 15 26 30]
-t[`keyedPlusKeyedCols;*"\n"\.[.:;,"((+(,`a)!,1 2)!3 4)+((+(,`b)!,1 2)!3 4)";{x}];"'domain"]   / key tables with different columns do not join
+t[`keyedPlusKeyedCols;*"\n"\.[.:;,"((+(,`a)!,1 2)!3 4)+((+(,`b)!,1 2)!3 4)";{x}];"domain"]   / key tables with different columns do not join
 t[`dictListKeys;((1 2;3 4)!5 6)+(1 2;3 4)!7 8;(1 2;3 4)!12 14]
 t[`keyedPlusAtom;((+(,`a)!,1 2 3)!4 5 6)+1;(+(,`a)!,1 2 3)!5 6 7]
 
 / the higher rank on the left crashed
-t[`dictMixedRankL;*"\n"\.[.:;,"((1 2;3 4)!5 6)+`a`b!1 2";{x}];"'domain"]
+t[`dictMixedRankL;*"\n"\.[.:;,"((1 2;3 4)!5 6)+`a`b!1 2";{x}];"domain"]
 
 / a dict with no keys is not checked: two empty ones still add, as group counts from ()!() do
-t[`temporalStrand;(2026.01.01 2026.01.02;12:00:00.000 13:00:00.000;#2026.01.01 2026.01.02 2026.01.03;1+2026.01.01 2026.01.02;5#.[.:;,"2026.01.01 12:00:00.000";{x}])~(2026.01.01+0 1;12:00:00.000+0 3600000;3;2026.01.02+0 1;"'type");1]   / Digest #65: a strand of one kind is a list, as q
-t[`groupMixedRank;(=(1;"ab");=(1 2;1);=(1;"ab";1);(1;"ab")?"ab";((1;"ab")!10 20)"ab";5#.[?;(("ab";"cd");1);{x}]);((1;"ab")!(,0;,1);(1 2;1)!(,0;,1);(1;"ab")!(0 2;,1);1;20;"'rank")]   / Digest #29: as q
+t[`temporalStrand;(2026.01.01 2026.01.02;12:00:00.000 13:00:00.000;#2026.01.01 2026.01.02 2026.01.03;1+2026.01.01 2026.01.02;4#.[.:;,"2026.01.01 12:00:00.000";{x}])~(2026.01.01+0 1;12:00:00.000+0 3600000;3;2026.01.02+0 1;"type");1]   / Digest #65: a strand of one kind is a list, as q
+t[`groupMixedRank;(=(1;"ab");=(1 2;1);=(1;"ab";1);(1;"ab")?"ab";((1;"ab")!10 20)"ab";4#.[?;(("ab";"cd");1);{x}]);((1;"ab")!(,0;,1);(1 2;1)!(,0;,1);(1;"ab")!(0 2;,1);1;20;"rank")]   / Digest #29: as q
 t[`dictEmptyBoth;`k'((()!())+#'=0#`;(#'=0#`)+()!());2#,"(0#`)!!0"]
 / Digest #23 #25 #26: a key on one side passes its value through; x's repeated keys stay
 t[`dictOneSide;((`a`b!1 2)|`c!,1 2;(`a`b!(1 2 3;3))|`a`c!(5;6 7);(`a`b!0x0102)|`b`c!0x0304;(`a`b!0x0102)&`b`c!0x0304);(`a`b`c!(1;2;1 2);`a`b`c!(5 5 5;3;6 7);`a`b`c!0x010304;`a`b`c!0x010204)]
@@ -839,13 +839,13 @@ t[`dictSameKeys;((`a`b!1 2)+`a`b!10 20;(`a`b!1 2)|`a`b!0 5;(`a`b!1 2.0)%`a`b!2 4
 t[`dictOneSideDiv;((`a!1)%`b!2;(`a`b!1 2)%`b`c!4 8;(`a!1.5)%`b!2);(`a`b!1 2;`a`b`c!(1;0.5;8);`a`b!(1.5;2))]   / % passes a one-sided value through, as q (it took 1%y: `a`b!1.0 0.5)
 t[`dictDisjointTypes;.[.:;,"((`a!1)|`b!`y;(`a!1)&`b!`y;(`a!1)%`b!`y;(`a!`x)|(,`b)!,1 2;((0#`)!!0)|(,`)!,`a;(`a`b!1 2)%`c!`y;(`a!2026.01.01)+`b!2026.01.02;(`a!12:00)|`b!13:00)";{x}];(`a`b!(1;`y);`a`b!(1;`y);`a`b!(1;`y);`a`b!(`x;1 2);(,`)!,`a;`a`b`c!(1;2;`y);`a`b!2026.01.01 2026.01.02;`a`b!12:00 13:00)]   / no key on both: no value meets another, so the types need not meet, as ngn/k (it was 'type; q passes the dates, times and (`a!`x)|(,`b)!,1 2 through, and is 'type for the int/symbol ones)
 t[`dictEmptyOtherTypes;.[.:;,"(((,0N)!,0.0)+(0#`)!0#`;((0#`)!0#`)+`a!1.0;((,0N)!,0.0)-(0#`)!0#`;((0#`)!0#`)-`a!1.0;((,0N)!,0.0)*(0#`)!0#`;((0#`)!0#`)*`a!1.0;(`a!\"x\")+(0#`)!0#`;(`a!\"x\")-(0#`)!0#`)";{x}];((,0N)!,0.0;(,`a)!,1.0;(,0N)!,0.0;(,`a)!,-1.0;(,0N)!,0.0;(,`a)!,1.0;(,`a)!,"x";(,`a)!,"x")]   / an empty dict gives the other whatever its values' type (- negated the empty side, 0-0#` 'type; q: 'type, ngn/k: the other)
-t[`dictDisjointShared;*"\n"\.[.:;,"(`a`b!1 2)|`b`c!`x`y";{x}];"'type"]   / a key on both still meets the verb
+t[`dictDisjointShared;*"\n"\.[.:;,"(`a`b!1 2)|`b`c!`x`y";{x}];"type"]   / a key on both still meets the verb
 t[`dictDisjointNeg;.[.:;,"`i$(`a!2026.01.01)-`b!2026.01.02";{x}];`a`b!9497 -9498]   / a right-only value is negated, a date too, as q
 t[`dictDisjointPass;.[.:;,"((`a!\"x\")+`b!\"y\";(`a!\"x\")-`b!\"y\";(`a!\"x\")*`b!\"y\";(`a`b!\"xy\")+`b`c!\"zw\";(`a!1)+`b!`y;(`a!0x01)+`b!0x02;(`a!-0.0)+`b!1.0)";{x}];(`a`b!"xy";`a`b!("x";-121);`a`b!"xy";`a`b`c!("x";243;"w");`a`b!(1;`y);`a`b!0x0102;`a`b!-0.0 1.0)]   / + - * pass a one-sided value through, as ngn/k (#14): they applied their identity, so chars and bytes became ints and a symbol was 'type
 t[`keyedDisjointIdentity;((+(,`k)!,1 2)!+(,`v)!,"ab")+/:((+(,`k)!,3 4)!+(,`v)!,"cd";(+(,`k)!,3 4)!+(,`v)!,1 2);((+(,`k)!,1 2 3 4)!+(,`v)!,97 98 99 100;(+(,`k)!,1 2 3 4)!+(,`v)!,97 98 1 2)]   / keyed tables keep the identity, as q's columns meet it (#19)
 
 / ---- an error with a computed message reads its text before releasing it ----
-t[`errComputedText;*"\n"\.[{`err "ab",x};,"cd";{x}];"'abcd"]
+t[`errComputedText;*"\n"\.[{`err "ab",x};,"cd";{x}];"abcd"]
 
 / ---- take, drop, cut and reshape on bit-boolean lists (01B), as upstream ngn/k ----
 t[`bitTake;(0#01B;1#01B;-1#01B;5#01B);(!0;,0;,1;0 1 0 1 0)]
@@ -942,11 +942,11 @@ t[`strandSpaceFloat;`k@'(1 -0.5;1 2.5;1 -0.5<1);("1.0 -0.5";"1.0 2.5";"0 1")]   
 t[`strandMinusKinds;`k@'(1 -2-0.5<1;01b-0.5<1);("0 -3";"-1 0")]   / a spaced strand or a boolean before the - (2.4.1: floats)
 tv[`strandMinusUses;"(\"abc\"@2-0.5<1;!3-0.5<1)";("b";0 1)]   / as an index and a count (2.4.1: 'type)
 t[`strandMinusIntKinds;`k@'(0N-0.5<1;1-0xef;0-1 0.5<1);("9223372036854775807";"18";"0 -1")]   / an int null wraps, hex is an int, a spaced strand after the - (2.4.1: floats)
-t[`strandMinusBigInt;ER"99999999999999999999-0.5";"'limit"]   / an int literal past 64 bits is 'limit, as on its own (2.4.1 read it as a float here)
+t[`strandMinusBigInt;ER"99999999999999999999-0.5";"limit"]   / an int literal past 64 bits is 'limit, as on its own (2.4.1 read it as a float here)
 / Digest #27: temporal arithmetic outside the documented cases is 'type (issue #18), a null int 'domain, x:y is y
 t[`temporalKept;(2026.07.30+1;1+2026.07.30;2026.07.30-1;2026.07.30-2026.07.29;10:00:00.000+00:00:01.000;2026.07.30&2026.07.29;2026.07.30<2026.07.31)~(2026.07.31;2026.07.31;2026.07.29;1;10:00:01.000;2026.07.29;1);1]
-t[`temporalType;ER'("2026.07.30+2.3";"2026.07.30*2";"2026.07.30%2";"2!2026.07.30";"2026.07.30+2026.07.30");5#,"'type"]
-t[`temporalNull;ER"2026.07.30+0N";"'domain"]
+t[`temporalType;ER'("2026.07.30+2.3";"2026.07.30*2";"2026.07.30%2";"2!2026.07.30";"2026.07.30+2026.07.30");5#,"type"]
+t[`temporalNull;ER"2026.07.30+0N";"domain"]
 / a date, time or timestamp against a float compares its stored number with the float rounded half away from zero, as q
 / casts it (the float's bits were read as an int: 2026.07.30<2.5 was 1, 2026.07.30=9707.0 0, 2026.07.30<0n 1); 0n is
 / below all, -0w 0w and floats past the int range compare as they are
@@ -958,29 +958,29 @@ t[`temporalFloatListCmp;(2026.07.30=9707.4 9706.4;9707.4 9706.4=2026.07.30;2026.
 / and the item-by-item path where an item is another type (the float here), the lengths differ, or the list is empty
 t[`temporalListLoop;((2026.07.30;2026.07.31;2026.08.01)<2026.07.31;9707<(2026.07.30;2026.07.31);(2026.07.30;2026.07.31)=(2026.07.31;2026.07.31);(2026.07.30;2026.07.31)>9707;(2026.07.30D00:00:00.000000001;2026.07.30D00:00:00.000000002)=2026.07.30D00:00:00.000000002;(12:00:00.000;13:00:00.000)<(13:00:00.000;12:00:00.000));(1 0 0;0 1;0 1;0 1;0 1;1 0)]
 t[`temporalListLoopBack;((2026.07.30;2026.07.31;2.5)=2026.07.30;(2026.07.30;2026.07.31;9707.0)=2026.07.30;(0#,2026.07.30)=2026.07.30;@(2026.07.30;2026.07.31)=2026.07.30;(2026.07.30;2026.07.31;2026.07.30)=(2026.07.30;2026.07.31;2.5);9707<(2026.07.30;2026.07.31;2.5));(1 0 0;1 0 1;!0;`I;1 1 0;0 1 0)]
-t[`temporalListLoopLength;ER"(2026.07.30;2026.07.31)=(2026.07.30;2026.07.31;2026.07.30)";"'length"]
+t[`temporalListLoopLength;ER"(2026.07.30;2026.07.31)=(2026.07.30;2026.07.31;2026.07.30)";"length"]
 / two kinds compare as q (#83 Q9; their stored numbers were compared, days with ms or ns: 2026.07.30=12:00:00.000 was 0,
 / 2026.07.30<12:00:00.000 1): a date and a time are 'type, a date against a timestamp is its midnight, exactly (no date
 / wraps past the timestamp range), and a timestamp against a time is its time of day to the millisecond, as `time$
-t[`temporalKindsType;ER'("2026.07.30=12:00:00.000";"2026.07.30<12:00:00.000";"12:00:00.000>2026.07.30";"(2026.07.30;2026.07.31)=12:00:00.000");4#,"'type"]
+t[`temporalKindsType;ER'("2026.07.30=12:00:00.000";"2026.07.30<12:00:00.000";"12:00:00.000>2026.07.30";"(2026.07.30;2026.07.31)=12:00:00.000");4#,"type"]
 / a temporal against a symbol is 'type, as q (its intern index was compared: 2000.01.01=` was 1, 2026.07.30>`a 1)
-t[`temporalSymType;ER'("2000.01.01=`";"2026.07.30>`a";"`a<2026.07.30";"12:00:00.000<`a";"`a<2000.01.01D00:00";"2000.01.01=`a`b";"(2000.01.01;2000.01.02)=`a";"2000.01.01=(`a;1)");8#,"'type"]
+t[`temporalSymType;ER'("2000.01.01=`";"2026.07.30>`a";"`a<2026.07.30";"12:00:00.000<`a";"`a<2000.01.01D00:00";"2000.01.01=`a`b";"(2000.01.01;2000.01.02)=`a";"2000.01.01=(`a;1)");8#,"type"]
 t[`dateStampCmp;(2026.07.30=2026.07.30D00:00:00.000000000;2026.07.30D00:00:00.000000000=2026.07.30;2026.07.30<2026.07.30D00:00:00.000000001;2026.07.30=2026.07.30D12:00:00.000000000;2026.07.30>2026.07.29D23:59:59.999999999;2026.07.30D12:00:00.000000000>2026.07.30;1707.09.21<1707.09.22D00:12:43.145224193;2292.04.11>2292.04.10D23:47:16.854775807;5881610.07.11>2026.07.30D00:00:00.000000000;2000.01.01=2000.01.01D00:00:00.000000000);1 1 1 0 1 1 1 1 1 1]
 t[`timeStampCmp;(12:00:00.000=2026.07.30D12:00:00.000000000;2026.07.30D12:00:00.000999999=12:00:00.000;12:00:00.000<2026.07.30D12:00:00.001000000;12:00:00.000<2026.07.30D00:00:00.000000000;36:00:00.000=2000.01.02D12:00:00.000000000;11:59:59.999=1999.12.31D11:59:59.999999999;2026.07.30D13:00:00.000000000>12:00:00.000);1 1 1 0 0 1 1]
 t[`temporalKindsList;((2026.07.30;2026.07.31)=2026.07.30D00:00:00.000000000;2026.07.30D12:00:00.000000000<(11:00:00.000;13:00:00.000);(2026.07.30;12:00:00.000)=(2026.07.30D00:00:00.000000000;2026.07.30D12:00:00.000000000))~(1 0;0 1;1 1);1]
 / the null timestamp is below every date and every time and equal to none, as q's 0Np (its stored ns were read as a date or a time)
 t[`temporalKindsNull;((`mkp 0N)=00:12:43.145;(`mkp 0N)<00:00:00.001;(`mkp 0N)>00:00:00.001;00:00:00.001>(`mkp 0N);00:00:00.001<(`mkp 0N);00:00:00.001=(`mkp 0N);1700.01.01>(`mkp 0N);1700.01.01<(`mkp 0N);1700.01.01=(`mkp 0N);(`mkp 0N)<1700.01.01;(`mkp 0N)>1700.01.01;(`mkd -2147483648)>(`mkp 0N);(`mkp 0N)<`mkt -2147483648;1707.09.21<(`mkp 0N);1707.09.21<1707.09.22D00:12:43.145224193);0 1 0 1 0 0 1 0 0 1 0 1 1 0 1]
 / a general list of dates with another kind in it leaves the one-loop path (tcl) for item by item, which follows q (#83 Q9)
-t[`temporalListLoopKinds;(ER"(2026.07.30;2026.07.31;12:00:00.000)=2026.07.30";(2026.07.30;2026.07.31;2026.07.30D00:00:00.000000000)=2026.07.30);("'type";1 0 1)]
+t[`temporalListLoopKinds;(ER"(2026.07.30;2026.07.31;12:00:00.000)=2026.07.30";(2026.07.30;2026.07.31;2026.07.30D00:00:00.000000000)=2026.07.30);("type";1 0 1)]
 / a - before a time literal is part of it, as q and as -10 for an int (#83 Q8; it was the verb on the time, 'type, so a
 / negative time's text did not read back), down to -596:31:23.648 as "T"$ reads; a strand of times takes one; dates keep the verb
 tv[`timeNegLiteral;"(`i$-10:00:00.000;`i$-00:00:00.001;`i$-596:31:23.648;`i$-00:00:00.000;@-10:00:00.000;-10:00~0-10:00:00.000)";(-36000000;-1;-2147483648;0;`t;1)]
 tv[`timeNegStrand;"((10:00:00.000 -10:00:00.000)~(10:00:00.000;0-10:00:00.000);(-10:00:00.000 -11:00:00.000 12:00:00.000)~(0-10:00:00.000;0-11:00:00.000;12:00:00.000))";1 1]
 / -x of a time negates it, as q (it was 'type); -596:31:23.648 has no negative in 32 bits, so it is 'limit
 tv[`timeNeg;"({-x}10:00:00.000;-(0-10:00:00.000);-(10:00:00.000;0-01:00:00.000);-00:00:00.000)~(0-10:00:00.000;10:00:00.000;(0-10:00:00.000;01:00:00.000);00:00:00.000)";1]
-t[`timeNegErrors;ER'("-596:31:23.649";"-(-596:31:23.648)";"-1000:00:00.000";"-10:60:00.000";"-2026.07.30";"{-x}2026.07.30D00:00:00.000000000");("'limit";"'limit";"'limit";"'parse";"'type";"'type")]
+t[`timeNegErrors;ER'("-596:31:23.649";"-(-596:31:23.648)";"-1000:00:00.000";"-10:60:00.000";"-2026.07.30";"{-x}2026.07.30D00:00:00.000000000");("limit";"limit";"limit";"parse";"type";"type")]
 / a date plus or minus an int past 32 bits of days is 'limit, as the literal (it wrapped: 2026.07.30+2147483647 was -5877584.01.18)
-t[`dateArithLimit;ER'("2026.07.30+2147483647";"2147483647+2026.07.30";"5881610.07.11+1";"(`mkd -2147483648)-1";"2026.07.30+9223372036854775807";"2026.07.30+1 2147483647");6#,"'limit"]
+t[`dateArithLimit;ER'("2026.07.30+2147483647";"2147483647+2026.07.30";"5881610.07.11+1";"(`mkd -2147483648)-1";"2026.07.30+9223372036854775807";"2026.07.30+1 2147483647");6#,"limit"]
 t[`dateArithTop;`i$(5881610.07.10+1;2026.07.30-2147483647;(`mkd -2147483647)-1;2026.07.30+-9707);2147483647 -2147473940 -2147483648 0]
 t[`temporalAmend;@[2#2026.07.30;0;:;2026.08.01]~(2026.08.01;2026.07.30);1]
 t[`strandMinusDate;((1-2024.01.01)~1976.01.02;(`i$1-12:00:00.000)~-43199999);11b]   / an int minus a date or a time (2.4.1: the int read as a float and its bits used, 1976.01.01 and -12:00:00.000, -43200000 ms)
@@ -1065,7 +1065,7 @@ t[`amendDictElided;(@[1 2;::;:;`a`b!1 2];@[1 2;::;+;`a`b!3 4]);(`a`b!1 2;`a`b!4 
 / times; the leak itself shows only in the process's memory use).
 t[`eachDictsUnion;({x,y}'[`a`b!1 2;`b`c!3 4];{x,y,z}'[`a!1;`b!2;`a`c!3 4]);(`a`b`c!(1 0N;2 3;0N 4);`a`b`c!(1 0N 3;0N 2 0N;0N 0N 4))]
 t[`eachDictList;{x,y}'[`a`b!1 2;3 4];`a`b!(1 3;2 4)]
-t[`eachDictsKeyTypes;(.[{x,y}';(`a`b!1 2;1 2!3 4);{x}];.[{x,y,z}';(`a`b!1 2;`c`d!1 2;1 2!3 4);{x}]);2#,"'domain\n"]
+t[`eachDictsKeyTypes;(.[{x,y}';(`a`b!1 2;1 2!3 4);{x}];.[{x,y,z}';(`a`b!1 2;`c`d!1 2;1 2!3 4);{x}]);2#,"domain"]
 t[`eachDictsKeyTypesLoop;+/{.[{x,y,z}';(`a`b!1 2;`c`d!1 2;(x+1 2)!3 4);{1}]}'!10000;10000]
 
 / ---- an int index refused by the check is released once ----
@@ -1084,7 +1084,7 @@ t[`amendVerbFailsKeep;(IA["F1:1 2 3";"F1[1]+:`a"];IA["F2:+`a`b!(1 2 3;4 5 6)";"F
 t[`amendVerbFailsKeepNested;(IA["F4:`a`b!(1 2;3 4)";"F4[`b]+:`x"];IA["F5:`a`b!(1 2;3 4)";"F5[`a;0]+:`x"];IA["F6:(1 2;(3;4 5))";"F6[1;1;0]+:`x"];IA["F39:`a`b!(1 2;3 4)";"F39[`a;5]#:1"]);((`err;`a`b!(1 2;3 4));(`err;`a`b!(1 2;3 4));(`err;(1 2;(3;4 5)));(`err;`a`b!(1 2;3 4)))]
 t[`amendVerbFailsKeepByName;(IA["F7:1 2 3";".[`F7;,1;+;`a]"];IA["F8:`a`b!(1 2;3 4)";".[`F8;(`a;0);{x+`z}]"];IA["F9:+`a`b!(1 2;3 4)";".[`F9;(`a;1);{x+y+`z};1]"]);((`err;1 2 3);(`err;`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4)))]   / by name, where :: was left in it
 t[`amendVerbStillWorks;(IA["F10:1 2 3";"F10[1]+:10"];IA["F11:+`a`b!(1 2;3 4)";"F11[1;`a]*:5"];IA["F12:`a`b!(1 2;3 4)";"F12[`b;0],:9"];IA["F13:(1 2;(3;4 5))";".[`F13;(1;1;0);-:]"];IA["F20:+`a`b!(1 2;3 4)";"F20[1]+:10"]);((::;1 12 3);(::;+`a`b!(1 10;3 4));(::;`a`b!(1 2;(3 9;4)));2#,(1 2;(3;-4 5));(::;+`a`b!(1 12;3 14)))]
-t[`amendByNameFiveArgs;{r:IA["F14:(1 2;3 4)";".[`F14;1 0;{(x;y;z)};10;1]"];s:IA["F15:1 2";".[`F15;,0;{[a;b;c;d]a};10;1;2]"];e:*"\n"\.[.:;,".[`F14;0;+;1;2]";{x}];(r;s;e;F14;F15)}[];((`err;(1 2;3 4));(`err;1 2);"'nyi";(1 2;3 4);1 2)]   / five or more arguments: 'nyi, before the global is touched
+t[`amendByNameFiveArgs;{r:IA["F14:(1 2;3 4)";".[`F14;1 0;{(x;y;z)};10;1]"];s:IA["F15:1 2";".[`F15;,0;{[a;b;c;d]a};10;1;2]"];e:*"\n"\.[.:;,".[`F14;0;+;1;2]";{x}];(r;s;e;F14;F15)}[];((`err;(1 2;3 4));(`err;1 2);"nyi";(1 2;3 4);1 2)]   / five or more arguments: 'nyi, before the global is touched
 t[`amendByNameVerbSetsGlobal;{FA::1 2 3;r:.[{.[`FA;,1;{FA[0]:1;x+1}]};,0;{`t}];FB::1 2 3;s:.[{.[`FB;,1;{FB::99;x+`a}]};,0;{`t}];(r;FA;s;FB)}[];(`t;1 2 3;`t;99)]   / a verb that assigns into the global, then fails: the global is put back, or keeps what the verb set it to
 t[`amendVerbDictOfDicts;(IA["F16:`a`b!(`x`y!1 2;`x`y!3 4)";"F16[`b],:`q"];IA["F17:`a`b!(`x`y!1 2;`x`y!3 4)";"F17[`b;`x]+:10"];IA["F18:`a`b!(`x`y!1 2;`x`y!3 4)";"F18[`b;`x]+:`z"]);((::;`a`b!(`x`y!1 2;(`x`y!3 4;`q)));(::;`a`b!(`x`y!1 2;`x`y!13 4));(`err;`a`b!(`x`y!1 2;`x`y!3 4)))]   / values that are a table (dicts of the same keys): as a list of the dicts
 t[`amendVerbFunctionSetsGlobal;({r:IA["FG:+`a`b!(!1000;1000#{FG::0;x+1})";"FG[`b;3]@:5"];(*r;r[1;`b;3];#r 1)}[];IA["FH:(!1000;(2;{FH::0;x+1}))";"FH[1;1]@:5"][1;1;1];{r:IA["FI:+`a`b!(!1000;1000#{FI::0;x+1})";"FI[3;`b]@:5"];(*r;r[1;`b;3];#r 1)}[]);((::;6;1000);6;(::;6;1000))]   / a function item called by @: sets the global (it was freed, then read): the assignment is made on the global as it was
@@ -1109,11 +1109,11 @@ t[`amendSymbolListInDict;(IA["S4:`a`b!(1 2;`x`y`z)";"S4[`b;1]:`q"];IA["S5:`a`b!(
 t[`amendSymbolListInList;(IA["S7:(`a`b;`c`d)";"S7[1;0]:`q"];IA["S8:(`a`b;`c`d)";"S8[;1]:`q"];IA["S9:((`a`b;`c);`d)";"S9[0;0;1]:`q"]);((::;(`a`b;`q`d));(::;(`a`q;`c`q));(::;((`a`q;`c);`d)))]
 t[`amendSymbolListLocal;{d:`a`b!(1 2;`x`y`z);d[`b;1]:`q;e:d;e[`b;0 2]:`r`s;f:d;f[`b;]:`t;(d;e;f)}[];(`a`b!(1 2;`x`q`z);`a`b!(1 2;`r`q`s);`a`b!(1 2;`t`t`t))]
 t[`amendSymbolListDot;(.[(`x`y;`z);(0;1);:;`q];.[`a`b!(1 2;`x`y`z);(`b;1);:;`q];IA["S0:`a`b!(1 2;`x`y`z)";".[`S0;(`b;1);:;`q]"];IA["S22:`a`b!(1 2;`x`y`z)";".[`S22;(`b;2);^:]"]);((`x`q;`z);`a`b!(1 2;`x`q`z);2#,`a`b!(1 2;`x`q`z);2#,`a`b!(1 2;(`x;`y;0)))]   / the value form, and by name: the name is the global, the list below it data
-t[`amendSymbolListError;(IA["S23:(1;`x`y`z)";"S23[1;5]:`q"];IA["S24:(1;`x`y`z)";"S24[1;0 1]:`q`r`s"];{{*"\n"\.[.:;,x;{x}]}'(".[`a`b!(1 2;`x`y`z);(`b;5);:;`q]";".[`a`b!(1 2;`x`y`z);(`b;0 1);:;`q`r`s]")}[]);((`err;(1;`x`y`z));(`err;(1;`x`y`z));("'index";"'length"))]   / a bad index or count: the variable is kept; in the value form the error is the data's ('index, 'length), not 'type
+t[`amendSymbolListError;(IA["S23:(1;`x`y`z)";"S23[1;5]:`q"];IA["S24:(1;`x`y`z)";"S24[1;0 1]:`q`r`s"];{{*"\n"\.[.:;,x;{x}]}'(".[`a`b!(1 2;`x`y`z);(`b;5);:;`q]";".[`a`b!(1 2;`x`y`z);(`b;0 1);:;`q`r`s]")}[]);((`err;(1;`x`y`z));(`err;(1;`x`y`z));("index";"length"))]   / a bad index or count: the variable is kept; in the value form the error is the data's ('index, 'length), not 'type
 SG:1 2 3;SH:4 5 6;SX:1 2 3;SV:(`SX`y;2);N2.b:1 2 3;N3.v:1 2 3
 t[`amendSymbolListNamesNone;{r:(IA["S14:`x`y!(1;`N2`b)";"S14[`y;1]:9"];IA["S15:`x`y!(1;,`SG)";"S15[`y;0]:9"]);.[`N3`v;,1;:;9];(r;N2.b;SG;N3.v)}[];(((::;`x`y!(1;(`N2;9)));(::;`x`y!(1;,9)));1 2 3;1 2 3;1 9 3)]   / a global by the list's name is not amended (main amended it); . by name still is
 t[`amendSymbolListItems;{r:(IA["S16:`a`b!(1;`SG`SH)";"S16[`b;;0]:9"];IA["S17:`a`b!(1;`SG`SH)";"S17[`b;0 1;0]:9"];IA["S18:(1;`SG`SH)";"S18[1;;0]:9"];IA["S19:+`a`b!(1 2;`SG`SH)";"S19[`b;;0]:9"];IA["S27:`a`b!(1;`SG`SH)";"S27[`b;0;0]@:{x}"];IA["S28:`a`b!(1;`SG`SH)";"S28[`b;0;0]#:1"]);(r;SG;SH)}[];(((`err;`a`b!(1;`SG`SH));(`err;`a`b!(1;`SG`SH));(`err;(1;`SG`SH));(`err;+`a`b!(1 2;`SG`SH));(`err;`a`b!(1;`SG`SH));(`err;`a`b!(1;`SG`SH)));1 2 3;4 5 6)]   / its items are data too: an index below one is 'type, and the globals they name are not amended
-t[`amendSymbolListItemsError;{e:{r:.[{. x;`ok};,x;{x}];$[`ok~r;r;*"\n"\r]}'("S16[`b;;0]:9";"S18[1;0;0]+:9";".[`S18;(1;::;0);:;9]";".[`SV;(0 1;::;1.0);{x+1}]");(e;S16;S18;SG;SH;SX;SV)}[];(4#,"'type";`a`b!(1;`SG`SH);(1;`SG`SH);1 2 3;4 5 6;1 2 3;(`SX`y;2))]   / (SV, at a list of indices, is kept: .[`v;i;f] is checked)
+t[`amendSymbolListItemsError;{e:{r:.[{. x;`ok};,x;{x}];$[`ok~r;r;*"\n"\r]}'("S16[`b;;0]:9";"S18[1;0;0]+:9";".[`S18;(1;::;0);:;9]";".[`SV;(0 1;::;1.0);{x+1}]");(e;S16;S18;SG;SH;SX;SV)}[];(4#,"type";`a`b!(1;`SG`SH);(1;`SG`SH);1 2 3;4 5 6;1 2 3;(`SX`y;2))]   / (SV, at a list of indices, is kept: .[`v;i;f] is checked)
 t[`amendSymbolListBelowRow;(IA["S25:+`a`b!(1 2 3;(`x`y;`z`w;`u`v))";"S25[1;`b;0],:`q"];IA["S26:+`a`b!(1 2 3;(`x`y;`z`w;`u`v))";"S26[1;`b;0]+:1"]);((::;+`a`b!(1 2 3;(`x`y;(`z`q;`w);`u`v)));(`err;+`a`b!(1 2 3;(`x`y;`z`w;`u`v))))]   / below a table's row, with a verb: read first, as other data
 
 / ---- float literals, `F$ and JSON numbers are correctly rounded (issue #5) ----
@@ -1175,32 +1175,32 @@ t[`dropEmptyDictFirst;`k@2_((,`a)!,0;1 2);"0#,(,`a)!,0N"]
 t[`dropDictOtherKind;((1 2!3 4)_("a";"b");(1 2!3 4)_"a";(1 2!3 4)_(1;" ");("ab"!3 4)_1 2;(`a`b!3 4)_(0;1);(1 2!3 4)_2;(`a`b!3 4)_`a);(1 2!3 4;1 2!3 4;(,2)!,4;"ab"!3 4;`a`b!3 4;(,1)!,3;(,`b)!,4)]
 t[`dropDictOtherKindLeak;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"(1 2!3 4)_(\"a\";\"b\");\n.[_;((!0)!!0;(0#`)!\"\");::];\n\\m\n");""]   / and a dict on the right, still an error, does not leak
 / reshaping such a list is 'nyi, as reshaping a table is (it read a table as rows of a list: crashes, heap addresses, a loop)
-t[`reshapeEmptyDicts;4#.[.:;,"2 0#0#(`a`b!1 2;0)";{x}];"'nyi"]
-t[`reshapeDroppedDicts;4#.[.:;,"2 0N#2_(`a`b!1 2;3)";{x}];"'nyi"]
-t[`reshapeAmendedDicts;4#.[.:;,"2 2#@[(`a`b!1 2;0);1;:;`a`b!3 4]";{x}];"'nyi"]
-t[`reshapeMixedDicts;4#.[.:;,"1 0#(1 2!3 4;`a`b!(1;`c`d!3 4))";{x}];"'nyi"]
+t[`reshapeEmptyDicts;3#.[.:;,"2 0#0#(`a`b!1 2;0)";{x}];"nyi"]
+t[`reshapeDroppedDicts;3#.[.:;,"2 0N#2_(`a`b!1 2;3)";{x}];"nyi"]
+t[`reshapeAmendedDicts;3#.[.:;,"2 2#@[(`a`b!1 2;0);1;:;`a`b!3 4]";{x}];"nyi"]
+t[`reshapeMixedDicts;3#.[.:;,"1 0#(1 2!3 4;`a`b!(1;`c`d!3 4))";{x}];"nyi"]
 / an amend of an empty table that reaches no row gives the table back; one that reaches the null row (an elided index, :: anywhere in it) makes the table from what it gives
 t[`amendEmptyTable;`k@'(@[0#+`a`b!(1 2;3 4);!0;:;()];.[0#+`a`b!(1 2;3 4);(!0;`a);:;()];@[0#+`a`d!(1 2;(`x`y!1 2;`x`y!3 4));!0;:;()]);("+`a`b!(!0;!0)";"+`a`b!(!0;!0)";"+`a`d!(!0;+`x`y!(!0;!0))")]
 t[`amendEmptyElided;`k@'(@[0#+`a`b!(1 2;3 4);::;{x,`c!9}];@[0#+`a`b!(1 2;3 4);::;{1#x}];@[0#+`a`b!(1 2;3 4);(!0;::);{x,`c!9}]);("+`a`b`c!(!0;!0;!0)";"+(,`a)!,!0";"+`a`b`c!(!0;!0;!0)")]
 / an @ amend of an empty table at rows and then columns is 'type, as in ngn/k (2.4.1 gave the table)
-t[`amendEmptyMixed;5#.[.:;,"@[0#+`a`b!(1 2;3 4);(!0;`a);{x}]";{x}];"'type"]
+t[`amendEmptyMixed;4#.[.:;,"@[0#+`a`b!(1 2;3 4);(!0;`a);{x}]";{x}];"type"]
 
 / ---- take of keys from a dict whose keys are lists or a table (upstream ngn/k 5f50f8e3, d3b72007) ----
-t[`takeListKey;4#.[.:;,"(1 2)#(1 2;3 4)!5 6";{x}];"'nyi"]   / one list key, not a list of them (it gave 1 2!5, two keys and one value)
+t[`takeListKey;3#.[.:;,"(1 2)#(1 2;3 4)!5 6";{x}];"nyi"]   / one list key, not a list of them (it gave 1 2!5, two keys and one value)
 t[`takeListKeys;(1 2;3 4)#(1 2;3 4)!5 6;(1 2;3 4)!5 6]
 t[`takeSymKeys;`a`c#`a`b`c!1 2 3;`a`c!1 3]
 t[`takeEmptyDict;`k@'(`a`b#()!();1 2#()!();(,`a)#()!();(0#`)#()!());("`a`b!\"\"";"1 2!\"\"";"(,`a)!\"\"";"(0#`)!\"\"")]   / the empty dict ()!() takes any keys, as on 2.4.1 (ngn/k: 'nyi)
 / a keyed table's keys are a table: reshape or a key list one rank down is 'nyi (they crashed)
-t[`reshapeKeyed;4#.[.:;,"2 2#((+(,`k)!,1 2)!+(,`v)!,3 4)";{x}];"'nyi"]
-t[`reshapeKeyedNull;4#.[.:;,"0N 2#((+(,`k)!,1 2)!+(,`v)!,3 4)";{x}];"'nyi"]
-t[`reshapeKeyedEmpty;4#.[.:;,"2 0#=0#,`a`b!1 2";{x}];"'nyi"]
-t[`takeKeyedSyms;4#.[.:;,"(,`x)#((+(,`k)!,1 2)!+(,`v)!,3 4)";{x}];"'nyi"]
+t[`reshapeKeyed;3#.[.:;,"2 2#((+(,`k)!,1 2)!+(,`v)!,3 4)";{x}];"nyi"]
+t[`reshapeKeyedNull;3#.[.:;,"0N 2#((+(,`k)!,1 2)!+(,`v)!,3 4)";{x}];"nyi"]
+t[`reshapeKeyedEmpty;3#.[.:;,"2 0#=0#,`a`b!1 2";{x}];"nyi"]
+t[`takeKeyedSyms;3#.[.:;,"(,`x)#((+(,`k)!,1 2)!+(,`v)!,3 4)";{x}];"nyi"]
 / first or last of an enlisted keyed table, or one passed by ., is the keyed table: the empty one's values were a list of dicts
 t[`firstEnlistKeyed;{x~/:(*,x;*|,x;.[{x};,x])}'{(0#x;x)}(+(,`k)!,1 2)!+(,`n)!,3 4;(1 1 1;1 1 1)]
 / keys of the other kind (chars against numbers): the lookup is 'type, as find is since 2.4.0, and the take passes it up (it crashed, even under a trap)
-t[`takeKeysCharsNums;(5#.[{"ab"#x};,1 2!3 4;{x}];5#.[{1 2#x};,"xy"!3 4;{x}]);("'type";"'type")]
+t[`takeKeysCharsNums;(4#.[{"ab"#x};,1 2!3 4;{x}];4#.[{1 2#x};,"xy"!3 4;{x}]);("type";"type")]
 / a failed lookup releases only the dict: the key list belongs to the caller (shared here, used again)
-t[`takeKeysFailShared;{k:"ab",();k2:1 2,!0;r:{5#.[#;(x;y);{x}]}[k]'4#,1 2!3 4;r2:{5#.[#;(x;y);{x}]}[k2]'4#,((1 2;3 4);(5 6;7 8))!9 10;(r;r2;k;k2)}[];(4#,"'type";4#,"'rank";"ab";1 2)]
+t[`takeKeysFailShared;{k:"ab",();k2:1 2,!0;r:{4#.[#;(x;y);{x}]}[k]'4#,1 2!3 4;r2:{4#.[#;(x;y);{x}]}[k2]'4#,((1 2;3 4);(5 6;7 8))!9 10;(r;r2;k;k2)}[];(4#,"type";4#,"rank";"ab";1 2)]
 
 / ---- an amend that leaves no column of a table a list fills each column to the table's row count (an empty table stays empty), as update does; a list still replaces a column ----
 t[`tableAtomColumns;({t:+(,`a)!,1 2 3;t[`a]:9;t}[];@[+(,`a)!,1 2 3;`a;:;9];@[+(,`a)!,1 2 3;`a;+/];{t:+`a`b!(1 2 3;4 5 6);t[`a`b]:9;t}[];@[+`a`b!(1 2 3;4 5 6);`a`b;:;(::;::)];@[+`a`b!(1 2 3;4 5 6);`a`b;:;(+;-)]);(+(,`a)!,9 9 9;+(,`a)!,9 9 9;+(,`a)!,6 6 6;+`a`b!(9 9 9;9 9 9);+`a`b!((::;::;::);(::;::;::));+`a`b!((+;+;+);(-;-;-)))]   / one row, before
@@ -1213,7 +1213,7 @@ t[`tableListColumnStill;({t:+(,`a)!,1 2 3;t[`a]:7 8;t}[];{t:+(,`a)!,1 2 3;t[`a]:
 TE:0#+`a`b!(1 2;3 4)
 t[`tableElidedEmpty;(.[TE;(::;`a);:;9];.[TE;(::;`a);{x}];.[TE;(::;`a;0);:;9];{t:TE;t[;`a]:9;t}[];.[(TE;1);(0;::;`a);:;9];.[`x`y!(TE;1);(`x;::;`a);:;9];.[+`a`b!(1 2;3 4);(::;`a);:;9]);(TE;TE;TE;TE;(TE;1);`x`y!(TE;1);+`a`b!(9 9;3 4))]   / every row of an empty table: the table, not ()
 t[`tableElidedEmptyAtoms;(.[TE;(::;`a);:;`x];.[TE;(::;`a);:;!0];.[TE;(::;`a);+;()];.[TE;(::;`a);:;0#TE];.[TE;(::;`a);!0];{t:TE;t[;`a]:"x";t}[]);6#,TE]   / f and y atoms or empty
-t[`tableElidedEmptyLength;{*"\n"\.[.:;,x;{x}]}'(".[TE;(::;`a);:;1 2]";".[TE;(::;`a);+;,1]";".[TE;(::;`a);:;`a!1]";".[TE;(::;`a);1 2]";".[TE;(::;`a);(1 2);9]";"{t:TE;t[;`a]:1 2;t}[]";".[(TE;1);(0;::;`a);:;1 2]";".[+`a`b!(1 2;3 4);(::;`a);:;1 2 3]");8#,"'length"]   / a list or dict with items: 'length, as before
+t[`tableElidedEmptyLength;{*"\n"\.[.:;,x;{x}]}'(".[TE;(::;`a);:;1 2]";".[TE;(::;`a);+;,1]";".[TE;(::;`a);:;`a!1]";".[TE;(::;`a);1 2]";".[TE;(::;`a);(1 2);9]";"{t:TE;t[;`a]:1 2;t}[]";".[(TE;1);(0;::;`a);:;1 2]";".[+`a`b!(1 2;3 4);(::;`a);:;1 2 3]");8#,"length"]   / a list or dict with items: 'length, as before
 
 / ---- a failed assignment below a dict key, to a table, or into an atom leaves the variable ----
 t[`amendKeepDictIndex;(IA["D1:`a`b!(1 2;3 4)";"D1[`a;7]:9"];IA["D2:`a`b!(1 2;3 4)";"D2[`a`b;5]:9"];IA["D3:`a`b!(1 2;3 4)";"D3[`a;7]+:9"]);3#,(`err;`a`b!(1 2;3 4))]
@@ -1264,7 +1264,7 @@ t[`amendSelfByNameFails;.[{r:{.[.:;,x;{`err}]}'("VE1:(`WE1;`WE1);WE1:(`VE1;1);VE
 t[`amendFailKeepsIndexType;.[{(IK["K1:1 2 3";"K1[1.0]:9"];IK["K2:1 2 3";"K2[\"a\"]:9"];IK["K3:(1 2;3 4)";"K3[0;1.0]:9"];IK["K4:`a`b!(1 2;3 4)";"K4[`c;1.0]:9"];IK["K5:(0#`)!()";"K5[`a;`b]:9"];IK["K6:1 2!(3 4;5 6)";"K6[0;`b]:9"];IK["K7:+`a`b!(1 2 3;4 5 6)";"K7[`a]:`x`y!7 8"];IK["K8:+(0#`)!()";"K8[0]:9"];IK["K9:`a`b!(`x`y!1 2;`x`y!3 4)";"K9[`a`b;`x;0]:9"];{K10::1 2 3;r:.[{K10[1.0]:9};,0;{`err}];(r;.[.:;,"K10";{`lost}])}[];IK["K11:1 2 3";".[`K11;,1.0;:;9]"])};,0;{x}];((`err;1 2 3);(`err;1 2 3);(`err;(1 2;3 4));(`err;`a`b!(1 2;3 4));(`err;(0#`)!());(`err;1 2!(3 4;5 6));(`err;+`a`b!(1 2 3;4 5 6));(`err;+(0#`)!());(`err;`a`b!(`x`y!1 2;`x`y!3 4));(`err;1 2 3);(`err;1 2 3))]   / an index that indexes nothing there, a key not there (added, the first value nulled; none: an empty list), keys not symbols, a dict as a column, a table with no columns, dicts of the same keys: the check finds the error, and the variable is kept (2.7.2: lost)
 t[`amendFailKeepsCount;.[{(IK["L1:(1 2 3;4 5 6)";"L1[0 1;1]:1 2 3"];IK["L2:(1 2 3;4 5 6)";"L2[;1]:1 2 3"];IK["L3:(1 2 3;4 5 6)";"L3[]:1 2 3"];IK["L4:(1 2 3;4 5 6)";"L4[0;]:1 2"];IK["L5:`a`b!(1 2;3 4)";"L5[`a`b;0]:1 2 3"];IK["L6:+`a`b!(1 2;3 4)";"L6[0 1;`a]:1 2 3"];IK["L7:((1 2;3 4);(5 6;7 8))";"L7[0;0 1;0]:1 2 3"];IK["L8:(1 2 3;4 5 6)";"L8[0 1;1]+:1 2 3"];IK["L9:(1 2 3;4 5 6)";"L9[0 1;0 1]:(1 2;3 4 5)"])};,0;{x}];{(`err;x)}'((1 2 3;4 5 6);(1 2 3;4 5 6);(1 2 3;4 5 6);(1 2 3;4 5 6);`a`b!(1 2;3 4);+`a`b!(1 2;3 4);((1 2;3 4);(5 6;7 8));(1 2 3;4 5 6);(1 2 3;4 5 6))]   / a value that does not conform below an index list or an elided level: 'length before anything is touched (2.7.2: lost)
 t[`amendFailKeepsTable;.[{(IK["N1:+`a`b!(1 2 3;4 5 6)";"N1[;`a]:9 8"];IK["N2:+`a`b!(1 2 3;4 5 6)";"N2[;`a`b]:(9 8 7;6 5 4)"];IK["N3:+`a`b!((1 2;3 4;5 6);4 5 6)";"N3[;`a;0]:9 8"];IK["N4:+`a`b!(1 2 3;4 5 6)";"N4[`a`b]:(7 8 9;1 2)"];IK["N5:+`a`b!(1 2 3;4 5 6)";"N5[`a`c]:(7 8 9;1 2)"];IK["N6:+`a`b!(1 2 3;4 5 6)";"N6[`c;5]:9"];IK["N7:+`a`b!(1 2 3;4 5 6)";"N7[`c;]:9 8"];IK["N8:+(0#`)!()";"N8[`a;0]:9"];IK["N9:+`a`b!(1 2 3;4 5 6)";"N9[;`a]+:9 8"];IK["N10:+`a`b!(1 2 3;4 5 6)";"N10[`c`d;5]:9 8"];IK["N11:+`a`b!(1 2 3;4 5 6)";"N11[`c`d;`x]:9 8"];IK["N12:+(0#`)!()";"N12[`a`b;0]:9 8"];IK["N13:+`a`b!(!0;!0)";"N13[`c`d;0]:9 8"])};,0;{x}];{(`err;x)}'(+`a`b!(1 2 3;4 5 6);+`a`b!(1 2 3;4 5 6);+`a`b!((1 2;3 4;5 6);4 5 6);+`a`b!(1 2 3;4 5 6);+`a`b!(1 2 3;4 5 6);+`a`b!(1 2 3;4 5 6);+`a`b!(1 2 3;4 5 6);+(0#`)!();+`a`b!(1 2 3;4 5 6);+`a`b!(1 2 3;4 5 6);+`a`b!(1 2 3;4 5 6);+(0#`)!();+`a`b!(!0;!0))]   / a table: every row, columns of other counts, a column or columns to add with an index below, a table with no columns by a key: the error before anything is touched (2.7.2: lost)
-t[`amendFailKeepsStillWorks;({.[.:;,x;{`$1_(x?"\n")#x}]}'("M1:1 2 3;M1[1.0]:9";"M2:1 2 3;M2[\"a\"]:9";"M3:(1 2;3 4);M3[0 1;5]:1 2 3");IK["M4:(1 2 3;4 5 6)";"M4[0 1;1]:7 8"];IK["M5:`a`b!(1 2;3 4)";"M5[`a`c;0]:9 8"];IK["M6:1 2!(3 4;5 6)";"M6[1;0]:9"];IK["M7:+`a`b!(1 2;3 4)";"M7[;`a]:7 8"];IK["M8:1 2 3";"M8[(0 1;2)]:(4 5;6)"];IK["M9:!200";"M9[\"a\"]:0"][1;97];IK["M10:0#`a`b!(1 2;3 4)";"M10[`c;0]:9"];IK["M11:(0#`)!0#,1 2";"M11[`a`b;0]:9 8"]);(`type`index`length;(::;(1 7 3;4 8 6));(::;`a`b`c!(9 2;3 4;8 0N));(::;1 2!(9 4;5 6));(::;+`a`b!(7 8;3 4));(::;4 5 6);0;(::;(,`c)!,9 0N);(::;`a`b!(9 0N;8 0N)))]   / the error is the amend's own (a count first); and what fits is assigned as before (a char indexes by its code; a key added to a dict with no keys gets its values' prototype nulled)
+t[`amendFailKeepsStillWorks;({.[.:;,x;{`$(x?"\n")#x}]}'("M1:1 2 3;M1[1.0]:9";"M2:1 2 3;M2[\"a\"]:9";"M3:(1 2;3 4);M3[0 1;5]:1 2 3");IK["M4:(1 2 3;4 5 6)";"M4[0 1;1]:7 8"];IK["M5:`a`b!(1 2;3 4)";"M5[`a`c;0]:9 8"];IK["M6:1 2!(3 4;5 6)";"M6[1;0]:9"];IK["M7:+`a`b!(1 2;3 4)";"M7[;`a]:7 8"];IK["M8:1 2 3";"M8[(0 1;2)]:(4 5;6)"];IK["M9:!200";"M9[\"a\"]:0"][1;97];IK["M10:0#`a`b!(1 2;3 4)";"M10[`c;0]:9"];IK["M11:(0#`)!0#,1 2";"M11[`a`b;0]:9 8"]);(`type`index`length;(::;(1 7 3;4 8 6));(::;`a`b`c!(9 2;3 4;8 0N));(::;1 2!(9 4;5 6));(::;+`a`b!(7 8;3 4));(::;4 5 6);0;(::;(,`c)!,9 0N);(::;`a`b!(9 0N;8 0N)))]   / the error is the amend's own (a count first); and what fits is assigned as before (a char indexes by its code; a key added to a dict with no keys gets its values' prototype nulled)
 t[`amendFailKeepsEveryKey;(IK["EK1:`a`b!1 2";"EK1[]:1 2 3"];IK["EK2:`a`b!(1 2;3 4)";"EK2[;0]:7 8 9"];IK["EK3:`a`b!(`x`y!1 2;`x`y!3 4)";"EK3[`a;]:7 8 9"];IK["EK4:(1;`a)!(1 2;3 4 5)";"EK4[;2]:9"];IK["EK5:+`a`b!(1 2 3;4 5 6)";"EK5[0;]:9 8 7"];IK["EK6:`a`b!(`x`y!(1 2;3);`x`y!(4 5;6))";"EK6[`a`b;;0]:9 8"];IK["EK7:`a`b!(1 2;3 4)";"EK7[;0]:7 8"]);((`err;`a`b!1 2);(`err;`a`b!(1 2;3 4));(`err;`a`b!(`x`y!1 2;`x`y!3 4));(`err;(1;`a)!(1 2;3 4 5));(`err;+`a`b!(1 2 3;4 5 6));(`err;`a`b!(`x`y!(1 2;3);`x`y!(4 5;6)));(::;`a`b!(7 2;8 4)))]   / an elided level on a dict is every key, so its values are checked as a list elided there (any keys), and on a table's row every column: the error before anything is touched (lost before)
 t[`amendFailKeepsKeyKind;.[{(IK["KC1:1 2!(3 4;5 6)";"KC1[\"a\"]:9"];IK["KC2:1 2!3 4";".[`KC2;,\"a\";:;9]"];IK["KC3:`a`b!(1 2!3 4;5 6!7 8)";"KC3[`a;\"x\"]:9"];IK["KC4:\"ab\"!3 4";"KC4[1 2]:9"];IK["KC5:1.5 2.5!3 4";"{KC5[0x01]:9}[]"])};,0;{x}];((`err;1 2!(3 4;5 6));(`err;1 2!3 4);(`err;`a`b!(1 2!3 4;5 6!7 8));(`err;"ab"!3 4);(`err;1.5 2.5!3 4))]   / a char key into keys of numbers, or a number into keys of chars (the lookup's 'type, issue #20 row 12): the check finds it, and the variable is kept (lost before)
 t[`amendFailKeepsNoColumns;.[{(IK["KC6:+(0#`)!()";"KC6[1.0]:9"];IK["KC7:+(0#`)!()";"KC7[\"a\"]:9"];IK["KC8:+(0#`)!()";".[`KC8;,1.0;:;9]"];IK["KC9:+(0#`)!()";"{KC9[1.0 2.0;`a]:9}[]"])};,0;{x}];4#,(`err;+(0#`)!())]   / a float or char index into a table with no columns (no rows): 'type, 'index, and the table is kept (lost before)
@@ -1365,7 +1365,7 @@ t[`joinEmptyGenericProto;`k@'((0#,1 2),0#,"ab";(0#,,0N),0#,,();(0#,1 2),();(),0#
 t[`joinEmptyGenericDictCmp;`k@'(((0#,1 2)!())=(0#`)!!0;((0#,1 2)!0#0n)<(0#`)!!0);2#,"(0#`)!!0"]
 
 / ---- a train (a list of two or three functions) whose element fails passes the error on: the hook or fork applied the next element to the error (a crash) ----
-t[`trainElementError;{*"\n"\.[.:;,x;{x}]}'("({`a+x};{`b+x})@!0";"({`a+x};{`b+x}) 2";"({`b+x};-;+) 5";"(+;-;{`b+x}) 5";"(-;{`b+x})[1;2]";"({`b+y};-;+)[1;2]";"(+;-;{`b+y})[1;2]");7#,"'type"]
+t[`trainElementError;{*"\n"\.[.:;,x;{x}]}'("({`a+x};{`b+x})@!0";"({`a+x};{`b+x}) 2";"({`b+x};-;+) 5";"(+;-;{`b+x}) 5";"(-;{`b+x})[1;2]";"({`b+y};-;+)[1;2]";"(+;-;{`b+y})[1;2]");7#,"type"]
 / ---- a train owns its arguments as _1/_2 do: a failing element must not free the borrowed left argument (hook or fork); a heap int argument (0N, a long) was freed by the hook-or-index test ----
 t[`trainLeftArgKept;{a:1+!3;{.[{(-;{`b+x})[x;2]};,x;{x}]}[a]'!3;{.[{(+;-;{`b+y})[x;2]};,x;{x}]}[a]'!3;a}[];1 2 3]
 t[`trainHeapIntArg;({#?{(+;-) 0N+0*x}'!x}2000;{#?{[v;i](+;-) v}[x]'!200}2000000000000000000);1 1]
@@ -1399,7 +1399,7 @@ t[`keyedEmpty;(((+(,`k)!,!0)!+(,`v)!,!0)1;((+(,`k)!,!0)!+(,`v)!,!0)[+(,`k)!,1 2]
 / a row or table of keys goes by column name, as q; a char looked up in strings is a key not there (q: a null row too)
 t[`keyedByName;(kM`b`a!(`y;2);kM[+`b`a!(`y`x;2 1)];(+`a`b!(1 2;3 4))?`b`a!4 2;{s:(+(,`s)!,("ab";"cd"))!+(,`v)!,1 2;((s"a")`v;(s"cd")`v;(s[,"ab"])`v)}[]);((,`v)!,6;+(,`v)!,6 5;1;0N 2 1)]
 / a key of the wrong length is 'length, as in q; a row or table with columns that differ is 'domain (q: 'mismatch)
-t[`keyedAtErr;{*"\n"\.[.:;,x;{x}]}'("kL 1 2";"kM 1";"kL`a`b!1 2";"kL[+(,`j)!,1]");("'length";"'length";"'domain";"'domain")]
+t[`keyedAtErr;{*"\n"\.[.:;,x;{x}]}'("kL 1 2";"kM 1";"kL`a`b!1 2";"kL[+(,`j)!,1]");("length";"length";"domain";"domain")]
 / find of a row, or of a table's rows, in a table; and a keyed table's find gives the key
 t[`tableFind;((+`a`b!(1 2;3 4))?`a`b!2 4;(+`a`b!(1 2;3 4))?+`a`b!(2 9;4 1);(+(,`a)!,1 2)?2;kL?(,`v)!,20;kL _ 1);(1;1 0N;1;(,`k)!,2;(+(,`k)!,2 3)!+(,`v)!,20 30)]
 / more columns: each row's places in the columns, numbered column by column, find what a scan of the rows finds
@@ -1411,20 +1411,20 @@ t[`keyedUpsert;(kL,([k:3 4]v:33 44);kL,([k:,3]v:,5);kL,([k:2 2 5]v:1 2 3);([k:!0
 t[`keyedUpsertNew;(kL,([k:5 5]v:1 2);kL,([k:2 5 5]v:7 8 9);kL,([k:3 3]v:1 2));(([k:1 2 3 5 5]v:10 20 30 1 2);([k:1 2 3 5 5]v:10 7 30 8 9);([k:1 2 3]v:10 20 2))]
 / the key and value columns go by name; columns that differ are 'domain (q: 'mismatch), a dict 'type (q: 'type or 'length)
 t[`keyedUpsertByName;({k:([k:1 2]v:3 4;w:`a`b);k,([k:2 3]w:`z`y;v:9 9)}[];kM,([b:`x`z;a:1 3]v:7 8));(([k:1 2 3]v:3 9 9;w:`a`z`y);([a:1 2 3;b:`x`y`z]v:7 6 8))]
-t[`keyedUpsertUnkeyed;{*"\n"\.[.:;,x;{x}]}'("kL,([])";"([]),kL";"kL,0#([]a:1 2)";"kL,([]a:1 2)";"([]k:4 5;v:1 2),kL";"(0#kL),([]k:1 2;v:3 4)");6#,"'type"]   / a keyed table and an unkeyed one, either way, empty or not: 'type, as q
+t[`keyedUpsertUnkeyed;{*"\n"\.[.:;,x;{x}]}'("kL,([])";"([]),kL";"kL,0#([]a:1 2)";"kL,([]a:1 2)";"([]k:4 5;v:1 2),kL";"(0#kL),([]k:1 2;v:3 4)");6#,"type"]   / a keyed table and an unkeyed one, either way, empty or not: 'type, as q
 t[`keyedJoinEmpty;(kL,();(),kL;(0#kL),();(),0#kL;kL,0#,1 2;{d:(+(,`a)!,1 2)!3 4;(d,();(),d)}[]);(kL;kL;0#kL;0#kL;kL;2#,(+(,`a)!,1 2)!3 4)]   / () is no rows: a keyed table joined to it, either way, is the keyed table, as q (and a dict keyed by a table)
-t[`keyedJoinTypedEmpty;{$[`C~@r:.[.:;,x;{x}];*"\n"\r;""]}'("kL,!0";"kL,\"\"";"kL,0#`";"(!0),kL";"\"\",kL";"(!0),(+(,`a)!,1 2)!3 4");6#,"'type"]   / a typed empty list: 'type, as q
+t[`keyedJoinTypedEmpty;{$[`C~@r:.[.:;,x;{x}];*"\n"\r;""]}'("kL,!0";"kL,\"\"";"kL,0#`";"(!0),kL";"\"\",kL";"(!0),(+(,`a)!,1 2)!3 4");6#,"type"]   / a typed empty list: 'type, as q
 t[`razeKeyedEmpty;{.[{,/x};,x;{x}]}'((kL;());(kL;();kL);(kL;0#kL);(kL;([k:3 4]v:33 44));(kL;kL);,kL);(kL;kL;kL;([k:1 2 3 4]v:10 20 33 44);kL;kL)]   / raze of keyed tables joins them as , does, as q: kt,() is kt (it was 'index), and (kt;kt), held as a table of them, is kt (it was that table)
 / a dict whose keys are a table and values a list stays 'nyi in an amend at keys and in , (it was not a keyed table)
-t[`keyedListValues;{*"\n"\.[.:;,x;{x}]}'(("dL:(+(,`a)!,1 2)!3 4;",)'("dL[,1]:9";"dL[,3]:9";"@[dL;,1;:;9]";"dL,(+(,`a)!,,3)!,5";"dL,(+(,`a)!,,3)!5"),("kL,(+(,`k)!,,3)!,5";"{d:(+(,`a)!,1 2)!3 4;d[,1]:9;d}[]"));7#,"'nyi"]
-t[`keyedUpsertErr;{*"\n"\.[.:;,x;{x}]}'("kL,`k`v!4 40";"kL,(,`v)!,5";"kL,([k:,3]w:,1)";"kL,([j:,3]v:,1)");("'type";"'type";"'domain";"'domain")]
+t[`keyedListValues;{*"\n"\.[.:;,x;{x}]}'(("dL:(+(,`a)!,1 2)!3 4;",)'("dL[,1]:9";"dL[,3]:9";"@[dL;,1;:;9]";"dL,(+(,`a)!,,3)!,5";"dL,(+(,`a)!,,3)!5"),("kL,(+(,`k)!,,3)!,5";"{d:(+(,`a)!,1 2)!3 4;d[,1]:9;d}[]"));7#,"nyi"]
+t[`keyedUpsertErr;{*"\n"\.[.:;,x;{x}]}'("kL,`k`v!4 40";"kL,(,`v)!,5";"kL,([k:,3]w:,1)";"kL,([j:,3]v:,1)");("type";"type";"domain";"domain")]
 / a dict joined to a keyed table, or a keyed table to a list of them (held as a table of keyed tables), either way: 'type, as q (#94 Q8; they were 'index, a dict, and a table of one-row tables)
-t[`keyedJoinDictType;{$[`C~@r:.[.:;,x;{x}];*"\n"\r;r]}'("(kL;kL),kL";"kL,(kL;kL)";"(`k`v!4 40),kL";"(`k!4),kL";"(1 2!3 4),kL");5#,"'type"]
+t[`keyedJoinDictType;{$[`C~@r:.[.:;,x;{x}];*"\n"\r;r]}'("(kL;kL),kL";"kL,(kL;kL)";"(`k`v!4 40),kL";"(`k!4),kL";"(1 2!3 4),kL");5#,"type"]
 t[`keyedAmend;(@[kL;1;:;,7];@[kL;5;:;,7];.[kL;(9;`v);:;99];@[kL;1;+;1];@[kL;1;:;5];@[kL;(,5;,5);:;(,1;,2)]);(([k:1 2 3]v:7 20 30);([k:1 2 3 5]v:10 20 30 7);([k:1 2 3 9]v:10 20 30 99);([k:1 2 3]v:11 20 30);([k:1 2 3]v:5 20 30);([k:1 2 3 5]v:10 20 30 2))]
 t[`keyedAmendCols;{k:([k:1 2]v:3 4;w:`a`b);(@[k;2;:;(99;`z)];@[k;9;:;(98;`y)];@[k;(,1;,8);:;((1;`m);(2;`n))];@[k;([]k:1 8);:;([]v:5 6;w:`r`s)])}[];(([k:1 2]v:3 99;w:`a`z);([k:1 2 9]v:3 4 98;w:`a`b`y);([k:1 2 8]v:1 4 2;w:`m`b`n);([k:1 2 8]v:5 4 6;w:`r`b`s))]
 t[`keyedAmendLocal;{k:kL;k[3]:,99;k[4]:,98;k[2;`v]:5;k[7;`v]:6;k[1]+:,1;m:kM;m[(3;`q)]:,51;(k;m)}[];(([k:1 2 3 4 7]v:11 5 99 98 6);([a:1 2 3;b:`x`y`q]v:5 6 51))]
 tv[`keyedAmendGlobal;"kG:kL;kG[3]:,99;kG[4]:,98;kG,:([k:1 8]v:0 0);kG";([k:1 2 3 4 8]v:0 20 99 98 0)]
-t[`keyedAmendErr;{*"\n"\.[.:;,x;{x}]}'("@[([k:1 2]v:3 4;w:`a`b);1;:;5]";"@[kL;1 9;+;1]");("'length";"'length")]
+t[`keyedAmendErr;{*"\n"\.[.:;,x;{x}]}'("@[([k:1 2]v:3 4;w:`a`b);1;:;5]";"@[kL;1 9;+;1]");("length";"length")]
 
 / ---- a failed amend by name of a keyed table keeps it, as q: it is put back (issue #19) ----
 KG:([k:1 2 3]v:10 20 30;w:`a`b`c)
@@ -1437,9 +1437,9 @@ t[`amendKeyedNested;(IK["KN1:`a`b!(KG;1)";"KN1[`a;3]:(99;`z)"];IK["KN2:`a`b!(KG;
 KL:([k:1 2 3]v:10 20 30)
 t[`amendKeyedTableList;(IK["L1:(KL;KL)";"L1[1]:5"];IK["L2:(KL;KL)";"L2[0]+:1"];IK["L3:3#,KL";"L3[0]:KL"];IK["L4:(KL;KL)";".[`L4;,0;:;5]"];{l:(KL;KL);l[0]:5;l}[]);((::;(KL;5));(::;(1+KL;KL));(::;3#,KL);((5;KL);(5;KL));(5;KL))]
 t[`amendKeyedListKeep;(IK["DL1:(+(,`a)!,1 2)!3 4";"DL1[,1]:9"];IK["DL2:(+(,`a)!,1 2)!3 4";"DL2[,3]+:1"]);2#,(`err;(+(,`a)!,1 2)!3 4)]   / keys a table, values a list: 'nyi, and kept
-t[`amendKeyedTableListErr;{*"\n"\.[.:;,x;{x}]}'("L5:(KL;KL);L5[;3]:,1";"L6:(KL;KL);L6[0 1;3]:,1";"L7:(KL;KL);L7[5;3]:,1");("'length";"'length";"'index")]
+t[`amendKeyedTableListErr;{*"\n"\.[.:;,x;{x}]}'("L5:(KL;KL);L5[;3]:,1";"L6:(KL;KL);L6[0 1;3]:,1";"L7:(KL;KL);L7[5;3]:,1");("length";"length";"index")]
 t[`amendKeyedTableListKeep;(IK["KL1:(KL;KL)";"KL1[5]:1"];IK["KL2:(KL;KL)";"KL2[0 1]:1 2 3"];IK["KL3:(KL;KL)";"KL3[;3]:,1"];IK["KL4:(KL;KL)";".[`KL4;(5;3);:;,1]"];IK["KL7:(KL;KL)";"KL7[;3]+:,1"];IK["KL8:3#,KL";"KL8[5]:KL"]);(5#,(`err;(KL;KL))),,(`err;3#,KL)]   / and is checked as the list of its rows: the error before anything is touched, which is kept
-t[`amendKeyedTableListKeepErr;{*"\n"\.[.:;,x;{x}]}'("KL9:(KL;KL);KL9[5]:1";"KL9[0 1]:1 2 3";"KL9[;3]:,1";".[`KL9;(5;3);:;,1]";"KL9[1.5]:1";"KL9[0 5]:1");("'index";"'length";"'length";"'index";"'type";"'index")]   / with the error the amend gives
+t[`amendKeyedTableListKeepErr;{*"\n"\.[.:;,x;{x}]}'("KL9:(KL;KL);KL9[5]:1";"KL9[0 1]:1 2 3";"KL9[;3]:,1";".[`KL9;(5;3);:;,1]";"KL9[1.5]:1";"KL9[0 5]:1");("index";"length";"length";"index";"type";"index")]   / with the error the amend gives
 t[`amendKeyedTableListEmpty;{K0::0#KL;(IK["KE1:(K0;K0)";"KE1[5]:1"];IK["KE3:(K0;K0)";"KE3[0 1]:1 2 3"];IK["KE4:(K0;K0)";".[`KE4;(5;3);:;,1]"];IK["KE5:3#,K0";"KE5[5]:K0"])}[];(3#,(`err;(0#KL;0#KL))),,(`err;3#,0#KL)]   / empty keyed tables, which have no columns: their rows as the amend reads them (blw, from the columns' prototype)
 
 / ---- + - * % & | of two keyed tables over the union of the keys, as q (issue #19): a key on both sides gets the verb,
@@ -1453,17 +1453,17 @@ t[`keyedArithTypes;(([k:1 2]v:1 2)%([k:2 3]v:2 4);([k:1 2]v:1 2)+([k:2 3]v:5.5 6
 t[`keyedArithKeys;(([a:1 2;b:`x`y]v:1 2;w:3 4)+([b:`y`z;a:2 3]w:10 20;v:5 6);([k:1 2 2]v:1 2 3)+([k:2 3]v:10 20);([k:0#0]v:0#0)+([k:2 1]v:7 8);kL-([k:0#0]v:0#0);{k:kL;k+:([k:3 4]v:1 1);k}[]);(([a:1 2 3;b:`x`y`z]v:1 7 6;w:3 14 20);([k:1 2 2 3]v:1 12 3 20);([k:2 1]v:7 8);kL;([k:1 2 3 4]v:10 20 31 1))]
 / a dict keyed by a table with list values, as q; other key columns 'domain (q: 'mismatch); other value columns 'domain (q: the union of the columns, 0 for + -, nulls for * & |, 'type for %); a table of values on one side only 'type, as q
 t[`keyedArithLists;((([]a:1 2)!(1 2;3 4))+([]a:2 3)!(10 20;30 40);(([]a:1 2 3)!4 5 6)-([]a:2 3 4)!10 20 30);((+(,`a)!,1 2 3)!(1 2;13 24;30 40);(+(,`a)!,1 2 3 4)!4 -5 -14 -30)]
-t[`keyedArithErr;{*"\n"\.[.:;,x;{x}]}'("kL+([j:2 3]v:5 6)";"kL+([k:2 3]w:5 6)";"kL+(([]k:2 3)!5 6)";"(([]k:2 3)!5 6)*kL";"([k:1 2]v:1 2)|([k:3 4]v:`a`b)");("'domain";"'domain";"'type";"'type";"'type")]
+t[`keyedArithErr;{*"\n"\.[.:;,x;{x}]}'("kL+([j:2 3]v:5 6)";"kL+([k:2 3]w:5 6)";"kL+(([]k:2 3)!5 6)";"(([]k:2 3)!5 6)*kL";"([k:1 2]v:1 2)|([k:3 4]v:`a`b)");("domain";"domain";"type";"type";"type")]
 
 / ---- a list holding :: is data, not a train, so applying it indexes it, as in ngn/k (#83 Q2); a list of functions is still a train ----
 t[`trainNullIndexed;`k'((::;::)@0 1;(::;::;-:)@0 1;(::;-:)@0 1;(-:;::)@1 0;(::;::)[0 1]);("(::;::)";"(::;::)";"(::;-:)";"(::;-:)";"(::;::)")]
 t[`trainNullFromIndex;{D:({x};{y};1);`k'(D@5 6;(D@5 6)@0 1)}[];2#,"(::;::)"]
-t[`trainNullAtom;(`k(::;::)@5;(::;::)[1;2];*"\n"\.[.:;,"1 (::;::) 2";{x}]);("::";2;"'type")]
+t[`trainNullAtom;(`k(::;::)@5;(::;::)[1;2];*"\n"\.[.:;,"1 (::;::) 2";{x}]);("::";2;"type")]
 t[`trainOfFunctions;((+;-)/[1;2];(+;-;*)[5;2];(-:;%:)@4);(0;-3;2.0)]
 
 
 / ---- ?[c;a;b] with c of 0s and 1s: an a or b that is a list of another length is 'length, as q, not a splice (#83 Q3) ----
-t[`vcondLength;{*"\n"\.[{`k@. x};,x;{x}]}'("?[1 0 1;1 2;9]";"?[1 0 1;9;1 2]";"?[1 0 1;(1;2);9]";"?[0 1 1 0;1 2;5]";"?[!0;1 2;5]";"?[1 0 1;\"ab\";\"xyz\"]");6#,"'length"]
+t[`vcondLength;{*"\n"\.[{`k@. x};,x;{x}]}'("?[1 0 1;1 2;9]";"?[1 0 1;9;1 2]";"?[1 0 1;(1;2);9]";"?[0 1 1 0;1 2;5]";"?[!0;1 2;5]";"?[1 0 1;\"ab\";\"xyz\"]");6#,"length"]
 tv[`vcondSpliceOther;"?[0 1 2;1 2;9]";0 9 2]
 
 
@@ -1474,7 +1474,7 @@ t[`jsonMonadBack;`j?`j@(-:);"-:"]
 
 / ---- an empty item in parentheses is ::, as in ngn/k (#83 Q6); it was 'parse. ( ) is (), as () is, and an empty argument in [] is still elided ----
 t[`parenEmptyItem;{*"\n"\.[{`k@. x};,x;{x}]}'("(1;;2)";"(;)";"(1;)";"(;1)";"(;;)";"(1;(;))";"{(;x)}3";"(1;\n2)";"( )");("(1;::;2)";"(::;::)";"(1;::)";"(::;1)";"(::;::;::)";"(1;(::;::))";"(::;3)";"(1;::;2)";"()")]
-t[`parenEmptyKept;{*"\n"\.[{`k@. x};,x;{x}]}'("()";"(1;2)";"{x+y}[1;]2";"[1;;2]";"(1;2";"(1;;2");("()";"1 2";,"3";,"2";"'parse";"'parse")]
+t[`parenEmptyKept;{*"\n"\.[{`k@. x};,x;{x}]}'("()";"(1;2)";"{x+y}[1;]2";"[1;;2]";"(1;2";"(1;;2");("()";"1 2";,"3";,"2";"parse";"parse")]
 
 / ---- the allocator's large blocks (64 KB up; src/m.c colours them): vectors the parsers grow an item at a time
 / from 32 KB to 1 MB keep their contents; coloured blocks built in peach workers and freed on the main thread, and a
@@ -1483,7 +1483,7 @@ t[`allocGrowFloats;{(#x;+/x;x~0.0+!131072)}`j?"[",(","/$!131072),"]";(131072;858
 t[`allocGrowChars;{(#x;+/`i$x;-12#x)}@,/$!200000;(1088890;56866720;"199998199999")]
 t[`allocPeachFree;`x(("/bin/sh";"-c";"AMBER_THREADS=4 exec \"$0\"";`argv 0);"p:`pe({0.5*!x};40000*1+!8);s:+/'p;q:`pe({,/$!x};20000*1+!8);c:#'q;b:20000 2#!40000;p:0;q:0\n\\m\n`0:\" \"/$s,c,+/+/b\n");"399990000.0 1599980000.0 3599970000.0 6399960000.0 9999950000.0 14399940000.0 19599930000.0 25599920000.0 88890 188890 288890 388890 488890 608890 728890 848890 799980000\n"]   / in a process of its own, as \m reports the running script's own text
 / ---- a table literal holds at most 256 columns, in its keys or its values: one more is 'limit (it overran the parser's arrays and crashed) ----
-t[`tableLiteralLimit;{*"\n"\.[{`k@#!. x};,x;{x}]}'(("([]",(";"/{"a",($x),":1"}'!256),")");("([]",(";"/{"a",($x),":1"}'!300),")");("([",(";"/{"a",($x),":1"}'!257),"]b:1)"));("256";"'limit";"'limit")]
+t[`tableLiteralLimit;{*"\n"\.[{`k@#!. x};,x;{x}]}'(("([]",(";"/{"a",($x),":1"}'!256),")");("([]",(";"/{"a",($x),":1"}'!300),")");("([",(";"/{"a",($x),":1"}'!257),"]b:1)"));("256";"limit";"limit")]
 
 / ---- a char gather stops reading the index list at its end: it read it in blocks of 32, up to 31 indices past (the answers were right) ----
 t[`gatCharTail;("abc"@0 5 1;"abc"@4!!35;"abc"@4!!70001);("a b";35#"abc ";70001#"abc ")]
@@ -1534,14 +1534,14 @@ t[`dictJoinTableOther;((`b!1),+(,`a)!,2 3;(`b`a!5 6),+`a`b!(1 2;3 4);(`c!5),0#+`
 / list, so an atom replaced its row and a dict's values went one per row. A keyed table's rows at keys take a dict so too, as q; an atom there is 'type, as before
 t[`amendTableRowsFill;(@[+`a`b!(1 2 3;4 5 6);0 2;:;9];@[+`a`b!(1 2 3;4 5 6);1;:;9];@[+`a`b!(1 2 3;4 5 6);0 1;:;`a`b!7 8];@[+`a`b!(1 2 3;4 5 6);::;:;`x];.[+`a`b!(1 2 3;4 5 6);,1;:;9];@[0#+`a`b!(1 2 3;4 5 6);::;:;9];@[KG;+(,`k)!,1 2;:;`v`w!(5;`q)]);(+`a`b!(9 2 9;9 5 9);+`a`b!(1 9 3;4 9 6);+`a`b!(7 7 3;8 8 6);+`a`b!(`x`x`x;`x`x`x);+`a`b!(1 9 3;4 9 6);+`a`b!(!0;!0);(+(,`k)!,1 2 3)!+`v`w!(5 5 30;`q`q`c))]
 t[`amendTableRowsFillName;(IA["R1:+`a`b!(1 2 3;4 5 6)";"R1[0]:9"];IA["R2:+`a`b!(1 2 3;4 5 6)";"R2[0 2]:9"];IA["R3:+`a`b!(1 2 3;4 5 6)";"R3[]:9"];IA["R4:+`a`b!(1 2 3;4 5 6)";"R4[]:`a`b!7 8"];IA["R5:+`a`b!(1 2 3;4 5 6)";"R5[1 2]:`a`b!7 8"];{t:+`a`b!(1 2 3;4 5 6);t[0 2]:9;t}[];{t:+`a`b!(1 2 3;4 5 6);t[]:`a`b!7 8;t}[]);((::;+`a`b!(9 2 3;9 5 6));(::;+`a`b!(9 2 9;9 5 9));(::;+`a`b!(9 9 9;9 9 9));(::;+`a`b!(7 7 7;8 8 8));(::;+`a`b!(1 7 7;4 8 8));+`a`b!(9 2 9;9 5 9);+`a`b!(7 7 7;8 8 8))]
-t[`amendTableRowsAsBefore;(@[+`a`b!(1 2 3;4 5 6);0;:;`a`b!7 8];@[+`a`b!(1 2 3;4 5 6);0 1;+;1];@[+`a`b!(1 2 3;4 5 6);0 1;:;(`a`b!0 1;`a`b!2 3)];IK["R6:KG";"R6[]:9"];ER"@[KG;+(,`k)!,1 2;:;9]";{l:(KG;KG);l[1]:5;l}[]);(+`a`b!(7 2 3;8 5 6);+`a`b!(2 3 3;5 6 6);+`a`b!(0 2 3;1 3 6);(`err;KG);"'type";(KG;5))]   / a dict at one row, another verb, a list of rows; a keyed table, and a list of them (its keys a table)
+t[`amendTableRowsAsBefore;(@[+`a`b!(1 2 3;4 5 6);0;:;`a`b!7 8];@[+`a`b!(1 2 3;4 5 6);0 1;+;1];@[+`a`b!(1 2 3;4 5 6);0 1;:;(`a`b!0 1;`a`b!2 3)];IK["R6:KG";"R6[]:9"];ER"@[KG;+(,`k)!,1 2;:;9]";{l:(KG;KG);l[1]:5;l}[]);(+`a`b!(7 2 3;8 5 6);+`a`b!(2 3 3;5 6 6);+`a`b!(0 2 3;1 3 6);(`err;KG);"type";(KG;5))]   / a dict at one row, another verb, a list of rows; a keyed table, and a list of them (its keys a table)
 / ---- a dict as a table's column is 'length, as q's amend (#105 Q4): one of the row count was taken, and the rows read it by key. By name the table is kept ----
-t[`amendTableDictColumn;(ER"@[+`a`b!(1 2;3 4);`a;+;`x`y!5 6]";ER"@[+(,`a)!,1 2;`a;+;`x`y!5 6]";ER"{t:+`a`b!(1 2;3 4);t[`a]:`x`y!5 6;t}[]";IA["DC1:+`a`b!(1 2;3 4)";"DC1[`a]:`x`y!5 6"];IA["DC2:+`a`b!(1 2;3 4)";"DC2[`c]:`x`y!5 6"];IA["DC3:+`a`b!(1 2;3 4)";"DC3[`a]+:`x`y!5 6"]);(3#,"'length"),3#,(`err;+`a`b!(1 2;3 4))]
+t[`amendTableDictColumn;(ER"@[+`a`b!(1 2;3 4);`a;+;`x`y!5 6]";ER"@[+(,`a)!,1 2;`a;+;`x`y!5 6]";ER"{t:+`a`b!(1 2;3 4);t[`a]:`x`y!5 6;t}[]";IA["DC1:+`a`b!(1 2;3 4)";"DC1[`a]:`x`y!5 6"];IA["DC2:+`a`b!(1 2;3 4)";"DC2[`c]:`x`y!5 6"];IA["DC3:+`a`b!(1 2;3 4)";"DC3[`a]+:`x`y!5 6"]);(3#,"length"),3#,(`err;+`a`b!(1 2;3 4))]
 t[`amendTableDictColumnAsBefore;(@[+`a`b!(1 2;3 4);`a;:;(`x`y!5 6;1)];@[+`a`b!(1 2;3 4);`a`b;:;`x`y!5 6];.[+`a`b!(1 2;3 4);(0;`a);:;`x`y!1 2];`k@[+`a`b!(1 2;3 4);`a;:;`x`y!5 6];`k@[+`a`b!(1 2;3 4);`a`b;:;(`x`y!5 6;`x`y!7 8)];`k IA["DB1:+`a`b!(1 2;3 4)";"DB1[`a`b]+:(`x`y!5 6;`x`y!7 8)"]);(+`a`b!((`x`y!5 6;1);3 4);+`a`b!(5 5;6 6);+`a`b!((`x`y!1 2;2);3 4);"+`a`b!(`x`y!5 6;3 4)";"+`a`b!(`x`y!5 6;`x`y!7 8)";"(::;+`a`b!(`x`y!6 8;`x`y!10 12))")]   / a dict as an item of a column, and a dict's values over columns; and, unchecked as on main (#105 Q4 leaves them, for their speed; as strings, as such a table does not flip back), : by value, and a verb at a list of columns by name
-t[`amendTableDictColumnAnyAmend;(ER"@[+`a`b!(1 2;3 4);`a;{`x`y!x}]";ER"@[+`a`b!(1 2;3 4);`c;{`x`y!5 6}]";ER"@[+`a`b!(1 2;3 4);`a;{`x`y!y};5 6]";ER"@[+`a`b!(1 2;3 4);`a;!;`x`y]";ER".[+`a`b!(1 2;3 4);(`a;::);:;`x`y!5 6]";ER".[+`a`b!(1 2;3 4);(`c;::);:;`x`y!5 6]";ER".[+`a`b!(1 2;3 4);(`a;::);+;`x`y!5 6]";ER".[+`a`b!(1 2;3 4);(`a`b;::);:;(`x`y!5 6;`x`y!7 8)]";ER"@[+`a`b!(1 2;3 4);`a`b;{`x`y!x}]";ER"@[+`a`b!(1 2;3 4);`a`b;{`x`y!x+y};1]";ER".[+`a`b!(1 2;3 4);,`a`b;{`x`y!x}]";ER"@[+(,`a)!,1 2;,`a;{`x`y!x}]");12#,"'length"]   / by value, whatever makes a column a dict: a function of one or two arguments, !, a list of columns (not with :), a new one, and :: below a column; every column named a dict of the same keys (the columns squeeze to a table)
-t[`amendTableDictColumnAnyName;.[{(IK["DN1:+`a`b!(1 2;3 4)";"DN1[`a;]:`x`y!5 6"];IK["DN2:+`a`b!(1 2;3 4)";"DN2[`a;::]:`x`y!5 6"];IK["DN3:+`a`b!(1 2;3 4)";"DN3[`c;]:`x`y!5 6"];IK["DN4:+`a`b!(1 2;3 4)";"DN4[`a;]+:`x`y!5 6"];IK["DN5:+`a`b!(1 2;3 4)";".[`DN5;(`a;::);:;`x`y!5 6]"];IK["DN6:+`a`b!(1 2;3 4)";".[`DN6;(`a;::);+;`x`y!5 6]"];IK["DN7:+`a`b!(1 2;3 4)";".[`DN7;(`c;::);+;`x`y!5 6]"];IK["DN8:+`a`b!(1 2;3 4)";"DN8[`a`b]:(`x`y!5 6;`x`y!7 8)"];IK["DN9:+`a`b!(1 2;3 4)";"DN9[`a`c]:(`x`y!5 6;`x`y!7 8)"];IK["DN10:+`a`b!(1 2;3 4)";"DN10[`a]!:`x`y"];IK["DN11:+`a`b!(1 2;3 4)";"DN11[`c]+:`x`y!5 6"];IK["DN12:+`a`b!(1 2;3 4)";"DN12[`c]!:`x`y"];IK["DN13:+`a`b!(1 2;3 4)";"DN13[`c],:`x`y!5 6"];IK["DN14:+`a`b!(1 2;3 4)";"DN14[`c;]+:`x`y!5 6"];IK["DN15:+`a`b!(1 2;3 4)";"DN15[`a`b;]:(`x`y!5 6;`x`y!7 8)"];IK["DN16:+`a`b!(1 2;3 4)";"DN16[`a`b;]+:(`x`y!5 6;`x`y!7 8)"];IK["DN18:+`a`b!(1 2;3 4)";"DN18[`a`c;]+:(`x`y!5 6;`x`y!7 8)"];IK["DN19:+`a`b!(1 2;3 4)";".[`DN19;,`c;{`x`y!5 6}]"];IK["DN20:+`a`b!(1 2;3 4)";".[`DN20;,`a;{`x`y!x}]"];IK["DN21:+`a`b!(1 2;3 4)";"DN21[`c],:5 6"];IK["DN22:+`a`b!(1 2;3 4)";"DN22[`a;]+:1"];IK["DN23:+`a`b!(1 2;3 4)";"DN23[`a`b;]+:(1;2)"];IK["DN24:+`a`b!(1 2;3 4)";"DN24[`c;]:9"];ER"{w:+`a`b!(1 2;3 4);w[`a;]:`x`y!5 6;w}[]";ER"{w:+`a`b!(1 2;3 4);w[`a;]+:`x`y!5 6;w}[]";ER"{w:+`a`b!(1 2;3 4);w[`c]+:`x`y!5 6;w}[]")};,0;{x}];((`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(::;+`a`b`c!(1 2;3 4;5 6));(::;+`a`b!(2 3;3 4));(::;+`a`b!(2 3;5 6));(::;+`a`b`c!(1 2;3 4;9 9));"'length";"'length";"'length")]   / by name, the same, and the variable kept: :: below a column, a list of columns, a verb whose result is a dict, at a column to add too (the table was lost there), every column named a dict; one that works, as before; locals
+t[`amendTableDictColumnAnyAmend;(ER"@[+`a`b!(1 2;3 4);`a;{`x`y!x}]";ER"@[+`a`b!(1 2;3 4);`c;{`x`y!5 6}]";ER"@[+`a`b!(1 2;3 4);`a;{`x`y!y};5 6]";ER"@[+`a`b!(1 2;3 4);`a;!;`x`y]";ER".[+`a`b!(1 2;3 4);(`a;::);:;`x`y!5 6]";ER".[+`a`b!(1 2;3 4);(`c;::);:;`x`y!5 6]";ER".[+`a`b!(1 2;3 4);(`a;::);+;`x`y!5 6]";ER".[+`a`b!(1 2;3 4);(`a`b;::);:;(`x`y!5 6;`x`y!7 8)]";ER"@[+`a`b!(1 2;3 4);`a`b;{`x`y!x}]";ER"@[+`a`b!(1 2;3 4);`a`b;{`x`y!x+y};1]";ER".[+`a`b!(1 2;3 4);,`a`b;{`x`y!x}]";ER"@[+(,`a)!,1 2;,`a;{`x`y!x}]");12#,"length"]   / by value, whatever makes a column a dict: a function of one or two arguments, !, a list of columns (not with :), a new one, and :: below a column; every column named a dict of the same keys (the columns squeeze to a table)
+t[`amendTableDictColumnAnyName;.[{(IK["DN1:+`a`b!(1 2;3 4)";"DN1[`a;]:`x`y!5 6"];IK["DN2:+`a`b!(1 2;3 4)";"DN2[`a;::]:`x`y!5 6"];IK["DN3:+`a`b!(1 2;3 4)";"DN3[`c;]:`x`y!5 6"];IK["DN4:+`a`b!(1 2;3 4)";"DN4[`a;]+:`x`y!5 6"];IK["DN5:+`a`b!(1 2;3 4)";".[`DN5;(`a;::);:;`x`y!5 6]"];IK["DN6:+`a`b!(1 2;3 4)";".[`DN6;(`a;::);+;`x`y!5 6]"];IK["DN7:+`a`b!(1 2;3 4)";".[`DN7;(`c;::);+;`x`y!5 6]"];IK["DN8:+`a`b!(1 2;3 4)";"DN8[`a`b]:(`x`y!5 6;`x`y!7 8)"];IK["DN9:+`a`b!(1 2;3 4)";"DN9[`a`c]:(`x`y!5 6;`x`y!7 8)"];IK["DN10:+`a`b!(1 2;3 4)";"DN10[`a]!:`x`y"];IK["DN11:+`a`b!(1 2;3 4)";"DN11[`c]+:`x`y!5 6"];IK["DN12:+`a`b!(1 2;3 4)";"DN12[`c]!:`x`y"];IK["DN13:+`a`b!(1 2;3 4)";"DN13[`c],:`x`y!5 6"];IK["DN14:+`a`b!(1 2;3 4)";"DN14[`c;]+:`x`y!5 6"];IK["DN15:+`a`b!(1 2;3 4)";"DN15[`a`b;]:(`x`y!5 6;`x`y!7 8)"];IK["DN16:+`a`b!(1 2;3 4)";"DN16[`a`b;]+:(`x`y!5 6;`x`y!7 8)"];IK["DN18:+`a`b!(1 2;3 4)";"DN18[`a`c;]+:(`x`y!5 6;`x`y!7 8)"];IK["DN19:+`a`b!(1 2;3 4)";".[`DN19;,`c;{`x`y!5 6}]"];IK["DN20:+`a`b!(1 2;3 4)";".[`DN20;,`a;{`x`y!x}]"];IK["DN21:+`a`b!(1 2;3 4)";"DN21[`c],:5 6"];IK["DN22:+`a`b!(1 2;3 4)";"DN22[`a;]+:1"];IK["DN23:+`a`b!(1 2;3 4)";"DN23[`a`b;]+:(1;2)"];IK["DN24:+`a`b!(1 2;3 4)";"DN24[`c;]:9"];ER"{w:+`a`b!(1 2;3 4);w[`a;]:`x`y!5 6;w}[]";ER"{w:+`a`b!(1 2;3 4);w[`a;]+:`x`y!5 6;w}[]";ER"{w:+`a`b!(1 2;3 4);w[`c]+:`x`y!5 6;w}[]")};,0;{x}];((`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(`err;+`a`b!(1 2;3 4));(::;+`a`b`c!(1 2;3 4;5 6));(::;+`a`b!(2 3;3 4));(::;+`a`b!(2 3;5 6));(::;+`a`b`c!(1 2;3 4;9 9));"length";"length";"length")]   / by name, the same, and the variable kept: :: below a column, a list of columns, a verb whose result is a dict, at a column to add too (the table was lost there), every column named a dict; one that works, as before; locals
 / ---- a cell assigned in a column not there, row first, adds the column as column first does, nulls elsewhere (#105 Q5); the row became a dict of other keys ----
-t[`amendTableRowNewCol;(.[+`a`b!(1 2;3 4);(0;`c);:;9];.[+`a`b!(1 2;3 4);(1;`c);:;`x];{t:+`a`b!(1 2;3 4);t[0;`c]:9;t}[];IA["NC1:+`a`b!(1 2;3 4)";"NC1[1;`c]:9"];IA["NC2:+`a`b!(`sa 1 2;3 4)";"NC2[0;`c]:9"];IA["NC3:(+`a`b!(1 2;3 4);0)";"NC3[0;0;`c]:9"];IA["NC4:`x`y!(+`a`b!(1 2;3 4);0)";"NC4[`x;1;`c]:9"];ER"NC5:+`a`b!(1 2;3 4);NC5[5;`c]:9");(+`a`b`c!(1 2;3 4;9 0N);+`a`b`c!(1 2;3 4;(0N;`x));+`a`b`c!(1 2;3 4;9 0N);(::;+`a`b`c!(1 2;3 4;0N 9));(::;+`a`b`c!(`sa 1 2;3 4;9 0N));(::;(+`a`b`c!(1 2;3 4;9 0N);0));(::;`x`y!(+`a`b`c!(1 2;3 4;0N 9);0));"'index")]
+t[`amendTableRowNewCol;(.[+`a`b!(1 2;3 4);(0;`c);:;9];.[+`a`b!(1 2;3 4);(1;`c);:;`x];{t:+`a`b!(1 2;3 4);t[0;`c]:9;t}[];IA["NC1:+`a`b!(1 2;3 4)";"NC1[1;`c]:9"];IA["NC2:+`a`b!(`sa 1 2;3 4)";"NC2[0;`c]:9"];IA["NC3:(+`a`b!(1 2;3 4);0)";"NC3[0;0;`c]:9"];IA["NC4:`x`y!(+`a`b!(1 2;3 4);0)";"NC4[`x;1;`c]:9"];ER"NC5:+`a`b!(1 2;3 4);NC5[5;`c]:9");(+`a`b`c!(1 2;3 4;9 0N);+`a`b`c!(1 2;3 4;(0N;`x));+`a`b`c!(1 2;3 4;9 0N);(::;+`a`b`c!(1 2;3 4;0N 9));(::;+`a`b`c!(`sa 1 2;3 4;9 0N));(::;(+`a`b`c!(1 2;3 4;9 0N);0));(::;`x`y!(+`a`b`c!(1 2;3 4;0N 9);0));"index")]
 t[`amendTableRowNewColAsBefore;(.[+`a`b!(1 2;3 4);(0;`a);:;9];{t:+`a`b!(1 2;3 4);t[0;`c]+:1;t}[];.[+`a`b!(1 2;3 4);(0;`c);{9}]);(+`a`b!(9 2;3 4);(`a`b`c!1 3 1;`a`b!2 4);(`a`b`c!1 3 9;`a`b!2 4))]   / a column there; another verb, which column first would meet the nulls with
 
 hexpect[971]

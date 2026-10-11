@@ -7,6 +7,10 @@
 / ---- scalar / monadic primitives ------------------------------------------
 neg:{-x}
 not:{~x}
+Q.ne:{~x=y}                                     / q's x<>y, x>=y, x<=y: the parser reads them after a noun as these (src/p.c)
+Q.ge:{~x<y}
+Q.le:{~x>y}
+Q.sig:{`err$[`s~@x;$x;`c~@x;,x;x]}            / q's signal '"boom" or '`boom (the parser reads a ' that starts an expression as this)
 null:{^x}
 reciprocal:{1%x}
 sqrt:{%x}
@@ -18,11 +22,16 @@ exp:{`exp x}
 log:{`ln x}
 sin:{`sin x}
 cos:{`cos x}
+tan:{`tan x}
+asin:{`asin x}
+acos:{`acos x}
+atan:{`atan x}
 til:{!x}
 enlist:{,x}
-string:{$x}
-type:{@x}
-key:{!x}
+string:{$[(@x)in`f`F`i`I;`qst x;`A~@x;string'x;$x]}   / numbers as q prints them: 1.0 is "1", 0N "", floats to 7 digits (`qst, src/w.c)
+qtyn:`i`I`f`F`c`C`s`S`d`t`n`A`m`M`o`u`v`w`p`q`r`x!-7 7 -9 9 -10 10 -11 11 -14 -19 -12 0 99 98 100 101 102 103 104 105 106 112
+type:{qtyn@@x}   / q's type numbers (7 for ints, -9 a float, 98 a table); @x gives Amber's letters
+key:{$[(@x)in`I`F`C`S;(`long`float`char`symbol)@`I`F`C`S?@x;!x]}   / key of a list is its type's name, as q
 value:{. x}
 first:{*x}
 last:{*|x}
@@ -32,17 +41,20 @@ group:{$[isat x;`err"type";=x]}     / =5 is the unit matrix
 where:{&x}
 flip:{$[`m~@x;$[`M~@!x;+x;&/isat'. x;`err"rank";+x];1=#x;$[isat x;`err"rank";+x];+x]}   / A dict of atoms: 'rank as q (+ makes one-row columns)
 count:{#x}
-mod:{y!x}
-idivv:{[x;y]x:$[`i~@x;(#y)#x;x];n:(^x)|^y;x0:0^x;y0:1^y;z:&y0=0;s:y0<0;x1:x0*1-2*s;y1:1|y0*1-2*s;q:_x1%y1;r:x1-q*y1;d:_r%y1;q:q+d;r:r-d*y1;q:q-r<0;r:x1-q*y1;q:q+~r<y1;q:@[q;z;:;_(x0 z)%0];@[q;&n;:;0N]}   / ints by an int vector, exactly: the float quotient, corrected by the exact (wrapped) remainder
-idiv:{$[(`I~@y)&~^`i`I?@x;$[#y;$[&/~^x,y;$[&/9007199254740992>{x|-x}x,y;_x%y;idivv[x;y]];idivv[x;y]];_x%y];~`i~@y;_x%y;^`i`I?@x;_x%y;^y;$[`i~@x;0N;(#x)#0N];y=0;_x%y;y<0;idiv[-x;-y];[r:$[y=8;(-4)!(-2)!x;y=9;(-3)!(-3)!x;(-y)!x];$[`i~@x;$[^x;0N;r];0N=&/x;@[r;&^x;:;0N];r]]]}   / floor division, exact for ints over an int or ints (-8! -9! are other verbs); else through the float quotient
+mod:{$[`i~@y;$[y>0;y!x;y<0;0-(0-y)!0-x;$[isat x;$[`f~@x;0n;0N];(#x)#$[`F~@x;0n;0N]]];qmd[x;y]]}   / q's: the sign of the divisor (7 mod -3 is -2), 0N by 0
+qmd:{[x;y]$[|/((@x),@y)in`f`F;x-y*_x%y;[r:x-y*idiv[x;y];$[|/0=y;@[r;&0=y;:;0N];r]]]}   / a float or a list divisor
+idivv:{[x;y]x:$[`i~@x;(#y)#x;x];n:(^x)|^y;x0:0^x;y0:1^y;z:&y0=0;s:y0<0;x1:x0*1-2*s;y1:1|y0*1-2*s;q:_x1%y1;r:x1-q*y1;d:_r%y1;q:q+d;r:r-d*y1;q:q-r<0;r:x1-q*y1;q:q+~r<y1;q:@[q;z;:;0N];@[q;&n;:;0N]}   / ints by an int vector, exactly: the float quotient, corrected by the exact (wrapped) remainder
+idiv:{$[(`I~@y)&~^`i`I?@x;$[#y;$[&/~^x,y;$[&/9007199254740992>{x|-x}x,y;_x%y;idivv[x;y]];idivv[x;y]];_x%y];~`i~@y;_x%y;^`i`I?@x;_x%y;^y;$[`i~@x;0N;(#x)#0N];y=0;$[`i~@x;0N;(#x)#0N];y<0;idiv[-x;-y];[r:$[y=8;(-4)!(-2)!x;y=9;(-3)!(-3)!x;(-y)!x];$[`i~@x;$[^x;0N;r];0N=&/x;@[r;&^x;:;0N];r]]]}   / floor division, exact for ints over an int or ints (-8! -9! are other verbs); else through the float quotient
 div:{$[(@x)in`f`F;fdiv0[x;$[`i~@y;$[^y;0n;y];`I~@y;@[`f$y;&^y;:;0n];y]];(@y)in`f`F;idiv[x;rnd0 y];idiv[x;y]]}   / as q: an int by a float divisor rounds it; a float dividend floors as a float
-rnd0:{r:{s:(x>0)-x<0;s*_0.5+x*s};$[`f~@x;$[^x;0N;r x];@[r@[x;&^x;:;0.0];&^x;:;0N]]}   / round half away from zero, as q's `long$ of a float
+rnd0:{`rnd x}   / round half away from zero, as q's `long$ of a float (`rnd, src/w.c: one pass)
 fdiv0:{q:x%y;r:`f$_q;$[`f~@q;$[(^q)|^_q;0n;r];@[r;&^q;:;0n]]}   / floor of a float quotient through an int, kept a float, as q does
-xbar:{r:xbi[x;y];$[|/((@x),@y)in`f`F;`f$r;r]}   / A float width or value gives floats, as q (digest #67)
+xbar:{$[(@y)in`d`t`n;qtmk[@y;xbar[x;`i$y]];(`A~@y)&#y;$[&/(@'y)in`d`t`n;xbar[x]'y;xbq[x;y]];0~x;$[isat y;0N;(#y)#0N];(`I~@x)&|/0=x;@[xbq[@[x;&0=x;:;1];y];&0=x;:;0N];xbq[x;y]]}   / A float width or value gives floats, as q (digest #67); a width of 0 0N; a time, date or timestamp stays one
+xbq:{r:xbi[x;y];$[|/((@x),@y)in`f`F;`f$r;r]}
+qtmk:{[k;v]$[k~`d;`mkd v;k~`t;`mkt v;`mkp v]}   / an int back to a date, time or timestamp
 xbi:{r:x*idiv[y;x];$[`i~@x;$[`I~@y;$[^x;xbn[x;y;r];0N=&/y;xbn[x;y;r];r];xbn[x;y;r]];xbn[x;y;r]]}   / A null width or value gives a null (0N*0N wraps to 0); ints with no null: just the product
 xbn:{[x;y;r]m:(^x)|^y;$[~|/m;r;(@r)in`i`f;$[(`f~@r)|(`f~@x)|`f~@y;0n;0N];@[r;&m;:;$[`I~@r;0N;0n]]]}
 xlog:{(`ln y)%`ln x}
-xexp:{[x;y]$[~y=_y;`exp y*`ln x;[e:$[y<0;-y;y];r:*{0<x[2]}{(x[0]*$[2!x[2];x[1];1.0];x[1]*x[1];_x[2]%2)}/(1.0;1.0*x;e);r:$[y<0;1%r;r];$[(x=_x)&(~y<0)&(r=_r)&9007199254740992.0>$[r<0;0-r;r];_r;r]]]} / x xexp y = x^y; fast squaring for integer y, exp/ln for fractional. An integer base to a non-negative integer power comes back as an INTEGER while the squaring is still exact (below 2^53); past that, or for a fractional/negative exponent, it stays a float. Load euler.k to get the exact bignum answer beyond 2^53.
+xexp:{[x;y]$[~y=_y;`exp y*`ln x;[e:$[y<0;-y;y];r:*{0<x[2]}{(x[0]*$[2!x[2];x[1];1.0];x[1]*x[1];_x[2]%2)}/(1.0;1.0*x;e);r:$[y<0;1%r;r];r]]} / always a float, as q; x xexp y = x^y; fast squaring for integer y, exp/ln for fractional. An integer base to a non-negative integer power comes back as an INTEGER while the squaring is still exact (below 2^53); past that, or for a fractional/negative exponent, it stays a float. Load euler.k to get the exact bignum answer beyond 2^53.
 round:{[d;x]p:*/d#10;(_0.5+x*p)%p}
 
 / ---- aggregations ----------------------------------------------------------
@@ -50,8 +62,8 @@ round:{[d;x]p:*/d#10;(_0.5+x*p)%p}
 / on an int or float list a null takes the verb's identity, so it changes nothing (avg leaves it out)
 dcv:{[f;x]$[`m~@x;(!x)!f@. x;+(!+x)!f'. +x]}   / f of a dict's (or keyed table's) values under its keys, or of each column of a table, as q's list functions
 nid:{[x;i;f]$[`I=@x;$[0N=&/x;i^x;x];`F=@x;$[^&/x;f^x;x];x]}           / x with its nulls filled by i (ints) or f (floats); one &/ finds whether there are any (0N is the least int, and &/ takes NaN as the least float)
-sum:{$[0=#x;$[`F=@x;0.0;0];`F=@x;$[^s:+/x;+/0.0^x;s];`I=@x;`sumn x;+/nid[x;0;0.0]]}   / sum 0N 1 is 1; a float sum is NaN only when a NaN is in it; empty: keep the float type
-prd:{$[0=#x;$[`F=@x;1.0;1];`F=@x;$[^r:*/x;*/1.0^x;r];`I=@x;`prn x;*/nid[x;1;1.0]]}   / Nulls skipped; empty: keep the float type
+sum:{$[0=#x;$[`F=@x;0.0;`A=@x;();0];`F=@x;$[^s:+/x;+/0.0^x;s];`I=@x;`sumn x;+/nid[x;0;0.0]]}   / sum 0N 1 is 1; a float sum is NaN only when a NaN is in it; empty: keep the float type
+prd:{$[0=#x;$[`F=@x;1.0;`A=@x;();1];`F=@x;$[^r:*/x;*/1.0^x;r];`I=@x;`prn x;*/nid[x;1;1.0]]}   / Nulls skipped; empty: keep the float type
 min:{$[`I=@x;$[0N=m:&/x;&/9223372036854775807^x;m];`F=@x;$[^m:&/x;&/0w^x;m];&/x]}   / min 0N 5 is 5; all nulls: the largest int (q 0W); no nulls: just &/
 max:{$[`I=@x;$[0N=m:|/x;-9223372036854775807;m];`F=@x;$[^m:|/x;-0w;m];|/x]}   / a null is the least, so |/ skips it unless all are null (then -0W, -0w)
 avg:{$[`I=@x;$[0N=&/x;avgn x;(+/0.0+x)%#x];`F=@x;$[^s:+/x;avgn x;s%#x];#x;$[^`d`t`n?@*x;(+/0.0+x)%#x;avg`i$x];0n]}   / the non-null items, summed as floats, like q (an int64 +/ can wrap); none: 0n (an empty general list too, as q: an empty temporal column is one); a temporal list: its numbers' (days, ms, ns), as q
@@ -78,12 +90,12 @@ scov:{$[cvk[x;y];[r:`cvm(x;y);r[0]%0|-1+r 3];[p:pdr[x;y];n:#x:p 0;y:p 1;(n*avg(x
 cor:{$[cvk[x;y];[r:`cvm(x;y);r[0]%sqrt r[1]*r 2];[p:pdr[x;y];a:p[0]-avg p 0;b:p[1]-avg p 1;(avg a*b)%sqrt avg[a*a]*avg b*b]]}
 med:{$[isat x;0.0+x;0=#x;0n;[a:x@<x;n:#a;m:_n%2;$[2!n;0.0+a m;avg a@m-1 0]]]}
 all:{$[#x;~|/x=0;1]}   / All of an empty list is 1, as q
-any:{~&/x=0}
+any:{$[#x;~&/x=0;0]}   / any () is 0, as q
 sums:{$[`F=@x;$[^*|r:+\x;+\0.0^x;r];`I=@x;$[`hnl x;+\0^x;+\x];|/`m`M=@x;dcv[sums;x];+\nid[x;0;0.0]]}   / A null adds 0; floats: the last sum is NaN only if a NaN is in
 prds:{$[`F=@x;$[^*|r:*\x;*\1.0^x;r];`I=@x;$[`hnl x;*\1^x;*\x];|/`m`M=@x;dcv[prds;x];*\nid[x;1;1.0]]}
 mins:{$[|/`m`M=@x;dcv[mins;x];&\nid[x;9223372036854775807;0w]]}   / mins 0n 1.0 is 0w 1.0, as q
 maxs:{$[|/`m`M=@x;dcv[maxs;x];|\nid[x;-9223372036854775807;-0w]]}
-deltas:{$[`m~@x;dcv[deltas;x];$[1=#x;isat x;0b];x;#x;$[`F=@x;x-0.0,-1_x;`M=@x;dcv[deltas;x];`dlt x];x]}   / the zero in front has x's type: 0, before floats made a general list (576 ms on 10M); 0^ as 0*0w is 0n; floats: a float zero, so neither; a table by column; any other list `dlt: ints in one pass, nulls as q, a general list of int lists by row, nulls as q, the rest as x-(0^0*1#x),-1_x gave
+deltas:{$[`m~@x;dcv[deltas;x];$[1=#x;isat x;0b];x;(`A~@x)&(`d~@*x)|`n~@*x;deltas`i$'x;#x;$[`F=@x;x-0.0,-1_x;`M=@x;dcv[deltas;x];`dlt x];x]}   / the zero in front has x's type: 0, before floats made a general list (576 ms on 10M); 0^ as 0*0w is 0n; floats: a float zero, so neither; a table by column; any other list `dlt: ints in one pass, nulls as q, a general list of int lists by row, nulls as q, the rest as x-(0^0*1#x),-1_x gave
 ratios:{$[`m~@x;dcv[ratios;x];$[1=#x;isat x;0b];x;#x;x%(,1.0),0.0+-1_x;`M=@x;0.0+x;0#0.0]}   / empty: an empty float list, as q (digest #67), an empty table its columns as floats; floats all through (1, before floats was a general list)
 differ:{$[`m~@x;dcv[differ;x];isat x;1b;~#x;!0;|/`I`S`C=@x;1b,~(1_x)=-1_x;`F=@x;1b,~((1_x)=-1_x)|(^1_x)&^-1_x;@[~~':x;0;:;1b]]}   / The first item always differs, a null too; typed lists compare shifted (NaN matches NaN, as ~); empty: an empty boolean list, as q (so ()!() gives ()!`boolean$())
 prev:{$[`m~@x;dcv[prev;x];isat x;x;-1_(,x@#x),x]}   / An atom comes back as is, as q; a dict or keyed table: by its values; the null is the list's own (x@#x), not 0N
@@ -180,7 +192,7 @@ hasc:{[c;t]m:c@&~in[c;cols t];$[#m;`err@$*m;0]}
 xkey:{[k;t]k:k,();hasc[k;t];$[0=#k;unkey t;[d:+t;(+k#d)!+(except[cols t;k])#d]]}   / () xkey t -> unkey (q idiom)
 unkey:{$[iskeyed x;+(+!x),+.x;x]}
 xcolall:{[nm;t]+nm!. t}
-xcols:{[c;t]c:c,();e:(k:cols t)^c;$[(#k)=(#c)+#e;0;hasc[c;t]];+(c,e)#+t}   / a column t lacks: hasc names it; the counts add up only when there is none. k^c: names, so the primitive, not except
+xcols:{[c;t]c:c,();e:(k:cols t)@&~(k:cols t)in c;$[(#k)=(#c)+#e;0;hasc[c;t]];+(c,e)#+t}   / a column t lacks: hasc names it; the counts add up only when there is none. k^c: names, so the primitive, not except
 / xasc / xdesc: `xs (src/a.c) grades the table's key columns with a stable
 / multi-column LSD radix sort straight off the columns' raw C arrays -- no
 / per-row K objects, no boxed comparisons -- and returns () when it meets a
@@ -194,7 +206,8 @@ xdesc:{[c;t]c:c,();hasc[c;t];s:c#+t;o:`xs(value s;1b);o:$[#o;o;>+s];t@o}
 fills:{$[|/`m`M=@x;dcv[fills;x];$[2>#x;$[#x;isat x;1b];0b];x;`A=@x;$[`A=@n:^x;fln\x;x@|\(!#x)*~n];x@|\(!#x)*~^x]}   / each null takes the last value before it, as q; a dict by its values, a table by column
 fln:{$[isat x;$[(`f=@x)&`I=@y;x^0.0+y;x^y];isat y;$[^y;x;y];~(#x)=#y;`err"length";`A=@n:^y;fln'[x;y];[t:(@x),@y;x:$[t~`I`F;0.0+x;x];y:$[t~`F`I;0.0+y;y];@[y;i;:;x i:&n]]]}   / a list of lists fills position by position from the item before, as q's ^\ (the nulls of y take x's; ints with floats: floats, as q)
 attr:{`at x}                                         / q's attr: `s `u `p `g, or ` for none
-meta:{d:+unkey x;xkey[`c;+`c`t`a!(!d;{@*x}'value d;{`at x}'value d)]}
+qtc:`i`f`c`s`C`d`t`n!"jfcsCdtp"
+meta:{d:+unkey x;xkey[`c;+`c`t`f`a!(!d;qtc@{@*x}'value d;(#!d)#`;{`at x}'value d)]}   / as q: t the type's char, f the foreign key (none here)
 insert:`ins[]                                       / q's insert: a row dict or table lined up by t's column names, its types checked (the verb in src/h.c, ins2)
 
 / ---- joins -----------------------------------------------------------------
@@ -205,7 +218,8 @@ insert:`ins[]                                       / q's insert: a row dict or 
 / to box EVERY left row (rows[...]) purely to feed `?`, which cost 1.76 s on a 1M x 500
 / left join that q answers in 4 ms.
 jprobe:{[kc;kd;td]yc:kd kc;xc:td kc;$[1=#kc;(*yc;*xc);qcard[yc,'xc]<qEXACT;[e:qenc yc,'xc;n:#*yc;(n#e;n _ e)];(rows[+kd];+. kc#td)]}
-lj:{[t;kt]p:jprobe[keys kt;+!kt;+t];i:(p 0)?p 1;vt:value kt;vc:cols vt;j:$[|/vc in !+t;$[&/m:~^i;`all;(!#i)+(#i)*m];0];+(+t),vc!{[i;j;t;vt;c]r:(vt c)@i;$[~c in !+t;r;(`A~@vt c)&0=#vt c;(+t)c;~(`A~@(+t)c)|(@(+t)c)~@vt c;`err"type";`all~j;$[`A~@(+t)c;(((+t)c),r)(#i)+!#i;r];(((+t)c),r)j]}[i;j;t;vt]'vc}  / a column t has keeps its values where nothing matches; one of another type is 'type, as in q
+lj:{[t;kt]$[iskeyed t;xkey[keys t;lj[unkey t;kt]];ljx[t;kt]]}   / a keyed t: its keys kept, as q
+ljx:{[t;kt]p:jprobe[keys kt;+!kt;+t];i:(p 0)?p 1;vt:value kt;vc:cols vt;j:$[|/vc in !+t;$[&/m:~^i;`all;(!#i)+(#i)*m];0];+(+t),vc!{[i;j;t;vt;c]r:(vt c)@i;$[~c in !+t;r;(`A~@vt c)&0=#vt c;(+t)c;~(`A~@(+t)c)|(@(+t)c)~@vt c;`err"type";`all~j;$[`A~@(+t)c;(((+t)c),r)(#i)+!#i;r];(((+t)c),r)j]}[i;j;t;vt]'vc}  / a column t has keeps its values where nothing matches; one of another type is 'type, as in q
 / ij: the probe used to box every left row AND every right key row (rows[...])
 / purely to feed `?`.  Both sides are now rank-encoded column-wise -- jointly,
 / over one shared code space -- so the lookup is a native vector `?` on a flat
@@ -286,8 +300,9 @@ wjbndK:{[g;t;q]gdi:=rows[g#+q];bas:*:'value gdi;len:#:'value gdi;ix:(!gdi)?rows[
 wjbnd:{[g;t;q]$[#g;[b:`wjb(value g#+q;value g#+t);$[#b;b;wjbndK[g;t;q]]];((#t)#0;(#t)#(#q))]}
 wjK:{[m;w;c;t;q;aggs]$[&/(#t)=#:'w;::;`err"length"];c:c,();g:-1_c;tc:*|c;q:ajord[c;q];qd:+q;ub:{$[(@x)in`c`C;256!`i$x;x]};qt:qd tc;$[(`A~@qt)|(`A~@w 0)|`A~@w 1;[tjsame[qt;w 0];tjsame[qt;w 1];qt:tjnum qt;w:tjnum'w];::];qt:ub qt;w:$[`C=@qd tc;ub'w;w];qg:$[#g;=rows[g#+q];(,0)!,!#q];tg:$[#g;rows[g#+t];(#t)#0];res:{[m;qt;qg;tg;w;qd;aggs;i]gk:tg i;p:$[in[gk;!qg];qg gk;0#0];sel:$[#p;{[m;gt;p;lo;hi]s:$[^lo;0;m;0|$[(`F~@gt)|`f~@lo;-1++/~gt>lo;gt'lo];1+$[(`F~@gt)|`f~@lo;-1++/gt<lo;gt'lo-1]];p@s+!0|1+(gt'hi)-s}[m;qt p;p;w[0]i;w[1]i];0#0];{[qd;sel;a](a 1)(qd a 2)@sel}[qd;sel]'aggs}[m;qt;qg;tg;w;qd;aggs]'!#t;+(+t),(aggs[;0])!+res}
 / wj counts the quote in force at the window's start, as q's; wj1 only the quotes inside the window (digest #68)
-wj:{[w;c;t;q;aggs]wjm[1b;w;c;t;q;aggs]}
-wj1:{[w;c;t;q;aggs]wjm[0b;w;c;t;q;aggs]}
+wj:{[w;c;t;qa]wjm[1b;w;c;t;*qa;wja 1_qa]}   / q's form: (q;(f;c);..); (name;f;c) names the column
+wja:{$[(1=#x)&`A~@**x;wja@*x;{$[3=#x;x;(x 1;x 0;x 1)]}'x]}   / (q;agg;..) or (q;aggs), an agg (f;c) or (name;f;c)
+wj1:{[w;c;t;qa]wjm[0b;w;c;t;*qa;wja 1_qa]}
 / The kernel reads numbers: chars go to it as their codes (min/max back to chars), first/last of chars, symbols,
 / temporals or a generic column read the positions and index the column (an empty window: its null), and the other
 / reducers over a column that is not ints, floats or chars go to wjK, as K's own min/max/sum/avg on its items
@@ -342,10 +357,10 @@ fbymc:{[g;d]$[~`A~@g;0;0=#g;0;(#g)=#d;0;(#d)=#*g]}
 fby:{[fc;g]f:fc 0;d:fc 1;g:$[fbymc[g;d];+g;g];gi:=g;iv:value gi;agg:{[f;d;i]f d@i}[f;d]'iv;@[(#g)#*agg;raze iv;:;raze(#:'iv)#'agg]}
 
 / ---- strings ---------------------------------------------------------------
-lower:{_x}
-upper:{c:0+x;`c$c-32*(c>96)&c<123}
-ltrim:{(+/&\x=" ")_x}
-rtrim:{(0-+/&\|x=" ")_x}
+lower:{$[`S~@x;[u:?x;(`$lower@$u)@u?x];`s~@x;`$lower@$x;_x]}   / a symbol too, as q (a list by its distinct names)
+upper:{$[`S~@x;[u:?x;(`$upper@$u)@u?x];`s~@x;`$upper@$x;[c:0+x;`c$c-32*(c>96)&c<123]]}
+ltrim:{$[`A~@x;ltrim'x;(+/&\x=" ")_x]}
+rtrim:{$[`A~@x;rtrim'x;(0-+/&\|x=" ")_x]}
 trim:{ltrim rtrim x}
 / ss: string-search, s for p, -> match-start positions (empty if none/p longer than s).
 / Guarded explicitly for (#s)<#p: without this, "!1+(#s)-#p" is "!0" (0 candidate
@@ -360,10 +375,11 @@ trim:{ltrim rtrim x}
 / where the remaining separator being searched for, like " where ", is longer than
 / what's left) -- so this one-line ss fix is what actually fixes "select from t"
 / and friends. See docs/MISSING.md for the underlying whr bug, tracked separately.
-ss:{[s;p]$[(#s)<#p;!0;&{[s;p;i]p~(#p)#i_s}[s;p]'!1+(#s)-#p]}
+ss:{[s;p]p:(),p;m:#p;$[(m=0)|(#s)<m;!0;[i:&s=*p;i:i@&(#s)>i+m-1;i:{[s;p;i;k]i@&s[i+k]=p k}[s;p]/[i;1_!m];$[(m>1)&1<#i;$[|/m>(1_i)-(-1_i);ssn[i;m];i];i]]]}   / non-overlapping starts left to right, as q; p may be one char
+ssn:{[i;m]r:!0;l:0-m;j:0;do[#i;$[~i[j]<l+m;[r,:i j;l:i j];::];j+:1];r}
 ssr:{[s;f;t]t/f\s}
-sv:{x/y}
-vs:{$[(`C=@y)&0=#y;,y;x\y]}   / x vs "" is one empty field, as q
+sv:{$[x~`;`$$[":"=**$*y;"/";"."]/$y;x/y]}   / ` sv `a`b is `a.b, ` sv `:d`f `:d/f, as q
+vs:{$[x~`;$[":"=*s:$y;[i:*|&s="/";`$(i#s;(i+1)_s)];`$"."\s];(`C=@y)&0=#y;,y;x\y]}   / x vs "" is one empty field, as q; ` vs `a.b.c is `a`b`c
 lk1:{[s;p]$[~#p;~#s;"*"=*p;$[#s;lk1[s;1_p]|lk1[1_s;p];lk1[s;1_p]];~#s;0;("?"=*p)|(*p)=*s;lk1[1_s;1_p];0]}
 like:{[x;p]$[`C=@x;`lk(x;p);`s=@x;`lk($x;p);`S=@x;[u:?x;(`lk($u;p))@u?x];`m=@x;(!x)!like[. x;p];`lk(x;p)]}   / q's like in C (`lk, src/a.c): * ? and [ ] classes (#83 Q12); symbols match by name, each distinct name once; a dict's values, as q
 
@@ -465,3 +481,26 @@ amfmt:{$[iskeyed x;amkeyed x;`M=@x;amtab x;`m=@x;amdict x;`k x]}
 show:{`0:amfmt x;}
 
 repl.amfmt:amfmt
+
+/ ---- q compatibility (2.7.3) --------------------------------------------------
+/ q's casts by name or char that $ does not take itself (src/c.c sends them here): "J"$ "F"$ "S"$ "B"$ parse text,
+/ `long$ `float$ `date$ .. cast, `year$ `mm$ `dd$ `hh$ `uu$ `ss$ `week$ take a part. Amber has no month, datetime,
+/ timespan, minute, second or guid type: those are 'nyi
+qtn:`boolean`byte`short`int`long`real`float`char`symbol`timestamp`month`date`datetime`timespan`minute`second`time`guid!"bxhijefcspmdznuvtg"
+qcst:{[t;y]$[`c~@t;qcc[t;y];" "~c:qtn t;qcp[t;y];qcc[c;y]]}
+qcc:{[c;y]$[c="*";y;c<"a";qcpa[c;y];(`A~@y)&0=#y;$[c in"bxhij";!0;c in"ef";0#0.0;c="c";"";c="s";0#`;y];`A~@y;qcc[c]'y;`m~@y;(!y)!qcc[c;. y];qcv[c;y]]}
+qcpa:{[c;y]$[c in"JIH";`I$y;c in"FE";`F$y;c="S";`$y;c in"DTP";$[`A~@y;c$'y;`err"type"];`c~@y;qcpa[c;,y];`A~@y;qcpa[c]'y;c="B";$[#y;(*y)in"1tTyY";0];`err"nyi"]}
+qcv:{[c;y]k:@y;$[c="b";~0=$[k in`d`t`n;`i$y;y];c in"xhij";$[k in`f`F;rnd0 y;k in`c`C`d`t`n;`i$y;k in`i`I;y;`err"type"];c in"ef";$[k in`f`F;y;k in`i`I;`f$y;k in`c`C`d`t`n;`f$`i$y;`err"type"];c="c";$[k in`c`C;y;k in`i`I;`c$y;`err"type"];c="s";$[k in`s`S;y;k in`c`C;`$y;`err"type"];c="d";$[k~`d;y;k~`n;`mkd tsdate`i$y;k~`i;`mkd y;k~`I;`mkd'y;`err"type"];c="t";$[k~`t;y;k~`n;`mkt tsms`i$y;k~`i;`mkt y;k~`I;`mkt'y;`err"type"];c="p";$[k~`n;y;k~`d;`mkp 86400000000000*`i$y;k~`i;`mkp y;k~`I;`mkp'y;`err"type"];`err"nyi"]}
+qcp:{[t;y]k:@y;$[`A~@y;qcp[t]'y;t~`year;year y;t~`mm;$[k~`t;tmm y;k~`n;month y;month y];t~`dd;day y;t~`hh;$[k~`n;thh`mkt tsms`i$y;thh y];t~`uu;$[k~`n;tmm`mkt tsms`i$y;tmm y];t~`ss;$[k~`n;tss`mkt tsms`i$y;tss y];t~`week;[d:$[k~`n;tsdate`i$y;`i$y];`mkd d-7!d+5];`err"domain"]}
+md5:{`md5 x}                                    / its 16 bytes, as q (a char vector: Amber has no byte type)
+avgs:{(sums x)%sums@~^x}                         / running mean, nulls skipped, as q
+cut:{$[isat x;(x*!-_-(#y)%x)_y;x_y]}            / n cut y: pieces of n; a list of starts cuts there, as q
+bin:{x'y}                                       / the last index of sorted x at or below y, -1 if none (the C bin, k's x'y)
+binr:{(#x)-1+(|-x)'-y}                          / the first index of sorted x at or above y, as q
+inv:{`minv x}                                   / a square matrix's inverse (Gauss-Jordan, partial pivots; src/w.c), as q
+fkeys:{(0#`)!0#`}                               / Amber tables have no foreign keys
+xcol:{[n;t]$[iskeyed t;xkey[(#keys t)#n,(#n)_keys t;xcol[n;unkey t]];[c:cols t;+(n,(#n)_c)!. +t]]}   / renames the first #n columns, as q
+upsert:{[t;r]$[`s~@t;[.[t;();:;upsert[. t;r]];t];iskeyed t;qupk[t;qukt[t;r]];insert[t;r]]}
+qupk:{[t;r]k:keys t;$[(1=#k)&(k~keys r)&(cols t)~cols r;[c:*k;i:(t0:!t)[c]?(r0:!r)c;f:&~^i;n:&^i;v:.t;w:.r;(+(,c)!,(t0 c),(r0 c)n)!+(!+v)!{[i;f;n;a;b]@[a;i f;:;b f],b n}[i;f;n]'[. +v;. +w]];t,r]}   / one key column: r's rows found by it, replaced, and the new ones added; else t,r   / a keyed table's rows by key, replaced or added; else appended, as q
+qukt:{[t;r]$[iskeyed r;r;`M~@r;xkey[keys t;r];`m~@r;xkey[keys t;+(!r)!,'. r];xkey[keys t;+(cols t)!,'r]]}
+tables:{d:. 0#`;k:!d;v:. d;asc k@&(~"."in'$k)&{(`M~@x)|iskeyed x}'v}   / the global tables' names, as q (. 0#` is every global)

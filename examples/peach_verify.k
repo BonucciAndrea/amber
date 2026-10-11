@@ -157,8 +157,8 @@ ok["error deep in a chunk"  ;e2~"caught"]
 / several items fail: the error is the first failing item's, as serial each's (#83 Q16), even when a
 / later item fails long before it (item 0 here works first; every other item fails at once)
 pe1:{.[peach;(x;y);{[e](e?"\n")#e}]}
-ok["first failing item's error" ;"'length"~pe1[{x+1 2 3};(1 2;`a)]]
-ok["first item fails last"      ;"'length"~pe1[{$[x;x+`a;[+/%1+!4000000;1 2+1 2 3]]};!256]]
+ok["first failing item's error" ;"length"~pe1[{x+1 2 3};(1 2;`a)]]
+ok["first item fails last"      ;"length"~pe1[{$[x;x+`a;[+/%1+!4000000;1 2+1 2 3]]};!256]]
 / the interpreter must still be usable afterwards: the persistent worker
 / threads are re-armed for the next dispatch, no wedged global error state.
 ok["peach works after error";(peach[{x+1};!30])~1+!30]

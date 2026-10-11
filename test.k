@@ -32,7 +32,7 @@ t[`sumsNull;   (sums 1 0n 2;sums 1 0N 2;prds 2 0n 3;prds 2 0N 3);   (1 1 3.0;1 1
 t[`prdNull;    (prd 2 0n 3;prd 2 0N 3;prd 2 0N 3 2147483648);     (6.0;6;6*2147483648)]
 t[`wsumNull;   (wsum[1 2 3.0;1 0n 2];wsum[1 2 3;1 0N 2];wsum[1 2 3;1 0n 2];wsum[1 2 3+2147483648;1 0N 2]);   (7.0;7.0;7.0;`f$7+3*2147483648)]
 t[`wavgNull;   (wavg[1 2 3;1 0n 2];wavg[1 2 3;1 0N 2];wavg[1 2 3.0;4 5 6.0]);   (1.75;1.75;32%6)]
-t[`wsumLength;{*"\n"\.[x;y;{x}]}'[(wsum;wsum;wsum;wavg;wavg;wsum);((1 2;3 4 5);(1.0 2.0;3 4 5.0);(1 0N;3 4 5);(1 2;3 4 5);(1.0 2.0;3 4 5.0);(!3;3 4))];6#,"'length"]   / lists of different lengths: 'length, as q (it was 'type)
+t[`wsumLength;{*"\n"\.[x;y;{x}]}'[(wsum;wsum;wsum;wavg;wavg;wsum);((1 2;3 4 5);(1.0 2.0;3 4 5.0);(1 0N;3 4 5);(1 2;3 4 5);(1.0 2.0;3 4 5.0);(!3;3 4))];6#,"length"]   / lists of different lengths: 'length, as q (it was 'type)
 t[`svarNull;   (svar 1 2 0n;sdev 1 2 0n);   (0.5;sqrt 0.5)]
 t[`covNull;    (cov[1 2 3;1 2 0n];scov[1 2 3;1 2 0n];cor[1 2 3;1 2 0n];cov[1 2 3 0n;0n 2 3 4]);   (0.25;0.5;1.0;0.25)]
 t[`scovNoPair; (scov[0n 0n;1 2.0];scov[0#0;0#0];scov[1 0N;0N 2];scov[,1.0;,2.0];svar 0#0.0;svar@,1);   (0n;0n;0n;0n;0n;0n)]   / none or one pair left: 0n, as q (2.5.0-2.7.2: -0.0 for none)
@@ -75,25 +75,25 @@ t[`rotateWhole;(rotate[3;1 2 3];rotate[0;1 2 3];rotate[-3;1 2 3]);3#,1 2 3]   / 
 t[`negAfterParams;({[x]-1+x}0 1 2;{[x]-x}0 1 2;{[x;y]-1+x+y}[1;2];{[x]-1.5*x}2);(-1 0 1;0 -1 -2;2;-3.0)]   / Digest #40: was -(1+x)
 t[`exceptCharNum;(1 2 3^"a";"ab"^1;(1 2 3)^,"a";except[1 2 3;"a"];except["ab";1 2];"abc"^"b";1 2 3^2);(1 2 3;"ab";1 2 3;1 2 3;"ab";"ac";1 3)]   / Digest #64: nothing removed, as q and ngn/k
 t[`exceptMixed;(except[(1;2.5);"a"];except[(0;" ");0];except[(1;"a";`b);"a"];except[(1;"a");1 2];except[(1;"a";2);1];except[(1;`a;2);1];except[("ab";"c");0];except[(`a;"a");0];except[(1 2;"a");1]);((1;2.5);," ";(1;`b);,"a";("a";2);(`a;2);("ab";"c");(`a;"a");(1 2;"a"))]   / digest #64: was 'type
-t[`jsonKeys;(`j@1 2!3 4;`j@(1.5 2)!3 4;`j@`a`b!3 4;`j@("ab";"cd")!3 4;5#.[`j@;,(1 2;3 4)!3 4;{x}]);("{\"1\":3,\"2\":4}";"{\"1.5\":3,\"2\":4}";"{\"a\":3,\"b\":4}";"{\"ab\":3,\"cd\":4}";"'type")]   / Digest #60: number keys as strings, list keys 'type, as q
+t[`jsonKeys;(`j@1 2!3 4;`j@(1.5 2)!3 4;`j@`a`b!3 4;`j@("ab";"cd")!3 4;4#.[`j@;,(1 2;3 4)!3 4;{x}]);("{\"1\":3,\"2\":4}";"{\"1.5\":3,\"2\":4}";"{\"a\":3,\"b\":4}";"{\"ab\":3,\"cd\":4}";"type")]   / Digest #60: number keys as strings, list keys 'type, as q
 t[`jsonRangeKeys;(`j@(!3)!`a`b`c;`j@(!2)!3 4;`j@(1+!2)!3 4;`j@`a`b!(1;(!2)!3 4));("{\"0\":\"a\",\"1\":\"b\",\"2\":\"c\"}";"{\"0\":3,\"1\":4}";"{\"1\":3,\"2\":4}";"{\"a\":1,\"b\":{\"0\":3,\"1\":4}}")]   / a range key is written whole, as 0 1 2; was cut off (its two quotes were not counted)
-t[`jsonKeyedTable;(`j@(+(,`k)!,1 2)!+(,`v)!,3 4;`j@`a`b!((+(,`k)!,!0)!+(,`v)!,!0;(+(,`k)!,1 2)!+(,`v)!,3 4);`j@(+`a`b!(1 2;`x`y))!+`c`d!(3 4;5 6);`j@(+`a`b!(1 2;`x`y))!+`b`a!(3 4;5 6);{5#.[`j@;,x;{x}]}'((+(,`k)!,1 2)!3 4;(`a;+`a!,1 2)!3 4;(`a;`a`b!1 2)!3 4;(1;::)!3 4;(1;-:)!3 4));("[{\"k\":1,\"v\":3},{\"k\":2,\"v\":4}]";"{\"a\":[],\"b\":[{\"k\":1,\"v\":3},{\"k\":2,\"v\":4}]}";"[{\"a\":1,\"b\":\"x\",\"c\":3,\"d\":5},{\"a\":2,\"b\":\"y\",\"c\":4,\"d\":6}]";"[{\"a\":1,\"b\":\"x\",\"b\":3,\"a\":5},{\"a\":2,\"b\":\"y\",\"b\":4,\"a\":6}]";5#,"'type")]   / digest #60: a keyed table as 0!t, as q (names shared by key and value repeat, as q); table, dict, :: and verb keys 'type, as q
-t[`listFnAtom;(prev 5;next 5;raze 5;5#.[distinct;,5;{x}];5#.[group;,5;{x}];distinct `a`b!1 1);(5;5;,5;"'type";"'type";,1)]
-t[`listFnAtomRank;{5#.[x;,5;{x}]}'(asc;desc;iasc;idesc;rank;flip;xrank[2];rotate[1];xprev[1]);9#,"'rank"]   / was 5, 'io (desc), 5, 'io (idesc), 5, ,,5, 10, 5, 'type
+t[`jsonKeyedTable;(`j@(+(,`k)!,1 2)!+(,`v)!,3 4;`j@`a`b!((+(,`k)!,!0)!+(,`v)!,!0;(+(,`k)!,1 2)!+(,`v)!,3 4);`j@(+`a`b!(1 2;`x`y))!+`c`d!(3 4;5 6);`j@(+`a`b!(1 2;`x`y))!+`b`a!(3 4;5 6);{4#.[`j@;,x;{x}]}'((+(,`k)!,1 2)!3 4;(`a;+`a!,1 2)!3 4;(`a;`a`b!1 2)!3 4;(1;::)!3 4;(1;-:)!3 4));("[{\"k\":1,\"v\":3},{\"k\":2,\"v\":4}]";"{\"a\":[],\"b\":[{\"k\":1,\"v\":3},{\"k\":2,\"v\":4}]}";"[{\"a\":1,\"b\":\"x\",\"c\":3,\"d\":5},{\"a\":2,\"b\":\"y\",\"c\":4,\"d\":6}]";"[{\"a\":1,\"b\":\"x\",\"b\":3,\"a\":5},{\"a\":2,\"b\":\"y\",\"b\":4,\"a\":6}]";5#,"type")]   / digest #60: a keyed table as 0!t, as q (names shared by key and value repeat, as q); table, dict, :: and verb keys 'type, as q
+t[`listFnAtom;(prev 5;next 5;raze 5;4#.[distinct;,5;{x}];4#.[group;,5;{x}];distinct `a`b!1 1);(5;5;,5;"type";"type";,1)]
+t[`listFnAtomRank;{4#.[x;,5;{x}]}'(asc;desc;iasc;idesc;rank;flip;xrank[2];rotate[1];xprev[1]);9#,"rank"]   / was 5, 'io (desc), 5, 'io (idesc), 5, ,,5, 10, 5, 'type
 t[`listFnAtomAsIs;{.[*x;1_x;{5#x}]}'((deltas;5);(ratios;2.0);(fills;0N);(fills;`a);(sublist;2;5);(xbar;2;5.5);(xbar;2 3;5.5));(5;2.0;0N;`a;5;4.0;4 3.0)]   / was 'rank 'rank 'type 'domain ,5 4 4 3
 t[`listFnOneItem;(asc@,5;deltas@,5;fills@,0N;sublist[2;,5];rotate[1;,5];xprev[1;,5];deltas `a!5);(,5;,5;,0N;,5;,5;,0N;(,`a)!,5)]   / a one-item list is not an atom
-t[`listFnAtomArgs;{5#.[*x;1_x;{x}]}'((rotate;1.5;,5);(rotate;`a;,5);(sublist;`a;5);(sublist;0n;5);(sublist;0N;5);(asc;{x});(iasc;+);(xrank;2;{x}));8#,"'type"]   / a bad count, a function: 'type, as q
+t[`listFnAtomArgs;{4#.[*x;1_x;{x}]}'((rotate;1.5;,5);(rotate;`a;,5);(sublist;`a;5);(sublist;0n;5);(sublist;0N;5);(asc;{x});(iasc;+);(xrank;2;{x}));8#,"type"]   / a bad count, a function: 'type, as q
 t[`sublistPair;(sublist[1 2;10 20 30 40];sublist[3 5;10 20 30 40];sublist[-1 2;10 20 30 40];sublist[1 -2;10 20 30 40];sublist[1 2;`a`b`c!1 2 3];sublist[1 2;+(,`a)!,1 2 3];sublist[1 2;5]);(20 30;,40;0N 10;!0;`b`c!2 3;+(,`a)!,2 3;5)]   / (start;count), as q; was 'domain
-t[`listFnAtomFn;{.[*x;1_x;{5#x}]}'((flip;{x});(deltas;{x});(xprev;1;{x}));("'rank";{x};,-1)]   / as q: flip is 'rank, deltas returns it, xprev indexes it
+t[`listFnAtomFn;{.[*x;1_x;{4#x}]}'((flip;{x});(deltas;{x});(xprev;1;{x}));("rank";{x};,-1)]   / as q: flip is 'rank, deltas returns it, xprev indexes it
 t[`listFnDict;{(fills `a`b`c!0N 3 1;deltas x;ratios x;prev x;differ `a`b`c!1 1 2;sums `a`b`c!1 0N 2;mins `a`b`c!0N 3 1)}`a`b`c!3 1 4;(`a`b`c!0N 3 1;`a`b`c!3 -2 3;`a`b`c!3.0,(1%3),4.0;`a`b`c!0N 3 1;`a`b`c!101b;`a`b`c!1 1 3;`a`b`c!9223372036854775807 3 1)]   / digest #103: by value, as q; was by position: 0N 0N 0N, 0 0 4, 'length, ,0N
-t[`listFnDictErr;{5#.[*x;1_x;{x}]}'((flip;`a`b`c!3 1 4);(next;`a`b!1 2);(rotate;1;`a`b`c!3 1 4);(xprev;1;`a`b!1 2);(rotate;1;(+(,`k)!,`x`y)!+(,`a)!,1 2));("'rank";"'type";"'type";"'type";"'type")]   / as q; was a table of one-row columns, ,0N, `b`c`a!1 4 3, 0N 0N, 'nyi
+t[`listFnDictErr;{4#.[*x;1_x;{x}]}'((flip;`a`b`c!3 1 4);(next;`a`b!1 2);(rotate;1;`a`b`c!3 1 4);(xprev;1;`a`b!1 2);(rotate;1;(+(,`k)!,`x`y)!+(,`a)!,1 2));("rank";"type";"type";"type";"type")]   / as q; was a table of one-row columns, ,0N, `b`c`a!1 4 3, 0N 0N, 'nyi
 t[`listFnTable;{(fills x;sums x;mins x;flip `a`b!(1;2 3))}@+`a`b!(0N 3 1;1 0N 2);(+`a`b!(0N 3 1;1 1 2);+`a`b!(0 3 4;1 1 3);+`a`b!(9223372036854775807 3 1;1 1 1);+`a`b!(1 1;2 3))]   / by column, as q; fills was a dict of tables
 t[`listFnKeyed;{(fills x;deltas fills x;differ x)}(+(,`k)!,`x`y`z)!+`a`b!(3 0N 4;1 1 2);((+(,`k)!,`x`y`z)!+`a`b!(3 3 4;1 1 2);(+(,`k)!,`x`y`z)!+`a`b!(3 0 1;1 0 1);(+(,`k)!,`x`y`z)!111b)]   / by the value table, as q; all were 'nyi
 t[`differRatiosEmptyTable;{(differ x;ratios x;differ (+(,`k)!,!0)!x;ratios (+(,`k)!,!0)!x)}@+(,`a)!,!0;(!0;+(,`a)!,0#0.0;(+(,`k)!,!0)!!0;(+(,`k)!,!0)!+(,`a)!,0#0.0)]   / as q; were the table and an empty float list
-t[`listFnDictEmpty;(.[xprev;(1;()!());{x}];.[xprev;(1;(!0)!!0);{x}];5#.[xprev;(1;(0#`)!!0);{x}];differ ()!();differ ();differ 0#,1 2);(();!0;"'type";()!!0;!0;!0)]   / #94 Q7: as q; were 'type, 'type, 'type, ()!0#,!0, 0#,!0, 0#,0N 0N
+t[`listFnDictEmpty;(.[xprev;(1;()!());{x}];.[xprev;(1;(!0)!!0);{x}];4#.[xprev;(1;(0#`)!!0);{x}];differ ()!();differ ();differ 0#,1 2);(();!0;"type";()!!0;!0;!0)]   / #94 Q7: as q; were 'type, 'type, 'type, ()!0#,!0, 0#,!0, 0#,0N 0N
 t[`fillsNested;(fills (1 0N;0N 2);fills `a`b!(1 0N;0N 2);fills ("ab";" c");fills@+`a`b!(0N 3 1;(1 2;0N 0N;0N 3));fills (1;0N;`a;`);fills (1 0N;0n 2.0);fills (1.5 0n;0N 2));((1 0N;1 2);`a`b!(1 0N;1 2);("ab";"ac");+`a`b!(0N 3 1;(1 2;1 2;1 3));(1;1;`a;`a);(1 0N;1 2.0);(1.5 0n;1.5 2.0))]   / a list of lists fills position by position, as q; was indexed with nested indices
 t[`listFnNullFill;{(prds `a`b`c!x;maxs `a`b`c!x;prds@+`a`b!(x;1 0N 2);maxs@+`a`b!(x;1 0N 2))}0N 3 1;(`a`b`c!1 3 3;`a`b`c!-9223372036854775807 3 3;+`a`b!(1 3 3;1 1 2);+`a`b!(-9223372036854775807 3 3;1 1 2))]   / nulls filled in a dict or table, as q; were 0N 0N 0N, 0N 3 3 (dict)
-t[`listFnKeyedMore;{(ratios x;prev x;sums x;mins x;5#.[next;,x;{x}];5#.[xprev;(1;x);{x}])}(+(,`k)!,`x`y`z)!+`a`b!(3 0N 4;1 1 2);((+(,`k)!,`x`y`z)!+`a`b!(3.0 0n 0n;1.0 1.0 2.0);(+(,`k)!,`x`y`z)!+`a`b!(0N 3 0N;0N 1 1);(+(,`k)!,`x`y`z)!+`a`b!(3 3 7;1 2 4);(+(,`k)!,`x`y`z)!+`a`b!(3 3 3;1 1 1);"'type";"'type")]   / as q (xprev: q 'length); were 'length, 'nyi, 3 -9223372036854775805 .., 3 0N 0N, 'nyi, 'nyi
+t[`listFnKeyedMore;{(ratios x;prev x;sums x;mins x;4#.[next;,x;{x}];4#.[xprev;(1;x);{x}])}(+(,`k)!,`x`y`z)!+`a`b!(3 0N 4;1 1 2);((+(,`k)!,`x`y`z)!+`a`b!(3.0 0n 0n;1.0 1.0 2.0);(+(,`k)!,`x`y`z)!+`a`b!(0N 3 0N;0N 1 1);(+(,`k)!,`x`y`z)!+`a`b!(3 3 7;1 2 4);(+(,`k)!,`x`y`z)!+`a`b!(3 3 3;1 1 1);"type";"type")]   / as q (xprev: q 'length); were 'length, 'nyi, 3 -9223372036854775805 .., 3 0N 0N, 'nyi, 'nyi
 
 / ---- ordering / set ----
 t[`asc;asc 3 1 2;1 2 3]
@@ -106,16 +106,16 @@ t[`sortFns;.[{t:+(,`a)!,({x};{x};{y});d:`a`b!(+/;-:);(iasc t;rank t;`a xdesc +(,
 t[`srtDict;(`srt@`a`b`b!3 1 2;`srt@`a`b!({y};{x});desc `a`b`c!1 1 0;desc `a`b`c!(0n;1.0;0n));(`b`b`a!1 2 3;`b`a!({x};{y});`a`b`c!1 1 0;`b`a`c!1.0 0n 0n)]   / `srt of a dict is its asc, as q (keys and values indexed in C); desc keeps ties in index order
 t[`distinct;distinct 1 1 2 3 3;1 2 3]
 t[`inMem;in[3 5;1 2 3 4];10b]
-t[`inCharInt;*"\n"\.[in;(97;"abc");{x}];"'type"]   / a char and a number are 'type, as in q (issue #20, row 12)
+t[`inCharInt;*"\n"\.[in;(97;"abc");{x}];"type"]   / a char and a number are 'type, as in q (issue #20, row 12)
 t[`inSymInt;(in[``;0];except[``;0];in[`b`;0];in[0 5 1000000;`$("";"a")];inter[`$("";"a");0]);(00b;``;00b;000b;0#`)]   / a symbol is not a number: the null symbol is not 0 (digest #100: was 11b)
 t[`except;except[1 2 3 4;2 4];1 3]
 t[`inter;inter[1 2 3 4;2 4 6];2 4]
 t[`inGeneric;((1 2;3) in (1 2;3 4);3 in (1 2;3 4);1 2 in (1 2;3);(1;`a) in (1 2;`a);("ab";"c") in ("ab";"cd"));(10b;0b;1b;0b;10b)]   / an item of lower rank than y's items is not found, as q (digest #53)
 t[`interExceptGeneric;(inter[(1 2;3);(1 2;5 6)];inter[(1 2;3);(3;5)];except[(1 2;3);(1 2;3 4)];except[(1 2;3);(3;5)]);(,1 2;,3;,3;,1 2)]   / each item of x is one item
-t[`interExceptOneItem;{$[`e~*r:.[x;y;{(`e;*"\n"\x)}];r 1;r]}'[(except;inter;except;except;except;except);((1 2 3;(1 2;3));(1 2;(1 2;3));("ab";("ab";"cd"));((1;"a");("ab";"cd"));((1 2;3);,(1 2;3));((1;"a");("ab";1)))];6#,"'type"]   / x one item of y: 'type, as q (where 1b)
+t[`interExceptOneItem;{$[`e~*r:.[x;y;{(`e;*"\n"\x)}];r 1;r]}'[(except;inter;except;except;except;except);((1 2 3;(1 2;3));(1 2;(1 2;3));("ab";("ab";"cd"));((1;"a");("ab";"cd"));((1 2;3);,(1 2;3));((1;"a");("ab";1)))];6#,"type"]   / x one item of y: 'type, as q (where 1b)
 t[`interExceptWholeItem;(except[(1 2;3 4);(1 2;(1 2;3 4))];inter[(1 2;3 4);(1 2;(1 2;3 4))]);(,3 4;,1 2)]   / x found whole (#29) still goes item by item, as q
 t[`interExceptTypedY;(except[(1 2;3 4);1 2 3];inter[(1 2;3);1 2 3]);((1 2;3 4);,3)]   / a general x against a typed y: item by item too (2.7.2: nested garbage; q: 'type)
-t[`inTableRows;{$[`C~@r:.[in;x;{x}];*"\n"\r;r]}'((+`a`b!(1 2;3 4);+`a`b!(1 5;3 6));(+`a`b!(1 2;3 4);+`b`a!(3 4;1 2));(`a`b!1 3;+`a`b!(1 2;3 4));(`b`a!3 1;+`a`b!(1 2;3 4));(`a`b!1 4;+`a`b!(1 2;3 4));(+(,`b)!,3 9;(+(,`a)!,1 2)!+(,`b)!,3 4);(+`a`b!(1 2;3 4);+`a`c!(1 2;3 4));(1;`a`b!1 2);(5;`a`b!1 2));(10b;11b;1b;1b;0b;10b;"'mismatch";1b;0b)]   / rows by column name; a dict y: its values, as q (digest #101: was 'nyi)
+t[`inTableRows;{$[`C~@r:.[in;x;{x}];*"\n"\r;r]}'((+`a`b!(1 2;3 4);+`a`b!(1 5;3 6));(+`a`b!(1 2;3 4);+`b`a!(3 4;1 2));(`a`b!1 3;+`a`b!(1 2;3 4));(`b`a!3 1;+`a`b!(1 2;3 4));(`a`b!1 4;+`a`b!(1 2;3 4));(+(,`b)!,3 9;(+(,`a)!,1 2)!+(,`b)!,3 4);(+`a`b!(1 2;3 4);+`a`c!(1 2;3 4));(1;`a`b!1 2);(5;`a`b!1 2));(10b;11b;1b;1b;0b;10b;"mismatch";1b;0b)]   / rows by column name; a dict y: its values, as q (digest #101: was 'nyi)
 t[`exceptInterTable;(except[(1;"a");`x`y!1 2];except[1 2 3;`a`b!"ab"];except[+`a`b!(1 2;3 4);+`a`b!(1 5;3 6)];inter[+`a`b!(1 2;3 4);+`a`b!(1 5;3 6)];except[1 2 3;`a`b!1 2];inter[1 2 3;`a`b!1 2];except[(1;`a);`a`b!(1;`x)]);(,"a";1 2 3;+`a`b!(,2;,4);+`a`b!(,1;,3);,3;1 2;,`a)]   / as q (digest #101: was 'nyi)
 t[`exceptInterEmptyGeneric;(except[(1 2;3 4);(1 2;3 4)];except[("ab";"cd");("ab";"cd")];except[(1;`a);(1;`a)];inter[(1 2;3);(5 6;7)];inter[(1 2;3 4);(5 6;7 8)];except[1 2;1 2];except[`a`b;`a`b];except[2024.01.01 2024.01.02;2024.01.01 2024.01.02]);(();();();();();!0;0#`;())]   / none of a general list is (), as q; a typed one keeps its type (digest #102: was 0#,0N 0N)
 t[`union;union[1 2 3;3 4 5];1 2 3 4 5]
@@ -163,15 +163,15 @@ iu:+`a`b!(1 2;3 4);ik:xkey[`k;+`k`v`w!(1 2;3 4;5 6)]
 t[`insertByName;{.[insert;x;{x}]}'((iu;`b`a!5 6);(iu;+`b`a!(5 6;7 8));(iu;(`b`a!5 6;`b`a!7 8));(0#iu;`b`a!5 6);(iu;+(,`b)!,5 6);(+`a`b!(1 2;`x`y);+(,`a)!,5 6));(+`a`b!(1 2 6;3 4 5);+`a`b!(1 2 7 8;3 4 5 6);+`a`b!(1 2 6 8;3 4 5 7);+`a`b!(,6;,5);+`a`b!(1 2 0N 0N;3 4 5 6);+`a`b!(1 2 5 6;`x`y``))]
 t[`insertFill;insert[+`a`g`c`s`d!(1 2;(1;`x);"ab";("ab";"cd");2020.01.01 2020.01.02);+(,`a)!,,3];+`a`g`c`s`d!(1 2 3;(1;`x;0N);"ab ";("ab";"cd";"  ");(2020.01.01;2020.01.02;::))]   / item 0N of each column, as aj fills; a date has no null (q: 0N, " ", "", 0Nd)
 t[`insertKeyed;{.[insert;x;{x}]}'((ik;`w`k`v!9 3 7);(ik;+`w`k`v!(9 8;3 4;7 6));(ik;xkey[`k;+`w`k`v!(9 8;3 4;7 6)]);(ik;+`w`k!(9 8;3 4)));(xkey[`k;+`k`v`w!(1 2 3;3 4 7;5 6 9)];xkey[`k;+`k`v`w!(1 2 3 4;3 4 7 6;5 6 9 8)];xkey[`k;+`k`v`w!(1 2 3 4;3 4 7 6;5 6 9 8)];xkey[`k;+`k`v`w!(1 2 3 4;3 4 0N 0N;5 6 9 8)])]
-t[`insertErrors;{.[insert;x;{*"\n"\x}]}'((iu;`b!5);(iu;`a`b`c!5 6 7);(iu;+`b`c!(5 6;7 8));(ik;`w`k`v!9 1 7);(ik;`w`v!9 7);(ik;+`w`v!(9 8;7 6));(ik;`k`v!3 7));(+`a`b!(1 2 0N;3 4 5);"'mismatch";"'mismatch";"'insert";"'k";"'k";xkey[`k;+`k`v`w!(1 2 3;3 4 7;5 6 0N)])]   / as q: a column a row lacks takes a null (a key column: 'k), another column 'mismatch, a key t has 'insert
-t[`insertTypes;{.[insert;x;{*"\n"\x}]}'((iu;`a`b!(5;`x));(iu;`a`b!5 6.0);(iu;+`a`b!(5 6;`x`y));(+`a`d!(1 2;2020.01.01 2020.01.02);`a`d!(3;5));(+`a`c!(1 2;"xy");`a`c!(3;"zz"));(iu;xkey[`a;+`a`b!(,7;,8)]);(iu;ik));7#,"'type"]   / q's 'type: an item of another type than its column's (a date column too), a keyed r into an unkeyed t
+t[`insertErrors;{.[insert;x;{*"\n"\x}]}'((iu;`b!5);(iu;`a`b`c!5 6 7);(iu;+`b`c!(5 6;7 8));(ik;`w`k`v!9 1 7);(ik;`w`v!9 7);(ik;+`w`v!(9 8;7 6));(ik;`k`v!3 7));(+`a`b!(1 2 0N;3 4 5);"mismatch";"mismatch";"insert";,"k";,"k";xkey[`k;+`k`v`w!(1 2 3;3 4 7;5 6 0N)])]   / as q: a column a row lacks takes a null (a key column: 'k), another column 'mismatch, a key t has 'insert
+t[`insertTypes;{.[insert;x;{*"\n"\x}]}'((iu;`a`b!(5;`x));(iu;`a`b!5 6.0);(iu;+`a`b!(5 6;`x`y));(+`a`d!(1 2;2020.01.01 2020.01.02);`a`d!(3;5));(+`a`c!(1 2;"xy");`a`c!(3;"zz"));(iu;xkey[`a;+`a`b!(,7;,8)]);(iu;ik));7#,"type"]   / q's 'type: an item of another type than its column's (a date column too), a keyed r into an unkeyed t
 t[`insertTypesFit;{.[insert;x;{x}]}'((+`a`c!(1 2;"xy");`a`c!(3;"z"));(+`a`b!(1 2;(1;`x));`a`b!(3;"s"));(+`a`d!(1 2;2020.01.01 2020.01.02);`d`a!(2020.01.03;3)));(+`a`c!(1 2 3;"xyz");+`a`b!(1 2 3;(1;`x;"s"));+`a`d!(1 2 3;(2020.01.01;2020.01.02;2020.01.03)))]   / a general column takes anything, a date column a date
 t[`insertInfix;(iu insert `b`a!5 6;iu insert `a`b!5 6);(+`a`b!(1 2 6;3 4 5);+`a`b!(1 2 5;3 4 6))]
-t[`insertPositional;{.[insert;x;{*"\n"\x}]}'((iu;9 10);(iu;(5 6;7 8));(ik;(3;7;9));(iu;(9;`x));(iu;1 2 3));(+`a`b!(1 2 9;3 4 10);+`a`b!(1 2 5 6;3 4 7 8);xkey[`k;+`k`v`w!(1 2 3;3 4 7;5 6 9)];"'type";"'length")]   / a list of values lines up by position, as q
-t[`insertEmptyRow;{.[insert;x;{*"\n"\x}]}'((iu;()!());(ik;()!()));(+`a`b!(1 2 0N;3 4 0N);"'k")]   / an empty row dict: a row of nulls, as q (keyed: its key column is missing)
+t[`insertPositional;{.[insert;x;{*"\n"\x}]}'((iu;9 10);(iu;(5 6;7 8));(ik;(3;7;9));(iu;(9;`x));(iu;1 2 3));(+`a`b!(1 2 9;3 4 10);+`a`b!(1 2 5 6;3 4 7 8);xkey[`k;+`k`v`w!(1 2 3;3 4 7;5 6 9)];"type";"length")]   / a list of values lines up by position, as q
+t[`insertEmptyRow;{.[insert;x;{*"\n"\x}]}'((iu;()!());(ik;()!()));(+`a`b!(1 2 0N;3 4 0N);,"k")]   / an empty row dict: a row of nulls, as q (keyed: its key column is missing)
 t[`insertMixedGeneral;insert[+`a`d!(1 2;(2020.01.01;`x));`a`d!3 4];+`a`d!(1 2 3;(2020.01.01;`x;4))]   / a general column of mixed items takes anything, though its first item is a date
-t[`insertKeyedInOrder;{.[insert;x;{*"\n"\x}]}'((ik;xkey[`k;+`k`v`w!(,3;,7;,9)]);(ik;xkey[`k;+`k`v`w!(,1;,7;,9)]);(ik;xkey[`k;+`k`v`w!(,3;,`x;,9)]));(xkey[`k;+`k`v`w!(1 2 3;3 4 7;5 6 9)];"'insert";"'type")]   / a keyed table of t's columns in t's order: new keys only, types checked
-t[`insertRank;.[insert;(iu;`a`b!5 6;7);{*"\n"\x}];"'rank"]   / three arguments, as for the lambda insert was
+t[`insertKeyedInOrder;{.[insert;x;{*"\n"\x}]}'((ik;xkey[`k;+`k`v`w!(,3;,7;,9)]);(ik;xkey[`k;+`k`v`w!(,1;,7;,9)]);(ik;xkey[`k;+`k`v`w!(,3;,`x;,9)]));(xkey[`k;+`k`v`w!(1 2 3;3 4 7;5 6 9)];"insert";"type")]   / a keyed table of t's columns in t's order: new keys only, types checked
+t[`insertRank;.[insert;(iu;`a`b!5 6;7);{*"\n"\x}];"rank"]   / three arguments, as for the lambda insert was
 
 / ---- joins ----
 lt:+`s`p!(`a`b`c`a;10 20 30 40)
@@ -193,15 +193,15 @@ t[`uj;(+uj[+`a`b!(1 2;3 4);+`b`c!(5 6;7 8)])`c;0N 0N 7 8]
 t[`ujKeyed;{k:([k:1 2 3]v:3 4 5;u:`x`y`z);(k uj ([k:2 4]w:`a`b;v:40 50);k uj ([k:2 4]u:`a`b);k uj ([k:2 2 9]v:1 2 3);k uj ([k:2 4]v:0N 50);k uj k;([k:0#0]v:0#0) uj k;k uj ([k:0#0]v:0#0;w:0#`))}[];(([k:1 2 3 4]v:3 40 5 50;u:`x`y`z`;w:``a``b);([k:1 2 3 4]v:3 4 5 0N;u:`x`a`z`b);([k:1 2 3 9]v:3 1 5 3;u:`x`y`z`);([k:1 2 3 4]v:3 0N 5 50;u:`x`y`z`);([k:1 2 3]v:3 4 5;u:`x`y`z);([k:1 2 3]v:3 4 5;u:`x`y`z);([k:1 2 3]v:3 4 5;u:`x`y`z;w:```))]
 / two key columns, y's by name; a general column; other key columns 'domain (q: 'mismatch), an unkeyed y or a value column of another type 'type, as q
 t[`ujKeyedMulti;(([a:1 2;b:`x`y]v:5 6) uj ([b:`y`z;a:2 3]v:7 8);([k:`a`b]v:(1;`x)) uj ([k:`b`c]v:(2.5;"s")));(([a:1 2 3;b:`x`y`z]v:5 7 8);([k:`a`b`c]v:(1;2.5;"s")))]
-t[`ujKeyedList;{*"\n"\.[uj;x;{x}]}'((((+(,`a)!,1 2)!3 4);((+(,`a)!,1 2)!3 4));(([k:1 2]v:3 4);(+(,`k)!,2 3)!10 20);(((+(,`a)!,1 2)!3 4);([k:1 2]v:3 4)));3#,"'nyi"]   / keys a table, values a list: 'nyi, as before
-t[`ujKeyedErr;{*"\n"\.[uj;x;{x}]}'((([k:1 2]v:3 4);([kk:2 4]v:1 2));(([k:1 2]v:3 4);([]k:2 4;v:1 2));(([k:1 2]v:3 4);([k:2 4]v:1.5 2)));("'domain";"'type";"'type")]
+t[`ujKeyedList;{*"\n"\.[uj;x;{x}]}'((((+(,`a)!,1 2)!3 4);((+(,`a)!,1 2)!3 4));(([k:1 2]v:3 4);(+(,`k)!,2 3)!10 20);(((+(,`a)!,1 2)!3 4);([k:1 2]v:3 4)));3#,"nyi"]   / keys a table, values a list: 'nyi, as before
+t[`ujKeyedErr;{*"\n"\.[uj;x;{x}]}'((([k:1 2]v:3 4);([kk:2 4]v:1 2));(([k:1 2]v:3 4);([]k:2 4;v:1 2));(([k:1 2]v:3 4);([k:2 4]v:1.5 2)));("domain";"type";"type")]
 t[`pj;(+pj[+`s`p!(`a`b`c;1 1 1);xkey[`s;+`s`p!(`a`b;10 20)]])`p;11 21 1]
 t[`pjNewCol;(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`b!(1 3;100 300)]])`b;100 0 300]
 t[`pjNulls;((+pj[+`k`a!(1 2 3;0N 20 30);xkey[`k;+`k`a!(1 3;1 2)]])`a;(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`a!(1 3;0N 2)]])`a);(0N 20 32;10 20 32)]
 / Digest #45: a column t lacks takes kt's values as they are; key columns must agree in type
 t[`pjNewColKinds;{(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`c!(1 3;x)]])`c}'("xy";(10 20;30 40);`p`q);("x",(`c$0),"y";(10 20;!0;30 40);`p``q)]
-t[`pjKeyType;.[pj;(+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`b!(`x`y;5 6)]);{5#x}];"'type"]
-t[`pjCharsBoth;{5#.[pj;(+`k`c!(1 2 3;"abc");xkey[`k;+`k`c!x]);{x}]}'((1 3;"xy");(!0;""));2#,"'type"]   / as q's + of chars; were 217 98 220 and 97 98 99 (ints)
+t[`pjKeyType;.[pj;(+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`b!(`x`y;5 6)]);{4#x}];"type"]
+t[`pjCharsBoth;{4#.[pj;(+`k`c!(1 2 3;"abc");xkey[`k;+`k`c!x]);{x}]}'((1 3;"xy");(!0;""));2#,"type"]   / as q's + of chars; were 217 98 220 and 97 98 99 (ints)
 t[`pjNewColFloat;(+pj[+`k`a!(1 2 3;10 20 30);xkey[`k;+`k`b!(1 3;1.5 2.5)]])`b;1.5 0.0 2.5]
 t[`ej;#ej[`s;+`s`p!(`a`b`a;1 2 3);+`s`x!(`a`b`d;10 20 30)];3]
 t[`ejAllMatches;ej[`s;+`s`n!(`a`b;1 2);+`s`v!(`a`a`b;10 11 20)];+`s`n`v!(`a`a`b;1 1 2;10 11 20)]
@@ -213,7 +213,7 @@ t[`ejFloatKeys;ej[`s;+`s`n!(-0.0 0n 1.5;1 2 3);+`s`v!(0.0 0n;10 20)];+`s`n`v!(-0
 t[`ejManyMatches;ej[`s;+`s`n!(`a`b`c;1 2 3);+`s`v!(`b`a`b`b`c`b`b`b;1+!8)];+`s`n`v!(`a`b`b`b`b`b`b`c;1 2 2 2 2 2 2 3;2 1 3 4 6 7 8 5)]
 t[`ejCharKeys;ej[`s;+`s`n!("ab";1 2);+`s`v!("bba";10 11 20)];+`s`n`v!("abb";1 2 2;20 10 11)]
 / key columns of two types are 'type, as q, for any key of two (they gave no rows); a general list column joins as before
-t[`ejKeyTypes;{.[ej;x;{5#x}]}'((`k;+`k`v!(1 2 3;10 20 30);+`k`w!(2 3 4.0;1 2 3));(`k;+`k`v!(1 2 3;10 20 30);+`k`w!(`b`c`d;1 2 3));(`k;+`k`v!(1 2 3.;1 2 3);+`k`w!(`b`c`d;1 2 3));(`k`j;+`k`j`v!(1 2 3;`a`b`c;10 20 30);+`k`j`w!(2 3 4;2 3 4.;1 2 3)));4#,"'type"]
+t[`ejKeyTypes;{.[ej;x;{4#x}]}'((`k;+`k`v!(1 2 3;10 20 30);+`k`w!(2 3 4.0;1 2 3));(`k;+`k`v!(1 2 3;10 20 30);+`k`w!(`b`c`d;1 2 3));(`k;+`k`v!(1 2 3.;1 2 3);+`k`w!(`b`c`d;1 2 3));(`k`j;+`k`j`v!(1 2 3;`a`b`c;10 20 30);+`k`j`w!(2 3 4;2 3 4.;1 2 3)));4#,"type"]
 t[`ejKeyGeneral;ej[`k;+`k`v!(1 2 3;10 20 30);+`k`w!((2;3);1 2)];+`k`v`w!(2 3;20 30;1 2)]
 
 / ---- asof / window joins ----
@@ -221,7 +221,7 @@ trade:+`sym`time`px!(`a`b`a;3 4 9;100 200 300)
 quote:+`sym`time`bid!(`a`a`b`a;1 5 2 8;10 11 20 12)
 t[`aj;(+aj[`sym`time;trade;quote])`bid;10 20 12]
 t[`aj0time;(+aj0[`sym`time;trade;quote])`time;1 2 8]
-t[`wjMax;(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`mx;max;`bid)])`mx;10 20 12]
+t[`wjMax;(+wj[(trade[`time]-2;trade`time);`sym`time;trade;(quote;,(`mx;max;`bid))])`mx;10 20 12]
 t[`asof;asof[xasc[`sym`time;trade];`sym`time!(`a;6)];(,`px)!,100]
 
 / ---- native aj kernel (src/a.c): edge cases ----
@@ -234,7 +234,7 @@ t[`ajNaNHidesUnsorted;(+aj[`sym`time;+`sym`time!(`a`a`a;0.5 1.5 3.5);+`sym`time`
 / a lazy range as a time column (!n): the kernels used to see it as a 2-item range
 t[`ajRangeTrades;(+aj[`time;+`time`px!(!10;!10);+`time`bid!(0 2 4 6 8;1 2 3 4 5)])`bid;1 1 2 2 3 3 4 4 5 5]
 t[`ajRangeQuotes;(+aj[`time;+`time`px!(1 3 5;7 8 9);+`time`bid!(!6;10+!6)])`bid;11 13 15]
-t[`wjRangeTime;(+wj[(-1+!5;1+!5);`time;+`time`px!(!5;!5);+`time`bid!(!5;10*!5);,(`s;sum;`bid)])`s;10 30 60 90 70]
+t[`wjRangeTime;(+wj[(-1+!5;1+!5);`time;+`time`px!(!5;!5);(+`time`bid!(!5;10*!5);,(`s;sum;`bid))])`s;10 30 60 90 70]
 t[`ajZeroGroups;ajsorted[`g`time;+`g`time`bid!(0.0 1.0 -0.0;1 2 3;10 20 30)];0b]
 / the row is the one aj gives on the sorted quotes (which zero comes first is issue #15's order)
 ajZT:+`g`time!(0.0 -0.0 1.0;5 5 5);ajZQ:+`g`time`bid!(0.0 1.0 -0.0;1 2 3;10 20 30)
@@ -277,38 +277,38 @@ t[`ajFloatInt;(+aj[`time;+(,`time)!,0.5 2.5;+`time`v!(1 2;10 20)])`v;0N 20]
 t[`ajZeroTimes;(+aj[`sym`time;+`sym`time!(`a`a`a`a;-0.0 0.0 0.5 1.0);+`sym`time`bid!(`a`a`a;-0.0 0.0 1.0;10 20 30)])`bid;20 20 20 30]
 qwF:+`sym`time`bid!(`a`a`a;0.5 0.7 0.9;10 20 30)
 twF:0.6 1.0
-t[`wjFloat;(+wj1[(twF-0.15;twF+0.15);`sym`time;+`sym`time!(`a`a;twF);qwF;,(`c;count;`bid)])`c;2 1]
-t[`wjFloatFallback;(+wj1[(twF-0.15;twF+0.15);`sym`time;+`sym`time!(`a`a;twF);qwF;,(`s;{sum x};`bid)])`s;30 30]
-t[`wjNullLowFallback;(+wj1[(0N 4 7;1 5 9);`sym`time;+`sym`time!(`a`a`a;1 5 9);+`sym`time`bid!(`a`a`a`a;0 4 5 8;10 20 30 40);,(`s;{sum x};`bid)])`s;10 50 40]   / A null lower bound starts at the first quote, as the kernel does
-t[`wjIntTimesFloatWindow;(+wj1[(,4.5;,5.5);`sym`time;+`sym`time!(,`a;,5);+`sym`time`bid!(`a`a`a;3 4 5;10 20 30);,(`s;{sum x};`bid)])`s;,30]   / A float bound over int times, as the kernel
-t[`wjNullLowNaNQuote;(+wj[(,0N;,1.5);`sym`time;+`sym`time!(,`a;,1.5);+`sym`time`bid!(`a`a`a;0n 1.0 2.0;10 100 1000);,(`s;{sum x};`bid)])`s;,110]   / a null lower bound over float times with a NaN quote, as the kernel
+t[`wjFloat;(+wj1[(twF-0.15;twF+0.15);`sym`time;+`sym`time!(`a`a;twF);(qwF;,(`c;count;`bid))])`c;2 1]
+t[`wjFloatFallback;(+wj1[(twF-0.15;twF+0.15);`sym`time;+`sym`time!(`a`a;twF);(qwF;,(`s;{sum x};`bid))])`s;30 30]
+t[`wjNullLowFallback;(+wj1[(0N 4 7;1 5 9);`sym`time;+`sym`time!(`a`a`a;1 5 9);(+`sym`time`bid!(`a`a`a`a;0 4 5 8;10 20 30 40);,(`s;{sum x};`bid))])`s;10 50 40]   / A null lower bound starts at the first quote, as the kernel does
+t[`wjIntTimesFloatWindow;(+wj1[(,4.5;,5.5);`sym`time;+`sym`time!(,`a;,5);(+`sym`time`bid!(`a`a`a;3 4 5;10 20 30);,(`s;{sum x};`bid))])`s;,30]   / A float bound over int times, as the kernel
+t[`wjNullLowNaNQuote;(+wj[(,0N;,1.5);`sym`time;+`sym`time!(,`a;,1.5);(+`sym`time`bid!(`a`a`a;0n 1.0 2.0;10 100 1000);,(`s;{sum x};`bid))])`s;,110]   / a null lower bound over float times with a NaN quote, as the kernel
 t[`ajCharHigh;(+aj[`sym`time;+`sym`time!(`a`a`a;`c$66 201 64);+`sym`time`bid!(`a`a;`c$65 200;10 20)])`bid;10 20 0N]   / char times order as unsigned bytes, as in q (issue #17)
 t[`ajCharQuoteHigh;(+aj[`sym`time;+`sym`time!(`a`a;`c$66 71);+`sym`time`bid!(`a`a`a;`c$65 70 200;10 20 30)])`bid;10 20]
 t[`ajCharHighRev;(+aj[`sym`time;+`sym`time!(`a`a`a;`c$66 201 64);+`sym`time`bid!(`a`a;`c$200 65;20 10)])`bid;10 20 0N]   / the same quotes in the other order
 / Digest #68: wj counts the quote in force at the window's start, as q's wj (the tests around use wj1, the old window)
 WQ8:+`sym`time`p!(5#`a;1 3 5 7 9;10 20 30 40 50);WT8:+`sym`time!(,`a;,5)
-WF8:{[j;a;b]r:+j[(,a;,b);`sym`time;WT8;WQ8;((`n;#:;`p);(`s;sum;`p))];(r[`n]0;r[`s]0)}
+WF8:{[j;a;b]r:+j[(,a;,b);`sym`time;WT8;(WQ8;((`n;#:;`p);(`s;sum;`p)))];(r[`n]0;r[`s]0)}
 t[`wjPrevailing;(WF8[wj]'[4 3 0 10 0;6 6 6 12 0];WF8[wj1]'[4 3 0 10 0;6 6 6 12 0]);((2 50;2 50;3 60;1 50;0 0);(1 30;2 50;3 60;0 0;0 0))]   / q's answers
-t[`wjPrevailingRun;{[j](+j[(,3;,6);`sym`time;WT8;+`sym`time`p!(5#`a;1 3 3 5 9;10 20 25 30 50);,(`s;{+/x};`p)])[`s]0}'(wj;wj1);55 75]   / A run at the start time: wj from its last
+t[`wjPrevailingRun;{[j](+j[(,3;,6);`sym`time;WT8;(+`sym`time`p!(5#`a;1 3 3 5 9;10 20 25 30 50);,(`s;{+/x};`p))])[`s]0}'(wj;wj1);55 75]   / A run at the start time: wj from its last
 / a window ending before the quote in force at its start is empty in wj, kernel and K alike: q's answers (q's wj1 is 'domain on (6;2) and (5;2))
 WQ9:+`sym`time`p!(`a`a`b`b;0 5 1 4;10 20 1 2);WT9:+`sym`time!(`a`a`a`a`a`b`b;7#0);WW9:(6 6 3 -3 0 5 5;2 5 1 -1 5 2 4)
-WF9:{[j;a]r:+j[WW9;`sym`time;WT9;WQ9;a];r`n`s}
+WF9:{[j;a]r:+j[WW9;`sym`time;WT9;(WQ9;a)];r`n`s}
 t[`wjEmptyWindow;(WF9[wj;((`n;count;`p);(`s;sum;`p))];WF9[wj;((`n;#:;`p);(`s;{+/x};`p))];WF9[wj1;((`n;count;`p);(`s;sum;`p))]);((0 1 1 0 2 0 1;0 20 10 0 30 0 2);(0 1 1 0 2 0 1;0 20 10 0 30 0 2);(0 0 0 0 2 0 0;0 0 0 0 30 0 0))]
 WT10:+`sym`time!(`a`b`a`b`a`b`a`b`a;!9);WW10:(0 2 3 5 6 5 6 6 7;-1 0 1 2 2 4 5 6 9)
-WF10:{[j;a]r:+j[WW10;`sym`time;WT10;WQ9;a];r`n`s}
+WF10:{[j;a]r:+j[WW10;`sym`time;WT10;(WQ9;a)];r`n`s}
 t[`wjEmptyWindowSorted;(WF10[wj;((`n;count;`p);(`s;sum;`p))];WF10[wj;((`n;#:;`p);(`s;{+/x};`p))]);2#,(0 0 1 0 0 1 1 1 1;0 0 10 0 0 2 20 2 20)]   / time-ordered rows with inverted windows, through the kernel's cursor cache: kernel and K give q's answers
-t[`wjCharHigh;{q:+`sym`time`bid!(`a`a`a;`c$65 200 210;10 20 30);t:+`sym`time!(`a`a;`c$66 201);w:(`c$64 199;t`time);((+wj1[w;`sym`time;t;q;,(`mx;max;`bid)])`mx;(+wj1[w;`sym`time;t;q;,(`n;count;`bid)])`n)}[];(10 20;1 1)]   / wj's kernel reads char times unsigned too (as q's wj1)
-t[`wjCharFallback;{q:+`sym`time`bid!(`a`a`a;`c$65 128 200;10 20 30);t:+`sym`time!(,`a;,`c$200);w:(,`c$128;t`time);s:(+wj[w;`sym`time;t;q;,(`s;sum;`bid)])`s;v:(+wj[w;`sym`time;t;q;,(`v;{x};`bid)])`v;(s;v)}[];(,50;,20 30)]   / wj's fallback in K reads char times unsigned too, as the kernel
+t[`wjCharHigh;{q:+`sym`time`bid!(`a`a`a;`c$65 200 210;10 20 30);t:+`sym`time!(`a`a;`c$66 201);w:(`c$64 199;t`time);((+wj1[w;`sym`time;t;(q;,(`mx;max;`bid))])`mx;(+wj1[w;`sym`time;t;(q;,(`n;count;`bid))])`n)}[];(10 20;1 1)]   / wj's kernel reads char times unsigned too (as q's wj1)
+t[`wjCharFallback;{q:+`sym`time`bid!(`a`a`a;`c$65 128 200;10 20 30);t:+`sym`time!(,`a;,`c$200);w:(,`c$128;t`time);s:(+wj[w;`sym`time;t;(q;,(`s;sum;`bid))])`s;v:(+wj[w;`sym`time;t;(q;,(`v;{x};`bid))])`v;(s;v)}[];(,50;,20 30)]   / wj's fallback in K reads char times unsigned too, as the kernel
 t[`ajCharTradeNumQuotes;(+aj[`sym`time;+`sym`time!(,`a;,`c$250);+`sym`time`v!(`a`a`a;1 100 200;1 2 3)])`v;,0N]   / a char trade time against number quote times stays signed, as ' and ajmK read it
-t[`wjCharMax;{q:+`sym`time`c!(`a`a`a;1 2 3;"a",0x80,"b");t:+`sym`time!(,`a;,3);w:(,0;,3);((+wj[w;`sym`time;t;q;,(`m;max;`c)])`m;(+wj[w;`sym`time;t;q;,(`m;min;`c)])`m;(+wj[w;`sym`time;t;q;((`m;max;`c);(`k;{max x};`c))])`m)}[];(,0x80;,"a";,0x80)]   / min and max of a char column give chars, whatever else is aggregated
-t[`wjCharFirstMax;{q:+`sym`time`c!(`a`a`a;1 2 3;"a",0x80,"b");t:+`sym`time!(`a`a;3 0);w:(0 -5;3 0);r:+wj[w;`sym`time;t;q;((`f;first;`c);(`m;max;`c);(`n;min;`c))];(r`f;r`m;r`n)}[];("a ";0x8000;0x61ff)]   / first, min and max of chars give chars; an empty window a blank for first, the identity for min and max
+t[`wjCharMax;{q:+`sym`time`c!(`a`a`a;1 2 3;"a",0x80,"b");t:+`sym`time!(,`a;,3);w:(,0;,3);((+wj[w;`sym`time;t;(q;,(`m;max;`c))])`m;(+wj[w;`sym`time;t;(q;,(`m;min;`c))])`m;(+wj[w;`sym`time;t;(q;((`m;max;`c);(`k;{max x};`c)))])`m)}[];(,0x80;,"a";,0x80)]   / min and max of a char column give chars, whatever else is aggregated
+t[`wjCharFirstMax;{q:+`sym`time`c!(`a`a`a;1 2 3;"a",0x80,"b");t:+`sym`time!(`a`a;3 0);w:(0 -5;3 0);r:+wj[w;`sym`time;t;(q;((`f;first;`c);(`m;max;`c);(`n;min;`c)))];(r`f;r`m;r`n)}[];("a ";0x8000;0x61ff)]   / first, min and max of chars give chars; an empty window a blank for first, the identity for min and max
 / the kernel skips nulls in min and max, and in a float sum and avg, as q's; first and last of chars or symbols are those items: q's answers
 WTN:+`g`time!(`g0`g0`g0`g1;0 5 9 3);WWN:((WTN`time)-2;(WTN`time)+1)
-WFN:{[c]a:((`m;min;`v);(`x;max;`v);(`s;sum;`v);(`a;avg;`v));q:+`g`time`v!(`g0`g0`g0`g0`g1;0 1 5 9 2;c);{[a;q;j]r:+j[WWN;`g`time;WTN;q;a];r`m`x`s`a}[a;q]'(wj;wj1)}
+WFN:{[c]a:((`m;min;`v);(`x;max;`v);(`s;sum;`v);(`a;avg;`v));q:+`g`time`v!(`g0`g0`g0`g0`g1;0 1 5 9 2;c);{[a;q;j]r:+j[WWN;`g`time;WTN;(q;a)];r`m`x`s`a}[a;q]'(wj;wj1)}
 t[`wjNullsInt;(WFN 0N 2 0N 0N 7)[;0 1];((2 2 9223372036854775807 7;2 2 -9223372036854775807 7);(2 9223372036854775807 9223372036854775807 7;2 -9223372036854775807 -9223372036854775807 7))]   / min and max; an int sum or avg still adds a 0N in, as on main
 t[`wjNullsFloat;WFN 0n 2.5 0n 0n 1.5;((2.5 2.5 0w 1.5;2.5 2.5 -0w 1.5;2.5 2.5 0 1.5;2.5 2.5 0n 1.5);(2.5 0w 0w 1.5;2.5 -0w -0w 1.5;2.5 0 0 1.5;2.5 0n 0n 1.5))]
-t[`wjNullsSparse;{v:0+!100;v[10 50]:0N;f:0.5*!100;f[10 50]:0n;q:+`g`time`v`f!(100#`a;!100;v;f);t:+`g`time!(`a`a;10 50);w:((t`time)-1;(t`time)+1);a:((`m;min;`v);(`fs;sum;`f);(`fm;min;`f);(`fa;avg;`f));{[w;t;q;a;j]r:+j[w;`g`time;t;q;a];r`m`fs`fm`fa}[w;t;q;a]'(wj;wj1)}[];2#,(9 49;10.0 50.0;4.5 24.5;5.0 25.0)]   / short windows far apart over a long column: only the windows with a null are reduced again
-t[`wjCharFirstLast;{t:+`g`time!(`g0`g0;0 5);q:+`g`time`v`s!(`g0`g0`g0;0 1 5;"xyz";`x`y`z);a:((`f;first;`v);(`l;last;`v);(`s;first;`s));w:(-2 3;-1 6);((+wj[(-2 3;1 6);`g`time;t;q;a])`f`l`s;(+wj[w;`g`time;t;q;a])`f`l`s;(+wj1[w;`g`time;t;q;a])`f`l`s)}[];(("xy";"yz";`x`y);(" y";" z";``y);(" z";" z";``z))]
+t[`wjNullsSparse;{v:0+!100;v[10 50]:0N;f:0.5*!100;f[10 50]:0n;q:+`g`time`v`f!(100#`a;!100;v;f);t:+`g`time!(`a`a;10 50);w:((t`time)-1;(t`time)+1);a:((`m;min;`v);(`fs;sum;`f);(`fm;min;`f);(`fa;avg;`f));{[w;t;q;a;j]r:+j[w;`g`time;t;(q;a)];r`m`fs`fm`fa}[w;t;q;a]'(wj;wj1)}[];2#,(9 49;10.0 50.0;4.5 24.5;5.0 25.0)]   / short windows far apart over a long column: only the windows with a null are reduced again
+t[`wjCharFirstLast;{t:+`g`time!(`g0`g0;0 5);q:+`g`time`v`s!(`g0`g0`g0;0 1 5;"xyz";`x`y`z);a:((`f;first;`v);(`l;last;`v);(`s;first;`s));w:(-2 3;-1 6);((+wj[(-2 3;1 6);`g`time;t;(q;a)])`f`l`s;(+wj[w;`g`time;t;(q;a)])`f`l`s;(+wj1[w;`g`time;t;(q;a)])`f`l`s)}[];(("xy";"yz";`x`y);(" y";" z";``y);(" z";" z";``z))]
 / the sortedness check given an atom where a column belongs: "not known sorted", not a crash
 t[`ajsAtom;(`ajs(();5;0b);`ajs((5;1 2);1 2;0b);`ajs((1 2;5);1 2;0b);`ajs(();3 2 1;0b));0 0 0 0]
 
@@ -329,7 +329,7 @@ t[`ajsAfterXasc; ajsorted[`sym`time;xasc[`sym`time;ajQ1]];1]
 / and the gate must not change ANY answer: same book, shuffled rows, same join
 ajT:+`sym`time`px!(`a`b`a`b;2 3 4 5;1.0 2 3 4)
 t[`ajGateAj;(aj[`sym`time;ajT;ajQ0])~aj[`sym`time;ajT;ajQ1];1]
-t[`ajGateWj;(wj[(ajT[`time]-2;ajT`time);`sym`time;ajT;ajQ0;,(`mx;max;`bid)])~wj[(ajT[`time]-2;ajT`time);`sym`time;ajT;ajQ1;,(`mx;max;`bid)];1]
+t[`ajGateWj;(wj[(ajT[`time]-2;ajT`time);`sym`time;ajT;(ajQ0;,(`mx;max;`bid))])~wj[(ajT[`time]-2;ajT`time);`sym`time;ajT;(ajQ1;,(`mx;max;`bid))];1]
 
 / ---- `wjb / wjbnd (src/a.c): C group-bounds kernel vs the pure-K path ----
 / wjbnd feeds BOTH aj and wj their per-row group slices, so a wrong slice here
@@ -355,7 +355,7 @@ ajEqChk:{[nq;nt;ns]sy:`$'("s",'$!ns);
   q:+`sym`time`bid!(sy nq?ns;nq?50;nq?100.0);
   t:+`sym`time`px!(sy nt?ns;nt?50;nt?100.0); qs:xasc[`sym`time;q];
   w:(t[`time]-3;t`time); ag:((`mx;max;`bid);(`n;count;`bid));
-  ((aj[`sym`time;t;q])~aj[`sym`time;t;qs])&(wj[w;`sym`time;t;q;ag])~wj[w;`sym`time;t;qs;ag]}
+  ((aj[`sym`time;t;q])~aj[`sym`time;t;qs])&(wj[w;`sym`time;t;(q;ag)])~wj[w;`sym`time;t;(qs;ag)]}
 ajEqR:()
 {[i]ajEqR,:ajEqChk[200;120;7]}'!10
 {[i]ajEqR,:ajEqChk[60;60;20]}'!8
@@ -419,8 +419,8 @@ t[`fbyListSame;fby[(sum;10 20);(`a`b;`a`b)];30 30]
 t[`xgroupUngroup;ungroup xgroup[`s;st];+`s`v!(`a`a`a`b`b;1 3 5 2 4)]
 t[`xgroupKeyed;xgroup[`k;+`k`a!(1 2 1;10 20 30)];(+(,`k)!,1 2)!+(,`a)!,(10 30;,20)]   / Digest #57: keyed, as q
 / Digest #52: a column the table lacks is an error named after it
-t[`tableFnMissing;{.[x;(`a;+`k`v!(-1 -2;3 4));{2#x}]}'(xasc;xdesc;xkey;xcols);4#,"'a"]   / xcols added a column of nulls
-t[`xcolsMissing;{.[xcols;x;{2#x}]}'((`v`a;+`k`v!(-1 -2;3 4));(`a;+`k`v!(!0;!0));(,`v;+`k`v!(!0;!0)));("'a";"'a";+`v`k!(!0;!0))]   / the first one missing is named; an empty table too
+t[`tableFnMissing;{.[x;(`a;+`k`v!(-1 -2;3 4));{x}]}'(xasc;xdesc;xkey;xcols);4#,,"a"]   / xcols added a column of nulls
+t[`xcolsMissing;{.[xcols;x;{x}]}'((`v`a;+`k`v!(-1 -2;3 4));(`a;+`k`v!(!0;!0));(,`v;+`k`v!(!0;!0)));(,"a";,"a";+`v`k!(!0;!0))]   / the first one missing is named; an empty table too
 
 / ---- strings ----
 t[`lower;lower"HeLLo";"hello"]
@@ -458,7 +458,7 @@ t[`tlitRows;#([]a:1 2 3 4);4]
 / ---- temporal ----
 \l temporal.k
 / ej: a date, timestamp or string key column (each held as a general list) against another kind is 'type, as q; dates join dates
-t[`ejKeyTemporal;{D:+`k`v!(2000.01.02 2000.01.03;1 2);({.[ej;x;{5#x}]}'((`k;D;+`k`w!(1 2;3 4));(`k;D;+`k`w!(2000.01.02D00:00 2000.01.03D00:00;1 2));(`k;+`k`v!(("ab";"cd");1 2);+`k`w!(`ab`cd;1 2)));ej[`k;D;+`k`w!(2000.01.03 2000.01.05;7 8)])}[];(3#,"'type";+`k`v`w!(,2000.01.03;,2;,7))]
+t[`ejKeyTemporal;{D:+`k`v!(2000.01.02 2000.01.03;1 2);({.[ej;x;{4#x}]}'((`k;D;+`k`w!(1 2;3 4));(`k;D;+`k`w!(2000.01.02D00:00 2000.01.03D00:00;1 2));(`k;+`k`v!(("ab";"cd");1 2);+`k`w!(`ab`cd;1 2)));ej[`k;D;+`k`w!(2000.01.03 2000.01.05;7 8)])}[];(3#,"type";+`k`v`w!(,2000.01.03;,2;,7))]
 t[`ejKeyMixed;ej[`k;+`k`v!((2000.01.02;2);1 2);+`k`w!(2 3;7 8)];+`k`v`w!(,2;,2;,7)]   / a general column of mixed kinds joins any, as before (only its first item is a date)
 t[`ejKeyYStrings;ej[`k`j;+`k`j`v!(`a`b;0 1;1 2);+`k`j`w!(("ab";"cd");0 1;1 2)];+`k`j`v`w!(0#`;!0;!0;!0)]   / y's string column joins any column of x's, as q (no rows here)
 t[`tsLastNs;pstr 2026.07.30D23:59:59.999999999;"2026.07.30D23:59:59.999999999"]
@@ -486,20 +486,20 @@ t[`mmSecInts;(mm -361815000 -5415123 361815000 0N;sec -361815000 -5415123 361815
 t[`mmSecNested;(mm (-5415123 0;0);sec (-5415123 0;0);mm `a`b!(-5415123;0);mm `a`b!(-5415123 0;0);mm (0N 0;0);hh (0N 0;0);hh `a`b!(0N -5415123;0));((-30 0;0);(-15 0;0);`a`b!-30 0;`a`b!(-30 0;0);(0N 0;0);(0N 0;0);`a`b!(0N -1;0))]   / lists of lists and dicts, item by item
 t[`mmSecFrac;(mm -0.5;sec -0.5;mm -0.5 60000.5;sec -1500.5;hh -0.5);(0;0;0 1;-1;0)]   / a fraction of a ms below 0 is no minute, not 59
 t[`mmSecRagged;(mm (5415123 0;,0);mm (5415123 0;-5415123 0 1);mm `a`b!(5415123 0;,0);sec (5415123 0;,0N));((30 0;,0);(30 0;-30 0 0);`a`b!(30 0;,0);(15 0;,0N))]   / lists of lists of any lengths
-t[`timeAccessorsFast;(mm 5000000000000 -5000000000000 0N 90000;sec 5000000000000 -5000000000000 0N 1500;mm 00:01:00.000;sec 0-00:00:01.000;year (2026.01.01D23:00;2027.01.01D01:00);dow (2026.03.04;2026.03.05);.[year;,(01:00:00.000;02:00:00.000);{(x?"\n")#x}];year 2026.01.01;dow 2026.03.04;thh 0-01:00:00.000;tmm 01:30:00.000 02:45:00.000);(53 -53 0N 1;20 -20 0N 1;1;-1;2026 2027;`Wed`Thu;"'type";2026;`Wed;-1;30 45)]   / the paths in C (`mm `sec `tjn) and the date atom's: as amber.k's code
+t[`timeAccessorsFast;(mm 5000000000000 -5000000000000 0N 90000;sec 5000000000000 -5000000000000 0N 1500;mm 00:01:00.000;sec 0-00:00:01.000;year (2026.01.01D23:00;2027.01.01D01:00);dow (2026.03.04;2026.03.05);.[year;,(01:00:00.000;02:00:00.000);{(x?"\n")#x}];year 2026.01.01;dow 2026.03.04;thh 0-01:00:00.000;tmm 01:30:00.000 02:45:00.000);(53 -53 0N 1;20 -20 0N 1;1;-1;2026 2027;`Wed`Thu;"type";2026;`Wed;-1;30 45)]   / the paths in C (`mm `sec `tjn) and the date atom's: as amber.k's code
 / the time accessors take a general list of times, as a strand of times is (digest #65; they were 'type, in tnum0)
 t[`timeAccessorsList;(hh 01:00:00.000 02:30:00.000;mm 01:00:00.000 02:30:00.000;sec 01:00:00.000 02:30:15.000;hh (01:00:00.000;02:30:00.000);mm 0-(01:30:00.000;00:30:00.000);milli 01:00:00.123 02:30:00.456;minute 01:00:00.000 02:30:00.000;second 01:00:00.000 02:30:00.000);(1 2;0 30;0 15;1 2;-30 -30;123 456;60 150;3600 9000)]
-t[`timeAccessorsMixed;(.[milli;,(01:00:00.000;2026.01.01);{(x?"\n")#x}];.[hh;,(01:00:00.000;3600000);{(x?"\n")#x}]);2#,"'type"]   / one kind only: times with dates or ints stay 'type
+t[`timeAccessorsMixed;(.[milli;,(01:00:00.000;2026.01.01);{(x?"\n")#x}];.[hh;,(01:00:00.000;3600000);{(x?"\n")#x}]);2#,"type"]   / one kind only: times with dates or ints stay 'type
 tavc:0   / counts calls of the lambdas in timeAccessorsVerbs
-t[`timeAccessorsVerbs;(.[hh;,(+;-);{(x?"\n")#x}];.[milli;,(+;-);{(x?"\n")#x}];.[second;,(::;-:);{(x?"\n")#x}];.[mm;,(+);{(x?"\n")#x}];.[mm;,({x};{y});{(x?"\n")#x}];.[mm;,(+;+);{(x?"\n")#x}];.[hh;,({tavc+:1;x};{tavc+:1;x});{(x?"\n")#x}]);7#,"'type"]   / `u and `v are verb types in Amber, not q's minute and second
+t[`timeAccessorsVerbs;(.[hh;,(+;-);{(x?"\n")#x}];.[milli;,(+;-);{(x?"\n")#x}];.[second;,(::;-:);{(x?"\n")#x}];.[mm;,(+);{(x?"\n")#x}];.[mm;,({x};{y});{(x?"\n")#x}];.[mm;,(+;+);{(x?"\n")#x}];.[hh;,({tavc+:1;x};{tavc+:1;x});{(x?"\n")#x}]);7#,"type"]   / `u and `v are verb types in Amber, not q's minute and second
 t[`timeAccessorsVerbsUncalled;tavc;0]   / hh never calls the lambdas above
-t[`timeAccessorsNested;(hh `a`b!01:00:00.000 02:30:00.000;mm (01:30:00.000;(02:00:00.000;03:00:00.000));hh `a`b!(01:00:00.000;(02:00:00.000;03:00:00.000));mm 0#,(::);hh 0#,(::);.[mm;,(01:30:00.000;(02:00:00.000;3600000));{(x?"\n")#x}]);(`a`b!1 2;(30;0 0);`a`b!(1;2 3);!0;!0;"'type")]   / dicts and lists of lists item by item, as q; an empty list is !0
-t[`timeAccessorsDeep;(mm (01:30:00.000 02:00:00.000;,03:00:00.000);.[milli;,(01:00:00.000;(2026.01.01;2026.01.02));{(x?"\n")#x}];.[hh;,`a`b!(01:00:00.000;(2026.01.01;2026.01.02));{(x?"\n")#x}]);((30 0;,0);"'type";"'type")]   / lists of any lengths; one kind at every depth
+t[`timeAccessorsNested;(hh `a`b!01:00:00.000 02:30:00.000;mm (01:30:00.000;(02:00:00.000;03:00:00.000));hh `a`b!(01:00:00.000;(02:00:00.000;03:00:00.000));mm 0#,(::);hh 0#,(::);.[mm;,(01:30:00.000;(02:00:00.000;3600000));{(x?"\n")#x}]);(`a`b!1 2;(30;0 0);`a`b!(1;2 3);!0;!0;"type")]   / dicts and lists of lists item by item, as q; an empty list is !0
+t[`timeAccessorsDeep;(mm (01:30:00.000 02:00:00.000;,03:00:00.000);.[milli;,(01:00:00.000;(2026.01.01;2026.01.02));{(x?"\n")#x}];.[hh;,`a`b!(01:00:00.000;(2026.01.01;2026.01.02));{(x?"\n")#x}]);((30 0;,0);"type";"type")]   / lists of any lengths; one kind at every depth
 t[`timeAccessorsDates;(milli 2026.01.01 2026.02.01;sec 2026.01.01 2026.02.01;minute 2026.01.01 2026.02.01;second 2026.01.01 2026.02.01;mm `a`b!(2026.01.01;2026.02.01);hh 2026.01.01 2026.02.01;milli 2026.01.01);(497 528;9 9;0 0;9 9;`a`b!0 0;0 0;497)]   / a list of dates is read as its days, as a date atom is (q: 'hh, 'ss; `mm$ gives the month)
 / the date accessors take dates, timestamps and raw days only (digest #104): an int 0N is the null day, as q's `year$0Nd is 0Ni
 / (year 0N was -25252734927764555, dow 0N `Fri); a time, a float, text or a list of dates and ints is 'type, as q's `year$
 t[`dateAccessorsNull;(year 0N;month 0N;day 0N;dow 0N;year 0 0N 366;dow 0 0N 1;dparts 0N;month `a`b!0N 59);(0N;0N;0N;`;2000 0N 2001;`Sat``Sun;0N 0N 0N;`a`b!0N 2)]
-t[`dateAccessorsType;(.[year;,(2026.01.01;5);{(x?"\n")#x}];.[year;,01:00:00.000;{(x?"\n")#x}];.[month;,1.5;{(x?"\n")#x}];.[dow;,`a;{(x?"\n")#x}];.[day;,"abc";{(x?"\n")#x}];.[year;,(2026.01.01;01:00:00.000);{(x?"\n")#x}];.[dparts;,(1 2;2026.01.01);{(x?"\n")#x}]);7#,"'type"]
+t[`dateAccessorsType;(.[year;,(2026.01.01;5);{(x?"\n")#x}];.[year;,01:00:00.000;{(x?"\n")#x}];.[month;,1.5;{(x?"\n")#x}];.[dow;,`a;{(x?"\n")#x}];.[day;,"abc";{(x?"\n")#x}];.[year;,(2026.01.01;01:00:00.000);{(x?"\n")#x}];.[dparts;,(1 2;2026.01.01);{(x?"\n")#x}]);7#,"type"]
 t[`dateAccessorsMixed;(year (2026.01.01;2026.01.01D23:00:00);dow (2026.03.04;2026.03.04D23:00:00);day ((2026.03.04;2026.01.01);`a`b!(2026.03.05;2026.03.06));year ());(2026 2026;`Wed`Wed;(4 1;`a`b!5 6);!0)]   / dates with timestamps, item by item
 / in a list of dates or timestamps an int 0N or :: is the null day: D,0N makes one, prev, next and indexing out of range put :: in
 / (they were 'type with the check, wrong years on 2.7.2; q 0N 2026 and 2026 0N); a list of ints with :: is raw days
@@ -507,7 +507,7 @@ DAD:2026.01.01 2027.01.01
 t[`dateAccessorsNullItems;(year DAD,0N;year prev DAD;year DAD@0 5;dow next DAD;month next 2026.03.04D01:00 2027.05.06D01:00;dow `a`b!(2026.03.04;0N);year ((2026.01.01;0N);::);year (0N;::);year (1 2;::);year DAD@5 6;dow DAD@5 6;year (::;::);year `a`b!(::;::));(2026 2027 0N;0N 2026;2026 0N;`Fri`;5 0N;`a`b!`Wed`;(2026 0N;0N);0N 0N;(2000 2000;0N);0N 0N;``;0N 0N;`a`b!0N 0N)]
 / a table goes column by column, a keyed table on its value, as q's `year$ (a table was 'type with the check, a keyed table 'nyi on 2.7.2)
 DAT:+`d`p!(DAD;2026.01.01D01:00 2027.03.01D01:00)
-t[`dateAccessorsTables;(year DAT;month DAT;dow DAT;year 0#DAT;.[year;,+`d`x!(DAD;1.5 2.5);{(x?"\n")#x}]);(+`d`p!(2026 2027;2026 2027);+`d`p!(1 1;1 3);+`d`p!(`Thu`Fri;`Thu`Mon);+`d`p!(!0;!0);"'type")]
+t[`dateAccessorsTables;(year DAT;month DAT;dow DAT;year 0#DAT;.[year;,+`d`x!(DAD;1.5 2.5);{(x?"\n")#x}]);(+`d`p!(2026 2027;2026 2027);+`d`p!(1 1;1 3);+`d`p!(`Thu`Fri;`Thu`Mon);+`d`p!(!0;!0);"type")]
 t[`dateAccessorsKeyed;(.[year;,(+(,`k)!,1 2)!DAT;{(x?"\n")#x}];.[day;,(+(,`k)!,1 2)!+(,`d)!,DAD;{(x?"\n")#x}]);((+(,`k)!,1 2)!+`d`p!(2026 2027;2026 2027);(+(,`k)!,1 2)!+(,`d)!,1 1)]   / the key is kept, as q's
 t[`minute;minute hms[9;30;15];570]
 t[`second;second hms[9;30;15];34215]
@@ -525,12 +525,12 @@ t[`timeHoursGrid;tcell[`time;3600000 360000000];("01:00:00.000";"100:00:00.000")
 t[`timeHoursAtoms;stime (01:00:00.000;100:00:00.000;3600000);("01:00:00.000";"100:00:00.000";"01:00:00.000")]   / a list of time atoms, as tsym gives
 t[`stimeMidnightAtom;stime (00:00:00.000;01:00:00.000);("00:00:00.000";"01:00:00.000")]   / midnight is not null (issue #62; it printed as 0N)
 t[`ptimeNeg;(ptime"-00:30:00.000";ptime"-01:00:00");-1800000 -3600000]
-t[`ptimeList;*"\n"\.[{"T"$("09:30:00.100";"10:00:00.000")};,0;{x}];"'type"]   / a list of strings is 'type, as before (the sign test must not recurse)
+t[`ptimeList;"T"$("09:30:00.100";"10:00:00.000");(09:30:00.100;10:00:00.000)]   / a list of strings: each, as q (2.7.3; it was 'type)
 t[`timeNegText;`i$"T"$"-00:30:00.000";-1800000]
 / "T"$ of a time past 32 bits of milliseconds is 'limit, as the literal (issue #62; it wrapped)
-t[`timeTextLimit;(.[{"T"$x};,"1000:00:00.000";{(x?"\n")#x}];.[{"T"$x};,"596:31:23.648";{(x?"\n")#x}];`i$"T"$"-596:31:23.648";.[ptime;,"1000:00:00.000";{(x?"\n")#x}]);("'limit";"'limit";-2147483648;"'limit")]
+t[`timeTextLimit;(.[{"T"$x};,"1000:00:00.000";{(x?"\n")#x}];.[{"T"$x};,"596:31:23.648";{(x?"\n")#x}];`i$"T"$"-596:31:23.648";.[ptime;,"1000:00:00.000";{(x?"\n")#x}]);("limit";"limit";-2147483648;"limit")]
 t[`ptimeRound;(ptime stime hms[13;45;9])=hms[13;45;9];1]
-t[`ptextAsCasts;(ptime"-01:00";pdate"2024.02.29";ptstamp"2026.07.30D09:30:00.123456789";.[pdate;,"2026.02.29";{(x?"\n")#x}]);(-3600000;8825;838719000123456789;"'parse")]   / as "T"$, "D"$ and "P"$ read them (issue #62)
+t[`ptextAsCasts;(ptime"-01:00";pdate"2024.02.29";ptstamp"2026.07.30D09:30:00.123456789";.[pdate;,"2026.02.29";{(x?"\n")#x}]);(-3600000;8825;838719000123456789;"parse")]   / as "T"$, "D"$ and "P"$ read them (issue #62)
 t[`minbar;minbar[5;hms[9;37;0]];hms[9;35;0]]
 t[`minbarVec;minute minbar[1;hms[9;30;0]+60000*0 1 2];570 571 572]
 t[`bar5m;bar[5;60000;hms[9;37;30]];hms[9;35;0]]
@@ -547,7 +547,7 @@ t[`cosf;cos 0;1.0]
 t[`til;til 5;0 1 2 3 4]
 t[`enlist;#enlist 5;1]
 t[`string;string 42;"42"]
-t[`typef;type 1 2 3;`I]
+t[`typef;type 1 2 3;7]   / q's type number (2.7.3)
 t[`keyf;key`a`b!1 2;`a`b]
 t[`valuef;value`a`b!1 2;1 2]
 t[`first;first 10 20 30;10]
@@ -696,21 +696,21 @@ t[`ajStampsEmpty;  ((+aj[`ts;AJT;0#AJQ])`q;#aj[`ts;0#AJT;AJQ]);  (0N 0N 0N;0)]
 AJW:((2026.07.30D09:00:00.000;2026.07.30D10:30:00.000);(2026.07.30D10:20:00.000;2026.07.30D11:10:00.000))
 AJWT:+`ts`v!((2026.07.30D10:00:00.000;2026.07.30D11:00:00.000);1 2)
 AJWQ:+`ts`q!((2026.07.30D09:30:00.000;2026.07.30D10:15:00.000;2026.07.30D10:50:00.000);6 5 4)
-t[`wjStamps;       ((+wj1[AJW;`ts;AJWT;AJWQ;,(`c;count;`q)])`c;(+wj1[AJW;`ts;AJWT;AJWQ;,(`s;{+/x};`q)])`s);  (2 1;11 4)]   / {+/x}: wj's pure-K fallback
-t[`wjStampsFirstMin; (+wj[AJW;`ts;AJWT;AJWQ;((`f;first;`ts);(`l;last;`ts);(`m;min;`ts);(`x;max;`ts))])`f`l`m`x;  AJWQ[`ts]@(0 1;1 2;0 1;1 2)]   / temporals as themselves, not their numbers, their addresses or 'type
-t[`wjKernelColumnType; {.[{`wj(0 1 2;,x;,y;,0;,2;,0;,3)};(x;y);{*"\n"\x}]}'[(AJWQ`ts;AJWQ`ts;(1;2.0;3);AJWQ`ts);0 2 4 6];  ("'type";"'type";"'type";,,3)]   / the kernel called directly: a column of timestamps or a generic list is 'type, not its items' addresses; count reads no column
+t[`wjStamps;       ((+wj1[AJW;`ts;AJWT;(AJWQ;,(`c;count;`q))])`c;(+wj1[AJW;`ts;AJWT;(AJWQ;,(`s;{+/x};`q))])`s);  (2 1;11 4)]   / {+/x}: wj's pure-K fallback
+t[`wjStampsFirstMin; (+wj[AJW;`ts;AJWT;(AJWQ;((`f;first;`ts);(`l;last;`ts);(`m;min;`ts);(`x;max;`ts)))])`f`l`m`x;  AJWQ[`ts]@(0 1;1 2;0 1;1 2)]   / temporals as themselves, not their numbers, their addresses or 'type
+t[`wjKernelColumnType; {.[{`wj(0 1 2;,x;,y;,0;,2;,0;,3)};(x;y);{*"\n"\x}]}'[(AJWQ`ts;AJWQ`ts;(1;2.0;3);AJWQ`ts);0 2 4 6];  ("type";"type";"type";,,3)]   / the kernel called directly: a column of timestamps or a generic list is 'type, not its items' addresses; count reads no column
 / a temporal time column against one of another kind is 'type, as in q
 AJD:+`ts`v!((2026.07.30;2026.07.31);1 2)
-t[`ajMixedKinds;   *"\n"\.[aj;(`ts;AJD;AJQ);{x}];  "'type"]
-t[`ajMixedInt;     *"\n"\.[aj;(`ts;+`ts`v!(10 9708;1 2);AJQ);{x}];  "'type"]
-t[`wjMixedKinds;   *"\n"\.[wj;(((2026.07.30;2026.07.30);(2026.07.31;2026.07.31));`ts;AJWT;AJWQ;,(`c;count;`q));{x}];  "'type"]
-t[`ajMixedItems;   *"\n"\.[aj;(`ts;+`ts`v!((2026.07.30D10:00:00.000;9708);1 2);AJQ);{x}];  "'type"]   / every item must be of the kind
-t[`ajMixedNumbers; (*"\n"\.[aj;(`ts;+`ts`v!(1 2;1 2);+`ts`q!((1;2026.07.30D10:00:00.000);6 5));{x}];*"\n"\.[wj;((0 0;10 10);`ts;+`ts`v!(1 2;1 2);+`ts`q!((1;2026.07.30D10:00:00.000);6 5);,(`c;count;`q));{x}]);  2#,"'type"]   / a column mixing timestamps with numbers, against ints too (q answers for mixed quotes; here the timestamp would be read by its address)
+t[`ajMixedKinds;   *"\n"\.[aj;(`ts;AJD;AJQ);{x}];  "type"]
+t[`ajMixedInt;     *"\n"\.[aj;(`ts;+`ts`v!(10 9708;1 2);AJQ);{x}];  "type"]
+t[`wjMixedKinds;   *"\n"\.[wj;(((2026.07.30;2026.07.30);(2026.07.31;2026.07.31));`ts;AJWT;(AJWQ;,(`c;count;`q)));{x}];  "type"]
+t[`ajMixedItems;   *"\n"\.[aj;(`ts;+`ts`v!((2026.07.30D10:00:00.000;9708);1 2);AJQ);{x}];  "type"]   / every item must be of the kind
+t[`ajMixedNumbers; (*"\n"\.[aj;(`ts;+`ts`v!(1 2;1 2);+`ts`q!((1;2026.07.30D10:00:00.000);6 5));{x}];*"\n"\.[wj;((0 0;10 10);`ts;+`ts`v!(1 2;1 2);(+`ts`q!((1;2026.07.30D10:00:00.000);6 5);,(`c;count;`q)));{x}]);  2#,"type"]   / a column mixing timestamps with numbers, against ints too (q answers for mixed quotes; here the timestamp would be read by its address)
 t[`ajStampsUnsorted; (+aj[`ts;AJT;+`ts`q!(|AJQ`ts;5 6)])`q;  6 5 5]   / quotes out of order: sorted by value first
 G0:2026.07.30D10:00:00.000
 GT:+`g`t`v!((G0;G0+1;G0+0);10 10 11;1 2 3);GQ:+`g`t`q!((G0;G0+1;G0+0;G0+1);9 9 10 10;5 6 7 8)
 t[`ajGroupStamps;   (+aj[`g`t;GT;GQ])`q;  7 8 7]   / grouped by a timestamp column: equal timestamps are one group
-t[`wjGroupStamps;   ((+wj[(10 10 10;11 11 11);`g`t;GT;GQ;,(`c;count;`q)])`c;(+wj[(10 10 10;11 11 11);`g`t;GT;GQ;,(`s;sum;`q)])`s);  (1 1 1;7 8 7)]
+t[`wjGroupStamps;   ((+wj[(10 10 10;11 11 11);`g`t;GT;(GQ;,(`c;count;`q))])`c;(+wj[(10 10 10;11 11 11);`g`t;GT;(GQ;,(`s;sum;`q))])`s);  (1 1 1;7 8 7)]
 t[`ajTimes;        (+aj[`t;+`t`v!((10:00:00.000;11:00:00.000);1 2);+`t`q!((09:00:00.000;10:30:00.000);6 5)])`q;  6 5]
 / ej: null keys, int keys of mixed widths, an empty x; xasc of mixed temporals beside a bool column
 t[`inBits;(0101B in 1;(0101B;1) in 1);(0101b;(0101b;1b))]   / Digest #7
@@ -729,10 +729,10 @@ t[`ajsortedRange;  ((+aj[`g`time;+`g`time!(!3;!3);+`g`time`b!(!4;!4;10+!4)])`b;a
 WQ:+`time`q`r!(1 1 1 1 1 1 1 1 3 3 3 3 4;!13;1000000000000+!13)
 WW:(1 1 -1 -1 1 -1 -1 1 -1 -1 -1 2 -1;3 3 1 1 3 1 1 3 1 1 1 4 1)
 WT:+`time`v!(2 2 0 0 2 0 0 2 0 0 0 3 0;!13)
-t[`wjRangeColumn;  (+wj1[WW;`time;WT;WQ;((`c;count;`q);(`z;sum;`q);(`f;first;`q);(`l;last;`r);(`m;max;`r);(`a;avg;`q))])`c`z`f`l`m`a;  (12 12 8 8 12 8 8 12 8 8 8 5 8;66 66 28 28 66 28 28 66 28 28 28 50 28;0 0 0 0 0 0 0 0 0 0 0 8 0;1000000000000+11 11 7 7 11 7 7 11 7 7 7 12 7;1000000000000+11 11 7 7 11 7 7 11 7 7 7 12 7;5.5 5.5 3.5 3.5 5.5 3.5 3.5 5.5 3.5 3.5 3.5 10 3.5)]
-t[`wjRangeQuotes;  (+wj[(-1+!4;1+!4);`s`time;+`s`time!(`a`a`a`a;!4);+`s`time`v!(13#`a;!13;!13);((`z;sum;`v);(`f;first;`v);(`m;min;`v))])`z`f`m;  (1 3 6 9;0 0 1 2;0 0 1 2)]
+t[`wjRangeColumn;  (+wj1[WW;`time;WT;(WQ;((`c;count;`q);(`z;sum;`q);(`f;first;`q);(`l;last;`r);(`m;max;`r);(`a;avg;`q)))])`c`z`f`l`m`a;  (12 12 8 8 12 8 8 12 8 8 8 5 8;66 66 28 28 66 28 28 66 28 28 28 50 28;0 0 0 0 0 0 0 0 0 0 0 8 0;1000000000000+11 11 7 7 11 7 7 11 7 7 7 12 7;1000000000000+11 11 7 7 11 7 7 11 7 7 7 12 7;5.5 5.5 3.5 3.5 5.5 3.5 3.5 5.5 3.5 3.5 3.5 10 3.5)]
+t[`wjRangeQuotes;  (+wj[(-1+!4;1+!4);`s`time;+`s`time!(`a`a`a`a;!4);(+`s`time`v!(13#`a;!13;!13);((`z;sum;`v);(`f;first;`v);(`m;min;`v)))])`z`f`m;  (1 3 6 9;0 0 1 2;0 0 1 2)]
 / wj's windows are as long as the trade table, as in q ('length; an empty trade table was read past its end)
-t[`wjWindowLength; {*"\n"\.[wj;x;{x}]}'((WW;`time;0#WT;WQ;,(`z;sum;`q));((0 1;2 3);`time;3#WT;WQ;,(`z;sum;`q));((0 1 2;2 3);`time;3#WT;WQ;,(`z;sum;`q));((0 1;2 3);`time;3#WT;WQ;,(`z;{+/x};`q)));  4#,"'length"]
+t[`wjWindowLength; {*"\n"\.[wj;x;{x}]}'((WW;`time;0#WT;(WQ;,(`z;sum;`q)));((0 1;2 3);`time;3#WT;(WQ;,(`z;sum;`q)));((0 1 2;2 3);`time;3#WT;(WQ;,(`z;sum;`q)));((0 1;2 3);`time;3#WT;(WQ;,(`z;{+/x};`q))));  4#,"length"]
 / int folds, scans and amends wrap (computed in unsigned arithmetic: a signed overflow in C is undefined)
 t[`scanWrap;       (*\0N 0N;+\9223372036854775807 1;*\4294967296 4294967296;9223372036854775806+\1 1);(0N 0;9223372036854775807 0N;4294967296 0;9223372036854775807 0N)]
 t[`foldSeedWrap;   (9223372036854775807+/1 2;0N*/0N 3);(-9223372036854775806;0)]

@@ -292,7 +292,7 @@ x,y concat    0,1 2 -> 0 1 2  "a",1 -> ("a";1)
 d,d merge     (`a`b!0 1),`b`c!2 3 -> `a`b`c!0 2 3
  ^x null      ^(" a";0 1 0N;``a;0.0 0n) -> (1 0;0 0 1;1 0;0 1)
 a^y fill      1^0 0N 2 3 0N -> 0 1 2 3 1   "b"^" " -> "b"
-X^y without   "abracadabra"^"bc" -> "araadara"
+X^y without   "abracadabra"^"bc" -> "araadara"   (lists of one count fill, as q: 1 2 3^0N 5 0N -> 1 5 3)
  #x length    #"abc" -> 3   #4 -> 1   #`a`b`c!0 1 0 -> 3
 i#y take      5#"abc" -> "abcab"   -5#`a`b`c -> `b`c`a`b`c
 X#d take keys `c`d`f#`a`b`c`d!1 2 3 4 -> `c`d`f!3 4 0N
@@ -451,7 +451,7 @@ RESTRUCTURE
 
 JOINS  (left operand drives ; c = `key..`time , last col is the sort/time key)
   lj[t;kt] left     ij[t;kt] inner    uj[x;y] union    pj[t;kt] plus   ej[c;x;y] equi
-  aj[c;x;y] as-of   aj0[c;x;y] as-of(y time)   asof[t;d] single    wj[w;c;t;q;aggs] window
+  aj[c;x;y] as-of   aj0[c;x;y] as-of(y time)   asof[t;d] single    wj[w;c;t;(q;aggs)] window
   wj: w=(begins;ends) aligned to t ; aggs=((name;fn;col);..)
 
 qSQL TEMPLATE  (type it bare at the prompt - no  sel"..."  wrapper needed)

@@ -33,7 +33,7 @@ show tsym[aj1;`time]
 
 hr"WINDOW JOIN: max ask & min bid over the 120s BEFORE each trade"
 w:(trade[`time]-120000; trade`time)
-wj1:wj[w; `sym`time; trade; quote; ((`maxAsk;max;`ask);(`minBid;min;`bid);(`nQ;count;`bid))]
+wj1:wj[w; `sym`time; trade;(quote;((`maxAsk;max;`ask);(`minBid;min;`bid);(`nQ;count;`bid)))]
 show tsym[wj1;`time]
 
 hr"VWAP and trade count by symbol"

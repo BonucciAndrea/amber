@@ -33,7 +33,7 @@ rt[`colEmpty;0#0.0]
 / an attribute byte (7) that names none of the four is 'format: it was copied in, and `at read "\0supg" past its end
 x:`wcol(T,"/c/att";1 2 3;-1;0);AB:1:T,"/c/att"
 ra:{(T,"/c/att2") 1:(7#AB),(`c$x),8_AB;.[{`at@`rcol x};,T,"/c/att2";{*"\n"\x}]}
-t[`colAttrByte;ra'5 200 4;("'format";"'format";`g)]
+t[`colAttrByte;ra'5 200 4;("format";"format";`g)]
 rt[`colNested;(1 2;"ab";`x`y)]
 rt[`colAtom;42]
 rt[`colDict;`a`b!1 2]
@@ -58,7 +58,7 @@ te[`colNotOurs;"`rcol T,\"/c/junk\""]
 / opened or read, and a directory (#94 Q14)
 x:`wcol(T,"/c/ff";1 2 3;-1;0);(T,"/c/gg") 1:4000#1:T,"/c/ff";(T,"/c/hh") 1:""
 rc:{.[{`rcol x};,T,"/c/",x;{*"\n"\x}]}
-t[`colShort;rc'("gg";"hh";"junk";"nope";"");("'format";"'format";"'format";"'io";"'io")]
+t[`colShort;rc'("gg";"hh";"junk";"nope";"");("format";"format";"format";"io";"io")]
 t[`fszMissing;`fsz T,"/c/nope";-1]
 t[`fszDir;`fsz T,"/c";-2]
 t[`ldir;(`ldir T)1;()]
@@ -98,15 +98,15 @@ t[`oldStillReads;dload T,"/db/t";dt]
 / (#94 Q12). A directory where s's temporary file goes makes its write fail, after a's and the sym file's
 h:`$":",T,"/db/f/";x:h set ([]a:1 2;s:`x`y);x:mkd T,"/db/f/s.tmp";z:dget T,"/db/sym"
 x:.[set;(h;([]a:!5;s:5#`zp`zq));{*"\n"\x}]
-t[`splayFailOld;(x;.[get;,h;{*"\n"\x}];z~dget T,"/db/sym";`ldir T,"/db/f");("'io";([]a:1 2;s:`x`y);1;(,"s.tmp";(".d";,"a";,"s")))]
+t[`splayFailOld;(x;.[get;,h;{*"\n"\x}];z~dget T,"/db/sym";`ldir T,"/db/f");("io";([]a:1 2;s:`x`y);1;(,"s.tmp";(".d";,"a";,"s")))]
 wa:{x:`wcol((T,"/c/w1";1 2;-1;0);(T,"/c/w2";`k;-1;0));(x;`rcol T,"/c/w1";`rcol T,"/c/w2")}
 tv[`wcolAll;"wa[]";((T,"/c/w1";T,"/c/w2");1 2;`k)]   / a list of quadruples: all written, then renamed
 wd:{x:.[{`wcol((T,"/c/w3";1 2;-1;0);(T,"/c/w3";3 4;-1;0))};,0;{*"\n"\x}];(x;`fsz T,"/c/w3";`fsz T,"/c/w3.tmp")}
-tv[`wcolDup;"wd[]";("'domain";-1;-1)]   / a path named twice: nothing is written
+tv[`wcolDup;"wd[]";("domain";-1;-1)]   / a path named twice: nothing is written
 / set of a keyed table to a splay is 'type, as q's set (it wrote the unkeyed table), and so is Q.dpft of one (q: 'nyi); nothing
 / is written. One file keeps a keyed table whole
 kt:([k:1 2]v:3 4)
-t[`splayKeyed;(.[set;(`$":",T,"/db/k/";kt);{*"\n"\x}];`fsz T,"/db/k";.[Q.dpft;(T,"/hdbk";2026.01.01;`v;`kt);{*"\n"\x}];`fsz T,"/hdbk");("'type";-1;"'type";-1)]
+t[`splayKeyed;(.[set;(`$":",T,"/db/k/";kt);{*"\n"\x}];`fsz T,"/db/k";.[Q.dpft;(T,"/hdbk";2026.01.01;`v;`kt);{*"\n"\x}];`fsz T,"/hdbk");("type";-1;"type";-1)]
 x:splay[T,"/db/k2";kt]
 t[`setKeyedFile;(get(`$":",T,"/kf") set kt;dload T,"/db/k2");(kt;([]k:1 2;v:3 4))]   / Amber's splay still writes it unkeyed
 x:mkd T,"/old";(T,"/old/x") 1:`k 1 2 3
@@ -124,20 +124,20 @@ t[`setGlobal;get`zzdisk;7]
 / read the files Amber wrote before 2.7, by running them
 x:mkd T,"/old/tt";(T,"/old/tt/.d") 1:`k@,`a;(T,"/old/tt/a") 1:"zzrun:1;5 6";(T,"/old/run") 1:"zzrun:42;1+2"
 ge:{.[get;,`$":",T,x;{*"\n"\x}]}
-t[`getText;(ge"/old/run";ge"/old/tt";ge"/old/nope";.[.:;,`zzrun;{"unset"}]);("'format";"'format";"'io";"unset")]
+t[`getText;(ge"/old/run";ge"/old/tt";ge"/old/nope";.[.:;,`zzrun;{"unset"}]);("format";"format";"io";"unset")]
 x:dget T,"/old/run";y:dload T,"/old/tt"
 t[`getTextDget;(x;y);(3;+(,`a)!,5 6)]
 
 / ---- 0: and 1: of a path ---------------------------------------------------------
 ER:{[f;a].[f;a;{*"\n"\x}]};N0:`c$0;x:mkd T,"/io";P0:T,"/io/ab";P0 1:"kept"
 / #94 Q16: a path holding a NUL is 'domain (open() took the name before it: "ab\0cd" 1: y wrote ab)
-t[`pathNul;(1:P0;ER[{1:x};,P0,N0,"zz"];ER[{0:x};,P0,N0];ER[{x 1:"nul"};,P0,N0,"cd"]);("kept";"'domain";"'domain";"'domain")]   / items run from the right
-t[`pathNulVerbs;(1:P0;ER[{`csvr x};,P0,N0];ER[{`fsz x};,P0,N0];ER[{`ldir x};,T,N0];ER[{`rcol x};,P0,N0];ER[{`wcol(x;1 2;-1;0)};,P0,N0,"cd"];ER[{`x(x;"")};,("/bin/echo";"a",N0)]);(,"kept"),6#,"'domain"]
+t[`pathNul;(1:P0;ER[{1:x};,P0,N0,"zz"];ER[{0:x};,P0,N0];ER[{x 1:"nul"};,P0,N0,"cd"]);("kept";"domain";"domain";"domain")]   / items run from the right
+t[`pathNulVerbs;(1:P0;ER[{`csvr x};,P0,N0];ER[{`fsz x};,P0,N0];ER[{`ldir x};,T,N0];ER[{`rcol x};,P0,N0];ER[{`wcol(x;1 2;-1;0)};,P0,N0,"cd"];ER[{`x(x;"")};,("/bin/echo";"a",N0)]);(,"kept"),6#,"domain"]
 / . of a string reads it as a C string, so \l and \cd (and a shell command) of a path holding a NUL took the name before it
 / (that line is refused before it runs, as the lines before it run; a \ that starts a line inside a string is no command,
 / and code holding a NUL is cut there, as before)
 LD:0;(T,"/io/ld.k")0:,"LD:1"
-t[`pathNulText;(LD;ER[.:;,"\\l ",T,"/io/ld.k",N0,"zz"];ER[.:;,"LD:2\n\\l ",T,"/io/ld.k",N0];ER[.:;,"\\cd ",T,N0];ER[.:;,"\"a\n\\tb\"",N0]);(2;"'domain";"'domain";"'domain";"a\n\tb")]
+t[`pathNulText;(LD;ER[.:;,"\\l ",T,"/io/ld.k",N0,"zz"];ER[.:;,"LD:2\n\\l ",T,"/io/ld.k",N0];ER[.:;,"\\cd ",T,N0];ER[.:;,"\"a\n\\tb\"",N0]);(2;"domain";"domain";"domain";"a\n\tb")]
 / a script's \l and \cd lines and a line on stdin reach the parser the same way: the script stops with 'domain at that line
 SA:0;LD:0;(T,"/io/s1.k")0:("SA:1";"\\l ",T,"/io/ld.k",N0,"zz");(T,"/io/s2.k")0:("SA:2";"\\cd ",T,N0,"zz")
 t[`pathNulScript;(SA;LD;ER[.:;,"\\l ",T,"/io/s1.k"];ER[.:;,"\\l ",T,"/io/s2.k"]);(1;0;"";"")]   / a script's error is printed where it stops, so the trap sees ""
@@ -161,7 +161,7 @@ t[`fifoLoad;FA,FB;1 2]
 PX:.[{"Linux"~5#1:x};,"/proc/version";{0b}];PV:(1b;"Linux";,"Linux";"version")
 t[`procRead;$[PX;(ER[{0<#1:x};,"/proc/self/status"];ER[{5#1:x};,"/proc/version"];ER[{0:x};,"/proc/sys/kernel/ostype"];ER[{1:x};,("/proc/version";6 7)]);PV];PV]
 E0:T,"/io/empty";E0 1:""
-t[`readEmpty;(1:E0;0:E0;1:(E0;5 3);ER[{1:x};,(E0;-1 3)]);("";();"";"'io")]
+t[`readEmpty;(1:E0;0:E0;1:(E0;5 3);ER[{1:x};,(E0;-1 3)]);("";();"";"io")]
 / 1:(path;i n) and 0:(path;i n) free the (i;n) pair: \m reported it on every call (in a process of its own)
 t[`readRangeFree;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"x:1:(\"",P0,"\";0 2);x:0:(\"",P0,"\";1 2);x:1:(\"",P0,"\";i:1 2);\n\\m\n");""]
 
@@ -204,14 +204,14 @@ t[`loadNested300;m;300]   / a load that stops is not limited before 512
 x:mkd T,"/big";F1:T,"/big/ff";F1 1:"hello world"
 rd:{.[{1:x};,x;{*"\n"\x}]}
 t[`readOffset4G;rd(F1;4294967297 3);""]   / past the end, as 1:(F1;20 3); it was "ell"
-t[`readOffsetNeg;rd'((F1;-1 3);(F1;-9223372036854775807 1));("'io";"'io")]   / the second was ,"e"
-t[`readOffsetNegPage;`x(,`argv[]0;"`0:.[{1:x};,(\"",F1,"\";-4096 3);{*\"\\n\"\\x}]\n");"'io\n"]
+t[`readOffsetNeg;rd'((F1;-1 3);(F1;-9223372036854775807 1));("io";"io")]   / the second was ,"e"
+t[`readOffsetNegPage;`x(,`argv[]0;"`0:.[{1:x};,(\"",F1,"\";-4096 3);{*\"\\n\"\\x}]\n");"io\n"]
 / big files, sparse: only where the file system keeps them so (a 64 MiB probe takes no blocks), or they would be written
 dd:{[f;n;s]`x(("/bin/dd";"of=",f;"bs=1";"seek=",$n;$[#s;"conv=notrunc";"count=0"]);s);f}
 SP:64>. *"\t"\`x(("/usr/bin/du";"-sk";dd[T,"/big/probe";67108864;""]);"")
 S2:$[SP;dd[T,"/big/s2g";2147483648;""];""];S4:$[SP;dd[dd[T,"/big/s4g";4294967301;""];4294967296;"XY"];""]
 t[`readSize2G;$[SP;#1:S2;2147483648];2147483648]   / it was 0
-t[`readSize4G;$[SP;rd S4;"'limit"];"'limit"]   / a vector's count is 32 bits; it was 5
+t[`readSize4G;$[SP;rd S4;"limit"];"limit"]   / a vector's count is 32 bits; it was 5
 t[`readOffset4GBig;$[SP;rd(S4;4294967296 2);"XY"];"XY"]   / it read at 0
 rm T,"/big"
 
@@ -242,7 +242,7 @@ t[`readSmallEdge;(v;1:M;1:(M;65530 10);1:(M;4096 3));(65535#"ab";65536#"cd";"cdc
 / instead of mapping it
 / Cygwin never maps a file (1: reads it into a vector), so its map table never fills
 CY:like[.[{`x(("/usr/bin/uname";"-s");"")};,0;{""}];"CYGWIN*"]
-t[`readMapsFull;$[CY;"'MMAP\n1000\n";sub"M 1:70000#\"x\";`0:*\"\\n\"\\.[{{1:M}'!x};,1100;::];v:{1:M}'!1000;`0:$#v"];"'MMAP\n1000\n"]
+t[`readMapsFull;$[CY;"MMAP\n1000\n";sub"M 1:70000#\"x\";`0:*\"\\n\"\\.[{{1:M}'!x};,1100;::];v:{1:M}'!1000;`0:$#v"];"MMAP\n1000\n"]
 G:T,"/g";x:`wcol(G;1 2 3 300;-1;0)
 t[`rcolMapsFull;sub"v:{1:M}'!1000;G:\"",G,"\";w:{`rcol G}'!1100;`0:$(#w;+/w 1099;1 2 3 300~w 0)";"1100\n306\n1\n"]
 

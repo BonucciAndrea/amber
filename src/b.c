@@ -7,11 +7,11 @@
 #define OFF 4 //offset of constants in a function object
 #define n1 -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
 #define p1  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
-enum {bu,  bv=32,bs=64,bg=80,bd=96,ba=112,bp,bm,bM,bx,bX,by,bY,bG,bS,bl,bL,bz,bj,bo,bP,bV,bc};      //opcodes
+enum {bu,  bv=32,bs=64,bg=80,bd=96,ba=112,bp,bm,bM,bx,bX,by,bY,bG,bS,bl,bL,bz,bj,bo,bP,bV,bk,bc};      //opcodes
 #define bF (bu+31) //Amber 2.5 (exp): fused float tree, bF j c p (the unused monad slot 31: no opcode moves)
-Z CO C di[]={[bF]=3,              [ba]= 1, 1, 3, 3, 3, 3, 3, 3, 2, 2, 1, 1, 1, 1, 0, 0, 2, 0},      //Extra bytes after opcode (2-byte global/var index)
-ds[]={[bv]=n1,n1,n1,   p1,   p1,  [ba]= 1, 1,-1,-1,-1,-1,-1,-1, 1,-1, 1, 0,-1, 0, 1,-1, 0, 1},      //stack size delta
-ks[]={                            [ba]=-1,-1, 0, 0, 0, 0, 0, 0, 0, 0,-1, 1, 0, 0, 0, 0, 0, 0};      //stack size delta (coefficient for the next byte)
+Z CO C di[]={[bF]=3,              [ba]= 1, 1, 3, 3, 3, 3, 3, 3, 2, 2, 1, 1, 1, 1, 0, 0, 2, 2, 0},      //Extra bytes after opcode (2-byte global/var index)
+ds[]={[bv]=n1,n1,n1,   p1,   p1,  [ba]= 1, 1,-1,-1,-1,-1,-1,-1, 1,-1, 1, 0,-1, 0, 1,-1, 0, 0, 1},      //stack size delta
+ks[]={                            [ba]=-1,-1, 0, 0, 0, 0, 0, 0, 0, 0,-1, 1, 0, 0, 0, 0, 0, 0, 0};      //stack size delta (coefficient for the next byte)
 #define BG (b+=2,b[-2]|(U)b[-1]<<8)                                                                 //read a 2-byte little-endian global/var index
 // amber 2.4: tail calls. A call whose result is the function's result (the next opcode is the
 // end, maybe after jumps out of a $[..]) to a lambda that takes exactly that many arguments and
@@ -374,6 +374,7 @@ AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,d--,es8(a,n))/*d: per-thread VM recursio
   C(bl,UC n=*b++;s+=n-1;*s=sqz(aV(tA,n,s-n+1)))                                                     //list      |bl,n  |.. y x -> .. (x;y)     |
   C(bL,UC n=*b++;A x=*s;U(xtt||xN==n,*s=el(x))F(n,*--s=ii(x,n-1-i)))                                //unlist    |bL,n  |.. x -> .. x[0] x[1]   |
   C(bj,UC n=*b++;b+=n)                                                                              //jump      |bj,n  |.. x -> ..             |PC+:n
+  C(bk,CO UC*q=b;b=(UC*)q+2-(q[0]|(I)q[1]<<8))                                                      //jump back |bk,i,i|.. -> ..               |PC-:i (Amber 2.7.3: do, while)
   C(bz,UC n=*b++;b+=n*!tru(*s++))                                                                   //branch    |bz,n  |.. x -> ..             |if x is falsy, PC+:n
   C(bo,*--s=xR)                                                                                     //recur     |bo    |.. -> .. o             |o is the current lambda
   C(bP,mr(*s++))                                                                                    //pop       |bP    |.. x -> ..             |
@@ -387,7 +388,7 @@ AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,d--,es8(a,n))/*d: per-thread VM recursio
 #define MB 2048                                                                                     //max bytecode size
 #define M(a) {b[nb]=a;m[nb]=o;nb+=nb<MB-1;}                                                         //append byte
 #define MG(a) {U ig_=(a);M(ig_&255)M(ig_>>8)}                                                       //append a 2-byte little-endian global/var index
-Z A u;Z UC b[MB],m[MB];Z I lu[16],nb,nl,l[16],cr(A,B);                                              //u:lambda(src;b:bytes;m:map;l:locals;consts..)  lu:last usages
+Z A u;Z UC b[MB],m[MB];Z I lu[16],nb,nl,l[16],cdo,cr(A,B);                                              //u:lambda(src;b:bytes;m:map;l:locals;consts..)  lu:last usages
 ZN I li(I v)_(U i=fI(l,nl,v);P(i==nl,-1)lu[i]=nb;i)                                                 //index of a local variable (returns -1 if not found)
 Z B cm(A x/*0*/){X(Rv(!xv)Ru(1)RS(P(xn-1,0)S s=su(*xI);U n=SL(s);n&&s[n-1]==':')R_(0))}             //is x a valid modifier? i.e. :: or primitive monad or symbol ending with ":"
 // amber 2.3: two constants share a pool slot only if IDENTICAL. ~ calls -0.0 and
@@ -492,6 +493,15 @@ Z I cr(A x/*0*/,B r)_(I o=xo;                                                   
  P(!xtA||!xn,I(r,cc(x-GAP?x:au,o))OK)                                                               // 0        constant
  U n=xn;A y=xx;                                                                                     //
  P(y==GAP,F(n-1,Nr(xA[i+1],i==n-2&&r))OK)                                                           // [x;y]    block
+ // Amber 2.7.3: q's while[c;e;..] and do[n;e;..] (p.c builds the nodes): the test, a branch past the loop, the body, a
+ // jump back (bk). do counts down a local of its own, one per nesting depth (loops one after another share it). A local
+ // whose last use is in the loop is not moved out there (lu): the next pass reads it again. The loop's value is ::
+ P(y==WHL||y==DOL,I c=-1;
+  I(y==DOL,C h[4]={1,'d',(C)('0'+cdo),0};I w=(I)us(h);c=li(w);I(c<0,P(nl>15,lim=1;o)c=nl;l[nl++]=w)Nr(xy,1)M(bs+c))
+  I t=nb;I(y==WHL,Nr(xy,1))E(A k=ai(0);M(bg+c)cc(k,o);mr(k);U q=b[nb-1]-bc;b[nb-1]=bV;M(q)M(_v(LTN)))
+  M(bz)I z=nb;M(0)cdo+=y==DOL;F(n-2,I e_=cr(xA[i+2],0);P(e_-OK,cdo-=y==DOL;e_))cdo-=y==DOL;
+  I(y==DOL,A k=ai(-1);M(bg+c)cc(k,o);mr(k);U q=b[nb-1]-bc;b[nb-1]=bV;M(q)M(_v(ADD))M(bs+c))
+  M(bk)I d=nb+2-t;M(d&255)M(d>>8)d=nb-z-1;P(d>255,lim=1;o)b[z]=d;F(nl,I(lu[i]>=t,lu[i]=-1))I(c>=0,lu[c]=-1)I(r,cc(au,o))OK)
  P(n==1,I(r,cc(y,o))OK)                                                                             // `a       quoted
  P(n==3&&cm(y)&&_tsSA(xy),
   YS(Nr(xz,1);Nr(xy,1);A z=enl(cS(drp(-1,str(ii(y,0)))));Nr(z,1);mr(z);M(ba)M(2)z=aA1(au);Nl(z,xy,r);z(0);OK)

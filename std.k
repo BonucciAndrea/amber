@@ -44,7 +44,7 @@ mmax:{[w;x]$[~`A~@r:`mw(5;w;x);r;(@x)in`m`M;mwt[mmax;w;x];mmaxK[w;x]]}
 mprd:{[w;x]exp msum[w;log 0.0+x]}                        / moving product
 / moving weighted / correlation helpers
 dot:{+/x*y}                                              / vector dot product
-mmu:{[x;y]yc:+y;{[yc;r]{[r;c]+/r*c}[r]'yc}[yc]'x}        / matrix multiply  x mmu y
+mmu:{[x;y]$[`A~@x;$[`A~@y;[yc:+y;{[yc;r]{[r;c]+/r*c}[r]'yc}[yc]'x];{+/x*y}[;y]'x];+/x*y]}   / matrix multiply  x mmu y; a vector is a row or a column, as q (two vectors: their dot product)
 
 / ---- parse / eval / serialize ---------------------------------------------
 parse:{`p x}                                             / string -> parse tree (for inspection)

@@ -213,7 +213,7 @@ Amber uses a terse array notation. A few things worth knowing:
   (`in within like lj ij uj aj aj0 wj wj1 pj ej cross inter union except ss sv vs xasc xdesc`) plus
   the built-in symbol verbs (``+ - * % ! & | < > = ~ , ^ # _ $ ? @ .``). Arbitrary user lambdas are
   **not** infix.
-* **No `>=` / `<=`.** Write `~a<b` and `~a>b`.
+* **`<>` `>=` `<=`, `if` `do` `while` work as in q** (since 2.7.3), and `type` gives q's numbers (`@x` the letter).
 * **qSQL is bare, at the prompt *and* in scripts.** Type `select … by … from … where …` (also
   `exec` / `update` / `delete`) with no `sel"…"` wrapper; bare column names like `wavg[sz;px]` just
   work. Since 2.0.0 this bare form also works inside a `.k` file loaded once the stdlib is up (the

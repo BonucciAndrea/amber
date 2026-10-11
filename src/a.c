@@ -987,8 +987,9 @@ Z A1(lkT,P(_t(x)-tA||_n(x)-2||_t(_A(x)[1])-tC,et(x))A s=*_A(x),p=_A(x)[1];CO UC*
 Z A1(sumnT,P(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);U n=_n(x);W t=0;F(n,L v=p[i];t+=(W)(v==NL?0:v))x(az((L)t)))K1("{+/x}",x))
 Z A1(qins,x(INS))   //`ins: the insert verb (h.c ins2), which amber.k binds to insert once (#94 Q1)
 A qech(A),qmcT(A),nsdT(A),ewtT(A);   //w.c: `ech `qmc `nsd `ewt
-ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","dlt","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl","abs","wcol","rcol","fsz","ldir","wtn","senc","hh","mm","sec","tjn","exit","lk","ins","wmul","qmc","nsd","ewt","ech"};
- G(&kst,js1,qp,qt,frk,hex,err,qa,qe,dltC,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,wcolT,rcolT,fszT,ldirT,wtnT,sencT,hhC,mmC,secC,tjnC,qx,lkT,qins,wmulT,qmcT,nsdT,ewtT,qech,ed)[fI((V*)s,L(s),v)](x))   //found by a scan in this order: dlt (amber.k's deltas, each call) early, exit last
+A ktan(A),kasn(A),kacs(A),katn(A),qstT(A),md5T(A),qesT(A),qegT(A),rndT(A),minvT(A);   //1.c: `tan `asin `acos `atan; w.c: `qst (q's string of a number), `md5
+ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","dlt","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl","abs","wcol","rcol","fsz","ldir","wtn","senc","hh","mm","sec","tjn","exit","lk","ins","wmul","qmc","nsd","ewt","ech","tan","asin","acos","atan","qst","md5","qes","qeg","rnd","minv"};
+ G(&kst,js1,qp,qt,frk,hex,err,qa,qe,dltC,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,wcolT,rcolT,fszT,ldirT,wtnT,sencT,hhC,mmC,secC,tjnC,qx,lkT,qins,wmulT,qmcT,nsdT,ewtT,qech,ktan,kasn,kacs,katn,qstT,md5T,qesT,qegT,rndT,minvT,ed)[fI((V*)s,L(s),v)](x))   //found by a scan in this order: dlt (amber.k's deltas, each call) early, exit last
 /* ---- tacit trains: hook (f g) and fork (f g h) --------------------------
  * A general list of length 2 or 3 whose every element is a function becomes a
  * TRAIN when it is applied (a `::` in it is data, as in ngn/k, so such a list is
@@ -1007,7 +1008,7 @@ Z A ap1(A f,A y){UC t=_t0(f);if(t==tu||t==tv)return v1[_v(f)](y);return _1(f,y);
 Z A ap2(A f,A y,A z){UC t=_t0(f);if(t==tu||t==tv)return v2[_v(f)](y,z);return _2(f,y,z);}
 Z A trn1(A x,A y,I m){A*e=_A(x);P(e[0]==au||e[1]==au||e[m-1]==au,i1(x,y))if(m==2){A g=Ny(ap1(e[1],_R(y)));return y(ap2(e[0],y,g));}A f=Ny(ap1(e[0],_R(y))),h=N(ap1(e[2],y),mr(f));A r=ap2(e[1],f,h);mr(f);return r;}
 Z A trn2(A x,A y,A z,I m){A*e=_A(x);P(e[0]==au||e[1]==au||e[m-1]==au,i2(x,y,z))if(m==2){A g=N(ap1(e[1],z));return ap2(e[0],y,g);}A l=Nz(ap2(e[0],y,_R(z))),r=N(ap2(e[2],y,z),mr(l));A v=ap2(e[1],l,r);mr(l);return v;}
-A2(_1,/*01*/{I tn=istrain(x);if(tn&&!(_tz(y)&&gl_(y)>=0&&gl_(y)<(I)_n(x)))return trn1(x,y,tn);}P(!xtt,i1(x,y))U k=xK;P(1<k,k==2&&!xtp?prj(x,A8(y,GAP),2):prj(x,&y,1))
+NI A2(_1,/*01*/{I tn=istrain(x);if(tn&&!(_tz(y)&&gl_(y)>=0&&gl_(y)<(I)_n(x)))return trn1(x,y,tn);}P(!xtt,i1(x,y))U k=xK;P(1<k,k==2&&!xtp?prj(x,A8(y,GAP),2):prj(x,&y,1))
  X(Ro(run(x,&y,1))Rp(P(k>7,er(y))I m=xn-1,j=0;Ab8;F(m,b[i]=xA[i+1]==GAP&&!j?j++,y:_R(xA[i+1]))I l=MAX(0,1-j);MC(b+m,&y,8*l);_8(xx,b,m+l))
   Rq(_1(xx,N(_1(xy,y))))Rr(w1(xE,xx,y))Rs(sym1(xv,y))Ru(v1[xv](y))Rw(AK(xv-1<3u&&yK==2?1:ytU?yK:1,AW(xv,aV(tr,1,&y))))Rx(ext(x,&y,1))R_(et(y)))0)
 A3(_2,/*001*/{I tn=istrain(x);if(tn)return trn2(x,y,z,tn);}P(!xtt,i2(x,y,z))A a[]={y,z};U k=xK;P(2<k,yR;prj(x,a,2))
@@ -1019,7 +1020,8 @@ AX(_8,/*01..1*/Q(n)P(n==1,x1(*a))P(n==2&&!xtp,A y=*a;y(x2(y,a[1])))P(!xtt,i8(x,a
 A1(jS,cS(jc('.',str(x))))//join symbols with "."
 X1(val,RA(P(!xn,x)P(xn==1,fir(x))P(xn>9,ez(x))x=mut(x);A y=_8(xx,&xy,xn-1);AN(1,x);x(y))RmM(x(_R(xy)))RE(gZ(x))RC(x=str0(x);x(evn(xV,xV+xn,0)))Rc(val(enl(x)))RsS(gg(x))
  Ropq(AT(tA,mut(x)))Rr(cat10(AT(tA,mut(x)),aw+xE))Ruvw(ai(xv))R_(x))
-A2(dot,/*01*/Ym(et(y))U n=yN;P(!n,y(xR))P(n>8,ez(y))y=mRa(N(blw(y)));y(x8(yA,n)))
+//Amber 2.7.3: _1 and dot out of line, as every caller has them: d8 began to take them in when the program grew, and .[x;i;f;y] was 8% slower
+NI A2(dot,/*01*/Ym(et(y))U n=yN;P(!n,y(xR))P(n>8,ez(y))y=mRa(N(blw(y)));y(x8(yA,n)))
 Z U knd(A x/*0*/)_(X(Ril(ti)REBGHIL(tI)R_(xt))0)
 Z AM_TLS_IE I nsq;   //>0: inside amend's per-index fold, which squeezes once at the end (a squeeze per item made it quadratic)
 #define USQ(e) ({I k_=nsq;nsq=0;A r_=(e);nsq=k_;r_;}) //run code the amend calls out to (verbs, lambdas) with squeezing back on
@@ -1080,6 +1082,11 @@ Z NI A tcv(A*b,U n,A y,U r)_(A u=N(a8(b,n));P(tcd(u,y),mr(u);el0())tfl(u,r))   /
 //values went one per row. Made a dict for a row, a table of them for rows, which a8 then amends as before
 Z NI __attribute__((cold)) A trw(A x,A y,A z/*100*/)_(A d=Nx(_tt(z)?am(_R(xx),rsz(_N(xx),_R(z))):_R(z));P(_tz(y),A r=a8(A8(x,y,av,d),4);mr(d);r)
  U c=y==au?xN:_N(y);d=Nx(rsz(c,enl(d)));A w=y==au?aE(0,c):_R(y);A r=a8(A8(x,w,av,d),4);mr(w);mr(d);r)
+Z NI __attribute__((cold)) A a8t(A x,CO A*a)_(A e_=enl(_R(a[1]));A r_=try(x,e_,a[2]);mr(e_);r_)   //@[f;x;h], f a lambda of one argument: try (a8; out of line, so a8 is as it was)
+//Amber 2.7.3: @[f;x;h] with f a lambda of one argument traps f x, as q and as .[f;(,x);h] (it applied f to x and h: 'rank).
+//Only that: an amend calls @[f;item;y] with f the verb or a function of two, which stays an application. The test is in the
+//verb's entry (a8q, v8[18]), so a8, which amends call themselves, is as it was (with it inside, .[x;i;f;y] was 6% slower)
+AA(a8q,/*10..0*/A x=*a;P(n==3&&_t(x)==to&&_k(x)==1,a8t(x,a))a8(a,n))
 AA(a8,/*10..0*/A x=*a,y=a[1];
  X(RE(Ab8;*b=gZ(x);AC(b+1,a+1,n-1);a8(b,n))
    RT_E(P(y==au,mRn(n-2,a+2);Ab8;*b=a[2];b[1]=x;AC(b+2,a+3,n-3);USQ(e8(AP1,b,n-1)))

@@ -96,7 +96,7 @@ trade:+`sym`time`px!(`a`b`a;3 4 9;100 200 300)
 quote:+`sym`time`bid!(`a`a`b`a;1 5 2 8;10 11 20 12)
 t[`aj;(+aj[`sym`time;trade;quote])`bid;10 20 12]
 t[`aj0time;(+aj0[`sym`time;trade;quote])`time;1 2 8]
-t[`wjMax;(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`mx;max;`bid)])`mx;10 20 12]
+t[`wjMax;(+wj[(trade[`time]-2;trade`time);`sym`time;trade;(quote;,(`mx;max;`bid))])`mx;10 20 12]
 t[`asof;asof[xasc[`sym`time;trade];`sym`time!(`a;6)];(,`px)!,100]
 
 / ---- qSQL-style ----

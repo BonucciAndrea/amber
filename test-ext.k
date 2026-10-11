@@ -77,20 +77,20 @@ t[`tickCb;TC;5]
 / ---- C-kernel window join (wj): standard reducers run in C ----
 trade:+`sym`time`px!(`a`b`a;3 4 9;100 200 300)
 quote:+`sym`time`bid`ask!(`a`a`b`a;1 5 2 8;10 11 20 12;15 16 25 18)
-t[`wjClast;&/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`b;last;`bid)])[`b]=10 20 12;1b]
-t[`wjCmax; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`m;max;`ask)])[`m]=15 25 18;1b]
-t[`wjCmin; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`m;min;`bid)])[`m]=10 20 11;1b]   / q's wj: the quote in force at the window start counts (digest #68)
-t[`wjCsum; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`s;sum;`bid)])[`s]=10 20 23;1b]
-t[`wjCcnt; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`n;count;`bid)])[`n]=1 1 2;1b]
-t[`wjCavg; &/1e-9>abs(+wj[(trade[`time]-2;trade`time);`sym`time;trade;quote;,(`a;avg;`bid)])[`a]-10 20 11.5;1b]
-t[`wjCnogrp;&/(+wj[(trade[`time]-2;trade`time);,`time;trade;quote;,(`m;max;`bid)])[`m]=20 20 12;1b]
+t[`wjClast;&/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;(quote;,(`b;last;`bid))])[`b]=10 20 12;1b]
+t[`wjCmax; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;(quote;,(`m;max;`ask))])[`m]=15 25 18;1b]
+t[`wjCmin; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;(quote;,(`m;min;`bid))])[`m]=10 20 11;1b]   / q's wj: the quote in force at the window start counts (digest #68)
+t[`wjCsum; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;(quote;,(`s;sum;`bid))])[`s]=10 20 23;1b]
+t[`wjCcnt; &/(+wj[(trade[`time]-2;trade`time);`sym`time;trade;(quote;,(`n;count;`bid))])[`n]=1 1 2;1b]
+t[`wjCavg; &/1e-9>abs(+wj[(trade[`time]-2;trade`time);`sym`time;trade;(quote;,(`a;avg;`bid))])[`a]-10 20 11.5;1b]
+t[`wjCnogrp;&/(+wj[(trade[`time]-2;trade`time);,`time;trade;(quote;,(`m;max;`bid))])[`m]=20 20 12;1b]
 / C wj agrees with interpreted wjK on random data (bit-exact reducers)
 gentq 400
 wAGG:((`hi;max;`ask);(`lo;min;`bid);(`nq;count;`bid))
-wCr:+wj[(trades[`time]-60000;trades`time);`sym`time;trades;quotes;wAGG]
+wCr:+wj[(trades[`time]-60000;trades`time);`sym`time;trades;(quotes;wAGG)]
 wKr:+wjK[1b;(trades[`time]-60000;trades`time);`sym`time;trades;quotes;wAGG]
 t[`wjCK;&/{[a;b;c]&/(a[c]=b c)|(^a[c])&^b c}[wCr;wKr]'`hi`lo`nq;1b]
-wC1:+wj1[(trades[`time]-60000;trades`time);`sym`time;trades;quotes;wAGG];wK1:+wjK[0b;(trades[`time]-60000;trades`time);`sym`time;trades;quotes;wAGG]
+wC1:+wj1[(trades[`time]-60000;trades`time);`sym`time;trades;(quotes;wAGG)];wK1:+wjK[0b;(trades[`time]-60000;trades`time);`sym`time;trades;quotes;wAGG]
 t[`wj1CK;&/{[a;b;c]&/(a[c]=b c)|(^a[c])&^b c}[wC1;wK1]'`hi`lo`nq;1b]   / wj1 too (digest #68)
 / ---- C-kernel EMA ----
 t[`ema0;ema[0.5;1 2 3 4];1.0 1.5 2.25 3.125]
@@ -103,15 +103,15 @@ t[`year;year ymd2d[2026;7;30];2026]
 t[`timeAdd;stime[ptime["10:00:00.000"]+ptime["00:00:05.000"]];"10:00:05.000"]
 t[`tsRT;tsdate tstamp[ymd2d[2026;7;30];ptime"09:30:00.000"];ymd2d[2026;7;30]]
 / ---- native temporal types: literals, arithmetic, casts, accessors ----
-t[`litDateT;type 2026.07.30;`d]
-t[`litTimeT;type 10:00:05.000;`t]
-t[`litTsT;type 2026.07.30D09:30:00.000;`n]
+t[`litDateT;type 2026.07.30;-14]   / q's type numbers (2.7.3; @x gives `d)
+t[`litTimeT;type 10:00:05.000;-19]
+t[`litTsT;type 2026.07.30D09:30:00.000;-12]
 t[`timeAddLit;`i$10:00:00.000+00:00:05.000;36005000]
 t[`dateDiff;2026.07.30-2026.07.25;5]
 t[`datePlus;`i$2026.07.30+5;9712]
 t[`dateCmp;$[2026.07.25<2026.07.30;1;0];1]
 t[`tsArith;`i$2026.07.30D09:30:00.000+1000000000;838719001000000000]
-t[`castD;type "D"$"2026.07.30";`d]
+t[`castD;type "D"$"2026.07.30";-14]
 t[`castT;`i$"T"$"10:00:05.000";36005000]
 t[`yearA;year 2026.07.30;2026]
 t[`monthA;month 2026.07.30;7]
@@ -154,7 +154,7 @@ t[`arrowPtrs;{[t]p:arrow.export t;n:#p;arrow.import p;n}[([]a:1 2 3)];2]  / expo
 / a value that is not a table is 'type: its payload was read as column pointers (a crash). In a process of its own, so a
 / crash cannot stop the suite: the child prints each case's error
 axc:"\\l amber.k\n\\l std.k\n\\l sys.k\nd:`diag 0\n`0:{.[{arrow.export x;\"ok\"};,x;{*\"\\n\"\\x}]}'(1 2 3;(1;2);`a`b;(1 2;3 4);101b;(,`a;,`x);());`0:.[{`aex x;\"ok\"};,(`a`b;(1 2;3));{*\"\\n\"\\x}]\n"
-t[`arrowNonTable;`x(,`argv[]0;axc);"'type\n'type\n'type\n'type\n'type\n'type\n'type\n'type\n"]
+t[`arrowNonTable;`x(,`argv[]0;axc);"type\ntype\ntype\ntype\ntype\ntype\ntype\ntype\n"]
 / a bit mask (-9!, or a column file of type 3) is an Arrow boolean, a bit a row: import read it a byte a row
 abi:{(+arrow.import arrow.export ([]a:-9!x))`a}
 t[`arrowBool3;abi 0x414d42010300030000000000000005;101b]
@@ -163,7 +163,7 @@ t[`arrowBool10;abi 0x414d420103000a00000000000000a502;1010010101b]
 t[`arrowBool17;abi 0x414d420103001100000000000000018001;10000000000000011b]
 / a column with no Arrow format here is 'nyi: it was exported as int64 over its payload (8 bytes a row from a char)
 aen:{.[{arrow.export x;"ok"};,x;{*"\n"\x}]}
-t[`arrowNyi;aen'(([]c:"abc");([]b:0x0102);([]l:(1 2;3 4));([]s:("ab";"c"));([]d:2026.01.01 2026.01.02);([]a:1 2;c:"ab"));6#,"'nyi"]
+t[`arrowNyi;aen'(([]c:"abc");([]b:0x0102);([]l:(1 2;3 4));([]s:("ab";"c"));([]d:2026.01.01 2026.01.02);([]a:1 2;c:"ab"));6#,"nyi"]
 t[`arrowEmptyColExp;(+`a`b!(0#`;!0))~arrow.import arrow.export ([]a:`$();b:());1b]   / an empty table's general column: int64, as before
 / a symbol of any length comes back whole: it was cut to 255 bytes
 t[`arrowLongSym;{(+arrow.import arrow.export ([]s:(x;`b)))`s}'(`$255#"a";`$256#"b";`$300#"c";`$70000#"d");{(x;`b)}'(`$255#"a";`$256#"b";`$300#"c";`$70000#"d")]

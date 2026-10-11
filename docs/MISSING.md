@@ -86,9 +86,11 @@ The primitives keep k's treatment, where the int null is just the smallest int:
 | `0N+1`, `0N-1`, `0N*2` | wrap: `-9223372036854775807`, `9223372036854775807`, `0` | `0N` |
 | `+/0N 1` | `-9223372036854775807` | (no `+/` in q; `sum` gives `1`) |
 | `&/0N 5` | `0N` (the null is the smallest) | `min` gives `5` |
-| `0.5^1 0N` | `(1;0.5)`: a fill of another type makes a generic list | `1 0.5` |
 
-Fill of floats is the exception (since 2.7.1): an int atom filling floats gives floats, as in q.
+Fill of floats is the exception (since 2.7.1): an int atom filling floats gives floats, as in q, and
+since 2.7.3 a float atom filling ints gives floats too (`0.5^1 0N` is `1 0.5`). Two lists of one count
+fill item by item, as q (`1 2 3^0N 5 0N` is `1 5 3`), and two tables column by column; lists of other
+counts are still k's except, as before (`"abracadabra"^"bc"`).
 `0^1.5 0n` is `1.5 0.0` (2.7.0 and ngn/k: `(1.5;0)`), `0^0n` is `0.0`, `0N^1.5 0n` leaves `0n`,
 a float item of a generic list is filled the same way (`0^(1;0n)` is `(1;0.0)`), and so are
 the float values of a dict or table. A char or symbol filling floats still makes a generic list
@@ -117,6 +119,26 @@ still ascending by value. `&` and `|` of two equal zeros give `0.0`, and so do t
 and grouped min/max over them; the moving `mmax`/`mmin` still keep `-0.0`. (q's `min`/`max`
 keep the first zero; ngn/k orders `-0.0` below `0.0`.)
 
+## 3c. Since 2.7.3: q's way, and what stays k's
+
+A run of 1,064 everyday q lines found the gaps this release closed: q's casts by name and char
+(`` `long$ `` `"J"$` `` `date$ `` `` `year$ `` `` `mm$ ``, rounding as q), `if` `do` `while`, `<>` `>=` `<=`,
+the `'` signal and the `@[f;x;h]` trap (a handler gets the error's text alone, `"type"`), `.Q.x` and `.j.x`
+with their dot, `0W` and the `h i j` suffixes, `` `a.b `` symbols, `n!t`, `xcol`, `cut`, `bin`/`binr`,
+`avgs`, `md5`, `tan asin acos atan`, `tables[]`, `fkeys`, `ss` of one char (and no overlaps), `7 mod -3`,
+`0!kt`, `any ()`, `string 1.0`, the column a `wavg` gets its name from, q's `meta`, and `wj`/`wj1` in
+q's form, `wj[w;c;t;(q;(f;c);..)]` (an agg may also be `(name;f;c)`).
+
+What stays as it was, on purpose:
+
+- **Find of a missing item is `0N`**, k's answer; q gives the count (`1 2 3?4` is `0N`, q `3`). The
+  library leans on it all over.
+- **Int nulls in arithmetic wrap** (3a above), and so do `div`/`mod` of `0N`; `x div 0` and `x mod 0` are `0N`, as q.
+- **`-3!x` is k's**, not q's show-text: use `.Q.s1` or `` `k ``.
+- **No month, minute, second, timespan, datetime or guid types**: `` `month$ `` and friends are `'nyi`,
+  and a time minus a time is an int of ms. `0Nd` and `"D"$` of a bad date have no null date to give.
+- **No byte, short, int (32-bit) or real types**: `1h` `1i` read as `1`, `0x01` is a char.
+
 ## 4. On-disk data (HDB): partial (`hdb.k`)
 **Since 2.7:** Binary column files that map straight into memory, in q's layout: `` `:db/t/ set t ``
 and `get`, a `sym` file per database, `Q.en`, `Q.dpft`, and `\l db` (or `loaddb`) for date- or
@@ -130,7 +152,8 @@ names write the binary format too and still read the old text files (AMBER.md §
 - **Differs from q:** `count` of a partitioned table (a name `loaddb` defines) is the count of the
   dict that names it (6, its keys), where q gives its rows; `sel"select count i from t"` gives them.
   Telling that dict apart in `count` would cost every call.
-- **Still missing:** appending to a table on disk. There is no `upsert`, so no
+- **Since 2.7.3:** `upsert` in memory (a keyed table by key, else appended) and `` `t insert r `` by name, as q.
+- **Still missing:** appending to a table on disk. `upsert` does not take a path, so no
   `` `:db/t/ upsert t `` (q appends the rows to the column files), and amber.k's `insert` takes the
   table itself, not a name or a path as q's `` `t insert r `` does (#94 Q13).
 
@@ -206,7 +229,8 @@ prefix sums; `mmin`/`mmax` are O(n·w) window scans) plus **`ema`** (C kernel, O
 ## 10. Linear algebra & math: partial (`std.k`)
 `mmu` (matrix multiply) and `dot` (vector dot product) are implemented. Amber also has
 `cor cov var dev svar sdev med` and scalar math.
-- **Still missing:** `inv` (inverse), `lsq` (least squares), `.q` solve; distributional
+- **Since 2.7.3:** `inv` (Gauss-Jordan in C) and `mmu` of two vectors (their dot product).
+- **Still missing:** `lsq` (least squares), `.q` solve; distributional
   `rand`/`binr`.
 
 ## 11. Casting / parsing / serialization: partial (`std.k`)
@@ -220,7 +244,7 @@ Amber text via `` `k``, inverted by `eval`) and `protect` (like `.Q.trp`). Amber
   out of scope and raise `'type`. Verified by `examples/peach_verify.k` (60 cases).
 - **Still missing:** `-18!` (compress), `-11!`
   (replay log), the full `$` cast matrix (guid, byte), typed file reader `("SIF";",")0:file`,
-  `vs`/`sv` for base-N and temporal, `md5`, `.Q.btoa` (base64), and the CSV writer `","0:t`, a
+  `vs`/`sv` for base-N and temporal, `.Q.btoa` (base64), and the CSV writer `","0:t`, a
   table's lines of delimited text (q: `` ","0:([]a:1 2;s:`x`y) `` is `("a,s";"1,x";"2,y")`, a cell
   holding the delimiter in quotes, nulls empty, floats at `\P`'s precision, dates as `2026-01-01`;
   Amber gives `'type`). `` `csvr `` reads CSV, and `x 0: y` writes lines of text.

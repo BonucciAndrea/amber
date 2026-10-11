@@ -100,7 +100,12 @@ __attribute__((noinline,cold)) A1(qmcT,P(_t(x)-tA||_n(x)<2||_n(x)>3||_t(xA[0])-t
  P(_n(x)==2,A r=i<n?aV(tA,1,A(_R(qmv[c][i]))):emp(tA);plk(0);x(r))
  A v=xA[2];if(i<n){mr(qmv[c][i]);qmv[c][i]=_R(v);}else{I(n==QMN,F(n,mr(qmk[c][i]);mr(qmv[c][i]))n=0)qmk[c][n]=_R(k);qmv[c][n]=_R(v);qmn[c]=n+1;}
  plk(0);x(_R(v)))
-U gdns(V);__attribute__((noinline,cold)) A1(nsdT,x(as(gdns())))   //`nsd: \d's namespace now (` the root)
+U gdns(V);Z AM_TLS_IE A qenv;   //Amber 2.7.3: the names a lambda's qSQL sees (`qes, `qeg), per thread: a peach worker's own
+__attribute__((noinline,cold)) A1(nsdT,x(qenv&&_t(qenv)==tm?aA2(as(gdns()),_R(_x(qenv))):as(gdns())))   //`nsd: \d's namespace now (` the root); with
+ //a lambda's names set, (namespace;names), so the qSQL caches keep the compiled text of a query in a lambda apart from the same text elsewhere
+//`qes e: the names a qSQL query in a lambda sees (a dict, qsql.k's selE ..), set for the query; gives the ones before (:: none). `qeg: them
+__attribute__((noinline,cold)) A qesT(A x){A o=qenv?qenv:au;qenv=x==au?0:x;return o;}
+__attribute__((noinline,cold)) A qegT(A x){mr(x);return qenv?_R(qenv):au;}
 //`ewt: the one kind of every item of a general list, for each's aggregates (amber.k qewf): `I when each is a
 //nonempty int list (bits, any width) with no null, `J when besides none is 64-bit and none has 2^21 items (so each
 //one's sum is exact as a float), `i when some 64-bit one holds a 0N, `F when each is a nonempty float list, else `
@@ -279,3 +284,60 @@ TPC(secC,secd,secL,1000,60)
 #undef TPC
 //`tjn (temporal.k's tdays): a general list of dates, of times or of timestamps alone, as its numbers (a.c tjn); anything else as it is
 A tjn(A);A1(tjnC,A y=tjn(x);mr(x);y)
+// ---- Amber 2.7.3: `qst and `md5, last in the link ----
+//`qst: amber.k's string of a number, as q prints it: a float to 7 significant digits (1.0 is "1", 1e20 "1e+20"), 0n and 0N as
+//"", 0w 0W -0w -0W by name; a list item by item; anything else as $x
+#include<stdio.h>
+#include<stdlib.h>
+Z U qsf(C*b,F v)_(P(v!=v,0)P(v>1.7976931348623157e308,MC(b,"0w",2);2)P(v< -1.7976931348623157e308,MC(b,"-0w",3);3)(U)snprintf(b,32,"%.7g",v))
+Z U qsl(C*b,L v)_(P(v==NL,0)P(v==WL,MC(b,"0W",2);2)P(v==-WL,MC(b,"-0W",3);3)(U)snprintf(b,32,"%lld",v))
+__attribute__((noinline,cold)) A qstT(A x){C b[32];
+ P(_tf(x),F v=gf(x);aCn(b,qsf(b,v)))   //(gf frees x)
+ P(_tz(x),L v=gl_(x);mr(x);aCn(b,qsl(b,v)))
+ I(!_tP(x)&&LH(tE,_t(x),tL)&&_N(x),L lo=minfZ(WL,x),hi=maxfZ(NL,x);I(lo>NL+1&&hi<WL,return str(x)))   //no 0N 0W -0W: $'s text, which is q's
+ P(!_tP(x)&&(_t(x)==tF||LH(tE,_t(x),tL)),U n=_N(x);P(!n,x(emp(tA)))A r=aA(n);F(n,_A(r)[i]=qstT(ii(x,i)))mr(x);r)
+ return str(x);}
+//`md5 of a string: its 16 bytes, as q's md5 (here a char vector, Amber having no byte type). The 64 steps unrolled
+#define M5F(x,y,z) (z^(x&(y^z)))
+#define M5G(x,y,z) (y^(z&(x^y)))
+#define M5H(x,y,z) (x^y^z)
+#define M5I(x,y,z) (y^(x|~z))
+#define M5S(f,a,b,c,d,x,t,s) {a+=f(b,c,d)+x+t;a=(a<<s|a>>(32-s))+b;}
+Z V m5b(U*h,CO UC*p){U w[16];F(16,MC(w+i,p+4*i,4))U a=h[0],b=h[1],c=h[2],d=h[3];
+ M5S(M5F,a,b,c,d,w[0],0xd76aa478,7)M5S(M5F,d,a,b,c,w[1],0xe8c7b756,12)M5S(M5F,c,d,a,b,w[2],0x242070db,17)M5S(M5F,b,c,d,a,w[3],0xc1bdceee,22)
+ M5S(M5F,a,b,c,d,w[4],0xf57c0faf,7)M5S(M5F,d,a,b,c,w[5],0x4787c62a,12)M5S(M5F,c,d,a,b,w[6],0xa8304613,17)M5S(M5F,b,c,d,a,w[7],0xfd469501,22)
+ M5S(M5F,a,b,c,d,w[8],0x698098d8,7)M5S(M5F,d,a,b,c,w[9],0x8b44f7af,12)M5S(M5F,c,d,a,b,w[10],0xffff5bb1,17)M5S(M5F,b,c,d,a,w[11],0x895cd7be,22)
+ M5S(M5F,a,b,c,d,w[12],0x6b901122,7)M5S(M5F,d,a,b,c,w[13],0xfd987193,12)M5S(M5F,c,d,a,b,w[14],0xa679438e,17)M5S(M5F,b,c,d,a,w[15],0x49b40821,22)
+ M5S(M5G,a,b,c,d,w[1],0xf61e2562,5)M5S(M5G,d,a,b,c,w[6],0xc040b340,9)M5S(M5G,c,d,a,b,w[11],0x265e5a51,14)M5S(M5G,b,c,d,a,w[0],0xe9b6c7aa,20)
+ M5S(M5G,a,b,c,d,w[5],0xd62f105d,5)M5S(M5G,d,a,b,c,w[10],0x02441453,9)M5S(M5G,c,d,a,b,w[15],0xd8a1e681,14)M5S(M5G,b,c,d,a,w[4],0xe7d3fbc8,20)
+ M5S(M5G,a,b,c,d,w[9],0x21e1cde6,5)M5S(M5G,d,a,b,c,w[14],0xc33707d6,9)M5S(M5G,c,d,a,b,w[3],0xf4d50d87,14)M5S(M5G,b,c,d,a,w[8],0x455a14ed,20)
+ M5S(M5G,a,b,c,d,w[13],0xa9e3e905,5)M5S(M5G,d,a,b,c,w[2],0xfcefa3f8,9)M5S(M5G,c,d,a,b,w[7],0x676f02d9,14)M5S(M5G,b,c,d,a,w[12],0x8d2a4c8a,20)
+ M5S(M5H,a,b,c,d,w[5],0xfffa3942,4)M5S(M5H,d,a,b,c,w[8],0x8771f681,11)M5S(M5H,c,d,a,b,w[11],0x6d9d6122,16)M5S(M5H,b,c,d,a,w[14],0xfde5380c,23)
+ M5S(M5H,a,b,c,d,w[1],0xa4beea44,4)M5S(M5H,d,a,b,c,w[4],0x4bdecfa9,11)M5S(M5H,c,d,a,b,w[7],0xf6bb4b60,16)M5S(M5H,b,c,d,a,w[10],0xbebfbc70,23)
+ M5S(M5H,a,b,c,d,w[13],0x289b7ec6,4)M5S(M5H,d,a,b,c,w[0],0xeaa127fa,11)M5S(M5H,c,d,a,b,w[3],0xd4ef3085,16)M5S(M5H,b,c,d,a,w[6],0x04881d05,23)
+ M5S(M5H,a,b,c,d,w[9],0xd9d4d039,4)M5S(M5H,d,a,b,c,w[12],0xe6db99e5,11)M5S(M5H,c,d,a,b,w[15],0x1fa27cf8,16)M5S(M5H,b,c,d,a,w[2],0xc4ac5665,23)
+ M5S(M5I,a,b,c,d,w[0],0xf4292244,6)M5S(M5I,d,a,b,c,w[7],0x432aff97,10)M5S(M5I,c,d,a,b,w[14],0xab9423a7,15)M5S(M5I,b,c,d,a,w[5],0xfc93a039,21)
+ M5S(M5I,a,b,c,d,w[12],0x655b59c3,6)M5S(M5I,d,a,b,c,w[3],0x8f0ccc92,10)M5S(M5I,c,d,a,b,w[10],0xffeff47d,15)M5S(M5I,b,c,d,a,w[1],0x85845dd1,21)
+ M5S(M5I,a,b,c,d,w[8],0x6fa87e4f,6)M5S(M5I,d,a,b,c,w[15],0xfe2ce6e0,10)M5S(M5I,c,d,a,b,w[6],0xa3014314,15)M5S(M5I,b,c,d,a,w[13],0x4e0811a1,21)
+ M5S(M5I,a,b,c,d,w[4],0xf7537e82,6)M5S(M5I,d,a,b,c,w[11],0xbd3af235,10)M5S(M5I,c,d,a,b,w[2],0x2ad7d2bb,15)M5S(M5I,b,c,d,a,w[9],0xeb86d391,21)
+ h[0]+=a;h[1]+=b;h[2]+=c;h[3]+=d;}
+__attribute__((noinline,cold)) A md5T(A x){P(_tP(x)&&_t(x)==tc,md5T(enl(x)))P(_tP(x)||_t(x)!=tC,et(x))U h[4]={0x67452301,0xefcdab89,0x98badcfe,0x10325476};
+ W n=_n(x);CO UC*p=(CO UC*)_V(x);W i=0;for(;i+64<=n;i+=64)m5b(h,p+i);UC t[128];MS(t,0,128);W r=n-i;MC(t,p+i,r);t[r]=0x80;U m=r<56?64:128;W bits=n*8;
+ F(8,t[m-8+i]=(UC)(bits>>(8*i)))m5b(h,t);I(m==128,m5b(h,t+64))C o[16];F(16,o[i]=(C)(h[i>>2]>>(8*(i&3))))mr(x);return aCn(o,16);}
+//`rnd x: floats to ints rounded half away from zero, as q's `long$ (0n 0N; 0w 0W, -0w -0W, as a float past the range): one
+//pass, where amber.k's rnd0 took six. An int or anything else: as `i$
+__attribute__((noinline,cold)) A rndT(A x){
+ P(_tf(x),F v=gf(x);P(v!=v,az(NL))P(!(__builtin_fabs(v)<0x1p63),az(v>0?WL:NL+1))az((L)(v<0?v-0.5:v+0.5)))
+ P(_tP(x)||_t(x)!=tF,ct(tL,x))U n=_n(x);A z=an(n,tL);CO F*p=(CO F*)_V(x);L*o=_L(z);
+ F(n,F v=p[i];o[i]=v!=v?NL:__builtin_fabs(v)<0x1p63?(L)(v<0?v-0.5:v+0.5):v>0?WL:NL+1)mr(x);return z;}
+//`minv m: the inverse of a square matrix (a list of n rows of n numbers), Gauss-Jordan in place with partial pivots (n^3:
+//the rows swapped, the columns unscrambled after), as q's inv; a singular one is all 0n, as q's
+__attribute__((noinline,cold)) A minvT(A x){P(_tP(x)||_t(x)!=tA,et(x))U n=_n(x);P(!n,x)F(n,A r=_A(x)[i];P(_tP(r)||!LH(tE,_t(r),tF)||_n(r)!=n,el(x)))
+ F*a=malloc(SZ(F)*(N)n*n+8);U*pv=malloc(SZ(U)*(N)n+8);P(!a||!pv,free(a);free(pv);x(0))F(n,A r=cF(_R(_A(x)[i]));CO F*q=(CO F*)_V(r);MC(a+(N)i*n,q,SZ(F)*n);mr(r))
+ B s=0;for(U i=0;i<n;i++){U k=i;F b=0;for(U j=i;j<n;j++){F v=__builtin_fabs(a[(N)j*n+i]);if(v>b){b=v;k=j;}}
+  if(!(b>0)){s=1;break;}
+  pv[i]=k;if(k!=i)for(U j=0;j<n;j++){F t_=a[(N)i*n+j];a[(N)i*n+j]=a[(N)k*n+j];a[(N)k*n+j]=t_;}
+  F*RES p=a+(N)i*n;F d=1/p[i];p[i]=1;for(U j=0;j<n;j++)p[j]*=d;
+  for(U r=0;r<n;r++){if(r==i)continue;F*RES q=a+(N)r*n;F f=q[i];if(f!=0){q[i]=0;for(U j=0;j<n;j++)q[j]-=f*p[j];}}}
+ if(!s)for(U i=n;i-->0;)if(pv[i]!=i){U k=pv[i];for(U r=0;r<n;r++){F*q=a+(N)r*n;F t_=q[i];q[i]=q[k];q[k]=t_;}}   //a row swap of the matrix is a column swap of its inverse
+ A z=aA(n);F(n,A r=an(n,tF);F*q=_F(r);Fj(n,q[j]=s?NF:a[(N)i*n+j])_A(z)[i]=r)free(a);free(pv);mr(x);return z;}

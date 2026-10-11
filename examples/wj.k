@@ -17,7 +17,7 @@ w:(tt-WIN;tt)                                    / w=(begins;ends), one pair per
 
 / per-window quote aggregates.  each agg is (name; fn; quote-column):
 aggs:((`bid;last;`bid);(`ask;last;`ask);(`hi;max;`ask);(`lo;min;`bid);(`nq;{#x};`bid))
-r:wj[w;`sym`time;trades;quotes;aggs]             / trade cols + the 5 window aggs
+r:wj[w;`sym`time;trades;(quotes;aggs)]             / trade cols + the 5 window aggs
 
 `0:"Window join: each trade + quote stats over the trailing ",($WIN%1000)," s\n"
 `0:"trades=",($#trades),"  quotes=",($#quotes),"\n"

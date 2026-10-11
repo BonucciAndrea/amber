@@ -195,7 +195,7 @@ A2 _1,aA2,aM,add,am,psh,ari,bin,ct,cat,cat10,cat11,dlr,dex,dot,dvd,eql,exc,crt,f
 A3 _2,aA3,arf,arp,arpF,ars,cpl,e2,r2,try;
 A4 ara,a4,d4;
 AX _8,e8,f8,prj,run;
-AA a8,d8,ins,no8,ins8,ech8,bng,fredC,fmaC,fmsC;
+AA a8,a8q,d8,ins,no8,ins8,ech8,bng,fredC,fmaC,fmsC;
 TD A TAU(U);TAU aA0,aA,aB,aG,aC,aF,aI,aL,aS,gns,emp;
 TD A TAL(L);TAL al,az,cls,rndF;
 TD A TALA(L,A);TALA drp,rnd,rsz;
@@ -313,7 +313,7 @@ enum                 {tA=1,tE,tB,tG,tH,tI,tL,tF,tC,tS,tM,tm,ti,tl,tf,tc,ts,to,tp
 #define ax(v,k) (Lt(tx)|(W)(k)<<48|(W)(v)<<16>>16)
 #define V_ A1*v1[]={sam,flp,neg,fir,sqr,til,whr,rev,asc,dsc,grp,not,enl,nul,len,flr,str,unq,typ,val,u0c,u1c,u2c,las,imn,imx,out,srtC,srtdC,en,en,en};\
            A2*v2[]={dex,add,sub,mul,dvd,exc,mnu,mxu,ltu,gtu,eql,mtc,cat,crt,hsh,und,dlr,que, _1,dot,v0c,v1c,v2c,dex,dex,dex,dex,cmprC,no2,no2,ins2,ech2};\
-           AA*v8[]={no8,no8,no8,no8,no8,bng,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,ins, a8, d8,no8,no8,no8,no8,no8,no8,no8,fredC,fmaC,fmsC,ins8,ech8};\
+           AA*v8[]={no8,no8,no8,no8,no8,bng,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,no8,ins,a8q, d8,no8,no8,no8,no8,no8,no8,no8,fredC,fmaC,fmsC,ins8,ech8};\
          CO C vc[]={':','+','-','*','%','!','&','|','<','>','=','~',',','^','#','_','$','?','@','.','0','1','2','3','4','5','6',0};
 // amber 2.1: verb slots 27..31 have no source character; they are reached only
 // through bytecode the compiler emits for recognised idioms (src/b.c cr()):
@@ -325,6 +325,8 @@ enum                 {tA=1,tE,tB,tG,tH,tI,tL,tF,tC,tS,tM,tm,ti,tl,tf,tc,ts,to,tp
 enum         {au=Lt(tu),FLP,NEG,FIR,SQR,TIL,WHR,REV,ASC,DSC,GRP,NOT,ENL,NUL,LEN,FLR,STR,UNQ,TYP,VAL,U0C,U1C,U2C,LAS,IMN,IMX,OUT,SRT,SRTD,
               av=Lt(tv),ADD,SUB,MUL,DVD,EXC,MNM,MXM,LTN,GTN,EQL,MTC,CAT,CRT,RSH,UND,DLR,QUE,AP1,DOT,V0C,V1C,V2C,V3C,V4C,MKL,GAP,FUS1,FUS2,FUS3,INS,ECH,
               aw=Lt(tw)};
+#define DOL (aw+30)   //Amber 2.7.3: the loop nodes p.c builds for q's do[n;..] and while[c;..], compiled by cr (b.c); printed as do, while
+#define WHL (aw+31)
 #define NFL 0x7ff8000000000000ll
 #define WFL 0x7ff0000000000000ll
 #define NF (*(F*)A(NFL))

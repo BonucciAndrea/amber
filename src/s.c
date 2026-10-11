@@ -102,5 +102,5 @@ X1(kst,R_(x(aCz("???")))
  Rr(x=val(x);A y=_R(xy),u=Ny(kw(fir(x)));cat11(u,Nu(str(y))))   //a formatter's error passes up
  Ru(apc(kst(au^av^x),':'))
  Rv(P(x==GAP,emp(tC))P(x==INS,aCn((S)"insert",6))P(x==ECH,aCn((S)"each",4))A y=aCn(vc+xv,1);xv<20?y:apc(y,':'))
- Rw(aCn(&"':/:\\:"[xv%3*2],1+xv/3)))
+ Rw(P(x==DOL,aCn((S)"do",2))P(x==WHL,aCn((S)"while",5))aCn(&"':/:\\:"[xv%3*2],1+xv/3)))
 A1(out,P(x==au,x)A s=xtA&&1<xn?({A e=ek(xR);e?par(jC("\n ",2,e)):0;}):kst(xR);P(!s,epr(0);x)s=v0c(ai(1),s);P(!s,epr(0);x)mr(s);x)   //a formatter's error, or the write's ('io: stdout closed): printed (the caller frees x)

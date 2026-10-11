@@ -13,9 +13,9 @@ LOAD DIR,"/harness.k"
 / ---- the table of globals holds 65536; past that, 'limit, not the end of the process (issue #9) ----
 GE:{(x?"\n")#x}
 t[`globalsMany;#{.("gv",($x),":1")}'!5000;5000]
-t[`globalsFull;.[{{.("gw",($x),":1")}'!70000};,0;GE];"'limit"]
-t[`globalsFullCompile;.[.:;,"{gzz+1}";GE];"'limit"]
-t[`globalsFullAmend;.[{.[`gzz;();:;1]};,0;GE];"'limit"]
+t[`globalsFull;.[{{.("gw",($x),":1")}'!70000};,0;GE];"limit"]
+t[`globalsFullCompile;.[.:;,"{gzz+1}";GE];"limit"]
+t[`globalsFullAmend;.[{.[`gzz;();:;1]};,0;GE];"limit"]
 t[`globalsStillThere;(gv4999;gw1);1 1]
 
 hexpect[5]

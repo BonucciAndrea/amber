@@ -34,7 +34,13 @@ A drp(L n,A x/*1*/)_(P(!_tP(x)&&_tT(x)&&!_n(x)&&xt!=tE,x)X(   /*2.7: nothing to 
  R_(P(n==NL,rs0(x))L m=xn;n=MAX(-m,MIN(m,n));P(-n<(W)m&&MINE(x),_at(x)=0;I(xtA,mrn(-n,xA+m+n);return sqz(AN(m+n,x)))AN(m+n,x))   /*2.7: the attribute goes, as in q*/x(slc(x,MAX(0ll,n),m+MIN(0ll,n)))))0)   //In place, a general list is squeezed too, as the copy path does (digest #28)
 Z A rmv(A x/*1*/,L i)_(XB(rmv(cG(x),i))X(RT_E(P(i>=(W)xn,x)A y=an(xn-1,xt);U w=xw-3;MC(yV,xV,i<<w);MC(yV+(i<<w),xV+(i+1<<w),xn-i-1<<w);I(xtA,I(!yn,yx=mkn(_R(xx)))y=sqz(mRa(y)))x(y))
  RM(A y=kv(&x);y=Nx(y(l2f(und,y,az(i))));aM(x,y))RE(rmv(gZ(x),i))R_(et(x)))0)
-Z A2(cut,/*01*/Q(xtZ)Q(ytMT)K2("{y$[|/0<':x,#y;`err\"domain\";x+!'1_-':x,#y]}",x,y))
+//Amber 2.7.3: a cut of a typed list copies each piece out of it, one allocation a piece (the K below made an index list a
+//piece and indexed with it: 3 cut of 1M ints was 25 ms, q's 7). Starts that fall or leave the list: the K's errors
+Z NI __attribute__((cold)) A cutC(A x,A y){A l=cL(_R(x));P(!l,(A)0)U n=_n(l),m=yn;CO L*s=_L(l);UC w=yw-3;CO UC*p=(CO UC*)yV;
+ F(n,L a=s[i],b=i+1<n?s[i+1]:(L)m;I(a<0||b<a||b>(L)m,mr(l);return 0))
+P(!n,mr(l);y(emp(tA)))   //no pieces: (), as before (aA(0) has no prototype)
+ A z=aA(n);F(n,L a=s[i],b=i+1<n?s[i+1]:(L)m;A v=an((U)(b-a),yt);MC(_V(v),p+((W)a<<w),(W)(b-a)<<w);_A(z)[i]=v)mr(l);mr(y);return z;}
+Z A2(cut,/*01*/Q(xtZ)Q(ytMT)I(!_tP(y)&&LH(tG,yt,tS),A r_=cutC(x,y);I(r_,return r_))K2("{y$[|/0<':x,#y;`err\"domain\";x+!'1_-':x,#y]}",x,y))
 A2(und,/*01*/
  Xz(drp(gl_(x),y))
  XU(flt(x,y,0))
@@ -42,7 +48,7 @@ A2(und,/*01*/
   Zz(y(0);y=Nz(und(xx,zR));z=Ny(und(xy,z));am(y,z))ZZ(z(0);K2("_/",x,y))z(en(y)))
  P(xtZ&&ytMT,cut(x,y))
  P(xtMT&&ytz,rmv(xR,gl(y)))
- Ym(K2("{((!y)^x)#y}",x,y))
+ Ym(K2("{$[#x;((!y)@&^((),x)?!y)#y;y]}",x,y))
  YM(flp(N(und(x,flp(y)))))
  et(y))
 X1(enl,R5(ti,tl,tf,tc,ts,x(aV(TT[xt],1,TP(xt)?&x:xV)))Rm(A y=kv(&x);aM(x,e1f(enl,y)))R_(aA1(x)))
@@ -72,10 +78,10 @@ Z B insc(A c,A w)_(F(_n(c),P(!insk(_A(c)[i],0,_A(w)[i]),0))1)   //each of t's co
 //a row dict's values v into t's n columns c: as insk, item by item, its type read once where v is typed
 Z B insr(A c,A v,U n){CO A*p=_A(c);UC t=_t(v);if(t!=tA){UC k=insq(t);if(!k)return 0;F(n,UC u=_t(p[i]);P(u==tA?!insk(p[i],t,0):insq(u)!=k,0))return 1;}
  CO A*q=_A(v);F(n,A e=q[i];P(!insk(p[i],_tt(e)?_t(e):0,0),0))return 1;}
-Z A insx(A x,A y/*01*/)_(A r=K("{[t;r]q:`m=@t;k:$[q;!!t;0#`];u:$[q;+(+!t),+.t;t];c:!u;r:$[|/`m`M=@r;r;&/{(\"a\"<*$@x)&~`m=@x}'r;c!r;+c!r];"
-  "e:(`m=@r)&~`M=@!r;s:$[`M=@r;r;e;,r;+(+!r),+.r];d:!s;m:c^d;"
-  "$[#d^c;`mismatch;#j:m^m^k;*j;(#s)&~&/{$[`A=@x;$[#x;$[(|/`d`t`n=@*x)&&/(@*x)=@'x;&/(@*x)=@'y;1];1];(@x)~@y]}'[(+u)d;(+s)d];`type;"
-  "[s:c#$[#m;+(+s),m!{x@y#0N}[;#s]'(+u)m;s];$[q;$[|/~^(!t)?j:k#s;`insert;((!t),j)!(.t),(c^k)#s];u,s]]]}",xR,y);P(r&&_ts(r),err0(su(_v(r))))r)   //a symbol: its error, raised here, at insert
+Z A insx(A x,A y/*01*/)_(A r=K("{[t;r]x:{$[#y;x@&^y?x;x]};q:`m=@t;k:$[q;!!t;0#`];u:$[q;+(+!t),+.t;t];c:!u;r:$[|/`m`M=@r;r;&/{(\"a\"<*$@x)&~`m=@x}'r;c!r;+c!r];"
+  "e:(`m=@r)&~`M=@!r;s:$[`M=@r;r;e;,r;+(+!r),+.r];d:!s;m:x[c;d];"
+  "$[#x[d;c];`mismatch;#j:x[m;x[m;k]];*j;(#s)&~&/{$[`A=@x;$[#x;$[(|/`d`t`n=@*x)&&/(@*x)=@'x;&/(@*x)=@'y;1];1];(@x)~@y]}'[(+u)d;(+s)d];`type;"
+  "[s:c#$[#m;+(+s),m!{x@y#0N}[;#s]'(+u)m;s];$[q;$[|/~^(!t)?j:k#s;`insert;((!t),j)!(.t),x[c;k]#s];u,s]]]}",xR,y);P(r&&_ts(r),err0(su(_v(r))))r)   //a symbol: its error, raised here, at insert
 //the rest of insert: everything but a row dict or a table of t's columns in t's order into an unkeyed t (ins2)
 ZN A insS(A x,A y/*01*/)_(P(_tP(x)||_tP(y),cat(x,y))B k=xtm&&_tM(xx);P(!xtM&&!k,cat(x,y))
  P(_t(y)<tM,U n=k?_n(_x(xx))+_n(_x(xy)):_n(xx);P(!_n(y),cat(x,y))P(_N(y)-n,y(el0()))insx(x,y))   //a list of values: one per column, by position
@@ -87,7 +93,9 @@ ZN A insS(A x,A y/*01*/)_(P(_tP(x)||_tP(y),cat(x,y))B k=xtm&&_tM(xx);P(!xtM&&!k,
  insx(x,y))
 //the plain case first, and nothing else here: a row dict, or a table, of an unkeyed t's columns in t's order whose
 //items surely fit them is t,r, after one look at each column; the rest goes to insS
+Z NI __attribute__((cold)) A insg(A x,A y)_(K2("{[t;r]n:#v:. t;.[t;();:;v insert r];n+!(#. t)-n}",x,y))   //`t insert r (ins2; out of line)
 A2(ins2,/*01*/I(!_tP(x)&&!_tP(y)&&xtM,A s=xx;I(ytm?insn(s,yx)&&insr(xy,yy,_n(s)):ytM&&insn(s,yx)&&(!yN||insc(xy,yy)),return cat(x,y)))
+ P(_ts(x),insg(x,y))   //Amber 2.7.3: `t insert r inserts into the global t and gives the new rows' indices, as q
  insS(x,y))
 A2(cat10,
  XE(cat10(gZ(x),y))
@@ -129,7 +137,9 @@ Z A insL(A x,L i,L j,A y/*1ij0*/)_(
 // as q (#83 Q3); 0: x is not 0s and 1s, a splice, which stops at x's first other item. x is read as before, an item at a time
 Z I vc01(A x,A y,A z){U n;P(_tP(x)||!LH(tB,_t(x),tL),0)n=_n(x);I f=!(_tP(y)||_tt(y)||_N(y)==n)||!(_tP(z)||_tt(z)||_N(z)==n);
  UC t=_t(x);F(n,L v=t==tB?(L)(((CO UC*)_V(x))[i>>3]>>(i&7)&1):t==tG?(L)((CO G*)_V(x))[i]:t==tH?(L)((CO H*)_V(x))[i]:t==tI?(L)((CO I*)_V(x))[i]:((CO L*)_V(x))[i];P(v!=0&&v!=1,0))return 1+f;}
+Z NI __attribute__((cold)) A ins3b(A x,A y,A z)_(L c=gl_(x);P(c&-2,(A)0)mr(x);_R(c?y:z))   //?[1b;a;b]: a or b; 0 for another int (ins3; out of line)
 A3(ins3,/*100*/
+ I(_tz(x),A r_=ins3b(x,y,z);I(r_,return r_))   //Amber 2.7.3: ?[1b;a;b] with one boolean is a or b, as q (it was 'type)
  I k=vc01(x,y,z);P(k,P(k>1,el(x))K("{[c;a;b]t:{(\"a\"<*$@x)&~`m=@x};b:$[t b;(#c)#b;b];$[(#c)=#b;;`err\"length\"];w:&c;@[b;w;:;$[t a;a;(#c)=#a;a w;`err\"length\"]]}",x,_R(y),_R(z)))   //2.7: q's vector conditional ?[c;a;b] when c is booleans; t is amber.k's isat, inlined so the bare core needs no library
  Xmt(et(x))
  Zmt(z=enl(zR);z(ins3(x,y,z)))

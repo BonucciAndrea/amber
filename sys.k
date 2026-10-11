@@ -27,12 +27,13 @@ Q.n:"0123456789"
 Q.a:"abcdefghijklmnopqrstuvwxyz"
 Q.A:"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 Q.s1:{`k x}                                 / one line of text, as q's .Q.s1
-Q.f:{[n;x]$round[n;x]}                     / format x to n decimals -> string
-Q.fmt:{[w;n;x]w$$round[n;x]}               / format to width w, n decimals
+Q.f:{[n;x]r:$round[n;x];$[n;r;r like"*.0";-1_r;r,"."]}   / format x to n decimals -> string (0 decimals keeps the dot, as q: "3.")
+Q.fmt:{[w;n;x](0-w)$Q.f[n;x]}               / format to width w, n decimals, right-aligned as q
 Q.s:{"\n"/amfmt x}                         / show as a string
 Q.ty:{@x}                                  / type of x
 Q.qt:{`M=@x}                               / is x a table?
-Q.id:{`$@[x;&~{((y>64)&y<91)|((y>96)&y<123)|((y>47)&y<58)|y=95}[;0+x]!#x;:;"_"]}  / sanitise a name
+Q.idc:{x:x@&{((x>64)&x<91)|((x>96)&x<123)|((x>47)&x<58)|x=95}0+x;$[(#x)&(*x)in"0123456789";"a",x;x]}
+Q.id:{$[`s~@x;`$Q.idc@$x;`S~@x;Q.id'x;`M~@x;xcol[Q.id cols x;x];`$Q.idc x]}   / a name with only letters, digits and _ (one starting with a digit gets an a), as q; a table: its columns
 Q.dd:{`$($x),".",$y}                       / dotted join  Q.dd[`a;`b] -> `a.b
 Q.gc:{0}                                   / garbage collect (no-op here)
 Q.w:{`used`heap`peak!0 0 0}                / workspace memory (placeholder)

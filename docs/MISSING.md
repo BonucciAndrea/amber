@@ -127,7 +127,10 @@ the `'` signal and the `@[f;x;h]` trap (a handler gets the error's text alone, `
 with their dot, `0W` and the `h i j` suffixes, `` `a.b `` symbols, `n!t`, `xcol`, `cut`, `bin`/`binr`,
 `avgs`, `md5`, `tan asin acos atan`, `tables[]`, `fkeys`, `ss` of one char (and no overlaps), `7 mod -3`,
 `0!kt`, `any ()`, `string 1.0`, the column a `wavg` gets its name from, q's `meta`, and `wj`/`wj1` in
-q's form, `wj[w;c;t;(q;(f;c);..)]` (an agg may also be `(name;f;c)`).
+q's form, `wj[w;c;t;(q;(f;c);..)]` (an agg may also be `(name;f;c)`). A second run of 970 more lines added
+`f [x;y]` with a blank before the bracket, `.z.s`, `'[f;g]`, symbols that start with a digit (`` `7 ``), `til -1`
+'domain, q's `x mod y` for an int by a float, item-by-item fill of general lists, `select[n]` in a lambda, a
+comparison's column named `x` (`select v>2` gives `x`, as q), and `.Q.fmt` `.Q.f` `.Q.id` as q.
 
 What stays as it was, on purpose:
 
@@ -138,6 +141,8 @@ What stays as it was, on purpose:
 - **No month, minute, second, timespan, datetime or guid types**: `` `month$ `` and friends are `'nyi`,
   and a time minus a time is an int of ms. `0Nd` and `"D"$` of a bad date have no null date to give.
 - **No byte, short, int (32-bit) or real types**: `1h` `1i` read as `1`, `0x01` is a char.
+- **Errors are named Amber's way**: an undefined name is `'value` (q names it), `.j.k` of bad text is `'parse`.
+- **`-8!` is Amber's own format**, not q's wire format; `value` of a lambda gives Amber's pieces, not q's.
 
 ## 4. On-disk data (HDB): partial (`hdb.k`)
 **Since 2.7:** Binary column files that map straight into memory, in q's layout: `` `:db/t/ set t ``

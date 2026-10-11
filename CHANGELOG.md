@@ -20,6 +20,9 @@ qSQL uses the threads now, and group-by on symbols got a lot quicker on one thre
   (`` `long$ `` `"J"$` `` `date$ `` `` `year$ ``...), `upsert`, `` `t insert ``, `n!t`, `xcol`, `cut`, `bin`, `avgs`,
   `inv`, `md5`, `.Q.n` with its dot, and qSQL in a lambda sees its args and locals. Fixed quiet wrong answers:
   `x<>y`, `"hello" ss "l"`, `1 2 3^0N 5 0N`, `7 mod -3`, `0!kt`, `mmu` of vectors, q-style `wj`. Not slower.
+- **And a second round**: `f [x;y]` with a blank before the bracket, `.z.s`, `'[f;g]`, `` `7 `` symbols, `til -1` is
+  'domain, `x div 0` 0N in a list too, `5 mod 2.5` as q, two general lists fill item by item, `select[n]` in a lambda,
+  a comparison's column is `x`, `.Q.fmt` right-aligns, `.Q.id` of a symbol. Int `div` by a list got 20% quicker.
 - **Changed**: `type` gives q's numbers (`@x` the letter), `wj`/`wj1` take `(q;aggs..)`, two lists the same
   length fill with `^` (else it's still except), and a trap's handler gets just the message (`"type"`).
   An int list against a number past its width gives a byte mask, so an empty `where` is 50x quicker.

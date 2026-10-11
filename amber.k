@@ -10,7 +10,8 @@ not:{~x}
 Q.ne:{~x=y}                                     / q's x<>y, x>=y, x<=y: the parser reads them after a noun as these (src/p.c)
 Q.ge:{~x<y}
 Q.le:{~x>y}
-Q.sig:{`err$[`s~@x;$x;`c~@x;,x;x]}            / q's signal '"boom" or '`boom (the parser reads a ' that starts an expression as this)
+Q.sig:{`err$[`s~@x;$x;`c~@x;,x;x]}
+Q.cmp:{[f;g]{[f;g;x]f g x}[f;g]}                / q's composition '[f;g] (the parser reads a ' then [ that starts an expression as this)            / q's signal '"boom" or '`boom (the parser reads a ' that starts an expression as this)
 null:{^x}
 reciprocal:{1%x}
 sqrt:{%x}
@@ -26,7 +27,7 @@ tan:{`tan x}
 asin:{`asin x}
 acos:{`acos x}
 atan:{`atan x}
-til:{!x}
+til:{$[`i~@x;$[x<0;`err"domain";!x];!x]}   / til -1 is 'domain, as q
 enlist:{,x}
 string:{$[(@x)in`f`F`i`I;`qst x;`A~@x;string'x;$x]}   / numbers as q prints them: 1.0 is "1", 0N "", floats to 7 digits (`qst, src/w.c)
 qtyn:`i`I`f`F`c`C`s`S`d`t`n`A`m`M`o`u`v`w`p`q`r`x!-7 7 -9 9 -10 10 -11 11 -14 -19 -12 0 99 98 100 101 102 103 104 105 106 112
@@ -42,9 +43,9 @@ where:{&x}
 flip:{$[`m~@x;$[`M~@!x;+x;&/isat'. x;`err"rank";+x];1=#x;$[isat x;`err"rank";+x];+x]}   / A dict of atoms: 'rank as q (+ makes one-row columns)
 count:{#x}
 mod:{$[`i~@y;$[y>0;y!x;y<0;0-(0-y)!0-x;$[isat x;$[`f~@x;0n;0N];(#x)#$[`F~@x;0n;0N]]];qmd[x;y]]}   / q's: the sign of the divisor (7 mod -3 is -2), 0N by 0
-qmd:{[x;y]$[|/((@x),@y)in`f`F;x-y*_x%y;[r:x-y*idiv[x;y];$[|/0=y;@[r;&0=y;:;0N];r]]]}   / a float or a list divisor
+qmd:{[x;y]$[(@y)in`f`F;$[(@x)in`f`F;x-y*_x%y;x-y*div[x;y]];(@x)in`f`F;x-y*_x%y;[r:x-y*idiv[x;y];$[|/0=y;@[r;&0=y;:;0N];r]]]}   / a float or a list divisor
 idivv:{[x;y]x:$[`i~@x;(#y)#x;x];n:(^x)|^y;x0:0^x;y0:1^y;z:&y0=0;s:y0<0;x1:x0*1-2*s;y1:1|y0*1-2*s;q:_x1%y1;r:x1-q*y1;d:_r%y1;q:q+d;r:r-d*y1;q:q-r<0;r:x1-q*y1;q:q+~r<y1;q:@[q;z;:;0N];@[q;&n;:;0N]}   / ints by an int vector, exactly: the float quotient, corrected by the exact (wrapped) remainder
-idiv:{$[(`I~@y)&~^`i`I?@x;$[#y;$[&/~^x,y;$[&/9007199254740992>{x|-x}x,y;_x%y;idivv[x;y]];idivv[x;y]];_x%y];~`i~@y;_x%y;^`i`I?@x;_x%y;^y;$[`i~@x;0N;(#x)#0N];y=0;$[`i~@x;0N;(#x)#0N];y<0;idiv[-x;-y];[r:$[y=8;(-4)!(-2)!x;y=9;(-3)!(-3)!x;(-y)!x];$[`i~@x;$[^x;0N;r];0N=&/x;@[r;&^x;:;0N];r]]]}   / floor division, exact for ints over an int or ints (-8! -9! are other verbs); else through the float quotient
+idiv:{$[(`I~@y)&~^`i`I?@x;$[#y;$[(&/~^y)&&/~^x;$[(&/9007199254740992>{x|-x}x)&(0<&/a)&&/9007199254740992>a:{x|-x}y;_x%y;idivv[x;y]];idivv[x;y]];_x%y];~`i~@y;_x%y;^`i`I?@x;_x%y;^y;$[`i~@x;0N;(#x)#0N];y=0;$[`i~@x;0N;(#x)#0N];y<0;idiv[-x;-y];[r:$[y=8;(-4)!(-2)!x;y=9;(-3)!(-3)!x;(-y)!x];$[`i~@x;$[^x;0N;r];0N=&/x;@[r;&^x;:;0N];r]]]}   / floor division, exact for ints over an int or ints (-8! -9! are other verbs); else through the float quotient
 div:{$[(@x)in`f`F;fdiv0[x;$[`i~@y;$[^y;0n;y];`I~@y;@[`f$y;&^y;:;0n];y]];(@y)in`f`F;idiv[x;rnd0 y];idiv[x;y]]}   / as q: an int by a float divisor rounds it; a float dividend floors as a float
 rnd0:{`rnd x}   / round half away from zero, as q's `long$ of a float (`rnd, src/w.c: one pass)
 fdiv0:{q:x%y;r:`f$_q;$[`f~@q;$[(^q)|^_q;0n;r];@[r;&^q;:;0n]]}   / floor of a float quotient through an int, kept a float, as q does
@@ -489,7 +490,7 @@ repl.amfmt:amfmt
 qtn:`boolean`byte`short`int`long`real`float`char`symbol`timestamp`month`date`datetime`timespan`minute`second`time`guid!"bxhijefcspmdznuvtg"
 qcst:{[t;y]$[`c~@t;qcc[t;y];" "~c:qtn t;qcp[t;y];qcc[c;y]]}
 qcc:{[c;y]$[c="*";y;c<"a";qcpa[c;y];(`A~@y)&0=#y;$[c in"bxhij";!0;c in"ef";0#0.0;c="c";"";c="s";0#`;y];`A~@y;qcc[c]'y;`m~@y;(!y)!qcc[c;. y];qcv[c;y]]}
-qcpa:{[c;y]$[c in"JIH";`I$y;c in"FE";`F$y;c="S";`$y;c in"DTP";$[`A~@y;c$'y;`err"type"];`c~@y;qcpa[c;,y];`A~@y;qcpa[c]'y;c="B";$[#y;(*y)in"1tTyY";0];`err"nyi"]}
+qcpa:{[c;y]$[~(@y)in`C`c`A;`err"type";c in"JIH";`I$y;c in"FE";`F$y;c="S";`$y;c in"DTP";$[`A~@y;c$'y;`err"type"];`c~@y;qcpa[c;,y];`A~@y;qcpa[c]'y;c="B";$[#y;(*y)in"1tTyY";0];`err"nyi"]}
 qcv:{[c;y]k:@y;$[c="b";~0=$[k in`d`t`n;`i$y;y];c in"xhij";$[k in`f`F;rnd0 y;k in`c`C`d`t`n;`i$y;k in`i`I;y;`err"type"];c in"ef";$[k in`f`F;y;k in`i`I;`f$y;k in`c`C`d`t`n;`f$`i$y;`err"type"];c="c";$[k in`c`C;y;k in`i`I;`c$y;`err"type"];c="s";$[k in`s`S;y;k in`c`C;`$y;`err"type"];c="d";$[k~`d;y;k~`n;`mkd tsdate`i$y;k~`i;`mkd y;k~`I;`mkd'y;`err"type"];c="t";$[k~`t;y;k~`n;`mkt tsms`i$y;k~`i;`mkt y;k~`I;`mkt'y;`err"type"];c="p";$[k~`n;y;k~`d;`mkp 86400000000000*`i$y;k~`i;`mkp y;k~`I;`mkp'y;`err"type"];`err"nyi"]}
 qcp:{[t;y]k:@y;$[`A~@y;qcp[t]'y;t~`year;year y;t~`mm;$[k~`t;tmm y;k~`n;month y;month y];t~`dd;day y;t~`hh;$[k~`n;thh`mkt tsms`i$y;thh y];t~`uu;$[k~`n;tmm`mkt tsms`i$y;tmm y];t~`ss;$[k~`n;tss`mkt tsms`i$y;tss y];t~`week;[d:$[k~`n;tsdate`i$y;`i$y];`mkd d-7!d+5];`err"domain"]}
 md5:{`md5 x}                                    / its 16 bytes, as q (a char vector: Amber has no byte type)

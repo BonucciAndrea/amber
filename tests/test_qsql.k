@@ -701,9 +701,9 @@ tqa[`tlitUpdBy;     "update c:count n by time>09:35 from TT"; {(+x)`c};        2
 tqa[`tlitStampBy;   "select c:count n by ts>2026.01.02D09:30 from TV"; KV;     (0 1;2 2)];
 tq[`tlitStampExec;  "exec ts>2026.01.02D09:30:00.000000000 from TV";          0 0 1 1];
 / such an item takes Amber's name, the first name in it (x if it starts with a literal), not q's x: pinned on purpose
-tqa[`tlitSelName;   "select time>09:35 from TT"; CL;                          ,`time];
+tqa[`tlitSelName;   "select time>09:35 from TT"; CL;                          ,`x];   / a comparison is named x, as q (2.7.3)
 tqa[`tlitSelNameX;  "select 09:35<time from TT"; CL;                          ,`x];
-tqa[`tlitUpdName;   "update time>09:35 from TT"; CL;                          `time`n];
+tqa[`tlitUpdName;   "update time>09:35 from TT"; CL;                          `time`n`x];   / as q: a new column x
 
 / a query inside a where-clause runs as one, as q's (on globals, as the string forms see)
 TW:([]n:2 3 4)

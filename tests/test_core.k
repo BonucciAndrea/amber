@@ -680,7 +680,7 @@ t[`jsonInfNan;(`j@0w;`j@-0w;`j@0n;`j@1.0 0w -0w 0n);("null";"null";"null";"[1,nu
 / Digest #7: bits looked for are widened to bytes (they were read as ints: wrong rows, reads past the end)
 t[`findBits;((,1)?0101010101B;(,0)?0101b;1 0?0101b;(,1)?0#01b);(0N 0 0N 0 0N 0 0N 0 0N 0;0 0N 0 0N;1 0 1 0;!0)]
 t[`exceptBits;(0101010101B^1;11B^1;0101010101B^0;11B^0);(00000b;0#01b;11111b;11b)]
-t[`exceptMixed;((0;" ")^0;(0;" ")^" ";(1;"a";`b)^"a";(1;"a")^1 2;(1;"a")^(1;"a");(1;"a";2)^1;(1;"a")^!0);(," ";,0;(1;`b);,"a";!0;("a";2);(1;"a"))]   / digest #64: a general list's chars against numbers are kept, not 'type
+t[`exceptMixed;((0;" ")^0;(0;" ")^" ";(1;"a";`b)^"a";(1;"a")^1 2;(1;"a")^(1;"a");(1;"a";2)^1;(1;"a")^!0);(," ";,0;(1;`b);,"a";(1;"a");("a";2);(1;"a"))]   / digest #64: a general list's chars against numbers are kept, not 'type; two general lists of one count fill, as q (2.7.3)
 / a range is its items: except between a range and chars removes nothing, as for the ints written out (2.7.2: 'type)
 tv[`exceptRangeChars;"((!3)^\"a\";(1+!3)^\"a\";(!1)^\"\";(!3)^\"ab\")";(0 1 2;1 2 3;,0;0 1 2)]
 tv[`exceptCharsRange;"(\"abc\"^!2;\"abc\"^1+!2)";("abc";"abc")]

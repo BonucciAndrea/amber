@@ -60,7 +60,7 @@ Z A0(pC,C a[1<<9];U n=0;C c=*++s;A x=0;                                         
 Z A0(p0x,S p=s;W(CA9(*p),p++)A x=N(unhC(s,p-s));s=p;x)                                              //parse 0x string
 // amber 2.7: `:path/to/file is one symbol, as in q: after `: come letters, digits and . / _ - :
 Z B pfh(C d)_(CA9(d)||d=='.'||d=='/'||d=='_'||d=='-'||d==':')
-Z A0(ps,S p=s;C c=*s;I(id0(c),s=pID(s))J(c>>7,W(*++s<-64)s+=*s==':')J(c==':',W(pfh(*++s)))aCm(p,s))  //parse symbol
+Z A0(ps,S p=s;C c=*s;I(id0(c)||C09(c)&&*pID(s)-':',s=pID(s))J(c>>7,W(*++s<-64)s+=*s==':')J(c==':',W(pfh(*++s)))aCm(p,s))  //parse symbol; Amber 2.7.3: `7 `1a are symbols, as q (`0: `1: stay the verbs)
 Z A0(psy,S p=s;C c=*s;P(c=='.'&&id0(s[1])||id0(c)&&s[pID(s)-s]=='.'&&id0(pID(s)[1]),s=pID(s+(c=='.'));W(*s=='.'&&id0(s[1]),s=pID(s+1))aCm(p,s))ps())   //Amber 2.7.3: a symbol literal `a.b or `.a.b is one symbol, as q (ps stops at the dot: pP reads a name's path with it)
 // amber 2.2: `w` says whether whitespace may PRECEDE an item.
 // A parameter list may: `{[a; b]x}` and `{[ a;b]x}` are ordinary spellings and
@@ -179,6 +179,7 @@ Z A pt(C*v)_(C c=*s;                                                            
    mr(x);return AO(p-s0,r)))
  // Amber 2.7.3: q's .Q.x .j.x .z.x .h.x are Amber's Q.x j.x z.x h.x: the dot in front is dropped (it read as . of Q.x,
  // so .Q.n was the int 123456789 and .j.j x a function)
+ I(c=='.'&&s[1]=='z'&&s[2]=='.'&&s[3]=='s'&&!id1(s[4])&&(s==s0||!id1(s[-1])),S o=s;s+=4;I a[1]={'o'};return AO(o-s0,aV(tS,1,a)))   //.z.s: the lambda itself (o), as q
  I(c=='.'&&s[1]&&strchr("Qjzh",s[1])&&s[2]=='.'&&id0(s[3])&&(s==s0||!id1(s[-1])),c=*++s)
  P(id0(c),S p=s;A x=N(pP());I(s-p==1&&c-'y'<2u,k=MAX(k,c-'w'))
   I((infixkw(p,s-p)||am_infix_dyad(p,s-p))&&*s!=':'&&!isparm(p,s-p)&&!am_name_nonfn(p,s-p),*v=1)AO(p-s0,x))
@@ -193,8 +194,9 @@ Z A pt(C*v)_(C c=*s;                                                            
  I((c=='<'&&(s[1]=='>'||s[1]=='='))||(c=='>'&&s[1]=='='),S q=s;W(q>s0&&(q[-1]==32||q[-1]==9),q--)
   I(q>s0&&(id1(q[-1])||strchr(")]}\"",q[-1])),S o=s;S nm=(S)(c=='>'?"ge":s[1]=='>'?"ne":"le");s+=2;*v=1;I a[2]={(I)us((S)"Q"),(I)us(nm)};return AO(o-s0,aV(tS,2,a))))
  // Amber 2.7.3: q's signal, ' at the start of an expression ('"boom" or '`boom after { [ ( or ;): the function Q.sig
- // (amber.k), which raises it. It was the each adverb on a noun, so {'"boom"} gave back a derived verb, no error
- I(c=='\''&&s[1]-':',S q=s;W(q>s0&&(q[-1]==32||q[-1]==9),q--)I(q==s0||strchr("{[(;\n",q[-1]),S o=s;s++;*v=1;I a[2]={(I)us((S)"Q"),(I)us((S)"sig")};return AO(o-s0,aV(tS,2,a))))
+ // (amber.k), which raises it. It was the each adverb on a noun, so {'"boom"} gave back a derived verb, no error.
+ // '[f;g] there is q's composition: Q.cmp, applied to the bracket by pT
+ I(c=='\''&&s[1]-':',S q=s;W(q>s0&&(q[-1]==32||q[-1]==9),q--)I(q==s0||strchr("{[(;\n",q[-1]),S o=s;B cp=s[1]=='[';s++;*v=!cp;I a[2]={(I)us((S)"Q"),(I)us((S)(cp?"cmp":"sig"))};return AO(o-s0,aV(tS,2,a))))
  U i=si("'/\\",c);P(i<3,c=*++s;B h=c==':';s+=h;*v=1;aw+i+3*h)i=si(vc,c);P(i>19,GAP)
  B u=*++s==':';s+=u;*v=1;Lt(tv-u)|i)
 Z X1(pm,                                                                                            //monadify
@@ -211,7 +213,8 @@ Z X1(pm,                                                                        
 #define PD 512
 Z I pd;                                                                                             //depth of pe() calls in progress
 Z A pT(C*v)_(A x=N(pt(v));U n=0;                                                                    //parse term and the adverbs or square brackets after it (v:verb?)
- W(1,C c=*s;U i=si("'/\\[",c);P(i>3,x)P(pd+ ++n>PD,x(ez0()))s++;
+ W(1,C c=*s;I((c==32||c==9)&&*pw(s)=='[',s=pw(s);c='[')   //Amber 2.7.3: f [x;y] with a blank before the [ applies f, as q (it was f of the block [x;y], its last item)
+  U i=si("'/\\[",c);P(i>3,x)P(pd+ ++n>PD,x(ez0()))s++;
   I(i>2,x=AO(s-1-s0,N(pb(x,']')));I(xn==2,I(xy==GAP,xy=au)J(_tP(xx)&&_t(xx)==tv&&LH(1,_v(xx),15),PSH(x,GAP))E(xx=pm(xx)))*v=0)   //Amber 2.7.3: a verb
   //that takes two (+ - * % ! & | < > = ~ , ^ # _) given one argument in brackets is a projection, as q: (+[1]) 5 is 6 (it was +1, flip)
   E(I c=*s==':';s+=c;x=aA2(aw+i+3*c,x);*v=1))x)

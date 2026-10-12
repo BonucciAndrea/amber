@@ -520,7 +520,7 @@ Z I bdir(S s)_(struct stat st;stat(s,&st)?0:S_ISDIR(st.st_mode)?1:2*!!S_ISFIFO(s
 #else
 Z I bdir(S s)_((V)s;0)
 #endif
-// 2.7.3: the source text of each script being run (a \l inside a script nests), and its qSQL rewrite; \m counts
+// 2.8.0: the source text of each script being run (a \l inside a script nests), and its qSQL rewrite; \m counts
 // them as held (RTS), or a script's \m reported its own text as an object nobody holds. Per thread: peach workers \l too
 Z AM_TLS_IE struct ld{A x,y;struct ld*n;}*ld;
 Z A bsl1(S s)_(I b=bdir(s);P(b==1,K1("{loaddb x;}",aCz(s)))I f=open(s,0,0);A x=b>1?frf(f):u1c(ai(f));close(f);N(x);P(!xn,x(au))C*p=xC,*e=p+xn-1;P(*e-10,x(err0("eoleof")))*e=0;I(*p=='#'&&p[1]=='!',p=strchrnul(p,10);p+=!!*p)struct ld l={x,0,ld};ld=&l;
@@ -559,7 +559,7 @@ Z A bs_(S*p,S t)_(C b[256];S s=*p,e=strchrnul(s,10);P(e<t&&!*e,ed0())P(e-s+1>=L(
  P(!strncmp(b,"trace",5)&&(!b[5]||b[5]==32),bstrc(b+5+(b[5]==32)))
  P(!strncmp(b,"disasm",6)&&(!b[6]||b[6]==32),bsvmd(b+6+(b[6]==32)))
  P(!strncmp(b,"ast",3)&&(!b[3]||b[3]==32),bsast(b+3+(b[3]==32)))
- // 2.7.3: q's \ts (time and space) is \t here. repl.k did this for the terminal only, so a script or the browser
+ // 2.8.0: q's \ts (time and space) is \t here. repl.k did this for the terminal only, so a script or the browser
  // engine took \ts for a shell command, and in the browser that crashed (there is no shell)
  I(c=='t'&&d=='s'&&(!b[2]||b[2]==32||b[2]==':'),{C*q=b+1;W((*q=q[1]),q++)}d=b[1])
  P(!d||d==10||d==32||d==':',G(&bsl,bst,bsd,bsbs,bsf,bsv,bsm,bs0)[si("ltd\\fvm",c)](b+1+(d==32)))

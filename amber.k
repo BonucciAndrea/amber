@@ -483,7 +483,7 @@ show:{`0:amfmt x;}
 
 repl.amfmt:amfmt
 
-/ ---- q compatibility (2.7.3) --------------------------------------------------
+/ ---- q compatibility (2.8.0) --------------------------------------------------
 / q's casts by name or char that $ does not take itself (src/c.c sends them here): "J"$ "F"$ "S"$ "B"$ parse text,
 / `long$ `float$ `date$ .. cast, `year$ `mm$ `dd$ `hh$ `uu$ `ss$ `week$ take a part. Amber has no month, datetime,
 / timespan, minute, second or guid type: those are 'nyi

@@ -525,7 +525,7 @@ t[`timeHoursGrid;tcell[`time;3600000 360000000];("01:00:00.000";"100:00:00.000")
 t[`timeHoursAtoms;stime (01:00:00.000;100:00:00.000;3600000);("01:00:00.000";"100:00:00.000";"01:00:00.000")]   / a list of time atoms, as tsym gives
 t[`stimeMidnightAtom;stime (00:00:00.000;01:00:00.000);("00:00:00.000";"01:00:00.000")]   / midnight is not null (issue #62; it printed as 0N)
 t[`ptimeNeg;(ptime"-00:30:00.000";ptime"-01:00:00");-1800000 -3600000]
-t[`ptimeList;"T"$("09:30:00.100";"10:00:00.000");(09:30:00.100;10:00:00.000)]   / a list of strings: each, as q (2.7.3; it was 'type)
+t[`ptimeList;"T"$("09:30:00.100";"10:00:00.000");(09:30:00.100;10:00:00.000)]   / a list of strings: each, as q (2.8.0; it was 'type)
 t[`timeNegText;`i$"T"$"-00:30:00.000";-1800000]
 / "T"$ of a time past 32 bits of milliseconds is 'limit, as the literal (issue #62; it wrapped)
 t[`timeTextLimit;(.[{"T"$x};,"1000:00:00.000";{(x?"\n")#x}];.[{"T"$x};,"596:31:23.648";{(x?"\n")#x}];`i$"T"$"-596:31:23.648";.[ptime;,"1000:00:00.000";{(x?"\n")#x}]);("limit";"limit";-2147483648;"limit")]
@@ -547,7 +547,7 @@ t[`cosf;cos 0;1.0]
 t[`til;til 5;0 1 2 3 4]
 t[`enlist;#enlist 5;1]
 t[`string;string 42;"42"]
-t[`typef;type 1 2 3;7]   / q's type number (2.7.3)
+t[`typef;type 1 2 3;7]   / q's type number (2.8.0)
 t[`keyf;key`a`b!1 2;`a`b]
 t[`valuef;value`a`b!1 2;1 2]
 t[`first;first 10 20 30;10]

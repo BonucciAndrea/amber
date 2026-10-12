@@ -220,7 +220,7 @@ t[`byBare;     . qrw"select sum sz by sym from trades"; . qrw"select sum sz by s
 / the same); it used to come back as x0 whatever it was computed from.
 tqa[`aggName;    "select last px by sym from trades"; cols; `sym`px];
 tqa[`aggNameSum; "select sum sz by sym from trades";  cols; `sym`sz];
-tqa[`aggNameWide;"select wavg[sz;px] by sym from trades"; cols; `sym`px];   / q names a function's column by its last argument, an operator's by its first (2.7.3; checked against q)
+tqa[`aggNameWide;"select wavg[sz;px] by sym from trades"; cols; `sym`px];   / q names a function's column by its last argument, an operator's by its first (2.8.0; checked against q)
 / wavg by group, fused: a row with a null value or weight adds no weight, as wavg's pairs and q's (it gave 5/3)
 TWN:([]sym:`a`a`a`b;sz:1 2 3 4.0;px:1 0n 3 5.0;iz:1 2 3 4;ip:1 0N 3 5)
 tq[`wavgByNull;    "select v:sz wavg px by sym from TWN";             (+(,`sym)!,`a`b)!+(,`v)!,2.5 5.0];
@@ -701,7 +701,7 @@ tqa[`tlitUpdBy;     "update c:count n by time>09:35 from TT"; {(+x)`c};        2
 tqa[`tlitStampBy;   "select c:count n by ts>2026.01.02D09:30 from TV"; KV;     (0 1;2 2)];
 tq[`tlitStampExec;  "exec ts>2026.01.02D09:30:00.000000000 from TV";          0 0 1 1];
 / such an item takes Amber's name, the first name in it (x if it starts with a literal), not q's x: pinned on purpose
-tqa[`tlitSelName;   "select time>09:35 from TT"; CL;                          ,`x];   / a comparison is named x, as q (2.7.3)
+tqa[`tlitSelName;   "select time>09:35 from TT"; CL;                          ,`x];   / a comparison is named x, as q (2.8.0)
 tqa[`tlitSelNameX;  "select 09:35<time from TT"; CL;                          ,`x];
 tqa[`tlitUpdName;   "update time>09:35 from TT"; CL;                          `time`n`x];   / as q: a new column x
 

@@ -12,7 +12,7 @@ W pu(S*p)_(S s=*p;W v=0;C c=*s;W(C09(c),v=10*v+c-'0';c=*++s)*p-s?*p=s,v:NL)     
 L pl(S*p)_(B m=**p=='-';*p+=m;(L)((W)(1-2*m)*pu(p)))                                                        //parse long
 Z B ovf;                                                                                            //set by plN: an integer literal of 2^63 or more in magnitude
 Z L plN(S*p)_(B g=**p=='-';S t=*p+g;L v=pl(p);W(*t=='0'&&C09(t[1]),t++)I n=*p-t;I(n>19||n==19&&strncmp(t,"9223372036854775807",19)>0,ovf=1)
- v=!v&&**p=='N'?(*p)++,NL:!v&&**p=='W'?(*p)++,g?-WL:WL:v;I(LH('h',**p,'j')&&!id1((*p)[1]),(*p)++)v)   //parse long (with support for nulls); Amber 2.7.3: 0W -0W as q, and q's h i j suffixes (1i 0Nj) read as the int they name
+ v=!v&&**p=='N'?(*p)++,NL:!v&&**p=='W'?(*p)++,g?-WL:WL:v;I(LH('h',**p,'j')&&!id1((*p)[1]),(*p)++)v)   //parse long (with support for nulls); Amber 2.8.0: 0W -0W as q, and q's h i j suffixes (1i 0Nj) read as the int they name
 // amber: pu() signals "no digits consumed" by returning NL, and pl() then
 // propagates that as a full-range long. Feeding it straight into the int
 // exponent accumulator (`e+=pl(&s)`) is signed overflow -- undefined
@@ -60,8 +60,8 @@ Z A0(pC,C a[1<<9];U n=0;C c=*++s;A x=0;                                         
 Z A0(p0x,S p=s;W(CA9(*p),p++)A x=N(unhC(s,p-s));s=p;x)                                              //parse 0x string
 // amber 2.7: `:path/to/file is one symbol, as in q: after `: come letters, digits and . / _ - :
 Z B pfh(C d)_(CA9(d)||d=='.'||d=='/'||d=='_'||d=='-'||d==':')
-Z A0(ps,S p=s;C c=*s;I(id0(c)||C09(c)&&*pID(s)-':',s=pID(s))J(c>>7,W(*++s<-64)s+=*s==':')J(c==':',W(pfh(*++s)))aCm(p,s))  //parse symbol; Amber 2.7.3: `7 `1a are symbols, as q (`0: `1: stay the verbs)
-Z A0(psy,S p=s;C c=*s;P(c=='.'&&id0(s[1])||id0(c)&&s[pID(s)-s]=='.'&&id0(pID(s)[1]),s=pID(s+(c=='.'));W(*s=='.'&&id0(s[1]),s=pID(s+1))aCm(p,s))ps())   //Amber 2.7.3: a symbol literal `a.b or `.a.b is one symbol, as q (ps stops at the dot: pP reads a name's path with it)
+Z A0(ps,S p=s;C c=*s;I(id0(c)||C09(c)&&*pID(s)-':',s=pID(s))J(c>>7,W(*++s<-64)s+=*s==':')J(c==':',W(pfh(*++s)))aCm(p,s))  //parse symbol; Amber 2.8.0: `7 `1a are symbols, as q (`0: `1: stay the verbs)
+Z A0(psy,S p=s;C c=*s;P(c=='.'&&id0(s[1])||id0(c)&&s[pID(s)-s]=='.'&&id0(pID(s)[1]),s=pID(s+(c=='.'));W(*s=='.'&&id0(s[1]),s=pID(s+1))aCm(p,s))ps())   //Amber 2.8.0: a symbol literal `a.b or `.a.b is one symbol, as q (ps stops at the dot: pP reads a name's path with it)
 // amber 2.2: `w` says whether whitespace may PRECEDE an item.
 // A parameter list may: `{[a; b]x}` and `{[ a;b]x}` are ordinary spellings and
 // used to be a bare syntax error pointing at the whole lambda, which is a
@@ -169,7 +169,7 @@ Z A pt(C*v)_(C c=*s;                                                            
  // alone, and `{[r;ss] 1_ss}` or a top-level `ss:5` silently turned a drop into
  // a projection. `*s!=':'` still keeps the name an ordinary lvalue while it is
  // being defined or amended.
- // Amber 2.7.3: q's control words, when a [ follows and the name is not a parameter here. if[c;e;..] is $[c;[e;..];::],
+ // Amber 2.8.0: q's control words, when a [ follows and the name is not a parameter here. if[c;e;..] is $[c;[e;..];::],
  // so a : in it returns from the lambda as in a $[..]; do[n;e;..] and while[c;e;..] are loop nodes (DOL, WHL) that cr
  // compiles with a jump back (bk). They were plain names, so {if[x;:1];2} ran its : before the 'value: a silent early return
  I(c=='i'||c=='d'||c=='w',S p=s,e=pID(s);U n=e-p;I w=n==2&&c=='i'&&p[1]=='f'?1:n==2&&c=='d'&&p[1]=='o'?2:n==5&&!memcmp(p,"while",5)?3:0;
@@ -177,7 +177,7 @@ Z A pt(C*v)_(C c=*s;                                                            
    I(w==1,A b=aA1(GAP);F(m-1,PSH(b,_R(xA[i+2])))I(m>1,PSH(r,b))E(mr(b);PSH(r,au))PSH(r,au))
    E(F(m-1,PSH(r,_R(xA[i+2])))I(m==1,PSH(r,au)))   //a loop always has a body (au at least), so it is never a node of two
    mr(x);return AO(p-s0,r)))
- // Amber 2.7.3: q's .Q.x .j.x .z.x .h.x are Amber's Q.x j.x z.x h.x: the dot in front is dropped (it read as . of Q.x,
+ // Amber 2.8.0: q's .Q.x .j.x .z.x .h.x are Amber's Q.x j.x z.x h.x: the dot in front is dropped (it read as . of Q.x,
  // so .Q.n was the int 123456789 and .j.j x a function)
  I(c=='.'&&s[1]=='z'&&s[2]=='.'&&s[3]=='s'&&!id1(s[4])&&(s==s0||!id1(s[-1])),S o=s;s+=4;I a[1]={'o'};return AO(o-s0,aV(tS,1,a)))   //.z.s: the lambda itself (o), as q
  I(c=='.'&&s[1]&&strchr("Qjzh",s[1])&&s[2]=='.'&&id0(s[3])&&(s==s0||!id1(s[-1])),c=*++s)
@@ -189,11 +189,11 @@ Z A pt(C*v)_(C c=*s;                                                            
   A tlit=c-'-'?pTmp():pTng();P(tlit,pTms(tlit))P(tbad,C b=tbad;tbad=0;b>1?ez0():ep0())
   B d=0,f=1;S p=s;c=*p;W(1,S q=p;p=pw(p);B(!f&&p==q||!num(p))f=0;p+=*p=='-';c=*p;B(!CA9(c))W(CA9(c)||c=='.'||c==':',d|=!!strchr(".nwef",c);c=*++p))p1(d?pF():pZ()))
  P(c>>7,S p=s;A x=N(pP());*v=1;AO(p-s0,x))
- // Amber 2.7.3: q's <> >= <= after a noun (a name, a number, a closing bracket or quote): the infix functions Q.ne Q.ge
+ // Amber 2.8.0: q's <> >= <= after a noun (a name, a number, a closing bracket or quote): the infix functions Q.ne Q.ge
  // Q.le (amber.k). Elsewhere < and > keep their k reading. x<>y was x<(>y), a silent wrong answer, and x>=y x>(=y)
  I((c=='<'&&(s[1]=='>'||s[1]=='='))||(c=='>'&&s[1]=='='),S q=s;W(q>s0&&(q[-1]==32||q[-1]==9),q--)
   I(q>s0&&(id1(q[-1])||strchr(")]}\"",q[-1])),S o=s;S nm=(S)(c=='>'?"ge":s[1]=='>'?"ne":"le");s+=2;*v=1;I a[2]={(I)us((S)"Q"),(I)us(nm)};return AO(o-s0,aV(tS,2,a))))
- // Amber 2.7.3: q's signal, ' at the start of an expression ('"boom" or '`boom after { [ ( or ;): the function Q.sig
+ // Amber 2.8.0: q's signal, ' at the start of an expression ('"boom" or '`boom after { [ ( or ;): the function Q.sig
  // (amber.k), which raises it. It was the each adverb on a noun, so {'"boom"} gave back a derived verb, no error.
  // '[f;g] there is q's composition: Q.cmp, applied to the bracket by pT
  I(c=='\''&&s[1]-':',S q=s;W(q>s0&&(q[-1]==32||q[-1]==9),q--)I(q==s0||strchr("{[(;\n",q[-1]),S o=s;B cp=s[1]=='[';s++;*v=!cp;I a[2]={(I)us((S)"Q"),(I)us((S)(cp?"cmp":"sig"))};return AO(o-s0,aV(tS,2,a))))
@@ -213,9 +213,9 @@ Z X1(pm,                                                                        
 #define PD 512
 Z I pd;                                                                                             //depth of pe() calls in progress
 Z A pT(C*v)_(A x=N(pt(v));U n=0;                                                                    //parse term and the adverbs or square brackets after it (v:verb?)
- W(1,C c=*s;I((c==32||c==9)&&*pw(s)=='[',s=pw(s);c='[')   //Amber 2.7.3: f [x;y] with a blank before the [ applies f, as q (it was f of the block [x;y], its last item)
+ W(1,C c=*s;I((c==32||c==9)&&*pw(s)=='[',s=pw(s);c='[')   //Amber 2.8.0: f [x;y] with a blank before the [ applies f, as q (it was f of the block [x;y], its last item)
   U i=si("'/\\[",c);P(i>3,x)P(pd+ ++n>PD,x(ez0()))s++;
-  I(i>2,x=AO(s-1-s0,N(pb(x,']')));I(xn==2,I(xy==GAP,xy=au)J(_tP(xx)&&_t(xx)==tv&&LH(1,_v(xx),15),PSH(x,GAP))E(xx=pm(xx)))*v=0)   //Amber 2.7.3: a verb
+  I(i>2,x=AO(s-1-s0,N(pb(x,']')));I(xn==2,I(xy==GAP,xy=au)J(_tP(xx)&&_t(xx)==tv&&LH(1,_v(xx),15),PSH(x,GAP))E(xx=pm(xx)))*v=0)   //Amber 2.8.0: a verb
   //that takes two (+ - * % ! & | < > = ~ , ^ # _) given one argument in brackets is a projection, as q: (+[1]) 5 is 6 (it was +1, flip)
   E(I c=*s==':';s+=c;x=aA2(aw+i+3*c,x);*v=1))x)
 Z A pe(A,C*);

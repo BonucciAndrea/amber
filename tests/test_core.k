@@ -254,7 +254,7 @@ t[`dateTextGood;(TX["D"]'("2024.02.29";"2026.1.1";"2000.01.01";"-4.02.29";"0.02.
 t[`stampTextBad;TX["P"]'("2026.07.30D10:61:00.000";"2026.02.29D10:00:00.000";"abc";"2026.07.30D-01:00:00.000";"2026.07.30x10:00";"2026.07.30D10:00:00.5x";"2026.07.30D10:");7#,"parse"]
 t[`stampTextGood;TX["P"]'("2026.07.30";"2026.07.30D";"2026.07.30D24:00:00.000";"2026.07.30D99:00";"2026.07.30D09:30:00.123456789";"1707.09.22D00:12:43.145224192");838684800000000000 838684800000000000 838771200000000000 839041200000000000 838719000123456789 0N]
 t[`stampTextLimit;TX["P"]'("2026.07.30D2562047:00";"-1.01.01D10:00");2#,"limit"]
-t[`temporalTextType;(TX["T";"5"];TX["T";("10:00";"11:00")];TX["D";`a];TX["P";1]);("type";36000000 39600000;"type";"type")]   / a list of strings: each, as q (2.7.3)
+t[`temporalTextType;(TX["T";"5"];TX["T";("10:00";"11:00")];TX["D";`a];TX["P";1]);("type";36000000 39600000;"type";"type")]   / a list of strings: each, as q (2.8.0)
 / blanks around the text are skipped, as q skips them: spaces, tabs and carriage returns, not newlines; not inside the text
 t[`temporalTextBlanks;(TX["T"]'(" 10:00";"10:00 ";" \t-10:00\r");TX["D"]'(" 2026.1.1";"2026.1.1\t");TX["P"]'(" 2026.07.30D10:00 ";"2026.07.30D ";"2026.07.30 "));(36000000 36000000 -36000000;9497 9497;838720800000000000 838684800000000000 838684800000000000)]
 t[`temporalTextBlanksBad;(TX["T"]'("10:00\n";"\n10:00");TX["D"]'("2026 .1.1";"  ");TX["P"]'("2026.07.30 D10:00";"2026.07.30D 10:00";"  "));(2#,"parse";2#,"parse";3#,"parse")]
@@ -474,7 +474,7 @@ t[`fillTemporalLeft;{.[{x^y};(x;y);{(x?"\n")#x}]}[2026.07.30;0N 1];"type"]
 / ---- an int atom filling floats gives floats, as q (2.7.1's fast path; 2.7.0 and ngn/k: (1.5;0)) ----
 t[`fillIntFloats;(0^0n;0^1.5 0n;0^(1;0n);1b^1.5 0n;0N^1.5 0n;0^`a`b!1.5 0n);(0.0;1.5 0.0;(1;0.0);1.5 1.0;1.5 0n;`a`b!1.5 0.0)]
 / other fills of another type still make a generic list, as k; a null int atom becomes the fill
-t[`fillOtherType;(1^0N;0.5^0N;0.5^1 0N;0x00^1.5 0n;`a^1.5 0n);(1;0.5;1.0 0.5;(1.5;0x00);(1.5;`a))]   / a float filling ints gives floats, as q (2.7.3)
+t[`fillOtherType;(1^0N;0.5^0N;0.5^1 0N;0x00^1.5 0n;`a^1.5 0n);(1;0.5;1.0 0.5;(1.5;0x00);(1.5;`a))]   / a float filling ints gives floats, as q (2.8.0)
 
 / ---- an int atom filling float nulls gives its value as a float, -2147483648 too (it gave 0n) ----
 t[`fillFloatMinI32;(-2147483648^0n;-2147483648^0n 1.5;-2147483648^(0n;`a);-2147483648^`a`b!0n 1);(-2147483648.0;-2147483648 1.5;(-2147483648.0;`a);`a`b!-2147483648 1.0)]
@@ -680,12 +680,12 @@ t[`jsonInfNan;(`j@0w;`j@-0w;`j@0n;`j@1.0 0w -0w 0n);("null";"null";"null";"[1,nu
 / Digest #7: bits looked for are widened to bytes (they were read as ints: wrong rows, reads past the end)
 t[`findBits;((,1)?0101010101B;(,0)?0101b;1 0?0101b;(,1)?0#01b);(0N 0 0N 0 0N 0 0N 0 0N 0;0 0N 0 0N;1 0 1 0;!0)]
 t[`exceptBits;(0101010101B^1;11B^1;0101010101B^0;11B^0);(00000b;0#01b;11111b;11b)]
-t[`exceptMixed;((0;" ")^0;(0;" ")^" ";(1;"a";`b)^"a";(1;"a")^1 2;(1;"a")^(1;"a");(1;"a";2)^1;(1;"a")^!0);(," ";,0;(1;`b);,"a";(1;"a");("a";2);(1;"a"))]   / digest #64: a general list's chars against numbers are kept, not 'type; two general lists of one count fill, as q (2.7.3)
+t[`exceptMixed;((0;" ")^0;(0;" ")^" ";(1;"a";`b)^"a";(1;"a")^1 2;(1;"a")^(1;"a");(1;"a";2)^1;(1;"a")^!0);(," ";,0;(1;`b);,"a";(1;"a");("a";2);(1;"a"))]   / digest #64: a general list's chars against numbers are kept, not 'type; two general lists of one count fill, as q (2.8.0)
 / a range is its items: except between a range and chars removes nothing, as for the ints written out (2.7.2: 'type)
 tv[`exceptRangeChars;"((!3)^\"a\";(1+!3)^\"a\";(!1)^\"\";(!3)^\"ab\")";(0 1 2;1 2 3;,0;0 1 2)]
 tv[`exceptCharsRange;"(\"abc\"^!2;\"abc\"^1+!2)";("abc";"abc")]
 tv[`exceptGenericRange;"((1;\"a\")^!3;(1;\"a\";2)^1+!3)";(,"a";,"a")]   / a general list's numbers go, its chars stay
-t[`exceptRangeNums;((!5)^3+!4;(!5)^!2;(!5)^1 3);(0 1 2;2 3 4;0 2 4)]   / the range fast paths (y covers an end of x) still run; lists of one count fill, as q (2.7.3)
+t[`exceptRangeNums;((!5)^3+!4;(!5)^!2;(!5)^1 3);(0 1 2;2 3 4;0 2 4)]   / the range fast paths (y covers an end of x) still run; lists of one count fill, as q (2.8.0)
 / Digest #6: > leaves stdin, stdout and stderr open (a failed write with no stderr to report it on looped or crashed)
 t[`closeStdHandles;(6#.[{[d]>0};,0;{x}];6#.[{[d]>1};,0;{x}];6#.[{[d]>2};,0;{x}]);3#,"domain"]
 / an int past 32 bits is no descriptor: close() took its low half, so >0N or >4294967296 closed stdin

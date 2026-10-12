@@ -29,4 +29,4 @@ X1(kabs,Ril(L v=gl(x);az(v<0?(L)(0-(W)v):v))Rf(af(fabs1(gf(x))))
   x-y?x(y):y)
  R_(K1("{x*(x>0)-x<0}",x)))
 #define M(k,f) X1(k,RfF(A y=MINE(x)?x:an(xn,xt);_at(y)=0;F(xn+3&~3,yf=f(xf));x-y?x(y):y)RmMA(e1f(k,x))R_(k(N(cF(x)))))
-M(ksin,sin)M(kcos,cos)M(klog,log)M(kexp,exp)M(sqr,SQ)M(ktan,tan)M(kasn,asin)M(kacs,acos)M(katn,atan)   //Amber 2.7.3: q's tan asin acos atan
+M(ksin,sin)M(kcos,cos)M(klog,log)M(kexp,exp)M(sqr,SQ)M(ktan,tan)M(kasn,asin)M(kacs,acos)M(katn,atan)   //Amber 2.8.0: q's tan asin acos atan

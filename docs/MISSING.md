@@ -88,7 +88,7 @@ The primitives keep k's treatment, where the int null is just the smallest int:
 | `&/0N 5` | `0N` (the null is the smallest) | `min` gives `5` |
 
 Fill of floats is the exception (since 2.7.1): an int atom filling floats gives floats, as in q, and
-since 2.7.3 a float atom filling ints gives floats too (`0.5^1 0N` is `1 0.5`). Two lists of one count
+since 2.8.0 a float atom filling ints gives floats too (`0.5^1 0N` is `1 0.5`). Two lists of one count
 fill item by item, as q (`1 2 3^0N 5 0N` is `1 5 3`), and two tables column by column; lists of other
 counts are still k's except, as before (`"abracadabra"^"bc"`).
 `0^1.5 0n` is `1.5 0.0` (2.7.0 and ngn/k: `(1.5;0)`), `0^0n` is `0.0`, `0N^1.5 0n` leaves `0n`,
@@ -119,7 +119,7 @@ still ascending by value. `&` and `|` of two equal zeros give `0.0`, and so do t
 and grouped min/max over them; the moving `mmax`/`mmin` still keep `-0.0`. (q's `min`/`max`
 keep the first zero; ngn/k orders `-0.0` below `0.0`.)
 
-## 3c. Since 2.7.3: q's way, and what stays k's
+## 3c. Since 2.8.0: q's way, and what stays k's
 
 A run of 1,064 everyday q lines found the gaps this release closed: q's casts by name and char
 (`` `long$ `` `"J"$` `` `date$ `` `` `year$ `` `` `mm$ ``, rounding as q), `if` `do` `while`, `<>` `>=` `<=`,
@@ -157,7 +157,7 @@ names write the binary format too and still read the old text files (AMBER.md §
 - **Differs from q:** `count` of a partitioned table (a name `loaddb` defines) is the count of the
   dict that names it (6, its keys), where q gives its rows; `sel"select count i from t"` gives them.
   Telling that dict apart in `count` would cost every call.
-- **Since 2.7.3:** `upsert` in memory (a keyed table by key, else appended) and `` `t insert r `` by name, as q.
+- **Since 2.8.0:** `upsert` in memory (a keyed table by key, else appended) and `` `t insert r `` by name, as q.
 - **Still missing:** appending to a table on disk. `upsert` does not take a path, so no
   `` `:db/t/ upsert t `` (q appends the rows to the column files), and amber.k's `insert` takes the
   table itself, not a name or a path as q's `` `t insert r `` does (#94 Q13).
@@ -234,7 +234,7 @@ prefix sums; `mmin`/`mmax` are O(n·w) window scans) plus **`ema`** (C kernel, O
 ## 10. Linear algebra & math: partial (`std.k`)
 `mmu` (matrix multiply) and `dot` (vector dot product) are implemented. Amber also has
 `cor cov var dev svar sdev med` and scalar math.
-- **Since 2.7.3:** `inv` (Gauss-Jordan in C) and `mmu` of two vectors (their dot product).
+- **Since 2.8.0:** `inv` (Gauss-Jordan in C) and `mmu` of two vectors (their dot product).
 - **Still missing:** `lsq` (least squares), `.q` solve; distributional
   `rand`/`binr`.
 

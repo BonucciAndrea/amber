@@ -8,7 +8,7 @@ double sin(double);
 double cos(double);
 double log(double);
 double exp(double);
-double tan(double);   /* Amber 2.7.3: q's tan asin acos atan, env.tan.. in amber.js too */
+double tan(double);   /* Amber 2.8.0: q's tan asin acos atan, env.tan.. in amber.js too */
 double asin(double);
 double acos(double);
 double atan(double);

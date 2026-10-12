@@ -294,7 +294,7 @@ int vsnprintf(char *restrict buf, size_t size, const char *restrict fmt, va_list
             out_str(&o, &left, p, n);
             if (leftalign) out_pad(&o, &left, ' ', pad > 0 ? pad : 0);
         } else if (c == 'g') {
-            /* Amber 2.7.3: a real %g (q's `string` of a float uses %.7g): p significant digits, trailing
+            /* Amber 2.8.0: a real %g (q's `string` of a float uses %.7g): p significant digits, trailing
              * zeros dropped, the exponent form when the exponent is below -4 or at least p, as C's %g.
              * The digits come from double arithmetic, so the last one can differ from glibc's in a tie. */
             double v = va_arg(ap, double);

@@ -2,7 +2,7 @@
 #define abn V*RES a,CO V*RES b,U n
 #define M(x,y,z) Z V c##x##y(abn){x*r=AL(a);CO y*p=AL(b);F(n+((1<<z)-1)>>z,Fj(1<<z,*r++=*p++))}
  M(H,G,4)M(G,H,4)M(H,I,3)M(I,H,3)M(G,I,3)M(I,G,3)M(H,L,2)M(L,I,2)M(I,L,2)M(G,L,2)//cHG cGH cHI cIH cGI cIG cHL cLI cIL cGL
- M(F,G,2)M(F,H,2)M(F,I,2)//cFG cFH cFI: narrow ints to floats at once (Amber 2.7.3; they went through 64 bits, two passes). Narrow ints hold no null
+ M(F,G,2)M(F,H,2)M(F,I,2)//cFG cFH cFI: narrow ints to floats at once (Amber 2.8.0; they went through 64 bits, two passes). Narrow ints hold no null
 #undef M
 Z V cFL(abn){F*r=AL(a);CO L*p=AL(b);F(n+3>>2,Fj(4,*r++=*p==NL?NF:*p;p++))}
 Z V cLF(abn){L*r=AL(a);CO F*p=AL(b);L o=0;F(n,F v=p[i];L b=__builtin_fabs(v)<0x1p63;o|=(b|v!=v)^1;L c=(L)(b?v:0);r[i]=b?c:NL)I(o,F(n,F v=p[i];B b=__builtin_fabs(v)<0x1p63;L c=(L)(b?v:0);r[i]=b?c:v>0?WL:v<0?NL+1:NL))}//as F2C; the second loop only for a value out of range
@@ -26,7 +26,7 @@ NI A2(ct,UC t=xv,u=yt;Q(xti||x==t)Q(tB<=t&&t<=tS)P(t==TT[u],y)
 A1(cB,ct(tB,x))A1(cG,ct(tG,x))A1(cH,ct(tH,x))A1(cI,ct(tI,x))A1(cL,ct(tL,x))A1(cF,ct(tF,x))A1(cC,ct(tC,x))A1(cS,ct(tS,x))
 Z X1(csti,RmMA(e1f(csti,x))RF(sqzZ(cL(x)))Rf(az(F2C(gf(x))))RC(cG(x))Rc(ai(xv))Ruvw(ai(xv))R(tdt,ai((I)x))R(ttm,ai((I)x))R(tnp,L v_=*(L*)_V(x);x(al(v_)))RilEGHIL(x)R_(et(x)))
 Z B pov(S p,S e)_(B m=*p=='-';p+=m;W(*p=='0'&&C09(p[1]),p++)I n=e-p;n>19||n==19&&strncmp(p,m?"9223372036854775808":"9223372036854775807",19)>0)//digits p..e beyond int64?
-//Amber 2.7.3: "J"$ of a list of strings in one loop, each read in place (no copy for its NUL): as prsI reads one -- blanks
+//Amber 2.8.0: "J"$ of a list of strings in one loop, each read in place (no copy for its NUL): as prsI reads one -- blanks
 //around, signs (an odd count of - is negative), digits, else 0N, and 0N past 64 bits. An item not a string: prsI's
 Z A prsI(A);Z NI __attribute__((cold)) A prsIL(A x){U n=xn;A z=an(n,tL);L*o=_L(z);
  F(n,A e=xa;if(_tP(e)||_t(e)!=tC){A v=prsI(_R(e));if(!v){mr(z);return x(0);}o[i]=gl_(v);mr(v);continue;}
@@ -40,7 +40,7 @@ A ptT(A),ptD(A),ptP(A);   //"T"$ "D"$ "P"$: the text as the literal reader reads
 Z A cSb(A);Z A cSl(A x)_(U n=xn;A z=an(n,tS);C b[256];F(n,A s=xa;P(_t(s)-tC||_n(s)>255,mr(z);e1f(cSb,x))U j=0,m=_n(s);CO C*p=_C(s);W(j<m&&CBK(p[j]),j++)W(m>j&&CBK(p[m-1]),m--)MC(b,p+j,m-j);b[m-j]=0;_I(z)[i]=us(b))x(z))   //`$ of a list of strings in one loop: each trimmed into a buffer and interned (through ct each item went to str0, which grew it for its NUL); anything else item by item
 Z X1(cSb,RA(xn?cSl(x):e1f(cSb,x))R(tm,e1f(cSb,x))R(tM,e1f(cSb,x))RC(U i=0,n=xn;W(i<n&&CBK(xC[i]),i++)W(n>i&&CBK(xC[n-1]),n--)P(!i&&n==xn,cS(x))x(cS(aCn(xC+i,n-i))))Rc(cS(CBK(xv)?emp(tC):x))R_(cS(x)))//`$: blanks trimmed, as q
 Z Y2(pad,RmMA(e2f(pad,x,y))RC(K2("{y@(!x)+(x<0)*#y}",x,y))Rc(dlr(x,enl(y)))R_(et(y)))
-// Amber 2.7.3: q's casts by name and by char (`long$x "j"$x "J"$s `date$n `year$d ..), which were 'domain or 'type, go to
+// Amber 2.8.0: q's casts by name and by char (`long$x "j"$x "J"$s `date$n `year$d ..), which were 'domain or 'type, go to
 // amber.k's qcst; Amber's own (`i `f `c `s `I `F, "D" "T" "P" on text) are as before. "D" "T" "P" of a list of strings go each (qcst), and lowercase "d" "t" "p" cast what is not text
 Z NI __attribute__((cold)) A dlrq(A x,A y)_(C c0=_tP(x)&&_t(x)==tc?(C)xv:0,ch=c0|32;P(c0&&c0<'a'&&(ch=='d'||ch=='t'||ch=='p'),P(!_tP(y)&&yt==tA,e1f(ch=='d'?ptD:ch=='t'?ptT:ptP,y))et(y))K2("{qcst[x;y]}",x,y))   //the rest (dlr; out of line)
 X2(dlr,Rs(I v=xv;U k=v-(C)v?6:si("ifcsIF",v|'s'*!v);P(k<6,G(&csti,cF,cC,cSb,prsI,prsF)[k](y))dlrq(x,y))Ril(pad(x,y))

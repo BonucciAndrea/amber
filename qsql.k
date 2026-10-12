@@ -400,7 +400,7 @@ qrwp:{[pre;s]s:qml s;$[2>#s;s;[r:qfind s;$[0=#r;s;[p:r 0;ki:r 1;e:qendx[s;p];bod
 / is always a char vector) so a rewrite failure can never corrupt a script.
 qtry:{[s]r:.[qrw;,s;{`ERR}];$[`ERR~r;s;r]}
 qrwf:{$[|/{0<#ss[x;y]}[x]'qkws;sv["\n";qtry'vs["\n";x]];x]}
-/ ---- qSQL in a lambda (2.7.3) ------------------------------------------------
+/ ---- qSQL in a lambda (2.8.0) ------------------------------------------------
 / A query in a lambda sees the lambda's parameters and locals, as q: {[c]select from t where s=c}. The rewriter (qrwp)
 / passes the names of the innermost lambda the query is in -- its parameters (x y z when it has none) and the locals
 / assigned before the query -- that the query's text uses, as a dict, to selE exqE updE delE, which set them (`qes, src/w.c)

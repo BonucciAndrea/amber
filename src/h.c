@@ -34,7 +34,7 @@ A drp(L n,A x/*1*/)_(P(!_tP(x)&&_tT(x)&&!_n(x)&&xt!=tE,x)X(   /*2.7: nothing to 
  R_(P(n==NL,rs0(x))L m=xn;n=MAX(-m,MIN(m,n));P(-n<(W)m&&MINE(x),_at(x)=0;I(xtA,mrn(-n,xA+m+n);return sqz(AN(m+n,x)))AN(m+n,x))   /*2.7: the attribute goes, as in q*/x(slc(x,MAX(0ll,n),m+MIN(0ll,n)))))0)   //In place, a general list is squeezed too, as the copy path does (digest #28)
 Z A rmv(A x/*1*/,L i)_(XB(rmv(cG(x),i))X(RT_E(P(i>=(W)xn,x)A y=an(xn-1,xt);U w=xw-3;MC(yV,xV,i<<w);MC(yV+(i<<w),xV+(i+1<<w),xn-i-1<<w);I(xtA,I(!yn,yx=mkn(_R(xx)))y=sqz(mRa(y)))x(y))
  RM(A y=kv(&x);y=Nx(y(l2f(und,y,az(i))));aM(x,y))RE(rmv(gZ(x),i))R_(et(x)))0)
-//Amber 2.7.3: a cut of a typed list copies each piece out of it, one allocation a piece (the K below made an index list a
+//Amber 2.8.0: a cut of a typed list copies each piece out of it, one allocation a piece (the K below made an index list a
 //piece and indexed with it: 3 cut of 1M ints was 25 ms, q's 7). Starts that fall or leave the list: the K's errors
 Z NI __attribute__((cold)) A cutC(A x,A y){A l=cL(_R(x));P(!l,(A)0)U n=_n(l),m=yn;CO L*s=_L(l);UC w=yw-3;CO UC*p=(CO UC*)yV;
  F(n,L a=s[i],b=i+1<n?s[i+1]:(L)m;I(a<0||b<a||b>(L)m,mr(l);return 0))
@@ -95,7 +95,7 @@ ZN A insS(A x,A y/*01*/)_(P(_tP(x)||_tP(y),cat(x,y))B k=xtm&&_tM(xx);P(!xtM&&!k,
 //items surely fit them is t,r, after one look at each column; the rest goes to insS
 Z NI __attribute__((cold)) A insg(A x,A y)_(K2("{[t;r]n:#v:. t;.[t;();:;v insert r];n+!(#. t)-n}",x,y))   //`t insert r (ins2; out of line)
 A2(ins2,/*01*/I(!_tP(x)&&!_tP(y)&&xtM,A s=xx;I(ytm?insn(s,yx)&&insr(xy,yy,_n(s)):ytM&&insn(s,yx)&&(!yN||insc(xy,yy)),return cat(x,y)))
- P(_ts(x),insg(x,y))   //Amber 2.7.3: `t insert r inserts into the global t and gives the new rows' indices, as q
+ P(_ts(x),insg(x,y))   //Amber 2.8.0: `t insert r inserts into the global t and gives the new rows' indices, as q
  insS(x,y))
 A2(cat10,
  XE(cat10(gZ(x),y))
@@ -139,7 +139,7 @@ Z I vc01(A x,A y,A z){U n;P(_tP(x)||!LH(tB,_t(x),tL),0)n=_n(x);I f=!(_tP(y)||_tt
  UC t=_t(x);F(n,L v=t==tB?(L)(((CO UC*)_V(x))[i>>3]>>(i&7)&1):t==tG?(L)((CO G*)_V(x))[i]:t==tH?(L)((CO H*)_V(x))[i]:t==tI?(L)((CO I*)_V(x))[i]:((CO L*)_V(x))[i];P(v!=0&&v!=1,0))return 1+f;}
 Z NI __attribute__((cold)) A ins3b(A x,A y,A z)_(L c=gl_(x);P(c&-2,(A)0)mr(x);_R(c?y:z))   //?[1b;a;b]: a or b; 0 for another int (ins3; out of line)
 A3(ins3,/*100*/
- I(_tz(x),A r_=ins3b(x,y,z);I(r_,return r_))   //Amber 2.7.3: ?[1b;a;b] with one boolean is a or b, as q (it was 'type)
+ I(_tz(x),A r_=ins3b(x,y,z);I(r_,return r_))   //Amber 2.8.0: ?[1b;a;b] with one boolean is a or b, as q (it was 'type)
  I k=vc01(x,y,z);P(k,P(k>1,el(x))K("{[c;a;b]t:{(\"a\"<*$@x)&~`m=@x};b:$[t b;(#c)#b;b];$[(#c)=#b;;`err\"length\"];w:&c;@[b;w;:;$[t a;a;(#c)=#a;a w;`err\"length\"]]}",x,_R(y),_R(z)))   //2.7: q's vector conditional ?[c;a;b] when c is booleans; t is amber.k's isat, inlined so the bare core needs no library
  Xmt(et(x))
  Zmt(z=enl(zR);z(ins3(x,y,z)))

@@ -12,9 +12,9 @@
 **A low-latency array language: columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-2.7.2-orange)
+![version](https://img.shields.io/badge/version-2.8.0-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
-![tests](https://img.shields.io/badge/tests-1555%20K--suite%20cases-brightgreen)
+![tests](https://img.shields.io/badge/tests-3915%20K--suite%20cases-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
 
 </div>
@@ -45,9 +45,21 @@ qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                        / vwap by symbo
 <a name="whats-new-250"></a>
 <a name="whats-new-260"></a>
 <a name="whats-new-270"></a>
-## What's new in 2.7.0
+<a name="whats-new-280"></a>
+## What's new in 2.8.0
 
-Tables on disk, the q way. `` `:db/t/ set t `` splays a table into binary column files that map
+q code runs like q. `if` `do` `while`, `<>` `>=` `<=`, q's casts (`` `long$x ``, `"J"$s`, `` `date$n ``,
+`` `year$d ``), `'` to signal and `@[f;x;h]` to trap, `upsert`, `` `t insert ``, `.Q.x` and `.j.x` with their dot,
+and qSQL inside a lambda sees its arguments and locals. A run of about 2,000 everyday q lines against q
+itself went from 80% the same to 97%, and the rest are k choices Amber keeps on purpose or types it
+doesn't have yet (timespans, months). Repeated queries skip their parse, sorting symbols is 50x faster,
+and nothing got slower.
+
+A few things changed meaning, to match q: `type x` gives q's numbers (`@x` still gives the letter),
+`wj` takes `(q;aggs..)`, `x^y` of two lists the same length fills, and an error handler gets just the
+message (`"type"`). All in the [changelog](CHANGELOG.md).
+
+2.7.0 put tables on disk, the q way. `` `:db/t/ set t `` splays a table into binary column files that map
 straight into memory (a 10M-row table loads in ~6 ms), `Q.dpft` saves a partition, and `\l db` maps
 a whole date-partitioned database. `select` on it skips the partitions the where-clause rules out,
 reads only the columns it uses, and runs per partition when you group by date. Old text files still
@@ -213,7 +225,7 @@ Amber uses a terse array notation. A few things worth knowing:
   (`in within like lj ij uj aj aj0 wj wj1 pj ej cross inter union except ss sv vs xasc xdesc`) plus
   the built-in symbol verbs (``+ - * % ! & | < > = ~ , ^ # _ $ ? @ .``). Arbitrary user lambdas are
   **not** infix.
-* **`<>` `>=` `<=`, `if` `do` `while` work as in q** (since 2.7.3), and `type` gives q's numbers (`@x` the letter).
+* **`<>` `>=` `<=`, `if` `do` `while` work as in q** (since 2.8.0), and `type` gives q's numbers (`@x` the letter).
 * **qSQL is bare, at the prompt *and* in scripts.** Type `select … by … from … where …` (also
   `exec` / `update` / `delete`) with no `sel"…"` wrapper; bare column names like `wavg[sz;px]` just
   work. Since 2.0.0 this bare form also works inside a `.k` file loaded once the stdlib is up (the

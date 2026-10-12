@@ -149,7 +149,7 @@ NI V eD(CO C*esrc,U en,U i){I(amdiag<0,amdiag=({S d=getenv("AMBER_DIAG");!d||*d!
   amdiagshown=1)}
 // eS: the A-valued wrapper used by the compiler/evaluator call sites.
 NI V eS(A x/*0*/,U i)_(eD(xV,xn,i);eQ(xV,xn,i))
-//Amber 2.7.3: a handler gets the error's text alone, as q ("type", "boom"): it got the whole report, ' and the caret lines
+//Amber 2.8.0: a handler gets the error's text alone, as q ("type", "boom"): it got the whole report, ' and the caret lines
 A3(try,/*100*/x=x(dot(x,yR));P(x,x)I(ztU,S p=b;I(p<r&&*p==39,p++)S e=p;W(e<r&&*e-10,e++)z=z1(aCn(p,e-p)))E(zR)r=b;d=0;amdiagshown=0;z)
 V ecl(V){r=b;d=0;amdiagshown=0;}//an error a primitive answers itself is dropped, as try drops a caught one
 // Print the compact caret block ONLY if no rich diagnostic was already shown

@@ -138,7 +138,7 @@ ZN V eqlI(CO V*RES a,CO V*RES b,V*RES c,U n){CO I8 *p=a,*q=b;G8 *r=c;F(n+ 7>>3,F
 ZN V eqlL(CO V*RES a,CO V*RES b,V*RES c,U n){CO L4 *p=a,*q=b;G4 *r=c;F(n+ 3>>2,Fj( 4,r[i][j]=p[i][j]==q[i][j]))}
 Z A cmpZZ(A x,A y,U f)_(U w=xw-3;P(w<yw-3,x=ct(tG+yw-3,xR);x(cmpZZ(x,y,f)))I(yw-3<w,y=ct(tG+w,y))V*a=xV,*b=yV;I(f==9,SW(a,b))
  U n=xn;A z=aG(n);My(pk3(A(&ltnG,ltnH,ltnI,ltnL,eqlG,eqlH,eqlI,eqlL)[(f==10)<<2|w],a,b,zV,n,32,1u<<w,1u<<w,1,n))z)
-Z A cmpzZ(L v,A y,U f)_(U w=yw-3;P(tG+w<tZ(v),U n=yn;A z=aG(n);MS(zG,f==8?v<0:f==9?v>0:0,n);y(z))   //Amber 2.7.3: a number past the list's width: one
+Z A cmpzZ(L v,A y,U f)_(U w=yw-3;P(tG+w<tZ(v),U n=yn;A z=aG(n);MS(zG,f==8?v<0:f==9?v>0:0,n);y(z))   //Amber 2.8.0: a number past the list's width: one
  //value, as a byte mask as any compare gives (it was an int list, which & read as counts: &(n?100)>500 took 0.8 ms, not 0.1)
  U n=yn;A z=aG(n);My(pk2(A(&ltng,ltnh,ltni,ltnl,gtng,gtnh,gtni,gtnl,eqlg,eqlh,eqli,eqll)[f-8<<2|w],v,yV,zG,n,32,1u<<w,1,n))z)
 
@@ -433,7 +433,7 @@ A2(dex,y)A2(sub,U o=f;f=2;x=ari(x,y);f=o;x)X2(exc,RMT(ytm?ed(y):ytt?exc(x,rsz(xN
  * included) and every char atom still reach mod() exactly as before, so no
  * existing `!` behaviour moves. */
  I(_t(x)-tc,L sv_=gl_(x);I(sv_==-8||sv_==-9,return sv_==-8?ser8(y):des9(y)))
- I(_tz(x)&&!_tP(y)&&(yt==tM||yt==tm&&_tM(yx)),return exck(x,y))   //Amber 2.7.3: n!t keys a table on its first n columns, as q (0!kt unkeys; it was kt mod 0, kt)
+ I(_tz(x)&&!_tP(y)&&(yt==tM||yt==tm&&_tM(yx)),return exck(x,y))   //Amber 2.8.0: n!t keys a table on its first n columns, as q (0!kt unkeys; it was kt mod 0, kt)
  mod(x,y))R_(et(y)))
 // a temporal compared with a float (tari): as q casts the float to the temporal, the stored number (days, ms or ns) against
 // the float rounded half away from zero; 0n, -0w 0w and floats past the int range go the int-float way, so 0n is below every

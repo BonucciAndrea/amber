@@ -103,7 +103,7 @@ t[`year;year ymd2d[2026;7;30];2026]
 t[`timeAdd;stime[ptime["10:00:00.000"]+ptime["00:00:05.000"]];"10:00:05.000"]
 t[`tsRT;tsdate tstamp[ymd2d[2026;7;30];ptime"09:30:00.000"];ymd2d[2026;7;30]]
 / ---- native temporal types: literals, arithmetic, casts, accessors ----
-t[`litDateT;type 2026.07.30;-14]   / q's type numbers (2.7.3; @x gives `d)
+t[`litDateT;type 2026.07.30;-14]   / q's type numbers (2.8.0; @x gives `d)
 t[`litTimeT;type 10:00:05.000;-19]
 t[`litTsT;type 2026.07.30D09:30:00.000;-12]
 t[`timeAddLit;`i$10:00:00.000+00:00:05.000;36005000]

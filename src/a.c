@@ -1020,7 +1020,7 @@ AX(_8,/*01..1*/Q(n)P(n==1,x1(*a))P(n==2&&!xtp,A y=*a;y(x2(y,a[1])))P(!xtt,i8(x,a
 A1(jS,cS(jc('.',str(x))))//join symbols with "."
 X1(val,RA(P(!xn,x)P(xn==1,fir(x))P(xn>9,ez(x))x=mut(x);A y=_8(xx,&xy,xn-1);AN(1,x);x(y))RmM(x(_R(xy)))RE(gZ(x))RC(x=str0(x);x(evn(xV,xV+xn,0)))Rc(val(enl(x)))RsS(gg(x))
  Ropq(AT(tA,mut(x)))Rr(cat10(AT(tA,mut(x)),aw+xE))Ruvw(ai(xv))R_(x))
-//Amber 2.7.3: _1 and dot out of line, as every caller has them: d8 began to take them in when the program grew, and .[x;i;f;y] was 8% slower
+//Amber 2.8.0: _1 and dot out of line, as every caller has them: d8 began to take them in when the program grew, and .[x;i;f;y] was 8% slower
 NI A2(dot,/*01*/Ym(et(y))U n=yN;P(!n,y(xR))P(n>8,ez(y))y=mRa(N(blw(y)));y(x8(yA,n)))
 Z U knd(A x/*0*/)_(X(Ril(ti)REBGHIL(tI)R_(xt))0)
 Z AM_TLS_IE I nsq;   //>0: inside amend's per-index fold, which squeezes once at the end (a squeeze per item made it quadratic)
@@ -1083,7 +1083,7 @@ Z NI A tcv(A*b,U n,A y,U r)_(A u=N(a8(b,n));P(tcd(u,y),mr(u);el0())tfl(u,r))   /
 Z NI __attribute__((cold)) A trw(A x,A y,A z/*100*/)_(A d=Nx(_tt(z)?am(_R(xx),rsz(_N(xx),_R(z))):_R(z));P(_tz(y),A r=a8(A8(x,y,av,d),4);mr(d);r)
  U c=y==au?xN:_N(y);d=Nx(rsz(c,enl(d)));A w=y==au?aE(0,c):_R(y);A r=a8(A8(x,w,av,d),4);mr(w);mr(d);r)
 Z NI __attribute__((cold)) A a8t(A x,CO A*a)_(A e_=enl(_R(a[1]));A r_=try(x,e_,a[2]);mr(e_);r_)   //@[f;x;h], f a lambda of one argument: try (a8; out of line, so a8 is as it was)
-//Amber 2.7.3: @[f;x;h] with f a lambda of one argument traps f x, as q and as .[f;(,x);h] (it applied f to x and h: 'rank).
+//Amber 2.8.0: @[f;x;h] with f a lambda of one argument traps f x, as q and as .[f;(,x);h] (it applied f to x and h: 'rank).
 //Only that: an amend calls @[f;item;y] with f the verb or a function of two, which stays an application. The test is in the
 //verb's entry (a8q, v8[18]), so a8, which amends call themselves, is as it was (with it inside, .[x;i;f;y] was 6% slower)
 AA(a8q,/*10..0*/A x=*a;P(n==3&&_t(x)==to&&_k(x)==1,a8t(x,a))a8(a,n))

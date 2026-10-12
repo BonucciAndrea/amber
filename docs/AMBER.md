@@ -116,14 +116,14 @@ Amber follows a terse **array grammar**, which differs from q in a few ways you 
   (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) are infix as usual. An *arbitrary* user lambda is
   still bracket/prefix only (`{x+y}[a;b]`, not `a {x+y} b`); see the CHANGELOG for why lambda
   infix is excluded.
-* **`<>` `>=` `<=` work as in q (since 2.7.3)** after a name, a number or a closing bracket: `x<>y`,
+* **`<>` `>=` `<=` work as in q (since 2.8.0)** after a name, a number or a closing bracket: `x<>y`,
   `x>=y`. Anywhere else `<` and `>` keep their k reading (`<>x` is the grade of the grade down).
-* **`if`, `do` and `while` are there (since 2.7.3)**, as in q: `{r:0;do[3;r+:1];r}`, `while[x>1;x:x div 2]`,
+* **`if`, `do` and `while` are there (since 2.8.0)**, as in q: `{r:0;do[3;r+:1];r}`, `while[x>1;x:x div 2]`,
   and a `:` inside an `if` returns from the lambda. `'"msg"` at the start of an expression signals, as q's `'`.
-* **`type x` gives q's type numbers (since 2.7.3)**: `7` for an int list, `-9` a float, `98` a table.
+* **`type x` gives q's type numbers (since 2.8.0)**: `7` for an int list, `-9` a float, `98` a table.
   `@x` still gives Amber's letters (`` `I `` `` `f `` `` `M ``).
 * **Symbols cannot contain `_`.** `` `a_b `` is a parse error; use a quoted symbol `` `"a_b" ``.
-* **qSQL inside a lambda sees its arguments and locals (since 2.7.3)**, as q: `{[c]select from t where s=c}`.
+* **qSQL inside a lambda sees its arguments and locals (since 2.8.0)**, as q: `{[c]select from t where s=c}`.
   A column of the same name wins, as in q.
 * **Nested lambdas are not closures.** An inner `{…}` sees only its own parameters and globals,
   never the enclosing function’s locals. The library passes captured values in by projection

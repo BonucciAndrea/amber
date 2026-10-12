@@ -1,15 +1,10 @@
 # Changelog
 
-## 2.7.2
+## 2.8.0
 
-qSQL uses the threads now, and group-by on symbols got a lot quicker on one thread too.
+q code runs like q now. A run of about 2,000 everyday q lines against q itself went from 80% the same to 97%,
+and nothing got slower.
 
-- **On threads**: maths, compares, casts, `null` and `where` on big vectors, and group-bys keyed on
-  symbols. On 10M rows with 14 threads `select sum sz by sym` went 38 ms to 10, `avg px by sym` 47 to 9,
-  `max px, min px by sym` 50 to 13, `distinct sym` 6.5 to 2.
-- **One thread**: `select sum sz by sym` 72 ms to 17, `max px, min px by sym` 104 to 35, `dev px by sym`
-  116 to 79 (`dev`/`var` by group are fused now), `distinct sym` 19 to 8.
-- **Fixed**: in 2.7.1 a by-query with no where-clause took the slow path.
 - **Build**: `-fwrapv`, like ngn/k, so int maths that overflows wraps as k says (`0N*0N` is 0) instead of
   being undefined behaviour in C. No speed lost (58 benchmarks, about 1% faster overall).
 - **Quicker q code**: a query run again skips its parse (`select` on a 4-row table 20 µs to 3, `select by`
@@ -26,6 +21,22 @@ qSQL uses the threads now, and group-by on symbols got a lot quicker on one thre
 - **Changed**: `type` gives q's numbers (`@x` the letter), `wj`/`wj1` take `(q;aggs..)`, two lists the same
   length fill with `^` (else it's still except), and a trap's handler gets just the message (`"type"`).
   An int list against a number past its width gives a byte mask, so an empty `where` is 50x quicker.
+- **Lots of edges as q**: about 270 fixes merged since 2.7.2, mostly amends (`@` `.` and `x[i]:` on dicts, tables
+  and keyed tables, new keys and columns, failed amends that keep the variable), joins, dict arithmetic, grade
+  and find of dicts and tables, temporal parts of lists and tables, `sublist`, `var` and the moving sums, json,
+  and peach's errors. Amends are quick again and short string lookups too.
+- **Browser**: the notepad's engine builds again, with `tan` and friends and floats printed as here.
+
+## 2.7.2
+
+qSQL uses the threads now, and group-by on symbols got a lot quicker on one thread too.
+
+- **On threads**: maths, compares, casts, `null` and `where` on big vectors, and group-bys keyed on
+  symbols. On 10M rows with 14 threads `select sum sz by sym` went 38 ms to 10, `avg px by sym` 47 to 9,
+  `max px, min px by sym` 50 to 13, `distinct sym` 6.5 to 2.
+- **One thread**: `select sum sz by sym` 72 ms to 17, `max px, min px by sym` 104 to 35, `dev px by sym`
+  116 to 79 (`dev`/`var` by group are fused now), `distinct sym` 19 to 8.
+- **Fixed**: in 2.7.1 a by-query with no where-clause took the slow path.
 
 ## 2.7.1
 

@@ -374,7 +374,7 @@ AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,d--,es8(a,n))/*d: per-thread VM recursio
   C(bl,UC n=*b++;s+=n-1;*s=sqz(aV(tA,n,s-n+1)))                                                     //list      |bl,n  |.. y x -> .. (x;y)     |
   C(bL,UC n=*b++;A x=*s;U(xtt||xN==n,*s=el(x))F(n,*--s=ii(x,n-1-i)))                                //unlist    |bL,n  |.. x -> .. x[0] x[1]   |
   C(bj,UC n=*b++;b+=n)                                                                              //jump      |bj,n  |.. x -> ..             |PC+:n
-  C(bk,CO UC*q=b;b=(UC*)q+2-(q[0]|(I)q[1]<<8))                                                      //jump back |bk,i,i|.. -> ..               |PC-:i (Amber 2.7.3: do, while)
+  C(bk,CO UC*q=b;b=(UC*)q+2-(q[0]|(I)q[1]<<8))                                                      //jump back |bk,i,i|.. -> ..               |PC-:i (Amber 2.8.0: do, while)
   C(bz,UC n=*b++;b+=n*!tru(*s++))                                                                   //branch    |bz,n  |.. x -> ..             |if x is falsy, PC+:n
   C(bo,*--s=xR)                                                                                     //recur     |bo    |.. -> .. o             |o is the current lambda
   C(bP,mr(*s++))                                                                                    //pop       |bP    |.. x -> ..             |
@@ -493,7 +493,7 @@ Z I cr(A x/*0*/,B r)_(I o=xo;                                                   
  P(!xtA||!xn,I(r,cc(x-GAP?x:au,o))OK)                                                               // 0        constant
  U n=xn;A y=xx;                                                                                     //
  P(y==GAP,F(n-1,Nr(xA[i+1],i==n-2&&r))OK)                                                           // [x;y]    block
- // Amber 2.7.3: q's while[c;e;..] and do[n;e;..] (p.c builds the nodes): the test, a branch past the loop, the body, a
+ // Amber 2.8.0: q's while[c;e;..] and do[n;e;..] (p.c builds the nodes): the test, a branch past the loop, the body, a
  // jump back (bk). do counts down a local of its own, one per nesting depth (loops one after another share it). A local
  // whose last use is in the loop is not moved out there (lu): the next pass reads it again. The loop's value is ::
  P(y==WHL||y==DOL,I c=-1;

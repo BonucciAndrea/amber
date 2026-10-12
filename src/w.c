@@ -100,7 +100,7 @@ __attribute__((noinline,cold)) A1(qmcT,P(_t(x)-tA||_n(x)<2||_n(x)>3||_t(xA[0])-t
  P(_n(x)==2,A r=i<n?aV(tA,1,A(_R(qmv[c][i]))):emp(tA);plk(0);x(r))
  A v=xA[2];if(i<n){mr(qmv[c][i]);qmv[c][i]=_R(v);}else{I(n==QMN,F(n,mr(qmk[c][i]);mr(qmv[c][i]))n=0)qmk[c][n]=_R(k);qmv[c][n]=_R(v);qmn[c]=n+1;}
  plk(0);x(_R(v)))
-U gdns(V);Z AM_TLS_IE A qenv;   //Amber 2.7.3: the names a lambda's qSQL sees (`qes, `qeg), per thread: a peach worker's own
+U gdns(V);Z AM_TLS_IE A qenv;   //Amber 2.8.0: the names a lambda's qSQL sees (`qes, `qeg), per thread: a peach worker's own
 __attribute__((noinline,cold)) A1(nsdT,x(qenv&&_t(qenv)==tm?aA2(as(gdns()),_R(_x(qenv))):as(gdns())))   //`nsd: \d's namespace now (` the root); with
  //a lambda's names set, (namespace;names), so the qSQL caches keep the compiled text of a query in a lambda apart from the same text elsewhere
 //`qes e: the names a qSQL query in a lambda sees (a dict, qsql.k's selE ..), set for the query; gives the ones before (:: none). `qeg: them
@@ -284,7 +284,7 @@ TPC(secC,secd,secL,1000,60)
 #undef TPC
 //`tjn (temporal.k's tdays): a general list of dates, of times or of timestamps alone, as its numbers (a.c tjn); anything else as it is
 A tjn(A);A1(tjnC,A y=tjn(x);mr(x);y)
-// ---- Amber 2.7.3: `qst and `md5, last in the link ----
+// ---- Amber 2.8.0: `qst and `md5, last in the link ----
 //`qst: amber.k's string of a number, as q prints it: a float to 7 significant digits (1.0 is "1", 1e20 "1e+20"), 0n and 0N as
 //"", 0w 0W -0w -0W by name; a list item by item; anything else as $x
 #include<stdio.h>

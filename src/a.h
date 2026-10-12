@@ -106,8 +106,8 @@ static inline const void*amb_alchk(const void*p_,const char*f_,int l_){
 // and the components can no longer drift apart (they did: the banner said
 // v1.7 while README.md already advertised 1.9).
 #define AMBER_VERSION_MAJOR 2
-#define AMBER_VERSION_MINOR 7
-#define AMBER_VERSION_PATCH 2
+#define AMBER_VERSION_MINOR 8
+#define AMBER_VERSION_PATCH 0
 #define AMBER_VERSION M2(AMBER_VERSION_MAJOR) "." M2(AMBER_VERSION_MINOR) "." M2(AMBER_VERSION_PATCH)
 #define REFB  1
 // sole owner. Peach workers change counts atomically (RC_INC, RC_DECV). Only a holder of a counted reference raises a
@@ -325,7 +325,7 @@ enum                 {tA=1,tE,tB,tG,tH,tI,tL,tF,tC,tS,tM,tm,ti,tl,tf,tc,ts,to,tp
 enum         {au=Lt(tu),FLP,NEG,FIR,SQR,TIL,WHR,REV,ASC,DSC,GRP,NOT,ENL,NUL,LEN,FLR,STR,UNQ,TYP,VAL,U0C,U1C,U2C,LAS,IMN,IMX,OUT,SRT,SRTD,
               av=Lt(tv),ADD,SUB,MUL,DVD,EXC,MNM,MXM,LTN,GTN,EQL,MTC,CAT,CRT,RSH,UND,DLR,QUE,AP1,DOT,V0C,V1C,V2C,V3C,V4C,MKL,GAP,FUS1,FUS2,FUS3,INS,ECH,
               aw=Lt(tw)};
-#define DOL (aw+30)   //Amber 2.7.3: the loop nodes p.c builds for q's do[n;..] and while[c;..], compiled by cr (b.c); printed as do, while
+#define DOL (aw+30)   //Amber 2.8.0: the loop nodes p.c builds for q's do[n;..] and while[c;..], compiled by cr (b.c); printed as do, while
 #define WHL (aw+31)
 #define NFL 0x7ff8000000000000ll
 #define WFL 0x7ff0000000000000ll

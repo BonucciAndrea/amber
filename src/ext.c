@@ -408,6 +408,10 @@ const char *amber_type_name(amber_value handle) {
         case tdt:  return "date";
         case ttm:  return "time";
         case tnp:  return "timestamp";
+        case tmn:  return "minute";
+        case tsc:  return "second";
+        case tmo:  return "month";
+        case tsp:  return "timespan";
         default:   return "function";
     }
 }
@@ -466,9 +470,9 @@ long long amber_to_int(amber_value handle, int *ok) {
     A val = (A)handle;
     if (ok) *ok = 1;
     if (handle) switch ((unsigned char)_t(val)) {
-        case ti: case tc: case tdt: case ttm: return (long long)_v(val);
+        case ti: case tc: case tdt: case ttm: case tmn: case tsc: case tmo: return (long long)_v(val);
         case ts:                              return (long long)(U)_v(val);
-        case tl: case tnp:                    return (long long)*_L(val);
+        case tl: case tnp: case tsp:          return (long long)*_L(val);
         case tf:                              return (long long)*_F(val);
     }
     if (ok) *ok = 0;
@@ -480,8 +484,8 @@ double amber_to_float(amber_value handle, int *ok) {
     if (ok) *ok = 1;
     if (handle) switch ((unsigned char)_t(val)) {
         case tf:                              return *_F(val);
-        case tl: case tnp:                    return (double)*_L(val);
-        case ti: case tc: case tdt: case ttm: return (double)_v(val);
+        case tl: case tnp: case tsp:          return (double)*_L(val);
+        case ti: case tc: case tdt: case ttm: case tmn: case tsc: case tmo: return (double)_v(val);
     }
     if (ok) *ok = 0;
     return 0.0;

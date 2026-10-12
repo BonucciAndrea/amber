@@ -27,8 +27,11 @@ and accessors `year`/`month`/`day`/`dow`/`thh`/`tmm`/`tss`. Columns keep numeric
 so `xasc`/`s#` work unchanged.
 - **Since 2.5:** A strand like `2026.01.01 2026.01.02` is a list; arithmetic outside the cases
   above is `'type`. There's no null date, so `date+0N` is `'domain` for now.
-- **Still missing:** `month`/`minute`/`second`/`timespan`/`datetime` as distinct types,
-  `m` month-literals, and the dotted `t.hh` accessor form (Amber uses `thh t`).
+- **Since 2.9:** `minute`, `second`, `month` and `timespan` are types too, with q's literals
+  (`09:30`, `09:30:15`, `2026.03m`, `0D01:00:00.000000000`), casts, arithmetic and typed nulls
+  (`0Nd` ... `0Nm`). So `date+0N` is `0Nd` now, and `09:30:00` is a second, as q.
+- **Still missing:** `datetime`, typed temporal vectors (a list of dates is a general list), and the
+  dotted `t.hh` accessor form (Amber uses `thh t`).
 - **Differs from q:** a time of 100 hours or more prints every digit of its hours
   (`100:00:00.000`, up to `596:31:23.647`), so the text reads back as the same time; q prints
   `**:00:00.000`.
@@ -138,8 +141,8 @@ What stays as it was, on purpose:
   library leans on it all over.
 - **Int nulls in arithmetic wrap** (3a above), and so do `div`/`mod` of `0N`; `x div 0` and `x mod 0` are `0N`, as q.
 - **`-3!x` is k's**, not q's show-text: use `.Q.s1` or `` `k ``.
-- **No month, minute, second, timespan, datetime or guid types**: `` `month$ `` and friends are `'nyi`,
-  and a time minus a time is an int of ms. `0Nd` and `"D"$` of a bad date have no null date to give.
+- **No datetime or guid types**: `` `datetime$ `` and `` `guid$ `` are `'nyi`, and a date plus a time is a
+  timestamp. A list of temporals is a general list: it prints and types as q's vector, but costs more.
 - **No byte, short, int (32-bit) or real types**: `1h` `1i` read as `1`, `0x01` is a char.
 - **Errors are named Amber's way**: an undefined name is `'value` (q names it), `.j.k` of bad text is `'parse`.
 - **`-8!` is Amber's own format**, not q's wire format; `value` of a lambda gives Amber's pieces, not q's.

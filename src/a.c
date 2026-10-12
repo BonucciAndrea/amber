@@ -113,9 +113,9 @@ A tkey(A x,B f)_(I(_t(x)==tE,x=gZ(x))P(!f,cL(x))x=cF(x);   //a lazy range (!n as
 // whose items would be read by their addresses; 0 for anything else. tjs: 'type (0) when one of two time
 // columns is temporal and the other is not of its kind (an empty generic list goes with any), or either
 // mixes, as in q. tjn: a time column as the kernels read it, a new reference.
-I tjk(A x){P(_t(x)-tA,0)U n=_n(x);P(!n,1)CO A*a=_V(x);UC t=_t(*a);B m=0,o=0;F(n,UC u=_t(a[i]);m|=u==tdt||u==ttm||u==tnp;o|=u!=t)P(!m,0)return o?-1:t;}
+I tjk(A x){P(_t(x)-tA,0)U n=_n(x);P(!n,1)CO A*a=_V(x);UC t=_t(*a);B m=0,o=0;F(n,UC u=_t(a[i]);m|=TQ(u);o|=u!=t)P(!m,0)return o?-1:t;}
 B tjs(A a,A b){I p=tjk(a),q=tjk(b);P(p<0||q<0,0)P(p==q||p==1||q==1,1)return p<2&&q<2;}
-A tjn(A x){I k=tjk(x);P(k==1,aL(0))P(k<2,_R(x))U n=_n(x);CO A*a=_V(x);A y=aL(n);L*RES v=_V(y);I(k==tnp,F(n,v[i]=*(L*)_V(a[i])))E(F(n,v[i]=(I)a[i]))return y;}
+A tjn(A x){I k=tjk(x);P(k==1,aL(0))P(k<2,_R(x))U n=_n(x);CO A*a=_V(x);A y=aL(n);L*RES v=_V(y);I(TQN(k),F(n,v[i]=*(L*)_V(a[i])))E(F(n,I u=(I)a[i];v[i]=u==NIT?NL:u))return y;}
 A ucb(A);
 // Amber 2.5 (exp): one slice of trade rows for the parallel aj (see the parallel branch in ajc). Same row
 // logic as ajc's serial loop, with this slice's own cursor cache.
@@ -308,8 +308,8 @@ A ajsC(A x){
   case tE: break;                                  // a range (!n, a+!n) rises
   case tF: {CO F*RES p=_V(tcol);for(U r=1;r<n;r++)if(!chg[r]&&ajs_fk(p[r])<ajs_fk(p[r-1]))return x(al(0));} break;   //the join's order: a NaN no longer hides an unsorted run
   case tA: {CO A*RES p=_V(tcol);UC k=_t(*p);   //dates, times or timestamps of one kind (tjk): by their numbers, as the joins read them
-   I(k==tnp,L v=*(L*)_V(*p);for(U r=1;r<n;r++){A y=p[r];P(_t(y)-tnp,x(al(0)))L u=*(L*)_V(y);if(!chg[r]&&u<v)return x(al(0));v=u;})
-   J(k==tdt||k==ttm,I v=(I)*p;for(U r=1;r<n;r++){A y=p[r];P(_t(y)-k,x(al(0)))I u=(I)y;if(!chg[r]&&u<v)return x(al(0));v=u;})
+   I(TQN(k),L v=*(L*)_V(*p);for(U r=1;r<n;r++){A y=p[r];P(_t(y)-k,x(al(0)))L u=*(L*)_V(y);if(!chg[r]&&u<v)return x(al(0));v=u;})
+   J(TQ(k),I v=(I)*p;for(U r=1;r<n;r++){A y=p[r];P(_t(y)-k,x(al(0)))I u=(I)y;if(!chg[r]&&u<v)return x(al(0));v=u;})
    E(return x(al(0));)} break;
   default: return x(al(0));                        // unknown ordering column: sort
  }
@@ -910,7 +910,7 @@ Z A atlist(UC c,A y){
  P(LH(tG,t,tS),atchk(c,y))
  I(t==tB,A g=cG(_R(y));P(!g,y(0))g=atchk(c,g);P(!g,y(0))mr(g);return atset(y,a);)
  I(t==tA,I k=tjk(y);
-  I(k==tdt||k==ttm||k==tnp,A l=tjn(y);P(!l,y(0))l=atchk(c,l);P(!l,y(0))mr(l);return atset(y,a);)   //dates and times: by their values
+  I(TQ(k),A l=tjn(y);P(!l,y(0))l=atchk(c,l);P(!l,y(0))mr(l);return atset(y,a);)   //dates and times: by their values
   P(c=='p',y(et0()))
   I(c=='s',A r=K1("{(!#x)~<x}",_R(y));P(!r,y(0))B ok=gl(r);P(!ok,y(err0("s-fail"))))
   I(c=='u',A u=unq(_R(y));P(!u,y(0))U k=_N(u);mr(u);P(k!=_n(y),y(err0("u-fail"))))
@@ -988,8 +988,8 @@ Z A1(sumnT,P(!_tP(x)&&_t(x)==tL,CO L*RES p=_V(x);U n=_n(x);W t=0;F(n,L v=p[i];t+
 Z A1(qins,x(INS))   //`ins: the insert verb (h.c ins2), which amber.k binds to insert once (#94 Q1)
 A qech(A),qmcT(A),nsdT(A),ewtT(A);   //w.c: `ech `qmc `nsd `ewt
 A ktan(A),kasn(A),kacs(A),katn(A),qstT(A),md5T(A),qesT(A),qegT(A),rndT(A),minvT(A);   //1.c: `tan `asin `acos `atan; w.c: `qst (q's string of a number), `md5
-ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","dlt","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl","abs","wcol","rcol","fsz","ldir","wtn","senc","hh","mm","sec","tjn","exit","lk","ins","wmul","qmc","nsd","ewt","ech","tan","asin","acos","atan","qst","md5","qes","qeg","rnd","minv"};
- G(&kst,js1,qp,qt,frk,hex,err,qa,qe,dltC,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,wcolT,rcolT,fszT,ldirT,wtnT,sencT,hhC,mmC,secC,tjnC,qx,lkT,qins,wmulT,qmcT,nsdT,ewtT,qech,ktan,kasn,kacs,katn,qstT,md5T,qesT,qegT,rndT,minvT,ed)[fI((V*)s,L(s),v)](x))   //found by a scan in this order: dlt (amber.k's deltas, each call) early, exit last
+ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","dlt","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl","abs","wcol","rcol","fsz","ldir","wtn","senc","hh","mm","sec","tjn","exit","lk","ins","wmul","qmc","nsd","ewt","ech","tan","asin","acos","atan","qst","md5","qes","qeg","rnd","minv","mku","mkv","mkm","mkn","dmo","mod"};
+ G(&kst,js1,qp,qt,frk,hex,err,qa,qe,dltC,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,wcolT,rcolT,fszT,ldirT,wtnT,sencT,hhC,mmC,secC,tjnC,qx,lkT,qins,wmulT,qmcT,nsdT,ewtT,qech,ktan,kasn,kacs,katn,qstT,md5T,qesT,qegT,rndT,minvT,mkmn,mksc,mkmo,mksp,dmoC,modC,ed)[fI((V*)s,L(s),v)](x))   //found by a scan in this order: dlt (amber.k's deltas, each call) early, exit last
 /* ---- tacit trains: hook (f g) and fork (f g h) --------------------------
  * A general list of length 2 or 3 whose every element is a function becomes a
  * TRAIN when it is applied (a `::` in it is data, as in ngn/k, so such a list is

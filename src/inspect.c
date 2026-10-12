@@ -71,6 +71,10 @@ static const char *iv_typename(UC t) {
         case tdt: return "Date Atom";
         case ttm: return "Time Atom";
         case tnp: return "Timestamp Atom";
+        case tmn: return "Minute Atom";
+        case tsc: return "Second Atom";
+        case tmo: return "Month Atom";
+        case tsp: return "Timespan Atom";
         default:  return "Value";
     }
 }

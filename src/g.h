@@ -569,6 +569,10 @@
 #define R14(x,a...) case x:R13(a)
 #define R15(x,a...) case x:R14(a)
 #define R16(x,a...) case x:R15(a)
+#define R17(x,a...) case x:R16(a)
+#define R18(x,a...) case x:R17(a)
+#define R19(x,a...) case x:R18(a)
+#define R20(x,a...) case x:R19(a)
 #define RA(a...) R(tA,a)
 #define RE(a...) R(tE,a)
 #define RB(a...) R(tB,a)
@@ -621,7 +625,7 @@
 #define Ropq(a...) R3(to,tp,tq,a)
 #define Ropqr(a...) R4(to,tp,tq,tr,a)
 #define RsS(a...) R2(ts,tS,a)
-#define Rt(a...) R16(ti,tl,tf,tc,ts,to,tp,tq,tr,tu,tv,tw,tx,tdt,ttm,tnp,a)//every atom type, the temporal ones (added after tx) included
+#define Rt(a...) R20(ti,tl,tf,tc,ts,to,tp,tq,tr,tu,tv,tw,tx,tdt,ttm,tnp,tmn,tsc,tmo,tsp,a)//every atom type, the temporal ones (added after tx) included
 #define RT(a...) R10(tA,tE,tB,tG,tH,tI,tL,tF,tC,tS,a)
 #define RU(a...) R8(to,tp,tq,tr,tu,tv,tw,tx,a)
 #define Ruvw(a...) R3(tu,tv,tw,a)

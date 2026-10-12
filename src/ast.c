@@ -273,6 +273,10 @@ static ASTNode *describe_leaf(A v, UC t) {
         case tdt: snprintf(lb, sizeof lb, "%lld", (long long)_v(v)); return ast_new(AST_SCALAR, lb, "(Date, raw days)");
         case ttm: snprintf(lb, sizeof lb, "%lld", (long long)_v(v)); return ast_new(AST_SCALAR, lb, "(Time, raw ms)");
         case tnp: snprintf(lb, sizeof lb, "%lld", (long long)*_L(v)); return ast_new(AST_SCALAR, lb, "(Timestamp, raw ns)");
+        case tmn: snprintf(lb, sizeof lb, "%lld", (long long)_v(v)); return ast_new(AST_SCALAR, lb, "(Minute, raw minutes)");
+        case tsc: snprintf(lb, sizeof lb, "%lld", (long long)_v(v)); return ast_new(AST_SCALAR, lb, "(Second, raw seconds)");
+        case tmo: snprintf(lb, sizeof lb, "%lld", (long long)_v(v)); return ast_new(AST_SCALAR, lb, "(Month, raw months)");
+        case tsp: snprintf(lb, sizeof lb, "%lld", (long long)*_L(v)); return ast_new(AST_SCALAR, lb, "(Timespan, raw ns)");
 
         case tu: case tv: case tw: {
             const char *g, *nm;

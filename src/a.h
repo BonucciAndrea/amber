@@ -190,7 +190,7 @@ TD unsigned long long W,A,A0(),A1(A),A2(A,A),A3(A,A,A),A4(A,A,A,A),AA(CO A*,U),A
 #define AX(f,b...) A f(A x,CO A*a,U n  )_(DBG(Q(n<=8));b)/*0,1..1,n*/
 #define AA(f,b...) A f(    CO A*a,U n  )_(DBG(Q(n<=8));b)
 A1 _R,aA1,asc,kabs,AZ,blw,cB,cG,cC,cF,cH,cI,cL,cS,dsc,emaC,enl,epr,err,fir,flp,flr,frk,gZ,gg,grp,hex,imx,imn,inv,jS,js0,js1,kcos,kexp,klog,ksin,kst,las,len,m0,m1,mkn,mRa,mr,mut,
- neg,not,nul,of0,of1,opn,out,peachC,prng,qkmp,qpri,qte,raz,rev,rs0,spl,sqr,sqz,sqzZ,str,str0,til,typ,u0c,u1c,u2c,unh,unq,val,whr,wjc,mkdt,mktm,mknp,hhC,mmC,secC,tjnC,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,mwC,xsC,rdlC,sbbC,sbtC,wsmC,cvmC,dltC,srtC,srtdC,gaggC,gaggT,wmulT,sencT,membC,ejxC,wcolT,rcolT,fszT,ldirT,wtnT;
+ neg,not,nul,of0,of1,opn,out,peachC,prng,qkmp,qpri,qte,raz,rev,rs0,spl,sqr,sqz,sqzZ,str,str0,til,typ,u0c,u1c,u2c,unh,unq,val,whr,wjc,mkdt,mktm,mknp,mkmn,mksc,mkmo,mksp,dmoC,modC,hhC,mmC,secC,tjnC,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,mwC,xsC,rdlC,sbbC,sbtC,wsmC,cvmC,dltC,srtC,srtdC,gaggC,gaggT,wmulT,sencT,membC,ejxC,wcolT,rcolT,fszT,ldirT,wtnT;
 A2 _1,aA2,aM,add,am,psh,ari,bin,ct,cat,cat10,cat11,dlr,dex,dot,dvd,eql,exc,crt,fil,fnd,gtn,gtu,ltu,mnu,mxu,hsh,ie,i1,ltn,mod,mnm,mtc,mul,mxm,que,sub,und,v0c,v1c,v2c,cmprC,no2,ins2,ech2;
 A3 _2,aA3,arf,arp,arpF,ars,cpl,e2,r2,try;
 A4 ara,a4,d4;
@@ -258,16 +258,20 @@ EX A1*v1[];EX A2*v2[];EX AA*v8[];EX A gv[65536],cns,cn[],ci[2][5];EX I pg;EX TY(
 
 //                    0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25
 //                      () !i ,1 ,i ,i ,i ,i ,f "" ,` +m X!  5  6 .6 "c" ` {} 1+ ++ +/ +:  +  / 2:
-enum                 {tA=1,tE,tB,tG,tH,tI,tL,tF,tC,tS,tM,tm,ti,tl,tf,tc,ts,to,tp,tq,tr,tu,tv,tw,tx,tdt,ttm,tnp,tn};
+enum                 {tA=1,tE,tB,tG,tH,tI,tL,tF,tC,tS,tM,tm,ti,tl,tf,tc,ts,to,tp,tq,tr,tu,tv,tw,tx,tdt,ttm,tnp,tmn,tsc,tmo,tsp,tn};
 // tdt=date atom (days since 2000.01.01, packed int32); ttm=time atom (ms of day, packed int32);
 // tnp=timestamp atom (ns since 2000.01.01, heap int64).  Native scalar temporal types.
-#define T_ CO C TS[]="0""A""I""I""I""I""I""I""F""C""S""M""m""i""i""f""c""s""o""p""q""r""u""v""w""x""d""t""n",/*type symbols     */\
-                Tw[]={0, 6, 6, 0, 3, 4, 5, 6, 6, 3, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 5, 5, 6},/*log2(size)       */\
-                TT[]={0,tA,tL,tB,tG,tH,tI,tL,tF,tC,tS,tM,tM,tI,tL,tF,tC,tS,tA,tA,tA,tA,tA,tA,tA,tA,tI,tI,tL},/*list type        */\
-                TX[]={0,tG,tG,tG,tG,tH,tI,tL,tF,tG,tI,tG,tG, 0, 0,tF,tG,tI,tG,tG,tG,tG,tG,tG,tG,tG, 0, 0, 0},/*arith conformance*/\
-                Tk[]="0""L""I""I""I""I""I""I""F""C""S""T""D""i""i""f""c""s""?""?""?""?""?""?""?""?""d""t""p";/*for the api (k.h)*/
-#define TR(t) ((1<<tA|1<<tM|1<<tm|1<<to|1<<tp|1<<tq|1<<tr)>>(t)&1)//reftypes
-#define TP(t) ((1<<ti|1<<tc|1<<ts|1<<tu|1<<tv|1<<tw|1<<tx|1<<tdt|1<<ttm)>>(t)&1)//packed types (+ date/time atoms)
+// Amber 2.9.0: q's other temporals. tmn=minute (packed int32 minutes), tsc=second (packed int32 seconds), tmo=month
+// (packed int32 months since 2000.01), tsp=timespan (heap int64 ns). A packed one's null is NIT, a heap one's NL, as q's 0Nd 0Nn
+#define T_ CO C TS[]="0""A""I""I""I""I""I""I""F""C""S""M""m""i""i""f""c""s""o""p""q""r""u""v""w""x""d""t""n""h""j""y""e",/*type symbols     */\
+                Tw[]={0, 6, 6, 0, 3, 4, 5, 6, 6, 3, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 5, 5, 6, 5, 5, 5, 6},/*log2(size)       */\
+                TT[]={0,tA,tL,tB,tG,tH,tI,tL,tF,tC,tS,tM,tM,tI,tL,tF,tC,tS,tA,tA,tA,tA,tA,tA,tA,tA,tI,tI,tL,tI,tI,tI,tL},/*list type        */\
+                TX[]={0,tG,tG,tG,tG,tH,tI,tL,tF,tG,tI,tG,tG, 0, 0,tF,tG,tI,tG,tG,tG,tG,tG,tG,tG,tG, 0, 0, 0, 0, 0, 0, 0},/*arith conformance*/\
+                Tk[]="0""L""I""I""I""I""I""I""F""C""S""T""D""i""i""f""c""s""?""?""?""?""?""?""?""?""d""t""p""u""v""m""n";/*for the api (k.h)*/
+#define TR(t) ((1ull<<tA|1ull<<tM|1ull<<tm|1ull<<to|1ull<<tp|1ull<<tq|1ull<<tr)>>(t)&1)//reftypes (64 bits: the type codes pass 31)
+#define TP(t) ((1ull<<ti|1ull<<tc|1ull<<ts|1ull<<tu|1ull<<tv|1ull<<tw|1ull<<tx|1ull<<tdt|1ull<<ttm|1ull<<tmn|1ull<<tsc|1ull<<tmo)>>(t)&1)//packed types (+ the packed temporals)
+#define TQ(t) LH(tdt,t,tsp)                                       //a temporal atom
+#define TQN(t) ((t)==tnp||(t)==tsp)                               //a temporal of 64-bit ns on the heap
 #define TU(t) LH(to,t,tx)                                         //function types (to..tx exactly; temporal tags sit above)
 
 //header bytes: bc...... XXXXXXXX ....OEkt rrrrnnnn
@@ -303,13 +307,16 @@ enum                 {tA=1,tE,tB,tG,tH,tI,tL,tF,tC,tS,tM,tm,ti,tl,tf,tc,ts,to,tp
 #define _W(x) (1<<Tw[_t(x)]>>3)//type width in bytes
 #define M_(x,a...) {DBG(A t_=)m0(x);a;DBG(x=0;m1(t_));}//two-phase free()
 
-#define Lt(t) (W)t<<56
+#define Lt(t) ((W)(t)<<56)
 #define ac(v) (Lt(tc)|(U)(C)(v))
 #define ai(v) (Lt(ti)|(U)(v))
 #define as(v) (Lt(ts)|(U)(v))
 #define adt(v) (Lt(tdt)|(U)(I)(v))//date atom (packed): days since 2000.01.01
 #define atm(v) (Lt(ttm)|(U)(I)(v))//time atom (packed): ms of day
 #define antp(v) AT(tnp,al(v))     //timestamp atom (heap int64): ns since 2000.01.01
+#define ansp(v) AT(tsp,al(v))     //timespan atom (heap int64): ns
+#define atq(k,v) (Lt(k)|(U)(I)(v))//a packed temporal atom of kind k
+#define NIT ((I)0x80000000)       //a packed temporal's null (0Nd 0Nt 0Nu 0Nv 0Nm)
 #define ax(v,k) (Lt(tx)|(W)(k)<<48|(W)(v)<<16>>16)
 #define V_ A1*v1[]={sam,flp,neg,fir,sqr,til,whr,rev,asc,dsc,grp,not,enl,nul,len,flr,str,unq,typ,val,u0c,u1c,u2c,las,imn,imx,out,srtC,srtdC,en,en,en};\
            A2*v2[]={dex,add,sub,mul,dvd,exc,mnu,mxu,ltu,gtu,eql,mtc,cat,crt,hsh,und,dlr,que, _1,dot,v0c,v1c,v2c,dex,dex,dex,dex,cmprC,no2,no2,ins2,ech2};\

@@ -33,7 +33,7 @@ Z AM_TLS_IE B ixsm;   //set where the check meets a symbol with an index below i
 Z B ixzc(A z,U c){return !_tP(z)&&!_tt(z)&&_N(z)!=c;}   //z a list, dict or table not of count c: 'length
 Z A ixzi(A z,U i){return !_tP(z)&&_t(z)==tA?_A(z)[i]:au;}   //z's item i, which goes with index i: a general list's; else an atom, or not known (::)
 NI I ixck(A x,A y,U k,A z,B asg){if(x&&k<_N(y)&&!_tP(x)&&(_t(x)==tm||_t(x)==tM))return ixkd(x,y,k,z,asg);
- if(x&&y!=au&&k<_N(y)&&(_t(x)!=ts&&LH(ti,_t(x),ts)||LH(tdt,_t(x),tnp)))return 3;   //an index into a number, char or temporal atom (:: as the index is the whole value); a symbol atom names a global, which the assignment amends
+ if(x&&y!=au&&k<_N(y)&&(_t(x)!=ts&&LH(ti,_t(x),ts)||TQ(_t(x))))return 3;   //an index into a number, char or temporal atom (:: as the index is the whole value); a symbol atom names a global, which the assignment amends
  if(!x||k>=_N(y)||_tP(x)||!_tT(x)){I(x&&k<_N(y)&&_ts(x),ixsm=1)return 0;}   //a symbol with an index below it: an amend by name follows (ixsm)
  if(!_tP(y)&&LH(tE,_t(y),tL)){L v=ixe(y,k);if(v<0||v>=(L)_N(x))return 1;if(k+1==_N(y))return 0;if(k&&_t(x)==tS)return 3;A w=ii(x,(U)v);I r=ixck(w,y,k+1,z,asg);mr(w);return r;}   //y an int list: an int index per level
  A q=_tA(y)?_A(y)[k]:ii(y,k);I r=ixcq(x,q,y,k,z,asg);I(!_tA(y),mr(q))return r;}

@@ -30,8 +30,9 @@ atan:{`atan x}
 til:{$[`i~@x;$[x<0;`err"domain";!x];!x]}   / til -1 is 'domain, as q
 enlist:{,x}
 string:{$[(@x)in`f`F`i`I;`qst x;`A~@x;string'x;$x]}   / numbers as q prints them: 1.0 is "1", 0N "", floats to 7 digits (`qst, src/w.c)
-qtyn:`i`I`f`F`c`C`s`S`d`t`n`A`m`M`o`u`v`w`p`q`r`x!-7 7 -9 9 -10 10 -11 11 -14 -19 -12 0 99 98 100 101 102 103 104 105 106 112
-type:{qtyn@@x}   / q's type numbers (7 for ints, -9 a float, 98 a table); @x gives Amber's letters
+qtyn:`i`I`f`F`c`C`s`S`d`t`n`h`j`y`e`A`m`M`o`u`v`w`p`q`r`x!-7 7 -9 9 -10 10 -11 11 -14 -19 -12 -17 -18 -13 -16 0 99 98 100 101 102 103 104 105 106 112
+/ Amber's temporal letters: `d`t`n`h`j`y`e, a date, time, timestamp, minute, second, month, timespan (q's d t p u v m n)
+type:{$[`A~t:@x;$[#x;$[(u:@*x)in`d`t`n`h`j`y`e;$[&/u=@'x;0-qtyn u;0];0];0];qtyn t]}   / q's type numbers (7 for ints, -9 a float, 98 a table; a general list of one temporal kind as q's vector of it, 14 for dates); @x gives Amber's letters
 key:{$[(@x)in`I`F`C`S;(`long`float`char`symbol)@`I`F`C`S?@x;!x]}   / key of a list is its type's name, as q
 value:{. x}
 first:{*x}
@@ -46,12 +47,12 @@ mod:{$[`i~@y;$[y>0;y!x;y<0;0-(0-y)!0-x;$[isat x;$[`f~@x;0n;0N];(#x)#$[`F~@x;0n;0
 qmd:{[x;y]$[(@y)in`f`F;$[(@x)in`f`F;x-y*_x%y;x-y*div[x;y]];(@x)in`f`F;x-y*_x%y;[r:x-y*idiv[x;y];$[|/0=y;@[r;&0=y;:;0N];r]]]}   / a float or a list divisor
 idivv:{[x;y]x:$[`i~@x;(#y)#x;x];n:(^x)|^y;x0:0^x;y0:1^y;z:&y0=0;s:y0<0;x1:x0*1-2*s;y1:1|y0*1-2*s;q:_x1%y1;r:x1-q*y1;d:_r%y1;q:q+d;r:r-d*y1;q:q-r<0;r:x1-q*y1;q:q+~r<y1;q:@[q;z;:;0N];@[q;&n;:;0N]}   / ints by an int vector, exactly: the float quotient, corrected by the exact (wrapped) remainder
 idiv:{$[(`I~@y)&~^`i`I?@x;$[#y;$[(&/~^y)&&/~^x;$[(&/9007199254740992>{x|-x}x)&(0<&/a)&&/9007199254740992>a:{x|-x}y;_x%y;idivv[x;y]];idivv[x;y]];_x%y];~`i~@y;_x%y;^`i`I?@x;_x%y;^y;$[`i~@x;0N;(#x)#0N];y=0;$[`i~@x;0N;(#x)#0N];y<0;idiv[-x;-y];[r:$[y=8;(-4)!(-2)!x;y=9;(-3)!(-3)!x;(-y)!x];$[`i~@x;$[^x;0N;r];0N=&/x;@[r;&^x;:;0N];r]]]}   / floor division, exact for ints over an int or ints (-8! -9! are other verbs); else through the float quotient
-div:{$[(@x)in`f`F;fdiv0[x;$[`i~@y;$[^y;0n;y];`I~@y;@[`f$y;&^y;:;0n];y]];(@y)in`f`F;idiv[x;rnd0 y];idiv[x;y]]}   / as q: an int by a float divisor rounds it; a float dividend floors as a float
+div:{$[(@x)in`t`h`j`e;qtmk[@x;div[`i$x;$[(@y)in`d`t`n`h`j`y`e;`i$y;y]]];(@x)in`f`F;fdiv0[x;$[`i~@y;$[^y;0n;y];`I~@y;@[`f$y;&^y;:;0n];y]];(@y)in`f`F;idiv[x;rnd0 y];idiv[x;y]]}   / as q: an int by a float divisor rounds it; a float dividend floors as a float
 rnd0:{`rnd x}   / round half away from zero, as q's `long$ of a float (`rnd, src/w.c: one pass)
 fdiv0:{q:x%y;r:`f$_q;$[`f~@q;$[(^q)|^_q;0n;r];@[r;&^q;:;0n]]}   / floor of a float quotient through an int, kept a float, as q does
-xbar:{$[(@y)in`d`t`n;qtmk[@y;xbar[x;`i$y]];(`A~@y)&#y;$[&/(@'y)in`d`t`n;xbar[x]'y;xbq[x;y]];0~x;$[isat y;0N;(#y)#0N];(`I~@x)&|/0=x;@[xbq[@[x;&0=x;:;1];y];&0=x;:;0N];xbq[x;y]]}   / A float width or value gives floats, as q (digest #67); a width of 0 0N; a time, date or timestamp stays one
+xbar:{$[(@x)in`d`t`n`h`j`y`e;xbar[`i$x;y];(@y)in`d`t`n`h`j`y`e;qtmk[@y;xbar[x;`i$y]];(`A~@y)&#y;$[&/(@'y)in`d`t`n`h`j`y`e;xbar[x]'y;xbq[x;y]];0~x;$[isat y;0N;(#y)#0N];(`I~@x)&|/0=x;@[xbq[@[x;&0=x;:;1];y];&0=x;:;0N];xbq[x;y]]}   / A float width or value gives floats, as q (digest #67); a width of 0 0N; a temporal stays one, a temporal width is its number (0D00:05:00.000000000 xbar t)
 xbq:{r:xbi[x;y];$[|/((@x),@y)in`f`F;`f$r;r]}
-qtmk:{[k;v]$[k~`d;`mkd v;k~`t;`mkt v;`mkp v]}   / an int back to a date, time or timestamp
+qtmk:{[k;v]$[k~`d;`mkd v;k~`t;`mkt v;k~`n;`mkp v;k~`h;`mku v;k~`j;`mkv v;k~`y;`mkm v;`mkn v]}   / an int back to a temporal of kind k
 xbi:{r:x*idiv[y;x];$[`i~@x;$[`I~@y;$[^x;xbn[x;y;r];0N=&/y;xbn[x;y;r];r];xbn[x;y;r]];xbn[x;y;r]]}   / A null width or value gives a null (0N*0N wraps to 0); ints with no null: just the product
 xbn:{[x;y;r]m:(^x)|^y;$[~|/m;r;(@r)in`i`f;$[(`f~@r)|(`f~@x)|`f~@y;0n;0N];@[r;&m;:;$[`I~@r;0N;0n]]]}
 xlog:{(`ln y)%`ln x}
@@ -67,7 +68,7 @@ sum:{$[0=#x;$[`F=@x;0.0;`A=@x;();0];`F=@x;$[^s:+/x;+/0.0^x;s];`I=@x;`sumn x;+/ni
 prd:{$[0=#x;$[`F=@x;1.0;`A=@x;();1];`F=@x;$[^r:*/x;*/1.0^x;r];`I=@x;`prn x;*/nid[x;1;1.0]]}   / Nulls skipped; empty: keep the float type
 min:{$[`I=@x;$[0N=m:&/x;&/9223372036854775807^x;m];`F=@x;$[^m:&/x;&/0w^x;m];&/x]}   / min 0N 5 is 5; all nulls: the largest int (q 0W); no nulls: just &/
 max:{$[`I=@x;$[0N=m:|/x;-9223372036854775807;m];`F=@x;$[^m:|/x;-0w;m];|/x]}   / a null is the least, so |/ skips it unless all are null (then -0W, -0w)
-avg:{$[`I=@x;$[0N=&/x;avgn x;(+/0.0+x)%#x];`F=@x;$[^s:+/x;avgn x;s%#x];#x;$[^`d`t`n?@*x;(+/0.0+x)%#x;avg`i$x];0n]}   / the non-null items, summed as floats, like q (an int64 +/ can wrap); none: 0n (an empty general list too, as q: an empty temporal column is one); a temporal list: its numbers' (days, ms, ns), as q
+avg:{$[`I=@x;$[0N=&/x;avgn x;(+/0.0+x)%#x];`F=@x;$[^s:+/x;avgn x;s%#x];#x;$[^`d`t`n`h`j`y`e?@*x;(+/0.0+x)%#x;avg`i$x];0n]}   / the non-null items, summed as floats, like q (an int64 +/ can wrap); none: 0n (an empty general list too, as q: an empty temporal column is one); a temporal list: its numbers' (days, ms, ns), as q
 avgn:{v:x@&~^x;$[#v;(+/0.0+v)%#v;0n]}
 / fused dot (`wsm) when both sides are float vectors: no product vector is
 / built, so the 80MB temporary `+/x*y` writes and re-reads never exists.
@@ -96,7 +97,7 @@ sums:{$[`F=@x;$[^*|r:+\x;+\0.0^x;r];`I=@x;$[`hnl x;+\0^x;+\x];|/`m`M=@x;dcv[sums
 prds:{$[`F=@x;$[^*|r:*\x;*\1.0^x;r];`I=@x;$[`hnl x;*\1^x;*\x];|/`m`M=@x;dcv[prds;x];*\nid[x;1;1.0]]}
 mins:{$[|/`m`M=@x;dcv[mins;x];&\nid[x;9223372036854775807;0w]]}   / mins 0n 1.0 is 0w 1.0, as q
 maxs:{$[|/`m`M=@x;dcv[maxs;x];|\nid[x;-9223372036854775807;-0w]]}
-deltas:{$[`m~@x;dcv[deltas;x];$[1=#x;isat x;0b];x;(`A~@x)&(`d~@*x)|`n~@*x;deltas`i$'x;#x;$[`F=@x;x-0.0,-1_x;`M=@x;dcv[deltas;x];`dlt x];x]}   / the zero in front has x's type: 0, before floats made a general list (576 ms on 10M); 0^ as 0*0w is 0n; floats: a float zero, so neither; a table by column; any other list `dlt: ints in one pass, nulls as q, a general list of int lists by row, nulls as q, the rest as x-(0^0*1#x),-1_x gave
+deltas:{$[`m~@x;dcv[deltas;x];$[1=#x;isat x;0b];x;(`A~@x)&(`d~@*x)|`y~@*x;deltas`i$'x;(`A~@x)&(@*x)in`d`t`n`h`j`y`e;qtmk[$[`n~k:@*x;`e;k]]'deltas`i$'x;#x;$[`F=@x;x-0.0,-1_x;`M=@x;dcv[deltas;x];`dlt x];x]}   / the zero in front has x's type: 0, before floats made a general list (576 ms on 10M); 0^ as 0*0w is 0n; floats: a float zero, so neither; a table by column; any other list `dlt: ints in one pass, nulls as q, a general list of int lists by row, nulls as q, the rest as x-(0^0*1#x),-1_x gave
 ratios:{$[`m~@x;dcv[ratios;x];$[1=#x;isat x;0b];x;#x;x%(,1.0),0.0+-1_x;`M=@x;0.0+x;0#0.0]}   / empty: an empty float list, as q (digest #67), an empty table its columns as floats; floats all through (1, before floats was a general list)
 differ:{$[`m~@x;dcv[differ;x];isat x;1b;~#x;!0;|/`I`S`C=@x;1b,~(1_x)=-1_x;`F=@x;1b,~((1_x)=-1_x)|(^1_x)&^-1_x;@[~~':x;0;:;1b]]}   / The first item always differs, a null too; typed lists compare shifted (NaN matches NaN, as ~); empty: an empty boolean list, as q (so ()!() gives ()!`boolean$())
 prev:{$[`m~@x;dcv[prev;x];isat x;x;-1_(,x@#x),x]}   / An atom comes back as is, as q; a dict or keyed table: by its values; the null is the list's own (x@#x), not 0N
@@ -207,7 +208,7 @@ xdesc:{[c;t]c:c,();hasc[c;t];s:c#+t;o:`xs(value s;1b);o:$[#o;o;>+s];t@o}
 fills:{$[|/`m`M=@x;dcv[fills;x];$[2>#x;$[#x;isat x;1b];0b];x;`A=@x;$[`A=@n:^x;fln\x;x@|\(!#x)*~n];x@|\(!#x)*~^x]}   / each null takes the last value before it, as q; a dict by its values, a table by column
 fln:{$[isat x;$[(`f=@x)&`I=@y;x^0.0+y;x^y];isat y;$[^y;x;y];~(#x)=#y;`err"length";`A=@n:^y;fln'[x;y];[t:(@x),@y;x:$[t~`I`F;0.0+x;x];y:$[t~`F`I;0.0+y;y];@[y;i;:;x i:&n]]]}   / a list of lists fills position by position from the item before, as q's ^\ (the nulls of y take x's; ints with floats: floats, as q)
 attr:{`at x}                                         / q's attr: `s `u `p `g, or ` for none
-qtc:`i`f`c`s`C`d`t`n!"jfcsCdtp"
+qtc:`i`f`c`s`C`d`t`n`h`j`y`e!"jfcsCdtpuvmn"
 meta:{d:+unkey x;xkey[`c;+`c`t`f`a!(!d;qtc@{@*x}'value d;(#!d)#`;{`at x}'value d)]}   / as q: t the type's char, f the foreign key (none here)
 insert:`ins[]                                       / q's insert: a row dict or table lined up by t's column names, its types checked (the verb in src/h.c, ins2)
 
@@ -238,7 +239,7 @@ ujk:{[x;y]$[`M=@. x;0;`err"nyi"];$[iskeyed y;$[`M=@. y;0;`err"nyi"];`err"type"];
 / a char column in both is 'type, as q's + of chars (was ints)
 pj:{[t;kt]kc:keys kt;td:+t;$[&/(@'(+!kt)kc)=@'td kc;0;`err"type"];p:jprobe[kc;+!kt;td];i:(#p 0)^(p 0)?p 1;vt:value kt;vc:cols vt;+td,vc!{[i;t;vt;c]v:vt c;$[c in !t;[z:$[`F~@v;0.0;`C~@v;$[`C~@t c;`err"type";0];0];a:t c;r:a+z^(v,z)@i;$[|/^a;@[r;&^a;:;*0#r];r]];pjn[v;i]]}[i;td;vt]'vc}
 pjn:{[v;i]$[`F~@v;0.0^(v,0.0)@i;`I~@v;0^(v,0)@i;`C~@v;(v,`c$0)@i;`A~@v;(v,,0#*v)@i;(v,*0#v)@i]}
-ejk:{$[`A~t:@x;$[#x;$[(u:@*x)in`d`t`n;u;`C~u;`str;`A];`A];t]}   / ej: a key column's kind, its type; a general list (how dates, times and strings are held) has its first item's, else `A, which joins any
+ejk:{$[`A~t:@x;$[#x;$[(u:@*x)in`d`t`n`h`j`y`e;u;`C~u;`str;`A];`A];t]}   / ej: a key column's kind, its type; a general list (how dates, times and strings are held) has its first item's, else `A, which joins any
 ejK:{$[`A~@x;$[1=#?@'x;$[`str~k:ejk x;`C;k];`A];@x]}   / on a mismatch only: a general list's kind if all its items agree, else `A (a mixed column joins any); strings meet chars as before
 ejo:{&/(x=y)|(`A=x)|`A=y}
 ejs:{$[`str~k:ejk x;`A;k]}   / y's key column: a string column is a general list, which q joins to any (q checks only a typed one)
@@ -268,10 +269,10 @@ ajsorted:{[c;t]c:c,();tc:*|c;g:-1_c;d:+t;gc:value g#d;g0:*gc;`ajs(gc;d tc;$[1=#g
 / so the attribute survives for callers that inspect it (meta/`at).
 ajord:{[c;t]$[ajsorted[c;t];t;xasc[c;t]]}
 ajmK:{[c;x;y]c:c,();g:-1_c;tc:*|c;yt:tjnum(+y)tc;xt:tjnum(+x)tc;yg:$[#g;=rows[g#+y];(,0)!,!#y];xg:$[#g;=rows[g#+x];(,0)!,!#x];{[yt;xt;yg;xg;acc;gk]yi:yg gk;xi:xg gk;b:(yt yi)'(xt xi);@[acc;xi;:;(yi,0N)@b]}[yt;xt;yg;xg]/[(#x)#0N;!xg]}  / pure-K reference
-tjnum:{$[`~k:tjk x;0#0;k in`d`t`n;`i$x;x]}  / a column of dates, times or timestamps as their numbers (days, ms, ns), as the kernels read it (for wjK and ajmK, the pure-K paths)
-tjk:{$[`A~@x;$[#x;$[(1=#?t)&(*t:@'x)in`d`t`n;*t;`A];`];@x]}  / a time column's kind: `d `t `n when every item is a date, a time or a timestamp; ` for an empty generic list
-tjmx:{[x;k]$[`A~k;|/(@'x)in`d`t`n;0b]}  / a generic column holding a date, time or timestamp among items of other kinds (or ::)
-tjsame:{[a;b]p:tjk a;q:tjk b;$[tjmx[a;p]|tjmx[b;q];`err"type";(p~q)|(`~p)|`~q;::;(p in`d`t`n)|q in`d`t`n;`err"type";::]}  / 'type when one side is temporal and the other is not the same kind
+tjnum:{$[`~k:tjk x;0#0;k in`d`t`n`h`j`y`e;`i$x;x]}  / a column of dates, times or timestamps as their numbers (days, ms, ns), as the kernels read it (for wjK and ajmK, the pure-K paths)
+tjk:{$[`A~@x;$[#x;$[(1=#?t)&(*t:@'x)in`d`t`n`h`j`y`e;*t;`A];`];@x]}  / a time column's kind: `d `t `n when every item is a date, a time or a timestamp; ` for an empty generic list
+tjmx:{[x;k]$[`A~k;|/(@'x)in`d`t`n`h`j`y`e;0b]}  / a generic column holding a date, time or timestamp among items of other kinds (or ::)
+tjsame:{[a;b]p:tjk a;q:tjk b;$[tjmx[a;p]|tjmx[b;q];`err"type";(p~q)|(`~p)|`~q;::;(p in`d`t`n`h`j`y`e)|q in`d`t`n`h`j`y`e;`err"type";::]}  / 'type when one side is temporal and the other is not the same kind
 ajm:{[c;x;y]c:c,();g:-1_c;tc:*|c;b:wjbnd[g;x;y];`aj((+y)tc;(+x)tc;b 0;b 1)}
 aj:{[c;x;y]c:c,();y:ajord[c;y];m:ajm[c;x;y];vc:except[cols y;c];k:&~^m;+(+x),vc!{[m;k;x;yd;c]r:(yd c)@m;$[c in !+x;@[(+x)c;k;:;r k];r]}[m;k;x;+y]'vc}  / a column x has keeps its values where nothing matches
 aj0:{[c;x;y]c:c,();y:ajord[c;y];m:ajm[c;x;y];vc:except[cols y;-1_c];k:&~^m;+(+x),vc!{[m;k;x;yd;c]r:(yd c)@m;$[c in !+x;@[(+x)c;k;:;r k];r]}[m;k;x;+y]'vc}   / a row with no quote keeps its own time and every column x has, as q
@@ -343,7 +344,7 @@ qEXACT:9007199254740992.0
 qgrp:{[t;b]d:+t;bc:d b;g:$[1=#b;=*bc;qcard[bc]<qEXACT;=qenc bc;=rows[b#+t]];iv:value g;(bc@\:*:'iv;iv)}
 qks:{[r]$[iskeyed r;[k:!r;o:`xs(. +k;0b);o:$[#o;o;<k];k:+k@o;c:1#!k;(+k,c!`sa'k c)!(. r)@o];r]}   / a grouped result in key order, as q gives it: xkey[k;xasc[k;unkey r]] without the flips, both halves cut by one order, the first key `s as xasc sets it
 qby:{[t;b;a]b:b,();r:qgrp[t;b];kt:+b!r 0;iv:r 1;subs:atr[t]'iv;vt:+(!a)!{[t;subs;f]$[#subs;f'subs;qby0[f;0#t]]}[t;subs]'value a;qks kt!vt}
-qby0:{[f;e]g:{[f;e]r:.[f;,e;{`qby0err}];$[`qby0err~r;();(@r)in`i`f`c`s`d`t`n;0#,r;()]}[f];r:g e;$[r~g@+{$[(`A=@x)&~#x;0#0.0;x]}'+e;r;()]}   / no groups: a column typed by its aggregate's result (q); a plain column stays ()
+qby0:{[f;e]g:{[f;e]r:.[f;,e;{`qby0err}];$[`qby0err~r;();(@r)in`i`f`c`s,`d`t`n`h`j`y`e;0#,r;()]}[f];r:g e;$[r~g@+{$[(`A=@x)&~#x;0#0.0;x]}'+e;r;()]}   / no groups: a column typed by its aggregate's result (q); a plain column stays ()
 / An empty temporal column is a general list with no type left (`max` of it is -0W, an int): a type that changes when such columns are floats instead came from them, so the column stays ()
 xgroup:{[k;t]k:k,();r:qgrp[t;k];kt:+k!r 0;vc:except[cols t;k];kt!+vc!{[t;iv;c]((+t)c)@/:iv}[t;r 1]'vc}   / Keyed by k, as q
 ungroup:{[x]t:unkey x;d:+t;v:value d;m:{`A=@x}'v;cnt:#:'*v@&m;+(!d)!{[cnt;m;c]$[m;raze c;raze cnt#'c]}[cnt]'[m;v]}
@@ -406,9 +407,9 @@ tnum0:{$[|/`t`d=@x;`i$x;~|/`A`m=@x;x;~#x;$[`A~@x;!0;x];[k:tnumk x;$[(1=#k)&&/k i
 / of u ms and their remainder by m, both toward zero; a null stays null. hh mm sec of a time, an int or an int vector take `hh
 / `mm `sec (src/w.c), one pass in C, before anything else; of a float or a float list none below 0 the floor as before (the same there, in fewer passes).
 tpart:{[u;m;x]n:^x;(0N*n)+(~n)*(1-2*x<0)*m!_(x|-x)%u}   / nulls by arithmetic, so a list of lists or a dict of them too
-hh:{$[|/`t`i`I=@x;`hh x;[x:tnum0 x;$[|/`i`I=@x;`hh x;tpart[3600000;24;x]]]]}   / hour of day      (q time.hh)
-mm:{$[|/`t`i`I=@x;`mm x;[x:tnum0 x;$[|/`i`I=@x;`mm x;$[|/`f`F=@x;&/~x<0;0];60!_x%60000;tpart[60000;60;x]]]]}   / minute of hour   (q time.mm)
-sec:{$[|/`t`i`I=@x;`sec x;[x:tnum0 x;$[|/`i`I=@x;`sec x;$[|/`f`F=@x;&/~x<0;0];60!_x%1000;tpart[1000;60;x]]]]}    / second of minute (q time.ss; ss=string-search)
+hh:{$[(@x)in`h`j`e;hh qcv["t";x];|/`t`i`I=@x;`hh x;[x:tnum0 x;$[|/`i`I=@x;`hh x;tpart[3600000;24;x]]]]}   / hour of day      (q time.hh)
+mm:{$[(@x)in`h`j`e;mm qcv["t";x];|/`t`i`I=@x;`mm x;[x:tnum0 x;$[|/`i`I=@x;`mm x;$[|/`f`F=@x;&/~x<0;0];60!_x%60000;tpart[60000;60;x]]]]}   / minute of hour   (q time.mm)
+sec:{$[(@x)in`h`j`e;sec qcv["t";x];|/`t`i`I=@x;`sec x;[x:tnum0 x;$[|/`i`I=@x;`sec x;$[|/`f`F=@x;&/~x<0;0];60!_x%1000;tpart[1000;60;x]]]]}    / second of minute (q time.ss; ss=string-search)
 milli:{1000!tnum0 x}                               / millisecond      (q time.ms)
 minute:{_((tnum0 x)%60000)}                        / minutes since midnight (q time.minute)
 second:{_((tnum0 x)%1000)}                         / seconds since midnight (q time.second)
@@ -485,18 +486,23 @@ repl.amfmt:amfmt
 
 / ---- q compatibility (2.8.0) --------------------------------------------------
 / q's casts by name or char that $ does not take itself (src/c.c sends them here): "J"$ "F"$ "S"$ "B"$ parse text,
-/ `long$ `float$ `date$ .. cast, `year$ `mm$ `dd$ `hh$ `uu$ `ss$ `week$ take a part. Amber has no month, datetime,
-/ timespan, minute, second or guid type: those are 'nyi
+/ `long$ `float$ `date$ .. cast, `year$ `mm$ `dd$ `hh$ `uu$ `ss$ `week$ take a part. Amber has no datetime or guid
+/ type: those are 'nyi. 2.9.0: minutes, seconds, months and timespans cast as q's (qclk: a time of day or a span to another,
+/ through ns, floored; a timestamp gives its time of day), a null to the type's null
 qtn:`boolean`byte`short`int`long`real`float`char`symbol`timestamp`month`date`datetime`timespan`minute`second`time`guid!"bxhijefcspmdznuvtg"
 qcst:{[t;y]$[`c~@t;qcc[t;y];" "~c:qtn t;qcp[t;y];qcc[c;y]]}
 qcc:{[c;y]$[c="*";y;c<"a";qcpa[c;y];(`A~@y)&0=#y;$[c in"bxhij";!0;c in"ef";0#0.0;c="c";"";c="s";0#`;y];`A~@y;qcc[c]'y;`m~@y;(!y)!qcc[c;. y];qcv[c;y]]}
 qcpa:{[c;y]$[~(@y)in`C`c`A;`err"type";c in"JIH";`I$y;c in"FE";`F$y;c="S";`$y;c in"DTP";$[`A~@y;c$'y;`err"type"];`c~@y;qcpa[c;,y];`A~@y;qcpa[c]'y;c="B";$[#y;(*y)in"1tTyY";0];`err"nyi"]}
-qcv:{[c;y]k:@y;$[c="b";~0=$[k in`d`t`n;`i$y;y];c in"xhij";$[k in`f`F;rnd0 y;k in`c`C`d`t`n;`i$y;k in`i`I;y;`err"type"];c in"ef";$[k in`f`F;y;k in`i`I;`f$y;k in`c`C`d`t`n;`f$`i$y;`err"type"];c="c";$[k in`c`C;y;k in`i`I;`c$y;`err"type"];c="s";$[k in`s`S;y;k in`c`C;`$y;`err"type"];c="d";$[k~`d;y;k~`n;`mkd tsdate`i$y;k~`i;`mkd y;k~`I;`mkd'y;`err"type"];c="t";$[k~`t;y;k~`n;`mkt tsms`i$y;k~`i;`mkt y;k~`I;`mkt'y;`err"type"];c="p";$[k~`n;y;k~`d;`mkp 86400000000000*`i$y;k~`i;`mkp y;k~`I;`mkp'y;`err"type"];`err"nyi"]}
-qcp:{[t;y]k:@y;$[`A~@y;qcp[t]'y;t~`year;year y;t~`mm;$[k~`t;tmm y;k~`n;month y;month y];t~`dd;day y;t~`hh;$[k~`n;thh`mkt tsms`i$y;thh y];t~`uu;$[k~`n;tmm`mkt tsms`i$y;tmm y];t~`ss;$[k~`n;tss`mkt tsms`i$y;tss y];t~`week;[d:$[k~`n;tsdate`i$y;`i$y];`mkd d-7!d+5];`err"domain"]}
+qcv:{[c;y]k:@y;$[c="b";~0=$[k in`d`t`n`h`j`y`e;`i$y;y];c in"xhij";$[k in`f`F;rnd0 y;k in`c`C`d`t`n`h`j`y`e;`i$y;k in`i`I;y;`err"type"];c in"ef";$[k in`f`F;y;k in`i`I;`f$y;k in`c`C`d`t`n`h`j`y`e;`f$`i$y;`err"type"];c="c";$[k in`c`C;y;k in`i`I;`c$y;`err"type"];c="s";$[k in`s`S;y;k in`c`C;`$y;`err"type"];c="d";$[k~`d;y;k~`n;`mkd idiv[`i$y;86400000000000];k~`y;qmod y;k~`i;`mkd y;k~`I;`mkd'y;`err"type"];c="p";$[k~`n;y;k~`d;$[^y;`mkp 0N;`mkp 86400000000000*`i$y];k~`y;qcv[c;qmod y];k~`i;`mkp y;k~`I;`mkp'y;`err"type"];c="m";$[k~`y;y;k in`d`n;qdmo y;k~`i;`mkm y;k~`I;`mkm'y;`err"type"];c in"tnuv";$[k in`t`n`h`j`e;qclk[c;k;y];k~`i;qtmk[qck c;y];k~`I;qtmk[qck c]'y;`err"type"];`err"nyi"]}
+qck:"tnuvdpm"!`t`e`h`j`d`n`y   / q's cast char to Amber's temporal letter
+qclk:{[c;k;y]v:`i$y;$[^v;qtmk[qck c;0N];[n:$[k~`t;v*1000000;k~`h;v*60000000000;k~`j;v*1000000000;k~`e;v;v-86400000000000*idiv[v;86400000000000]];qtmk[qck c;idiv[n;$[c="t";1000000;c="u";60000000000;c="v";1000000000;1]]]]]}
+qmod:{`mod x}   / a month's first day (src/f.c)
+qdmo:{`dmo x}   / a date's or a timestamp's month (src/f.c)
+qcp:{[t;y]y:$[`y~@y;qmod y;(@y)in`h`j`e;qcv["t";y];y];k:@y;$[`A~@y;qcp[t]'y;t~`year;year y;t~`mm;$[k~`t;tmm y;k~`n;month y;month y];t~`dd;day y;t~`hh;$[k~`n;thh`mkt tsms`i$y;thh y];t~`uu;$[k~`n;tmm`mkt tsms`i$y;tmm y];t~`ss;$[k~`n;tss`mkt tsms`i$y;tss y];t~`week;[d:$[k~`n;tsdate`i$y;`i$y];`mkd d-7!d+5];`err"domain"]}
 md5:{`md5 x}                                    / its 16 bytes, as q (a char vector: Amber has no byte type)
 avgs:{(sums x)%sums@~^x}                         / running mean, nulls skipped, as q
 cut:{$[isat x;(x*!-_-(#y)%x)_y;x_y]}            / n cut y: pieces of n; a list of starts cuts there, as q
-bin:{x'y}                                       / the last index of sorted x at or below y, -1 if none (the C bin, k's x'y)
+bin:{$[(`A~@x)&#x;$[(@*x)in`d`t`n`h`j`y`e;(`i$x)'`i$y;x'y];x'y]}                                       / the last index of sorted x at or below y, -1 if none (the C bin, k's x'y)
 binr:{(#x)-1+(|-x)'-y}                          / the first index of sorted x at or above y, as q
 inv:{`minv x}                                   / a square matrix's inverse (Gauss-Jordan, partial pivots; src/w.c), as q
 fkeys:{(0#`)!0#`}                               / Amber tables have no foreign keys

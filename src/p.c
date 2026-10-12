@@ -101,11 +101,21 @@ Z L ymd2days(L y,L m,L d){L wy=y-(m<=2);L era=(wy>=0?wy:wy-399)/400;L yoe=wy-era
 // as 1715.06.13D00:25:26.290448384). tdd holds a field at 1e15 or more, as "T"$, "D"$ and "P"$ do (tdg), so a minute, second, month,
 // day or a timestamp's hour of 20 digits does not wrap (10:18446744073709551617:00.000 read as 10:01:00.000). tbad: 1 'parse, 2 'limit.
 Z C tbad;Z W tdd(W v,C c){return v<(W)1e15?10*v+(W)(c-'0'):v;}Z B dok(W y,W m,W d){if(m<1||m>12||d<1)return 0;W n=m==2?28+(y%4==0&&(y%100!=0||y%400==0)):30+((m+(m>7))&1);return d<=n;}
-Z C tng;Z A pTmp(){S p=s;if(!C09(*p))return 0;W a=0;S q=p;while(C09(*q)){a=10*a+(W)(*q-'0');q++;}
+// Amber 2.9.0: q's typed nulls 0Nd 0Nt 0Np 0Nn 0Nu 0Nv 0Nm, timespans 1D02:03:04.500000000 (a day count, D, then a
+// time to the ns), minutes 09:30, seconds 09:30:15 and months 2026.03m. A time has its ms: 09:30:00.000 (09:30:00 was one)
+Z C tng;Z A tnul(C c)_(c=='d'?atq(tdt,NIT):c=='t'?atq(ttm,NIT):c=='u'?atq(tmn,NIT):c=='v'?atq(tsc,NIT):c=='m'?atq(tmo,NIT):c=='p'?antp(NL):ansp(NL))
+Z A pTmp(){S p=s;if(!C09(*p))return 0;if(*p=='0'&&p[1]=='N'&&p[2]&&strchr("dtpnuvm",p[2])&&!id1(p[3])){s=p+3;return tnul(p[2]);}W a=0;S q=p;while(C09(*q)){a=10*a+(W)(*q-'0');q++;}
+ if(*q=='D'&&C09(q[1])){S q2=q+1;W hh=0;while(C09(*q2)){hh=tdd(hh,*q2);q2++;}if(*q2!=':')return 0;q2++;W mi=0;while(C09(*q2)){mi=tdd(mi,*q2);q2++;}W sc=0,ns=0;
+  if(*q2==':'){q2++;while(C09(*q2)){sc=tdd(sc,*q2);q2++;}if(*q2=='.'){q2++;I nd=0;while(C09(*q2)&&nd<9){ns=10*ns+(W)(*q2-'0');q2++;nd++;}while(nd<9){ns*=10;nd++;}while(C09(*q2))q2++;}}
+  if(mi>59||sc>59){tbad=1;return 0;}if(q-p>19||a>106751){tbad=2;return 0;}__int128 t=(__int128)a*86400000000000ll+(__int128)hh*3600000000000ll+60000000000ll*(L)mi+1000000000ll*(L)sc+(L)ns;
+  if(t>(__int128)0x7fffffffffffffffll+tng){tbad=2;return 0;}s=q2;return ansp((L)(W)t);}
  if(*q==':'){S e=q++;W mi=0;while(C09(*q)){mi=tdd(mi,*q);q++;}W sc=0,ms=0;
-  if(*q==':'){q++;while(C09(*q)){sc=tdd(sc,*q);q++;}if(*q=='.'){q++;I nd=0;while(C09(*q)&&nd<3){ms=10*ms+(W)(*q-'0');q++;nd++;}while(nd<3){ms*=10;nd++;}while(C09(*q))q++;}}
-  if(mi>59||sc>59){tbad=1;return 0;}S z=p;W(z<e-1&&*z=='0',z++)if(e-z>19||a>596||3600000*a+60000*mi+1000*sc+ms>2147483647)I(!tng||e-z>19||3600000*a+60000*mi+1000*sc+ms-2147483648u,tbad=2;return 0)s=q;return atm((I)(3600000*a+60000*mi+1000*sc+ms));}
- if(*q=='.'){S q2=q+1;if(!C09(*q2))return 0;W mo=0;while(C09(*q2)){mo=tdd(mo,*q2);q2++;}if(*q2!='.')return 0;q2++;if(!C09(*q2))return 0;W dy=0;while(C09(*q2)){dy=tdd(dy,*q2);q2++;}
+  C kd=0;if(*q==':'){q++;kd=1;while(C09(*q)){sc=tdd(sc,*q);q++;}if(*q=='.'){q++;kd=2;I nd=0;while(C09(*q)&&nd<3){ms=10*ms+(W)(*q-'0');q++;nd++;}while(nd<3){ms*=10;nd++;}while(C09(*q))q++;}}
+  if(mi>59||sc>59){tbad=1;return 0;}
+  if(kd<2){S z=p;W(z<e-1&&*z=='0',z++)W v=kd?3600*a+60*mi+sc:60*a+mi;if(e-z>19||a>(kd?596523:35791394)||v>2147483647u+tng){tbad=2;return 0;}s=q;return atq(kd?tsc:tmn,(I)(U)v);}S z=p;W(z<e-1&&*z=='0',z++)if(e-z>19||a>596||3600000*a+60000*mi+1000*sc+ms>2147483647)I(!tng||e-z>19||3600000*a+60000*mi+1000*sc+ms-2147483648u,tbad=2;return 0)s=q;return atm((I)(3600000*a+60000*mi+1000*sc+ms));}
+ if(*q=='.'){S q2=q+1;if(!C09(*q2))return 0;W mo=0;while(C09(*q2)){mo=tdd(mo,*q2);q2++;}
+  if(*q2=='m'&&!id1(q2[1])){if(mo<1||mo>12){tbad=1;return 0;}W y=0;S r=p;W(r<q,y=tdd(y,*r);r++)L v=((L)y-2000)*12+(L)mo-1;if(y>178958970||v-(I)v||(I)v==NIT){tbad=2;return 0;}s=q2+1;return atq(tmo,(I)v);}
+  if(*q2!='.')return 0;q2++;if(!C09(*q2))return 0;W dy=0;while(C09(*q2)){dy=tdd(dy,*q2);q2++;}
   W y=0;S r=p;W(r<q,y=tdd(y,*r);r++)if(!dok(y,mo,dy)){tbad=1;return 0;}S z=p;W(z<q-1&&*z=='0',z++)if(q-z>19||a>9999999){tbad=2;return 0;}L days=ymd2days((L)a,(L)mo,(L)dy);   //y: the year held at 1e15 as "D"$ holds it (a wraps past 64 bits)
   if(*q2=='D'){q2++;W hh=0;while(C09(*q2)){hh=tdd(hh,*q2);q2++;}if(*q2!=':')return 0;q2++;W mi=0;while(C09(*q2)){mi=tdd(mi,*q2);q2++;}W sc=0,ns=0;
    if(*q2==':'){q2++;while(C09(*q2)){sc=tdd(sc,*q2);q2++;}if(*q2=='.'){q2++;I nd=0;while(C09(*q2)&&nd<9){ns=10*ns+(W)(*q2-'0');q2++;nd++;}while(nd<9){ns*=10;nd++;}while(C09(*q2))q2++;}}
@@ -118,8 +128,8 @@ Z C tng;Z A pTmp(){S p=s;if(!C09(*p))return 0;W a=0;S q=p;while(C09(*q)){a=10*a+
 //A - before a time literal is part of it, as q and as -10 for an int (#83 Q8): -10:00:00.000 was the verb on a time,
 //'type, so a negative time's text did not read back. Dates and timestamps keep the verb, as q. tng lets
 //pTmp take one more millisecond, so -596:31:23.648 is a time, as "T"$ reads it
-Z A pTng()_(S o=s,q=s+1;W(C09(*q),q++)P(*q-':'||q==s+1,0)s++;tng=1;A b=pTmp();tng=0;P(!b,s=o;0)atm(0u-(U)(I)b))
-Z A pTms(A a){A z=0;UC k=_t(a);for(;*s==' ';){S o=s;while(*s==' ')s++;A b=pTmp();I(!b&&!tbad&&*s=='-'&&k==ttm,b=pTng())if(!b){s=o;tbad=0;break;}if(_t(b)!=k){mr(b);s=o;break;}if(!z){z=emp(tA);PSH(z,MKL);PSH(z,a);}PSH(z,b);}return z?z:a;}   //As (d1;d2) parses: MKL and the items
+Z A pTng()_(S o=s,q=s+1;W(C09(*q),q++)P(*q-':'&&*q-'D'||q==s+1,0)s++;tng=1;A b=pTmp();tng=0;P(!b,s=o;0)P(_t(b)==tsp,L v=*_L(b);mr(b);ansp((L)(0-(W)v)))atq(_t(b),0u-(U)(I)b))
+Z A pTms(A a){A z=0;UC k=_t(a);for(;*s==' ';){S o=s;while(*s==' ')s++;A b=pTmp();I(!b&&!tbad&&*s=='-'&&(k==ttm||k==tmn||k==tsc||k==tsp),b=pTng())if(!b){s=o;tbad=0;break;}if(_t(b)!=k){mr(b);s=o;break;}if(!z){z=emp(tA);PSH(z,MKL);PSH(z,a);}PSH(z,b);}return z?z:a;}   //As (d1;d2) parses: MKL and the items
 // amber 2.0.0: identifiers usable INFIX like a verb -- `x in y`, `t lj kt`,
 // `1 within 2 3`, `"/" sv parts` -- as well as the bracket form in[x;y].  ngn/k
 // already treats every unicode-named identifier (pt's `c>>7` branch) as an infix
@@ -245,7 +255,17 @@ Z B ttx(S*p,W*h,W*m,W*c,W*f)_(S s=*p;*m=*c=*f=0;P(!tdg(&s,h),1)I(*s==':',s++;P(!
  I(*s=='.',s++;W k=0;W(C09(*s),I(k<9,*f=10**f+(W)(*s-'0'))k++;s++)W(k<9,*f*=10;k++))*p=s;*m>59||*c>59)
 Z B tdx(S*p,L*d)_(S s=*p;B n=*s=='-';s+=n;W y,m,e;P(!tdg(&s,&y)||*s-'.',1)s++;P(!tdg(&s,&m)||*s-'.',1)s++;P(!tdg(&s,&e),1)L Y=n?-(L)y:(L)y;   //[-]Y.M.D: days; 1 if bad
  P(m<1||m>12||e<1||e>(m==2?28+(Y%4==0&&(Y%100!=0||Y%400==0)):30+((m+(m>7))&1)),1)*p=s;*d=ymd2days(Y,(L)m,(L)e);0)
-NI A ptT(A x)_(P(_t(x)-tC,et(x))x=str0(x);S s=pw(xV);B n=*s=='-';s+=n;W h,m,c,f;P(ttx(&s,&h,&m,&c,&f)||*pw(s),x(ep0()))W v=h>596?WL:3600000*h+60000*m+1000*c+f/1000000;P(v>2147483647u+n,x(ez0()))x(atm(n?-(L)v:(L)v)))
-NI A ptD(A x)_(P(_t(x)-tC,et(x))x=str0(x);S s=pw(xV);L d;P(tdx(&s,&d)||*pw(s),x(ep0()))P(d-(I)d,x(ez0()))x(adt(d)))
-NI A ptP(A x)_(P(_t(x)-tC,et(x))x=str0(x);S s=pw(xV);L d;W h=0,m=0,c=0,f=0;P(tdx(&s,&d),x(ep0()))I(*s=='D',s++;I(*pw(s),P(ttx(&s,&h,&m,&c,&f),x(ep0()))))P(*pw(s),x(ep0()))   //a date alone, or "D" and nothing, is midnight
+// Amber 2.9.0: text that does not read is the type's null, as q ("D"$"x" is 0Nd; it was 'parse); past the range still 'limit.
+// "N"$ "U"$ "V"$ "M"$: a timespan ([-][dD]H:M[:S[.f]], a time alone too), a minute, a second (from a time's fields, the
+// rest dropped, as q), a month (Y.M, a day after it dropped)
+NI A ptT(A x)_(P(_t(x)-tC,et(x))x=str0(x);S s=pw(xV);B n=*s=='-';s+=n;W h,m,c,f;P(ttx(&s,&h,&m,&c,&f)||*pw(s),x(atm(NIT)))W v=h>596?WL:3600000*h+60000*m+1000*c+f/1000000;P(v>2147483647u+n,x(ez0()))x(atm(n?-(L)v:(L)v)))
+NI A ptD(A x)_(P(_t(x)-tC,et(x))x=str0(x);S s=pw(xV);L d;P(tdx(&s,&d)||*pw(s),x(adt(NIT)))P(d-(I)d,x(ez0()))x(adt(d)))
+NI A ptP(A x)_(P(_t(x)-tC,et(x))x=str0(x);S s=pw(xV);L d;W h=0,m=0,c=0,f=0;P(tdx(&s,&d),x(antp(NL)))I(*s=='D',s++;I(*pw(s),P(ttx(&s,&h,&m,&c,&f),x(antp(NL)))))P(*pw(s),x(antp(NL)))   //a date alone, or "D" and nothing, is midnight
  __int128 t=(__int128)d*86400000000000ll+(__int128)h*3600000000000ll+60000000000ll*(L)m+1000000000ll*(L)c+(L)f;P(t-(L)t,x(ez0()))x(antp((L)t)))
+NI A ptN(A x)_(P(_t(x)-tC,et(x))x=str0(x);S s=pw(xV);B n=*s=='-';s+=n;W d=0,h,m,c,f;S o=s;I(tdg(&s,&d)&&*s=='D',s++)E(s=o;d=0)
+ P(ttx(&s,&h,&m,&c,&f)||*pw(s),x(ansp(NL)))__int128 t=(__int128)d*86400000000000ll+(__int128)h*3600000000000ll+60000000000ll*(L)m+1000000000ll*(L)c+(L)f;P(t>0x7fffffffffffffffll,x(ez0()))x(ansp(n?-(L)t:(L)t)))
+Z A ptuv(A x,B v)_(UC k=v?tsc:tmn;P(_t(x)-tC,et(x))x=str0(x);S s=pw(xV);B n=*s=='-';s+=n;W h,m,c,f;P(ttx(&s,&h,&m,&c,&f)||*pw(s),x(atq(k,NIT)))
+ W u=h>=(W)1e15?WL:v?3600*h+60*m+c:60*h+m;P(u>2147483647u,x(ez0()))x(atq(k,n?-(I)u:(I)u)))
+NI A ptU(A x)_(ptuv(x,0))NI A ptV(A x)_(ptuv(x,1))
+NI A ptM(A x)_(P(_t(x)-tC,et(x))x=str0(x);S s=pw(xV);B n=*s=='-';s+=n;W y,m,e;P(!tdg(&s,&y)||*s-'.',x(atq(tmo,NIT)))s++;P(!tdg(&s,&m)||m<1||m>12,x(atq(tmo,NIT)))I(*s=='.',s++;tdg(&s,&e))
+ P(*pw(s),x(atq(tmo,NIT)))__int128 v=((__int128)(n?-(L)y:(L)y)-2000)*12+(L)m-1;P(y>=(W)1e15||v-(I)v||(I)v==NIT,x(ez0()))x(atq(tmo,(I)v)))

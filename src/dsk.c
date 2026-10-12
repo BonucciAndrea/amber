@@ -76,7 +76,7 @@ Z B dwt(A x,C*path,C*tmp){
   kind=KENUM;typ=tI;cnt=_n(v);nb=cnt*4;src=_V(v);att=(UC)(atr>=0&&atr<5?atr:0);}
  else if(!_tP(v)&&dflat(t)){kind=KFLAT;cnt=_n(v);nb=dbytes(t,cnt);src=_V(v);att=_at(v);}
  else{I k=_tP(v)?0:tjk(v);
-  if(k==tdt||k==ttm||k==tnp){kind=KTIME;typ=(UC)k;body=tjn(v);cnt=_n(body);nb=cnt*8;src=_V(body);}
+  if(TQ(k)){kind=KTIME;typ=(UC)k;body=tjn(v);cnt=_n(body);nb=cnt*8;src=_V(body);}
   else{kind=KSER;typ=0;body=ser8(_R(v));P(!body,0)cnt=_n(body);nb=cnt;src=_V(body);}}
  C hdr[DHB];MS(hdr,0,DHB);DHdr*h=(DHdr*)hdr;MC(h->mg,"AMBC",4);h->ver=1;h->kind=kind;h->typ=typ;h->att=att;h->cnt=cnt;h->nb=nb;h->dom=dn>=0?(W)dn:0;
  snprintf(tmp,4100,"%s.tmp",path);
@@ -127,7 +127,7 @@ A rcolT(A x){
   C(KFLAT,ok=h.typ<tn&&dflat(h.typ)&&h.nb==dbytes(h.typ,h.cnt))
   C(KENUM,ok=h.nb==h.cnt*4)
   C(KSER, ok=h.nb==h.cnt)
-  C(KTIME,ok=(h.typ==tdt||h.typ==ttm||h.typ==tnp)&&h.nb==h.cnt*8))
+  C(KTIME,ok=TQ(h.typ)&&h.nb==h.cnt*8))
  if(!ok){close(f);return x(err0("format"));}
  if(h.cnt>0xffffffffull){close(f);return x(ez0());}
  A r=0;U n=(U)h.cnt;
@@ -144,8 +144,8 @@ A rcolT(A x){
   C(KSER,A b=dload(f,tC,h.cnt,h.nb);r=b?des9(b):0)
   C(KTIME,A b=dload(f,tL,h.cnt,h.nb);if(!b)break;CO L*q=(CO L*)_V(b);
     r=aA(n);A*o=_A(r);
-    if(h.typ==tnp){for(U i=0;i<n;i++)o[i]=antp(q[i]);}
-    else{for(U i=0;i<n;i++)o[i]=Lt(h.typ)|(U)(I)q[i];}
+    if(TQN(h.typ)){for(U i=0;i<n;i++)o[i]=AT(h.typ,al(q[i]));}
+    else{for(U i=0;i<n;i++)o[i]=atq(h.typ,q[i]==NL?NIT:(I)q[i]);}   //a null as tjn wrote it (NL), back to its kind's
     mr(b)))
  out:
  close(f);mr(x);return r;}

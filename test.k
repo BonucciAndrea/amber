@@ -161,7 +161,7 @@ t[`meta;(!meta tt)`c;`s`p`v]
 / a column a table lacks is filled with nulls of t's column, as q
 iu:+`a`b!(1 2;3 4);ik:xkey[`k;+`k`v`w!(1 2;3 4;5 6)]
 t[`insertByName;{.[insert;x;{x}]}'((iu;`b`a!5 6);(iu;+`b`a!(5 6;7 8));(iu;(`b`a!5 6;`b`a!7 8));(0#iu;`b`a!5 6);(iu;+(,`b)!,5 6);(+`a`b!(1 2;`x`y);+(,`a)!,5 6));(+`a`b!(1 2 6;3 4 5);+`a`b!(1 2 7 8;3 4 5 6);+`a`b!(1 2 6 8;3 4 5 7);+`a`b!(,6;,5);+`a`b!(1 2 0N 0N;3 4 5 6);+`a`b!(1 2 5 6;`x`y``))]
-t[`insertFill;insert[+`a`g`c`s`d!(1 2;(1;`x);"ab";("ab";"cd");2020.01.01 2020.01.02);+(,`a)!,,3];+`a`g`c`s`d!(1 2 3;(1;`x;0N);"ab ";("ab";"cd";"  ");(2020.01.01;2020.01.02;::))]   / item 0N of each column, as aj fills; a date has no null (q: 0N, " ", "", 0Nd)
+t[`insertFill;insert[+`a`g`c`s`d!(1 2;(1;`x);"ab";("ab";"cd");2020.01.01 2020.01.02);+(,`a)!,,3];+`a`g`c`s`d!(1 2 3;(1;`x;0N);"ab ";("ab";"cd";"  ");2020.01.01 2020.01.02 0Nd)]   / item 0N of each column, as aj fills, as q (0N, " ", "", 0Nd; 2.9.0: a date has its null)
 t[`insertKeyed;{.[insert;x;{x}]}'((ik;`w`k`v!9 3 7);(ik;+`w`k`v!(9 8;3 4;7 6));(ik;xkey[`k;+`w`k`v!(9 8;3 4;7 6)]);(ik;+`w`k!(9 8;3 4)));(xkey[`k;+`k`v`w!(1 2 3;3 4 7;5 6 9)];xkey[`k;+`k`v`w!(1 2 3 4;3 4 7 6;5 6 9 8)];xkey[`k;+`k`v`w!(1 2 3 4;3 4 7 6;5 6 9 8)];xkey[`k;+`k`v`w!(1 2 3 4;3 4 0N 0N;5 6 9 8)])]
 t[`insertErrors;{.[insert;x;{*"\n"\x}]}'((iu;`b!5);(iu;`a`b`c!5 6 7);(iu;+`b`c!(5 6;7 8));(ik;`w`k`v!9 1 7);(ik;`w`v!9 7);(ik;+`w`v!(9 8;7 6));(ik;`k`v!3 7));(+`a`b!(1 2 0N;3 4 5);"mismatch";"mismatch";"insert";,"k";,"k";xkey[`k;+`k`v`w!(1 2 3;3 4 7;5 6 0N)])]   / as q: a column a row lacks takes a null (a key column: 'k), another column 'mismatch, a key t has 'insert
 t[`insertTypes;{.[insert;x;{*"\n"\x}]}'((iu;`a`b!(5;`x));(iu;`a`b!5 6.0);(iu;+`a`b!(5 6;`x`y));(+`a`d!(1 2;2020.01.01 2020.01.02);`a`d!(3;5));(+`a`c!(1 2;"xy");`a`c!(3;"zz"));(iu;xkey[`a;+`a`b!(,7;,8)]);(iu;ik));7#,"type"]   / q's 'type: an item of another type than its column's (a date column too), a keyed r into an unkeyed t
@@ -489,11 +489,11 @@ t[`mmSecRagged;(mm (5415123 0;,0);mm (5415123 0;-5415123 0 1);mm `a`b!(5415123 0
 t[`timeAccessorsFast;(mm 5000000000000 -5000000000000 0N 90000;sec 5000000000000 -5000000000000 0N 1500;mm 00:01:00.000;sec 0-00:00:01.000;year (2026.01.01D23:00;2027.01.01D01:00);dow (2026.03.04;2026.03.05);.[year;,(01:00:00.000;02:00:00.000);{(x?"\n")#x}];year 2026.01.01;dow 2026.03.04;thh 0-01:00:00.000;tmm 01:30:00.000 02:45:00.000);(53 -53 0N 1;20 -20 0N 1;1;-1;2026 2027;`Wed`Thu;"type";2026;`Wed;-1;30 45)]   / the paths in C (`mm `sec `tjn) and the date atom's: as amber.k's code
 / the time accessors take a general list of times, as a strand of times is (digest #65; they were 'type, in tnum0)
 t[`timeAccessorsList;(hh 01:00:00.000 02:30:00.000;mm 01:00:00.000 02:30:00.000;sec 01:00:00.000 02:30:15.000;hh (01:00:00.000;02:30:00.000);mm 0-(01:30:00.000;00:30:00.000);milli 01:00:00.123 02:30:00.456;minute 01:00:00.000 02:30:00.000;second 01:00:00.000 02:30:00.000);(1 2;0 30;0 15;1 2;-30 -30;123 456;60 150;3600 9000)]
-t[`timeAccessorsMixed;(.[milli;,(01:00:00.000;2026.01.01);{(x?"\n")#x}];.[hh;,(01:00:00.000;3600000);{(x?"\n")#x}]);2#,"type"]   / one kind only: times with dates or ints stay 'type
+t[`timeAccessorsMixed;(.[milli;,(01:00:00.000;2026.01.01);{(x?"\n")#x}];.[hh;,(01:00:00.000;3600000);{(x?"\n")#x}]);("type";1 1)]   / one kind only: times with dates stay 'type; an int is ms, as hh 3600000 (2.9.0: % of a time is a float, as q)
 tavc:0   / counts calls of the lambdas in timeAccessorsVerbs
 t[`timeAccessorsVerbs;(.[hh;,(+;-);{(x?"\n")#x}];.[milli;,(+;-);{(x?"\n")#x}];.[second;,(::;-:);{(x?"\n")#x}];.[mm;,(+);{(x?"\n")#x}];.[mm;,({x};{y});{(x?"\n")#x}];.[mm;,(+;+);{(x?"\n")#x}];.[hh;,({tavc+:1;x};{tavc+:1;x});{(x?"\n")#x}]);7#,"type"]   / `u and `v are verb types in Amber, not q's minute and second
 t[`timeAccessorsVerbsUncalled;tavc;0]   / hh never calls the lambdas above
-t[`timeAccessorsNested;(hh `a`b!01:00:00.000 02:30:00.000;mm (01:30:00.000;(02:00:00.000;03:00:00.000));hh `a`b!(01:00:00.000;(02:00:00.000;03:00:00.000));mm 0#,(::);hh 0#,(::);.[mm;,(01:30:00.000;(02:00:00.000;3600000));{(x?"\n")#x}]);(`a`b!1 2;(30;0 0);`a`b!(1;2 3);!0;!0;"type")]   / dicts and lists of lists item by item, as q; an empty list is !0
+t[`timeAccessorsNested;(hh `a`b!01:00:00.000 02:30:00.000;mm (01:30:00.000;(02:00:00.000;03:00:00.000));hh `a`b!(01:00:00.000;(02:00:00.000;03:00:00.000));mm 0#,(::);hh 0#,(::);.[mm;,(01:30:00.000;(02:00:00.000;3600000));{(x?"\n")#x}]);(`a`b!1 2;(30;0 0);`a`b!(1;2 3);!0;!0;(30;0 0))]   / dicts and lists of lists item by item, as q; an empty list is !0
 t[`timeAccessorsDeep;(mm (01:30:00.000 02:00:00.000;,03:00:00.000);.[milli;,(01:00:00.000;(2026.01.01;2026.01.02));{(x?"\n")#x}];.[hh;,`a`b!(01:00:00.000;(2026.01.01;2026.01.02));{(x?"\n")#x}]);((30 0;,0);"type";"type")]   / lists of any lengths; one kind at every depth
 t[`timeAccessorsDates;(milli 2026.01.01 2026.02.01;sec 2026.01.01 2026.02.01;minute 2026.01.01 2026.02.01;second 2026.01.01 2026.02.01;mm `a`b!(2026.01.01;2026.02.01);hh 2026.01.01 2026.02.01;milli 2026.01.01);(497 528;9 9;0 0;9 9;`a`b!0 0;0 0;497)]   / a list of dates is read as its days, as a date atom is (q: 'hh, 'ss; `mm$ gives the month)
 / the date accessors take dates, timestamps and raw days only (digest #104): an int 0N is the null day, as q's `year$0Nd is 0Ni
@@ -528,9 +528,9 @@ t[`ptimeNeg;(ptime"-00:30:00.000";ptime"-01:00:00");-1800000 -3600000]
 t[`ptimeList;"T"$("09:30:00.100";"10:00:00.000");(09:30:00.100;10:00:00.000)]   / a list of strings: each, as q (2.8.0; it was 'type)
 t[`timeNegText;`i$"T"$"-00:30:00.000";-1800000]
 / "T"$ of a time past 32 bits of milliseconds is 'limit, as the literal (issue #62; it wrapped)
-t[`timeTextLimit;(.[{"T"$x};,"1000:00:00.000";{(x?"\n")#x}];.[{"T"$x};,"596:31:23.648";{(x?"\n")#x}];`i$"T"$"-596:31:23.648";.[ptime;,"1000:00:00.000";{(x?"\n")#x}]);("limit";"limit";-2147483648;"limit")]
+t[`timeTextLimit;(.[{"T"$x};,"1000:00:00.000";{(x?"\n")#x}];.[{"T"$x};,"596:31:23.648";{(x?"\n")#x}];`i$"T"$"-596:31:23.648";.[ptime;,"1000:00:00.000";{(x?"\n")#x}]);("limit";"limit";0N;"limit")]   / -596:31:23.648 is the null time's number, as q (2.9.0)
 t[`ptimeRound;(ptime stime hms[13;45;9])=hms[13;45;9];1]
-t[`ptextAsCasts;(ptime"-01:00";pdate"2024.02.29";ptstamp"2026.07.30D09:30:00.123456789";.[pdate;,"2026.02.29";{(x?"\n")#x}]);(-3600000;8825;838719000123456789;"parse")]   / as "T"$, "D"$ and "P"$ read them (issue #62)
+t[`ptextAsCasts;(ptime"-01:00";pdate"2024.02.29";ptstamp"2026.07.30D09:30:00.123456789";.[pdate;,"2026.02.29";{(x?"\n")#x}]);(-3600000;8825;838719000123456789;0N)]   / as "T"$, "D"$ and "P"$ read them (issue #62); text that does not read is the null, as q (2.9.0)
 t[`minbar;minbar[5;hms[9;37;0]];hms[9;35;0]]
 t[`minbarVec;minute minbar[1;hms[9;30;0]+60000*0 1 2];570 571 572]
 t[`bar5m;bar[5;60000;hms[9;37;30]];hms[9;35;0]]
@@ -774,7 +774,7 @@ t[`litCursorAdvanced;   1e-309 1.5;              1e-309 1.5]
 t[`litCursorOverflow;   1e309 1.5;               0w 1.5]
 t[`litRoundTrip;        . `k 5e-324;             5e-324]
 t[`litRoundTripVec;     . `k (5e-324;1e-320;1.5);(5e-324;1e-320;1.5)]
-t[`temporalNullPrint;(pstr 0N;dstr 0N;stime 0N;`k@1707.09.22D00:12:43.145224192);("0N";"0N";"0N";"0N")]
+t[`temporalNullPrint;(pstr 0N;dstr 0N;stime 0N;`k@1707.09.22D00:12:43.145224192);("0N";"0N";"0N";"0Np")]
 
 / ---- 2.3: grade of 8-byte keys whose span fits in 32 bits ----
 / the radix picked its 4-byte kernel from the normalised byte count, so an int64
@@ -842,6 +842,13 @@ t[`fmsCmpExact;`k@(+/CX@&CC>0;+/(CX+0.0*CX)@&CC>0);`k@(+/CX;+/CX)]
 t[`maskSumCmp;      +/FY@&FX<3;                                      33.0]
 
 / ---- report ----
+/ ---- 2.9.0: q's casts and accessors of minutes, seconds, months and timespans ----
+t[`tq2Casts;(`timespan$09:30:00.000;`timespan$09:30;`time$0D09:30:00.000000000;`minute$09:30:15.000;`second$09:30:15.500;`minute$2026.01.15D09:30:15.000000000;`month$2026.03.15;`date$2026.03m;`month$2026.03.15D09:30:00.000000000;`timespan$2026.01.15D09:30:00.000000000);(0D09:30:00.000000000;0D09:30:00.000000000;09:30:00.000;09:30;09:30:15;09:30;2026.03m;2026.03.01;2026.03m;0D09:30:00.000000000)]
+t[`tq2CastsInt;(`minute$570;`second$34215;`month$315;`timespan$1000000000;`long$09:30;`long$2026.03m;"u"$90;"m"$13;`minute$0N;`month$0N);(09:30;09:30:15;2026.04m;0D00:00:01.000000000;570;314;01:30;2001.02m;0Nu;0Nm)]
+t[`tq2Parts;(`hh$09:30;`mm$09:30;`ss$09:30:15;`year$2026.03m;`mm$2026.03m);9 30 15 2026 3]
+t[`tq2Type;(type 0D01:00:00.000000000;type 09:30;type 09:30:15;type 2026.03m;type 09:30 09:31;type 2026.01.01 2026.01.02;type(2026.01.01;1));-16 -17 -18 -13 17 14 0]
+t[`tq2Xbar;(5 xbar 09:32 09:36 09:41;0D00:05:00.000000000 xbar 2026.01.15D09:32:17.000000000;0D01:00:00.000000000 div 0D00:25:00.000000000;deltas 09:30 09:32 09:35);(09:30 09:35 09:40;2026.01.15D09:30:00.000000000;0D00:00:00.000000002;09:30 00:02 00:03)]
+
 fails:r@&{"FAIL"~4#x}'r[;1]
 `0:""
 `0:"================ AMBER TEST SUITE ================"

@@ -309,7 +309,7 @@ qexby:{[h;u;wh;eb]$[#eb 0;[it:qcut eb 0;e:{(qname x)1}'it;b:","/{"(",($y),"):",x
 / temporal column refused, from 0#t: its items are gone). Run once per column, before the amend, and only when the
 / types differ: a value of the column's type or an atom of its first item's, and in a general column a value whose
 / first item has the type of the column's first item, is amended with no call.
-qkd:{$[`A~t:@x;$[#x;$[(u:@*x)in`d`t`n;u;`A];`A];t]}
+qkd:{$[`A~t:@x;$[#x;$[(u:@*x)in`d`t`n`h`j`y`e;u;`A];`A];t]}
 qty:{[c;v]k:qkd c;$[`A~k;;k~w:qkd v;;(`$_$k)~`$_$w;;(`A~w)&0=#v;;(`A~@c)&~&/k=@'c;;`err"type"]}   / the same type passes at one match; an atom's (`f for `F) by name; a general column of mixed kinds takes anything: looked at only before a 'type
 qasg:{[t;idx;nm;v]$[in[nm;cols t];[c:(+t)nm;$[(@c)~@v;$[`A~@c;$[(@*c)~@*v;;qty[c;v]];];(@*c)~@v;;qty[c;v]];@[c;idx;:;v]];@[(#t)#qnull v;idx;:;v]]}
 qasgby:{[t;nm;f;gi;rc;w]tp:$[#rc;qproj[t;rc];t];$[0=#gi;:qasg0[t;nm;f;tp;w];];gv:{[t;f;iv]v:f atr[t;iv];$[isat v;(#iv)#v;v]}[tp;f]'gi;rv:raze gv;ri:raze gi;$[~w;rv@<ri;[e:in[nm;cols t];c:$[e;(+t)nm;(#t)#qnull[*gv]];$[~e;;(@c)~@rv;$[`A~@c;$[(@*c)~@*rv;;qty[c;rv]];];(@*c)~@rv;;qty[c;rv]];@[c;ri;:;rv]]]}   / each group once; every row: back in row order, else one scatter into the column (a value of another type is 'type, qty)

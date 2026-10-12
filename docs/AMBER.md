@@ -338,7 +338,7 @@ kt[`b;`px]           / 200
 A keyed table is looked up by key as in q: for one key column the key is a value, for several it is a
 list of one value per column, or a dict of them (`` m(1;`x) ``, `` m`a`b!(1;`x) ``). A table of keys,
 or a list of keys, gives a table of rows; a row or table goes by column name. A key not there gives the
-row `t 0N` gives (`::` in a temporal column and blanks in a string one, where q has typed nulls). `t?r`
+row `t 0N` gives (a temporal column's typed null, `0Nd`, and blanks in a string one). `t?r`
 finds a row (a dict) or each row of a table in `t`, and `kt _ k` drops a key.
 
 `kt,kt2` is q's upsert: the rows of `kt2` whose keys `kt` has replace them, and the others are added,
@@ -416,7 +416,7 @@ directly, exactly as `test.k` and every script under `examples/` already do.
 | `xgroup[k;t]`        | `` `k xgroup t`` (keyed by k, nested values)    |
 | `ungroup x`          | flatten nested columns                          |
 | `fby[(f;d);g]`       | `(f;d) fby g`, where `g` may be one column, a list of columns, or a table; works inside a where-clause |
-| `insert[t;r]`        | append rows, as q: a row dict or a table of `t`'s columns in any order, lined up by name, or a list of values, one per column, by position; each item of its column's type (`'type`); a column a row or a table lacks takes item `0N` of `t`'s column, as `aj` fills (`0N`, `0n`, `` ` ``, `" "`, and `::` for a temporal column); a keyed `t` takes only new keys (`'insert`) |
+| `insert[t;r]`        | append rows, as q: a row dict or a table of `t`'s columns in any order, lined up by name, or a list of values, one per column, by position; each item of its column's type (`'type`); a column a row or a table lacks takes item `0N` of `t`'s column, as `aj` fills (`0N`, `0n`, `` ` ``, `" "`, and `0Nd` and friends for a temporal column); a keyed `t` takes only new keys (`'insert`) |
 
 `a` (the aggregate spec) is a dictionary from result‑name to a function that receives the group
 sub‑table and returns a value:
@@ -1030,12 +1030,32 @@ year 2026.07.30                 / accessors: year month day dow  ·  thh tmm tss
 2026.01.01 2026.01.02           / A strand of dates (or times) is a list of them
 ```
 
-Anything else is `'type` (date+2.3, date*2, date+date), and date+0N is `'domain`: there's no null
-date yet, so it used to just hand the date back.
+**q's other ones (2.9).** Minutes, seconds, months and timespans, and a typed null for each kind:
 
-Two kinds compare as in q: a date and a time are `'type`, a date against a timestamp is its
-midnight (`2026.07.30=2026.07.30D00:00:00.000000000` is 1), and a timestamp against a time is its
-time of day, to the millisecond.
+```q
+09:30                           / minute ; 09:30:15 a second ; 09:30:15.000 a time
+2026.03m                        / month
+0D01:30:00.000000000            / timespan (ns) ; -0D00:00:01.000000000 a negative one
+(0Nd;0Nt;0Np;0Nn;0Nu;0Nv;0Nm)  / the nulls
+2026.01.15D10:00 - 2026.01.15D09:30   / 0D00:30:00.000000000, a timestamp minus one is a span
+2026.01.15 + 0D12:00:00.000000000     / 2026.01.15D12:00:00.000000000
+09:31 - 09:30                   / 00:01 ; a time of day minus one stays that kind, as q
+2026.03m - 2026.01m             / 2 ; month+1 rolls the year (2026.12m+1 is 2027.01m)
+`minute$09:30:15.000            / 09:30 ; `second$ `timespan$ `month$ `time$ cast as q
+"N"$"01:00:00"                  / "N"$ "U"$ "V"$ "M"$ read text ; bad text is the null
+```
+
+Same as q: a null goes through (`0Nd+1` is `0Nd`), `%` gives a float of the stored numbers, `x^y`
+fills, and a list of one kind prints like q's vector (`09:30 09:31`, `2026.01.01 0Nd`). `type`
+gives q's numbers, 17 for a list of minutes. Anything else is `'type` (date+2.3, date*2, date+date).
+
+Two kinds compare as in q: a date and a time are `'type`, a date or a month against a timestamp
+is its midnight (`2026.07.30=2026.07.30D00:00:00.000000000` is 1), a minute, a second, a time and a
+span compare by their length (`09:30=09:30:00.000` is 1), and a timestamp against a time of day is
+its time of day, in that unit.
+
+One thing differs: a date plus a time of day is a timestamp here (q gives a datetime, which
+Amber doesn't have). A list of temporals is still a general list underneath, not a typed vector.
 
 Columns keep numeric storage (as q does internally), so `xasc` and the `s#` attribute work
 unchanged and a `time`-named column auto-renders as `HH:MM:SS.mmm` in a grid.

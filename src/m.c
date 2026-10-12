@@ -597,7 +597,7 @@ V repl(){W(rep())}
 A cns,cn[tn];Z A ce[tn];S*argv,*env;
 V kinit(){Z B l;P(l)l=1;alloc_lock_init();pg=sysconf(_SC_PAGESIZE);A b[32],*c=b;
  F(tS-tA+1,*c++=ce[tA+i]=an(0,tA+i))*c++=ce[tm]=am(emp(tS),emp(tA));_x(ce[tA])=_R(ce[tC]);ce[tM]=ce[tA];F(tn-ti,Q(!ce[i+ti]);ce[i+ti]=ce[tA])//empties
- cn[tA]=ce[tC];*c++=cn[ti]=cn[tl]=al(NL);F(tL-tE+1,cn[tE+i]=cn[ti])*c++=cn[tF]=cn[tf]=af(NF);cn[tC]=cn[tc]=ac(32);cn[tS]=cn[ts]=as(0);F(tn-to,cn[to+i]=au)//nulls
+ cn[tA]=ce[tC];*c++=cn[ti]=cn[tl]=al(NL);F(tL-tE+1,cn[tE+i]=cn[ti])*c++=cn[tF]=cn[tf]=af(NF);cn[tC]=cn[tc]=ac(32);cn[tS]=cn[ts]=as(0);F(tn-to,cn[to+i]=au)F(5,UC k=A(tdt,ttm,tmn,tsc,tmo)[i];cn[k]=atq(k,NIT))*c++=cn[tnp]=antp(NL);*c++=cn[tsp]=ansp(NL);//nulls; a temporal's is its typed null (2.9.0: it was ::), so 0#d keeps it for first and a join's missing row
  Q(c-b<=32);cns=aV(tA,c-b,b);arena_init(0);}//arena_init: reserve the 16MB HFT scratchpad
 // amber 2.3: envp sits right after argv's NULL on Linux and macOS, not on Cygwin
 // (its DLL builds argv on the heap), where env walked garbage and `pe crashed.

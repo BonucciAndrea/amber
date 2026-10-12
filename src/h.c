@@ -71,7 +71,7 @@ Z CO UC insQ[32]={0,0,1,1,1,1,1,1,2,3,4,0,0,1,1,2,3,4};   //a type's kind: int, 
 //does an item of a row (of type u: an atom, or a typed list's type; 0 for a list) or r's column w surely fit t's column
 //c? A typed column: of its kind. A general one: anything, but where its first item is a date, a time or a timestamp, the
 //same type (a date column, which Amber keeps in a general list; insx looks at the whole column). 0: insx looks again
-Z B insk(A c,UC u,A w)_(UC t=_t(c);P(t-tA,UC k=insq(t);k&&k==insq(w?_t(w):u))P(!_n(c),1)UC f=_t(*_A(c));P(!LH(tdt,f,tnp),1)P(!w,u==f)P(_t(w)-tA,0)
+Z B insk(A c,UC u,A w)_(UC t=_t(c);P(t-tA,UC k=insq(t);k&&k==insq(w?_t(w):u))P(!_n(c),1)UC f=_t(*_A(c));P(!TQ(f),1)P(!w,u==f)P(_t(w)-tA,0)
  F(_n(w),P(_t(_A(w)[i])-f,0))1)
 Z B insn(A s,A q)_(P(s==q,1)P(_t(q)-tS||_n(q)-_n(s),0)CO U*a=_V(s),*b=_V(q);F(_n(s),P(a[i]-b[i],0))1)   //t's column names s, and r's q, the same?
 Z B insc(A c,A w)_(F(_n(c),P(!insk(_A(c)[i],0,_A(w)[i]),0))1)   //each of t's columns c and r's w

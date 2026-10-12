@@ -366,6 +366,10 @@ TTA:([]sym:`a`b`a;d:(10:00:00.000;11:00:00.000;12:00:00.000))
 tq[`selTempAvg;      "select a:avg d from TTA";            ([]a:,39600000.0)]
 tq[`byTempAvg;       "select a:avg d by sym from TTA";     (+(,`sym)!,`a`b)!+(,`a)!,39600000.0 39600000.0]
 tv[`avgTempDate;     "avg(2026.01.01;2026.01.04)";          9498.5]
+tq[`tq2ExecSpan;     "exec sum s from ([]s:0D01:00:00.000000000 0D02:00:00.000000000)";  0D03:00:00.000000000]   / 2.9.0: q's timespans, minutes and months in queries
+tq[`tq2ByMinute;     "select count i by 5 xbar m from ([]m:09:30 09:31 09:36 09:41)";  (+(,`m)!,09:30 09:35 09:40)!+(,`x)!,2 1 1]
+tq[`tq2WhereMonth;   "select from ([]d:2026.01m 2026.02m;v:1 2) where d>2026.01m";  +`d`v!(,2026.02m;,2)]
+tq[`tq2UpdMinute;    "update u:`minute$w from ([]w:09:30:15.000 09:31:45.000)";  +`w`u!(09:30:15.000 09:31:45.000;09:30 09:31)]
 tv[`avgTempStamp;    "avg(2026.01.01D10:00;2026.01.01D11:00)"; 820578600000000000.0]
 
 / ---- digest #39: constraints cascade, as q's (each sees the rows the earlier ones kept); #40: a leading minus ----

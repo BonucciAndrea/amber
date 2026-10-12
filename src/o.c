@@ -20,7 +20,7 @@ Z B mtcF(CO F*a,CO F*b,U n){F(n,F u=a[i],v=b[i];I(u!=v&&!(u!=u&&v!=v),return 0))
 
 NI B mtc_(A x,A y/*00*/)_(
  P(x==y,1)
- P(xt==yt&&((1<<ti|1<<tc|1<<ts|1<<tu|1<<tv|1<<tw|1<<tx)&1<<xt),xv==yv)
+ P(xt==yt&&((1ull<<ti|1ull<<tc|1ull<<ts|1ull<<tu|1ull<<tv|1ull<<tw|1ull<<tx)&1ull<<xt),xv==yv)
  P(xtz&&ytz,gl_(x)==gl_(y))
  XE(x=gZ(xR);x(mtc_(x,y)))
  YE(mtc_(y,x))
@@ -52,7 +52,7 @@ I qA(A x,A y/*00*/)_(I v=TS[xt]-TS[yt];P(v,v)
       F(MIN(xn,yn),A z=ii(x,i),u=ii(y,i);I d=qA(z,u);mr(z(u));P(d,d))P(!xn&&!yn&&xtA,qA(xx,yx))ql(xn,yn))//empty lists: by prototype, as ~
    RmM(qD(x,y))   //a dict by its keys, then its values, and a table by its names, then its columns, as ~ and q (#94 Q5; it was by address)
    Ropqr(x=str(xR);y=str(yR);I r=x&&y?qA(x,y):!!x-!!y;I(x,mr(x))I(y,mr(y));r)   //a function whose text fails (a formatter's error) sorts first
-   R(tdt,ql((I)x,(I)y))R(ttm,ql((I)x,(I)y))R(tnp,ql(*(L*)_V(x),*(L*)_V(y)))   //dates and times by their value, not their words; a timestamp by its nanoseconds, not its address
+   R5(tdt,ttm,tmn,tsc,tmo,ql((I)x,(I)y))R2(tnp,tsp,ql(*(L*)_V(x),*(L*)_V(y)))   //dates and times by their value, not their words; a timestamp by its nanoseconds, not its address
    R_(ql(x,y)))0)
 // qD's keys and values (and their items), in qA's order without boxing every item: an object is equal to itself at
 // once, and two lists of one simple type box items only where their bits differ (equal bits are equal items to qA)
@@ -194,7 +194,7 @@ Z A fcanon(A x)_(U n=xn;A y=aF(n);CO W*RES p=(CO W*)xV;W*RES q=(W*)yV;F(n,W v=p[
 // function), more than 8 kinds in one hash, or two items of one hash that qA puts together and ~ apart.
 Z W hm(W h,W v)_(h=(h^v)*0x9e3779b97f4a7c15ull;h^h>>29)
 Z W hA(A x,B*e){UC t=xt;W h=t;
- P(t==ti||t==tl,hm('i',gl_(x)))P(t==tf,hm(t,fco(*(L*)xV)))P(t==tnp,hm(t,*(L*)xV))P(_tP(x),hm(t,(U)x))
+ P(t==ti||t==tl,hm('i',gl_(x)))P(t==tf,hm(t,fco(*(L*)xV)))P(TQN(t),hm(t,*(L*)xV))P(_tP(x),hm(t,(U)x))
  P(t==tm||t==tM,hm(hm(h,hA(xx,e)),hA(xy,e)))P(t==tE,x=gZ(xR);h=hA(x,e);mr(x);h)P(!LH(tA,t,tS),*e=1;0)N n=xn;h=hm(LH(tB,t,tL)?'I':t,n);   //a range (!n) as its ints, as ~
  switch(t){case tA:F(n,h=hm(h,hA(xa,e)))break;case tB:F(n,h=hm(h,xG[i>>3]>>(i&7)&1))break;case tG:case tC:F(n,h=hm(h,xG[i]))break;
   case tH:F(n,h=hm(h,xH[i]))break;case tI:case tS:F(n,h=hm(h,xI[i]))break;case tL:F(n,h=hm(h,xL[i]))break;default:F(n,h=hm(h,fco(xL[i]))) }

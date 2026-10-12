@@ -93,14 +93,14 @@ Z NI __attribute__((cold)) A filI(A x,A y)_(filF(x,N(cF(y))))   //a float fillin
 Z NI __attribute__((cold)) A crtL(A x,A y)_(K2("{@[y;w;:;x w:&^y]}",x,y))   //lists of one count (crt; out of line)
 Z NI __attribute__((cold)) A crtA(A x,A y)_(K2("{x^'y}",x,y))   //two general lists of one count: item by item, as q (crt; out of line)
 Z NI __attribute__((cold)) A crtT(A x,A y)_(K2("{+(!+x)!(. +x)^'. +y}",x,y))   //two tables (crt; out of line)
-Y2(fil,RmMA(e2f(fil,x,y))Rt(P(yt>=tdt,et(y))YU(y-au?y:xR)fir(fil(x,enl(y))))RF(P(_t(x)==tf||_t(x)==ti||_t(x)==tl,filF(x,y))K2("{@[y;&^y;:;x]}",x,y))R_(P(_t(x)==tf&&LH(tE,yt,tL),filI(x,y))K2("{@[y;&^y;:;x]}",x,y)))   //Amber 2.8.0: a float filling ints gives floats, as q (it made a general list)
+Y2(fil,RmMA(e2f(fil,x,y))Rt(P(yt>=tdt,P(!(xtt&&(xt>=tdt||xtz)),et(y))B n=TQN(yt)?*_L(y)==NL:(I)y==NIT;n?(mr(y),xR):y)YU(y-au?y:xR)fir(fil(x,enl(y))))RF(P(_t(x)==tf||_t(x)==ti||_t(x)==tl,filF(x,y))K2("{@[y;&^y;:;x]}",x,y))R_(P(_t(x)==tf&&LH(tE,yt,tL),filI(x,y))K2("{@[y;&^y;:;x]}",x,y)))   //Amber 2.8.0: a float filling ints gives floats, as q (it made a general list)   //Amber 2.9.0: x^y of temporals is y, or x where y is null, as q (an int x too); another x 'type
 //Chars against ints or floats share no item: except removes nothing, as 2.3.1, ngn/k and q (find of one in the
 //other is 'type since issue #20 row 12, and except inherited it - digest #64); a range (tE) counts as its ints
 Z B cxn(UC a,UC b)_(B ca=a==tC||a==tc,cb=b==tC||b==tc,na=LH(tE,a,tF)||a==ti||a==tl||a==tf,nb=LH(tE,b,tF)||b==ti||b==tl||b==tf;ca&&nb||na&&cb)
 B cxn_(UC a,UC b)_(cxn(a,b))//for und's dict drop (h.c), on its error path; except keeps the static one
 // Amber 2.8.0: x^y of two typed lists of one count fills y's nulls from x, and of two tables column by column, as q;
 // lists of other counts (and an atom y) are still k's except. 1 2 3^0N 5 0N was 1 2 3 (except), q's 1 5 3
-X2(crt,Rt(P(LH(tdt,xt,tnp),et(y))fil(x,y))R_(P(xtM&&!_tP(y)&&ytM,crtT(x,y))en(y))
+X2(crt,Rt(P(TQ(xt)&&!(TQ(yt)||yt==tA),et(y))fil(x,y))R_(P(xtM&&!_tP(y)&&ytM,crtT(x,y))en(y))
  RT(P(xN&&xt<=tS&&xt!=tA&&!_tP(y)&&yt<=tS&&yt!=tA&&yN==xN,crtL(x,y))P(xN&&xt==tA&&!_tP(y)&&yt==tA&&yN==xN,crtA(x,y))P(cxn(xt,yt),y(xR))I v=rnk(y);P(!v,crt(x,enl(y)))
   P(v>0&&rnk(x)==v,I(xtE&&ytE,Lij L k=*yL,l=yL[1];P(k<=i,y(0);aE(MAX(i,l),MAX(j,l)))P(j<=l,y(0);aE(i,MIN(j,k))))
    //a general x's chars against numeric y, or numbers against chars, are kept, not looked for (find is 'type): they

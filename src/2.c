@@ -381,31 +381,49 @@ Z AM_TLS_IE U f;//0=dex,1=add,2=sub,3=mul,4=dvd,5=mod,6=mnm,7=mxm,8=ltn,9=gtn,10
 // amber: native temporal scalar arithmetic.  date/time/timestamp atoms carry
 // their base units (days/ms/ns); + and - keep the temporal type, temporal-minus-
 // same-temporal yields a plain int (a difference), comparisons yield bool.
-Z __attribute__((always_inline)) inline L tval(A x)_(UC k=_t(x);k==tdt||k==ttm?(L)(I)x:k==tnp?*(L*)_V(x):gl_(x))   //inlined in tari, as it was before tcf (clang then called it out of line in the arithmetic check: date+1 was 1-2% slower)
-Z A tmk(UC k,L w)_(k==tdt?adt((I)w):k==ttm?atm((I)w):k==tnp?antp(w):az(w))
+// Amber 2.9.0: q's minute, second, month and timespan too, and typed nulls. tval reads a packed temporal's null (NIT) as NL,
+// so a null is NL whatever its kind, and the lowest number, as q orders it
+Z __attribute__((always_inline)) inline L tval(A x)_(UC k=_t(x);k>=tdt?TQN(k)?*(L*)_V(x):(I)x==NIT?NL:(L)(I)x:gl_(x))   //inlined in tari, as it was before tcf (clang then called it out of line in the arithmetic check: date+1 was 1-2% slower)
+Z __attribute__((always_inline)) inline L tvr(A x)_(UC k=_t(x);k>=tdt?TQN(k)?*(L*)_V(x):(L)(I)x:gl_(x))   //tval's number as stored: a packed null is the lowest int, as an order needs (tcl)
+Z A tmk(UC k,L w)_(k<tdt?az(w):TQN(k)?AT(k,al(w)):w==NL?atq(k,NIT):w-(I)w?ez0():atq(k,w))   //a packed temporal is 32 bits: past them 'limit, as the literal (it wrapped)
+// ns in one unit of a kind, for two kinds mixed: a date, a time, a minute, a second; a timestamp and a timespan are ns
+Z L tun(UC k)_(k==tdt?86400000000000:k==ttm?1000000:k==tmn?60000000000:k==tsc?1000000000:1)
+Z B tclk(UC k)_(k==ttm||k==tmn||k==tsc||k==tsp)   //a clock kind: a time of day or a span
+// the kind two temporals give with + - & | (op 1 2 6 7), or 0 for 'type, as q: one kind minus itself is an int for a date
+// or a month, a timespan for a timestamp, else that kind; a timestamp with a span or a time of day, or a date with one, a
+// timestamp; a time of day with a timespan a timespan; a timestamp minus a date (or a date minus one) a timespan
+Z UC trk(UC a,UC b,U op)_(P(op==6||op==7,a==b?a:0)P(op-1>1u,0)P(a==b,op==1?tclk(a)?a:0:a==tdt||a==tmo?ti:a==tnp?tsp:a)
+ P((a==tnp||a==tdt)&&tclk(b),tnp)P(op==1&&tclk(a)&&(b==tnp||b==tdt),tnp)P(op==2&&(a==tnp&&b==tdt||a==tdt&&b==tnp),tsp)
+ P(tclk(a)&&tclk(b)&&(a==tsp||b==tsp),tsp)0)
 // v2 convention: consume y, leave x for the caller (bv opcode releases x; bV borrows a constant x).
-// Only the documented cases (issue #18): a temporal plus or minus an int (either side), one minus the same
-// kind (an int), time plus time, & | of the same kind, comparisons. Anything else is 'type: tari read any other
-// operand's low bits, so date+2.3 or date*2 were silent nonsense, and % ! returned x as it was. A null int is 'domain:
-// There is no null date, time or timestamp to give (date+0N was the date). x:y is y (it gave x) - digest #27
-NI Z A tcf(A,A,U),tkc(A,A,UC,UC,U),tcl(A,A,U);Z __attribute__((always_inline)) inline B tcq(A x)_(_t(x)==tA&&_n(x)&&_t(*(A*)_V(x))>=tdt)   //tcq: a general list whose first item is a temporal, for tcl
-Z A tari(A x,A y,U op)_(UC ka=_t(x),kb=_t(y);B qa=ka>=tdt,qb=kb>=tdt;P(!op,y)
- I(op<8,B ia=ka==ti||ka==tl,ib=kb==ti||kb==tl;
-  B ok=qa&&qb?((op==2||op==6||op==7)&&ka==kb)||(op==1&&ka==ttm&&kb==ttm):(op==1||op==2)&&(qa?ib:ia);P(!ok,et(y))
-  P(!(qa&&qb)&&(qa?tval(y):tval(x))==NL,ed(y)))
- E(L va,vb;U tmk=1<<ts|1<<tdt|1<<ttm|1<<tnp;   //a comparison: each stored number as tval reads it; a float sent to tcf, from the arm a float takes anyway, and two temporal kinds to tkc, from y's temporal arms (#83 Q9)
-  I(_t0(x),va=(I)x)E(P(ka==tf,tcf(x,y,op))va=*(L*)_V(x))   //packed (an int, a date, a time) or on the heap (a long, a timestamp, a float)
-  I(_t0(y),vb=(I)y;P(__builtin_expect(tmk>>kb&1&&tmk>>ka&1&&kb-ka,0),ka==ts||kb==ts?et(y):tkc(x,y,ka,kb,op)))E(P(kb==tf,tcf(x,y,op))vb=*(L*)_V(y);P(__builtin_expect(kb==tnp&&kb-ka&&tmk>>ka&1,0),ka==ts?et(y):tkc(x,y,ka,kb,op)))
-  //a symbol is 'type, as q (#18; its intern index was compared: 2000.01.01=` was 1): tmk is the temporal kinds and the symbol, so the tests that sent two temporal kinds to tkc take it too, and no test is added
-  mr(y);return ai((I)(op==8?va<vb:op==9?va>vb:va==vb));)   //(it read the float's bits: date<2.5 was 1)
- L va=tval(x),vb=tval(y);mr(y);
- L vv=op==1?(L)((W)va+(W)vb):op==2?(L)((W)va-(W)vb):op==3?va*vb:op==6?MIN(va,vb):op==7?MAX(va,vb):va;
- UC rk=(qa&&qb)?(op==2?0:ka):(qa?ka:kb);P(rk==tdt&&vv-(I)vv,ez0())   //a date is 32 bits of days: past them 'limit, as the literal (it wrapped)
- tmk(rk,vv))
-A2(ari,C t=xt,u=yt;U v=1<<t|1<<u;
+// Only the documented cases (issue #18, then q's rules in 2.9.0): a temporal plus, minus or (a span or a time of day) times
+// an int, two temporals as trk says, % of them as floats, comparisons. Anything else is 'type: tari read any other operand's
+// low bits, so date+2.3 or date*2 were silent nonsense. A null gives the result's null, as q (0Nd+1 is 0Nd; it was 'domain).
+// x:y is y (it gave x) - digest #27
+NI Z A tcf(A,A,U),tkc(A,A,UC,UC,U),tcl(A,A,U),tdv(A,A),tal(A,A,U);Z __attribute__((always_inline)) inline B tcq(A x)_(_t(x)==tA&&_n(x)&&_t(*(A*)_V(x))>=tdt)   //tcq: a general list whose first item is a temporal, for tcl
+Z A tari(A x,A y,U op)_(UC ka=_t(x),kb=_t(y);
+ I(op>7,L va,vb;W tmq=1ull<<ts|1ull<<tdt|1ull<<ttm|1ull<<tnp|1ull<<tmn|1ull<<tsc|1ull<<tmo|1ull<<tsp;   //a comparison: each stored number as tval reads it; a float sent to tcf, from the arm a float takes anyway, and two temporal kinds to tkc, from y's temporal arms (#83 Q9)
+ I(_t0(x),va=(I)x)E(P(ka==tf,tcf(x,y,op))va=*(L*)_V(x))   //packed (an int, a date, a time) or on the heap (a long, a timestamp, a float); a packed null is the lowest int, as NL
+ I(_t0(y),vb=(I)y;P(__builtin_expect(kb-ka&&tmq>>kb&1&&tmq>>ka&1,0),ka==ts||kb==ts?et(y):tkc(x,y,ka,kb,op)))E(P(kb==tf,tcf(x,y,op))vb=*(L*)_V(y);P(__builtin_expect(kb-ka&&TQN(kb)&&tmq>>ka&1,0),ka==ts?et(y):tkc(x,y,ka,kb,op)))
+ //a symbol is 'type, as q (#18; its intern index was compared: 2000.01.01=` was 1): tmq is the temporal kinds and the symbol, so the tests that sent two temporal kinds to tkc take it too, and no test is added
+ mr(y);return ai((I)(op==8?va<vb:op==9?va>vb:va==vb));)   //(it read the float's bits: date<2.5 was 1); a comparison first
+ B qa=ka>=tdt,qb=kb>=tdt;P(!op,y)
+ I(op-1<2u&&qa!=qb&&!TQN(qa?ka:kb),UC rk=qa?ka:kb,ki=qa?kb:ka;P(ki-ti&&ki-tl,et(y))I u=qa?(I)x:(I)y;L c=gl_(qa?y:x);mr(y);   //a packed temporal and an int, + or -: the common case, first
+  P(u==NIT||c==NL,atq(rk,NIT))L w=op==1?(L)((W)u+(W)c):qa?(L)((W)u-(W)c):(L)((W)c-(W)u);P(w-(I)w,ez0())return atq(rk,w);)
+ I(op<8,P(op==4,tdv(x,y))UC rk;
+  I(qa&&qb,rk=trk(ka,kb,op);P(!rk,et(y)))
+  E(B ia=ka==ti||ka==tl,ib=kb==ti||kb==tl;rk=qa?ka:kb;P(!((op==1||op==2||op==3&&tclk(rk))&&(qa?ib:ia)),et(y)))
+  L va=tval(x),vb=tval(y);mr(y);
+  P(op<6&&(va==NL||vb==NL),tmk(rk,NL))   //a null, of either side: the result's null, as q (& | keep it lowest)
+  P(qa&&qb&&ka-kb,__int128 a=(__int128)va*tun(ka),b=(__int128)vb*tun(kb),r=op==1?a+b:a-b;P(r-(L)r,ez0())tmk(rk,(L)r))   //two kinds: in ns
+  L vv=op==1?(L)((W)va+(W)vb):op==2?(L)((W)va-(W)vb):op==3?(L)((W)va*(W)vb):op==6?MIN(va,vb):op==7?MAX(va,vb):va;
+  P(__builtin_expect(rk>=tdt&&!TQN(rk)&&vv==(I)vv,1),atq(rk,vv))return tmk(rk,vv);)   //a packed temporal in range, in line (tmk is out of line)
+ et(y))
+A2(ari,C t=xt,u=yt;
  P(t>=tdt||u>=tdt,P(xtt&&ytt,tari(x,y,f))I(f-8<3u&&(tcq(x)||tcq(y)),A r=tcl(x,y,f);P(r,y(r)))e2(av+f,x,y))  //a temporal atom with a list: item by item (tari read the list as one int); < > = in one loop when they can (tcl)
+ U v=1<<t|1<<u;   //after the temporals: their codes pass 31
  P(!(v&~(1<<tG|1<<tH|1<<tI|1<<tL|1<<tC|1<<ti|1<<tl|1<<tc)),ariz(x,y,f))
- P(v&(1<<tm|1<<tM|1<<tA),I(f-8<3u&&!(v&~(1<<tA|1<<ti|1<<tl))&&(tcq(x)||tcq(y)),A r=tcl(x,y,f);P(r,y(r)))e2(av+f,x,y))   //< > = of general lists, or of one with an int: temporals in one loop when they can (tcl)
+ P(v&(1<<tm|1<<tM|1<<tA),I(f-1<2u&&!(v&~(1<<tA|1<<ti))&&(tcq(x)||tcq(y)),A r=tal(x,y,f);P(r,y(r)))I(f-8<3u&&!(v&~(1<<tA|1<<ti|1<<tl))&&(tcq(x)||tcq(y)),A r=tcl(x,y,f);P(r,y(r)))e2(av+f,x,y))   //< > = of general lists, or of one with an int: temporals in one loop when they can (tcl)
  P(t==tB,x=cG(xR);x(ari(x,y)))
  P(u==tB,ari(x,cG(y)))
  P(t==tE,P(f==1&&ytzc,addzE(gl(y),xR))P(f==2&&ytzc,addzE((L)(0-(W)gl(y)),xR))x=gZ(xR);x(ari(x,y)))
@@ -438,25 +456,42 @@ A2(dex,y)A2(sub,U o=f;f=2;x=ari(x,y);f=o;x)X2(exc,RMT(ytm?ed(y):ytt?exc(x,rsz(xN
 // a temporal compared with a float (tari): as q casts the float to the temporal, the stored number (days, ms or ns) against
 // the float rounded half away from zero; 0n, -0w 0w and floats past the int range go the int-float way, so 0n is below every
 // temporal but the null timestamp, which it equals, and 0w above, as in q. Consumes y, leaves x, as tari.
-NI Z A tcf(A x,A y,U op)_(B qa=_t(x)>=tdt;A t=qa?x:y;F v=*_F(qa?y:x);L s=_t(t)==tnp?*(L*)_V(t):(L)(I)t;
+// a temporal compared with a float (tari): as q casts the float to the temporal, the stored number (days, ms or ns) against
+// the float rounded half away from zero; 0n, -0w 0w and floats past the int range go the int-float way, so 0n is below every
+// temporal but the null timestamp, which it equals, and 0w above, as in q. Consumes y, leaves x, as tari.
+NI Z A tcf(A x,A y,U op)_(B qa=_t(x)>=tdt;A t=qa?x:y;F v=*_F(qa?y:x);L s=TQN(_t(t))?*(L*)_V(t):(L)(I)t;
  P(!(__builtin_fabs(v)<0x1p63),P(qa,A u=az(s);u(ari(u,y)))mr(y);ari(x,az(s)))
  L r=(L)__builtin_round(v),va=qa?s:r,vb=qa?r:s;mr(y);ai((I)(op==8?va<vb:op==9?va>vb:va==vb)))
-// Two kinds compared as q (#83 Q9; the stored numbers were compared, days with ms or ns): a date and a time are 'type,
-// a date against a timestamp is its midnight (exactly, so no date wraps), a timestamp against a time its time of day
-// to the millisecond, as q's `time$ (floored, so 1999.12.31D11:59:59.999999999 is 11:59:59.999). The null timestamp (0N's
-// ns) is below every date and every time and equal to none, as q's 0Np against a date or a time. Consumes y, as tari.
-Z L tod(L v)_(L m=v%86400000000000;(m+(m<0)*86400000000000)/1000000)
-NI Z A tkc(A x,A y,UC ka,UC kb,U op)_(P(ka+kb==tdt+ttm,et(y))L va=tval(x),vb=tval(y);mr(y);__int128 a=va,b=vb;
- I(ka+kb==tdt+tnp,I(ka==tdt,a*=86400000000000)E(b*=86400000000000))E(I(ka==tnp,a=tod(va))E(b=tod(vb)))
- I(ka==tnp&&va==NL,a=-((__int128)1<<100))I(kb==tnp&&vb==NL,b=-((__int128)1<<100))
+// % of temporals and ints, as q: floats of the stored numbers (a null 0n). Consumes y, as tari.
+Z F tvf(A x)_(_t(x)==tf?*_F(x):({L v=tval(x);v==NL?__builtin_nan(""):(F)v;}))
+NI Z A tdv(A x,A y)_(UC a=_t(x),b=_t(y);P(!(a>=tdt||a==ti||a==tl||a==tf)||!(b>=tdt||b==ti||b==tl||b==tf),et(y))F r=tvf(x)/tvf(y);mr(y);af(r))
+// Two kinds compared as q (#83 Q9; the stored numbers were compared, days with ms or ns). A date, a month and a timestamp
+// compare as ns since 2000 (a date at its midnight, a month at its first day's, exactly, so no date wraps); a time, a minute,
+// a second and a timespan as ns; a timestamp against a time, a minute or a second is its time of day in that unit, floored,
+// as q's `time$ `minute$ `second$ (so 1999.12.31D11:59:59.999999999 is 11:59:59.999), against a timespan its ns. A date or
+// a month against a time of day or a span is 'type. A null is below every value and equal to none of another kind.
+// Consumes y, as tari.
+Z L tod(L v)_(L m=v%86400000000000;m+(m<0)*86400000000000)
+L tmd(L v)_(L q=v/12-(v%12<0),m=v-12*q+1,y=2000+q-(m<=2),e=(y>=0?y:y-399)/400,o=y-e*400,p=m+(m>2?-3:9);e*146097+365*o+o/4-o/100+(153*p+2)/5-730425)   //a month's first day (Hinnant's days_from_civil, as p.c's ymd2days)
+Z B tcal(UC k)_(k==tdt||k==tnp||k==tmo)
+NI Z A tkc(A x,A y,UC ka,UC kb,U op)_(B ca=tcal(ka),cb=tcal(kb);P(ca-cb&&(ka==tdt||ka==tmo||kb==tdt||kb==tmo),et(y))L va=tval(x),vb=tval(y);mr(y);__int128 a,b;
+ I(ca==cb,a=ka==tmo?(__int128)tmd(va)*86400000000000:(__int128)va*tun(ka);b=kb==tmo?(__int128)tmd(vb)*86400000000000:(__int128)vb*tun(kb))
+ E(UC kc=ca?kb:ka;L t=ca?va:vb,c=ca?vb:va;L u=kc==tsp?t:tod(t)/tun(kc);a=ca?u:c;b=ca?c:u)
+ I(va==NL,a=-((__int128)1<<100))I(vb==NL,b=-((__int128)1<<100))
  ai((I)(op==8?a<b:op==9?a>b:a==b)))
 // < > = of a general list of temporals with an atom, or of two general lists of one length (ari): when each item is a
 // temporal of one kind and the other side is that kind or an int (or, for two lists, each pair is one kind), the stored
 // numbers compare in one loop, as tari would compare them item by item; otherwise 0, and e2 goes item by item (to tcf
 // and tkc for a float or another kind). The loop reads each item's type once, so tari's dispatch per item is gone. Consumes nothing.
+// + - of a general list of one packed temporal kind (a date, a time, a minute, a second, a month) and an int (ari): in one
+// loop, as tari gives them item by item (a null stays one); else 0, and e2 goes item by item (and to 'limit past 32 bits).
+// Consumes nothing. (Amber 2.9.0: tari's null and kind checks made the item by item way 14% slower.)
+NI Z A tal(A x,A y,U op)_(B l=_t(x)==tA;A s=l?y:x,t=l?x:y;P(_t(t)-tA||_t(s)-ti,0)U n=_n(t);P(!n,0)CO A*a=(A*)_V(t);UC k=_t(a[0]);P(k<tdt||TQN(k),0)
+ L c=(I)s;A r=aA(n);A*p=(A*)_V(r);
+ F(n,A e=a[i];P(_t(e)-k,_n(r)=(U)i;mr(r);0)I u=(I)e;I(u==NIT,p[i]=e;continue)L w=l?op==1?(L)u+c:(L)u-c:op==1?c+(L)u:c-(L)u;P(w-(I)w,_n(r)=(U)i;mr(r);0)p[i]=atq(k,w))r)
 NI Z A tcl(A x,A y,U op)_(UC tx=_t(x),ty=_t(y);A r,*a,*b;U n;I*p;
  I(tx==tA&&ty==tA,n=_n(x);P(!n||_n(y)-n,0)a=(A*)_V(x);b=(A*)_V(y);UC k=_t(a[0]);P(k<tdt,0)r=an(n,tI);p=_I(r);
-  F(n,P(_t(a[i])-k||_t(b[i])-k,mr(r);0)L c=tval(a[i]),d=tval(b[i]);p[i]=op==8?c<d:op==9?c>d:c==d)return r;)
+  I(TQN(k),F(n,P(_t(a[i])-k||_t(b[i])-k,mr(r);0)L c=*(L*)_V(a[i]),d=*(L*)_V(b[i]);p[i]=op==8?c<d:op==9?c>d:c==d))E(F(n,P(_t(a[i])-k||_t(b[i])-k,mr(r);0)I c=(I)a[i],d=(I)b[i];p[i]=op==8?c<d:op==9?c>d:c==d))return r;)
  B l=tx==tA;A s=l?y:x,t=l?x:y;P(_t(t)-tA,0)UC k=_t(s);P(!(k>=tdt||k==ti||k==tl),0)n=_n(t);P(!n,0)a=(A*)_V(t);
- UC m=k>=tdt?k:_t(a[0]);P(m<tdt,0)L v=tval(s);r=an(n,tI);p=_I(r);
- F(n,P(_t(a[i])-m,mr(r);0)L u=tval(a[i]),c=l?u:v,d=l?v:u;p[i]=op==8?c<d:op==9?c>d:c==d)r)
+ UC m=k>=tdt?k:_t(a[0]);P(m<tdt,0)L v=tvr(s);r=an(n,tI);p=_I(r);
+ I(TQN(m),F(n,P(_t(a[i])-m,mr(r);0)L u=*(L*)_V(a[i]),c=l?u:v,d=l?v:u;p[i]=op==8?c<d:op==9?c>d:c==d))E(F(n,P(_t(a[i])-m,mr(r);0)L u=(I)a[i],c=l?u:v,d=l?v:u;p[i]=op==8?c<d:op==9?c>d:c==d))r)   //one loop per storage: m is the kind of every item

@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.9.0
+
+- **q's other temporals**: minutes `09:30`, seconds `09:30:15`, months `2026.03m`, timespans
+  `0D01:00:00.000000000` and typed nulls `0Nd 0Nt 0Np 0Nn 0Nu 0Nv 0Nm`, with q's arithmetic (a timestamp minus
+  one is a span, a date plus a span a timestamp), compares across kinds, casts, `"N"$` `"U"$` `"V"$` `"M"$`,
+  `xbar`, `type` and json. A run of 234 temporal q lines went from 13% the same as q to 99%, and the
+  everyday ones from 97% to 97.4. `date+1` over a list of dates got 12x quicker, the rest is as fast.
+- **Changed, to match q**: `09:30:00` is a second (a time keeps its ms, `09:30:00.000`), `date+0N` is `0Nd`
+  (was 'domain), `"D"$"x"` is `0Nd` (was 'parse), a time minus a time is a time, and json writes `2026-03-15`.
+
 ## 2.8.0
 
 q code runs like q now. A run of about 2,000 everyday q lines against q itself went from 80% the same to 97%,

@@ -50,15 +50,25 @@ C*sf(C*s,L d)_(W x=d,m=x<<12>>12;I e=x<<1>>53;I(x>>63&&!(e==2047&&m),*s++='-')P(
 A1(str0,Q(xtC);U n=xn;x=AN(n,aa(n+1,x));xC[n]=0;x)
 //nlt: ^ of an atom that is not a number (1.c's nul). A date or a time is 0, having no null (0N makes midnight); a timestamp is 1 for
 //0N's ns, as str prints it; any other atom eql(cn[t],x), as before. Kept out of nul, here after o.c, so later code keeps its place.
-NI A nlt(A x)_(UC t=_t(x);P(t==tdt||t==ttm,ai(0))P(t==tnp,L v_=*(L*)_V(x);x(ai(v_==NL)))eql(cn[t],x))
+NI A nlt(A x)_(UC t=_t(x);P(TQN(t),L v_=*(L*)_V(x);x(ai(v_==NL)))P(TQ(t),ai((I)x==NIT))eql(cn[t],x))   //Amber 2.9.0: a temporal's null, as q's 0Nd 0Nn (a date and a time had none)
 Z C*s2(C*s,U v)_(MC(s,q+v%100*2,2)+2)
 Z C*sdt(C*s,L d)_(L z=d+730425,e=z/146097-(z%146097<0),o=z-e*146097,y=(o-o/1460+o/36524-o/146096)/365,j=o-(365*y+y/4-y/100),p=(5*j+2)/153,m=p<10?p+3:p-9;   //days since 2000.01.01 as temporal.k's dstr prints them (Hinnant's civil_from_days)
  s=sl(s,y+e*400+(m<3));*s++='.';s=s2(s,m);*s++='.';s2(s,j-(153*p+2)/5+1))
 Z C*stm(C*s,L t)_(I(t<0,*s++='-';t=-t)I(t<36000000,*s++='0')s=sl(s,t/3600000);*s++=':';s=s2(s,t/60000%60);*s++=':';s=s2(s,t/1000%60);*s++='.';*s++='0'+t%1000/100;s2(s,t%100))   //ms as amber.k's stime: every digit of the hours (#62)
 Z C*snp(C*s,L v)_(P(v==NL,MC(s,"0N",2)+2)L d=v/86400000000000,r=v%86400000000000;I(r<0,r+=86400000000000;d--)   //ns as temporal.k's pstr
  s=sdt(s,d);*s++='D';s=stm(s,r/1000000);r%=1000000;s=s2(s,r/10000);s2(s2(s,r/100),r))
-Z A tfm(L v,C*(*f)(C*,L))_(A y=aC(32);AN(f(yC,v)-yC,y))   //a temporal atom as text, in C (issue #18), whether temporal.k and amber.k are loaded or not: their dstr, pstr and stime give the same text
-X1(str,Rilf(A y=aC(24);TY(sf)*f=xtf?sf:sl;AN(f(yC,gl(x))-yC,y))R(tdt,tfm((I)x,sdt))R(ttm,tfm((I)x,stm))R(tnp,L v_=*(L*)_V(x);x(tfm(v_,snp)))Rs(aCz(su(xv)))Rc(enl(x))RU(kst(x))R_(e1f(str,x)))
+Z A tfm(L v,C*(*f)(C*,L))_(A y=aC(32);AN(f(yC,v)-yC,y))
+// Amber 2.9.0: q's minute 09:30, second 09:30:15, month 2026.03 and timespan 1D02:03:04.500000000. tqs: any temporal atom
+// as text, consuming it: $x gives "" for a null, as q's string, and the display (d) 0Nd 0Nt 0Np 0Nu 0Nv 0Nm 0Nn and a month's m
+Z C*smn(C*s,L t)_(I(t<0,*s++='-';t=-t)I(t<600,*s++='0')s=sl(s,t/60);*s++=':';s2(s,t%60))
+Z C*ssc(C*s,L t)_(I(t<0,*s++='-';t=-t)I(t<36000,*s++='0')s=sl(s,t/3600);*s++=':';s=s2(s,t/60%60);*s++=':';s2(s,t%60))
+Z C*smo(C*s,L v)_(L q=v/12-(v%12<0);s=sl(s,2000+q);*s++='.';s2(s,v-12*q+1))
+Z C*ssp(C*s,L v)_(W u=v<0?0-(W)v:(W)v;I(v<0,*s++='-')s=sl(s,u/86400000000000);*s++='D';u%=86400000000000;s=stm(s,u/1000000);u%=1000000;s=s2(s,u/10000);s2(s2(s,u/100),u))
+A tqs(A x,B d)_(UC k=_t(x);L v=TQN(k)?*_L(x):(I)x==NIT?NL:(L)(I)x;I(TQN(k),mr(x))
+ P(v==NL,d?({A y=aC(3);MC(yC,"0N",2);yC[2]="dtpuvmn"[k-tdt];y;}):aC(0))
+ A y=aC(40);C*e=(k==tdt?sdt:k==ttm?stm:k==tnp?snp:k==tmn?smn:k==tsc?ssc:k==tmo?smo:ssp)(yC,v);I(d&&k==tmo,*e++='m')AN(e-yC,y))
+Z B tqh(A x)_(P(_t(x)-tA||_n(x)<2,0)UC k=_t(*_A(x));P(!TQ(k),0)F(_n(x),P(_t(_A(x)[i])-k,0))1)   //a general list of one temporal kind: shown as q shows its temporal vectors, 09:30 09:31   //a temporal atom as text, in C (issue #18), whether temporal.k and amber.k are loaded or not: their dstr, pstr and stime give the same text
+X1(str,Rilf(A y=aC(24);TY(sf)*f=xtf?sf:sl;AN(f(yC,gl(x))-yC,y))R7(tdt,ttm,tnp,tmn,tsc,tmo,tsp,tqs(x,0))Rs(aCz(su(xv)))Rc(enl(x))RU(kst(x))R_(e1f(str,x)))
 V hexC(S s,U n,C*r){Z S q="0123456789abcdef";F(n,C c=*s++;*r++=q[(UC)c>>4];*r++=q[c&15])}
 X1(hex,RmMA(e1f(hex,x))RC(P(xn>>31,ez(x))A y=aC(2*xn);Mx(hexC(xV,xn,yV))y)R_(et(x)))
 ZN V unh0(C*q){MS(q,-1,256);F(10,q['0'+i]=i)F(6,q['A'+i]=q['a'+i]=10+i)}
@@ -79,7 +89,7 @@ A1(kr,kp(x,"","","qruvw"))
 A1(kw,kp(x,"AC","IFS","Mmpqw"))
 A1(kT1,Q(xtT)Q(xN==1)pre(',',N(kr(fir(x)))))
 X1(kst,R_(x(aCz("???")))
- RA(    xn==1?kT1(x):!xn&&!(_t(xx)==tC&&!_n(xx))?xx==au?x(aCz("0#,(::)")):cat11(aCz("0#,"),N(kr(x(_R(xx))))):par(jc(';',N(ek(x)))))   //:: as the text 0#,(::) (0#,:: read back as a function); another prototype as kT1 prints an item
+ RA(    xn==1?kT1(x):tqh(x)?jc(32,N(ek(x))):!xn&&!(_t(xx)==tC&&!_n(xx))?xx==au?x(aCz("0#,(::)")):cat11(aCz("0#,"),N(kr(x(_R(xx))))):par(jc(';',N(ek(x)))))   //:: as the text 0#,(::) (0#,:: read back as a function); another prototype as kT1 prints an item
  RC(    xn==1?kT1(x):kss(x))
  RGHILF(xn==1?kT1(x):xn?jc(32,e1f(str,x)):x(aCz(xtF?"0#0n":"!0")))
  RS(    xn==1?kT1(x):xn?raz(ek(x)):x(aCz("0#`")))
@@ -89,9 +99,7 @@ X1(kst,R_(x(aCz("???")))
  RM(pre('+',N(kst(flp(x)))))
  Rm(A y=kv(&x);x=N(kl(x),mr(y));y=N(kr(y),mr(x));cat11(apc(x,'!'),y))
  Rilf(str(x))
- R(tdt,tfm((I)x,sdt))
- R(ttm,tfm((I)x,stm))
- R(tnp,L v_=*(L*)_V(x);x(tfm(v_,snp)))
+ R7(tdt,ttm,tnp,tmn,tsc,tmo,tsp,tqs(x,1))
  Rc(kss(enl(x)))
  Rs(x=str0(str(x));I(xn&&!id0(*xC)||xC+xn-pID(xC),x=kss_(x,1))pre('`',x))
  Ro(x(_R(xx)))
@@ -103,4 +111,4 @@ X1(kst,R_(x(aCz("???")))
  Ru(apc(kst(au^av^x),':'))
  Rv(P(x==GAP,emp(tC))P(x==INS,aCn((S)"insert",6))P(x==ECH,aCn((S)"each",4))A y=aCn(vc+xv,1);xv<20?y:apc(y,':'))
  Rw(P(x==DOL,aCn((S)"do",2))P(x==WHL,aCn((S)"while",5))aCn(&"':/:\\:"[xv%3*2],1+xv/3)))
-A1(out,P(x==au,x)A s=xtA&&1<xn?({A e=ek(xR);e?par(jC("\n ",2,e)):0;}):kst(xR);P(!s,epr(0);x)s=v0c(ai(1),s);P(!s,epr(0);x)mr(s);x)   //a formatter's error, or the write's ('io: stdout closed): printed (the caller frees x)
+A1(out,P(x==au,x)A s=xtA&&1<xn&&!tqh(x)?({A e=ek(xR);e?par(jC("\n ",2,e)):0;}):kst(xR);P(!s,epr(0);x)s=v0c(ai(1),s);P(!s,epr(0);x)mr(s);x)   //a formatter's error, or the write's ('io: stdout closed): printed (the caller frees x)

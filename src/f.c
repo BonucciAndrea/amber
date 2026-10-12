@@ -580,6 +580,13 @@ Z A emaF(F a,A y)_(U n=yn;A z=aF(n);CO F*RES p=AL(yV);F*RES r=AL(zV);F b=1-a;I(n
 A1(emaC,P(_t(x)-tA||_n(x)-2,et(x))F a=gf(N(ii(x,0)));A y=N(cF(N(ii(x,1))));A z=emaF(a,y);mr(y);x(z))
 //amber: native temporal atom constructors.  `mkd d -> date(days), `mkt m -> time(ms), `mkp n -> timestamp(ns).
 //An int atom only: of anything else they read its bits (`mkd {x}, a function's address, gave a date that varied by run).
-A1(mkdt,P(!_tz(x),et(x))L v=gl_(x);mr(x);P(v-(I)v,ez0())adt((I)v))   // a date is 32 bits of days: past them 'limit, as the literal and "D"$ (it wrapped)
-A1(mktm,P(!_tz(x),et(x))L v=gl_(x);mr(x);P(v-(I)v,ez0())atm((I)v))   // a time is 32 bits of ms: past them 'limit, as the literal (it wrapped)
+A1(mkdt,P(!_tz(x),et(x))L v=gl_(x);mr(x);P(v==NL,adt(NIT))P(v-(I)v,ez0())adt((I)v))   // a date is 32 bits of days: past them 'limit, as the literal and "D"$ (it wrapped)
+A1(mktm,P(!_tz(x),et(x))L v=gl_(x);mr(x);P(v==NL,atm(NIT))P(v-(I)v,ez0())atm((I)v))   // a time is 32 bits of ms: past them 'limit, as the literal (it wrapped)
 A1(mknp,P(!_tz(x),et(x))L v=gl_(x);mr(x);antp(v))
+//Amber 2.9.0: `mku `mkv `mkm `mkn: a minute, second, month (since 2000.01) or timespan (ns) of an int; 0N gives the null
+Z A mkq(UC k,A x)_(P(!_tz(x),et(x))L v=gl_(x);mr(x);P(TQN(k),AT(k,al(v)))P(v==NL,atq(k,NIT))P(v-(I)v,ez0())atq(k,(I)v))
+A1(mkmn,mkq(tmn,x))A1(mksc,mkq(tsc,x))A1(mkmo,mkq(tmo,x))A1(mksp,mkq(tsp,x))
+//`dmo: a date's or a timestamp's month; `mod: a month's first day (q's `month$ and `date$, amber.k's qdmo qmod). A null gives the null
+L tmd(L);A1(dmoC,UC k=_t(x);P(k-tdt&&k-tnp,et(x))L d;I(k==tnp,L v=*_L(x);mr(x);P(v==NL,atq(tmo,NIT))d=v/86400000000000-(v%86400000000000<0))E(P((I)x==NIT,atq(tmo,NIT))d=(I)x)
+ L z=d+730425,e=z/146097-(z%146097<0),o=z-e*146097,y=(o-o/1460+o/36524-o/146096)/365,j=o-(365*y+y/4-y/100),p=(5*j+2)/153,m=p<10?p+3:p-9;y+=e*400+(m<3);atq(tmo,(y-2000)*12+m-1))   //Hinnant's civil_from_days, as s.c's sdt
+A1(modC,P(_t(x)-tmo,et(x))P((I)x==NIT,adt(NIT))L d=tmd((I)x);P(d-(I)d,ez0())adt((I)d))

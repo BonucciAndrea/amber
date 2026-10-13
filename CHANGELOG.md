@@ -28,7 +28,8 @@
   a blank before the args, `@[h;msg;f]` and `.[h;args;f]` on a handle, `select`/`update`/`delete from `t` by name,
   `xasc`/`xdesc` of a keyed table, `@[`v;i;f;y]` on a global, and `3#select ..`.
 - **Fixed, found running real q code**: a process that defines its own `upd` (every tickerplant does) made `update`
-  call it, and `.z.D` in a query inside a lambda was taken for a local `z`, so the lambda came back a projection.
+  call it, and `.z.D` in a query inside a lambda was taken for a local `z`, so the lambda came back a projection. `dstr` and
+  `d2ymd` take a date as well as its day number, so `dstr z.d[]` works again.
 - **Changed, to match q**: `09:30:00` is a second (a time keeps its ms, `09:30:00.000`), `date+0N` is `0Nd`
   (was 'domain), `"D"$"x"` is `0Nd` (was 'parse), a time minus a time is a time, json writes `2026-03-15`, and `-8!`/`-9!` are q's bytes
   (Amber's own are `` `ser ``/`` `des `` now).

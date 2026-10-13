@@ -14,7 +14,7 @@ fdiv:{$[~(`i~@y)&y>0;_(x%y);((#`i`I)=`i`I?@x);_(x%y);[r:`fdv(x;y);$[`i~@x;$[^x;0
 
 / ---- date : days since 2000.01.01 ----------------------------------------
 ymd2d:{[y;m;d]yy:y-m<3;era:fdiv[yy;400];yoe:yy-era*400;mp:(m-3)+12*m<3;doy:(fdiv[2+153*mp;5])+d-1;+/((146097*era);365*yoe;fdiv[yoe;4];doy;neg fdiv[yoe;100];-730425)}
-d2ymd:{[d2]z:d2+730425;era:fdiv[z;146097];doe:z-146097*era;yoe:fdiv[+/(doe;neg fdiv[doe;1460];fdiv[doe;36524];neg fdiv[doe;146096]);365];y:yoe+400*era;doy:doe-+/((365*yoe);fdiv[yoe;4];neg fdiv[yoe;100]);mp:fdiv[2+5*doy;153];dd:1+doy-fdiv[2+153*mp;5];m:(mp+3)-12*mp>9;(y+m<3;m;dd)}
+d2ymd:{[d2]z:730425+`long$d2;era:fdiv[z;146097];doe:z-146097*era;yoe:fdiv[+/(doe;neg fdiv[doe;1460];fdiv[doe;36524];neg fdiv[doe;146096]);365];y:yoe+400*era;doy:doe-+/((365*yoe);fdiv[yoe;4];neg fdiv[yoe;100]);mp:fdiv[2+5*doy;153];dd:1+doy-fdiv[2+153*mp;5];m:(mp+3)-12*mp>9;(y+m<3;m;dd)}   / a date or its day number (2.9.0: a date, as z.d gives now)
 dstr:{[d]$[^d;:"0N";];v:d2ymd d;($v 0),".",(z2 v 1),".",z2 v 2}         / date  -> "YYYY.MM.DD"
 pdate:{`i$"D"$x}                                            / "YYYY.MM.DD" -> date, as "D"$ reads it
 / tdays: a date or a list of them takes `i$, a timestamp its day, an int or int list is raw days (0N the null day); a general

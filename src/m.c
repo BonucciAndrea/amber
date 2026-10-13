@@ -526,10 +526,14 @@ Z I bdir(S s)_((V)s;0)
 Z AM_TLS_IE struct ld{A x,y;struct ld*n;}*ld;
 //2.9.0: \l of a bare name (amber.k) that is not here: the one in $AMBER_HOME, else beside the amber binary (as q finds q.k in
 //QHOME), so a script runs from any folder; b holds the path built
+#if defined(wasm)
+Z S amres(S s,C*b,N n){return s;}   //the browser's engine has no files to find a library among
+#else
 C*getenv(S);
 Z S amres(S s,C*b,N n){I(!access(s,F_OK)||strchr(s,'/'),return s;)S h=getenv("AMBER_HOME");C e[4096];
  I(!h||!*h,ssize_t k=readlink("/proc/self/exe",e,SZ e-1);I(k<=0,return s;)e[k]=0;C*d=strrchr(e,'/');I(!d,return s;)*d=0;h=e)
  N hl=SL(h),sl=SL(s);I(hl+sl+2>n,return s;)MC(b,h,hl);b[hl]='/';MC(b+hl+1,s,sl+1);return access(b,F_OK)?s:b;}
+#endif
 //a .q script loads the standard library first, as q's does, and then the script (0.c)
 V qstd(V){Z CO C*m[]={"amber.k","fin.k","std.k","qsql.k","temporal.k","sys.k","hdb.k","ipc.k"};F(L(m),A r=bsl(m[i]);I(r,mr(r))E(epr(0)))}
 //2.9.0: \l of a directory goes into it, as q's (so \l . loads it again: an hdb after the rdb's eod[])

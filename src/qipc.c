@@ -225,9 +225,10 @@ A qtimer(L n)_(qtp=n>0?n:0;qtn=qms()+qtp;au)
 L qtperiod(V)_(qtp)
 #else
 V qidle(V){}V qloop(V){}I qactive(V)_(0)A qcall(I h,A y)_(et(y))A qhopen(A x)_(en(x))A qhclose(A x)_(en(x))A qport(S s)_(en0())A qtimer(L n)_(en0())L qtperiod(V)_(0)
-Z I qwr(I f,CO V*p,N n){return 0;}Z A qfile(S p){return en0();}
+Z I qwr(I f,CO V*p,N n){return 0;}Z A qfile(S p){return en0();}A qexit(A x)_(en(x))
 #endif
 
+#if !defined(wasm)   //files and the local clock: none in the browser's engine
 /* ---- q's logs ------------------------------------------------------------------------------------------------------
  * A log is q's file of an empty general list (ff 01, then 0 0 and a count of 0) and each message after it, as its bytes
  * (no message header): what `:f set () writes and what a log handle appends. -11!f replays it: each message's value, as
@@ -243,3 +244,6 @@ A qreplay(A x/*1*/){L n=-1;A p=x;I(!_tP(x)&&_t(x)==tA&&_n(x)==2,n=gl(ii(x,0));p=
  mr(b);return az(k);}
 //`tzo: the local time's offset from UTC in seconds, for q's local clocks .z.P .z.N .z.D .z.T .z.Z (2.9.0: they were UTC)
 A qtzo(A x/*1*/)_(mr(x);time_t t=time(0);struct tm m;P(!localtime_r(&t,&m),az(0))az((L)m.tm_gmtoff))
+#else
+A qhdel(A x){return x(en0());}A qlog0(A x){return x(en0());}A qreplay(A x){return x(en0());}A qtzo(A x){mr(x);return az(0);}
+#endif

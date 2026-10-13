@@ -55,7 +55,7 @@ static void t_eval(void) {
     v = amber_eval_str("nosuchvariable+1");
     CK(v == 0);
     CK(strlen(amber_last_error()) > 0);
-    CK(strstr(amber_last_error(), "value") != 0);
+    CK(strstr(amber_last_error(), "nosuchvariable") != 0);   /* an undefined name is its own error, as q (2.9.0) */
 
     /* ... and the next successful call must clear it */
     v = amber_eval_str("1");

@@ -467,6 +467,7 @@ A tky(A x,A y,B*o)_(U n=_N(xx);*o=!ytM;
 Z A tfd(A x,A y)_(P(ytA&&!yn,y(aL(0)))B o;y=N(tky(x,y,&o));A c=xy;
  P(_N(c)==1,A z=ii(y,0);mr(y);P(!o,fnd(*_A(c),z))y=ii(z,0);mr(z);P(urnk(y)+1<urnk(*_A(c)),y(az(NL)))fnd(*_A(c),y))
  A z=N(K2("{[a;b]n:1+#*a;({[a;b;n;s;i]c:a i;u:(n*s 0)+c?c;(u?u;u?(n*(n-1)^s 1)+(n-1)^c?b i)}[a;b;n]/[((*a)?*a;(*a)?*b);1_!#a])1}",c,y));
+ L m=_N(x);I(_tz(z),P(gl_(z)==m,z(az(NL))))E(I(_t(z)==tL,z=mut(z);F(_n(z),I(_L(z)[i]==m,_L(z)[i]=NL)))E(I(LH(tG,_t(z),tI),z=cL(z);F(_n(z),I(_L(z)[i]==m,_L(z)[i]=NL)))))   //its ? gives the count for a miss (q's, 2.9.0): 0N here, as fnd
  o?z(ii(z,0)):z)
 #define FSN(T) for(;i<n;i++){L k=f(a,m,p[i]);B(k==NL)((T*)_V(z))[i]=(T)k;}   //fnd's symbol scan, at the narrow width T until a miss
 ZN A fndD(A x,A y/*01*/)_(B t=ytM;A v=kv(&y);v=Ny(fnd(x,v));t?aM(y,v):am(y,v))   //fnd's dict of () or table of no rows, out of line
@@ -519,7 +520,11 @@ X2(fnd,
    A z=aL(n);My(S4(yw-3,F(n,zl=f(a,m,yg)),F(n,zl=f(a,m,yh)),F(n,zl=f(a,m,yi)),F(n,zl=f(a,m,yl))))z)
   fN(y)))
 #undef FSN
-X2(que,Rs(Z CO C s[][4] __attribute__((aligned(4)))={"j","k","hex"};G(&js0,val,unh,ed)[fI((V*)s,L(s),xv)](y))Ril(rnd(gl_(x),y))R_(fnd(x,y)))
+//Amber 2.9.0: x?y of a list or a table as q's: a miss is the count of x (fnd, which the engine uses inside, keeps 0N)
+Z A fqm(A r,L n)_(P(!r||_tP(r)&&!_tz(r),r)P(_tz(r),gl_(r)==NL?(mr(r),az(n)):r)P(_t(r)==tL,B u=0;F(_n(r),u|=_L(r)[i]==NL)P(!u,r)r=mut(r);F(_n(r),I(_L(r)[i]==NL,_L(r)[i]=n))sqzZ(r))   //narrowed, as a find with no miss is
+ P(_t(r)==tA,r=mut(r);F(_n(r),_A(r)[i]=fqm(_A(r)[i],n))r)P(_t(r)==tm,A k=_R(_x(r)),v=fqm(_R(_y(r)),n);mr(r);am(k,v))r)   //a dict (a find of a dict's values): its values
+Z A fndq(A x,A y)_(UC t=xt;A r=fnd(x,y);P(t<=tM,fqm(r,_N(x)))r)
+X2(que,Rs(Z CO C s[][4] __attribute__((aligned(4)))={"j","k","hex"};G(&js0,val,unh,ed)[fI((V*)s,L(s),xv)](y))Ril(rnd(gl_(x),y))R_(fndq(x,y)))
 
 Z A2 binF;
 // ---- amber item 5: batched branchless lower_bound --------------------------

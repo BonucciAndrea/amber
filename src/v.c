@@ -109,8 +109,8 @@ X2(crt,Rt(P(TQ(xt)&&!(TQ(yt)||TQV(yt)||yt==tA),et(y))fil(x,y))R_(P(xtM&&!_tP(y)&
   P(v>0&&rnk(x)==v,I(xtE&&ytE,Lij L k=*yL,l=yL[1];P(k<=i,y(0);aE(MAX(i,l),MAX(j,l)))P(j<=l,y(0);aE(i,MIN(j,k))))
    //a general x's chars against numeric y, or numbers against chars, are kept, not looked for (find is 'type): they
    //are found as ` instead, which no char or number y holds ((0;" ")^0 is ," " - digest #64)
-   I(xtA,A w=0;F(xn,I(cxn(_t(xa),yt),I(!w,w=mut(xR))mr(_A(w)[i]);_A(w)[i]=as(0)))P(w,A r=K2("{&^y?x}",w,y);mr(w);r?i1(x,r):0))
-   K2("{x@&^y?x}",x,y))
+   I(xtA,A w=0;F(xn,I(cxn(_t(xa),yt),I(!w,w=mut(xR))mr(_A(w)[i]);_A(w)[i]=as(0)))P(w,A r=K2("{&(#y)=y?x}",w,y);mr(w);r?i1(x,r):0))
+   K2("{x@&(#y)=y?x}",x,y))
   K2("{x@&~(!0),x~\\:y}/",x,y)))
 B tru(A x/*1*/)_(B v=xtU?x!=au:xtt?!!gl_(x):!!xN;x(0);v)
 A ucb(A);//chars as unsigned bytes (2.c)

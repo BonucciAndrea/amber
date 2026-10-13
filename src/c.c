@@ -68,4 +68,4 @@ A1(sqz,P(!xtA,x)U n=xn;A y=xx;C t=yt;
    Rm(P(!n,x)F(n,P(_t(xa)-tm||!mtc_(yx,_x(xa)),x))y=aM(_R(yx),blw(e1f(rs0,_R(yy))));F(n,PSH(y,_R(xa)))x(y))
    R_(x))0)
 X1(blw,RA(x)Rt(aA1(x))Rm(et(x))R_(U n=xN;A y=aA(n);F(n|!n,ya=ii(x,i))x(0);I(!n,yx=mkn(yx))y))
-A1(gZ,Lij x(0);P(i<0,x=az(i);x(add(x,gZ(aE(0,j-i)))))C t=MAX(tZ(i),tZ(j-1));x=an(j-i,t);tilV(xV,i,j-i,t-tG);x)
+A1(gZ,Lij x(0);P(i<0,U n=(U)(j-i);x=aL(n);L*RES r=xL;for(U k=0;k<n;k++)r[k]=(L)((W)i+(W)k);sqzZ(x))C t=MAX(tZ(i),tZ(j-1));x=an(j-i,t);tilV(xV,i,j-i,t-tG);x)   //a negative start: its items, wrapping as they did (add would read a 0N start as a null)

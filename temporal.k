@@ -7,10 +7,10 @@
 / (Civil<->days uses Howard Hinnant's algorithm, epoch-shifted to 2000.)
 / ============================================================================
 
-/ integer floor-division, exact: (-y)!x (a float x%y rounds above 2^53, and a timestamp is ns
+/ integer floor-division, exact: `fdv(x;y), which is (-y)!x where that is not a system function (-3! -8! -9!) (a float x%y rounds above 2^53, and a timestamp is ns
 / since 2000, so 2026.07.30D23:59:59.999999999 printed as the next day). -8! and -9! are the
 / serialise verbs, so 8 and 9 go in two steps: floor(floor(x/a)/b) is floor(x/(a*b)).
-fdiv:{$[~(`i~@y)&y>0;_(x%y);^`i`I?@x;_(x%y);[r:$[y=8;(-4)!(-2)!x;y=9;(-3)!(-3)!x;(-y)!x];$[`i~@x;$[^x;0N;r];@[r;&^x;:;0N]]]]}  / exact for ints over a positive int (-8! and -9! are other verbs); else as before
+fdiv:{$[~(`i~@y)&y>0;_(x%y);((#`i`I)=`i`I?@x);_(x%y);[r:`fdv(x;y);$[`i~@x;$[^x;0N;r];@[r;&^x;:;0N]]]]}  / exact for ints over a positive int (-8! and -9! are other verbs); else as before
 
 / ---- date : days since 2000.01.01 ----------------------------------------
 ymd2d:{[y;m;d]yy:y-m<3;era:fdiv[yy;400];yoe:yy-era*400;mp:(m-3)+12*m<3;doy:(fdiv[2+153*mp;5])+d-1;+/((146097*era);365*yoe;fdiv[yoe;4];doy;neg fdiv[yoe;100];-730425)}
@@ -29,7 +29,7 @@ dkind:{$[`m~@x;dkind@.x;~`A~@x;$[(@x)in`i`I;,`i;(@x)in`D`N;,`d;,`x];[t:@'x;u:?t;
 tdnul:{[x;t]n:~t in`d`n`A`m`D`N;y:@[x;&n;:;0N];u:t@&~n;$[&/`d=u;`i$y;&/`n=u;tsdate y;{$[(::)~x;0N;tdays x]}'x]}
 tdays:{$[(@x)in`d`D;`i$x;(@x)in`n`N;tsdate x;(@x)in`i`I;x;`m~@x;(!x)!tdays@.x;~`A~@x;`err"type";~#x;!0;`I~@d:`tjn x;$[`d~@*x;d;`n~@*x;tsdate d;`err"type"];[t:@'x;k:dkind x;$[&/k=`d;tdnul[x;t];~&/k=`i;`err"type";|/n:x~\:(::);@[x;&n;:;0N];x]]]}
 dtab:{$[`M~@x;1;`m~@x;`M~@!x;0]}                             / a table or a keyed table: the accessors go column by column, a keyed table on its value (keeping its key), as q's
-dnul:{[d;v](0N*n)+(~n:^d)*v}                                 / v where the day d is not null, else 0N
+dnul:{[d;v]((0;0N)@^d)+v}                                 / v where the day d is not null, else 0N
 dpart:{[i;x]$[`d~@x;(d2ymd`i$x)i;dtab x;$[`M~@x;+dpart[i]@+x;(!x)!dpart[i;.x]];[d:tdays x;$[~#d;d;|//^d;dnul[d;(d2ymd d*~^d)i];(d2ymd d)i]]]}   / the year (0), month (1) or day (2) of a date; a null day gives 0N (dnul only if there is one; a date atom has none)
 dparts:{dpart[;x]'0 1 2}                                     / date -> (year;month;day)  (native date atom or raw days)
 year:{dpart[0;x]}                                            / .year

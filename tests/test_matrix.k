@@ -142,7 +142,7 @@ tv[`oneVsAtom;"(+/,7)~+/7";1b];
 / ======================== 5. special / null values ==========================
 / NOTE: like q, Amber does NOT propagate the LONG null through arithmetic --
 / 0N is LLONG_MIN and 0N+1 wraps to -0W. Float nulls (0n) DO propagate.
-tv[`nullAddI;"0N+1";-9223372036854775807];
+tv[`nullAddI;"0N+1";0N];   / a null stays one, as q (2.9.0)
 tv[`nullAddF;"0n+1.0";0n];
 tv[`infAdd;"0w+1.0";0w];
 tv[`infNeg;"(-0w)+1.0";-0w];
@@ -157,10 +157,10 @@ tv[`nanNotNeg;"($0%0)~\"0n\"";1b];
 tv[`idxOOB;"1 2 3@5";0N];
 tv[`idxNeg;"1 2 3@-1";0N];
 tv[`idxNull;"1 2 3@0N";0N];
-tv[`findMiss;"1 2 3?9";0N];
-tv[`findMissS;"`a`b?`z";0N];
+tv[`findMiss;"1 2 3?9";3];   / a miss is the count, as q (2.9.0)
+tv[`findMissS;"`a`b?`z";2];
 tv[`fillNull;"0^1 0N 3";1 0 3];
-tv[`nullNoPropSum;"($+/1 0N 3)~$0N+4";1b];
+tv[`nullNoPropSum;"(+/1 0N 3;0N+4)";(4;0N)];   / +/ skips a null, + keeps it, as q (2.9.0)
 tv[`nullSort;"#<0N 1 0N 2";4];
 tv[`nullDistinct;"#?0N 0N 1";2];
 
@@ -189,7 +189,7 @@ tv[`attrNone;"`at 1 2 3";`];
 tv[`attrValue;"`sa 1 2 3";1 2 3];
 tv[`attrAscSets;"`at asc 3 1 2";`s];
 tv[`attrBinFind;"(`sa 1 3 5 7 9)?7";3];
-tv[`attrBinMiss;"(`sa 1 3 5 7 9)?4";0N];
+tv[`attrBinMiss;"(`sa 1 3 5 7 9)?4";5];
 tv[`sortBigIdem;"(asc asc 100000#1000 3 7 2)~asc 100000#1000 3 7 2";1b];
 tv[`sortBigOrder;"&/~0>deltas asc(-1+!50000)|0";1b];
 tv[`sortBigLen;"#asc 100000#7 1 9";100000];

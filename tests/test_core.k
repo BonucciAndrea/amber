@@ -373,7 +373,7 @@ t[`boolStrandStill;1 01b;1 0 1]
 / a bool token run into an int before a float strand (no space) is a noun of its own that the strand indexes, as before an
 / int strand and in ngn/k; run into a float it stays 'value, as in ngn/k, which reads each token of a strand by itself
 tv[`boolRunFloat;"(ER'(\"01b1 2.5\";\"01B1 0w\");`k@{x}[101b1 2 32.5+])";(2#,"type";"1 0 11.0 2.0 32.5+")]   / 2.7.2: 'value; 101b1 2 3+ is "1 0 11 2 3+"
-t[`boolRunFloatTok;ER'("01b2.5";"01b0w";"01b0n";"01b1e2";"01b1f";"1b1.5");6#,"value"]
+t[`boolRunFloatTok;ER'("01b2.5";"01b0w";"01b0n";"01b1e2";"01b1f";"1b1.5");("b2";"b0w";"b0n";"b1e2";"b1f";"b1")]   / the undefined name is the error, as q (2.9.0)
 
 / ---- scans with a float seed, or of floats with -, are float scans ----
 t[`scanSeedAdd;1.5+\1 2;2.5 4.5]
@@ -405,7 +405,7 @@ t[`paZerosOneValue;.[{`at(`pa x)};,0.0 -0.0 0.0;{`err}];`p]   / `pa: both zeros 
 t[`findNan;{(x,1.0)?-x}0n;0]
 t[`findNanNeg;{((-x),1.0)?x}0n;0]
 t[`findNanEach;{(1.0,x)?(-x),x}0n;1 1]
-t[`findNanMiss;{1.0 2.0?-x}0n;0N]
+t[`findNanMiss;{1.0 2.0?-x}0n;2]   / a miss is the count, as q (2.9.0)
 t[`distinctNan;{(#?x,(-x),1.0;#?x,1.0,-x)}0n;2 2]
 t[`distinctNanLength;{#?3000#x,(-x),1.0}0n;2]
 t[`findZeroStill;1.0 -0.0?0.0;1]
@@ -525,7 +525,7 @@ t[`nullToFloatSum;+/(0N;1.5);0n]
 t[`nullToFloatVecOk;0N 1+1.5;0n 2.5]
 
 / ---- dict arithmetic: a null value is a value; only a missing key takes the identity ----
-t[`dictNullKept;((`a!0N)+`a!5;(`a!0n)+`a!5.0;(`a!0n)%`a!2.0);((,`a)!,-9223372036854775803;(,`a)!,0n;(,`a)!,0n)]
+t[`dictNullKept;((`a!0N)+`a!5;(`a!0n)+`a!5.0;(`a!0n)%`a!2.0);((,`a)!,0N;(,`a)!,0n;(,`a)!,0n)]   / a null stays one, as q (2.9.0; it wrapped)
 t[`dictNullKeptMixed;(`a`b!0N 1)+`b`c!5 6;`a`b`c!0N 6 6]
 t[`dictMissing;((`a!1)+`b!2;(`a!1)-`b!2;(`a!1)*`b!2);(`a`b!1 2;`a`b!1 -2;`a`b!1 2)]
 t[`dictMissingMinMax;((`a!1)&`b!2;(`a!1)|`b!2;(`a!1.5)&`b!2.5);(`a`b!1 2;`a`b!1 2;`a`b!1.5 2.5)]
@@ -678,7 +678,7 @@ t[`charMinMaxScan;(&\"bac";|\"bac";&':"bac";|':"bac";"z"&\"bac");("baa";"bbc";"b
 t[`jsonBigFloat;(`j@1e20;`j@-1e20;`j@1e22;`j@1.5;`j@3.0;`j@-2.0);("1e20";"-1e20";"1e22";"1.5";,"3";"-2")]
 t[`jsonInfNan;(`j@0w;`j@-0w;`j@0n;`j@1.0 0w -0w 0n);("null";"null";"null";"[1,null,null,null]")]
 / Digest #7: bits looked for are widened to bytes (they were read as ints: wrong rows, reads past the end)
-t[`findBits;((,1)?0101010101B;(,0)?0101b;1 0?0101b;(,1)?0#01b);(0N 0 0N 0 0N 0 0N 0 0N 0;0 0N 0 0N;1 0 1 0;!0)]
+t[`findBits;((,1)?0101010101B;(,0)?0101b;1 0?0101b;(,1)?0#01b);(1 0 1 0 1 0 1 0 1 0;0 1 0 1;1 0 1 0;!0)]
 t[`exceptBits;(0101010101B^1;11B^1;0101010101B^0;11B^0);(00000b;0#01b;11111b;11b)]
 t[`exceptMixed;((0;" ")^0;(0;" ")^" ";(1;"a";`b)^"a";(1;"a")^1 2;(1;"a")^(1;"a");(1;"a";2)^1;(1;"a")^!0);(," ";,0;(1;`b);,"a";(1;"a");("a";2);(1;"a"))]   / digest #64: a general list's chars against numbers are kept, not 'type; two general lists of one count fill, as q (2.8.0)
 / a range is its items: except between a range and chars removes nothing, as for the ints written out (2.7.2: 'type)
@@ -735,7 +735,7 @@ t[`findWideHayChar;*"\n"\.[.:;,"1000 2000 97?\"a\"";{x}];"type"]
 t[`findMixedNeedles;*"\n"\.[.:;,"\"abc\"?(97;\"b\")";{x}];"type"]
 t[`findCharChar;"abc"?"cb";2 1]
 t[`findIntInt;1 2 97?97 1;2 0]
-t[`findGeneric;((1;"a")?"a";(1;"a")?97);1 0N]
+t[`findGeneric;((1;"a")?"a";(1;"a")?97);1 2]
 t[`findNeedleKept;{n:98 99;.[{"abc"?x};,n;{x}];n}[];98 99]
 / a dict's or a table's values are checked too (they gave nulls), with a dict haystack as well
 t[`findCharHayDict;.[.:;,"\"ab\"?`a`b!1 2";{*"\n"\x}];"type"]
@@ -941,7 +941,7 @@ t[`strandMinusFloatParse;`k@`p"0-0.5<1";"(-;0;(<;0.5;1))"]
 t[`strandSpaceFloat;`k@'(1 -0.5;1 2.5;1 -0.5<1);("1.0 -0.5";"1.0 2.5";"0 1")]   / with a space it is one strand, floats if any item is
 t[`strandMinusKinds;`k@'(1 -2-0.5<1;01b-0.5<1);("0 -3";"-1 0")]   / a spaced strand or a boolean before the - (2.4.1: floats)
 tv[`strandMinusUses;"(\"abc\"@2-0.5<1;!3-0.5<1)";("b";0 1)]   / as an index and a count (2.4.1: 'type)
-t[`strandMinusIntKinds;`k@'(0N-0.5<1;1-0xef;0-1 0.5<1);("9223372036854775807";"18";"0 -1")]   / an int null wraps, hex is an int, a spaced strand after the - (2.4.1: floats)
+t[`strandMinusIntKinds;`k@'(0N-0.5<1;1-0xef;0-1 0.5<1);("0N";"18";"0 -1")]   / an int null stays one (2.9.0, as q; it wrapped), hex is an int, a spaced strand after the - (2.4.1: floats)
 t[`strandMinusBigInt;ER"99999999999999999999-0.5";"limit"]   / an int literal past 64 bits is 'limit, as on its own (2.4.1 read it as a float here)
 / Digest #27: temporal arithmetic outside the documented cases is 'type (issue #18), a null int 'domain, x:y is y
 t[`temporalKept;(2026.07.30+1;1+2026.07.30;2026.07.30-1;2026.07.30-2026.07.29;10:00:00.000+00:00:01.000;2026.07.30&2026.07.29;2026.07.30<2026.07.31)~(2026.07.31;2026.07.31;2026.07.29;1;10:00:01.000;2026.07.29;1);1]
@@ -1401,7 +1401,7 @@ t[`keyedByName;(kM`b`a!(`y;2);kM[+`b`a!(`y`x;2 1)];(+`a`b!(1 2;3 4))?`b`a!4 2;{s
 / a key of the wrong length is 'length, as in q; a row or table with columns that differ is 'domain (q: 'mismatch)
 t[`keyedAtErr;{*"\n"\.[.:;,x;{x}]}'("kL 1 2";"kM 1";"kL`a`b!1 2";"kL[+(,`j)!,1]");("length";"length";"domain";"domain")]
 / find of a row, or of a table's rows, in a table; and a keyed table's find gives the key
-t[`tableFind;((+`a`b!(1 2;3 4))?`a`b!2 4;(+`a`b!(1 2;3 4))?+`a`b!(2 9;4 1);(+(,`a)!,1 2)?2;kL?(,`v)!,20;kL _ 1);(1;1 0N;1;(,`k)!,2;(+(,`k)!,2 3)!+(,`v)!,20 30)]
+t[`tableFind;((+`a`b!(1 2;3 4))?`a`b!2 4;(+`a`b!(1 2;3 4))?+`a`b!(2 9;4 1);(+(,`a)!,1 2)?2;kL?(,`v)!,20;kL _ 1);(1;1 2;1;(,`k)!,2;(+(,`k)!,2 3)!+(,`v)!,20 30)]
 / more columns: each row's places in the columns, numbered column by column, find what a scan of the rows finds
 t[`keyedMultiMany;{b:13!i:!91;a:7!i;q:13!j:!200;p:7!j;((+`a`b!(a;b))?+`a`b!(p;q);(+(a;b))?+(p;q);(+`a`b!(a;b))?`a`b!(3;5))}[];{b:13!i:!91;a:7!i;q:13!j:!200;p:7!j;((+(a;b))?+(p;q);(+(a;b))?+(p;q);(+(a;b))?(3;5))}[]]
 
@@ -1525,7 +1525,7 @@ t[`cdBare;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"\\cd\n");"\"",(-1_`x(("/bin
 
 
 / ---- = and ? of a symbol vector store their indices at one width, whatever order the symbols were interned in: the find under = took a 64-bit path when the ids' range was wide (=x's lists were then 16-bit, not 32) ----
-t[`symGroupWidth;{i:4097#0 1 2;a:`$"grpwidthFirst";h:`$"grpwidthPad",/:$!5000;b:`$"grpwidthSecond";c:`$"grpwidthThird";d:`$"grpwidthD";e:`$"grpwidthE";f:`$"grpwidthF";s:(a;b;c);u:(d;e;f);((-8!.=s@i)~-8!.=u@i;(-8!s?s@i)~-8!u?u@i;-8!s?a,`grpwidthNone)}[];(1b;1b;-8!0 0N)]
+t[`symGroupWidth;{i:4097#0 1 2;a:`$"grpwidthFirst";h:`$"grpwidthPad",/:$!5000;b:`$"grpwidthSecond";c:`$"grpwidthThird";d:`$"grpwidthD";e:`$"grpwidthE";f:`$"grpwidthF";s:(a;b;c);u:(d;e;f);((-8!.=s@i)~-8!.=u@i;(-8!s?s@i)~-8!u?u@i;-8!s?a,`grpwidthNone)}[];(1b;1b;-8!0 3)]
 
 
 / ---- a dict joined to a table of other columns is a list of dicts, as t,d (#105 Q1); it was 'domain. Keys that match: a table, as before ----
@@ -1572,7 +1572,7 @@ t[`tvArith;(2026.01.01 0N+1;2026.01.03 2026.01.04-2026.01.01;09:30 09:31-1;5-09:
 t[`tvCmp;(2026.01.01 0N 2026.01.03<2026.01.02;09:30 09:31=09:30;2026.01.01 2026.01.02=2026.01.01 2026.01.03;09:30 09:31<09:30:30.000 09:30:59.000;2026.01.01 2026.01.02>2026.01.01D12:00:00.000000000);(1 1 0;1 0;1 0;1 0;0 1)]
 t[`tvLimit;ER'("2026.01.01 2026.01.02+2147483647";"2026.01.01 2026.01.02+5000000000";"2026.01.01 2026.01.02+2026.01.01 2026.01.02";"2026.01.01 2026.01.02*2");("limit";"limit";"type";"type")]
 t[`tvSort;({x@<x}2026.01.03 0N 2026.01.01;{x@>x}09:30 0N 09:45;<2026.01.03 0N 2026.01.01;{x@<x}2026.01.15D10:00:00.000000000 0N 2026.01.14D09:00:00.000000000;?2026.01.03 0N 2026.01.03;=2026.01.03 0N 2026.01.03);(0N 2026.01.01 2026.01.03;09:45 09:30 0N;1 2 0;0N 2026.01.14D09:00:00.000000000 2026.01.15D10:00:00.000000000;2026.01.03 0N;2026.01.03 0N!(0 2;,1))]
-t[`tvFind;(2026.01.01 2026.01.03?2026.01.03;2026.01.01 2026.01.03?2026.01.03 2026.01.09;09:30 09:31?09:31;2026.01.01 2026.01.03 2026.01.01?2026.01.01);(1;1 0N;1;0)]
+t[`tvFind;(2026.01.01 2026.01.03?2026.01.03;2026.01.01 2026.01.03?2026.01.03 2026.01.09;09:30 09:31?09:31;2026.01.01 2026.01.03 2026.01.01?2026.01.01);(1;1 2;1;0)]
 t[`tvFold;(|/2026.01.01 0N 2026.03.01;&/2026.01.01 0N 2026.03.01;+/09:30 00:10;+/09:30 0N;|/2026.01.15D09:30:00.000000000 0N;ER"+/2026.01.01 2026.01.02");(2026.03.01;0Nd;09:40;0Nu;2026.01.15D09:30:00.000000000;"type")]
 t[`tvFill;(2026.01.02^2026.01.01 0N;09:30 09:31^0N 09:45;0^0N 0Nd;-09:30 0N;ER"-2026.01.01 2026.01.02");(2026.01.01 2026.01.02;09:30 09:45;2000.01.01 2000.01.01;-09:30 0N;"type")]
 t[`tvItems;(2026.01.01 2026.01.02 2026.01.03 1;2026.01.01 2026.01.02 2026.01.03 1 0;2026.01.01 2026.01.02 2026.01.03 9;|09:30 0N;2#2026.01m;-1_2026.01.01 2026.01.02;2026.01.01 2026.01.02,2026.01.03;@2026.01.01 2026.01.02,5;{x}'09:30 09:31;@{x}'09:30 09:31);(2026.01.02;2026.01.02 2026.01.01;0Nd;0N 09:30;2026.01 2026.01m;,2026.01.01;2026.01.01 2026.01.02 2026.01.03;`A;09:30 09:31;`H)]

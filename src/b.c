@@ -365,7 +365,7 @@ AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,d--,es8(a,n))/*d: per-thread VM recursio
    I(c==bm||c==bM,UC d_=*b++;I(__builtin_expect(c==bM&&(d_-14<2u||d_-18<2u),0),U(bmh(p,x,y,d_),*--s=0))E(y=v2[d_](x,y);U(y,*--s=0)*p=x(y)))   //mod asgn  |bm,i,d|.. x -> ..             |vars[i]:dyads[d][vars[i];x]
    E(UC d_=*b++;I e_=ixca(p,x,y,*s,d_,c&1);x=e_?ixer(e_):*p;mr(*s);I(c==bx||c==bX,mr(y);U(x,*s=0)s++)        //ind asgn  |bx,i,d|.. z y -> ..           |vars[i]:  .[vars[i];y;dyads[d];z]
                                     E(U(x,*s=y(0))U(*s=dot(x,y)))))                                 //ind asgn  |by,i,d|.. z y -> .. r         |vars[i]:r:.[vars[i];y;dyads[d];z]
-  C(bG,A x=*--s=gv[BG];U(x,ev0())xR)                                                                //get global|bG,i,i|.. -> .. globals[i]    |
+  C(bG,U g_=BG;A x=*--s=gv[g_];U(x,evg(g_))xR)                                                                //get global|bG,i,i|.. -> .. globals[i]    |
   // amber 2.3: a peach dispatch runs this VM on several threads at once, and a
   // global store there raced on gv[] (two workers releasing the same old value
   // is a double free). As in q, a parallel worker may read globals but not set

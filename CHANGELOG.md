@@ -10,6 +10,9 @@
 - **Typed temporal lists**: a list of dates (or times, minutes, ...) is its own type now, like q's vectors, held as
   its numbers. Sort, distinct and compares on them got 10-25x quicker, `` `date$ `` of timestamps 250x, and they
   print and read back as q's (`2026.01.01 0N`, `2026.01 2026.02m`, `` `date$() ``). Column files keep them flat.
+- **More of q's semantics**: find of a missing item is the count (`1 2 3?4` is `3`, it was `0N`), int nulls stay null
+  in arithmetic (`0N+1` is `0N`, `+/` skips them as `sum`), `-3!x` is q's show text, and an undefined name's error
+  is the name. The two everyday q batteries went from 97.3% the same as q to 98.8% and 98.5%, the temporal one to 100%.
 - **Changed, to match q**: `09:30:00` is a second (a time keeps its ms, `09:30:00.000`), `date+0N` is `0Nd`
   (was 'domain), `"D"$"x"` is `0Nd` (was 'parse), a time minus a time is a time, and json writes `2026-03-15`.
 

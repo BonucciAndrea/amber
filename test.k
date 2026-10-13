@@ -142,7 +142,7 @@ t[`attrSorted;`at(`sa 1 2 3);`s]
 t[`attrUnique;`at(`ua 3 1 2);`u]
 t[`attrParted;`at(`pa 1 1 2 2);`p]
 t[`attrGrouped;`at(`ga 3 1 2);`g]
-t[`partedFindC;(`pa 10 10 20 20 30)?10 20 30 40;0 2 4 0N]
+t[`partedFindC;(`pa 10 10 20 20 30)?10 20 30 40;0 2 4 5]
 
 / ---- tables / keyed tables ----
 tt:+`s`p`v!(`a`b`c;10 20 30;1.5 2.5 3.5)
@@ -734,8 +734,8 @@ t[`wjRangeQuotes;  (+wj[(-1+!4;1+!4);`s`time;+`s`time!(`a`a`a`a;!4);(+`s`time`v!
 / wj's windows are as long as the trade table, as in q ('length; an empty trade table was read past its end)
 t[`wjWindowLength; {*"\n"\.[wj;x;{x}]}'((WW;`time;0#WT;(WQ;,(`z;sum;`q)));((0 1;2 3);`time;3#WT;(WQ;,(`z;sum;`q)));((0 1 2;2 3);`time;3#WT;(WQ;,(`z;sum;`q)));((0 1;2 3);`time;3#WT;(WQ;,(`z;{+/x};`q))));  4#,"length"]
 / int folds, scans and amends wrap (computed in unsigned arithmetic: a signed overflow in C is undefined)
-t[`scanWrap;       (*\0N 0N;+\9223372036854775807 1;*\4294967296 4294967296;9223372036854775806+\1 1);(0N 0;9223372036854775807 0N;4294967296 0;9223372036854775807 0N)]
-t[`foldSeedWrap;   (9223372036854775807+/1 2;0N*/0N 3);(-9223372036854775806;0)]
+t[`scanWrap;       (*\0N 0N;+\9223372036854775807 1;*\4294967296 4294967296;9223372036854775806+\1 1);(1 1;9223372036854775807 0N;4294967296 0;9223372036854775807 0N)]   / a null item counts as 1 in *\, as q's (2.9.0)
+t[`foldSeedWrap;   (9223372036854775807+/1 2;0N*/0N 3);(-9223372036854775806;0N)]   / the seed wraps, a null item is skipped, as q (2.9.0)
 t[`amendWrap;      ({x[0 1]*:-9223372036854775807;x}3#-1099511627776;@[2#9223372036854775807;0 0;+;1];{x[0 1]+:1;x}2#9223372036854775807);(3#-1099511627776;-9223372036854775807 9223372036854775807;0N 0N)]
 / whole-number floats beyond 2^53 are not counting-sorted (their (L) is undefined past 2^63)
 t[`sortBigFloats;  {(<x;>x;x@<x)}1e19 1.0000000000000004e19 1e19 1.0000000000000002e19;(0 2 3 1;1 3 0 2;1e19 1e19 1.0000000000000002e19 1.0000000000000004e19)]

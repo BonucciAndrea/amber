@@ -120,12 +120,14 @@ Z L mulfZ(L v,A x/*0*/)_((L)((W)v*(W)G(&mulfG,mulfH,mulfI,mulfL)[xw-3](xV,xn)))
 // native vector register. Results are bit-identical to the previous four-way
 // split, so no benchmark answer moves.
 Z F sumF(CO F*RES p,U n)_(par_bsum_f64(p,n))   //2.5 (exp): blocked and parallel from 1M up (parallel.c)
-Z A3(admf,/*010*/B i=xv==3;U n=zn;P((y&&ytf)||ztF,F v=y?gf(cF(y)):i;z=cF(zR);CO F*RES q=zV;Mz(I(i,F(n,v*=q[i]))E(v+=sumF(q,n)))af(v))L v=y?gl(y):i;az((i?mulfZ:addfZ)(v,z)))
+Z A3(admf,/*010*/B i=xv==3;U n=zn;P((y&&ytf)||ztF,F v=y?gf(cF(y)):i;z=cF(zR);CO F*RES q=zV;Mz(I(i,F(n,v*=q[i]))E(v+=sumF(q,n)))af(v))L v=y?gl(y):i;P(zt==tL,CO L*RES q=zV;U n=zn;I(i,F(n,L t=q[i];v=(L)((W)v*(W)(t==NL?1:t))))E(F(n,L t=q[i];v=(L)((W)v+(W)(t==NL?0:t))))az(v))   /*Amber 2.9.0: the sum and product folds of 64-bit ints skip a 0N, as q's (sum, prd)*/
+ az((i?mulfZ:addfZ)(v,z)))
 // -/ reuses the sum: x0-x1-.. is -((-2*x0)+(+/x)), exact for ints (they wrap). Not for
 // floats: -2*x0 overflows above 2^1023 and turns an infinite x0 into inf-inf, so `-/0w 1.0`
 // was 0n and `-/1e308 1.0` was 0w; and the seed of an empty fold came back negated, as did
 // the 0.0 of an empty list. Floats subtract in order instead, as {x-y}/ does.
-Z A3(subf,/*010*/P(ztF||y&&ytf,z=cF(zR);CO F*RES q=zV;U i=!y;F v=y?gf(cF(y)):zn?*q:0.0;Mz(W(i<zn,v-=q[i++]))af(v))
+Z A3(subf,/*010*/I(zt==tL,CO L*RES q=zV;L o=0;F(zn,o|=q[i]==NL)P(o,I(y,mr(y))az(NL)))   /*a 0N in 64-bit ints: -/ is 0N, as q (2.9.0); the seed is ours*/
+ P(ztF||y&&ytf,z=cF(zR);CO F*RES q=zV;U i=!y;F v=y?gf(cF(y)):zn?*q:0.0;Mz(W(i<zn,v-=q[i++]))af(v))
  y=y?neg(y):zn?mul(ai(-2),ii(z,0)):ai(0);neg(admf(ADD,y,z)))
 // amber item 3: direct float min/max. The general path below folds the whole
 // float vector into an order-preserving integer domain with of1(), reduces
@@ -191,6 +193,8 @@ A3(ars,/*010*/Q(xtv)Q(xv<11)Q(!y||ytzfc)Q(ztZFC)
  P(ztF&&xv==2,subsf(x,y,z))                                                                       //float -\: in order (subs is for ints)
  P(ztF&&(xv==1||xv==3),admsf(x,y,z))
  P(ztF&&(xv==6||xv==7),mmmsf(x,y,z))
+ I(zt==tL&&(xv==1||xv==3)&&(!y||ytz),CO L*RES q=zV;U n=zn;L o=0;F(n,o|=q[i]==NL)   //Amber 2.9.0: + and * scans of 64-bit ints with a 0N: it counts as 0 (or 1), as q's sums and prds
+  I(o,B m=xv==3;L s=y?gl(y):m;A u=aL(n);L*RES r=uL;F(n,L t=q[i];I(t!=NL,s=m?(L)((W)s*(W)t):(L)((W)s+(W)t))r[i]=s)return u;))   /*z is borrowed*/
  G(&dexs,adms,subs,adms,___s,___s,mnms,mxms,___s,___s,eqls)[xv](x,y,z))
 
 // amber 2.4.1: an int seed that fits z's width goes in front of a straight copy of z, one pass,
@@ -438,6 +442,7 @@ Z A shiftS(L op,B fl,B s,A x){N n=_n(x),m=n-1;CO U*RES p=(CO U*)xV;N c=0;A z=s?0
  for(N i=0;i<m;i++){I d=fl?shsym(p[i],p[i+1]):shsym(p[i+1],p[i]);G r=op==8?d<0:op==9?d>0:d==0;I(s,c+=r)E(zG[i]=r)}
  return s?az((L)c):z;}
 Z A shiftC(L code,A x){B s=code>=300;code-=s?300:200;B fl=code>=16;L op=code&15;UC t=op>=8?TST(_t(x)):_t(x);   //a temporal list compares as its ints (2.9.0)
+ I(op<8&&!_tP(x)&&t==tL,CO L*RES p=xV;L o=0;F(_n(x),o|=p[i]==NL)I(o,return shslow(op,fl,s,x)))   //+ - * of 64-bit ints with a 0N: the unfused dyads, which keep it (2.9.0)
  P(!_tP(x)&&t==tS&&op>=8&&_n(x)>=2,shiftS(op,fl,s,x))
  P(_tP(x)||!(t==tG||t==tH||t==tI||t==tL||t==tF||t==tC)||_n(x)<2,shslow(op,fl,s,x))
  N n=_n(x),m=n-1;

@@ -79,9 +79,9 @@ qcw:{[t;C;i;e]h:$[qhi e;~|/in[`i,qI;C];0];r:qrefs[C;e];v:qfn[$[h;C,qI;C];e]$[h;+
 qlw:`in`within`like`not`null`abs`neg`floor`ceiling`signum`string`lower`upper`mod`div`xbar
 qblank:{[e]$[~|/(e="\"")|e="`";e;[s:e;q:qsmask s;s:@[s;&q|s="\"";:;" "];w:qword 0+s;rid:+\~~':w;bt:&s="`";p:1+bt;p:p@&p<#s;pc:p@&":"=s p;p:p@&w p;b:w&@[(1+#s)#0b;rid p;:;1b]rid;$[#pc;[c:w|(s=".")|(s=":")|(s="/")|s="-";rc:+\~~':c;b|:c&@[(1+#s)#0b;rc pc;:;1b]rc];];s:@[s;bt;:;" "];@[s;&b;:;" "]]]}   / strings and `symbols blanked (a `: symbol takes in . / _ - :, as Amber's pfh; a plain one is a word, _ and all, where Amber stops at _)
 qloc:{[C;e]$[qlm[C;e];1;qlb[C;e;qblank e]]}
-qlm:{[C;e]j:((e="=")|(e="<")|e=">")?1;$[~^j;$[^(C,`i)?`$j#e;0;~&/qword 0+j#e;0;qll(j+1+~^"=>"?e j+1)_e];qlm2[C;e]]}
-qll:{$[0=#x;0;"`"=*x;&/qword[0+x]|x="`";~^"-0123456789"?*x;&/qword[0+x]|(x=".")|x="-";0]}   / a number or a run of `symbols, with nothing else
-qlm2:{[C;e]t:" "\@[e;&e="~";:;" "];t:t@&0<#'t;$[0=#t;0;(2<#t)&((t 1)~"in")|(t 1)~"within";$[|/e="~";0;^(C,`i)?`$*t;0;&/qll'2_t];~&/qword 0+,/t;0;~&/{(x~"not")|x~"null"}'-1_t;0;~^(C,`i)?`$*|t]}   / the common shapes that keep to their row, read without the full check: a column or i compared (= < >) with a literal, under ~, not and null, or in or within literals
+qlm:{[C;e]j:((e="=")|(e="<")|e=">")?1;$[j<#e;$[qnf[(C,`i);`$j#e];0;~&/qword 0+j#e;0;qll(j+1+~qnf["=>";e j+1])_e];qlm2[C;e]]}
+qll:{$[0=#x;0;"`"=*x;&/qword[0+x]|x="`";~qnf["-0123456789";*x];&/qword[0+x]|(x=".")|x="-";0]}   / a number or a run of `symbols, with nothing else
+qlm2:{[C;e]t:" "\@[e;&e="~";:;" "];t:t@&0<#'t;$[0=#t;0;(2<#t)&((t 1)~"in")|(t 1)~"within";$[|/e="~";0;qnf[(C,`i);`$*t];0;&/qll'2_t];~&/qword 0+,/t;0;~&/{(x~"not")|x~"null"}'-1_t;0;~qnf[(C,`i);`$*|t]]}   / the common shapes that keep to their row, read without the full check: a column or i compared (= < >) with a literal, under ~, not and null, or in or within literals
 / qlb: qloc on e's text s, strings and `symbols blanked, read with primitives over its words (b their starts, we
 / their ends, t their texts). A word keeps a row to itself (qlwv) when it is a column, i, a word of qlw, a number,
 / or a global that is data; every mark is one of = < > ~ + - * % & | $ , . ( ), and a dyadic one has an operand
@@ -91,14 +91,14 @@ qlm2:{[C;e]t:" "\@[e;&e="~";:;" "];t:t@&0<#'t;$[0=#t;0;(2<#t)&((t 1)~"in")|(t 1)
 / row up for itself); ~ only monadic (~null px; not n~m: qljt); , only between literals (`a,`b; not n,m: qljc); in
 / and within with no column on their right (n in 1 2 3, sym in syms; not n in m: qlji).
 qlb:{[C;e;s]$[0=#s;1;[w:qword 0+s;b:&w>0,-1_w;we:&w>(1_w),0;t:(1+we-b)#'b _ s;qlb1[C;e;s;w;b;we;t]]]}
-qlb1:{[C;e;s;w;b;we;t]y:`$'t;$[~qlwv[C;y;t];0;[L:(s=" ")&~e=" ";i:&L|~s=" ";o:&~w|s=" ";$[~&/~^"=<>~+-*%&|$,.()"?s o;0;~qlbm[s;w|L;i;o];0;qlq e;1;qlj3[C;s;L;b;we;t;y;i]]]]}
-qlwv:{[C;y;t]g:&~(~^(C,qlw,`i)?y)|((*'t)>"/")&((*'t)<":")&~|/'t="_";$[#g;&/{v:.[{.x};,x;{`qlfail}];$[`qlfail~v;0;~|/"opqruvwx"=*$@v]}'y g;1]}
-qlbm:{[s;v;i;o]m:o@&~^"*|&<>=+"?s o;$[0=#m;1;[k:i?m;$[|/k=0;0;[q:i k-1;$[&/v q;1;[c:s q;&/(v q)|(c=")")|(~^"<>"?c)&~^"=>"?s m]]]]]]}
-qlq:{[e]$[|/~^" \t~,.()[]\""?e;0;[b:&e="`";$[#b;~|/0,qword 0+e@-1+b@&0<b;1]]]}
-qlj3:{[C;s;L;b;we;t;y;i]n:#s;p:-1_(,-1),|\@[n#-1;i;:;i];p:@[p;&p<0;:;n];cl:~^(C,`i)?y;vb:~^qlw?y;ce:(@[n#0;we@&cl;:;1]|s=")"),0;os:@[n#0;b@&~vb;:;1]|(s="(")|L&~0,-1_L;$[|/os&ce p;0;|/(s=".")&ce p;0;$[|/s="~";qljt[s;L;we;vb;p];0];0;$[|/s=",";qljc[s;L;i];0];0;$[|/~^`in`within?y;qlji[s;b;t;cl];0];0;1]}
+qlb1:{[C;e;s;w;b;we;t]y:`$'t;$[~qlwv[C;y;t];0;[L:(s=" ")&~e=" ";i:&L|~s=" ";o:&~w|s=" ";$[~&/~qnf["=<>~+-*%&|$,.()";s o];0;~qlbm[s;w|L;i;o];0;qlq e;1;qlj3[C;s;L;b;we;t;y;i]]]]}
+qlwv:{[C;y;t]g:&~(~qnf[(C,qlw,`i);y])|((*'t)>"/")&((*'t)<":")&~|/'t="_";$[#g;&/{v:.[{.x};,x;{`qlfail}];$[`qlfail~v;0;~|/"opqruvwx"=*$@v]}'y g;1]}
+qlbm:{[s;v;i;o]m:o@&~qnf["*|&<>=+";s o];$[0=#m;1;[k:i?m;$[|/k=0;0;[q:i k-1;$[&/v q;1;[c:s q;&/(v q)|(c=")")|(~qnf["<>";c])&~qnf["=>";s m]]]]]]]}
+qlq:{[e]$[|/~qnf[" \t~,.()[]\"";e];0;[b:&e="`";$[#b;~|/0,qword 0+e@-1+b@&0<b;1]]]}
+qlj3:{[C;s;L;b;we;t;y;i]n:#s;p:-1_(,-1),|\@[n#-1;i;:;i];p:@[p;&p<0;:;n];cl:~qnf[(C,`i);y];vb:~qnf[qlw;y];ce:(@[n#0;we@&cl;:;1]|s=")"),0;os:@[n#0;b@&~vb;:;1]|(s="(")|L&~0,-1_L;$[|/os&ce p;0;|/(s=".")&ce p;0;$[|/s="~";qljt[s;L;we;vb;p];0];0;$[|/s=",";qljc[s;L;i];0];0;$[|/~qnf[`in`within;y];qlji[s;b;t;cl];0];0;1]}
 qljt:{[s;L;we;vb;p]n:#s;oe:(@[n#0;we@&~vb;:;1]|(s=")")|L&~(1_L),0),0;|/(s="~")&oe p}
 qljc:{[s;L;nb]c:nb?&s=",";$[0=#c;0;|/(c=0)|(c+1)=#nb;1;~&/L nb c-1;1;~&/L nb c+1]}
-qlji:{[s;b;t;cl]i:b@&~^("in";"within")?t;$[0=#i;0;[d:+\(s="(")-s=")";cs:b@&cl;|/{[d;cs;p]r:*(&(p<!#d)&d<d p),#d;|/(cs>p)&cs<r}[d;cs]'i]]}
+qlji:{[s;b;t;cl]i:b@&~qnf[("in";"within");t];$[0=#i;0;[d:+\(s="(")-s=")";cs:b@&cl;|/{[d;cs;p]r:*(&(p<!#d)&d<d p),#d;|/(cs>p)&cs<r}[d;cs]'i]]}
 / qdec: drop a trailing K comment from a query string.
 / A "/" that STARTS a token -- at the beginning of the string, or preceded by a
 / space or a tab -- and is not inside a "…" literal begins a comment.  The qSQL
@@ -133,7 +133,7 @@ qnmv:{[n;it]{[n;e]p:qname e;(0=#p 0)&~n~`$p 1}'[n;it]}   / is each name derived
 qnmc:{[b;o]c:`$($b),/:$1+!1+#o;*c@&~in[c;o]}   / b numbered past the names o
 qnmd:{[X;n;dv]n:{[dv;n;i]$[dv i;n;in[n i;n@&(~dv)&(!#n)<i];@[n;i;:;qnmc[n i;n@&(~dv)&(!#n)<i]];n]}[dv]/[n;!#n];{[X;dv;n;i]$[~dv i;n;[o:n@&(~dv)|(!#n)<i;$[in[n i;o];@[n;i;:;qnmc[n i;o,X]];n]]]}[X;dv]/[n;!#n]}
 qcn:{[C;e]e:trim e;$[0=#e;`err"parse";"("=*e;qcn[C;qpin[e;"(";")"]];(2<#e)&("`"=*e)&("#"=e 2)&in[e 1;"supg"];qcn[C;3_e];"`"=*e;`x;"\""=*e;`x;~qword 0+*e;$[("-"=*e)&(1<#e)&~(e 1)<"0";$[(e 1)>"9";qcn[C;1_e];`x];qcn[C;1_e]];qcnw[C;e]]}
-qcnw:{[C;e]w:qword 0+e;n:*(&~w),#e;t:n#e;r:trim n_e;c:*t;$[in[`$t;C];$[#u:qcnf r;qcn[C;u];(0<#r)&~^"<>=~"?*r;`x;`$t];~(c<"0")|c>"9";`x;t~,"i";`x;~qfnw t;`$t;0=#r;`$t;"["=*r;qcn[C;*|qscut qpin[r;"[";"]"]];qcn[C;r]]}
+qcnw:{[C;e]w:qword 0+e;n:*(&~w),#e;t:n#e;r:trim n_e;c:*t;$[in[`$t;C];$[#u:qcnf r;qcn[C;u];(0<#r)&~qnf["<>=~";*r];`x;`$t];~(c<"0")|c>"9";`x;t~,"i";`x;~qfnw t;`$t;0=#r;`$t;"["=*r;qcn[C;*|qscut qpin[r;"[";"]"]];qcn[C;r]]}
 qinfx:`wavg`wsum`xbar`xexp`xlog`cor`cov`scov`mod`div`in`like`within`cross`except`inter`union`mavg`msum`mmax`mmin`mcount`mdev`ema`xprev`rotate`sublist`cut`bin`binr`ss`sv`vs`xrank`xasc`xdesc`lj`ij`uj`pj`ej`aj`aj0`fby
 qcnf:{[r]w:qword 0+r;n:*(&~w),#r;$[(0<n)&(n<#r)&in[`$n#r;qinfx];trim n_r;""]}   / a named function after the first column, as v wavg p: the text after it (q names the column after its last argument, an operator after its first)
 qfnw:{v:.[{.x};,`$x;{`qlfail}];$[`qlfail~v;0;|/"opqruvwx"=*$@v]}   / Does the word name a function
@@ -162,7 +162,7 @@ qbyn:{[C;i;it]p:qname it;$[#p 0;`$p 0;qsimple p 1;$[p[1]~,"i";$[in[`i;C];`i;`x];
 / q's 'rank. One row grouped on the function; from two rows up sym crashed (a list of functions is a train: the
 / train crash, #92 item 96) and a function that does not fail on the column gave 'rank. A data global is a key.
 qbyp:{[C;byp]it:qcut byp;ex:{(qname x)1}'it;nm:qbyn[C]'[!#it;it];dv:qnmv[nm;it];nm:qnmd[C;nm;dv];(qfn[C]'ex;qbyh[nm;{[n;e]e~$n}'[nm;ex]];nm;nm@&~dv)}   / the by-clause's parse: lambdas, hidden names, names, given names
-qbyx:{[t;byp]p:qmz[4;(cols t;byp;`nsd());qbyp;(cols t;byp)];v:{[t;f]f t}[t]'p 0;$[1=#v;$[^`o`p`q`r`u`v`w`x?@*v;;`err"rank"];];(+((+t),(p 1)!v);p 1;p 2;p 3)}
+qbyx:{[t;byp]p:qmz[4;(cols t;byp;`nsd());qbyp;(cols t;byp)];v:{[t;f]f t}[t]'p 0;$[1=#v;$[qnf[`o`p`q`r`u`v`w`x;@*v];;`err"rank"];];(+((+t),(p 1)!v);p 1;p 2;p 3)}
 qbyh:{[nm;b]{[n;b;i]$[b;n;`$"[",($n),";",($i),"]"]}'[nm;b;!#nm]}   / b: the key is the column of its name
 qbyr:{[r;x]$[(x 1)~x 2;r;iskeyed r;(+(x 2)!. +!r)!. r;r]}   / the by-result's key under the names qbyn gave
 qnull:{$[in[@x;`I`i];0N;in[@x;`F`f];0n;in[@x;`S`s];`;in[@x;`C`c];" ";0N]}
@@ -200,11 +200,11 @@ qswb:{[C;e]$[("wavg["~5#e)&"]"=*|e;[a:`$";"\-1_5_e;$[(2=#a)&&/in[a;C];(`wavg;a 0
 / . and : whose words each start with a digit. A where's constraints keep refusing the : in them, so a later
 / time within 09:30 16:00 still runs on the rows kept, not on the whole table.
 qlit:{[s]$[~|/0,(s>"/")&s<":";s;[w:qword 0+s;c:w|(s=".")|s=":";r:+\c>-1_0,c;bd:r@&((c>-1_0,c)&~w)|(w>-1_0,w)&~(s>"/")&s<":";@[s;&c&~@[(2+|/r)#0b;bd;:;1b]r;:;" "]]]}
-qbyl:{[C;byp]$[~^C?`$byp;1;qbyf[C;byp];1;qbyo[C;byp]]}
-qbyf:{[C;byp]$[|/~^"([{`\":"?byp;0;&/{[C;e]t:t@&0<#'t:" "\e;$[1=#t;qbop[C;*t];3=#t;$[~^`mod`div`xbar?`$t 1;qbop[C;t 0]&qbop[C;t 2];0];0]}[C]'","\byp]}   / by-items that are each a column, i, a number, or two of those around mod, div or xbar keep to their row, read without the checks
-qbop:{[C;w]$[(*w)<":";$[(*w)>"/";$[|/w="_";0;&/qword[0+w]|w="."];0];~^(C,`i)?`$w]}   / a column, i, or a number (word characters and ., no _: not 0+|n)
+qbyl:{[C;byp]$[~qnf[C;`$byp];1;qbyf[C;byp];1;qbyo[C;byp]]}
+qbyf:{[C;byp]$[|/~qnf["([{`\":";byp];0;&/{[C;e]t:t@&0<#'t:" "\e;$[1=#t;qbop[C;*t];3=#t;$[~qnf[`mod`div`xbar;`$t 1];qbop[C;t 0]&qbop[C;t 2];0];0]}[C]'","\byp]}   / by-items that are each a column, i, a number, or two of those around mod, div or xbar keep to their row, read without the checks
+qbop:{[C;w]$[(*w)<":";$[(*w)>"/";$[|/w="_";0;&/qword[0+w]|w="."];0];~qnf[(C,`i);`$w]]}   / a column, i, or a number (word characters and ., no _: not 0+|n)
 qbyo:{[C;byp]e:(qname'qcut byp)@\:1;&/qlb[C]'[e;{qlit qblank x}'e]}
-qselby:{[u;m;hw;byp;it;d]$[#m;$[qbyl[cols u;byp];;:qselby[qflt[u;m;hw];();0;byp;it;d]];];r:qbyx[u;byp];$[|/in[!d;r 3];`err"dup";];sg:qmz[5;(cols r 0;it);{[C;it]qsagg[C]'{(qname x)1}'it};(cols r 0;it)];fa:$[~&/{0<#x}'sg;();$[#m;|/m;1];qaggf[r 0;r 1;(!d)!sg;m];()];qbyr[;r]$[#fa;qks fa;[t:$[#m;qwk[2=hw;r 0;m];r 0];qby[qproj[t;(r 1),(,/qrefs[cols t]'{(qname x)1}'it)];r 1;d]]]}   / a column named as a given or bare by-key is 'dup, as q (exec's columns come with hidden names, qexby)
+qselby:{[u;m;hw;byp;it;d]$[#m;$[qbyl[cols u;byp];;:qselby[qflt[u;m;hw];();0;byp;it;d]];];r:qbyx[u;byp];$[|/in[!d;r 3];`err"dup names for cols/groups ",$*(!d)@&in[!d;r 3];];sg:qmz[5;(cols r 0;it);{[C;it]qsagg[C]'{(qname x)1}'it};(cols r 0;it)];fa:$[~&/{0<#x}'sg;();$[#m;|/m;1];qaggf[r 0;r 1;(!d)!sg;m];()];qbyr[;r]$[#fa;qks fa;[t:$[#m;qwk[2=hw;r 0;m];r 0];qby[qproj[t;(r 1),(,/qrefs[cols t]'{(qname x)1}'it)];r 1;d]]]}   / a column named as a given or bare by-key is 'dup, as q (exec's columns come with hidden names, qexby)
 / gag1: one select-list item -> one fused result triple (head;values;first-row-indices).
 / (agg;col)        -> a single `gagg pass, as before.
 / (wavg|wsum;w;c)  -> two `gagg sum passes over the same keys and mask, so the group order
@@ -360,7 +360,7 @@ qexec:{[t;w;b;d]t:$[0=#w;t;qwhere[t;w]];$[0=#b;$[0=#d;t;qselect[t;d]];qby[t;b,()
 / Ordinary expressions - and an explicit sel"…" - are returned unchanged.
 qkws:("select";"exec";"update";"delete")
 qkfn:("sel";"exq";"upd";"del")
-qpre:" ([{;:,=<>+-*%!&|^~?@."
+qpre:" ([{;:,=<>+-*%!&|^~?@.]\t\n\r"   / a keyword starts after one of these (2.9.0: ], tab and newline too; ?, its miss 0N, let any char through before)
 qbig:1000000
 qesc:{,/{$[x="\\";"\\\\";$[x="\"";"\\\"";,x]]}'x}                                 / escape \ and " for a "…" literal
 qsmask:{[t]p:&t="\"";$[0=#p;:(#t)#0b;];e:(0,-1_$[|/b:t="\\";{y&~x}\b;b])p;o:-1_{y|~x}\0,e;q:@[(#t)#0b;p@&~e&o;:;1b];1=2!0,-1_sums q}   / 1b where inside a "…" literal (a " after an odd run of \ is escaped, inside a string only: ,\"ab" opens one)

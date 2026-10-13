@@ -23,7 +23,7 @@ A rsz(L n,A x/*1*/)_(
 A slc(A x/*0*/,U i,U j)_(Q(xtT&&i<=j&&j<=xN)N n=j-i;XB(A y=an(j-i,tB);cpyB(yV,0,xV,i,j-i);y)XE(I v=*xL;aE(v+i,v+j))A y=an(n,xt);U w=xw-3;MC(yV,xV+((W)i<<w),(W)n<<w);XA(P(!n,yx=mkn(_R(xx));y)sqz(mRa(y)))y)
 Z A chp(L n,A x/*1*/)_(P(n<0,ed(x))XmM(en(x))L m=(xn+n-1)/n;A y=aA(m);F(m|!m,ya=slc(x,n*i,MIN((L)xn,n*i+n)))x(0);I(!m,yx=mkn(yx))y)
 Z A2(rsh,/*01*/XE(x=gZ(xR);x(rsh(x,y)))YE(rsh(x,gZ(y)))YmM(en(y))Yt(rsh(x,enl(y)))Q(xtZ);N r=xn;P(!r,fir(y))P(r>256,ez(y))x=Ny(cL(xR));L s[r];MC(s,xV,r<<3);x(0);
- I(r==2,P(*s==NL,chp(s[1],y))P(s[1]==NL,A u=az(*s);u(K2("{$[(0<x)&~x!#y;(x;(-x)!#y)#y;((-x)!(#y)*!x)_y]}",u,y))))P(r==1&&*s==NL,y)I(!yn,y=enl(fir(y)))
+ I(r==2,P(*s==NL,chp(s[1],y))P(s[1]==NL,A u=az(*s);u(K2("{$[(0<x)&~x!#y;(x;`fdv(#y;x))#y;(`fdv((#y)*!x;x))_y]}",u,y))))P(r==1&&*s==NL,y)I(!yn,y=enl(fir(y)))
  L m=1;F(r,L d=s[r-1-i];P(d<0,ed(y))P(__builtin_mul_overflow(m,MAX(1ll,d),&m)||m>>32,ez(y)))y=N(rsz(m,y));F(r-1,L d=s[r-1-i];I(d,y=N(chp(MAX(1ll,d),y)))E(y=N(e1f(rs0,N(chp(1,y))))))rsz(*s,y))
 A qattrs(C,A);//a.c
 Z X2(hsh0,/*01*/Ril(rsz(gl_(x),y))RU(flt(x,y,1))RT(P(ytm,P(_tM(yx),y(en0()))A k=xR,i=fnd(yx,xR);P(!i,mr(k);y(0))P(_tA(yx)&&_n(yx)&&_tt(i),mr(k);mr(i);en(y))A u=i1(yy,i);P(!u,mr(k);y(0))y(aV(yt,2,A(k,u))))P(ytM&&xtS,A k=xR,u=i1(y,xR);P(!u,mr(k);y(0))y(aV(yt,2,A(k,u))))XZ(rsh(x,y))et(y))R_(et(y)))   //dict: i1's lookup, inline; x one rank below list keys is one key, which find gives as an atom: 'nyi (not for (), as in `a`b#()!()); keys from a keyed table: 'nyi (find looks up its rows, but take does not use it yet); k: x's second reference, taken with the first (one read of the thread-local refcount flag)
@@ -48,7 +48,7 @@ A2(und,/*01*/
   Zz(y(0);y=Nz(und(xx,zR));z=Ny(und(xy,z));am(y,z))ZZ(z(0);K2("_/",x,y))z(en(y)))
  P(xtZ&&ytMT,cut(x,y))
  P(xtMT&&ytz,rmv(xR,gl(y)))
- Ym(K2("{$[#x;((!y)@&^((),x)?!y)#y;y]}",x,y))
+ Ym(K2("{$[#x;((!y)@&(#(),x)=((),x)?!y)#y;y]}",x,y))
  YM(flp(N(und(x,flp(y)))))
  et(y))
 X1(enl,R12(ti,tl,tf,tc,ts,tdt,ttm,tnp,tmn,tsc,tmo,tsp,x(aV(TT[xt],1,TP(xt)?&x:xV)))Rm(A y=kv(&x);aM(x,e1f(enl,y)))R_(aA1(x)))
@@ -57,7 +57,7 @@ X1(enl,R12(ti,tl,tf,tc,ts,tdt,ttm,tnp,tmn,tsc,tmo,tsp,x(aV(TT[xt],1,TP(xt)?&x:xV
 //'mismatch), as a table joined to one. A keyed table and a dict is 'type
 A kcl(A x,A y/*00*/)_(P(mtc_(xx,yx),_R(y))P(_N(xx)-_N(yx),ed0())A p=N(cL(fnd(yx,_R(xx))));F(_n(p),P(_L(p)[i]==NL,mr(p);ed0()))aM(_R(xx),i1(yy,p)))
 Z A kct(A x,A y/*10*/)_(P(!_tM(yx),et(x))A k=Nx(kcl(xx,yx)),v=kcl(xy,yy);P(!v,mr(k);x(0))
- K("{[x;k;v]i:(!x)?k;w:&^i;f:&~^i;((!x),k w)!@[.x;i f;:;v f],v w}",x,k,v))
+ K("{[x;k;v]i:(!x)?k;w:&i=#!x;f:&i<#!x;((!x),k w)!@[.x;i f;:;v f],v w}",x,k,v))
 //insert[t;r] (amber.k's insert is this verb, #94 Q1): q's insert, which lines r up with t by column name and checks
 //its types. A row dict, or a table, of t's columns in t's order whose items surely fit them (insk), into an unkeyed t,
 //is t,r, as before, after one look at each column; a keyed table of t's key and value columns in t's order, into a
@@ -78,10 +78,10 @@ Z B insc(A c,A w)_(F(_n(c),P(!insk(_A(c)[i],0,_A(w)[i]),0))1)   //each of t's co
 //a row dict's values v into t's n columns c: as insk, item by item, its type read once where v is typed
 Z B insr(A c,A v,U n){CO A*p=_A(c);UC t=_t(v);if(t!=tA){UC k=insq(t);if(!k)return 0;F(n,UC u=_t(p[i]);P(u==tA?!insk(p[i],t,0):insq(u)!=k,0))return 1;}
  CO A*q=_A(v);F(n,A e=q[i];P(!insk(p[i],_tt(e)?_t(e):0,0),0))return 1;}
-Z A insx(A x,A y/*01*/)_(A r=K("{[t;r]x:{$[#y;x@&^y?x;x]};q:`m=@t;k:$[q;!!t;0#`];u:$[q;+(+!t),+.t;t];c:!u;r:$[|/`m`M=@r;r;&/{(\"a\"<*$@x)&~`m=@x}'r;c!r;+c!r];"
+Z A insx(A x,A y/*01*/)_(A r=K("{[t;r]x:{$[#y;x@&(#y)=y?x;x]};q:`m=@t;k:$[q;!!t;0#`];u:$[q;+(+!t),+.t;t];c:!u;r:$[|/`m`M=@r;r;&/{(\"a\"<*$@x)&~`m=@x}'r;c!r;+c!r];"
   "e:(`m=@r)&~`M=@!r;s:$[`M=@r;r;e;,r;+(+!r),+.r];d:!s;m:x[c;d];"
   "$[#x[d;c];`mismatch;#j:x[m;x[m;k]];*j;(#s)&~&/{$[`A=@x;$[#x;$[(|/`d`t`n=@*x)&&/(@*x)=@'x;&/(@*x)=@'y;1];1];(@x)~@y]}'[(+u)d;(+s)d];`type;"
-  "[s:c#$[#m;+(+s),m!{x@y#0N}[;#s]'(+u)m;s];$[q;$[|/~^(!t)?j:k#s;`insert;((!t),j)!(.t),x[c;k]#s];u,s]]]}",xR,y);P(r&&_ts(r),err0(su(_v(r))))r)   //a symbol: its error, raised here, at insert
+  "[s:c#$[#m;+(+s),m!{x@y#0N}[;#s]'(+u)m;s];$[q;$[|/(#!t)>(!t)?j:k#s;`insert;((!t),j)!(.t),x[c;k]#s];u,s]]]}",xR,y);P(r&&_ts(r),err0(su(_v(r))))r)   //a symbol: its error, raised here, at insert
 //the rest of insert: everything but a row dict or a table of t's columns in t's order into an unkeyed t (ins2)
 ZN A insS(A x,A y/*01*/)_(P(_tP(x)||_tP(y),cat(x,y))B k=xtm&&_tM(xx);P(!xtM&&!k,cat(x,y))
  P(_t(y)<tM,U n=k?_n(_x(xx))+_n(_x(xy)):_n(xx);P(!_n(y),cat(x,y))P(_N(y)-n,y(el0()))insx(x,y))   //a list of values: one per column, by position

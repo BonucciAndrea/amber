@@ -3,7 +3,7 @@ Z A2(dec,/*01*/yN?K2("0{z+x*y}/",x,y):K1("0^*:",y))
 Z A edv(A b,A v,B l/*01.*/)_(P(gl_(b)<!l,v=mod(b,v);v?neg(v):0)b=neg(_R(b));v=mod(b,v);mr(b);v)  //v divided by the base b: (-b)!v, or -b!v for b<0 (b<1 for an atom b); not K text, where -8! and -9! serialise and deserialise
 Z A eqs(A x,A y/*01*/)_(B l=_tZ(x);U i=l?xN:0;A z=enl(_R(y)),v=_R(y);   //y and its quotients: by each base of the list x from the last to the second, or by the atom x till they converge (as a scan would)
  W(l?--i:1,A b=l?ii(x,i):_R(x),w=edv(b,_R(v),l);mr(b);P(!w,mr(v);mr(y);mr(z);0)I(!l&&(mtc_(w,v)||mtc_(w,y)),mr(w);break)PSH(z,_R(w));mr(v);v=w)mr(v);mr(y);sqz(z))
-Z X2(enc,/*01*/Ril(y=eqs(x,y);P(!y,0)K2("{$[&/~*x:(x|-x)!|y;1_x;@[x;0;-:0<]]}",x,y))REBGHIL(P(!xN,K2("{$[~^`c`C?@y;`err\"type\";0#(,10)\\y]}",x,y))y=eqs(x,y);P(!y,0)K2("{(x|-x)!'|y}",x,y))R_(en(y)))
+Z X2(enc,/*01*/Ril(y=eqs(x,y);P(!y,0)K2("{$[&/~*x:(x|-x)!|y;1_x;@[x;0;-:0<]]}",x,y))REBGHIL(P(!xN,K2("{$[2>`c`C?@y;`err\"type\";0#(,10)\\y]}",x,y))y=eqs(x,y);P(!y,0)K2("{(x|-x)!'|y}",x,y))R_(en(y)))
 Z A scC(C c    ,C*p,U n)_(           A x=emp(tA);C*q;W((q=memchr(p,c,n  )),PSH(x,aCm(p,q));n-=q-p+1;p=q+1)I(n||c-10&&xn,PSH(x,aCn(p,n)))x)
 Z A sCC(C*s,L m,C*p,U n)_(P(!m,el0())A x=emp(tA);C*q;W((q=memmem(p,n,s,m)),PSH(x,aCm(p,q));n-=q+m-p;p=q+m)I(n||      xn,PSH(x,aCn(p,n)))x)
 Z A sc(C c    ,A x)_(XC(x(scC(c,  xV,xn)))et(x))A1(spl,sc(10,x))
@@ -45,7 +45,7 @@ U urnk(A);
 //as no value meets another); keyed tables (t, from kar) still apply it to the empty slices, so columns that do not meet
 //are 'type, as q. For dicts, - negates y's one-sided values only when there are some (0-0#` was 'type, so an empty dict
 //of symbols gave 'type, not the other)
-#define DK(r,o) "{[c;kx;vx;ky;vy]yo:$[#kx;&^kx?ky;!#ky];iy:$[#ky;ky?kx;(#kx)#0N];iy:$[#kx;@[iy;&~(kx?kx)=!#kx;:;0N];iy];b:&~^iy;xo:&^iy;f:(+;-;*;%;&;|;,)c;u:c>1;r:" r ";(kx,ky yo)!(" o ")@<xo,b,(#kx)+!#yo}"
+#define DK(r,o) "{[c;kx;vx;ky;vy]yo:$[#kx;&(#kx)=kx?ky;!#ky];iy:$[#ky;@[r;&(#ky)=r:ky?kx;:;0N];(#kx)#0N];iy:$[#kx;@[iy;&~(kx?kx)=!#kx;:;0N];iy];b:&~^iy;xo:&^iy;f:(+;-;*;%;&;|;,)c;u:c>1;r:" r ";(kx,ky yo)!(" o ")@<xo,b,(#kx)+!#yo}"
 Z A dkey(I c,A2 f,A x,A y,B t/*0f010*/)_(B e=!_n(xx)&&!_n(yx);P(e&&u0(yx)&&u0(yy),y(_R(x)))P(e&&u0(xx)&&u0(xy),y)
  P(e||c<6&&mtc_(xx,yx),A v=c<6?f(xy,_R(yy)):e2f(f,xy,_R(yy));y(v?am(_R(e&&u0(xx)?yx:xx),v):0))
  A v=t?K(DK("f[vx b;vy iy b]","$[c<3;f[vx xo;u];vx xo],r,$[c<3;f[u;vy yo];vy yo]"),az(c),_R(xx),_R(xy),_R(yx),_R(yy))
@@ -86,7 +86,7 @@ AX(e8,/*01..1*/P(n==1,e1(x,*a))P(n==2,A y=*a;y(e2(x,y,a[1])))Ab8;C t[8];L m=-1;F
 //each (ECH, verb slot 31): amber.k's each as a dyad in C, so f each y is f'y with no lambda call around it. A
 //lambda over a general list of 16 or more items asks amber.k's qewf first (count first sum max min avg take their
 //primitive's own each there); anything else, and those words over a shorter list, is f'y as it was
-A2(ech2,/*01*/P(!_tP(x)&&_t(x)==to&&!_tP(y)&&_t(y)==tA&&_n(y)>15,K2("{$[^i:qew?x;x'y;qewf[i;y]]}",x,y))A b[1]={y};e8(x,b,1))
+A2(ech2,/*01*/P(!_tP(x)&&_t(x)==to&&!_tP(y)&&_t(y)==tA&&_n(y)>15,K2("{$[(#qew)=i:qew?x;x'y;qewf[i;y]]}",x,y))A b[1]={y};e8(x,b,1))
 AA(ech8,/*10..0*/er(*a))   //each[f;x;y]: 'rank, as the lambda each was
 __attribute__((noinline,cold)) A1(qech,x(ECH))   //`ech: the each verb (w.c ech2), which amber.k binds to each once
 //`qmc: qsql.k's parsed queries, so a query run again skips the parse. (c;k) is ,v for the v kept under key k in

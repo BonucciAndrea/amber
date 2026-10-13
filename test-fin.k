@@ -20,7 +20,7 @@ t[`attrSfail;.[{`sa 3000 1000 2000};,0;{`err}];`err]
 t[`attrPfail;.[{`pa 1 2 1};,0;{`err}];`err]
 t[`attrUfail;.[{`ua 3 1 3};,0;{`err}];`err]
 t[`attrSym;{`at(`sa x)}[`a`b`c];`s]
-t[`partedCorrect;(`pa 10 20 30)?10 20 30 40;0 1 2 0N]
+t[`partedCorrect;(`pa 10 20 30)?10 20 30 40;0 1 2 3]   / a miss is the count, as q (2.9.0)
 
 / ---- deterministic analytics ----
 q:([]sym:`a`a;time:1 2;bid:10.0 20.0;ask:12.0 24.0;bsz:100 300;asz:100 100)

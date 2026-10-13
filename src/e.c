@@ -133,13 +133,15 @@ NI V eD(CO C*esrc,U en,U i){I(amdiag<0,amdiag=({S d=getenv("AMBER_DIAG");!d||*d!
   dgnm[dgk]=0;
   CO EDIAG*dgc=edlook(dgnm);
   U dga,dgb;etok(sb,n,io,&dga,&dgb);
+  // an undefined name's error is the name itself (q's 'x, 2.9.0): the token at the error, read as 'value
+  B dgv=dgc&&seq_(dgnm,"value");I(!dgc&&dgb>dga&&dgb-dga==SL(dgnm)&&!memcmp(sb+dga,dgnm,dgb-dga),dgc=edlook("value");dgv=1)
   // Title: name the offending token where doing so is unambiguous. For an
   // undefined name that is the whole story ("Undefined variable `r`"), so it is
   // promoted into the title; other categories keep their category title and
   // carry the token in the inline label instead.
   C dgt[256];U dgtl=0;CO C*dgbase=dgc?dgc->title:"Evaluation error";
   U dgbl=SL(dgbase);I(dgbl>SZ dgt-1,dgbl=SZ dgt-1)MC(dgt,dgbase,dgbl);dgtl=dgbl;
-  I(dgc&&seq_(dgnm,"value")&&dgb>dga&&idch_(sb[dga]),
+  I(dgv&&dgb>dga&&idch_(sb[dga]),
     CO C*dgp="Undefined variable `";U dgpl=SL(dgp);U dgm=dgb-dga;
     I(dgpl+dgm+2<SZ dgt,MC(dgt,dgp,dgpl);dgtl=dgpl;MC(dgt+dgtl,sb+dga,dgm);dgtl+=dgm;dgt[dgtl++]='`'))
   dgt[dgtl]=0;

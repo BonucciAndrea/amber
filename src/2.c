@@ -63,29 +63,37 @@ ZN A amdFF(A x,A y,U f)_(U n=xn;P(n-yn,el(y))A z=MINE(y)?y:aF(n);_at(z)=0;pk3(G(
 // In place when y is a dying temporary (MINE) of the result width: the sum is
 // written over y. Should the width overflow, y is recovered EXACTLY from the
 // wrapped result (y = z - x, modular) before the operation is redone wider.
+//Amber 2.9.0: 64-bit ints as q's: a null (0N) in, a null out, for + - * (narrower ints hold no null). One pass, the test
+//in the loop (the loop waits on memory; the compiler vectorises the select)
+Z V addN(CO L*RES a,CO L*RES b,L*RES o,N n){F(n,L p=a[i],q=b[i];o[i]=p==NL|q==NL?NL:(L)((W)p+(W)q))}
+Z V subN(CO L*RES a,CO L*RES b,L*RES o,N n){F(n,L p=a[i],q=b[i];o[i]=p==NL|q==NL?NL:(L)((W)p-(W)q))}
+Z V mulN(CO L*RES a,CO L*RES b,L*RES o,N n){F(n,L p=a[i],q=b[i];o[i]=p==NL|q==NL?NL:(L)((W)p*(W)q))}
+Z V addsN(L v,CO L*RES b,L*RES o,N n){I(v==NL,F(n,o[i]=NL)return;)F(n,L q=b[i];o[i]=q==NL?NL:(L)((W)v+(W)q))}
+Z V subsN(L v,CO L*RES b,L*RES o,N n){I(v==NL,F(n,o[i]=NL)return;)F(n,L q=b[i];o[i]=q==NL?NL:(L)((W)v-(W)q))}
+Z V mulsN(L v,CO L*RES b,L*RES o,N n){I(v==NL,F(n,o[i]=NL)return;)F(n,L q=b[i];o[i]=q==NL?NL:(L)((W)v*(W)q))}
 Z A addZZ(A x,A y,U f)_(U w=MAX(xw-3,yw-3);P(xw-3-w,x=ct(tG+w,xR);x(addZZ(x,y,f)))y=ct(tG+w,y);U n=yn;A z=MINE(y)?y:an(n,yt);I ov=0;
- S4(w,ov=simd_addc_i8(xV,yV,zV,n),ov=simd_addc_i16(xV,yV,zV,n),ov=simd_addc_i32(xV,yV,zV,n),simd_add_i64(xV,yV,zV,n))
+ S4(w,ov=simd_addc_i8(xV,yV,zV,n),ov=simd_addc_i16(xV,yV,zV,n),ov=simd_addc_i32(xV,yV,zV,n),addN(xV,yV,zV,n))
  I(z==y,_at(z)=0)
  P(ov,I(z==y,S4(w,simd_sub_i8(zV,xV,yV,n),simd_sub_i16(zV,xV,yV,n),simd_sub_i32(zV,xV,yV,n),))E(z(0))y=ct(tG+w+1,y);x=ct(tG+w+1,xR);x(addZZ(x,y,f)))z==y?z:y(z))
 Z A subZZ(A x,A y,U f)_(U w=MAX(xw-3,yw-3);P(xw-3-w,x=ct(tG+w,xR);x(subZZ(x,y,f)))y=ct(tG+w,y);U n=yn;A z=MINE(y)?y:an(n,yt);I ov=0;
- S4(w,ov=simd_subc_i8(xV,yV,zV,n),ov=simd_subc_i16(xV,yV,zV,n),ov=simd_subc_i32(xV,yV,zV,n),simd_sub_i64(xV,yV,zV,n))
+ S4(w,ov=simd_subc_i8(xV,yV,zV,n),ov=simd_subc_i16(xV,yV,zV,n),ov=simd_subc_i32(xV,yV,zV,n),subN(xV,yV,zV,n))
  I(z==y,_at(z)=0)
  P(ov,I(z==y,S4(w,simd_sub_i8(xV,zV,yV,n),simd_sub_i16(xV,zV,yV,n),simd_sub_i32(xV,zV,yV,n),))E(z(0))y=ct(tG+w+1,y);x=ct(tG+w+1,xR);x(subZZ(x,y,f)))z==y?z:y(z))
 Z A mulZZ(A x,A y,U f)_(U n=yn,w=MAX(xw-3,yw-3);P(xw-3-w,x=ct(tG+w,xR);x(mulZZ(x,y,f)))y=ct(tG+w,y);A z=an(n,yt);I ov=0;
- S4(w,ov=simd_mulc_i8(xV,yV,zV,n),ov=simd_mulc_i16(xV,yV,zV,n),ov=simd_mulc_i32(xV,yV,zV,n),simd_mul_i64(xV,yV,zV,n))
+ S4(w,ov=simd_mulc_i8(xV,yV,zV,n),ov=simd_mulc_i16(xV,yV,zV,n),ov=simd_mulc_i32(xV,yV,zV,n),mulN(xV,yV,zV,n))
  P(ov,z(0);x=ct(tG+w+1,xR);x(mulZZ(x,ct(tG+w+1,y),f)))y(z))
 
 Z A addzZ(L v,A y,U f)_(U n=yn,w=MAX(tZ(v)-tG,yw-3);y=ct(tG+w,y);A z=MINE(y)?y:an(n,yt);I ov=0;
- S4(w,ov=simd_addsc_i8(v,yV,zV,n),ov=simd_addsc_i16(v,yV,zV,n),ov=simd_addsc_i32(v,yV,zV,n),simd_adds_i64(v,yV,zV,n))
+ S4(w,ov=simd_addsc_i8(v,yV,zV,n),ov=simd_addsc_i16(v,yV,zV,n),ov=simd_addsc_i32(v,yV,zV,n),addsN(v,yV,zV,n))
  I(z==y,_at(z)=0)
  P(ov,I(z==y,S4(w,simd_addsc_i8(-(G)v,zV,yV,n),simd_addsc_i16(-(H)v,zV,yV,n),simd_addsc_i32(-(I)v,zV,yV,n),))E(z(0))y=ct(tG+w+1,y);addzZ(v,y,f))z==y?z:y(z))
 Z A subzZ(L v,A y,U f)_(U n=yn,w=MAX(tZ(v)-tG,yw-3);y=ct(tG+w,y);A z=MINE(y)?y:an(n,yt);I ov=0;/* v - y */
- S4(w,ov=simd_subsc_i8(v,yV,zV,n),ov=simd_subsc_i16(v,yV,zV,n),ov=simd_subsc_i32(v,yV,zV,n),simd_subs_i64(v,yV,zV,n))
+ S4(w,ov=simd_subsc_i8(v,yV,zV,n),ov=simd_subsc_i16(v,yV,zV,n),ov=simd_subsc_i32(v,yV,zV,n),subsN(v,yV,zV,n))
  I(z==y,_at(z)=0)
  P(ov,I(z==y,S4(w,simd_subsc_i8(v,zV,yV,n),simd_subsc_i16(v,zV,yV,n),simd_subsc_i32(v,zV,yV,n),))E(z(0))y=ct(tG+w+1,y);subzZ(v,y,f))z==y?z:y(z))
 
 Z A mulzZ(L a,A y,U f)_(U n=yn,w=MAX(tZ(a)-tG,yw-3);y=ct(tG+w,y);A z=an(n,yt);I ov=0;
- S4(w,ov=simd_mulsc_i8(a,yV,zV,n),ov=simd_mulsc_i16(a,yV,zV,n),ov=simd_mulsc_i32(a,yV,zV,n),{CO L*RES p=yV;L*RES r=zV;F(n,r[i]=(L)((W)a*(W)p[i]))})
+ S4(w,ov=simd_mulsc_i8(a,yV,zV,n),ov=simd_mulsc_i16(a,yV,zV,n),ov=simd_mulsc_i32(a,yV,zV,n),mulsN(a,yV,zV,n))
  ov?mulzZ(a,ct(tG+w+1,z(y)),f):y(z))
 
 #define AMMOD(TY,AT) {CO TY*RES p=yV;AT mm=(AT)m;S4(zw-3,F(zn,{AT r=(AT)p[i]%mm;zg=(G)(r<0?r+mm:r);}),F(zn,{AT r=(AT)p[i]%mm;zh=(H)(r<0?r+mm:r);}),F(zn,{AT r=(AT)p[i]%mm;zi=(I)(r<0?r+mm:r);}),F(zn,{AT r=(AT)p[i]%mm;zl=(L)(r<0?r+mm:r);}))}
@@ -252,6 +260,7 @@ Z V fzw(V*c_,int t){FZC*c=c_;U b0=(U)((N)c->nb*t/c->nt),b1=(U)((N)c->nb*(t+1)/c-
   I(c->i32,fzblk32(c,o,m,bf,mn,mx,&acc))E(fzblk64(c,o,m,bf,mn,mx,&acc))
   I(wa&&fzfit(mn[r],mx[r])>c->ow,__atomic_store_n(&c->ab,1,__ATOMIC_RELAXED);break)}
  MC(c->mn+(N)t*FZ_N,mn,SZ mn);MC(c->mx+(N)t*FZ_N,mx,SZ mx);c->acc[t]=acc;}
+Z B hnl(A v)_(CO L*RES p=_V(v);L o=0;F(_n(v),o|=p[i]==NL)!!o)   //a 64-bit int list holding a 0N
 A fzrun(A d,A*l){A pg=_A(d)[0];CO UC*q=(CO UC*)_V(pg),*e=q+_n(pg);FZC c;c.sum=*q++&1;UC kd[FZ_N],sd[FZ_N];U np=0,dp=0,n=0;
  W(q<e,UC o=*q++;A v=0;
   I(o=='l',v=l[*q++])J(o=='g',v=gv[q[0]|(U)q[1]<<8];q+=2)J(o=='k',v=_A(d)[*q++])
@@ -259,9 +268,10 @@ A fzrun(A d,A*l){A pg=_A(d)[0];CO UC*q=(CO UC*)_V(pg),*e=q+_n(pg);FZC c;c.sum=*q
     UC k=cmp?2:o!='%'&&kd[dp-1]==1&&kd[dp-2]==1?1:0;c.p[np++]=(FZS){o,k,0,0};dp--;kd[dp-1]=k;sd[dp-1]=0;continue)
   P(!v||np>=FZ_N,0)
   I(!_tP(v)&&_T(v)==tF,U m=_n(v);P(n&&m!=n,0)n=m;c.lv[np]=_V(v);c.p[np++]=(FZS){'v',0,0,0};kd[dp]=0;sd[dp++]=0)
-  J(!_tP(v)&&LH(tG,_T(v),tL),U m=_n(v);P(n&&m!=n,0)n=m;c.lv[np]=_V(v);c.p[np++]=(FZS){'z',1,(UC)(_T(v)-tG),0};kd[dp]=1;sd[dp++]=0)
+  J(!_tP(v)&&LH(tG,_T(v),tL),U m=_n(v);P(n&&m!=n,0)P(_T(v)==tL&&hnl(v),0)n=m;   //a 0N in 64 bits: the unfused dyads, which keep it (2.9.0)
+   c.lv[np]=_V(v);c.p[np++]=(FZS){'z',1,(UC)(_T(v)-tG),0};kd[dp]=1;sd[dp++]=0)
   E(UC t=_t(v);P(t!=tf&&t!=ti&&t!=tl,0)
-    I(t==tf,c.lc[np]=*_F(v);c.p[np++]=(FZS){'c',0,0,1};kd[dp]=0)E(c.li[np]=gl_(v);c.p[np++]=(FZS){'i',1,0,1};kd[dp]=1)sd[dp++]=1))
+    I(t==tf,c.lc[np]=*_F(v);c.p[np++]=(FZS){'c',0,0,1};kd[dp]=0)E(P(gl_(v)==NL,0)c.li[np]=gl_(v);c.p[np++]=(FZS){'i',1,0,1};kd[dp]=1)sd[dp++]=1))
  P(dp!=1||n<FZ_MIN||sd[0],0)
  c.np=np;c.n=n;c.nb=(n+FZ_BK-1)/FZ_BK;c.dp=0;{U k=0;F(np,I(c.p[i].op=='v'||c.p[i].op=='z'||c.p[i].op=='c'||c.p[i].op=='i',k++)E(k--)c.dp=MAX(c.dp,k))}
  // Before the pass: the bounds of every int step, the least and most width it can end at, and which steps
@@ -318,13 +328,14 @@ Z A dvdZZ(A x,A y,U f)_(x=cF(xR);x(amdFF(x,cF(y),f)))
 // is undefined behaviour. Same bits, defined semantics -- Amber's integer
 // arithmetic has always been documented as wrapping, not trapping.
 #define NEGW(v) ((L)(0-(W)(v)))
-Z A arizz(L a,L b,U f)_(P(f==4,af((a==NL?NF:(F)a)/(b==NL?NF:(F)b)))
+Z A arizz(L a,L b,U f)_(P(f==4,af((a==NL?NF:(F)a)/(b==NL?NF:(F)b)))P((f-1<3u||f==5)&&(a==NL||b==NL),az(NL))   //a null gives a null, as q (2.9.0; it wrapped)
  az(f==1?(L)((W)a+(W)b)
    :f==2?(L)((W)a-(W)b)
    :f==3?(L)((W)a*(W)b)
    :f==5?(!a?b:a<0?(b<0?(L)((W)-1-(W)(~b/NEGW(a))):b/NEGW(a)):({L r_=b%a;r_<0?r_+a:r_;}))
    :f==6?MIN(a,b):f==7?MAX(a,b):f==8?a<b:f==9?a>b:f==10?a==b:0))
-Z A arizZ(L v,A y,U f)_(A(&addzZ,subzZ,mulzZ,dvdzZ,modzZ,mmmzZ,mmmzZ,cmpzZ,cmpzZ,cmpzZ)[f-1](v,y,f))
+Z A modzQ(L m,A y,U f)_(U n=yn;P(m==NL,A z=aL(n);F(n,zl=NL)y(z))P(yt-tL||!hnl(y),modzZ(m,y,f))A r=modzZ(m,_R(y),f);P(!r,y(0))r=cL(r);P(!r,y(0))r=mut(r);F(n,I(yl==NL,_L(r)[i]=NL))y(r))   //a 0N keeps its place (2.9.0)
+Z A arizZ(L v,A y,U f)_(A(&addzZ,subzZ,mulzZ,dvdzZ,modzQ,mmmzZ,mmmzZ,cmpzZ,cmpzZ,cmpzZ)[f-1](v,y,f))
 Z A ariZZ(A x,A y,U f)_(P(xn-yn,el(y))A(&addZZ,subZZ,mulZZ,dvdZZ,0,mmmZZ,mmmZZ,cmpZZ,cmpZZ,cmpZZ)[f-1](x,y,f))
 ZN A ariz(A x,A y,U f){S(xtT<<1|ytT,R(0,arizz(gl_(x),gl(y),f))R(1,arizZ(gl_(x),y,f))R(2,P(f==4,ari(x,cF(y)))P(f==2,arizZ((L)(0-(W)gl(y)),xR,1))arizZ(gl(y),xR,f-8<2u?f^8^9:f))R_(ariZZ(x,y,f)))}
 // = on floats compares values: -0.0 is 0.0 and every NaN is 0n (as ~ does), while the comparison
@@ -473,13 +484,13 @@ A cub(A x/*1*/)_(P(!x,0)P(xti,ac((C)xv))P(LH(tG,xt,tL),A y=an(xn,tC);S4(xw-3,F(x
 A2(mnu,P((xtc||xtC)&&(ytc||ytC),A u=ucb(xR);cub(u(mnm(u,ucb(y)))))mnm(x,y))                     //the verb &: of two chars, the lesser as unsigned bytes, a char (with a number: numeric, as ever)
 A2(mxu,P((xtc||xtC)&&(ytc||ytC),A u=ucb(xR);cub(u(mxm(u,ucb(y)))))mxm(x,y))                     //the verb |
 Z NI __attribute__((cold)) A exck(A x,A y)_(K2("{$[x;xkey[x#cols unkey y;unkey y];unkey y]}",x,y))   //n!t (exc; out of line)
-A2(dex,y)A2(sub,U o=f;f=2;x=ari(x,y);f=o;x)X2(exc,RMT(ytm?ed(y):ytt?exc(x,rsz(xN,y)):xN-yN?el(y):am(xR,y))Rs(x=rsz(yN,x);x(exc(x,y)))Rilc(/* amber 1.9.3: `!` with a negative integer left argument is the
+A2(dex,y)A2(sub,U o=f;f=2;x=ari(x,y);f=o;x)X2(exc,RMT(ytm?el(y):ytt?exc(x,rsz(xN,y)):xN-yN?el(y):am(xR,y))Rs(x=rsz(yN,x);x(exc(x,y)))Rilc(/* amber 1.9.3: `!` with a negative integer left argument is the
  * q-family system-verb slot -- -8!x serialises to a byte vector and -9!y
  * deserialises it (src/ser.c). Only -8 and -9, and only on a genuine
  * integer atom, are intercepted; every other left argument (negative ones
  * included) and every char atom still reach mod() exactly as before, so no
  * existing `!` behaviour moves. */
- I(_t(x)-tc,L sv_=gl_(x);I(sv_==-8||sv_==-9,return sv_==-8?ser8(y):des9(y)))
+ I(_t(x)-tc,L sv_=gl_(x);I(sv_==-8||sv_==-9,return sv_==-8?ser8(y):des9(y))I(sv_==-3,return kst(y)))   //-3!x: q's show, the text of x (2.9.0; it was k's divide by 3, which `fdv names)
  I(_tz(x)&&!_tP(y)&&(yt==tM||yt==tm&&_tM(yx)),return exck(x,y))   //Amber 2.8.0: n!t keys a table on its first n columns, as q (0!kt unkeys; it was kt mod 0, kt)
  mod(x,y))R_(et(y)))
 // a temporal compared with a float (tari): as q casts the float to the temporal, the stored number (days, ms or ns) against

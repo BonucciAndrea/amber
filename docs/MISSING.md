@@ -77,18 +77,15 @@ inside a **`.k` script** loaded once the stdlib is up (the loader runs each file
 - **Amber has:** bare + string `select/exec/update/delete`, plus the functional helpers
   `qwhere qselect qby fby xgroup ungroup`.
 
-## 3a. Nulls: the q-named functions follow q, the k primitives stay k
+## 3a. Nulls: as q
 
 `sum`, `avg`, `min`, `max`, `mins` and `maxs` (amber.k, and qSQL's grouped aggregates) skip
 nulls as q's do: `sum 0N 1` is `1`, `avg 0N 1` is `1.0`, `min 0N 5` is `5`, `mins 0n 1.0` is
 `0w 1.0`, and an all-null list gives the identity (`min 0N 0N` is the largest int, q's `0W`).
-The primitives keep k's treatment, where the int null is just the smallest int:
-
-| Expression | Amber | q |
-|---|---|---|
-| `0N+1`, `0N-1`, `0N*2` | wrap: `-9223372036854775807`, `9223372036854775807`, `0` | `0N` |
-| `+/0N 1` | `-9223372036854775807` | (no `+/` in q; `sum` gives `1`) |
-| `&/0N 5` | `0N` (the null is the smallest) | `min` gives `5` |
+Since 2.9 the primitives do what q's do too: `0N+1`, `0N-1`, `0N*2` and `0N mod 3` are `0N`, and a
+null in a list stays put (`0N 1 2+1` is `0N 2 3`); `+/`, `*/`, `+\` and `*\` skip a null as `sum`
+does (`+/1 0N 3` is `4`, `+\1 0N 3` is `1 1 4`), `-/` with one is `0N`. `&/0N 5` is still `0N`
+(the null is the smallest), as q's `&/`.
 
 Fill of floats is the exception (since 2.7.1): an int atom filling floats gives floats, as in q, and
 since 2.8.0 a float atom filling ints gives floats too (`0.5^1 0N` is `1 0.5`). Two lists of one count
@@ -137,14 +134,13 @@ comparison's column named `x` (`select v>2` gives `x`, as q), and `.Q.fmt` `.Q.f
 
 What stays as it was, on purpose:
 
-- **Find of a missing item is `0N`**, k's answer; q gives the count (`1 2 3?4` is `0N`, q `3`). The
-  library leans on it all over.
-- **Int nulls in arithmetic wrap** (3a above), and so do `div`/`mod` of `0N`; `x div 0` and `x mod 0` are `0N`, as q.
-- **`-3!x` is k's**, not q's show-text: use `.Q.s1` or `` `k ``.
+- **Since 2.9, as q:** find of a missing item is the count (`1 2 3?4` is `3`, it was `0N`), int nulls
+  stay null in arithmetic (3a above), `-3!x` is q's show text (k's divide by 3 is `` `fdv(x;3) ``), and an
+  undefined name's error is the name (`'foo`, it was `'value`).
 - **No datetime or guid types**: `` `datetime$ `` and `` `guid$ `` are `'nyi`, and a date plus a time is a
   timestamp.
 - **No byte, short, int (32-bit) or real types**: `1h` `1i` read as `1`, `0x01` is a char.
-- **Errors are named Amber's way**: an undefined name is `'value` (q names it), `.j.k` of bad text is `'parse`.
+- **Some errors are named Amber's way**: `.j.k` of bad text is `'parse` (q names the char).
 - **`-8!` is Amber's own format**, not q's wire format; `value` of a lambda gives Amber's pieces, not q's.
 
 ## 4. On-disk data (HDB): partial (`hdb.k`)

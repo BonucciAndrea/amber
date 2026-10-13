@@ -17,6 +17,7 @@
 #include<netdb.h>
 #include<poll.h>
 #include<errno.h>
+#include<stdio.h>
 #include<fcntl.h>
 #include<unistd.h>
 #endif
@@ -67,7 +68,7 @@ Z V qenc(QW*b,A x,I d){I(b->bad,return)I(d>QDEPTH,b->bad=2;return)
  I(t<tM,qencv(b,x,d);return)
  I(t==tM,qb(b,98);qb(b,0);qb(b,99);qenc(b,xx,d+1);qenc(b,xy,d+1);return)
  I(t==tm,qb(b,_at(x)==1?127:99);qenc(b,xx,d+1);qenc(b,xy,d+1);return)
- I(t==to,A s=kst(xR);P(!s,b->bad=1)qb(b,100);qb(b,0);qencv(b,s,d);mr(s);return)   //a lambda: no context, its text
+ I(t==to,A s=kst(xR);I(!s,b->bad=1;return)qb(b,100);qb(b,0);qencv(b,s,d);mr(s);return)   //a lambda: no context, its text
  S(t,
   C(ti,qb(b,(UC)-7);ql(b,(L)xv))C(tl,qb(b,(UC)-7);ql(b,*xL))C(tf,qb(b,(UC)-9);F f=*xF;W v;MC(&v,&f,8);ql(b,(L)(f!=f?QNAN:v)))
   C(tc,qb(b,(UC)-10);qb(b,(UC)xv))C(ts,qb(b,(UC)-11);qs(b,(U)xv))

@@ -30,8 +30,8 @@ so `xasc`/`s#` work unchanged.
 - **Since 2.9:** `minute`, `second`, `month` and `timespan` are types too, with q's literals
   (`09:30`, `09:30:15`, `2026.03m`, `0D01:00:00.000000000`), casts, arithmetic and typed nulls
   (`0Nd` ... `0Nm`). So `date+0N` is `0Nd` now, and `09:30:00` is a second, as q.
-- **Still missing:** `datetime`, typed temporal vectors (a list of dates is a general list), and the
-  dotted `t.hh` accessor form (Amber uses `thh t`).
+- **Still missing:** `datetime` and the dotted `t.hh` accessor form (Amber uses `thh t`). A list of dates (or
+  of any one kind) is a typed list since 2.9, as q's.
 - **Differs from q:** a time of 100 hours or more prints every digit of its hours
   (`100:00:00.000`, up to `596:31:23.647`), so the text reads back as the same time; q prints
   `**:00:00.000`.
@@ -142,7 +142,7 @@ What stays as it was, on purpose:
 - **Int nulls in arithmetic wrap** (3a above), and so do `div`/`mod` of `0N`; `x div 0` and `x mod 0` are `0N`, as q.
 - **`-3!x` is k's**, not q's show-text: use `.Q.s1` or `` `k ``.
 - **No datetime or guid types**: `` `datetime$ `` and `` `guid$ `` are `'nyi`, and a date plus a time is a
-  timestamp. A list of temporals is a general list: it prints and types as q's vector, but costs more.
+  timestamp.
 - **No byte, short, int (32-bit) or real types**: `1h` `1i` read as `1`, `0x01` is a char.
 - **Errors are named Amber's way**: an undefined name is `'value` (q names it), `.j.k` of bad text is `'parse`.
 - **`-8!` is Amber's own format**, not q's wire format; `value` of a lambda gives Amber's pieces, not q's.

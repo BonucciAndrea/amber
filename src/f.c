@@ -111,7 +111,7 @@ Z V fndL_hash(V*c_,int t){FJ*c=c_;CO V*b=c->b;V*z=c->z;U wy=c->wy,wz=c->wz,s=(U)
 Z I fndrun(FJ*c,V(*fn)(V*,int))_(int nt=c->n<PFND_MIN?1:par_thread_count(c->n);c->nt=(U)nt;I(nt<2,fn(c,0))E(par_run(nt,fn,c))I m=0;F(nt,m|=c->miss[i])m)
 Z A fndL(A x,A y,B srt)_(
  P(srt,0)
- P(!(xtH||xtI||xtL||xtS),0)   // amber 2.1: symbol vectors too (interned 32-bit ids, compared by value)
+ UC s=TST(xt);P(!(s==tH||s==tI||s==tL||xtS),0)   //a temporal list as its ints. amber 2.1: symbol vectors too (interned 32-bit ids, compared by value)
  U wx=xw-3,wy=yw-3,m=xn,n=yn;
  P(wx>3||wy>3||!m||!n,0)
  CO V*a=xV;CO V*b=yV;
@@ -406,7 +406,7 @@ static A unqP(A x){uint32_t n=xn,wx=xw-3;int nt=par_thread_count(n);if(nt<2||n>=
 #undef PDQ_LOOP
 
 A unqL(A x){
- if(!(xtH||xtI||xtL))return xtF?unqF(x):0;
+ UC s=TST(xt);if(!(s==tH||s==tI||s==tL))return xtF?unqF(x):0;   //a temporal list as its ints (the helpers keep xt)
  U n=xn,wx=xw-3;
  if(n<2||wx>3)return 0;
  I(n>=PDQ_MIN,A z_=unqP(x);I(z_,return z_;))   //2.5 (exp): parallel, the same answer; 0 when it declines
@@ -486,7 +486,7 @@ X2(fnd,
  // a char haystack with a number, or a number haystack with a char, is 'type, as in q (issue #20, row 12)
  // Digest #7: bits looked for are widened to bytes first (read as ints they gave wrong rows and read past the end)
  RGC(P(fmx(y,xtC),et(y))YB(fnd(x,cG(y)))F(256,t[i]=NL)UC*a=xV;U n=xn;F(n,t[a[n-1-i]]=n-1-i)fndGx(y))
- R5(tH,tI,tL,tF,tS,
+ R12(tH,tI,tL,tF,tS,tDT,tTM,tNP,tMN,tSC,tMO,tSP,   //a temporal list: as its ints, against its own kind (TT of its atom)
   // Digest #30: an empty general list gets what the byte haystack gives it (0#,!0). Each-right asks the
   // empty list's char prototype, and a char against numbers is 'type (issue #20, row 12)
   P(ytA&&!yn,A g=aG(0);A r=fnd(g,y);mr(g);r)
@@ -571,7 +571,8 @@ Z Y2(binF,RF(x=of1(xR);x(binZ(x,of1(y))))REBGHILC(binF(x,N(cF(y))))Rt(P(yt>=tdt,
 Z L bS1(A x,U u)_(S v=su(u);C t[8];U n=SL(v);I(n<5,v=MC(t,v,n+1))CO I*a=xI;L l=-1,e=xn;W(l+1<e,L m=l+e>>1;I(strcmp(v,su(a[m]))<0,e=m)E(l=m))l)//the last item of x at or before u, in <'s order
 Z Y2(binS,Rs(fir(N(binS(x,enl(y)))))RS(A z=an(yn,tZ(xn-1));I w=zw-3;F(yn,L v=bS1(x,yI[i]);S4(w,zg=v,zh=v,zi=v,zl=v))y(z))RmMA(r2f(bin,x,y))R_(et(y)))//symbols, as q's bin
 A ucb(A);
-X2(bin,RC(P(ytA||ytm,binZ(x,y))A u=ucb(xR);u(binZ(u,ytc||ytC?ucb(y):y)))REBGHIL(binZ(x,y))RF(binF(x,y))RS(binS(x,y))Rm(_1(xx,N(bin(xy,y))))R_(et(y)))
+X2(bin,RQV(P(yt==xt,binZ(x,tqi(y)))P(yt==TQA(xt),L v=TQN(yt)?*_L(y):(I)y==NIT?NL:(I)y;mr(y);binZ(x,al(v)))et(y))   //a temporal list and probes of its kind: as ints (binZ reads x by its width; 2.9.0)
+ RC(P(ytA||ytm,binZ(x,y))A u=ucb(xR);u(binZ(u,ytc||ytC?ucb(y):y)))REBGHIL(binZ(x,y))RF(binF(x,y))RS(binS(x,y))Rm(_1(xx,N(bin(xy,y))))R_(et(y)))
 
 //amber: exponential moving average kernel.  y is a float vector (caller-owned);
 //returns fresh float vector  z[0]=y[0]; z[i]=a*y[i]+(1-a)*z[i-1].  O(n) single sweep.
@@ -580,13 +581,17 @@ Z A emaF(F a,A y)_(U n=yn;A z=aF(n);CO F*RES p=AL(yV);F*RES r=AL(zV);F b=1-a;I(n
 A1(emaC,P(_t(x)-tA||_n(x)-2,et(x))F a=gf(N(ii(x,0)));A y=N(cF(N(ii(x,1))));A z=emaF(a,y);mr(y);x(z))
 //amber: native temporal atom constructors.  `mkd d -> date(days), `mkt m -> time(ms), `mkp n -> timestamp(ns).
 //An int atom only: of anything else they read its bits (`mkd {x}, a function's address, gave a date that varied by run).
-A1(mkdt,P(!_tz(x),et(x))L v=gl_(x);mr(x);P(v==NL,adt(NIT))P(v-(I)v,ez0())adt((I)v))   // a date is 32 bits of days: past them 'limit, as the literal and "D"$ (it wrapped)
-A1(mktm,P(!_tz(x),et(x))L v=gl_(x);mr(x);P(v==NL,atm(NIT))P(v-(I)v,ez0())atm((I)v))   // a time is 32 bits of ms: past them 'limit, as the literal (it wrapped)
-A1(mknp,P(!_tz(x),et(x))L v=gl_(x);mr(x);antp(v))
+//Amber 2.9.0: an int list makes a temporal list of kind k (its null NIT for a packed kind; 'limit past 32 bits)
+Z A mkqv(UC k,A x)_(P(xtE,mkqv(k,gZ(x)))P(xtB,mkqv(k,cG(x)))U n=xn,w=xw-3;A z=an(n,TQL(k));CO V*p=xV;B o=0;I(TQN(k),F(n,_L(z)[i]=RD(w,p,i)))E(F(n,L v=RD(w,p,i);o|=v!=NL&&v!=(I)v;_I(z)[i]=v==NL?NIT:(I)v))x(0);P(o,z(ez0()))z)
+A1(mkdt,P(xtZ,mkqv(tdt,x))P(!_tz(x),et(x))L v=gl_(x);mr(x);P(v==NL,adt(NIT))P(v-(I)v,ez0())adt((I)v))   // a date is 32 bits of days: past them 'limit, as the literal and "D"$ (it wrapped)
+A1(mktm,P(xtZ,mkqv(ttm,x))P(!_tz(x),et(x))L v=gl_(x);mr(x);P(v==NL,atm(NIT))P(v-(I)v,ez0())atm((I)v))   // a time is 32 bits of ms: past them 'limit, as the literal (it wrapped)
+A1(mknp,P(xtZ,mkqv(tnp,x))P(!_tz(x),et(x))L v=gl_(x);mr(x);antp(v))
 //Amber 2.9.0: `mku `mkv `mkm `mkn: a minute, second, month (since 2000.01) or timespan (ns) of an int; 0N gives the null
-Z A mkq(UC k,A x)_(P(!_tz(x),et(x))L v=gl_(x);mr(x);P(TQN(k),AT(k,al(v)))P(v==NL,atq(k,NIT))P(v-(I)v,ez0())atq(k,(I)v))
+Z A mkq(UC k,A x)_(P(xtZ,mkqv(k,x))P(!_tz(x),et(x))L v=gl_(x);mr(x);P(TQN(k),AT(k,al(v)))P(v==NL,atq(k,NIT))P(v-(I)v,ez0())atq(k,(I)v))
 A1(mkmn,mkq(tmn,x))A1(mksc,mkq(tsc,x))A1(mkmo,mkq(tmo,x))A1(mksp,mkq(tsp,x))
 //`dmo: a date's or a timestamp's month; `mod: a month's first day (q's `month$ and `date$, amber.k's qdmo qmod). A null gives the null
-L tmd(L);A1(dmoC,UC k=_t(x);P(k-tdt&&k-tnp,et(x))L d;I(k==tnp,L v=*_L(x);mr(x);P(v==NL,atq(tmo,NIT))d=v/86400000000000-(v%86400000000000<0))E(P((I)x==NIT,atq(tmo,NIT))d=(I)x)
- L z=d+730425,e=z/146097-(z%146097<0),o=z-e*146097,y=(o-o/1460+o/36524-o/146096)/365,j=o-(365*y+y/4-y/100),p=(5*j+2)/153,m=p<10?p+3:p-9;y+=e*400+(m<3);atq(tmo,(y-2000)*12+m-1))   //Hinnant's civil_from_days, as s.c's sdt
-A1(modC,P(_t(x)-tmo,et(x))P((I)x==NIT,adt(NIT))L d=tmd((I)x);P(d-(I)d,ez0())adt((I)d))
+L tmd(L);Z I dmo1(L d)_(L z=d+730425,e=z/146097-(z%146097<0),o=z-e*146097,y=(o-o/1460+o/36524-o/146096)/365,j=o-(365*y+y/4-y/100),p=(5*j+2)/153,m=p<10?p+3:p-9;y+=e*400+(m<3);(I)((y-2000)*12+m-1))   //a day's month: Hinnant's civil_from_days, as s.c's sdt
+Z L dns(L v)_(v/86400000000000-(v%86400000000000<0))   //a timestamp's day
+A1(dmoC,UC k=_t(x);P(k==tDT||k==tNP,U n=xn;A y=an(n,tMO);I(k==tNP,F(n,L v=xl;yi=v==NL?NIT:dmo1(dns(v))))E(F(n,I v=xi;yi=v==NIT?NIT:dmo1(v)))x(y))   //a list of dates or timestamps too (2.9.0)
+ P(k-tdt&&k-tnp,et(x))L d;I(k==tnp,L v=*_L(x);mr(x);P(v==NL,atq(tmo,NIT))d=dns(v))E(P((I)x==NIT,atq(tmo,NIT))d=(I)x)atq(tmo,dmo1(d)))
+A1(modC,P(_t(x)==tMO,U n=xn;A y=an(n,tDT);B o=0;F(n,I v=xi;L d=v==NIT?NIT:tmd(v);o|=d-(I)d;yi=(I)d)P(o,y(x(ez0())))x(y))P(_t(x)-tmo,et(x))P((I)x==NIT,adt(NIT))L d=tmd((I)x);P(d-(I)d,ez0())adt((I)d))

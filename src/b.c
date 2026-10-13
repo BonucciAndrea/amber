@@ -81,7 +81,7 @@ Z NI I ixkl(A x,A y,U k,A z,B asg){A q=_tA(y)?_A(y)[k]:ii(y,k);I r=_ts(q)||_t(q)
 //issue #20 row 12): such a key is looked up here, so that the check gives its error (4) before the variable is touched.
 //Only such a key: one of the keys' own kind (a char into chars, a number into numbers) is not looked up twice
 Z NI __attribute__((cold)) I ixkc(A ks,A q){A f=fnd(ks,_R(q));P(!f,4)mr(f);return 0;}
-#define IXKC(ks,q) ({UC tk_=_t(ks),tq_=_t(q);U m_=tk_==tC?~(1u<<tc|1u<<tC):1u<<tc|1u<<tC|(tk_==tG||tk_==tB?1u<<tA|1u<<tm|1u<<tM:LH(tH,tk_,tS)?0:1u<<tG);\
+#define IXKC(ks,q) ({UC tk_=_t(ks),tq_=_t(q);W m_=tk_==tC?~(1ull<<tc|1ull<<tC):1ull<<tc|1ull<<tC|(tk_==tG||tk_==tB?1ull<<tA|1ull<<tm|1ull<<tM:LH(tH,tk_,tS)?0:1ull<<tG);   /*64 bits: the type codes pass 31*/\
  m_>>tq_&1?ixkc(ks,q):0;})   //(keys of ints held as bits or bytes, tB tG, are numbers: a key of chars, or a list or dict that may
  //hold chars, is looked up there; a number, which the lookup takes, is not; keys of other numbers or symbols: a key of chars)
 Z I ixc0(A,A,U,A,B);

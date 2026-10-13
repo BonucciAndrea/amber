@@ -51,7 +51,7 @@ A2(und,/*01*/
  Ym(K2("{$[#x;((!y)@&^((),x)?!y)#y;y]}",x,y))
  YM(flp(N(und(x,flp(y)))))
  et(y))
-X1(enl,R5(ti,tl,tf,tc,ts,x(aV(TT[xt],1,TP(xt)?&x:xV)))Rm(A y=kv(&x);aM(x,e1f(enl,y)))R_(aA1(x)))
+X1(enl,R12(ti,tl,tf,tc,ts,tdt,ttm,tnp,tmn,tsc,tmo,tsp,x(aV(TT[xt],1,TP(xt)?&x:xV)))Rm(A y=kv(&x);aM(x,e1f(enl,y)))R_(aA1(x)))
 //two keyed tables (issue #19): q's upsert, y's rows replacing those of keys x has (the last, for a key given twice) and
 //the others added, each, as they come; y's key and value columns go by name (kcl), and other columns are 'domain (q:
 //'mismatch), as a table joined to one. A keyed table and a dict is 'type
@@ -66,8 +66,8 @@ Z A kct(A x,A y/*10*/)_(P(!_tM(yx),et(x))A k=Nx(kcl(xx,yx)),v=kcl(xy,yy);P(!v,mr
 //lines up by position) goes to insx, as q: a column t lacks 'mismatch; one a row or a table lacks takes item 0N of t's
 //column, as aj fills (a key column: an error named after it); an item that does not fit 'type; a key t has 'insert.
 //A t that is not a table, an r that is no list, dict or table, or an empty list: t,r, as before
-Z CO UC insQ[32]={0,0,1,1,1,1,1,1,2,3,4,0,0,1,1,2,3,4};   //a type's kind: int, float, char, symbol (0: another)
-#define insq(t) insQ[(UC)(t)&31]
+Z CO UC insQ[64]={0,0,1,1,1,1,1,1,2,3,4,0,0,0,0,0,0,0,0,0,1,1,2,3,4};   //a type's kind: int, float, char, symbol (0: another)
+#define insq(t) insQ[(UC)(t)&63]
 //does an item of a row (of type u: an atom, or a typed list's type; 0 for a list) or r's column w surely fit t's column
 //c? A typed column: of its kind. A general one: anything, but where its first item is a date, a time or a timestamp, the
 //same type (a date column, which Amber keeps in a general list; insx looks at the whole column). 0: insx looks again
@@ -122,7 +122,7 @@ A2(psh,/*11*/Q(xtMT);U n=xN;P(!n,enl(x(y)))P(!~n,y(ez(x)))   //no room for one m
  P(xtB&&yti&&yv==(1&yv),x=aa(n+1,x);xG[n>>3]=(UC)(xG[n>>3]&~(1<<(n&7))|yv<<(n&7));x)   //the bit may hold a stale 1 (take and drop leave the bits after the last item)
  P(xtZ&&ytz,N(sup(&x,&y));psh(x,y))
  XM(P(!ytm||!mtc_(xx,yx),psh(Ny(blw(x)),y))x=mut(x);A z=xy=mut(xy);F(zn|!zn,PSH(za,ii(yy,i)))I(!zn,zx=mkn(zx))y(x))
- P(!xtA&&(!ytt||xt-TT[yt]||yt>=tdt),psh(Ny(blw(x)),y))   //a temporal atom keeps its type: there is no temporal vector (TT maps it to its int width)
+ P(!xtA&&(!ytt||xt-TT[yt]),psh(Ny(blw(x)),y))   //an atom of the list's kind goes in (a temporal one into its list, 2.9.0)
  L v=xtA?(L)y:gl(y);
  x=aa(n+1,x);U w=xw-3;MC(xV+((W)n<<w),&v,1<<w);x)
 A apc(A x/*1*/,C c    )_(Q(xtC||xtG);U n=xn;x=aa(n+1,x);xC[n]=c;x)

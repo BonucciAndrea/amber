@@ -437,7 +437,7 @@ Z I shsym(U a,U b)_(a==b?0:strcmp(su(a),su(b)))
 Z A shiftS(L op,B fl,B s,A x){N n=_n(x),m=n-1;CO U*RES p=(CO U*)xV;N c=0;A z=s?0:aG((U)m);
  for(N i=0;i<m;i++){I d=fl?shsym(p[i],p[i+1]):shsym(p[i+1],p[i]);G r=op==8?d<0:op==9?d>0:d==0;I(s,c+=r)E(zG[i]=r)}
  return s?az((L)c):z;}
-Z A shiftC(L code,A x){B s=code>=300;code-=s?300:200;B fl=code>=16;L op=code&15;UC t=_t(x);
+Z A shiftC(L code,A x){B s=code>=300;code-=s?300:200;B fl=code>=16;L op=code&15;UC t=op>=8?TST(_t(x)):_t(x);   //a temporal list compares as its ints (2.9.0)
  P(!_tP(x)&&t==tS&&op>=8&&_n(x)>=2,shiftS(op,fl,s,x))
  P(_tP(x)||!(t==tG||t==tH||t==tI||t==tL||t==tF||t==tC)||_n(x)<2,shslow(op,fl,s,x))
  N n=_n(x),m=n-1;

@@ -419,19 +419,48 @@ Z A tari(A x,A y,U op)_(UC ka=_t(x),kb=_t(y);
   L vv=op==1?(L)((W)va+(W)vb):op==2?(L)((W)va-(W)vb):op==3?(L)((W)va*(W)vb):op==6?MIN(va,vb):op==7?MAX(va,vb):va;
   P(__builtin_expect(rk>=tdt&&!TQN(rk)&&vv==(I)vv,1),atq(rk,vv))return tmk(rk,vv);)   //a packed temporal in range, in line (tmk is out of line)
  et(y))
+//Amber 2.9.0: + - * & | < > = with a temporal list (tDT..tSP), in one loop: trk's kinds and tari's rules item by item (a null
+//gives the result's null, a packed result past 32 bits is 'limit, two kinds mixed meet in ns). An int list or atom is one
+//kind, ti. What tvo leaves (a float, a general list, %, two temporal kinds compared, as tkc does) goes item by item (e2)
+Z __attribute__((always_inline)) inline L trv(CO V*p,U w,U i)_(w==4?({I v=((CO I*)p)[i];v==NIT?NL:(L)v;}):w==8?((CO L*)p)[i]:w==2?(L)((CO H*)p)[i]:(L)((CO G*)p)[i])   //an item's number, a 32-bit null as NL (an int list has none at 32 bits: Amber keeps 0N 64-bit)
+#define TVK(t) (TQV(t)?TQA(t):TQ(t)?(t):(t)==ti||(t)==tl||LH(tG,t,tL)?ti:0)   //an operand's kind: a temporal's, ti for an int, 0 for the rest
+NI Z A tvo(A x,A y,U op)_(UC t=xt,u=yt;
+ P(t==tE,x=gZ(xR);A r=tvo(x,y,op);x(r))P(u==tE,tvo(x,gZ(y),op))
+ UC ka=TVK(t),kb=TVK(u);P(!ka||!kb||op==4||op==5||op>10,e2(av+op,x,y))P(!op,y)
+ B la=t<tM,lb=u<tM,qa=ka-ti,qb=kb-ti;P(la&&lb&&xn-yn,el(y))U n=la?xn:yn,wa=la?1u<<(Tw[t]-3):0,wb=lb?1u<<(Tw[u]-3):0;CO V*pa=la?xV:0,*pb=lb?yV:0;
+ L a0=la?0:qa?tval(x):gl_(x),b0=lb?0:qb?tval(y):gl_(y);
+ I(op>7,P(qa&&qb&&ka-kb,e2(av+op,x,y))A z=aG(n);G*RES o=zG;   //a comparison: the stored numbers (a null the lowest)
+  I(la&&!lb&&wa==4&&b0==(I)b0,CO I*RES p=pa;I c=(I)b0;I(op==8,F(n,o[i]=p[i]<c))J(op==9,F(n,o[i]=p[i]>c))E(F(n,o[i]=p[i]==c)))   //a packed list and an atom, the common case: on 32 bits
+  J(la&&!lb&&wa==8,CO L*RES p=pa;L c=b0;I(op==8,F(n,o[i]=p[i]<c))J(op==9,F(n,o[i]=p[i]>c))E(F(n,o[i]=p[i]==c)))
+  E(F(n,L a=la?trv(pa,wa,i):a0,b=lb?trv(pb,wb,i):b0;o[i]=op==8?a<b:op==9?a>b:a==b))
+  mr(y);return z;)
+ UC rk;I(qa&&qb,rk=trk(ka,kb,op);P(!rk,et(y)))E(rk=qa?ka:kb;P(!(op==1||op==2||op==3&&tclk(rk)),et(y)))
+ B cv=qa&&qb&&ka-kb,pk=rk-ti&&!TQN(rk);L sa=cv?tun(ka):1,sb=cv?tun(kb):1;A z=an(n,rk==ti?tL:TQL(rk));B ov=0;
+ I(pk&&la&&!lb&&wa==4&&!cv&&op-1<2u,CO I*RES p=pa;I*RES o=zI;   //a packed list plus or minus an int (date+1): on 32 bits
+  I(b0==NL,F(n,o[i]=NIT))J(b0-(I)b0,F(n,ov|=p[i]!=NIT;o[i]=NIT))   //32 bits wrap, the overflow from the signs: one pass the compiler vectorises
+  J(op==1,I c=(I)b0;I f=0;F(n,I v=p[i];I r=(I)((U)v+(U)c);f|=(v!=NIT)&(((v^r)&(c^r))<0);o[i]=v==NIT?NIT:r)ov=f)
+  J(qa,I c=(I)b0;I f=0;F(n,I v=p[i];I r=(I)((U)v-(U)c);f|=(v!=NIT)&(((v^c)&(v^r))<0);o[i]=v==NIT?NIT:r)ov=f)
+  E(I c=(I)b0;I f=0;F(n,I v=p[i];I r=(I)((U)c-(U)v);f|=(v!=NIT)&(((c^v)&(c^r))<0);o[i]=v==NIT?NIT:r)ov=f))
+ E(F(n,L a=la?trv(pa,wa,i):a0,b=lb?trv(pb,wb,i):b0,r;
+  I(op<6&&(a==NL||b==NL),r=NL)
+  J(cv,__int128 c=(__int128)a*sa,d=(__int128)b*sb,e=op==1?c+d:c-d;ov|=e!=(L)e;r=(L)e)
+  E(r=op==1?(L)((W)a+(W)b):op==2?(L)((W)a-(W)b):op==3?(L)((W)a*(W)b):op==6?MIN(a,b):MAX(a,b))
+  I(pk,ov|=r!=NL&&r!=(I)r;zI[i]=r==NL?NIT:(I)r)E(zL[i]=r)))
+ mr(y);P(ov,z(ez0()))rk==ti?sqzZ(z):z)
 A2(ari,C t=xt,u=yt;
- P(t>=tdt||u>=tdt,P(xtt&&ytt,tari(x,y,f))I(f-8<3u&&(tcq(x)||tcq(y)),A r=tcl(x,y,f);P(r,y(r)))e2(av+f,x,y))  //a temporal atom with a list: item by item (tari read the list as one int); < > = in one loop when they can (tcl)
- U v=1<<t|1<<u;   //after the temporals: their codes pass 31
- P(!(v&~(1<<tG|1<<tH|1<<tI|1<<tL|1<<tC|1<<ti|1<<tl|1<<tc)),ariz(x,y,f))
- P(v&(1<<tm|1<<tM|1<<tA),I(f-1<2u&&!(v&~(1<<tA|1<<ti))&&(tcq(x)||tcq(y)),A r=tal(x,y,f);P(r,y(r)))I(f-8<3u&&!(v&~(1<<tA|1<<ti|1<<tl))&&(tcq(x)||tcq(y)),A r=tcl(x,y,f);P(r,y(r)))e2(av+f,x,y))   //< > = of general lists, or of one with an int: temporals in one loop when they can (tcl)
+ P(TQV(t)||TQV(u),tvo(x,y,f))   //a temporal list (2.9.0)
+ P(t>=tdt||u>=tdt,P(xtt&&ytt,tari(x,y,f))P(t<tM&&t-tA||u<tM&&u-tA,tvo(x,y,f))I(f-8<3u&&(tcq(x)||tcq(y)),A r=tcl(x,y,f);P(r,y(r)))e2(av+f,x,y))   //a temporal atom with a typed list: tvo (2.9.0)  //a temporal atom with a list: item by item (tari read the list as one int); < > = in one loop when they can (tcl)
+ W v=1ull<<t|1ull<<u;   //after the temporals; 64 bits, the codes pass 31
+ P(!(v&~(1ull<<tG|1ull<<tH|1ull<<tI|1ull<<tL|1ull<<tC|1ull<<ti|1ull<<tl|1ull<<tc)),ariz(x,y,f))
+ P(v&(1ull<<tm|1ull<<tM|1ull<<tA),I(f-1<2u&&!(v&~(1ull<<tA|1ull<<ti))&&(tcq(x)||tcq(y)),A r=tal(x,y,f);P(r,y(r)))I(f-8<3u&&!(v&~(1ull<<tA|1ull<<ti|1ull<<tl))&&(tcq(x)||tcq(y)),A r=tcl(x,y,f);P(r,y(r)))e2(av+f,x,y))   //< > = of general lists, or of one with an int: temporals in one loop when they can (tcl)
  P(t==tB,x=cG(xR);x(ari(x,y)))
  P(u==tB,ari(x,cG(y)))
  P(t==tE,P(f==1&&ytzc,addzE(gl(y),xR))P(f==2&&ytzc,addzE((L)(0-(W)gl(y)),xR))x=gZ(xR);x(ari(x,y)))
  P(u==tE,P(f==1&&xtzc,addzE(gl_(x),y))ari(x,gZ(y)))
- P(v&(1<<tf|1<<tF),arif(x,y,f))
+ P(v&(1ull<<tf|1ull<<tF),arif(x,y,f))
  I(f-8<3u,
-  P(v&1<<tS,P(f==10&&!(v&~(1<<ts|1<<tS)),ariz(x,y,f))e2f(ari,x,y))
-  P(v&1<<ts,v^1<<ts?et(y):ai(f==8?qA(x,y)<0:f==9?qA(x,y)>0:xv==yv)))
+  P(v&1ull<<tS,P(f==10&&!(v&~(1ull<<ts|1ull<<tS)),ariz(x,y,f))e2f(ari,x,y))
+  P(v&1ull<<ts,v^1ull<<ts?et(y):ai(f==8?qA(x,y)<0:f==9?qA(x,y)>0:xv==yv)))
  et(y))
 
 #define M(s,i) A2(s,U o=f;f=i;x=ari(x,y);f=o;x)

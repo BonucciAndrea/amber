@@ -218,7 +218,14 @@ enum {
     AMBER_T_SYM_ATOM  = 17,
     AMBER_T_DATE      = 26,  /* days since 2000.01.01              */
     AMBER_T_TIME      = 27,  /* milliseconds of day                */
-    AMBER_T_TIMESTAMP = 28   /* nanoseconds since 2000.01.01       */
+    AMBER_T_TIMESTAMP = 28,  /* nanoseconds since 2000.01.01       */
+    AMBER_T_MINUTE    = 29,  /* minutes of day                     */
+    AMBER_T_SECOND    = 30,  /* seconds of day                     */
+    AMBER_T_MONTH     = 31,  /* months since 2000.01               */
+    AMBER_T_TIMESPAN  = 32,  /* nanoseconds                        */
+    /* their vectors, int32 or int64 like the atom (2.9) */
+    AMBER_T_DATE_LIST = 33, AMBER_T_TIME_LIST = 34, AMBER_T_TIMESTAMP_LIST = 35, AMBER_T_MINUTE_LIST = 36,
+    AMBER_T_SECOND_LIST = 37, AMBER_T_MONTH_LIST = 38, AMBER_T_TIMESPAN_LIST = 39
 };
 
 /* ---- 6.1 identity -------------------------------------------------------- */

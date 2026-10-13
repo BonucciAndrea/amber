@@ -19,12 +19,16 @@ Z A2(cT,UC t=xv,u=yt,i=t-tB,j=u-tB;Q(i<8);P(j>6,et(y))
  Z CO TY(&cBG)a[][8]={{0,cBG,0,0,0,0,cBG},{cGB,0,cGH,cGI,cGL,0,0},{0,cHG,0,cHI,cHL,0,cHG},{0,cIG,cIH,0,cIL,0,cIG},{0,0,0,cLI,0,cLF,0},{0,cFG,cFH,cFI,cFL,0,0},{},{}};
  TY(&cBG)f=a[i][j];P(f,A z=an(yn,t);My(I(t==tB||u==tB,f(zV,yV,zn))E(pcast(f,zV,yV,zn,1u<<(Tw[t]-3),1u<<(Tw[u]-3))));z)
  P(t==tS,u==tC?(y=str0(y),y(sym(yV))):et(y))
- P((1<<t|1<<u)==(1<<tG|1<<tC),AT(t,mut(y)))
+ P((1ull<<t|1ull<<u)==(1ull<<tG|1ull<<tC),AT(t,mut(y)))
  cT(t,N(cT(u==tB?tG:G(tG,tI,tI,tL,tI,tL,tG,tC)[i],y))))
-NI A2(ct,UC t=xv,u=yt;Q(xti||x==t)Q(tB<=t&&t<=tS)P(t==TT[u],y)
+//Amber 2.9.0: a temporal list as its ints (tI, or tL for ns): the same items, so the header's type is all that changes (in
+//place when x is ours, else a copy)
+A tqi(A x/*1*/)_(UC t=TQVN(xt)?tL:tI;P(MINE(x),_T(x)=t;x)A y=an(xn,t);MC(yV,xV,(W)xn<<(xw-3));_at(y)=_at(x);x(y))
+NI A2(ct,UC t=xv,u=yt;Q(xti||x==t)Q(tB<=t&&t<=tS)P(t==TT[u]||TQ(u)&&t==(TQN(u)?tL:tI),y)P(TQV(u),ct(x,tqi(y)))   //a temporal atom of that width is as it was; a temporal list: its ints
  Y(RmMA(r2f(ct,x,y))RE(cT(x,gZ(y)))Rf(ct(x,al(F2C(gf(y)))))Rilc(L v=gl(y);S(t,R4(tB,tG,tH,tI,ai(v))RC(ac(v))RL(al(v))RF(af(v==NL?NF:v))RS(u==tc?as((UC)yv):et0()))0)R_(cT(x,y)))et(y))
 A1(cB,ct(tB,x))A1(cG,ct(tG,x))A1(cH,ct(tH,x))A1(cI,ct(tI,x))A1(cL,ct(tL,x))A1(cF,ct(tF,x))A1(cC,ct(tC,x))A1(cS,ct(tS,x))
-Z X1(csti,RmMA(e1f(csti,x))RF(sqzZ(cL(x)))Rf(az(F2C(gf(x))))RC(cG(x))Rc(ai(xv))Ruvw(ai(xv))R5(tdt,ttm,tmn,tsc,tmo,I v=(I)x;v==NIT?al(NL):ai(v))R2(tnp,tsp,L v_=*(L*)_V(x);x(al(v_)))RilEGHIL(x)R_(et(x)))
+Z X1(csti,RmMA(e1f(csti,x))RQV(P(TQVN(xt),sqzZ(tqi(x)))A y=an(xn,tL);F(xn,I v=xi;yl=v==NIT?NL:v)x(sqzZ(y)))   //a temporal list: its numbers, a null 0N (2.9.0)
+ RF(sqzZ(cL(x)))Rf(az(F2C(gf(x))))RC(cG(x))Rc(ai(xv))Ruvw(ai(xv))R5(tdt,ttm,tmn,tsc,tmo,I v=(I)x;v==NIT?al(NL):ai(v))R2(tnp,tsp,L v_=*(L*)_V(x);x(al(v_)))RilEGHIL(x)R_(et(x)))
 Z B pov(S p,S e)_(B m=*p=='-';p+=m;W(*p=='0'&&C09(p[1]),p++)I n=e-p;n>19||n==19&&strncmp(p,m?"9223372036854775808":"9223372036854775807",19)>0)//digits p..e beyond int64?
 //Amber 2.8.0: "J"$ of a list of strings in one loop, each read in place (no copy for its NUL): as prsI reads one -- blanks
 //around, signs (an odd count of - is negative), digits, else 0N, and 0N past 64 bits. An item not a string: prsI's
@@ -43,7 +47,9 @@ Z X1(cSb,RA(xn?cSl(x):e1f(cSb,x))R(tm,e1f(cSb,x))R(tM,e1f(cSb,x))RC(U i=0,n=xn;W
 Z Y2(pad,RmMA(e2f(pad,x,y))RC(K2("{y@(!x)+(x<0)*#y}",x,y))Rc(dlr(x,enl(y)))R_(et(y)))
 // Amber 2.8.0: q's casts by name and by char (`long$x "j"$x "J"$s `date$n `year$d ..), which were 'domain or 'type, go to
 // amber.k's qcst; Amber's own (`i `f `c `s `I `F, "D" "T" "P" on text) are as before. "D" "T" "P" of a list of strings go each (qcst), and lowercase "d" "t" "p" cast what is not text
-Z NI __attribute__((cold)) A dlrq(A x,A y)_(C c0=_tP(x)&&_t(x)==tc?(C)xv:0;A1*f=c0&&c0<'a'?ptq(c0):0;P(f,P(!_tP(y)&&yt==tA,e1f(f,y))et(y))K2("{qcst[x;y]}",x,y))   //the rest (dlr; out of line)
+Z UC tqnm(I v)_(S s=su((U)v);Z CO C*n[]={"date","time","timestamp","minute","second","month","timespan"};F(7,P(!strcmp(s,n[i]),(UC)(tdt+i)))0)   //a temporal type's name: its kind
+Z NI __attribute__((cold)) A dlrq(A x,A y)_(P(_ts(x)&&!_tP(y)&&yt==tA&&!yn&&tqnm(xv),y(emp(TQL(tqnm(xv)))))   //`date$() and the rest: that kind's empty list, as q shows it (2.9.0), libraries or not
+ C c0=_tP(x)&&_t(x)==tc?(C)xv:0;A1*f=c0&&c0<'a'?ptq(c0):0;P(f,P(!_tP(y)&&yt==tA,e1f(f,y))et(y))K2("{qcst[x;y]}",x,y))   //the rest (dlr; out of line)
 X2(dlr,Rs(I v=xv;U k=v-(C)v?6:si("ifcsIF",v|'s'*!v);P(k<6,G(&csti,cF,cC,cSb,prsI,prsF)[k](y))dlrq(x,y))Ril(pad(x,y))
  Rc(A1*f=ptq((C)xv);P(f&&(yt==tC||yt==tc),f(yt==tc?enl(y):y))dlrq(x,y))R_(et(y)))   //"D" "T" "P" of a list of strings: each, as q
 X1(sqzZ,R_(x)/*RG(F(xn,P(xg&-2,x))cB(x))*/
@@ -58,6 +64,7 @@ A1(sqz,P(!xtA,x)U n=xn;A y=xx;C t=yt;
        I a=0;F(n,I v=xi;a|=v^v>>31)t=tZ(a);P(t==tI,x)
        A y=an(n,t);G(&cGI,cHI)[t-tG](yV,xV,n);x(y))
    R3(tf,tc,ts,F(n,P(_t(xa)-t,x))sqzA(x,TT[t]))
+   R7(tdt,ttm,tnp,tmn,tsc,tmo,tsp,F(n,P(_t(xa)-t,x))A z=an(n,TQL(t));I(TQN(t),F(n,_L(z)[i]=*_L(xa)))E(F(n,_I(z)[i]=(I)xa))x(z))   //one temporal kind: its list (2.9.0)
    Rm(P(!n,x)F(n,P(_t(xa)-tm||!mtc_(yx,_x(xa)),x))y=aM(_R(yx),blw(e1f(rs0,_R(yy))));F(n,PSH(y,_R(xa)))x(y))
    R_(x))0)
 X1(blw,RA(x)Rt(aA1(x))Rm(et(x))R_(U n=xN;A y=aA(n);F(n|!n,ya=ii(x,i))x(0);I(!n,yx=mkn(yx))y))

@@ -117,7 +117,7 @@ t[`interExceptWholeItem;(except[(1 2;3 4);(1 2;(1 2;3 4))];inter[(1 2;3 4);(1 2;
 t[`interExceptTypedY;(except[(1 2;3 4);1 2 3];inter[(1 2;3);1 2 3]);((1 2;3 4);,3)]   / a general x against a typed y: item by item too (2.7.2: nested garbage; q: 'type)
 t[`inTableRows;{$[`C~@r:.[in;x;{x}];*"\n"\r;r]}'((+`a`b!(1 2;3 4);+`a`b!(1 5;3 6));(+`a`b!(1 2;3 4);+`b`a!(3 4;1 2));(`a`b!1 3;+`a`b!(1 2;3 4));(`b`a!3 1;+`a`b!(1 2;3 4));(`a`b!1 4;+`a`b!(1 2;3 4));(+(,`b)!,3 9;(+(,`a)!,1 2)!+(,`b)!,3 4);(+`a`b!(1 2;3 4);+`a`c!(1 2;3 4));(1;`a`b!1 2);(5;`a`b!1 2));(10b;11b;1b;1b;0b;10b;"mismatch";1b;0b)]   / rows by column name; a dict y: its values, as q (digest #101: was 'nyi)
 t[`exceptInterTable;(except[(1;"a");`x`y!1 2];except[1 2 3;`a`b!"ab"];except[+`a`b!(1 2;3 4);+`a`b!(1 5;3 6)];inter[+`a`b!(1 2;3 4);+`a`b!(1 5;3 6)];except[1 2 3;`a`b!1 2];inter[1 2 3;`a`b!1 2];except[(1;`a);`a`b!(1;`x)]);(,"a";1 2 3;+`a`b!(,2;,4);+`a`b!(,1;,3);,3;1 2;,`a)]   / as q (digest #101: was 'nyi)
-t[`exceptInterEmptyGeneric;(except[(1 2;3 4);(1 2;3 4)];except[("ab";"cd");("ab";"cd")];except[(1;`a);(1;`a)];inter[(1 2;3);(5 6;7)];inter[(1 2;3 4);(5 6;7 8)];except[1 2;1 2];except[`a`b;`a`b];except[2024.01.01 2024.01.02;2024.01.01 2024.01.02]);(();();();();();!0;0#`;())]   / none of a general list is (), as q; a typed one keeps its type (digest #102: was 0#,0N 0N)
+t[`exceptInterEmptyGeneric;(except[(1 2;3 4);(1 2;3 4)];except[("ab";"cd");("ab";"cd")];except[(1;`a);(1;`a)];inter[(1 2;3);(5 6;7)];inter[(1 2;3 4);(5 6;7 8)];except[1 2;1 2];except[`a`b;`a`b];except[2024.01.01 2024.01.02;2024.01.01 2024.01.02]);(();();();();();!0;0#`;0#,0Nd)]   / none of a general list is (), as q; a typed one keeps its type (digest #102: was 0#,0N 0N; dates are typed since 2.9.0)
 t[`union;union[1 2 3;3 4 5];1 2 3 4 5]
 t[`gradeStrings;{s:("b";"ab";"";"a";,`c$128;"ab",`c$255;"ab";"a",`c$0;,`c$127);(iasc s;idesc s;rank s;iasc`$s)}[];(2 7 1 6 5 8 4 3 0;0 3 4 8 5 1 6 7 2;8 2 0 7 6 4 3 1 5;2 3 7 1 6 5 0 8 4)]   / strings by their chars as unsigned bytes, a prefix first, equal ones in place (symbols by their names)
 t[`sublistPos;sublist[3;1 2 3 4 5];1 2 3]
@@ -849,6 +849,15 @@ t[`tq2Parts;(`hh$09:30;`mm$09:30;`ss$09:30:15;`year$2026.03m;`mm$2026.03m);9 30 
 t[`tq2Type;(type 0D01:00:00.000000000;type 09:30;type 09:30:15;type 2026.03m;type 09:30 09:31;type 2026.01.01 2026.01.02;type(2026.01.01;1));-16 -17 -18 -13 17 14 0]
 t[`tq2Xbar;(5 xbar 09:32 09:36 09:41;0D00:05:00.000000000 xbar 2026.01.15D09:32:17.000000000;0D01:00:00.000000000 div 0D00:25:00.000000000;deltas 09:30 09:32 09:35);(09:30 09:35 09:40;2026.01.15D09:30:00.000000000;0D00:00:00.000000002;09:30 00:02 00:03)]
 
+/ ---- 2.9.0: typed temporal lists through amber.k (bin is data here, so the primitive x'y): q's type numbers, casts, min max sum, deltas, xbar, the accessors ----
+t[`tvLibType;(type 2026.01.01 2026.01.02;type 09:30:00.000 0Nt;type 2026.01.15D09:30:00.000000000 0Np;type 09:30 09:31;type 09:30:15 0Nv;type 2026.01 2026.02m;type 0D01:00:00.000000000 0Nn;type`date$());14 19 12 17 18 13 16 14]
+t[`tvLibCast;(`date$2026.01.15D09:30:00.000000000 0Np;`timestamp$2026.01.15 0N;`month$2026.01.15 2026.03.20;`date$2026.01 2026.03m;`minute$09:30:15.000 0Nt;`int$2026.01.01 0N;`float$09:30 09:31;`date$2026.01.15 2026.01.16);(2026.01.15 0N;2026.01.15D00:00:00.000000000 0N;2026.01 2026.03m;2026.01.01 2026.03.01;09:30 0N;9497 0N;570 571f;2026.01.15 2026.01.16)]
+t[`tvLibMinMax;(min 2026.01.03 0N 2026.01.01;max 2026.01.03 0N 2026.01.01;min 0N 0Nd;max 0#2026.01.01;sum 09:30 00:10 0N;sum 0#09:30;avg 2026.01.01 2026.01.03);(2026.01.01;2026.01.03;0Nd;0Nd;09:40;00:00;9498.0)]
+t[`tvLibDeltas;(deltas 2026.01.01 2026.01.03 2026.01.06;deltas 09:30 09:32 09:35;deltas 2026.01.15D09:30:00.000000000 2026.01.15D09:31:00.000000000;deltas 2026.01 2026.03m);(9497 2 3;09:30 00:02 00:03;9511D09:30:00.000000000 0D00:01:00.000000000;312 2)]
+t[`tvLibXbar;(5 xbar 09:32 09:36 0N;7 xbar 2026.01.01 2026.01.09;0D00:15:00.000000000 xbar 2026.01.15D09:32:00.000000000 2026.01.15D09:51:00.000000000;3600000 xbar 09:32:00.000 10:15:00.000);(09:30 09:35 0N;2025.12.27 2026.01.03;2026.01.15D09:30:00.000000000 2026.01.15D09:45:00.000000000;09:00:00.000 10:00:00.000)]
+t[`tvLibParts;(hh 09:30:00.000 10:15:00.000;mm 09:30 10:15;sec 09:30:15 0Nv);(9 10;30 15;15 0N)]
+t[`tvLibBin;(2026.01.01 2026.01.05 2026.01.09'2026.01.06;09:30 09:40'09:35 09:45 09:00;2026.01.01 2026.01.05 within 2026.01.02 2026.01.06);(1;0 1 -1;0 1)]
+t[`tvLibTable;{t:([]d:2026.01.02 2026.01.01 2026.01.02 0N;v:1 2 3 4);(type t`d;`d xasc t;t[`d]>2026.01.01;first t`d)}[];(14;+`d`v!(0N 2026.01.01 2026.01.02 2026.01.02;4 2 1 3);1 0 1 0;2026.01.02)]
 fails:r@&{"FAIL"~4#x}'r[;1]
 `0:""
 `0:"================ AMBER TEST SUITE ================"

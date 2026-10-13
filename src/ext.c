@@ -383,11 +383,11 @@ void amber_release(amber_value handle) {
 
 int amber_type(amber_value handle) {
     if (!handle) return 0;
-    return (int)(unsigned char)_t((A)handle);
+    return TXC((int)(unsigned char)_t((A)handle));   /* the ABI's numbers (ext.h), which a.h's TXC keeps */
 }
 
 const char *amber_type_name(amber_value handle) {
-    switch (amber_type(handle)) {
+    switch (handle ? (unsigned char)_t((A)handle) : 0) {
         case tA:   return "list";
         case tE:   return "range";
         case tB:   return "bool vector";
@@ -412,6 +412,13 @@ const char *amber_type_name(amber_value handle) {
         case tsc:  return "second";
         case tmo:  return "month";
         case tsp:  return "timespan";
+        case tDT:  return "date vector";
+        case tTM:  return "time vector";
+        case tNP:  return "timestamp vector";
+        case tMN:  return "minute vector";
+        case tSC:  return "second vector";
+        case tMO:  return "month vector";
+        case tSP:  return "timespan vector";
         default:   return "function";
     }
 }
@@ -421,8 +428,8 @@ long long amber_count(amber_value handle) {
     return (long long)_N((A)handle);   /* v.c: rows for a table, keys for a dict */
 }
 
-int amber_is_table(amber_value handle) { return amber_type(handle) == tM; }
-int amber_is_dict (amber_value handle) { return amber_type(handle) == tm; }
+int amber_is_table(amber_value handle) { return amber_type(handle) == AMBER_T_TABLE; }
+int amber_is_dict (amber_value handle) { return amber_type(handle) == AMBER_T_DICT; }
 int amber_is_atom (amber_value handle) { return handle && _tt((A)handle) ? 1 : 0; }
 
 /* ---- 6.6 flat vectors ---------------------------------------------------- */
@@ -439,7 +446,7 @@ const void *amber_get_vector_ptr(amber_value handle,
     if (!handle) return 0;
     val = (A)handle;
     tp = (unsigned char)_t(val);
-    if (out_type) *out_type = (int)tp;
+    if (out_type) *out_type = TXC((int)tp);
     if (out_elem_bits) *out_elem_bits = 1 << Tw[tp];
     /* A tagged immediate has no heap object at all: reading _n(val) would
      * dereference (pointer - 4) on a value that is not a pointer.  Bail before

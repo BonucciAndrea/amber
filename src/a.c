@@ -113,9 +113,10 @@ A tkey(A x,B f)_(I(_t(x)==tE,x=gZ(x))P(!f,cL(x))x=cF(x);   //a lazy range (!n as
 // whose items would be read by their addresses; 0 for anything else. tjs: 'type (0) when one of two time
 // columns is temporal and the other is not of its kind (an empty generic list goes with any), or either
 // mixes, as in q. tjn: a time column as the kernels read it, a new reference.
-I tjk(A x){P(_t(x)-tA,0)U n=_n(x);P(!n,1)CO A*a=_V(x);UC t=_t(*a);B m=0,o=0;F(n,UC u=_t(a[i]);m|=TQ(u);o|=u!=t)P(!m,0)return o?-1:t;}
+I tjk(A x){P(TQV(_t(x)),TQA(_t(x)))P(_t(x)-tA,0)U n=_n(x);P(!n,1)CO A*a=_V(x);UC t=_t(*a);B m=0,o=0;F(n,UC u=_t(a[i]);m|=TQ(u);o|=u!=t)P(!m,0)return o?-1:t;}
 B tjs(A a,A b){I p=tjk(a),q=tjk(b);P(p<0||q<0,0)P(p==q||p==1||q==1,1)return p<2&&q<2;}
-A tjn(A x){I k=tjk(x);P(k==1,aL(0))P(k<2,_R(x))U n=_n(x);CO A*a=_V(x);A y=aL(n);L*RES v=_V(y);I(TQN(k),F(n,v[i]=*(L*)_V(a[i])))E(F(n,I u=(I)a[i];v[i]=u==NIT?NL:u))return y;}
+A tjn(A x){I k=tjk(x);P(k==1,aL(0))P(k<2,_R(x))U n=_n(x);P(TQV(_t(x)),P(TQVN(_t(x)),tqi(_R(x)))A y=aL(n);L*RES v=_V(y);CO I*p=_V(x);F(n,I u=p[i];v[i]=u==NIT?NL:u)y)   //a temporal list (2.9.0): its numbers
+ CO A*a=_V(x);A y=aL(n);L*RES v=_V(y);I(TQN(k),F(n,v[i]=*(L*)_V(a[i])))E(F(n,I u=(I)a[i];v[i]=u==NIT?NL:u))return y;}
 A ucb(A);
 // Amber 2.5 (exp): one slice of trade rows for the parallel aj (see the parallel branch in ajc). Same row
 // logic as ajc's serial loop, with this slice's own cursor cache.
@@ -288,7 +289,7 @@ A ajsC(A x){
  #define AJS_NE(T) {CO T*RES p=_V(c);for(U r=1;r<n;r++)chg[r]|=(UC)(p[r]!=p[r-1]);}
  F(ng,A c=gc[i];
    P(_tP(c)||_t(c)>=tM||_n(c)-n,x(al(0)))                            // ragged column: don't guess
-   switch(_t(c)){
+   switch(TST(_t(c))){   //a temporal list as its ints (2.9.0)
     case tG: case tC: AJS_NE(G) break;
     case tH: AJS_NE(H) break;
     case tI: case tS: AJS_NE(I) break;             // tS stores packed 32-bit ids
@@ -299,7 +300,7 @@ A ajsC(A x){
  #undef AJS_NE
  // ---- pass 2: ordering column non-decreasing inside each run ------------
  #define AJS_ORD(T) {CO T*RES p=_V(tcol);for(U r=1;r<n;r++)if(!chg[r]&&p[r]<p[r-1])return x(al(0));}
- switch(_t(tcol)){
+ switch(TST(_t(tcol))){   //a temporal list as its ints (2.9.0)
   case tG: AJS_ORD(G) break;
   case tC: AJS_ORD(UC) break;   // chars: unsigned, as xasc sorts them
   case tH: AJS_ORD(H) break;
@@ -654,7 +655,7 @@ Z __attribute__((always_inline)) inline A prj_(A x,CO A*a,U n)_(XmMA(x8(a,n))U k
 AX(prj,prj_(x,a,n))   //prj_: inlined into d3s, d4s (an amend at more than one level), as prj(DOT,..) was
 A2(com,/*01*/AK(yK,AT(tq,aA2(xR,y))))
 Z A iM(A x,L i)_(Q(xtM);A y=xy;Q(ytA);P(!yn,am(_R(xx),rs0(enl(io(yx,i)))))A z=aA(yn);Fj(zn,zA[j]=io(yA[j],i))am(_R(xx),sqz(z)))   //no columns: 0# of the prototype's row, a table when rows are dicts
-A ii(A x/*0*/,U i)_(X(RA(_R(xa))RC(ac(xc))RG(ai(xg))RH(ai(xh))RI(ai(xi))RL(al(xl))RF(af(xf))RS(as(xi))Rm(ii(xy,i))RM(iM(x,i))RE(az(*xL+i))RB(ai(xG[i>>3]>>(i&7)&1))R_(xR))0)
+A ii(A x/*0*/,U i)_(X(RA(_R(xa))RC(ac(xc))RG(ai(xg))RH(ai(xh))RI(ai(xi))RL(al(xl))RF(af(xf))RS(as(xi))Rm(ii(xy,i))RM(iM(x,i))RE(az(*xL+i))RB(ai(xG[i>>3]>>(i&7)&1))RQV(UC k=TQA(xt);TQVN(xt)?AT(k,al(xl)):atq(k,xi))R_(xR))0)
 A io(A x/*0*/,L i)_(X(RE(i<(W)(xL[1]-*xL)?az(*xL+i):_R(cn[tl]))RT_E(i<(W)xn?ii(x,i):xn?mkn(ii(x,0)):xtA?_R(xx):_R(cn[xt]))Rt(xR)Rm(io(xy,i))RM(iM(x,i)))0)
 A1(fir,x(io(x,0)))A1(las,x(io(x,xN-1)))
 ZN U maxfU(CO U*a,U n)_(U v=0;F(n,v=MAX(v,a[i]))v)
@@ -680,6 +681,9 @@ Z V gat(V(*f)(ambcn),U es,CO V*a,U m,CO U*b,V*c,U n){int nt=n<PGAT_MIN?1:par_thr
 // amber 2.7: a dict made `s (q's `s#d) looks up by steps: the value at the last key not above y, null below the
 // first key. bin does numbers; other keys (symbols, by name) count the keys not above y.
 Z A dstep(A k,A y)_(UC t=_t(k);P(LH(tB,t,tL)||t==tF,bin(k,y))K2("{[k;v]{[k;v]-1++/~v<k}[k]'v}",k,y))   //K2 borrows k
+//Amber 2.9.0: a gather from a temporal list ran on its ints (tI or tL); tqo gives the result its type back, and a 32-bit one
+//that an index out of range sent to 64 bits (a null for it) its 32 bits and null back
+Z A tqo(A z,UC u)_(P(_t(z)==tL&&!TQVN(u),A w=an(_n(z),u);F(_n(z),L v=_L(z)[i];_I(w)[i]=v==NL?NIT:(I)v)z(w))_T(z)=u;z)
 A2(i1,/*01*/P(y==GAP||y==au,xR)
  X(Rt(y(xR))
    RE(x=gZ(xR);x(i1(x,y)))
@@ -700,7 +704,7 @@ A2(i1,/*01*/P(y==GAP||y==au,xR)
         RI(U n=yn;
          X(RA(A z=aA(n);F(n,za=io(x,yi))y(0);I(!n,zx=mkn(io(x,0)))sqz(z))
            RB(x=cG(xR);x(i1(x,y)))
-           R_(C t=xt;B k=t-tG<3u&&maxfU(yV,yn)>=xn;A z=an(n,k?tL:t);My(U q_=7*k+t-tG;gat(G(&iG,iH,iI,oL,oF,iC,iS,oG,oH,oI)[q_],(U)"\1\2\4\10\10\1\4\10\10\10"[q_],xV,xn,yV,zV,n))z))0))0))0)
+           R_(C u=xt,t=TQV(u)?TQVN(u)?tL:tI:u;B k=t-tG<3u&&maxfU(yV,yn)>=xn;A z=an(n,k?tL:t);My(U q_=7*k+t-tG;gat(G(&iG,iH,iI,oL,oF,iC,iS,oG,oH,oI)[q_],(U)"\1\2\4\10\10\1\4\10\10\10"[q_],xV,xn,yV,zV,n))TQV(u)?tqo(z,u):z))0))0))0)   //a temporal list: as its ints (tqo)
 Z A3(i2,/*001*/C b=ytT||y==GAP||y==au;x=Nz(i1(x,yR));P(!b,x(x1(z)))x(l2f(dot,x,aA1(z))))
 Z AX(i8,A y=*a;P(n==1,i1(x,y))P(n==2,y(_2(x,y,a[1])))a++;n--;C b=ytT||y==GAP||y==au;x=i1(x,y);P(!x,mrn(n,a);x)P(!b,x(i8(x,a,n)))x(l2f(dot,x,aV(tA,n,a))))
 L iw(A x/*0*/,U w,L i)_(S4(w,_(xg),_(xh),_(xi),_(xl))0)
@@ -886,15 +890,15 @@ Z A1(qfb,P(!xtC,et(x))P(xn-8,el(x))x=rev(x);x(aV(tf,1,xV)))//float from bits
 // neighbour counts: 308 = descents, 310 = equal neighbours), so the collation is
 // exactly the one sort and find use. An `s vector the engine sorted is trusted.
 Z L atcnt(A x,L code)_(A fa[3];fa[0]=az(code);fa[1]=x;fa[2]=au;A c=fredC(fa,3);P(!c,-1)gl(c))
-Z A1(qsa,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)P(_at(x)==1,x)L d=atcnt(x,308);P(d<0,x(0))P(d,x(err0("s-fail")))x=mut(x);_at(x)=1;x)//amber: `s sorted
-Z A1(qua,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)P(_at(x)==2,x)A u=unq(_R(x));P(!u,x(0))U k=_N(u);mr(u);P(k!=xn,x(err0("u-fail")))x=mut(x);_at(x)=2;x)//amber: `u unique
-Z A1(qpa,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)P(_at(x)==3,x)L e=atcnt(x,310);P(e<0,x(0))A u=unq(_R(x));P(!u,x(0))U k=_N(u);mr(u);
+Z A1(qsa,UC t=_t(x);P(_tP(x)||!LH(tG,TST(t),tS),x)P(_at(x)==1,x)L d=atcnt(x,308);P(d<0,x(0))P(d,x(err0("s-fail")))x=mut(x);_at(x)=1;x)//amber: `s sorted
+Z A1(qua,UC t=_t(x);P(_tP(x)||!LH(tG,TST(t),tS),x)P(_at(x)==2,x)A u=unq(_R(x));P(!u,x(0))U k=_N(u);mr(u);P(k!=xn,x(err0("u-fail")))x=mut(x);_at(x)=2;x)//amber: `u unique
+Z A1(qpa,UC t=_t(x);P(_tP(x)||!LH(tG,TST(t),tS),x)P(_at(x)==3,x)L e=atcnt(x,310);P(e<0,x(0))A u=unq(_R(x));P(!u,x(0))U k=_N(u);mr(u);
  P(xn&&(L)xn-e!=(L)k,x(err0("p-fail")))x=mut(x);_at(x)=3;x)//amber: `p parted: #runs = #distinct
 // whether x keeps the promise of attribute a (1 `s, 2 `u, 3 `p; 4 `g promises nothing), by the
 // checks `sa `ua `pa make, without an error: -9! (ser.c) keeps an attribute byte it reads only then
-UC atok(A x,UC a)_(P(a<1||a>3||_tP(x)||!LH(tG,_t(x),tS),a==4)P(a==1,atcnt(x,308)==0)
+UC atok(A x,UC a)_(P(a<1||a>3||_tP(x)||!LH(tG,TST(_t(x)),tS),a==4)P(a==1,atcnt(x,308)==0)
  A u=unq(_R(x));P(!u,0)U k=_N(u);mr(u);P(a==2,k==_n(x))L e=atcnt(x,310);e>=0&&(L)_n(x)-e==(L)k)
-Z A1(qga,UC t=_t(x);P(_tP(x)||!LH(tG,t,tS),x)x=mut(x);_at(x)=4;x)//amber: `g grouped
+Z A1(qga,UC t=_t(x);P(_tP(x)||!LH(tG,TST(t),tS),x)x=mut(x);_at(x)=4;x)//amber: `g grouped
 // ---- amber 2.7: q's `s#x `u#x `p#x `g#x, and `#x to take the attribute off --------------------------------
 // The same answers as kdb+ 4.1 (checked case by case against q.exe, see docs/AMBER.md): every list may carry
 // one, an atom is 'type; `s needs the order sort uses, `u no repeats, `p equal items next to each other ('p-fail,
@@ -907,7 +911,7 @@ Z A atchk(UC c,A y){   //y a list (not B, not general): the checks `sa `ua `pa m
 Z A atlist(UC c,A y){
  UC t=_t(y),a=c=='s'?1:c=='u'?2:c=='p'?3:4;
  P(t==tE,atlist(c,gZ(y)))
- P(LH(tG,t,tS),atchk(c,y))
+ P(LH(tG,TST(t),tS),atchk(c,y))   //a temporal list as its ints
  I(t==tB,A g=cG(_R(y));P(!g,y(0))g=atchk(c,g);P(!g,y(0))mr(g);return atset(y,a);)
  I(t==tA,I k=tjk(y);
   I(TQ(k),A l=tjn(y);P(!l,y(0))l=atchk(c,l);P(!l,y(0))mr(l);return atset(y,a);)   //dates and times: by their values
@@ -1181,7 +1185,7 @@ A ixv2(UC d,A q,A z/*00.*/)_(USQ(v2[d](q,_R(z))))   //b.c ixca: the verb on the 
 //into a sorted dict it amends in place (one held elsewhere too is copied: the key is added, and the copy has no mark);
 //but 'type, as q, for a key of another type than typed keys (ixkf, on that path only). 1: so, and the error set. Out of
 //line: its callers test the mark first
-Z B ixkf(UC k,UC t)_(k>tm?t==k||LH(ti,k,tl)&&LH(ti,t,tl):LH(tE,k,tL)?LH(ti,t,tl)||LH(tE,t,tL):k==tF?t==tf||t==tF:k==tC?t==tc||t==tC:k==tS?t==ts||t==tS:1)   //does a key of type t fit keys of type k?
+Z B ixkf(UC k,UC t)_(k>tm?t==k||LH(ti,k,tl)&&LH(ti,t,tl):LH(tE,k,tL)?LH(ti,t,tl)||LH(tE,t,tL):k==tF?t==tf||t==tF:k==tC?t==tc||t==tC:k==tS?t==ts||t==tS:TQV(k)?t==k||t==TQA(k):1)   //does a key of type t fit keys of type k? (a temporal list: its own kind, 2.9.0)
 //(k an atom's type: keys in a general list whose items are all atoms of that type, as dates are here, where q has a
 //typed list: ixku; else tA, which any key fits)
 Z UC ixku(A ks)_(U n=_N(ks);UC u=n?_t(*_A(ks)):tA;F(n,I(_t(_A(ks)[i])!=u,u=tA;break))u>tm?u:tA)

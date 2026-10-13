@@ -134,7 +134,7 @@ X1(asc,Rt(opn(x))Rm(grdm(x,asc))RM(ascM(x))RS(xn<32?asc(str(x)):sgS(x))RA(P(xn-(
  // single extraction pass and answered with the identity permutation.
  // amber 2.3: an `s vector grades to the identity (the grade is stable), so it
  // is written directly instead of being rediscovered by the key pass.
- R4(tH,tI,tL,tF,P(xn-(I)xn,ez(x))N n=xn;
+ R11(tH,tI,tL,tF,tDT,tTM,tNP,tMN,tSC,tMO,tSP,P(xn-(I)xn,ez(x))N n=xn;   //a temporal list grades as its ints (cntgrd and rdxg read it so)
   I(_at(x)==1,A y=aI((U)n);I*RES o=yI;for(N i=0;i<n;i++)o[i]=(I)i;return x(ct(tZ(n-1),y));)
   A y=cntgrd(x);I(!y,y=rdxg(x))P(!y,ascB(x))x(ct(tZ(n-1),y)))
  R_(P(xn-(I)xn,ez(x))ascB(x)))
@@ -159,10 +159,11 @@ X1(dsc,RMT(x=rev(N(asc(rev(x))));sub(ai(xN-1),x))Rm(grdm(x,dsc))Ril(cls(gl(x)))R
 // caller falls back to the sort path: a sparse sweep over a huge table is worse
 // than sorting.  Workspace comes from the HFT scratch arena, as in src/v.c.
 Z A grpI(A x){
- N n=xn;CO I*RES v=(CO I*)_V(x);
- I mn=v[0],mx=v[0];
- F(n,I t=v[i];I(t<mn,mn=t)I(t>mx,mx=t))
- L rng=(L)mx-(L)mn+1;
+ N n=xn;CO I*RES v=(CO I*)_V(x);B q=TQV(xt),u=0;   //Amber 2.9.0: a 32-bit temporal list too, its null (NIT) a slot of its own past the range
+ I mn=0x7fffffff,mx=(I)0x80000000;
+ F(n,I t=v[i];I(q&&t==NIT,u=1;continue)I(t<mn,mn=t)I(t>mx,mx=t))
+ I(mn>mx,mn=mx=0)
+ L rng=(L)mx-(L)mn+1+u;
  // cap the table both absolutely and relative to the data: 4M slots, and no
  // more than 8 slots per row, so a sparse key space cannot blow up the sweep.
  P(rng>((L)1<<22)||rng>8*(L)n+1024,0)
@@ -173,13 +174,13 @@ Z A grpI(A x){
  I*RES fst=(I*)arena_alloc((size_t)md*SZ(I));P(!fst,arena_release(mk);0)
  MS(cnt,0,(size_t)rng*SZ(U));
  U nb=0;
- F(n,L k=(L)v[i]-mn;I(!cnt[k]++,gid[k]=nb;fst[nb]=v[i];nb++))
+ F(n,L k=u&&v[i]==NIT?rng-1:(L)v[i]-mn;I(!cnt[k]++,gid[k]=nb;fst[nb]=v[i];nb++))
  A z=aA(nb);P(!z,arena_release(mk);0)
- F(nb,_A(z)[i]=aI(cnt[(L)fst[i]-mn]))
+ F(nb,_A(z)[i]=aI(cnt[u&&fst[i]==NIT?rng-1:(L)fst[i]-mn]))
  U*RES fil=(U*)arena_alloc((size_t)nb*SZ(U));P(!fil,arena_release(mk);mr(z);0)
  MS(fil,0,(size_t)nb*SZ(U));
- F(n,L k=(L)v[i]-mn;U s=gid[k];_I(_A(z)[s])[fil[s]++]=i)
- A ky=aV(tI,nb,fst);          // copies out of the arena before it is released
+ F(n,L k=u&&v[i]==NIT?rng-1:(L)v[i]-mn;U s=gid[k];_I(_A(z)[s])[fil[s]++]=i)
+ A ky=aV(q?xt:tI,nb,fst);          // copies out of the arena before it is released (a temporal list's keys of its kind)
  arena_release(mk);
  return am(ky,z);
 }
@@ -237,7 +238,8 @@ Z X1(grq,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et
   K1("{$[x;x[*'g]!g@:<g:(&~(~*s)=':s:x i)_i:<x;x!0#,!0]}",x))
  RF(P(!xn,K1("{x!0#,!0}",x))x(K2("{x[*'g]!g@:<g:(&1,~(1_s)=(-1)_s:y i)_i:<y}",x,fcanon(x))))   //floats: 2.3.0's canonical keys (first spelling, indices in order); K2 borrows x
  R(tA,I(xn>1,A z=grpT(x);P(z,x(z)))K1("{$[#x;{b:~x~':x i:<x;i:i@<i+(#x)*-1++\\b;g:(&b)_i;g:g@<g;x[*'g]!g}x;x!0#,!0]}",x))   //generic lists (which may hold floats): ~ joins -0.0 with 0.0 (and NaNs), which grade keeps apart, so the indices are sorted within each run of matching items (one grade, by run then index)
- R3(tE,tL,tM,K1("{$[#x;x[*'g]!g@:<g:(&~x~':x i)_i:<x;x!0#,!0]}",x)))
+ R5(tDT,tTM,tMN,tSC,tMO,P(!xn,K1("{x!0#,!0}",x)){A g_=grpI(x);P(g_,x(g_))}K1("{$[x;x[*'g]!g@:<g:(&~(~*s)=':s:x i)_i:<x;x!0#,!0]}",x))   //a 32-bit temporal list as an int one (grpI keeps its kind)
+ R5(tE,tL,tM,tNP,tSP,K1("{$[#x;x[*'g]!g@:<g:(&~x~':x i)_i:<x;x!0#,!0]}",x)))
 //the keys of a group are distinct x, so they take the attribute distinct gives, as q: `s stays, `u and `g give `u,
 //`p none (a dict's values likewise; an empty list's keys are the list itself); keys that have it already are left alone
 A1(grp,UC a=_tP(x)||!_tT(x)||xtE?0:_at(x);A z=grq(x);P(!z||!a,z)UC t=a==1?1:a==3?0:2;P(_at(zx)==t,z)zx=mut(zx);_at(zx)=t;z)
@@ -245,7 +247,7 @@ Z A1(cSI,Q(xtS||xtI)C t=tS^tI^xt;MINE(x)?(_at(x)=0,AT(t,x)):x(aV(t,xn,xV)))
 Z I penc(A,int,A*,A*);
 X1(unq,RM(K1("{$[#x;x@i@<i:&/'.=+.+x;x]}",x))   /*a table: its distinct rows, first seen first (issue #19); as q*/Rm(unq(val(x)))RE(x)RS(I(xn>=(1u<<16),A u_=0;I(!penc(x,par_thread_count(xn),&u_,0),return x(u_)))cSI(unq(cSI(x))))Ril(rndF(gl(x)))R_(et(x))RB(unq(cG(x)))
  RGC(C a[256]={},r[256],t=xt;U n=0;Mx(F(xn,UC v=xg;I(!a[v],a[v]=1;r[n++]=v)))aV(t,n,r))
- R5(tA,tH,tI,tL,tF,P(xn<2,x)
+ R12(tA,tH,tI,tL,tF,tDT,tTM,tNP,tMN,tSC,tMO,tSP,P(xn<2,x)
   {A u_=xtA?unqT(x):unqL(x);P(u_,x(u_))}     /*amber: C hash/LUT distinct (or, for a generic list, unqT), 0 = not handled*/
   P(xn<<xw-3<pg&&!xtA,K1("{x@&(x?x)=!#x}",x))
   P(xtF,x(K2("{x@i@<i@:&@[;0;:;1]@~=':y@i:<y}",x,fcanon(x))))   //long float vectors: 2.3.0's canonical keys, which keep the first spelling; K2 borrows x

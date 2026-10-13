@@ -11,7 +11,7 @@
  *
  * FORMAT.  4-byte header "AMB" + version, then one recursive node:
  *
- *   u8 tag                        the K type enum value (_t(x))
+ *   u8 tag                        the K type enum value (_t(x)), numbered as before 2.9 (TXC)
  *   PACKED types (TP(t): ti tc tu tv tw tx tdt ttm) -- these live INSIDE the
  *     A word itself, not on the heap, so there is no header and no payload:
  *       i32 value                 (_v(x))
@@ -88,7 +88,7 @@ Z V enc(WB*b,A x,I d){
  I(d>SERDEPTH,b->bad=2;return)
  C t=_t(x);
  I(t==to||t==tp||t==tq||t==tr||t==tx,b->bad=2;return)   /* functions (and C function pointers): unsupported */
- wu8(b,(UC)t);
+ wu8(b,(UC)TXC(t));   //the code as before 2.9 (a.h TXC), so old bytes still read
  I(t==ts,wsym(b,(U)_v(x));return)
  I(TP(t),wu32(b,(U)_v(x));return)
  encv(b,x,d);}
@@ -116,7 +116,7 @@ Z U  rsym(RB*b){U n=ru32(b);I(b->bad,return 0)CO V*q=rtake(b,n);I(!q,return 0)
 Z A dec(RB*b,I d);
 Z A dec(RB*b,I d){
  I(b->bad||d>SERDEPTH,b->bad=1;return 0)
- UC t=ru8(b);I(b->bad,return 0)
+ UC t=ru8(b);I(b->bad,return 0)t=(UC)TIC(t);
  I(t<tA||t>=tn,b->bad=1;return 0)
  I(t==to||t==tp||t==tq||t==tr,b->bad=1;return 0)
  I(t==ts,U id=rsym(b);I(b->bad,return 0)return as(id))

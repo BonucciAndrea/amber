@@ -93,15 +93,19 @@ Z NI __attribute__((cold)) A filI(A x,A y)_(filF(x,N(cF(y))))   //a float fillin
 Z NI __attribute__((cold)) A crtL(A x,A y)_(K2("{@[y;w;:;x w:&^y]}",x,y))   //lists of one count (crt; out of line)
 Z NI __attribute__((cold)) A crtA(A x,A y)_(K2("{x^'y}",x,y))   //two general lists of one count: item by item, as q (crt; out of line)
 Z NI __attribute__((cold)) A crtT(A x,A y)_(K2("{+(!+x)!(. +x)^'. +y}",x,y))   //two tables (crt; out of line)
-Y2(fil,RmMA(e2f(fil,x,y))Rt(P(yt>=tdt,P(!(xtt&&(xt>=tdt||xtz)),et(y))B n=TQN(yt)?*_L(y)==NL:(I)y==NIT;n?(mr(y),xR):y)YU(y-au?y:xR)fir(fil(x,enl(y))))RF(P(_t(x)==tf||_t(x)==ti||_t(x)==tl,filF(x,y))K2("{@[y;&^y;:;x]}",x,y))R_(P(_t(x)==tf&&LH(tE,yt,tL),filI(x,y))K2("{@[y;&^y;:;x]}",x,y)))   //Amber 2.8.0: a float filling ints gives floats, as q (it made a general list)   //Amber 2.9.0: x^y of temporals is y, or x where y is null, as q (an int x too); another x 'type
+//Amber 2.9.0: an atom of a temporal list's kind (or an int, its number) filling its nulls, or a list of that kind item by item, in one loop
+Z A filQ(A x,A y)_(U n=yn;B w=TQVN(yt),l=xt==yt;P(l&&xn-n,el(y))L v=l?0:xtz?gl_(x):TQN(xt)?*_L(x):(I)x;P(!l&&!w&&v-(I)v,et(y))y=mut(y);
+ I(w,L*RES p=yV;CO L*q=l?xV:0;F(n,I(p[i]==NL,p[i]=l?q[i]:v)))E(I*RES p=yV;CO I*q=l?xV:0;I c=(I)v;F(n,I(p[i]==NIT,p[i]=l?q[i]:c)))y)
+Y2(fil,RmMA(e2f(fil,x,y))RQV(P(xt==TQA(yt)||xt==yt||xtz,filQ(x,y))K2("{@[y;&^y;:;x]}",x,y))Rt(P(yt>=tdt,P(!(xtt&&(xt>=tdt||xtz)),et(y))B n=TQN(yt)?*_L(y)==NL:(I)y==NIT;n?(mr(y),xR):y)YU(y-au?y:xR)fir(fil(x,enl(y))))RF(P(_t(x)==tf||_t(x)==ti||_t(x)==tl,filF(x,y))K2("{@[y;&^y;:;x]}",x,y))R_(P(_t(x)==tf&&LH(tE,yt,tL),filI(x,y))K2("{@[y;&^y;:;x]}",x,y)))   //Amber 2.8.0: a float filling ints gives floats, as q (it made a general list)   //Amber 2.9.0: x^y of temporals is y, or x where y is null, as q (an int x too); another x 'type
 //Chars against ints or floats share no item: except removes nothing, as 2.3.1, ngn/k and q (find of one in the
 //other is 'type since issue #20 row 12, and except inherited it - digest #64); a range (tE) counts as its ints
 Z B cxn(UC a,UC b)_(B ca=a==tC||a==tc,cb=b==tC||b==tc,na=LH(tE,a,tF)||a==ti||a==tl||a==tf,nb=LH(tE,b,tF)||b==ti||b==tl||b==tf;ca&&nb||na&&cb)
 B cxn_(UC a,UC b)_(cxn(a,b))//for und's dict drop (h.c), on its error path; except keeps the static one
 // Amber 2.8.0: x^y of two typed lists of one count fills y's nulls from x, and of two tables column by column, as q;
 // lists of other counts (and an atom y) are still k's except. 1 2 3^0N 5 0N was 1 2 3 (except), q's 1 5 3
-X2(crt,Rt(P(TQ(xt)&&!(TQ(yt)||yt==tA),et(y))fil(x,y))R_(P(xtM&&!_tP(y)&&ytM,crtT(x,y))en(y))
- RT(P(xN&&xt<=tS&&xt!=tA&&!_tP(y)&&yt<=tS&&yt!=tA&&yN==xN,crtL(x,y))P(xN&&xt==tA&&!_tP(y)&&yt==tA&&yN==xN,crtA(x,y))P(cxn(xt,yt),y(xR))I v=rnk(y);P(!v,crt(x,enl(y)))
+X2(crt,Rt(P(TQ(xt)&&!(TQ(yt)||TQV(yt)||yt==tA),et(y))fil(x,y))R_(P(xtM&&!_tP(y)&&ytM,crtT(x,y))en(y))
+ RT(P(xN&&xt<=tS&&xt!=tA&&!_tP(y)&&yt<=tS&&yt!=tA&&yN==xN,crtL(x,y))P(xN&&TQV(xt)&&!_tP(y)&&yt==xt&&yN==xN,fil(x,y))   //two temporal lists of one kind (2.9.0)
+  P(xN&&xt==tA&&!_tP(y)&&yt==tA&&yN==xN,crtA(x,y))P(cxn(xt,yt),y(xR))I v=rnk(y);P(!v,crt(x,enl(y)))
   P(v>0&&rnk(x)==v,I(xtE&&ytE,Lij L k=*yL,l=yL[1];P(k<=i,y(0);aE(MAX(i,l),MAX(j,l)))P(j<=l,y(0);aE(i,MIN(j,k))))
    //a general x's chars against numeric y, or numbers against chars, are kept, not looked for (find is 'type): they
    //are found as ` instead, which no char or number y holds ((0;" ")^0 is ," " - digest #64)
@@ -576,7 +580,7 @@ Z V rdxk_w(V*c_,int t){RK*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;I*RES ia=c->i
 Z V rdxc_w(V*c_,int t){RK*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;MC(c->o+s,c->r+s,(e-s)*SZ(I));}
 A rdxg(A x){
  UC t=_t(x);N n=_n(x);U nb;
- switch(t){
+ switch(TST(t)){
   case tG: case tC: nb=1;break;
   case tH: nb=2;break;
   case tI: nb=4;break;
@@ -590,11 +594,11 @@ A rdxg(A x){
  I*RES iA=(I*)arena_alloc(n*SZ(I));I*iB=(I*)arena_alloc(n*SZ(I));
  if(!kA||!kB||!iA||!iB){arena_release(mk);mr(y);return 0;}
  B srt=1;int pnt=n>=PRDX_MIN?par_thread_count(n):1;
- if(pnt>1){RK c={.p=_V(x),.k=kA,.ia=iA,.n=n,.nt=(U)pnt,.t=t};par_run(pnt,rdxk_w,&c);   //Keys in parallel, then the seams
+ if(pnt>1){RK c={.p=_V(x),.k=kA,.ia=iA,.n=n,.nt=(U)pnt,.t=TST(t)};par_run(pnt,rdxk_w,&c);   //Keys in parallel, then the seams
   for(int w=0;w<pnt;w++)srt&=c.srt[w];
   for(int w=1;srt&&w<pnt;w++){N j=n*w/pnt;if(kw==4?((U*)kA)[j]<((U*)kA)[j-1]:((W*)kA)[j]<((W*)kA)[j-1])srt=0;}}
  else
- switch(t){
+ switch(TST(t)){
   case tG: case tC: RDXK(U,G,AMKG(p[i])) break;
   case tH: RDXK(U,H,AMKH(p[i])) break;
   case tI: RDXK(U,I,AMKI(p[i])) break;
@@ -636,7 +640,7 @@ A rdxg(A x){
 // integer vector, else 1 with *lo/*hi set.
 Z B cntrange(A x,L*lo,L*hi){
  UC t=_t(x);N n=_n(x);U w;
- switch(t){case tG:w=0;break;case tH:w=1;break;case tI:w=2;break;case tL:w=3;break;default:return 0;}
+ switch(TST(t)){case tG:w=0;break;case tH:w=1;break;case tI:w=2;break;case tL:w=3;break;default:return 0;}
  if(n<2)return 0;
  CO V*p=_V(x);
  L a=RD4(w,p,0),b=a;
@@ -645,7 +649,7 @@ Z B cntrange(A x,L*lo,L*hi){
 // same, but also reports whether the vector is already non-decreasing
 Z B cntrangeS(A x,L*lo,L*hi,B*srt){
  UC t=_t(x);N n=_n(x);U w;
- switch(t){case tG:w=0;break;case tH:w=1;break;case tI:w=2;break;case tL:w=3;break;default:return 0;}
+ switch(TST(t)){case tG:w=0;break;case tH:w=1;break;case tI:w=2;break;case tL:w=3;break;default:return 0;}
  if(n<2)return 0;
  CO V*p=_V(x);
  L a=RD4(w,p,0),b=a,pv=a;B up=1;
@@ -752,7 +756,7 @@ A cntgrd(A x){
  E(P(!cntrange(x,&lo,&hi),0))
  if(!cntok(lo,hi,n,&rg))return 0;
  if(n!=(N)(U)(I)n)return 0;                    // grade indices are 32-bit
- UC t=_t(x);U w=t==tG?0:t==tH?1:t==tI?2:3;
+ UC t=_t(x),s=TST(t);U w=s==tG?0:s==tH?1:s==tI?2:3;   //a temporal list as its ints (ST); the result keeps t
  ArenaMark mk=arena_mark();
  N*RES c=(N*)arena_alloc((N)rg*SZ(N));
  if(!c){arena_release(mk);return 0;}
@@ -783,7 +787,7 @@ A cntsrt(A x){
  E(P(!cntrangeS(x,&lo,&hi,&srt),0)
    I(srt,_at(x)=1;return _R(x);))
  if(!cntok(lo,hi,n,&rg))return 0;
- UC t=_t(x);U w=t==tG?0:t==tH?1:t==tI?2:3;
+ UC t=_t(x),s=TST(t);U w=s==tG?0:s==tH?1:s==tI?2:3;   //a temporal list as its ints (ST); the result keeps t
  ArenaMark mk=arena_mark();
  N*RES c=(N*)arena_alloc((N)rg*SZ(N));
  if(!c){arena_release(mk);return 0;}
@@ -942,7 +946,7 @@ AMNORMS(amnorms8,W)
   for(N i=0;i<n;i++){KT v=(KT)(EXPR);k[i]=v;if(i&&v<pv)srt=0;pv=v;}}
 A rdxsrt(A x){
  UC t=_t(x);N n=_n(x);U nb;
- switch(t){
+ switch(TST(t)){
   case tG: case tC: nb=1;break;
   case tH: nb=2;break;
   case tI: nb=4;break;
@@ -954,11 +958,11 @@ A rdxsrt(A x){
  V*kA=arena_alloc(n*kw),*kB=arena_alloc(n*kw);
  if(!kA||!kB){arena_release(mk);return 0;}
  B srt=1;int pnt=n>=PRDX_MIN?par_thread_count(n):1;
- if(pnt>1){RS c={.p=_V(x),.k=kA,.n=n,.nt=(U)pnt,.t=t};par_run(pnt,rsk_w,&c);   //Keys in parallel, then the seams
+ if(pnt>1){RS c={.p=_V(x),.k=kA,.n=n,.nt=(U)pnt,.t=TST(t)};par_run(pnt,rsk_w,&c);   //Keys in parallel, then the seams
   for(int w=0;w<pnt;w++)srt&=c.srt[w];
   for(int w=1;srt&&w<pnt;w++){N j=n*w/pnt;if(kw==4?((U*)kA)[j]<((U*)kA)[j-1]:((W*)kA)[j]<((W*)kA)[j-1])srt=0;}}
  else
- switch(t){
+ switch(TST(t)){
   case tG: case tC: RDXSK(U,G,AMKG(p[i])) break;
   case tH: RDXSK(U,H,AMKH(p[i])) break;
   case tI: RDXSK(U,I,AMKI(p[i])) break;
@@ -969,16 +973,16 @@ A rdxsrt(A x){
  if(nb<=4){
   U mn=0;U w=amnorms4((U*)kA,n,nb,&mn);
   U*r=w?amrdxk4((U*)kA,(U*)kB,n,w):(U*)kA;
-  if(pnt>1){RS c={.o=_V(z),.r=r,.mn=mn,.n=n,.nt=(U)pnt,.t=t};par_run(pnt,rsu_w,&c);}else
-  switch(t){
+  if(pnt>1){RS c={.o=_V(z),.r=r,.mn=mn,.n=n,.nt=(U)pnt,.t=TST(t)};par_run(pnt,rsu_w,&c);}else
+  switch(TST(t)){
    case tG: case tC:{G*RES o=(G*)_V(z);for(N i=0;i<n;i++)o[i]=AMUKG(r[i]+mn);}break;
    case tH:{H*RES o=(H*)_V(z);for(N i=0;i<n;i++)o[i]=AMUKH(r[i]+mn);}break;
    default:{I*RES o=(I*)_V(z);for(N i=0;i<n;i++)o[i]=AMUKI(r[i]+mn);}break;}
  }else{
   W mn=0;U w=amnorms8((W*)kA,n,nb,&mn);
   W*r=w?amrdxk8((W*)kA,(W*)kB,n,w):(W*)kA;
-  if(pnt>1){RS c={.o=_V(z),.r=r,.mn=mn,.n=n,.nt=(U)pnt,.t=t};par_run(pnt,rsu_w,&c);}else
-  if(t==tL){L*RES o=(L*)_V(z);for(N i=0;i<n;i++)o[i]=AMUKL(r[i]+mn);}
+  if(pnt>1){RS c={.o=_V(z),.r=r,.mn=mn,.n=n,.nt=(U)pnt,.t=TST(t)};par_run(pnt,rsu_w,&c);}else
+  if(TST(t)==tL){L*RES o=(L*)_V(z);for(N i=0;i<n;i++)o[i]=AMUKL(r[i]+mn);}
   else     {F*RES o=(F*)_V(z);for(N i=0;i<n;i++)o[i]=amuF(r[i]+mn);}}
  arena_release(mk);
  _at(z)=1;                              // the result IS sorted: keep `s#
@@ -996,13 +1000,13 @@ A rdxsrt(A x){
 // trusted now that setting it checks the data and every in-place write drops it
 // (m.c mut/aa, 2.c), so this is q's rule: sorting sorted data costs nothing.
 Z A srtUC(A x,B d){U n=xn,c[256]={0};CO UC*p=xV;F(n,c[p[i]]++)A z=an(n,tC);UC*r=zV;F(256,U k=d?255-i:i;MS(r,k,c[k]);r+=c[k])_at(z)=!d;return x(z);}//chars: a counting sort as unsigned bytes
-A1(srtC,UC t=_t(x);
+A1(srtC,UC t=TST(_t(x));   //a temporal list sorts as its ints (ST), cntsrt and rdxsrt keep its type
  I(!_tP(x)&&LH(tG,t,tS)&&_at(x)==1,return x)
  I(!_tP(x)&&t==tC,return srtUC(x,0))
  I(!_tP(x)&&LH(tG,t,tS)&&t-tC,A c=cntsrt(x);I(c,_at(c)=1;return x(c))
                         c=rdxsrt(x);I(c,_at(c)=1;return x(c)))
- A g=asc(xR);P(!g,x(0))A r=i1(x,g);x(0);P(!r,0)I(!_tP(r)&&LH(tG,_t(r),tS),_at(r)=1)I(_t(r)==tA,r=mut(r);_at(r)=1)r)   //dates and times too   //2.7: syms too, as q's asc (sort and find share one collation)   //any general list, as q: x@<x is in <'s order (mut: () may be the shared empty)
-A1(srtdC,UC t=_t(x);
+ A g=asc(xR);P(!g,x(0))A r=i1(x,g);x(0);P(!r,0)I(!_tP(r)&&LH(tG,TST(_t(r)),tS),_at(r)=1)I(_t(r)==tA,r=mut(r);_at(r)=1)r)   //dates and times too   //2.7: syms too, as q's asc (sort and find share one collation)   //any general list, as q: x@<x is in <'s order (mut: () may be the shared empty)
+A1(srtdC,UC t=TST(_t(x));
  I(!_tP(x)&&t==tC,return srtUC(x,1))
  I(!_tP(x)&&LH(tG,t,tS)&&t-tC,A c=cntsrt(x);I(c,A r=rev(x(c));P(!r,0)I(!_tP(r),_at(r)=0)return r;)
                         c=rdxsrt(x);I(c,A r=rev(x(c));P(!r,0)I(!_tP(r),_at(r)=0)return r;))
@@ -1010,9 +1014,9 @@ A1(srtdC,UC t=_t(x);
 // x@&y with y a 0/1 byte mask: one branch-free pass, no index vector. Any
 // other shape (bit masks, counts above 1, generic lists, a mask longer than x)
 // is exactly the old sequence: index by where.
-A2(cmprC,/*01*/UC t=xt;
+A2(cmprC,/*01*/UC t=TST(xt);
  I(!_tP(x)&&LH(tG,t,tS)&&!_tP(y)&&yt==tG&&yn&&yn<=xn,{
-  U n=yn;A z=an(n,t);int bad=0;N k=0;
+  U n=yn;A z=an(n,xt);int bad=0;N k=0;
   S4(xw-3,k=simd_compress_8(xV,yV,zV,n,&bad),k=simd_compress_16(xV,yV,zV,n,&bad),k=simd_compress_32(xV,yV,zV,n,&bad),k=simd_compress_64(xV,yV,zV,n,&bad))
   I(!bad,y(0);return AN((U)k,z))
   mr(z);})

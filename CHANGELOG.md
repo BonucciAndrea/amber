@@ -7,6 +7,9 @@
   one is a span, a date plus a span a timestamp), compares across kinds, casts, `"N"$` `"U"$` `"V"$` `"M"$`,
   `xbar`, `type` and json. A run of 234 temporal q lines went from 13% the same as q to 99%, and the
   everyday ones from 97% to 97.4. `date+1` over a list of dates got 12x quicker, the rest is as fast.
+- **Typed temporal lists**: a list of dates (or times, minutes, ...) is its own type now, like q's vectors, held as
+  its numbers. Sort, distinct and compares on them got 10-25x quicker, `` `date$ `` of timestamps 250x, and they
+  print and read back as q's (`2026.01.01 0N`, `2026.01 2026.02m`, `` `date$() ``). Column files keep them flat.
 - **Changed, to match q**: `09:30:00` is a second (a time keeps its ms, `09:30:00.000`), `date+0N` is `0Nd`
   (was 'domain), `"D"$"x"` is `0Nd` (was 'parse), a time minus a time is a time, and json writes `2026-03-15`.
 

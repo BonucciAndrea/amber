@@ -129,7 +129,21 @@ Z A pTmp(){S p=s;if(!C09(*p))return 0;if(*p=='0'&&p[1]=='N'&&p[2]&&strchr("dtpnu
 //'type, so a negative time's text did not read back. Dates and timestamps keep the verb, as q. tng lets
 //pTmp take one more millisecond, so -596:31:23.648 is a time, as "T"$ reads it
 Z A pTng()_(S o=s,q=s+1;W(C09(*q),q++)P(*q-':'&&*q-'D'||q==s+1,0)s++;tng=1;A b=pTmp();tng=0;P(!b,s=o;0)P(_t(b)==tsp,L v=*_L(b);mr(b);ansp((L)(0-(W)v)))atq(_t(b),0u-(U)(I)b))
-Z A pTms(A a){A z=0;UC k=_t(a);for(;*s==' ';){S o=s;while(*s==' ')s++;A b=pTmp();I(!b&&!tbad&&*s=='-'&&(k==ttm||k==tmn||k==tsc||k==tsp),b=pTng())if(!b){s=o;tbad=0;break;}if(_t(b)!=k){mr(b);s=o;break;}if(!z){z=emp(tA);PSH(z,MKL);PSH(z,a);}PSH(z,b);}return z?z:a;}   //As (d1;d2) parses: MKL and the items
+Z A tnk(UC k)_(TQN(k)?AT(k,al(NL)):atq(k,NIT))   //kind k's null
+Z B pT0(S p)_(p[0]=='0'&&p[1]=='N'&&!id1(p[2])&&p[2]-'.'&&p[2]-':')   //a bare 0N: in a temporal strand, an item of its kind (q prints a list's nulls so)
+Z A pTms(A a){A z=0;UC k=_t(a);for(;*s==' ';){S o=s;while(*s==' ')s++;A b=0;I(pT0(s),s+=2;b=tnk(k))E(b=pTmp();I(!b&&!tbad&&*s=='-'&&(k==ttm||k==tmn||k==tsc||k==tsp),b=pTng()))if(!b){s=o;tbad=0;break;}if(_t(b)!=k){mr(b);s=o;break;}if(!z)z=enl(_R(a));z=psh(z,b);}return z?(mr(a),z):a;}   //Amber 2.9.0: the list itself, as a literal int strand is (it was MKL and the items, made each time)
+//Amber 2.9.0: q's temporal vector literals that start with a bare 0N or a month without its m: 0N 2026.01.02, 0N 0Nd (all nulls,
+//the kind on the last), 2026.01 2026.02m and 2026.01 0N 2026.03m (a month list's m once, at the end). The items are 0N, a
+//temporal literal of one kind, or (for months) a year.month; anything else ends the list. 0 (s as it was) when it is none
+Z B pTy(S p,L*v)_(S q=p;W y=0;W(C09(*q),y=tdd(y,*q);q++)P(q==p||*q-'.'||!C09(q[1])||!C09(q[2]),0)W mo=(W)(q[1]-'0')*10+(W)(q[2]-'0');P(id1(q[3])||q[3]=='.'||q[3]==':'||mo<1||mo>12||y>178958970,0)*v=((L)y-2000)*12+(L)mo-1;1)   //a year.month (2026.01) before a month's m
+Z A pTv()_(S o=s;L v;P(!pT0(s)&&!pTy(s,&v),0)A r=aL(0);UC k=0;B y=0,nn=0;S e=s;
+ for(U n=0;;n++){I(n,I(*s-' ',break)W(*s==' ',s++))L w;
+  I(pT0(s),s+=2;w=NL;nn=1)
+  J(pTy(s,&w),W(C09(*s),s++)s+=3;y=1)
+  E(A b=pTmp();I(!b&&!tbad&&*s=='-'&&(!k||k==ttm||k==tmn||k==tsc||k==tsp),b=pTng())I(!b||k&&_t(b)-k,tbad=0;I(b,mr(b))s=e;break)k=_t(b);w=TQN(k)?*_L(b):(I)b==NIT?NL:(L)(I)b;mr(b))
+  r=psh(r,al(w));e=s;}
+ P(!k||!(nn||y)||y&&k-tmo,mr(r);s=o;0)
+ A z=an(_n(r),TQL(k));I(TQN(k),MC(_V(z),_V(r),(N)_n(r)*8))E(F(_n(r),L w=_L(r)[i];_I(z)[i]=w==NL?NIT:(I)w))mr(r);z)
 // amber 2.0.0: identifiers usable INFIX like a verb -- `x in y`, `t lj kt`,
 // `1 within 2 3`, `"/" sv parts` -- as well as the bracket form in[x;y].  ngn/k
 // already treats every unicode-named identifier (pt's `c>>7` branch) as an infix
@@ -196,7 +210,7 @@ Z A pt(C*v)_(C c=*s;                                                            
  P(C09(c)&&s[1]==':',B u=s[2]==':';s+=2+u;U i=20+c-'0';P(i>25,ep0())*v=1;Lt(tv-u)|i)
  P(c=='0'&&s[1]=='x',s+=2;p1(p0x()))
  P(num(s)&&(c-'-'||s==s0||s==ppe||(!id1(s[-1])&&!strchr(")]}\"",s[-1]))),   //ppe: just past a lambda's [params], whose ] is no noun (digest #40)
-  A tlit=c-'-'?pTmp():pTng();P(tlit,pTms(tlit))P(tbad,C b=tbad;tbad=0;b>1?ez0():ep0())
+  A tv=c-'-'?pTv():0;P(tv,tv)A tlit=c-'-'?pTmp():pTng();P(tlit,pTms(tlit))P(tbad,C b=tbad;tbad=0;b>1?ez0():ep0())
   B d=0,f=1;S p=s;c=*p;W(1,S q=p;p=pw(p);B(!f&&p==q||!num(p))f=0;p+=*p=='-';c=*p;B(!CA9(c))W(CA9(c)||c=='.'||c==':',d|=!!strchr(".nwef",c);c=*++p))p1(d?pF():pZ()))
  P(c>>7,S p=s;A x=N(pP());*v=1;AO(p-s0,x))
  // Amber 2.8.0: q's <> >= <= after a noun (a name, a number, a closing bracket or quote): the infix functions Q.ne Q.ge

@@ -42,6 +42,14 @@ rt[`colSyms;`a`bb`cccccc]
 rt[`colNulls;0N 1 0N]
 rt[`colFloats;0n 1.5 -0w 0w -0.0]
 rt[`colDates;2026.01.01 2026.01.02 2026.01.03]
+/ 2.9.0: a temporal list is a flat column (kind 0, type 33 for dates); a column of date atoms an older Amber wrote (kind 3,
+/ made here from a general list of them, as -9! of old bytes gives one) reads back as a typed list
+rt[`colStampNulls;2026.01.15D09:30:00.000000000 0Np]
+rt[`colMinutes;09:30 0N 09:31]
+rt[`colMonths;2026.01 0N 2026.03m]
+x:`wcol(T,"/c/dt";2026.01.01 2026.01.02;-1;0);t[`colDateFlat;(1:T,"/c/dt")5 6;0x0021]
+g:-9!0x414d4201010002000000000000001a192500001a1a250000;x:`wcol(T,"/c/kt";g;-1;0)
+t[`colOldTime;(@g;(1:T,"/c/kt")5 6;`rcol T,"/c/kt";@`rcol T,"/c/kt");(`A;0x031a;2026.01.01 2026.01.02;`D)]
 v:asc 1000?1000;`wcol(T,"/c/s";v;-1;0);t[`colKeepsSorted;attr `rcol T,"/c/s";`s]
 dom:`ibm`msft`aapl;sy:100?dom;x:`wcol(T,"/c/e";dom?sy;#dom;0)
 t[`colEnum;`rcol(T,"/c/e";dom);sy]
@@ -247,6 +255,6 @@ G:T,"/g";x:`wcol(G;1 2 3 300;-1;0)
 t[`rcolMapsFull;sub"v:{1:M}'!1000;G:\"",G,"\";w:{`rcol G}'!1100;`0:$(#w;+/w 1099;1 2 3 300~w 0)";"1100\n306\n1\n"]
 
 rm T
-hexpect[100]
+hexpect[105]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

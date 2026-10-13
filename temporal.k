@@ -25,9 +25,9 @@ pdate:{`i$"D"$x}                                            / "YYYY.MM.DD" -> da
 / (x~\:(::) on the whole list: indexing a general list of two or three verbs applies it as a train, (+;-)@0 1 is 0 0).
 / `tjn (src/w.c) takes a list of dates alone, or of timestamps, in one pass in C (no list of types: @'x cost more than the `i$).
 / tdnul: a list of dates (or of timestamps) with nulls in it takes one `i$ (tsdate) with 0N for them; a mixed one goes item by item.
-dkind:{$[`m~@x;dkind@.x;~`A~@x;$[(@x)in`i`I;,`i;,`x];[t:@'x;u:?t;k:(`d`d`i`x)@3^`d`n`I?u@&~u in`i`u`A`m;i:&t=`i;w:&t=`u;k,:$[#i;$[|/~^x i;,`i;0#`];0#`];k,:$[#w;$[&/(x~\:(::))w;0#`;,`x];0#`];?k,,/dkind'x@&t in`A`m]]}
-tdnul:{[x;t]n:~t in`d`n`A`m;y:@[x;&n;:;0N];u:t@&~n;$[&/`d=u;`i$y;&/`n=u;tsdate y;{$[(::)~x;0N;tdays x]}'x]}
-tdays:{$[`d~@x;`i$x;`n~@x;tsdate x;(@x)in`i`I;x;`m~@x;(!x)!tdays@.x;~`A~@x;`err"type";~#x;!0;`I~@d:`tjn x;$[`d~@*x;d;`n~@*x;tsdate d;`err"type"];[t:@'x;k:dkind x;$[&/k=`d;tdnul[x;t];~&/k=`i;`err"type";|/n:x~\:(::);@[x;&n;:;0N];x]]]}
+dkind:{$[`m~@x;dkind@.x;~`A~@x;$[(@x)in`i`I;,`i;(@x)in`D`N;,`d;,`x];[t:@'x;u:?t;k:(`d`d`i`x)@3^`d`n`I?u@&~u in`i`u`A`m`D`N;i:&t=`i;w:&t=`u;k,:$[#i;$[|/~^x i;,`i;0#`];0#`];k,:$[#w;$[&/(x~\:(::))w;0#`;,`x];0#`];?k,,/dkind'x@&t in`A`m`D`N]]}
+tdnul:{[x;t]n:~t in`d`n`A`m`D`N;y:@[x;&n;:;0N];u:t@&~n;$[&/`d=u;`i$y;&/`n=u;tsdate y;{$[(::)~x;0N;tdays x]}'x]}
+tdays:{$[(@x)in`d`D;`i$x;(@x)in`n`N;tsdate x;(@x)in`i`I;x;`m~@x;(!x)!tdays@.x;~`A~@x;`err"type";~#x;!0;`I~@d:`tjn x;$[`d~@*x;d;`n~@*x;tsdate d;`err"type"];[t:@'x;k:dkind x;$[&/k=`d;tdnul[x;t];~&/k=`i;`err"type";|/n:x~\:(::);@[x;&n;:;0N];x]]]}
 dtab:{$[`M~@x;1;`m~@x;`M~@!x;0]}                             / a table or a keyed table: the accessors go column by column, a keyed table on its value (keeping its key), as q's
 dnul:{[d;v](0N*n)+(~n:^d)*v}                                 / v where the day d is not null, else 0N
 dpart:{[i;x]$[`d~@x;(d2ymd`i$x)i;dtab x;$[`M~@x;+dpart[i]@+x;(!x)!dpart[i;.x]];[d:tdays x;$[~#d;d;|//^d;dnul[d;(d2ymd d*~^d)i];(d2ymd d)i]]]}   / the year (0), month (1) or day (2) of a date; a null day gives 0N (dnul only if there is one; a date atom has none)

@@ -354,10 +354,10 @@ t[`qvdInfMean; value sel"select r:var v, s:dev v by k from ([]k:0 0 1 1 2 2 3 3 
 / ---- an empty grouped select keeps each column's type (from its aggregate, as q) ----
 t[`byEmptySum;  @(.(sel"select sum px by sym from ft where px>1000"))`px; `F]
 t[`byEmptyLast; @(.(sel"select by sym from ft where px>1000"))`px; `F]
-/ an empty temporal column has no type to keep (it's a general list): max, min and sum of it stay (), not ints (A112)
+/ an empty temporal column keeps its type (2.9.0: a typed list; it was a general one, and these were ()) (A112)
 TT:([]sym:`a`b;n:1 2;d:10:00:00.000 11:00:00.000)
-t[`byEmptyTemporal;  (.(sel"select mx:max d, mn:min d, s:sum d by sym from TT where n>5"))@/:`mx`mn`s; (();();())]
-t[`byEmptyTemporal0; `k@(.(sel"select mx:max d, c:count d, l:last n by sym from 0#TT"))@/:`mx`c`l; "(();!0;!0)"]
+t[`byEmptyTemporal;  (.(sel"select mx:max d, mn:min d, s:sum d by sym from TT where n>5"))@/:`mx`mn`s; (0#,0Nt;0#,0Nt;0#,0Nt)]
+t[`byEmptyTemporal0; `k@(.(sel"select mx:max d, c:count d, l:last n by sym from 0#TT"))@/:`mx`c`l; "(`time$();!0;!0)"]
 / avg, dev and wavg of it are floats, as q's (they were (), and with no by 'type)
 tqa[`byEmptyTempAvg; "select a:avg d, s:dev d, w:wavg[n;d] by sym from TT where n>5"; {`k@(. x)@/:`a`s`w}; "(0#0n;0#0n;0#0n)"]
 tq[`selEmptyTempAvg; "select a:avg d, s:dev d, w:wavg[n;d] from TT where n>5"; ([]a:,0n;s:,0n;w:,0n)]
@@ -368,6 +368,12 @@ tq[`byTempAvg;       "select a:avg d by sym from TTA";     (+(,`sym)!,`a`b)!+(,`
 tv[`avgTempDate;     "avg(2026.01.01;2026.01.04)";          9498.5]
 tq[`tq2ExecSpan;     "exec sum s from ([]s:0D01:00:00.000000000 0D02:00:00.000000000)";  0D03:00:00.000000000]   / 2.9.0: q's timespans, minutes and months in queries
 tq[`tq2ByMinute;     "select count i by 5 xbar m from ([]m:09:30 09:31 09:36 09:41)";  (+(,`m)!,09:30 09:35 09:40)!+(,`x)!,2 1 1]
+/ 2.9.0: a temporal column is a typed list, and keeps its type through by, where and update
+tq[`tvQsBy;        "select sum v by d from ([]d:2026.01.02 2026.01.01 2026.01.02 0N;v:1 2 3 4)";  (+(,`d)!,0N 2026.01.01 2026.01.02)!+(,`v)!,4 2 4]
+tq[`tvQsWhere;     "select from ([]d:2026.01.01 2026.01.03 2026.01.05;v:1 2 3) where d within 2026.01.02 2026.01.05";  +`d`v!(2026.01.03 2026.01.05;2 3)]
+tqa[`tvQsUpdate;   "update d:d+1 from ([]d:2026.01.01 0N;v:1 2)";  {@x`d};  `D]
+tq[`tvQsStampDate; "select count i by `date$p from ([]p:2026.01.15D09:30:00.000000000 2026.01.16D10:00:00.000000000 2026.01.15D11:00:00.000000000)";  (+(,`p)!,2026.01.15 2026.01.16)!+(,`x)!,2 1]
+tq[`tvQsMax;       "exec max t,min t from ([]t:09:30:00.000 0Nt 10:15:00.000)";  `t`t1!(10:15:00.000;09:30:00.000)]
 tq[`tq2WhereMonth;   "select from ([]d:2026.01m 2026.02m;v:1 2) where d>2026.01m";  +`d`v!(,2026.02m;,2)]
 tq[`tq2UpdMinute;    "update u:`minute$w from ([]w:09:30:15.000 09:31:45.000)";  +`w`u!(09:30:15.000 09:31:45.000;09:30 09:31)]
 tv[`avgTempStamp;    "avg(2026.01.01D10:00;2026.01.01D11:00)"; 820578600000000000.0]

@@ -22,11 +22,11 @@
  * HEADER (little-endian, the rest of the page is zero)
  *   0  "AMBC"      magic
  *   4  u8 version  1
- *   5  u8 kind     0 flat: the raw payload of a B G H I L F C vector
+ *   5  u8 kind     0 flat: the raw payload of a B G H I L F C vector, or of a temporal one (2.9.0)
  *                  1 enum: int32 indexes into the database's sym file (a symbol column)
  *                  2 ser:  any other value as -8! bytes (nested lists, dicts, atoms, ...)
- *                  3 time: a list of date, time or timestamp atoms as int64 values
- *   6  u8 type     Amber type of the vector (kind 0), or of the atoms (kind 3)
+ *                  3 time: a list of date, time or timestamp atoms as int64 values (before 2.9.0; loads as a typed list)
+ *   6  u8 type     Amber type of the vector (kind 0), or of the atoms (kind 3), numbered as before 2.9 (a.h TXC)
  *   7  u8 attr     0 none, 1 `s, 2 `u, 3 `p, 4 `g  (trusted on the way back, as q does; any other byte is 'format)
  *   8  u64 count   items
  *   16 u64 bytes   payload bytes after the header
@@ -48,7 +48,7 @@ A mfw(I,W,W);I tjk(A);A tjn(A);
 enum{KFLAT,KENUM,KSER,KTIME};
 typedef struct{C mg[4];UC ver,kind,typ,att;W cnt,nb,dom;}DHdr;   //32 bytes, then zeros up to DHB
 
-Z B dflat(UC t){return t==tB||t==tG||t==tH||t==tI||t==tL||t==tF||t==tC;}
+Z B dflat(UC t){return t==tB||t==tG||t==tH||t==tI||t==tL||t==tF||t==tC||TQV(t);}   //a temporal list too (2.9.0): its numbers, as they are
 Z W dbytes(UC t,W n){return ((n<<Tw[t])+7)>>3;}
 // a path out of a char vector, NUL-terminated; 0 when it does not fit
 Z B dpath(A p,C*b,N cap){P(_t(p)!=tC||!_n(p)||_n(p)>=cap||pnul(p),0)MC(b,_V(p),_n(p));b[_n(p)]=0;return 1;}
@@ -78,7 +78,7 @@ Z B dwt(A x,C*path,C*tmp){
  else{I k=_tP(v)?0:tjk(v);
   if(TQ(k)){kind=KTIME;typ=(UC)k;body=tjn(v);cnt=_n(body);nb=cnt*8;src=_V(body);}
   else{kind=KSER;typ=0;body=ser8(_R(v));P(!body,0)cnt=_n(body);nb=cnt;src=_V(body);}}
- C hdr[DHB];MS(hdr,0,DHB);DHdr*h=(DHdr*)hdr;MC(h->mg,"AMBC",4);h->ver=1;h->kind=kind;h->typ=typ;h->att=att;h->cnt=cnt;h->nb=nb;h->dom=dn>=0?(W)dn:0;
+ C hdr[DHB];MS(hdr,0,DHB);DHdr*h=(DHdr*)hdr;MC(h->mg,"AMBC",4);h->ver=1;h->kind=kind;h->typ=(UC)TXC(typ);h->att=att;h->cnt=cnt;h->nb=nb;h->dom=dn>=0?(W)dn:0;
  snprintf(tmp,4100,"%s.tmp",path);
  I f=open(tmp,O_WRONLY|O_CREAT|O_TRUNC,0644);
  if(f<0&&errno==ENOENT&&!dmkp(tmp))f=open(tmp,O_WRONLY|O_CREAT|O_TRUNC,0644);
@@ -122,6 +122,7 @@ A rcolT(A x){
  // read, and a directory
  if(e||(W)st.st_size<DHB||drall(f,&h,SZ h,0)){close(f);return x(!e&&S_ISREG(st.st_mode)&&(W)st.st_size<DHB?err0("format"):eo0());}
  // an attribute byte that names none of the four is damage too: copied into _at, `at read "\0supg" past its end
+ h.typ=(UC)TIC(h.typ);   //numbered as before 2.9 (a.h TXC)
  B ok=!memcmp(h.mg,"AMBC",4)&&h.ver==1&&h.kind<=KTIME&&h.att<5&&(W)st.st_size>=DHB+h.nb;
  if(ok)S(h.kind,
   C(KFLAT,ok=h.typ<tn&&dflat(h.typ)&&h.nb==dbytes(h.typ,h.cnt))
@@ -143,9 +144,9 @@ A rcolT(A x){
     _at(r)=h.att;mr(iv))
   C(KSER,A b=dload(f,tC,h.cnt,h.nb);r=b?des9(b):0)
   C(KTIME,A b=dload(f,tL,h.cnt,h.nb);if(!b)break;CO L*q=(CO L*)_V(b);
-    r=aA(n);A*o=_A(r);
-    if(TQN(h.typ)){for(U i=0;i<n;i++)o[i]=AT(h.typ,al(q[i]));}
-    else{for(U i=0;i<n;i++)o[i]=atq(h.typ,q[i]==NL?NIT:(I)q[i]);}   //a null as tjn wrote it (NL), back to its kind's
+    r=an(n,TQL(h.typ));   //a list of the kind (2.9.0; it was a general list of atoms)
+    if(TQN(h.typ)){MC(_V(r),q,(N)n*8);}
+    else{I*o=(I*)_V(r);for(U i=0;i<n;i++)o[i]=q[i]==NL?NIT:(I)q[i];}   //a null as tjn wrote it (NL), back to its kind's
     mr(b)))
  out:
  close(f);mr(x);return r;}

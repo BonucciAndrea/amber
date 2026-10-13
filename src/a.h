@@ -256,21 +256,32 @@ EX AM_TLS I amdiagq;//set while a load's qSQL probe runs: no diagnostic on this 
 EX AM_TLS I amdiagshown;//set when a rich diagnostic was already rendered for the current error (e.c), per thread
 EX A1*v1[];EX A2*v2[];EX AA*v8[];EX A gv[65536],cns,cn[],ci[2][5];EX I pg;EX TY(CO C[])vc,TS,Tw,TR,TT,TX,Tk;EX S*argv,*env;
 
-//                    0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25
-//                      () !i ,1 ,i ,i ,i ,i ,f "" ,` +m X!  5  6 .6 "c" ` {} 1+ ++ +/ +:  +  / 2:
-enum                 {tA=1,tE,tB,tG,tH,tI,tL,tF,tC,tS,tM,tm,ti,tl,tf,tc,ts,to,tp,tq,tr,tu,tv,tw,tx,tdt,ttm,tnp,tmn,tsc,tmo,tsp,tn};
+//                    0  1  2  3  4  5  6  7  8  9 10 11..17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33..39
+//                      () !i ,1 ,i ,i ,i ,i ,f "" ,` (dates) +m X!  5  6 .6 "c" ` {} 1+ ++ +/ +:  +  / 2:  (date)
+enum                 {tA=1,tE,tB,tG,tH,tI,tL,tF,tC,tS,tDT,tTM,tNP,tMN,tSC,tMO,tSP,tM,tm,ti,tl,tf,tc,ts,to,tp,tq,tr,tu,tv,tw,tx,tdt,ttm,tnp,tmn,tsc,tmo,tsp,tn};
 // tdt=date atom (days since 2000.01.01, packed int32); ttm=time atom (ms of day, packed int32);
 // tnp=timestamp atom (ns since 2000.01.01, heap int64).  Native scalar temporal types.
 // Amber 2.9.0: q's other temporals. tmn=minute (packed int32 minutes), tsc=second (packed int32 seconds), tmo=month
 // (packed int32 months since 2000.01), tsp=timespan (heap int64 ns). A packed one's null is NIT, a heap one's NL, as q's 0Nd 0Nn
-#define T_ CO C TS[]="0""A""I""I""I""I""I""I""F""C""S""M""m""i""i""f""c""s""o""p""q""r""u""v""w""x""d""t""n""h""j""y""e",/*type symbols     */\
-                Tw[]={0, 6, 6, 0, 3, 4, 5, 6, 6, 3, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 5, 5, 6, 5, 5, 5, 6},/*log2(size)       */\
-                TT[]={0,tA,tL,tB,tG,tH,tI,tL,tF,tC,tS,tM,tM,tI,tL,tF,tC,tS,tA,tA,tA,tA,tA,tA,tA,tA,tI,tI,tL,tI,tI,tI,tL},/*list type        */\
-                TX[]={0,tG,tG,tG,tG,tH,tI,tL,tF,tG,tI,tG,tG, 0, 0,tF,tG,tI,tG,tG,tG,tG,tG,tG,tG,tG, 0, 0, 0, 0, 0, 0, 0},/*arith conformance*/\
-                Tk[]="0""L""I""I""I""I""I""I""F""C""S""T""D""i""i""f""c""s""?""?""?""?""?""?""?""?""d""t""p""u""v""m""n";/*for the api (k.h)*/
+// Amber 2.9.0: tDT..tSP are their lists, in the same order (a list's atom is t-tDT+tdt), int32 or int64 as the atom, nulls the same.
+// They sit with the other lists (below tM), so the codes after tS moved up 7; TXC and TIC keep the old ones where a code leaves the
+// process (the C API, -8! bytes, column files)
+#define T_ CO C TS[]="0""A""I""I""I""I""I""I""F""C""S""D""T""N""H""J""Y""E""M""m""i""i""f""c""s""o""p""q""r""u""v""w""x""d""t""n""h""j""y""e",/*type symbols     */\
+                Tw[]={0, 6, 6, 0, 3, 4, 5, 6, 6, 3, 5, 5, 5, 6, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 5, 5, 6, 5, 5, 5, 6},/*log2(size)       */\
+                TT[]={0,tA,tL,tB,tG,tH,tI,tL,tF,tC,tS,tDT,tTM,tNP,tMN,tSC,tMO,tSP,tM,tM,tI,tL,tF,tC,tS,tA,tA,tA,tA,tA,tA,tA,tA,tDT,tTM,tNP,tMN,tSC,tMO,tSP},/*list type        */\
+                TX[]={0,tG,tG,tG,tG,tH,tI,tL,tF,tG,tI, 0, 0, 0, 0, 0, 0, 0,tG,tG, 0, 0,tF,tG,tI,tG,tG,tG,tG,tG,tG,tG,tG, 0, 0, 0, 0, 0, 0, 0},/*arith conformance*/\
+                Tk[]="0""L""I""I""I""I""I""I""F""C""S""?""?""?""?""?""?""?""T""D""i""i""f""c""s""?""?""?""?""?""?""?""?""d""t""p""u""v""m""n";/*for the api (k.h)*/
 #define TR(t) ((1ull<<tA|1ull<<tM|1ull<<tm|1ull<<to|1ull<<tp|1ull<<tq|1ull<<tr)>>(t)&1)//reftypes (64 bits: the type codes pass 31)
 #define TP(t) ((1ull<<ti|1ull<<tc|1ull<<ts|1ull<<tu|1ull<<tv|1ull<<tw|1ull<<tx|1ull<<tdt|1ull<<ttm|1ull<<tmn|1ull<<tsc|1ull<<tmo)>>(t)&1)//packed types (+ the packed temporals)
 #define TQ(t) LH(tdt,t,tsp)                                       //a temporal atom
+#define TQV(t) LH(tDT,t,tSP)                                      //a temporal list
+#define TXC(t) ((t)<tDT?(t):(t)<tM?(t)-tDT+33:(t)-7)               //a type's code outside: as before 2.9 (a temporal list 33..39)
+#define TIC(e) ((e)<tDT?(e):(e)<33?(e)+7:(e)<40?(e)-33+tDT:0)      //and back (0: no type)
+#define TQL(k) ((k)-tdt+tDT)                                      //a temporal atom's list type
+#define TQA(t) ((t)-tDT+tdt)                                      //a temporal list's atom type
+#define TQVN(t) ((t)==tNP||(t)==tSP)                              //a temporal list of 64-bit ns (the rest are int32)
+#define TST(t) (TQV(t)?TQVN(t)?tL:tI:(t))                        //how a list's items are stored: a temporal list's as ints
+A tqi(A);                                                          //a temporal list as its ints (c.c)
 #define TQN(t) ((t)==tnp||(t)==tsp)                               //a temporal of 64-bit ns on the heap
 #define TU(t) LH(to,t,tx)                                         //function types (to..tx exactly; temporal tags sit above)
 

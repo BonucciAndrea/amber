@@ -84,14 +84,22 @@ Z A kss_(A x,B r)_(                                                             
  P(n>>32,ez(x))A y=aC(n);C*s=yC;*s++='"';F(xn,C c=xc;I((UC)c<128&&e[c],*s++='\\';c=e[c])*s++=c)*s='"';x(y))   //text past 32 bits of count: 'limit (it wrapped: a crash)
 Z A1(kss,kss_(x,0))
 Z A kp(A x,S p,S q,S s)_(C t=TS[xt];U n=_N(x);B b=strchr(p,t)?n==1:strchr(q,t)?n<2:!!strchr(s,t);x=N(kst(x));b?par(x):x)   //kst's error (a failing formatter) passes up; n: the count (a range holds its two ends)
-A1(kl,P(xtA&&!xn,x=N(kst(x));*xC-'('?par(x):x)kp(x,"AC","IFS","Mmqruvw"))//keys: an empty generic list prints as () or 0#,.. which needs parentheses
+A1(kl,P(xtA&&!xn,x=N(kst(x));*xC-'('?par(x):x)kp(x,"AC","IFSDTNHJYE","Mmqruvw"))//keys: an empty generic list prints as () or 0#,.. which needs parentheses
 A1(kr,kp(x,"","","qruvw"))
-A1(kw,kp(x,"AC","IFS","Mmpqw"))
+A1(kw,kp(x,"AC","IFSDTNHJYE","Mmpqw"))
 A1(kT1,Q(xtT)Q(xN==1)pre(',',N(kr(fir(x)))))
+//Amber 2.9.0: a temporal list as q shows it, which reads back: its items with no kind, a null 0N, and the kind once at the end
+//where the items need it: on the last of all nulls (0N 0Nd) and on a month list's last (2026.01 0N 2026.03m); one item
+//,2026.01.01; none `date$()
+Z A tqv(A x/*1*/)_(UC k=TQA(xt);U n=xn;Z CO C*nm[]={"date","time","timestamp","minute","second","month","timespan"};
+ P(!n,A r=cat11(pre('`',aCz(nm[k-tdt])),aCz("$()"));x(r))P(n==1,kT1(x))B a=1;A r=aC(0);
+ F(n,I(i,r=apc(r,' '))B u=TQVN(xt)?xL[i]==NL:xI[i]==NIT;I(u,r=cat11(r,aCn("0N",2)))E(a=0;A e=tqs(ii(x,i),1);I(k==tmo,e=AN(_n(e)-1,e))r=cat11(r,e)))
+ I(a||k==tmo,r=apc(r,"dtpuvmn"[k-tdt]))x(r))
 X1(kst,R_(x(aCz("???")))
  RA(    xn==1?kT1(x):tqh(x)?jc(32,N(ek(x))):!xn&&!(_t(xx)==tC&&!_n(xx))?xx==au?x(aCz("0#,(::)")):cat11(aCz("0#,"),N(kr(x(_R(xx))))):par(jc(';',N(ek(x)))))   //:: as the text 0#,(::) (0#,:: read back as a function); another prototype as kT1 prints an item
  RC(    xn==1?kT1(x):kss(x))
  RGHILF(xn==1?kT1(x):xn?jc(32,e1f(str,x)):x(aCz(xtF?"0#0n":"!0")))
+ RQV(tqv(x))
  RS(    xn==1?kT1(x):xn?raz(ek(x)):x(aCz("0#`")))
 // RB(    xn==1?kT1(x):xn?apc(cC(add(ai('0'),cG(x))),'b'):x(aCz("!0")))//todo
  RB(kst(cG(x)))

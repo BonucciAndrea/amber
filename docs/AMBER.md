@@ -1046,8 +1046,8 @@ year 2026.07.30                 / accessors: year month day dow  ·  thh tmm tss
 ```
 
 Same as q: a null goes through (`0Nd+1` is `0Nd`), `%` gives a float of the stored numbers, `x^y`
-fills, and a list of one kind prints like q's vector (`09:30 09:31`, `2026.01.01 0Nd`). `type`
-gives q's numbers, 17 for a list of minutes. Anything else is `'type` (date+2.3, date*2, date+date).
+fills, and `type` gives q's numbers, 17 for a list of minutes. Anything else is `'type` (date+2.3,
+date*2, date+date).
 
 Two kinds compare as in q: a date and a time are `'type`, a date or a month against a timestamp
 is its midnight (`2026.07.30=2026.07.30D00:00:00.000000000` is 1), a minute, a second, a time and a
@@ -1055,7 +1055,21 @@ span compare by their length (`09:30=09:30:00.000` is 1), and a timestamp agains
 its time of day, in that unit.
 
 One thing differs: a date plus a time of day is a timestamp here (q gives a datetime, which
-Amber doesn't have). A list of temporals is still a general list underneath, not a typed vector.
+Amber doesn't have).
+
+**Typed lists (2.9).** A list of one kind is its own type, like q's vectors, held as its numbers
+(int32, or int64 for timestamps and timespans). So it sorts, groups, finds and compares at int speed:
+
+```q
+@2026.01.01 2026.01.02          / `D ; `T `N `H `J `Y `E for times, timestamps, minutes, seconds, months, spans
+2026.01.01 0N 2026.01.03        / a null in a list prints 0N, as q, and reads back
+2026.01 0N 2026.03m             / a month list has its m once, at the end
+0N 0Nd                          / all nulls: the kind on the last one
+`date$()                        / an empty one
+```
+
+Mixing in another kind, or an int, gives a general list, as before. Column files write it flat, so
+it maps straight back.
 
 Columns keep numeric storage (as q does internally), so `xasc` and the `s#` attribute work
 unchanged and a `time`-named column auto-renders as `HH:MM:SS.mmm` in a grid.

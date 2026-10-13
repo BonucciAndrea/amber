@@ -17,7 +17,9 @@
 hdb.p:{[p]s:$[in[@p;`s`S];$p;p];$[(0<#s)&":"=*s;1_s;s]}         / a path from a string or a q handle `:db/t
 hdb.sl:{[s]$[(1<#s)&"/"=*|s;-1_s;s]}                          / without a trailing /
 hdb.par:{[p]i:&p="/";$[0=#i;".";0=*|i;"/";(*|i)#p]}           / the directory p is in
-hdb.amc:{[f]$[0<`fsz f;"AMBC"~`c$4#1:f;0]}                     / is f a binary Amber file
+hdb.amc:{[f]$[0<`fsz f;[b:`c$4#1:f;("AMBC"~b)|/(2#b)~/:(`c$254 32;`c$253 32;`c$255 1)];0]}   / is f a binary Amber file, or one q wrote (2.9.0)
+hdb.cols:{[dir]$[-1<`fsz dir,"/.d";`rcol dir,"/.d";`$f@&{~("."=*x)|"#"=*|x}'f:(`ldir dir)1]}   / a table's columns: its .d, else its files (2.9.0: a db q wrote can come without .d)
+hdb.isd:{[dir](hdb.amc dir,"/.d")|-1=`fsz dir,"/.d"}          / a binary splayed table (a .d, or none)
 
 / ---- the sym file ---------------------------------------------------------
 / One per database, at db/sym. It only ever grows, so a column written against it stays readable.
@@ -29,7 +31,9 @@ hdb.symc:{[db;z;s]k:`$db;$[in[k;HDBK];HDBV::@[HDBV;HDBK?k;:;,(z;s)];[HDBK::HDBK,
 hdb.syml:{[db;f;z]hdb.symc[db;z;`rcol f]}
 hdb.syms:{[db]f:hdb.symf db;z:`fsz f;k:`$db;$[z<0;0#`;~in[k;HDBK];hdb.syml[db;f;z];~z~*HDBV HDBK?k;hdb.syml[db;f;z];(HDBV HDBK?k)1]}
 / The indexes of v in db's syms (new names are added to the file first) and how many syms there are
-hdb.enum:{[db;v]d:hdb.syms db;u:?v;nw:u@&~in[u;d];$[#nw;[d:d,nw;`wcol(hdb.symf db;d;-1;0);hdb.symc[db;`fsz hdb.symf db;d]];0];(d?v;#d)}
+hdb.isq:{[db]f:hdb.symf db;$[0<`fsz f;(`c$255 1)~2#`c$4#1:f;0]}   / is db a database kdb+ wrote (its sym file q's): then Amber writes q's files into it (2.9.0)
+hdb.wr:{[db;w]$[hdb.isq db;`wcq w;`wcol w]}
+hdb.enum:{[db;v]d:hdb.syms db;u:?v;nw:u@&~in[u;d];$[#nw;[d:d,nw;hdb.wr[db;(hdb.symf db;d;-1;0)];hdb.symc[db;`fsz hdb.symf db;d]];0];(d?v;#d)}
 
 / ---- one value, one file -------------------------------------------------
 dset:{[f;x]f:hdb.p f;`wcol(f;x;-1;0);f}
@@ -42,11 +46,11 @@ dget:{[f]f:hdb.p f;$[hdb.amc f;`rcol f;. `c$1:f]}
 / together, in the order they come, and the sym file grows by them once.
 hdb.atc:{[v]a:$`at v;$[#a;1+"supg"?*a;0]}                      / attribute code kept in the column file
 hdb.wq:{[f;s;n;v]$[`S~@v;(f;s?v;n;hdb.atc v);(f;v;-1;0)]}      / a column's (path;value;domain;attr) for `wcol
-hdb.splay:{[dir;db;t]t:$[iskeyed t;unkey t;t];c:cols t;v:(+t)c;b:`S=@'v;s:$[|/b;hdb.syms db;0#`];nw:$[|/b;[u:?,/?'v@&b;u@&~in[u;s]];0#`];s:s,nw;w:{[dir;s;n;c;v]hdb.wq[dir,"/",$c;s;n;v]}[dir;s;#s]'[c;v];w:$[#nw;(,(hdb.symf db;s;-1;0)),w;w],,(dir,"/.d";c;-1;0);`wcol w;$[#nw;hdb.symc[db;`fsz hdb.symf db;s];0];dir}
+hdb.splay:{[dir;db;t]t:$[iskeyed t;unkey t;t];c:cols t;v:(+t)c;b:`S=@'v;s:$[|/b;hdb.syms db;0#`];nw:$[|/b;[u:?,/?'v@&b;u@&~in[u;s]];0#`];s:s,nw;w:{[dir;s;n;c;v]hdb.wq[dir,"/",$c;s;n;v]}[dir;s;#s]'[c;v];w:$[#nw;(,(hdb.symf db;s;-1;0)),w;w],,(dir,"/.d";c;-1;0);hdb.wr[db;w];$[#nw;hdb.symc[db;`fsz hdb.symf db;s];0];dir}
 splay:{[dir;t]dir:hdb.sl hdb.p dir;hdb.splay[dir;hdb.par dir;t]}
-hdb.dl:{[dir;s]c:`rcol dir,"/.d";+c!{[dir;s;c]`rcol(dir,"/",$c;s)}[dir;s]'c}
+hdb.dl:{[dir;s]c:hdb.cols dir;+c!{[dir;s;c]`rcol(dir,"/",$c;s)}[dir;s]'c}
 hdb.old:{[dir]cs:. `c$1:dir,"/.d";+cs!{[dir;c]. `c$1:dir,"/",$c}[dir]'cs}   / a pre-2.7 text table
-dload:{[dir]dir:hdb.sl hdb.p dir;$[hdb.amc dir,"/.d";hdb.dl[dir;hdb.syms hdb.par dir];hdb.old dir]}
+dload:{[dir]dir:hdb.sl hdb.p dir;$[hdb.isd dir;hdb.dl[dir;hdb.syms hdb.par dir];hdb.old dir]}
 
 / ---- the q names ----------------------------------------------------------
 / `a set 5 and get`a are globals; `:path set x writes a file, and a path ending in / splays a table.
@@ -55,7 +59,7 @@ dload:{[dir]dir:hdb.sl hdb.p dir;$[hdb.amc dir,"/.d";hdb.dl[dir;hdb.syms hdb.par
 set:{[h;v]$[(`s~@h)&~":"=*$h;[.[h;();:;v];h];()~v;[`qlog h;h];[p:hdb.p h;$["/"~*|p;$[iskeyed v;`err"type";splay[p;v]];dset[p;v]];h]]}
 / get reads only the binary format: a file or a table in any other is 'format, never evaluated (q's get never runs a
 / file). dget and dload, Amber's own names, still read the text files Amber wrote before 2.7. A missing file is 'io, as before
-get:{[h]$[(`s~@h)&~":"=*$h;. h;[p:hdb.sl hdb.p h;$[-2=`fsz p;$[hdb.amc p,"/.d";hdb.dl[p;hdb.syms hdb.par p];`err"format"];hdb.amc p;`rcol p;-1=`fsz p;`err"io";`err"format"]]]}
+get:{[h]$[(`s~@h)&~":"=*$h;. h;[p:hdb.sl hdb.p h;$[-2=`fsz p;$[hdb.isd p;hdb.dl[p;hdb.syms hdb.par p];`err"format"];hdb.amc p;`rcol p;-1=`fsz p;`err"io";`err"format"]]]}
 
 / ---- partitioned databases ------------------------------------------------
 / db/<partition>/<table>/<col>, partitions named by a date (2026.01.02) or an int, symbols in db/sym.
@@ -67,7 +71,7 @@ Q.dpft:{[d;p;f;t]d:hdb.sl hdb.p d;v:. t;$[iskeyed v;`err"type";0];v:xasc[f;v];dd
 
 / A partitioned table is a dict naming where it lives: database, table, partition column, the partitions that
 / hold it and its columns. Nothing is read until a query asks: qpsel (select, exec) and ptab map what they need.
-hdb.pto:{[db;pc;tn;ps]pv:{. x}'ps;i:<pv;c:`rcol db,"/",(ps i 0),"/",tn,"/.d";`amberpt`db`t`pc`pv`cols!(1b;db;`$tn;pc;pv i;c)}
+hdb.pto:{[db;pc;tn;ps]pv:{. x}'ps;i:<pv;c:hdb.cols db,"/",(ps i 0),"/",tn;`amberpt`db`t`pc`pv`cols!(1b;db;`$tn;pc;pv i;c)}
 / One partition: (rows; columns cs of it as a dict, the partition column left out)
 hdb.part:{[pt;cs;p]dir:(pt`db),"/",(hdb.pv p),"/",$pt`t;s:hdb.syms pt`db;c:cs@&~cs=pt`pc;v:{[dir;s;c]`rcol(dir,"/",$c;s)}[dir;s]'c;n:$[#c;#*v;#`rcol(dir,"/",($*pt`cols);s)];(n;c!v)}
 / Partitions pv, columns cs, as one table. One partition is its mapped columns as they are, no copy.
@@ -89,7 +93,8 @@ hdb.mr:{[pt;pv;r3;pb;wh;lim]pc:pt`pc;cs:hdb.need[pt;(r3 0)," ",(hdb.js pb)," ",w
 / loaddb["db"] maps a database the way q's \l does and returns the names it defined: a partitioned table for
 / each table found under the partitions, a splayed table for each directory with a .d, a value for each file.
 loaddb:{[db]db:hdb.sl hdb.p db;e:`ldir db;ds:e 0;fs:e 1;pd:ds@&hdb.pok'ds;sd:ds@&~hdb.pok'ds;sd:sd@&{[db;s]-1<`fsz db,"/",s,"/.d"}[db]'sd;fs:fs@&{(~x~"sym")&~"."=*x}'fs;a:{[db;s]set[`$s;dload db,"/",s];`$s}[db]'sd;b:{[db;s]set[`$s;dget db,"/",s];`$s}[db]'fs;c:$[#pd;hdb.ldp[db;pd];0#`];a,b,c}
-hdb.ldp:{[db;pd]pc:hdb.pcn[. *pd];tn:?,/{[db;p]d:*`ldir db,"/",p;d@&{[db;p;t]-1<`fsz db,"/",p,"/",t,"/.d"}[db;p]'d}[db]'pd;{[db;pc;pd;tn]ps:pd@&{[db;tn;p]-1<`fsz db,"/",p,"/",tn,"/.d"}[db;tn]'pd;set[`$tn;hdb.pto[db;pc;tn;ps]];`$tn}[db;pc;pd]'tn}
+hdb.rows:{[pt]+/{[pt;p]#`rcol (pt`db),"/",(hdb.pv p),"/",($pt`t),"/",$*pt`cols}[pt]'pt`pv}   / a partitioned table's rows: one column's count a partition
+hdb.ldp:{[db;pd]pc:hdb.pcn[. *pd];tn:?,/{[db;p]d:*`ldir db,"/",p;d}[db]'pd;{[db;pc;pd;tn]ps:pd@&{[db;tn;p]-2=`fsz db,"/",p,"/",tn}[db;tn]'pd;set[`$tn;hdb.pto[db;pc;tn;ps]];`$tn}[db;pc;pd]'tn}
 
 / ---- the older value-partitioned layout (one table, dir/<value>/, par.txt) ---
 mkd:{`x(("/bin/mkdir";"-p";x);"");x}                         / mkdir -p

@@ -996,8 +996,8 @@ A ktan(A),kasn(A),kacs(A),katn(A),qstT(A),md5T(A),qesT(A),qegT(A),rndT(A),minvT(
 //`fdv(x;y): ints x floor-divided by a positive int y, exactly: what (-y)!x is, as a name, since -3! -8! -9! are system
 //functions (q's show, -8! and -9!) and the libraries divide by any y (2.9.0)
 Z A1(fdvC,P(_tP(x)||_t(x)>=tM||_n(x)-2,et(x))A a=ii(x,0),d=ii(x,1);x(0);P(!_tz(d),mr(a);et(d))L v=gl(d);P(v<=0||v==NL,et(a))A m=az(-v);A r=mod(m,a);mr(m);r)
-ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","dlt","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl","abs","wcol","rcol","fsz","ldir","wtn","senc","hh","mm","sec","tjn","exit","lk","ins","wmul","qmc","nsd","ewt","ech","tan","asin","acos","atan","qst","md5","qes","qeg","rnd","minv","mku","mkv","mkm","mkn","dmo","mod","fdv","qho","qhc","qlog","ser","des","hdel","exit"};
- G(&kst,js1,qp,qt,frk,hex,err,qa,qe,dltC,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,wcolT,rcolT,fszT,ldirT,wtnT,sencT,hhC,mmC,secC,tjnC,qx,lkT,qins,wmulT,qmcT,nsdT,ewtT,qech,ktan,kasn,kacs,katn,qstT,md5T,qesT,qegT,rndT,minvT,mkmn,mksc,mkmo,mksp,dmoC,modC,fdvC,qhopen,qhclose,qlog0,ser8,des9,qhdel,qexit,ed)[fI((V*)s,L(s),v)](x))   //found by a scan in this order: dlt (amber.k's deltas, each call) early, exit last
+ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","dlt","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl","abs","wcol","rcol","fsz","ldir","wtn","senc","hh","mm","sec","tjn","exit","lk","ins","wmul","qmc","nsd","ewt","ech","tan","asin","acos","atan","qst","md5","qes","qeg","rnd","minv","mku","mkv","mkm","mkn","dmo","mod","fdv","qho","qhc","qlog","ser","des","tzo","wcq","trv","hdel","exit"};
+ G(&kst,js1,qp,qt,frk,hex,err,qa,qe,dltC,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,wcolT,rcolT,fszT,ldirT,wtnT,sencT,hhC,mmC,secC,tjnC,qx,lkT,qins,wmulT,qmcT,nsdT,ewtT,qech,ktan,kasn,kacs,katn,qstT,md5T,qesT,qegT,rndT,minvT,mkmn,mksc,mkmo,mksp,dmoC,modC,fdvC,qhopen,qhclose,qlog0,ser8,des9,qtzo,wcolqT,qtrv,qhdel,qexit,ed)[fI((V*)s,L(s),v)](x))   //found by a scan in this order: dlt (amber.k's deltas, each call) early, exit last
 /* ---- tacit trains: hook (f g) and fork (f g h) --------------------------
  * A general list of length 2 or 3 whose every element is a function becomes a
  * TRAIN when it is applied (a `::` in it is data, as in ngn/k, so such a list is
@@ -1094,7 +1094,7 @@ Z NI __attribute__((cold)) A a8t(A x,CO A*a)_(A e_=enl(_R(a[1]));A r_=try(x,e_,a
 //Amber 2.8.0: @[f;x;h] with f a lambda of one argument traps f x, as q and as .[f;(,x);h] (it applied f to x and h: 'rank).
 //Only that: an amend calls @[f;item;y] with f the verb or a function of two, which stays an application. The test is in the
 //verb's entry (a8q, v8[18]), so a8, which amends call themselves, is as it was (with it inside, .[x;i;f;y] was 6% slower)
-AA(a8q,/*10..0*/A x=*a;P(n==3&&_t(x)==to&&_k(x)==1,a8t(x,a))a8(a,n))
+AA(a8q,/*10..0*/A x=*a;P(n==3&&(_t(x)==to&&_k(x)==1||_tz(x)&&_t(a[2])>=to),a8t(x,a))a8(a,n))   //2.9.0: and @[h;msg;f] with h a handle, as q
 AA(a8,/*10..0*/A x=*a,y=a[1];
  X(RE(Ab8;*b=gZ(x);AC(b+1,a+1,n-1);a8(b,n))
    RT_E(P(y==au,mRn(n-2,a+2);Ab8;*b=a[2];b[1]=x;AC(b+2,a+3,n-3);USQ(e8(AP1,b,n-1)))
@@ -1291,6 +1291,7 @@ I ixwk(A,A,A,B,B,UC*,L*),ixck(A,A,U,A,B),ixgn(A*),ixgi(A*),ixkn(A,A,UC*,L*);A ix
      I(k_,I(r_,mr(k_))E(I(*p&&*p!=au,mr(k_))E(*p=k_)))r_;});   //table, held to be put back: its amend (kam) fails on what the check does not look at
    P(!r,I(u,I(*p&&*p!=au,mr(u))E(*p=u))0)I(*p&&*p!=au,mr(*p))*p=_R(r))// amend-by-name of a global: not from a peach worker (b.c bS)
    RU(n==3?try(x,a[1],a[2]):er(x))
+   Ri(P(n==3&&_t(a[2])>=to,try(x,a[1],a[2]))d8_(a,n))   //2.9.0: .[h;args;f] with h a handle traps h . args, as q
    R_(d8_(a,n)))0)
 //an item of a nested amend, amended at the indices below it: as . does it (d8), but a symbol list is data there, not the
 //name of a global to amend (`a`b is a.b to .), so d[`b;1]:`q with d[`b]~`x`y`z amends that list; a symbol atom still

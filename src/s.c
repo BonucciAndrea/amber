@@ -119,4 +119,7 @@ X1(kst,R_(x(aCz("???")))
  Ru(apc(kst(au^av^x),':'))
  Rv(P(x==GAP,emp(tC))P(x==INS,aCn((S)"insert",6))P(x==ECH,aCn((S)"each",4))A y=aCn(vc+xv,1);xv<20?y:apc(y,':'))
  Rw(P(x==DOL,aCn((S)"do",2))P(x==WHL,aCn((S)"while",5))aCn(&"':/:\\:"[xv%3*2],1+xv/3)))
-A1(out,P(x==au,x)A s=xtA&&1<xn&&!tqh(x)?({A e=ek(xR);e?par(jC("\n ",2,e)):0;}):kst(xR);P(!s,epr(0);x)s=v0c(ai(1),s);P(!s,epr(0);x)mr(s);x)   //a formatter's error, or the write's ('io: stdout closed): printed (the caller frees x)
+//2.9.0: amqshow (a serving process's console, m.c rep): a value shows as the REPL shows it (amfmt: a table as a table, cut to
+//the screen), not as k text of every row; where amfmt is not there (no libraries) as before
+I amqshow;
+A1(out,P(x==au,x)I(amqshow,I dq=amdiagq;amdiagq=1;A r=K1("{`0:amfmtc x;}",_R(x));amdiagq=dq;I(r,mr(r);return x)ecl())A s=xtA&&1<xn&&!tqh(x)?({A e=ek(xR);e?par(jC("\n ",2,e)):0;}):kst(xR);P(!s,epr(0);x)s=v0c(ai(1),s);P(!s,epr(0);x)mr(s);x)   //a formatter's error, or the write's ('io: stdout closed): printed (the caller frees x)

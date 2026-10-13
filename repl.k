@@ -1,5 +1,6 @@
 #!k
 \d repl
+`trv 1   / 2.9.0: a trap is silent, as q's; the REPL's own, round each line, still shows the report
 prompt:"amber> " /use 0x0720 for emacs integration
 (opn;sem;cls):"(;)"
 /(opn;sem;cls):("( ";" ; ";" )") /uncomment this line for extra spacing

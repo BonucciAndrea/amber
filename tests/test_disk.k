@@ -254,7 +254,23 @@ t[`readMapsFull;$[CY;"MMAP\n1000\n";sub"M 1:70000#\"x\";`0:*\"\\n\"\\.[{{1:M}'!x
 G:T,"/g";x:`wcol(G;1 2 3 300;-1;0)
 t[`rcolMapsFull;sub"v:{1:M}'!1000;G:\"",G,"\";w:{`rcol G}'!1100;`0:$(#w;+/w 1099;1 2 3 300~w 0)";"1100\n306\n1\n"]
 
+/ 2.9.0: a database kdb+ wrote (tests/qdb: q's .Q.dpft, two date partitions of a table qt with one column of each type)
+QD:DIR,"/qdb"
+qs:`rcol QD,"/sym"
+qc:{`rcol(QD,"/2026.01.02/qt/",x;qs)}
+t[`qSymFile;qs;`ibm`msft]
+t[`qDotD;`rcol QD,"/2026.01.02/qt/.d";`sym`px`n`l`d`p`sp`b`c`h`e`tm`mn`sc`mo`g]
+t[`qColumns;qc'("sym";"px";"n";"l";"d";"p";"sp";"b";"c";"h";"e";"tm";"mn";"sc";"mo";"g");(`ibm`ibm`msft;1.5 3.5 0n;1 3 0N;10 0N 20;2026.01.01 2026.01.03 0Nd;2026.01.01D09:30:00.000000001 2026.01.01D10:00:00.000000000 0Np;0D01:00:00.000000000 0D00:00:01.000000000 0Nn;110b;"xzy";1 3 0N;1.5 3.5 2.5;09:30:00.000 10:00:00.001 0Nt;09:30 10:00 0Nu;09:30:15 10:00:00 0Nv;2026.01 2026.03 0Nm;1 16 255)]
+t[`qSymAttr;`at qc"sym";`p]
+loaddb QD
+t[`qLoad;(in[`qt;tables[]];count qt;cols qt);(1b;6;`date,`rcol QD,"/2026.01.02/qt/.d")]
+t[`qSelect;sel"select n:count i, s:sum l by sym from qt";([sym:`ibm`msft] n:4 2;s:20 40)]
+/ and one with no .d (a repo that left the dot files out): its columns are its files
+`x(("/bin/cp";"-r";QD;T,"/qnd");"")
+{`x(("/bin/rm";"-f";T,"/qnd/",x,"/qt/.d");"")}'("2026.01.02";"2026.01.03")
+loaddb T,"/qnd"
+t[`qNoDotD;(count qt;asc cols qt;sel"select sum l from qt where date=2026.01.03");(6;asc`date,`rcol QD,"/2026.01.02/qt/.d";([]l:,30))]
 rm T
-hexpect[105]
+hexpect[112]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

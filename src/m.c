@@ -532,7 +532,9 @@ Z S amres(S s,C*b,N n){I(!access(s,F_OK)||strchr(s,'/'),return s;)S h=getenv("AM
  N hl=SL(h),sl=SL(s);I(hl+sl+2>n,return s;)MC(b,h,hl);b[hl]='/';MC(b+hl+1,s,sl+1);return access(b,F_OK)?s:b;}
 //a .q script loads the standard library first, as q's does, and then the script (0.c)
 V qstd(V){Z CO C*m[]={"amber.k","fin.k","std.k","qsql.k","temporal.k","sys.k","hdb.k","ipc.k"};F(L(m),A r=bsl(m[i]);I(r,mr(r))E(epr(0)))}
-Z A bsl1(S s)_(C rb[4096];s=amres(s,rb,SZ rb);I b=bdir(s);P(b==1,K1("{loaddb x;}",aCz(s)))I f=open(s,0,0);A x=b>1?frf(f):u1c(ai(f));close(f);N(x);P(!xn,x(au))I(xC[xn-1]-10,x=apc(x,10))x=mut(x);{N j=0;F(xn,C c=xC[i];I(!(c==13&&i+1<xn&&xC[i+1]==10),xC[j++]=c))x=AN((U)j,x);}C*p=xC,*e=p+xn-1;*e=0;I(*p=='#'&&p[1]=='!',p=strchrnul(p,10);p+=!!*p)struct ld l={x,0,ld};ld=&l;   //2.9.0: a script with CRLF lines, or no newline at its end, loads as q's do (it was 'eoleof)
+//2.9.0: \l of a directory goes into it, as q's (so \l . loads it again: an hdb after the rdb's eod[])
+Z A bsl1(S s)_(Z AM_TLS C rb[4096];s=amres(s,rb,SZ rb);   //rb static: a script that loads itself 300 deep took 4KB of stack a level (Cygwin's 2MB ran out); s is not used past the open
+ I b=bdir(s);P(b==1,P(chdir(s),eo0())K1("{loaddb x;}",aCz(".")))I f=open(s,0,0);A x=b>1?frf(f):u1c(ai(f));close(f);N(x);P(!xn,x(au))I(xC[xn-1]-10,x=apc(x,10))x=mut(x);{N j=0;F(xn,C c=xC[i];I(!(c==13&&i+1<xn&&xC[i+1]==10),xC[j++]=c))x=AN((U)j,x);}C*p=xC,*e=p+xn-1;*e=0;I(*p=='#'&&p[1]=='!',p=strchrnul(p,10);p+=!!*p)struct ld l={x,0,ld};ld=&l;   //2.9.0: a script with CRLF lines, or no newline at its end, loads as q's do (it was 'eoleof)
   // amber 2.0.0: run the source through the K qSQL rewriter (qrwf, qsql.k) so
   // bare `select .. from ..` works in a .k file exactly as it does at the REPL
   // prompt -- no sel"..." wrapper. Guarded so nothing changes until qsql.k is
@@ -597,11 +599,13 @@ A evs(S s,B r)_(evn(s,0,r))   // text whose end is not known: s is cut at its fi
 // amber 1.9.5: the bare REPL (./amber with no script) reads through the native
 // line editor (src/ln.c) -- editing, history and Tab completion -- and falls
 // back to the historical raw read(2) only when stdin is not a terminal.
-B rep()_(I(am_ln_interactive(),N x=0;C*p=am_repl_getline("",&x);P(!p,0)evn(p,p+x,1);free(p);1)
+//2.9.0: a process that serves (a port or a timer open) reads its console as q's does, a line at a time with the terminal's own
+//editing, so what the handlers print and what is typed interleave (raw mode wrote their lines as a staircase)
+B rep()_(I(am_ln_interactive()&&!qactive(),N x=0;C*p=am_repl_getline("",&x);P(!p,0)evn(p,p+x,1);free(p);1)
  Z C*b;Z W m,k;C*q;//b holds m bytes; its first k are an incomplete line, kept until its newline is read
  I(!b,P(!(b=malloc(m=256)),die("OOM")))
  W(1,I(k==m,C*t=realloc(b,2*m);P(!t,die("OOM"))b=t;m*=2)//a line longer than the buffer: grow it
-     qidle();L n=read(0,b+k,m-k);P(n<=0,0)q=memchr(b+k,10,n);k+=n;
+     qidle();amqshow=qactive();L n=read(0,b+k,m-k);P(n<=0,0)q=memchr(b+k,10,n);k+=n;
      P(q,C*p=b;W(q,*q=0;evn(p,q,1);p=q+1;q=memchr(p,10,b+k-p))k=b+k-p;memmove(b,p,k);1))1)
 V repl(){W(rep())}
 

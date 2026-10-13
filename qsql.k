@@ -321,10 +321,15 @@ qasg0:{[t;nm;f;tp;w]v:.[f;,0#tp;{`qa0err}];p:$[`qa0err~v;();isat v;0#,v;(`A~@v)|
 / update ... by: the groups of the rows the where-clause keeps (all of them without one), each expression once per group
 qupby:{[t;wh;byp;nm;fns;it]m:qmask[t;wh];w:0<#m;ix:$[w;&m;()];gi:{(qgrp[x 0;x 1])1}qbyx[$[w;t ix;t];byp];gi:$[w;ix@gi;gi];+((+t),nm!{[t;gi;w;n;f;e]qasgby[t;n;f;gi;qrefs[cols t;(qname e)1];w]}[t;gi;w]'[nm;fns;it])}
 updp:{[s]s:qnorm s;s:$[(6#s)~"update";trim 6_s;s];r:qsplit[s;" where "];r2:qsplit[r 0;" from "];r:$[r 2;$[|/"sedu"=*r2 1;qnw[r;r2 1];(r2 1;r 1)];(r2 1;"")];wh:r 1;r3:qsplit[r2 0;" by "];(qtry r 0;wh;r3;qiq[r3 0;r3 1;r3 2;0<#wh];qcut r3 0)}   / upd's text, split
-upd:{[s]p:qmz[7;s;updp;,s];wh:p 1;r3:p 2;t:qfr p 0;r:keys t;t:unkey t;k:qik[p 3;t];C:(cols t),$[k;,qI;0#`];t:qai[k&r3 2;t];$[qpt t;`err"par";];it:p 4;p:qmz[8;(C;it;`nsd());{[C;it](qnms[C;it];{[C;e]qfn[C;(qname e)1]}[C]'it)};(C;it)];nm:p 0;fns:p 1;qkx[r]qdi[k]$[r3 2;qupby[t;wh;r3 1;nm;fns;it];0=#wh;+((+t),nm!{[t;f]v:f t;$[isat v;(#t)#v;v]}[t]'fns);[m:qmask[t;wh];idx:&m;sub:qwk[k;t;m];+((+t),nm!{[t;idx;sub;n;f]qasg[t;idx;n;f sub]}[t;idx;sub]'[nm;fns])]]}   / no where: each column is the value itself, attribute and all; r is the keys once read (upd has no local to spare)
+upd0:{[s]p:qmz[7;s;updp;,s];wh:p 1;r3:p 2;t:qfr p 0;r:keys t;t:unkey t;k:qik[p 3;t];C:(cols t),$[k;,qI;0#`];t:qai[k&r3 2;t];$[qpt t;`err"par";];it:p 4;p:qmz[8;(C;it;`nsd());{[C;it](qnms[C;it];{[C;e]qfn[C;(qname e)1]}[C]'it)};(C;it)];nm:p 0;fns:p 1;qkx[r]qdi[k]$[r3 2;qupby[t;wh;r3 1;nm;fns;it];0=#wh;+((+t),nm!{[t;f]v:f t;$[isat v;(#t)#v;v]}[t]'fns);[m:qmask[t;wh];idx:&m;sub:qwk[k;t;m];+((+t),nm!{[t;idx;sub;n;f]qasg[t;idx;n;f sub]}[t;idx;sub]'[nm;fns])]]}   / no where: each column is the value itself, attribute and all; r is the keys once read (upd has no local to spare)
+/ 2.9.0: update and delete from `t change the global t and give its name back, as q (they were 'type)
+qbnm:{[s]$[~"`"in s;0;[f:qsplit[qnorm s;" from "];$[2>#f;0;[w:trim f 1;w:*" "\w;$[(1<#w)&("`"=*w)&~":"=w 1;`$1_w;0]]]]]}
+qbys:{[f;s]r:f s;n:qbnm s;$[`s~@n;[.[n;();:;r];n];r]}
+upd:{[s]qbys[upd0;s]}
 
 / ---- delete  (rows via where, or named columns) ---------------------------
-del:{[s]s:qnorm s;s:$[(6#s)~"delete";trim 6_s;s];b:$[(5#s)~"from ";("";trim 5_s);2#qsplit[s;" from "]];colp:trim b 0;rw:$[$[|/"sedu"=*b 1;qnest b 1;0];(b 1;"";0b);qsplit[b 1;" where "]];t:qfr qtry trim rw 0;kk:keys t;t:unkey t;$[qpt t;`err"par";];wh:$[rw 2;rw 1;""];qkx[kk]$[#colp;+(except[cols t;`$'{(qname x)1}'qcut colp])#+t;qwhere[t;~qmask[t;wh]]]}
+del0:{[s]s:qnorm s;s:$[(6#s)~"delete";trim 6_s;s];b:$[(5#s)~"from ";("";trim 5_s);2#qsplit[s;" from "]];colp:trim b 0;rw:$[$[|/"sedu"=*b 1;qnest b 1;0];(b 1;"";0b);qsplit[b 1;" where "]];t:qfr qtry trim rw 0;kk:keys t;t:unkey t;$[qpt t;`err"par";];wh:$[rw 2;rw 1;""];qkx[kk]$[#colp;+(except[cols t;`$'{(qname x)1}'qcut colp])#+t;qwhere[t;~qmask[t;wh]]]}
+del:{[s]qbys[del0;s]}
 
 / ---- functional form ------------------------------------------------------
 / q's ?[t;c;b;a] (select) and ![t;c;b;a] (update, delete) over parse trees: a symbol is a column (or a global),
@@ -360,7 +365,7 @@ qexec:{[t;w;b;d]t:$[0=#w;t;qwhere[t;w]];$[0=#b;$[0=#d;t;qselect[t;d]];qby[t;b,()
 / Ordinary expressions - and an explicit sel"…" - are returned unchanged.
 qkws:("select";"exec";"update";"delete")
 qkfn:("sel";"exq";"upd";"del")
-qpre:" ([{;:,=<>+-*%!&|^~?@.]\t\n\r"   / a keyword starts after one of these (2.9.0: ], tab and newline too; ?, its miss 0N, let any char through before)
+qpre:" ([{;:,=<>+-*%!#_$&|^~?@.]\t\n\r"   / a keyword starts after one of these (2.9.0: ], tab and newline too; ?, its miss 0N, let any char through before) (#_$ too: 3#select from t, as q)
 qbig:1000000
 qesc:{,/{$[x="\\";"\\\\";$[x="\"";"\\\"";,x]]}'x}                                 / escape \ and " for a "…" literal
 qsmask:{[t]p:&t="\"";$[0=#p;:(#t)#0b;];e:(0,-1_$[|/b:t="\\";{y&~x}\b;b])p;o:-1_{y|~x}\0,e;q:@[(#t)#0b;p@&~e&o;:;1b];1=2!0,-1_sums q}   / 1b where inside a "…" literal (a " after an odd run of \ is escaped, inside a string only: ,\"ab" opens one)
@@ -418,7 +423,7 @@ qrwf:{$[|/{0<#ss[x;y]}[x]'qkws;sv["\n";qjg vs["\n";x]];x]}
 qwds:{[s]b:qblank s;w:qword 0+b;i:&differ w;k:i _ b;f:w i;?`$k@&f}   / the names a text uses (not in strings or symbols)
 qlenv:{[pre;body]m:qsmask pre;o:(pre="{")&~m;c:(pre="}")&~m;d:+\o-c;D:$[#d;*|d;0];$[D<1;"";[b:*|&o&d=D;lt:(b+1)_pre;pn:$["["=*lt;[j:lt?"]";`$trim'";"\(1_j#lt)];`x`y`z];k:qtok lt;ln:`$(k 0)@&(k 1)&{(":"=*x)&~":"=x 1}'1_(k 0),,"";u:?(pn,ln)@&(pn,ln)in qwds body;$[0=#u;"";1=#u;"(,`",($*u),")!,",$*u;"(`",("`"/$u),")!(",(";"/$u),")"]]]}
 qtok:{[s]b:qblank s;w:qword 0+b;i:&differ w;(i _ s;w i)}   / a text's tokens, and which are words
-qfr:{$[(::)~e:`qeg 0;. x;qfre[x;e]]}
+qfr:{r:$[(::)~e:`qeg 0;. x;qfre[x;e]];$[`s~@r;$[":"=*$r;r;. r];r]}   / 2.9.0: from `t is the global t, as q
 qfre:{[s;e]r:qesb[s;!e];$[r~s;. s;(. "{[qE]",r,"}")e]}
 qesb:{[s;n],/{[n;t;f]$[f&in[`$t;n];"(qE`",t,")";t]}[n]'[bnd _ s;w bnd:&differ w:qword 0+qblank s]}
 qwe:{[f;s;e]o:`qes e;r:.[{(1;x y)};(f;s);{(0;x)}];`qes o;$[*r;r 1;`err r 1]}   / f s with a lambda's names e set, as they were after

@@ -65,8 +65,35 @@ Z I drall(I f,V*b,W n,W off){C*p=b;while(n){W k0=n>((W)1<<30)?((W)1<<30):n;ssize
 // written are they renamed, in the list's order. A splayed table is written so (the sym file first, .d last), and a
 // set that fails before the renames leaves the old table as it was (#94 Q12). Returns the paths. A path named twice is
 // 'domain. A reader during the renames can still see some files old and some new.
+/* 2.9.0: `wcq writes q's own files (what rcq reads), for a database kdb+ made, so q can still read it after Amber
+ * wrote to it (an rdb's eod[] .Q.dpft into a q hdb): a flat vector behind fe 20 t 0 and 12 zeros; a symbol column as
+ * an enum, int64 indexes after a page whose header names the domain sym; a symbol list (the sym file, .d) as ff 01 0b 0
+ * and its names. q writes 0 for every count, and so does this. What q has no file for goes in Amber's own (dwt) */
+Z CO UC qtA[20]={0,tB,0,0,tL,tL,tL,tL,tF,tF,tC,0,tNP,tMO,tDT,0,tSP,tMN,tSC,tTM};
+Z CO UC qtW[20]={0,1,0,0,1,2,4,8,4,8,1,0,8,4,4,0,8,4,4,4};
+Z B dqf;Z CO UC qtO[tSP+1]={[tB]=1,[tG]=7,[tH]=7,[tI]=7,[tL]=7,[tF]=9,[tC]=10,[tDT]=14,[tTM]=19,[tNP]=12,[tMN]=17,[tSC]=18,[tMO]=13,[tSP]=16};
+Z I dopen(C*path,C*tmp){snprintf(tmp,4100,"%s.tmp",path);I f=open(tmp,O_WRONLY|O_CREAT|O_TRUNC,0644);
+ if(f<0&&errno==ENOENT&&!dmkp(tmp))f=open(tmp,O_WRONLY|O_CREAT|O_TRUNC,0644);return f;}
+Z I dwtq(A x,C*path,C*tmp){   //1 written, 0 failed (error raised), -1 not a kind q has: Amber's file then
+ P(_t(x)!=tA||_n(x)!=4,-1)A*a=_A(x);A v=a[1];L dn=gl_(a[2]);P(_tP(v),-1)UC t=_t(v);W n=_n(v);
+ P(!dpath(a[0],path,4096-8),dpe(a[0]),0)
+ UC*b;W m,o;
+ if(dn>=0){P(!(t==tG||t==tH||t==tI||t==tL),-1)o=4096;m=o+n*8;b=calloc(1,m?m:1);P(!b,ez0(),0)
+  b[0]=0xfd;b[1]=0x20;MC(b+16,"sym",3);b[0xff0]=0xfd;b[0xff2]=20;L*d=(L*)(b+o);
+  for(W i=0;i<n;i++)d[i]=t==tL?_L(v)[i]:t==tI?_I(v)[i]:t==tH?_H(v)[i]:_G(v)[i];}
+ else if(t==tS){m=8;for(W i=0;i<n;i++)m+=SL(su((U)_I(v)[i]))+1;b=calloc(1,m);P(!b,ez0(),0)b[0]=0xff;b[1]=1;b[2]=11;o=8;
+  for(W i=0;i<n;i++){S s=su((U)_I(v)[i]);N l=SL(s);MC(b+o,s,l);o+=l+1;}}
+ else{P(t>tSP||!qtO[t],-1)UC q=qtO[t];W w=qtW[q];m=16+n*w;b=calloc(1,m);P(!b,ez0(),0)b[0]=0xfe;b[1]=0x20;b[2]=q;UC*d=b+16;
+  if(t==tB)for(W i=0;i<n;i++)d[i]=(UC)(((UC*)_V(v))[i>>3]>>(i&7)&1);
+  else if(q==7&&t!=tL){L*e=(L*)d;for(W i=0;i<n;i++)e[i]=t==tI?_I(v)[i]:t==tH?_H(v)[i]:_G(v)[i];}
+  else MC(d,_V(v),(N)(n*w));}
+ I f=dopen(path,tmp);if(f<0){free(b);eo0();return 0;}
+ I bad=dwall(f,b,m);bad|=close(f);free(b);
+ if(bad){unlink(tmp);eo0();return 0;}
+ return 1;}
 // One quadruple x to its .tmp file: 1 when written; 0 when not, with the error raised and no .tmp left of it.
 Z B dwt(A x,C*path,C*tmp){
+ if(dqf){I r=dwtq(x,path,tmp);if(r>=0)return (B)r;}
  P(_t(x)!=tA||_n(x)!=4,et0(),0)
  A*a=_A(x);A pth=a[0],v=a[1];L dn=gl_(a[2]),atr=gl_(a[3]);
  P(!dpath(pth,path,4096-8),dpe(pth),0)
@@ -102,6 +129,7 @@ A wcolT(A x){
  C path[4096],tmp[4100];P(!dwt(x,path,tmp),x(0))
  if(rename(tmp,path)){unlink(tmp);return x(eo0());}
  A r=_R(*_A(x));mr(x);return r;}
+A wcolqT(A x){dqf=1;A r=wcolT(x);dqf=0;return r;}   //`wcq: as `wcol, in q's files (dwtq)
 
 // the payload of a column file as a vector of type t and count n: mapped when it can be, read otherwise
 Z A dload(I f,UC t,W n,W nb){
@@ -110,14 +138,51 @@ Z A dload(I f,UC t,W n,W nb){
  if(v){_T(v)=t;_n(v)=(U)n;_at(v)=0;return v;}
  v=an((U)n,t);P(drall(f,_V(v),nb,DHB),mr(v);eo0())return v;}
 
+/* 2.9.0: kdb+'s own files, so `\l db` reads a database q wrote. Three layouts:
+ *   fe 20 t u ...   a flat vector: 16 bytes of header, then the items (q leaves the count at 8 as 0 at times: the size says it)
+ *   fd 20 ...       a page of header (the enum's domain name at 16), q's vector header at 0xff0 (t at 0xff2, u at 0xff3,
+ *                   the count at 0xff8), the items from 0x1000: an enum's are int64 indexes into the sym file
+ *   ff 01 t ...     a value as -8! writes it without the message header: the sym file (a symbol list, read to its end:
+ *                   q does not keep its count up to date as it appends) and .d
+ * q's types map to Amber's: byte short int long to its ints, real to float, the temporals as they are (same numbers) */
+Z A rcqv(I f,UC t,UC u,W n,W off){P(t>=20||!qtA[t],err0("nyi"))UC at=qtA[t];W w=qtW[t],nb=n*w;P(n>0xffffffffull,ez0())
+ if(at!=tB&&t!=4&&w==((W)1<<Tw[at])>>3){A v=an((U)n,at);P(nb&&drall(f,_V(v),nb,off),mr(v);eo0())_at(v)=u<5?u:0;return v;}
+ UC*b=malloc(nb?nb:1);P(!b,ez0())if(nb&&drall(f,b,nb,off)){free(b);return eo0();}
+ A v=an((U)n,at);
+ if(at==tB){MS(_V(v),0,(n+7)>>3);UC*o=(UC*)_V(v);for(W i=0;i<n;i++)o[i>>3]|=(UC)((b[i]&1)<<(i&7));}
+ else if(at==tF){F*o=(F*)_V(v);for(W i=0;i<n;i++){float g;MC(&g,b+4*i,4);o[i]=(F)g;}}
+ else{L*o=(L*)_V(v);for(W i=0;i<n;i++){
+  if(w==1)o[i]=b[i];
+  else if(w==2){short s;MC(&s,b+2*i,2);o[i]=s==(short)0x8000?NL:s;}
+  else{I s;MC(&s,b+4*i,4);o[i]=s==NIT?NL:s;}}}   //q's nulls (0Nh 0Ni) to Amber's 0N
+ free(b);_at(v)=u<5?u:0;return v;}
+Z A rcq(I f,W sz,CO UC*m,A dom){
+ if(m[0]==0xfe)return rcqv(f,m[2],m[3],sz>=16?(sz-16)/(qtW[m[2]<20?m[2]:0]?qtW[m[2]<20?m[2]:0]:1):0,16);
+ if(m[0]==0xfd){UC k[16];P(sz<0x1000||drall(f,k,16,0xff0),err0("format"))UC t=k[2],u=k[3];W n;MC(&n,k+8,8);if(!n&&sz>0x1000)n=(sz-0x1000)/(t&&t<20&&qtW[t]?qtW[t]:8);   //a count of 0 here too at times: the size says it
+  P(n>0xffffffffull||0x1000+n*8>sz,err0("format"))
+  if(t<20)return t?rcqv(f,t,u,n,0x1000):err0("nyi");   //a nested column (strings) keeps its items in a col# file: not yet
+  L*ix=malloc(n?n*8:8);P(!ix,ez0())if(n&&drall(f,ix,n*8,0x1000)){free(ix);return eo0();}
+  A r;if(!dom){r=an((U)n,tL);MC(_V(r),ix,(N)n*8);}
+  else{U dn=_n(dom);CO I*sy=(CO I*)_V(dom);r=an((U)n,tS);I*o=(I*)_V(r);
+   for(W i=0;i<n;i++){if(ix[i]<0||(W)ix[i]>=dn){free(ix);mr(r);return err0("sym");}o[i]=sy[ix[i]];}}
+  free(ix);_at(r)=u<5?u:0;return r;}
+ // ff 01: the whole file
+ UC*b=malloc(sz+8);P(!b,ez0())if(drall(f,b+8,sz,0)){free(b);return eo0();}
+ if(sz>=8&&b[10]==11){W i=16,k=0;for(W j=i;j<sz+8;j++)k+=!b[j];A r=an((U)k,tS);I*o=(I*)_V(r);W c=0;   //names to the end
+  while(i<sz+8&&c<k){C*s=(C*)b+i;N l=strlen(s);o[c++]=(I)us(s);i+=l+1;}free(b);return r;}
+ // anything else: q's bytes behind a message header, to qdes
+ A y=an((U)(sz-2+8),tC);UC*p=(UC*)_V(y);p[0]=1;p[1]=0;p[2]=0;p[3]=0;I len=(I)(sz-2+8);MC(p+4,&len,4);MC(p+8,b+10,(N)(sz-2));free(b);return qdes(y);}
+
 // `rcol path or `rcol(path;syms): one column file back. A symbol column needs the database's syms (a sym
-// vector); without them its indexes come back as ints.
+// vector); without them its indexes come back as ints. A file q wrote reads too (rcq above)
 A rcolT(A x){
  A pth=x,dom=0;
  if(_t(x)==tA&&_n(x)==2){pth=_A(x)[0];dom=_A(x)[1];P(_t(dom)!=tS,x(et0()))}
  C path[4096];P(!dpath(pth,path,SZ path),x(dpe(pth)))
  I f=open(path,O_RDONLY);P(f<0,x(eo0()))
  struct stat st;DHdr h;I e=fstat(f,&st);
+ if(!e&&S_ISREG(st.st_mode)&&st.st_size>=8){UC m[4];
+  if(!drall(f,m,4,0)&&(m[0]==0xfe&&m[1]==0x20||m[0]==0xfd&&m[1]==0x20||m[0]==0xff&&m[1]==1)){A r=rcq(f,(W)st.st_size,m,dom);close(f);mr(x);return r;}}
  // a file that opens but is too short for the header is damage, 'format (#94 Q14); 'io is a failed open, stat or
  // read, and a directory
  if(e||(W)st.st_size<DHB||drall(f,&h,SZ h,0)){close(f);return x(!e&&S_ISREG(st.st_mode)&&(W)st.st_size<DHB?err0("format"):eo0());}
@@ -176,6 +241,7 @@ A ldirT(A x){C path[4096];P(!dpath(x,path,SZ path-260),x(dpe(x)))DIR*d=opendir(p
 #else
 A wcolT(A x){return x(en0());}
 A rcolT(A x){return x(en0());}
+A wcolqT(A x){return x(en0());}
 A fszT(A x){return x(en0());}
 A ldirT(A x){return x(en0());}
 #endif

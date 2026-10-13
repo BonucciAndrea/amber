@@ -27,7 +27,7 @@
 #endif
 
 #include "ln.h"
-void qidle(void);   /* qipc.c */
+void qidle(void);int qactive(void);   /* qipc.c */
 #include "ext.h"
 
 #include <stdio.h>
@@ -316,7 +316,7 @@ int am_ln_under_rlwrap(void) {
  * Amber has an editor of its own. */
 static void rlwrap_note(void) {
     static int said;
-    if (said) return;
+    if (said || qactive()) return;   /* 2.9.0: not in a process that serves (a port or a timer): rlwrap is the editor there */
     said = 1;
     fputs("amber: started under rlwrap -- leaving line editing to it.\n"
           "       amber has had its own editor since 1.9.5: start it with ./a "

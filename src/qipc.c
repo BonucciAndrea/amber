@@ -12,6 +12,7 @@
 #include<sys/types.h>
 #include<sys/socket.h>
 #include<sys/time.h>
+#include<time.h>
 #include<netinet/in.h>
 #include<netinet/tcp.h>
 #include<netdb.h>
@@ -22,6 +23,7 @@
 #include<unistd.h>
 #endif
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+Z V qerrp(V);
 /* qipc.c - q's wire format (kdb+ IPC), 2.9.0: -8!x and -9!y as q's bytes, and the messages a handle sends and takes.
  *
  * A message is an 8-byte header and a value. The header: 1 (little-endian), the message type (0 async, 1 sync, 2 a
@@ -169,10 +171,14 @@ Z V qzw(I fd){A r=K1("{z.w::x}",ai(fd));I(r,mr(r))E(ecl())}
 Z V qserve(I f){UC m;A v=qrcv(f,&m);I(m==255,I(!v,ecl())qdrop(f);return)
  I(!v,CO C*e=errtext();I(m==1,qsnde(f,e&&*e?e:"type"))ecl();return)
  qzw(f);I dq=amdiagq;amdiagq=1;A r=m==1?K1("{z.pg x}",v):m==0?K1("{z.ps x}",v):(mr(v),au);amdiagq=dq;   //a client's error is its answer, not printed here, as q
- I(m==1,I(r,I k=qsnd(f,r,2);I(k<0,qsnde(f,"type"))mr(r))E(CO C*e=errtext();qsnde(f,e&&*e?e:"error");ecl()))E(I(r,mr(r))E(ecl()))qzw(0);}
+ I(m==1,I(r,I k=qsnd(f,r,2);I(k<0,qsnde(f,"type"))mr(r))E(CO C*e=errtext();qsnde(f,e&&*e?e:"error");ecl()))E(I(r,mr(r))E(qerrp()))qzw(0);}
 Z V qacc(V){I fd=accept(qls,0,0);I(fd<0,return)I(fd>=QH,close(fd);return)C c[1024];N n=0;W(n<SZ c,I(read(fd,c+n,1)!=1,close(fd);return)I(!c[n],break)n++)
  UC v=3;I(!qwr(fd,&v,1),close(fd);return)setsockopt(fd,IPPROTO_TCP,TCP_NODELAY,(I[]){1},4);qhk[fd]=2;A r=K1("{z.po x}",ai(fd));I(r,mr(r))E(ecl())}
-Z V qtick(V){L t=qms();I(!qtp||t<qtn,return)qtn=t+qtp;A r=K1("{z.ts x}",antp((t-946684800000ll)*1000000));I(r,mr(r))E(epr(0))}
+//an error in a timer or an async message: one line on the console, as q's ('2026.10.13T13:35:54.899 type), not the diagnostic
+Z V qerrp(V){CO C*e=errtext();I(e&&*e==39,e++)C b[96];struct timeval tv;gettimeofday(&tv,0);time_t t=tv.tv_sec;struct tm m;localtime_r(&t,&m);
+ I n=snprintf(b,SZ b,"'%04d.%02d.%02dT%02d:%02d:%02d.%03d ",m.tm_year+1900,m.tm_mon+1,m.tm_mday,m.tm_hour,m.tm_min,m.tm_sec,(I)(tv.tv_usec/1000));
+ N k=0;I(e,W(e[k]&&e[k]!=10,k++))I(write(1,b,(N)n)<0||write(1,e?e:"error",e?k:5)<0||write(1,"\n",1)<0,{})ecl();}
+Z V qtick(V){L t=qms();I(!qtp||t<qtn,return)qtn=t+qtp;I dq=amdiagq;amdiagq=1;A r=K1("{z.ts x}",antp((t-946684800000ll)*1000000));amdiagq=dq;I(r,mr(r))E(qerrp())}
 // one wait: up to ms (-1 none) for the terminal (when s), the port, the clients, the timer; 1 when the terminal is ready
 Z I qpoll(B s,I ms){ST pollfd p[QH+2];I n=0;I(s,p[n].fd=0;p[n].events=POLLIN;n++)I(qls>=0,p[n].fd=qls;p[n].events=POLLIN;n++)
  F(QH,I(qhk[i]==1||qhk[i]==2,p[n].fd=(I)i;p[n].events=POLLIN;n++))
@@ -195,7 +201,7 @@ A qcall(I h,A y/*1*/){I(h==1||h==2||h==-1||h==-2,return qcon1(h,y);)I(!h,P(_tP(y
  I(qhk[f]==3,P(_tP(y)||_t(y)>=tM,et(y))U n=_N(y);F(n,A e=ii(y,i);A b=qser(e,0);mr(e);P(!b,y(0))I k=qwr(f,_V(b)+8,_n(b)-8);mr(b);P(!k,y(eo0())))return y(au);)
  I(a,I k=qsnd(f,y,0);mr(y);P(k<=0,k<0?0:(qdrop(f),eo0()))return au;)
  B w=y==au;I(!w,I k=qsnd(f,y,1);mr(y);P(k<=0,k<0?0:(qdrop(f),eo0())))
- W(1,UC m;A v=qrcv(f,&m);P(m==255,I(!v,qdrop(f))v?v:eo0())P(!v,0)P(m==2||w,v)A r=K1("{z.ps x}",v);I(r,mr(r))E(epr(0)))
+ W(1,UC m;A v=qrcv(f,&m);P(m==255,I(!v,qdrop(f))v?v:eo0())P(!v,0)P(m==2||w,v)I dq=amdiagq;amdiagq=1;A r=K1("{z.ps x}",v);amdiagq=dq;I(r,mr(r))E(qerrp()))
  return 0;}
 // hopen: an int port (this host), `:host:port[:user:pass] (`::port this host), or a file `:path, a log to append to
 Z I qcon(S hs,S ps,S up){ST addrinfo h,*r=0;MS(&h,0,SZ h);h.ai_family=AF_INET;h.ai_socktype=SOCK_STREAM;I(getaddrinfo(*hs?hs:"127.0.0.1",ps,&h,&r)||!r,return -1)
@@ -235,3 +241,5 @@ A qreplay(A x/*1*/){L n=-1;A p=x;I(!_tP(x)&&_t(x)==tA&&_n(x)==2,n=gl(ii(x,0));p=
  W(r.i<m&&(n<0||k<n),A v=qdec(&r,0);I(!v||r.bad,I(v,mr(v))I(r.bad==4,mr(b);return 0)break)
   I(n==-2,mr(v);k++;continue)A e=K1("{qvalue x}",v);P(!e,mr(b);(A)0)mr(e);k++)
  mr(b);return az(k);}
+//`tzo: the local time's offset from UTC in seconds, for q's local clocks .z.P .z.N .z.D .z.T .z.Z (2.9.0: they were UTC)
+A qtzo(A x/*1*/)_(mr(x);time_t t=time(0);struct tm m;P(!localtime_r(&t,&m),az(0))az((L)m.tm_gmtoff))

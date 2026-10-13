@@ -252,7 +252,7 @@ F gf(A);
 EX I amdiag;V amdiag0(V);//stderr-diagnostic switch (e.c), and its default from $AMBER_DIAG; see `diag
 CO C*edinfo(CO C*,I);//error-catalogue accessor for the `dgn self-test (e.c)
 V eD(CO C*,U,U);//render a rich diagnostic from raw source bytes (e.c)
-EX AM_TLS I amdiagq;//set while a load's qSQL probe runs: no diagnostic on this thread (e.c)
+EX I amqshow;EX AM_TLS I amdiagq;//set while a load's qSQL probe runs: no diagnostic on this thread (e.c)
 EX AM_TLS I amdiagshown;//set when a rich diagnostic was already rendered for the current error (e.c), per thread
 EX A1*v1[];EX A2*v2[];EX AA*v8[];EX A gv[65536],cns,cn[],ci[2][5];EX I pg;EX TY(CO C[])vc,TS,Tw,TR,TT,TX,Tk;EX S*argv,*env;
 
@@ -378,4 +378,4 @@ U os(S);W ov_(S,W);
 #define pnul(x) (_t(x)==tC&&memchr(_V(x),0,_n(x)))
 A evn(S,S,B);
 A frf(I),evg(U);
-A qser(A,UC),qdes(A),qcall(I,A),qhopen(A),qhclose(A),qport(S),qtimer(L),qlog0(A),qreplay(A),qhdel(A),qexit(A);V qidle(V),qloop(V);I qactive(V);L qtperiod(V);V qstd(V);   //qipc.c: q's IPC (2.9.0)
+A qser(A,UC),qdes(A),qcall(I,A),qhopen(A),qhclose(A),qport(S),qtimer(L),qlog0(A),qreplay(A),qhdel(A),qexit(A),qtzo(A),wcolqT(A),qtrv(A);V qidle(V),qloop(V);I qactive(V);L qtperiod(V);V qstd(V);   //qipc.c: q's IPC (2.9.0)

@@ -77,7 +77,7 @@ Z A pS(C c)_(pSw(c,0))
 Z A0(pP,I a[8];U n=0;                                                                               //parse dot-separated path of identifiers
  W(1,P(n>=L(a),ez0())A y=str0(ps());a[n++]=us(yV);y(0);B(*s-'.'||!id0(s[1]))++s)
  aV(tS,n,a))
-Z A0(pp,P(*s-'[',au)A x=N(pSw(';',1));s=pw(s);P(*s-']'||!xn,ep(x))P(xN>8,ez(x))s++;ppe=s;x)                          //Parse parameter list
+Z A0(pp,P(*pw(s)-'[',au)s=pw(s);A x=N(pSw(';',1));s=pw(s);P(*s-']'||!xn,ep(x))P(xN>8,ez(x))s++;ppe=s;x)                          //Parse parameter list   //2.9.0: blanks before it too, as q's { [name] ...}
 Z S pws(S s)_(W(*s==32||*s==10,s++)s)                                                               //skip spaces and newlines
 Z A amkl(CO A*e,U n)_(A x=aA1(MKL);F(n,PSH(x,e[i]))x)                                                //make-list node (e0;e1;..)
 Z A amcg(C end,U*np)_(I nm[256];A ex[256];U n=0;s=pws(s);                                            //parse `name:expr;..` group up to end -> (names ! (e0;e1;..))

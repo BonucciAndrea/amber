@@ -36,7 +36,7 @@ qta:`d`t`n`h`j`y`e;qtv:`D`T`N`H`J`Y`E;qtl:qta,qtv;qlo:qtv!qta   / a temporal ato
 / Amber's temporal letters: `d`t`n`h`j`y`e, a date, time, timestamp, minute, second, month, timespan (q's d t p u v m n)
 qkwt:`abs`all`any`avg`ceiling`count`cos`deltas`dev`distinct`enlist`exp`first`flip`floor`group`inv`key`last`log`max`maxs`min`mins`neg`not`null`prd`prds`prev`ratios`reciprocal`reverse`sin`sqrt`string`sum`sums`tan`type`var`where`value`attr`differ`fills`within`like`in`wavg`wsum`union`ss`lj!101 105 105 101 105 101 101 109 101 101 101 101 101 101 101 101 101 101 101 101 101 108 101 108 101 101 101 101 108 109 109 101 101 101 101 101 101 108 101 101 101 101 101 104 105 108 101 101 101 101 101 105 101 104   / q's type of its keywords that are not 100h (a lambda's): 101 for most
 type:{$[`A~t:@x;$[#x;$[(u:@*x)in`d`t`n`h`j`y`e;$[&/u=@'x;0-qtyn u;0];0];0];(t in`o`p`q`r`u`v`w`x)&#w:&{x~@[{. x};y;{0b}]}[x]'!qkwt;qkwt(!qkwt)@*w;qtyn t]}   / q's type numbers (7 for ints, -9 a float, 98 a table; a general list of one temporal kind as q's vector of it, 14 for dates); @x gives Amber's letters
-key:{$[(`s~@x)&":"~*$x;$[-1<`fsz 1_$x;x;()];(@x)in`I`F`C`S;(`long`float`char`symbol)@`I`F`C`S?@x;!x]}   / key of a list is its type's name, as q
+key:{$[(`s~@x)&":"~*$x;$[-2=s:`fsz 1_$x;asc`$,/`ldir 1_$x;-1<s;x;()];(@x)in`I`F`C`S;(`long`float`char`symbol)@`I`F`C`S?@x;!x]}   / key of a list is its type's name, as q
 value:{. x}
 first:{*x}
 last:{*|x}
@@ -45,7 +45,7 @@ distinct:{$[isat x;`err"type";[a:`at x;r:?x;$[a~`s;`s#r;in[a;`u`g];`u#r;`#r]]]} 
 group:{$[isat x;`err"type";=x]}     / =5 is the unit matrix
 where:{&x}
 flip:{$[`m~@x;$[`M~@!x;+x;&/isat'. x;`err"rank";+x];1=#x;$[isat x;`err"rank";+x];+x]}   / A dict of atoms: 'rank as q (+ makes one-row columns)
-count:{#x}
+count:{$[`m~@x;$[`amberpt~*!x;hdb.rows x;#x];#x]}   / a partitioned table counts its rows, as q (2.9.0; it was 6, its dict's keys)
 mod:{$[`i~@y;$[y>0;y!x;y<0;0-(0-y)!0-x;$[isat x;$[`f~@x;0n;0N];(#x)#$[`F~@x;0n;0N]]];qmd[x;y]]}   / q's: the sign of the divisor (7 mod -3 is -2), 0N by 0
 qmd:{[x;y]$[(@y)in`f`F;$[(@x)in`f`F;x-y*_x%y;x-y*div[x;y]];(@x)in`f`F;x-y*_x%y;[r:x-y*idiv[x;y];$[|/0=y;@[r;&0=y;:;0N];r]]]}   / a float or a list divisor
 idivv:{[x;y]x:$[`i~@x;(#y)#x;x];n:(^x)|^y;x0:0^x;y0:1^y;z:&y0=0;s:y0<0;x1:x0*1-2*s;y1:1|y0*1-2*s;q:-9223372036854775807|_x1%y1;r:x1-q*y1;d:_r%y1;q:q+d;r:r-d*y1;q:q-r<0;r:x1-q*y1;q:q+~r<y1;q:@[q;z;:;0N];@[q;&n;:;0N]}   / ints by an int vector, exactly: the float quotient, corrected by the exact (wrapped) remainder
@@ -188,7 +188,7 @@ prior:{x':y}
 istable:{`M=@x}
 isdict:{`m=@x}
 iskeyed:{$[`m=@x;`M=@!x;0]}
-cols:{$[iskeyed x;(!!x),!.x;!x]}
+cols:{$[iskeyed x;(!!x),!.x;`m~@x;$[`amberpt~*!x;(,x`pc),x`cols;!x];!x]}   / 2.9.0: a partitioned table's are its partition column and its columns, as q
 keys:{$[iskeyed x;!!x;0#`]}
 rows:{+. x}
 atr:{[t;i]+(cols t)!{y@x}[i]'. t}
@@ -206,8 +206,8 @@ xcols:{[c;t]c:c,();e:(k:cols t)@&~(k:cols t)in c;$[(#k)=(#c)+#e;0;hasc[c;t]];+(c
 / the DISTINCT ids), which is the collation `<` on a symbol vector gives and the
 / one ajsorted's contiguity note assumes.  Descending is the same sort with
 / complemented keys, which reproduces `>`'s "ties in ascending index order".
-xasc:{[c;t]c:c,();hasc[c;t];s:c#+t;o:`xs(value s;0b);o:$[#o;o;<+s];t:t@o;d:+t;+d,(1#c)!`sa'd@1#c}
-xdesc:{[c;t]c:c,();hasc[c;t];s:c#+t;o:`xs(value s;1b);o:$[#o;o;>+s];t@o}
+xasc:{[c;t]$[iskeyed t;xkey[cols@!t;xasc[c;unkey t]];[c:c,();hasc[c;t];s:c#+t;o:`xs(value s;0b);o:$[#o;o;<+s];t:t@o;d:+t;+d,(1#c)!`sa'd@1#c]]}   / 2.9.0: a keyed table sorts too, keyed as it was, as q
+xdesc:{[c;t]$[iskeyed t;xkey[cols@!t;xdesc[c;unkey t]];[c:c,();hasc[c;t];s:c#+t;o:`xs(value s;1b);o:$[#o;o;>+s];t@o]]}
 fills:{$[|/`m`M=@x;dcv[fills;x];$[2>#x;$[#x;isat x;1b];0b];x;`A=@x;$[`A=@n:^x;fln\x;x@|\(!#x)*~n];x@|\(!#x)*~^x]}   / each null takes the last value before it, as q; a dict by its values, a table by column
 fln:{$[isat x;$[(`f=@x)&`I=@y;x^0.0+y;x^y];isat y;$[^y;x;y];~(#x)=#y;`err"length";`A=@n:^y;fln'[x;y];[t:(@x),@y;x:$[t~`I`F;0.0+x;x];y:$[t~`F`I;0.0+y;y];@[y;i;:;x i:&n]]]}   / a list of lists fills position by position from the item before, as q's ^\ (the nulls of y take x's; ints with floats: floats, as q)
 attr:{`at x}                                         / q's attr: `s `u `p `g, or ` for none
@@ -479,8 +479,12 @@ GB:`rounded`sharp`heavy!(("─";"│";"╭";"┬";"╮";"├";"┼";"┤";"╰";
 brep:{,/x#,y}                                       / repeat a (multi-byte) char x times
 / box render: W=visible col widths, rows=(header;data..) of coloured padded cells, tr=truncated?
 box:{[W;rows;g;tr]G:GB g;segs:{,/(x+2)#,y}[;G 0]'W;hl:{[a;m;b;s]cwrap[CT`sep;a,(m/s),b]};vb:cwrap[CT`sep;G 1];mkrow:{[vb;cs]vb,(vb/{" ",x," "}'cs),vb}[vb];body:mkrow'1_rows;body:$[tr;body,,mkrow({[w]cwrap[CT`sep;w$".."]}'W);body];(hl[G 2;G 3;G 4;segs];mkrow(*rows);hl[G 5;G 6;G 7;segs]),body,,hl[G 8;G 9;G 10;segs]}
-amtab:{[t]nr:nrows t;tr:CROWS<nr;u:$[tr;captab t;t];rows:amblk[u;cols u];b:$[GRID~`clean;[lns:{" "/x}'rows;l:(1#lns),(,cwrap[CT`sep;(vlen(*lns))#"-"]),1_lns;$[tr;l,,"..";l]];box[{vlen x}'(*rows);rows;GRID;tr]];b,,aftr[nr;#cols t]}
-amkeyed:{[kt]t:unkey kt;nr:nrows t;tr:CROWS<nr;t:$[tr;captab t;t];kc:keys kt;vc:except[cols t;kc];kb:amblk[t;kc];vb2:amblk[t;vc];b:$[GRID~`clean;[kr:{" "/x}'kb;vr:{" "/x}'vb2;lns:(kr,\:"| "),'vr;l:(1#lns),(,cwrap[CT`sep;(vlen(*lns))#"-"]),1_lns;$[tr;l,,"..";l]];[rows:kb,'vb2;box[{vlen x}'(*rows);rows;GRID;tr]]];b,,aftr[nr;#cols kt]}
+AMCUT:0
+amtw:{v:$[AMCUT;.[{`bi 0};,0;!0];!0];$[(7<#v)&0<v 6;v 6;0]}   / the terminal's width when AMCUT (a serving console), else 0: the full REPL clips and pans wide tables itself
+amfmtc:{AMCUT::1;r:.[amfmt;,x;{AMCUT::0;`err x}];AMCUT::0;r}   / amfmt, a table cut to the terminal's width (out, src/s.c)
+amcut:{[rows]tw:amtw[];w:{vlen x}'*rows;k:1|+/(+\w+3)<tw-4;$[(0<tw)&k<#w;{x,,".."}'k#'rows;rows]}   / 2.9.0: the columns that fit the terminal and a .. column, as q (a wide table wrapped every line)
+amtab:{[t]nr:nrows t;tr:CROWS<nr;u:$[tr;captab t;t];rows:amcut amblk[u;cols u];b:$[GRID~`clean;[lns:{" "/x}'rows;l:(1#lns),(,cwrap[CT`sep;(vlen(*lns))#"-"]),1_lns;$[tr;l,,"..";l]];box[{vlen x}'(*rows);rows;GRID;tr]];b,,aftr[nr;#cols t]}
+amkeyed:{[kt]t:unkey kt;nr:nrows t;tr:CROWS<nr;t:$[tr;captab t;t];kc:keys kt;vc:except[cols t;kc];kb:amblk[t;kc];vb2:amblk[t;vc];b:$[GRID~`clean;[kr:{" "/x}'kb;vr:{" "/x}'vb2;lns:(kr,\:"| "),'vr;l:(1#lns),(,cwrap[CT`sep;(vlen(*lns))#"-"]),1_lns;$[tr;l,,"..";l]];[rows:amcut kb,'vb2;box[{vlen x}'(*rows);rows;GRID;tr]]];b,,aftr[nr;#cols kt]}
 amdict:{[d]tr:CROWS<#!d;kk:$[tr;CROWS#!d;!d];vv:$[tr;CROWS#value d;value d];ks:$kk;vs:`k'vv;kw:|/#:'ks;b:{[kw;ks;vs;vv;i](cwrap[palN i;kw$ks i]),"| ",ccell[atcol vv@i;vs i]}[kw;ks;vs;vv]'!#ks;$[tr;b,,"..";b]}
 amfmt:{$[iskeyed x;amkeyed x;`M=@x;amtab x;`m=@x;amdict x;`k x]}
 show:{`0:amfmt x;}
@@ -515,4 +519,4 @@ xcol:{[n;t]$[iskeyed t;xkey[(#keys t)#n,(#n)_keys t;xcol[n;unkey t]];[c:cols t;+
 upsert:{[t;r]$[`s~@t;[.[t;();:;upsert[. t;r]];t];iskeyed t;qupk[t;qukt[t;r]];insert[t;r]]}
 qupk:{[t;r]k:keys t;$[(1=#k)&(k~keys r)&(cols t)~cols r;[c:*k;i:(t0:!t)[c]?(r0:!r)c;f:&i<#t0 c;n:&i=#t0 c;v:.t;w:.r;(+(,c)!,(t0 c),(r0 c)n)!+(!+v)!{[i;f;n;a;b]@[a;i f;:;b f],b n}[i;f;n]'[. +v;. +w]];t,r]}   / one key column: r's rows found by it, replaced, and the new ones added; else t,r   / a keyed table's rows by key, replaced or added; else appended, as q
 qukt:{[t;r]$[iskeyed r;r;`M~@r;xkey[keys t;r];`m~@r;xkey[keys t;+(!r)!,'. r];xkey[keys t;+(cols t)!,'r]]}
-tables:{d:. 0#`;k:!d;v:. d;asc k@&(~"."in'$k)&{(`M~@x)|iskeyed x}'v}   / the global tables' names, as q (. 0#` is every global)
+tables:{d:. 0#`;k:!d;v:. d;asc k@&(~"."in'$k)&{$[(`M~@x)|iskeyed x;1;`m~@x;in[`amberpt;!x];0]}'v}   / the global tables' names, as q (. 0#` is every global) (2.9.0: a partitioned one too)

@@ -7,15 +7,15 @@
 
 / ---- .z : clocks & handlers ----------------------------------------------
 z.p:{`mkp 1000*`t[]-946684800000000}     / now, a timestamp (2.9.0: q's types; they were their numbers). .z.p reads it
-z.P:{z.p[]}                              / local timestamp (no tz here)
-z.n:{`mkn 86400000000000!`i$z.p[]}       / the time of day, a timespan
-z.N:{z.n[]}
+z.P:{`mkp 1000*(`t[]-946684800000000)+1000000*`tzo 0}   / local timestamp (2.9.0: local, as q; it was UTC)
+z.n:{`mkn 86400000000000!`i$z.p[]}       / the time of day, a timespan (UTC; the capitals are local, as q)
+z.N:{`mkn 86400000000000!`i$z.P[]}
 z.d:{`mkd fdiv[`i$z.p[];86400000000000]} / today, a date
-z.D:{z.d[]}
+z.D:{`mkd fdiv[`i$z.P[];86400000000000]}
 z.t:{`mkt fdiv[`i$z.n[];1000000]}        / the time of day, a time
-z.T:{z.t[]}
+z.T:{`mkt fdiv[`i$z.N[];1000000]}
 z.z:{z.p[]}                              / q's datetime: a timestamp here
-z.Z:{z.p[]}
+z.Z:{z.P[]}
 z.w:{0}                                   / handle of current connection (0 = local)
 z.ts:{}                                   / timer callback (set by user)
 qvalue:{$[(@x)in`C`c;. qrw x;`S~@x;(. *x). 1_x;(`A~@x)&#x;[f:*x;$[`s~@f;(. f). 1_x;f . 1_x]];x]}   / q's value of a message: text evaluated (qSQL too), a list its first item applied to the rest (a name, its global)
@@ -46,7 +46,7 @@ Q.idc:{x:x@&{((x>64)&x<91)|((x>96)&x<123)|((x>47)&x<58)|x=95}0+x;$[(#x)&(*x)in"0
 Q.id:{$[`s~@x;`$Q.idc@$x;`S~@x;Q.id'x;`M~@x;xcol[Q.id cols x;x];`$Q.idc x]}   / a name with only letters, digits and _ (one starting with a digit gets an a), as q; a table: its columns
 Q.dd:{`$($x),".",$y}                       / dotted join  Q.dd[`a;`b] -> `a.b
 Q.gc:{0}                                   / garbage collect (no-op here)
-Q.w:{`used`heap`peak!0 0 0}                / workspace memory (placeholder)
+Q.w:{h:*`bi 0;u:.[{4096*. (" "\*0:"/proc/self/statm")1};,0;{x;h}];`used`heap`peak`wmax`mmap`mphy`syms`symw!(u;h;h;0;0;0;0;0)}   / memory in q's keys: used the resident bytes, heap what Amber reserved (2.9.0: it was 0 0 0)
 Q.fc:{[f;x]f x}                            / parallel-on-cut (sequential fallback)
 Q.trp:{[f;a;h].[f;a;h]}                    / protected apply with handler
 

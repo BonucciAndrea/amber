@@ -325,7 +325,8 @@ upd0:{[s]p:qmz[7;s;updp;,s];wh:p 1;r3:p 2;t:qfr p 0;r:keys t;t:unkey t;k:qik[p 3
 / 2.9.0: update and delete from `t change the global t and give its name back, as q (they were 'type)
 qbnm:{[s]$[~"`"in s;0;[f:qsplit[qnorm s;" from "];$[2>#f;0;[w:trim f 1;w:*" "\w;$[(1<#w)&("`"=*w)&~":"=w 1;`$1_w;0]]]]]}
 qbys:{[f;s]r:f s;n:qbnm s;$[`s~@n;[.[n;();:;r];n];r]}
-upd:{[s]qbys[upd0;s]}
+qupd:{[s]qbys[upd0;s]}   / 2.9.0: what an update compiles to; a q tickerplant's own upd handler no longer replaces it
+upd:qupd
 
 / ---- delete  (rows via where, or named columns) ---------------------------
 del0:{[s]s:qnorm s;s:$[(6#s)~"delete";trim 6_s;s];b:$[(5#s)~"from ";("";trim 5_s);2#qsplit[s;" from "]];colp:trim b 0;rw:$[$[|/"sedu"=*b 1;qnest b 1;0];(b 1;"";0b);qsplit[b 1;" where "]];t:qfr qtry trim rw 0;kk:keys t;t:unkey t;$[qpt t;`err"par";];wh:$[rw 2;rw 1;""];qkx[kk]$[#colp;+(except[cols t;`$'{(qname x)1}'qcut colp])#+t;qwhere[t;~qmask[t;wh]]]}
@@ -364,7 +365,7 @@ qexec:{[t;w;b;d]t:$[0=#w;t;qwhere[t;w]];$[0=#b;$[0=#d;t;qselect[t;d]];qby[t;b,()
 / (sel/exq/upd/del); the REPL (repl.k, line1) runs every input line through it.
 / Ordinary expressions - and an explicit sel"…" - are returned unchanged.
 qkws:("select";"exec";"update";"delete")
-qkfn:("sel";"exq";"upd";"del")
+qkfn:("sel";"exq";"qupd";"del")
 qpre:" ([{;:,=<>+-*%!#_$&|^~?@.]\t\n\r"   / a keyword starts after one of these (2.9.0: ], tab and newline too; ?, its miss 0N, let any char through before) (#_$ too: 3#select from t, as q)
 qbig:1000000
 qesc:{,/{$[x="\\";"\\\\";$[x="\"";"\\\"";,x]]}'x}                                 / escape \ and " for a "…" literal
@@ -420,7 +421,7 @@ qrwf:{$[|/{0<#ss[x;y]}[x]'qkws;sv["\n";qjg vs["\n";x]];x]}
 / assigned before the query -- that the query's text uses, as a dict, to selE exqE updE delE, which set them (`qes, src/w.c)
 / while the query runs. A column of the same name wins, as in q (qidsub looks at the columns first). The compiled code reads
 / them with `qeg, and `nsd keys the caches with their names, so the same text outside a lambda compiles apart
-qwds:{[s]b:qblank s;w:qword 0+b;i:&differ w;k:i _ b;f:w i;?`$k@&f}   / the names a text uses (not in strings or symbols)
+qwds:{[s]b:qblank s;w:qword 0+b;i:&differ w;k:i _ b;f:(w i)&~(i>0)&"."=b 0|i-1;?`$k@&f}   / the names a text uses (not in strings or symbols, nor after a dot: .z.D's z is no local, 2.9.0)
 qlenv:{[pre;body]m:qsmask pre;o:(pre="{")&~m;c:(pre="}")&~m;d:+\o-c;D:$[#d;*|d;0];$[D<1;"";[b:*|&o&d=D;lt:(b+1)_pre;pn:$["["=*lt;[j:lt?"]";`$trim'";"\(1_j#lt)];`x`y`z];k:qtok lt;ln:`$(k 0)@&(k 1)&{(":"=*x)&~":"=x 1}'1_(k 0),,"";u:?(pn,ln)@&(pn,ln)in qwds body;$[0=#u;"";1=#u;"(,`",($*u),")!,",$*u;"(`",("`"/$u),")!(",(";"/$u),")"]]]}
 qtok:{[s]b:qblank s;w:qword 0+b;i:&differ w;(i _ s;w i)}   / a text's tokens, and which are words
 qfr:{r:$[(::)~e:`qeg 0;. x;qfre[x;e]];$[`s~@r;$[":"=*$r;r;. r];r]}   / 2.9.0: from `t is the global t, as q
@@ -429,5 +430,6 @@ qesb:{[s;n],/{[n;t;f]$[f&in[`$t;n];"(qE`",t,")";t]}[n]'[bnd _ s;w bnd:&differ w:
 qwe:{[f;s;e]o:`qes e;r:.[{(1;x y)};(f;s);{(0;x)}];`qes o;$[*r;r 1;`err r 1]}   / f s with a lambda's names e set, as they were after
 selE:{[s;e]qwe[sel;s;e]}
 exqE:{[s;e]qwe[exq;s;e]}
-updE:{[s;e]qwe[upd;s;e]}
+qupdE:{[s;e]qwe[qupd;s;e]}
+updE:qupdE
 delE:{[s;e]qwe[del;s;e]}

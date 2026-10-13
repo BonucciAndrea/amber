@@ -153,7 +153,8 @@ t[`fupdByOld;    (+![trades;,(>;`px;25);(,`sym)!,`sym;(,`sz)!,(count;`i)])`sz; 1
 / ==================== 8. the rewriter itself (qrw) ==========================
 t[`qrwSelect;    qrw"select from trades";     "sel\"select from trades\""];
 t[`qrwExec;      4#qrw"exec a from t";        "exq\""];
-t[`qrwUpdate;    4#qrw"update a:1 from t";    "upd\""];
+t[`qrwUpdate;    5#qrw"update a:1 from t";    "qupd\""];
+t[`updShadowed;{upd::{[t;x]x};r:(. qrw"update a:2 from ([]a:1 2)";. qrw"{[u]update a:3 from u}[([]a:1 2)]");upd::qupd;r}[];(([]a:2 2);([]a:3 3))]   / 2.9.0: a tickerplant's own upd does not replace what update runs
 t[`qrwDelete;    4#qrw"delete from t";        "del\""];
 t[`qrwPassThru;  qrw"1+1";                    "1+1"];
 t[`qrwNoFrom;    qrw"select 1";               "select 1"];

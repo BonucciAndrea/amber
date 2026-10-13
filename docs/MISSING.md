@@ -153,9 +153,9 @@ names write the binary format too and still read the old text files (AMBER.md §
   databases (`par.txt` across disks), compression, on-disk `aj` over partitions, and map-reduce for
   aggregates that span partitions without grouping by the partition column (those copy the
   columns they need into one table first).
-- **Differs from q:** `count` of a partitioned table (a name `loaddb` defines) is the count of the
-  dict that names it (6, its keys), where q gives its rows; `sel"select count i from t"` gives them.
-  Telling that dict apart in `count` would cost every call.
+- **Since 2.9.0:** a database kdb+ wrote loads too (q's column files, enums and sym file, with or without `.d`), and
+  Amber writes q's own files into it (`.Q.dpft`, `set`), so q keeps reading it. `count`, `cols` and `tables` of a
+  partitioned table are q's.
 - **Since 2.8.0:** `upsert` in memory (a keyed table by key, else appended) and `` `t insert r `` by name, as q.
 - **Still missing:** appending to a table on disk. `upsert` does not take a path, so no
   `` `:db/t/ upsert t `` (q appends the rows to the column files), and amber.k's `insert` takes the
@@ -164,7 +164,7 @@ names write the binary format too and still read the old text files (AMBER.md §
 ## 5. IPC & the tick architecture: done (q's wire format, 2.9.0)
 **Since 2.9.0:** q's binary wire protocol, both ways: `hopen`/`hclose`, `h x` sync, `neg[h] x` async,
 `\p`/`-p`, the `.z.pg` `.z.ps` `.z.po` `.z.pc` `.z.w` handlers, `\t` and `.z.ts`, `-8!`/`-9!` as q's bytes,
-logs and `-11!` replay (q's logs too). A kdb+ tickerplant (tp, rdb, cep) runs on it unchanged (AMBER.md §10c).
+logs and `-11!` replay (q's logs too). A kdb+ tickerplant (tp, rdb, cep, hdb, gateway) runs on it unchanged (AMBER.md §10c).
 - **Still missing:** compressed messages going out (Amber reads q's compressed ones), websockets, TLS,
   `.z.pw` auth, `.z.ph`/`.z.pp` (HTTP), and the deferred `-30!` reply.
 

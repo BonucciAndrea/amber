@@ -18,6 +18,17 @@
 - **Scripts read like q's**: a list, a lambda or a `select` split over indented lines is one statement, and a
   `.q` script loads the q libraries first. `read0` `read1` `system` are in, and a missing item of a list of
   lists is its empty list (`(1 2;3 4) 5` is `` `long$() ``, it was `0N 0N`).
+- **kdb+'s own databases**: `\l db` reads one q wrote (its column files, enums and sym file, even with no `.d`), and
+  `.Q.dpft` or `set` into it writes q's files back, so q still reads it after. `count`, `cols` and `tables` see a
+  partitioned table as q does, `key` of a directory lists it, and `\l dir` goes into it, so `\l .` reloads.
+- **A serving q process's console**: a script with a port or a timer open reads its console a line at a time, as q's,
+  so rlwrap works and what the handlers print doesn't stair-step. Tables show cut to the screen, a timer's or a
+  handler's error is one line (`'2026.10.13T14:20:00.000 type`), and a trap doesn't print the report first anymore.
+- **Bits of q a real plant needed**: `.z.P .z.N .z.D .z.T .z.Z` are local time, `.Q.w[]` real memory, `{ [x] ..}` with
+  a blank before the args, `@[h;msg;f]` and `.[h;args;f]` on a handle, `select`/`update`/`delete from `t` by name,
+  `xasc`/`xdesc` of a keyed table, `@[`v;i;f;y]` on a global, and `3#select ..`.
+- **Fixed, found running real q code**: a process that defines its own `upd` (every tickerplant does) made `update`
+  call it, and `.z.D` in a query inside a lambda was taken for a local `z`, so the lambda came back a projection.
 - **Changed, to match q**: `09:30:00` is a second (a time keeps its ms, `09:30:00.000`), `date+0N` is `0Nd`
   (was 'domain), `"D"$"x"` is `0Nd` (was 'parse), a time minus a time is a time, json writes `2026-03-15`, and `-8!`/`-9!` are q's bytes
   (Amber's own are `` `ser ``/`` `des `` now).

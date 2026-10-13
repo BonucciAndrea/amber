@@ -370,7 +370,7 @@ static int head_ident(A h, char *buf, size_t cap) {
 static int ast_qsql_kind(const char *nm) {
     if (!strcmp(nm, "sel")     || !strcmp(nm, "qselect")) return AST_QSQL_SELECT;
     if (!strcmp(nm, "exq")     || !strcmp(nm, "qexec"))   return AST_QSQL_EXEC;
-    if (!strcmp(nm, "upd"))                               return AST_QSQL_UPDATE;
+    if (!strcmp(nm, "upd") || !strcmp(nm, "qupd"))                               return AST_QSQL_UPDATE;
     if (!strcmp(nm, "del"))                               return AST_QSQL_DELETE;
     if (!strcmp(nm, "qby"))                               return AST_QSQL_BY;
     if (!strcmp(nm, "qwhere"))                            return AST_QSQL_WHERE;

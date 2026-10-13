@@ -1094,7 +1094,9 @@ Z NI __attribute__((cold)) A a8t(A x,CO A*a)_(A e_=enl(_R(a[1]));A r_=try(x,e_,a
 //Amber 2.8.0: @[f;x;h] with f a lambda of one argument traps f x, as q and as .[f;(,x);h] (it applied f to x and h: 'rank).
 //Only that: an amend calls @[f;item;y] with f the verb or a function of two, which stays an application. The test is in the
 //verb's entry (a8q, v8[18]), so a8, which amends call themselves, is as it was (with it inside, .[x;i;f;y] was 6% slower)
-AA(a8q,/*10..0*/A x=*a;P(n==3&&(_t(x)==to&&_k(x)==1||_tz(x)&&_t(a[2])>=to),a8t(x,a))a8(a,n))   //2.9.0: and @[h;msg;f] with h a handle, as q
+AA(a8q,/*10..0*/A x=*a;P(n==3&&(_t(x)==to&&_k(x)==1||_tz(x)&&_t(a[2])>=to),a8t(x,a))
+ P(n==4&&_t(x)==ts,A b[4];*b=x;b[1]=enl(a[1]);b[2]=a[2];b[3]=a[3];d8(b,4))   //2.9.0: @[`v;i;f;y] amends the global v, as q and as .[`v;,i;f;y] ('type)
+ a8(a,n))   //2.9.0: and @[h;msg;f] with h a handle, as q
 AA(a8,/*10..0*/A x=*a,y=a[1];
  X(RE(Ab8;*b=gZ(x);AC(b+1,a+1,n-1);a8(b,n))
    RT_E(P(y==au,mRn(n-2,a+2);Ab8;*b=a[2];b[1]=x;AC(b+2,a+3,n-3);USQ(e8(AP1,b,n-1)))

@@ -1032,7 +1032,7 @@ hclose h
   (q's too), `-11!(n;f)` the first n, `-11!(-2;f)` counts the good ones.
 - **Console handles**: `1 "text"`, `-1 "line"`, `2`/`-2` to stderr, `0 "expr"` evaluates.
 - **Tested against q itself**: a q client against an Amber server and the other way round, and a whole
-  kdb+ tickerplant (tp, rdb, cep, generator) running on Amber unchanged.
+  kdb+ tickerplant (feed, tp, rdb, cep, hdb, gateway, monitor) running on Amber unchanged, its hdb the one q wrote.
 
 ## 10a. Temporal
 

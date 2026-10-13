@@ -27,6 +27,7 @@
 #endif
 
 #include "ln.h"
+void qidle(void);   /* qipc.c */
 #include "ext.h"
 
 #include <stdio.h>
@@ -1178,7 +1179,7 @@ static void sb_strip_comment(char *s) {
  * it wants the EINTR so it can service the resize promptly. */
 static int rd1(char *c) {
     for (;;) {
-        ssize_t k = read(STDIN_FILENO, c, 1);
+        qidle(); ssize_t k = read(STDIN_FILENO, c, 1);   /* 2.9.0: the port and the timer meanwhile (qipc.c) */
         if (k == 1) return 1;
         if (k < 0 && errno == EINTR) continue;
         return 0;
@@ -1418,7 +1419,7 @@ restart:
             sb_resync();                     /* no-op unless the bar owns the screen */
             refresh(&l);
         }
-        k = read(STDIN_FILENO, &c, 1);
+        qidle(); k = read(STDIN_FILENO, &c, 1);
         if (k < 0 && errno == EINTR) continue;   /* SIGWINCH/SIGALRM woke us: loop -> handle winch */
         if (k <= 0) { disable_raw();                 /* EOF (Ctrl-D) or read error */
             cont_clear();
@@ -1736,7 +1737,7 @@ char *am_repl_getline(const char *prompt, size_t *len) {
     if (!out) { if (len) *len = 0; return NULL; }
     for (;;) {
         char c;
-        ssize_t k = read(STDIN_FILENO, &c, 1);
+        qidle(); ssize_t k = read(STDIN_FILENO, &c, 1);
         if (k < 0 && errno == EINTR) continue;
         if (k <= 0) break;
         if (n + 2 >= LN_MAX_LINE) break;

@@ -141,7 +141,7 @@ What stays as it was, on purpose:
   timestamp.
 - **No byte, short, int (32-bit) or real types**: `1h` `1i` read as `1`, `0x01` is a char.
 - **Some errors are named Amber's way**: `.j.k` of bad text is `'parse` (q names the char).
-- **`-8!` is Amber's own format**, not q's wire format; `value` of a lambda gives Amber's pieces, not q's.
+- **`value` of a lambda** gives Amber's pieces, not q's.
 
 ## 4. On-disk data (HDB): partial (`hdb.k`)
 **Since 2.7:** Binary column files that map straight into memory, in q's layout: `` `:db/t/ set t ``
@@ -161,14 +161,12 @@ names write the binary format too and still read the old text files (AMBER.md §
   `` `:db/t/ upsert t `` (q appends the rows to the column files), and amber.k's `insert` takes the
   table itself, not a name or a path as q's `` `t insert r `` does (#94 Q13).
 
-## 5. IPC & the tick architecture: partial (`ipc.k`)
-Amber now ships `hopen`/`hclose`/`hsend`/`hrecv`/`hsync` (raw-socket messaging) and an
-**in-process tickerplant**: `u.def` (define a stream), `u.sub`/`u.pub` (subscribe / publish),
-`u.get`/`u.end`. `.z.pg`/`.z.ps` handlers exist as evaluate-stubs in `sys.k`.
-- **Still missing:** q's **binary wire protocol** (Amber's sockets exchange plain text
-  expressions, not IPC-encoded messages), real over-the-network `.z.pg`/`.z.ps`/`.z.po`/`.z.pc`
-  handler dispatch, `.z.w`, websockets, TLS, and the full multi-process tickerplant / RDB / HDB /
-  gateway pattern (`tick.q`, `r.q`, `u.q`, `w.q`).
+## 5. IPC & the tick architecture: done (q's wire format, 2.9.0)
+**Since 2.9.0:** q's binary wire protocol, both ways: `hopen`/`hclose`, `h x` sync, `neg[h] x` async,
+`\p`/`-p`, the `.z.pg` `.z.ps` `.z.po` `.z.pc` `.z.w` handlers, `\t` and `.z.ts`, `-8!`/`-9!` as q's bytes,
+logs and `-11!` replay (q's logs too). A kdb+ tickerplant (tp, rdb, cep) runs on it unchanged (AMBER.md §10c).
+- **Still missing:** compressed messages going out (Amber reads q's compressed ones), websockets, TLS,
+  `.z.pw` auth, `.z.ph`/`.z.pp` (HTTP), and the deferred `-30!` reply.
 
 ## 6. Attributes: 4 of 4 (setters); find accel on 1 (sorted)
 All four attributes are set in C: **sorted (`` `sa``)**, **unique (`` `ua``)**,
@@ -208,7 +206,7 @@ traversal), linked columns, `.Q.fk`. None in Amber.
 ## 8. System namespaces: partial (`sys.k`)
 Amber now provides the common members (as `.`-style names `z.*`/`Q.*`/`j.*`/`h.*`):
 - **`.z.*`** clocks **done**: `z.p z.P z.n z.d z.D z.t z.T z.z z.w`. Handlers `z.pg z.ps z.po
-  z.pc z.ts z.exit` exist but are **evaluate/no-op stubs** (no real timer `\t` or port dispatch).
+  z.pc z.ts z.exit` are real since 2.9.0: messages on a port and the timer call them, as q (§5).
   Missing: `.z.ph` (HTTP).
 - **`.Q.*`** **done**: `Q.f Q.fmt` (number format), `Q.s` (show), `Q.ty Q.qt Q.id Q.dd`,
   `Q.gc Q.w` (mem placeholders), `Q.fc` (sequential fallback), `Q.trp` (protected).

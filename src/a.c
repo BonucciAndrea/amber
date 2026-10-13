@@ -647,6 +647,7 @@ A1(parT,
  x(al((L)ok)))
 Z A1(sam,x)V_;T_;U _K(A x/*0*/)_(X(R2(tu,tw,1)Rv(2)Rx(x>>48&15)Ropqr(xk)RA(rnk(x)))0)
 X1(mkn,RmMA(e1f(mkn,x))Rt(x(_R(cn[xt])))R_(x(rsz(xN,_R(cn[xt])))))
+Z A mqn(A x/*1*/)_(X(RmMA(e1f(mqn,x))Rt(x(_R(cn[xt])))R_(P(xt<tE||xt>tSP,mkn(x))x(xtE?aL(0):an(0,xt))))0)   //2.9.0: the item past the end, as q's: a vector's is its empty list ((1 2;3 4) 5 is `long$(), it was 0N 0N)
 A1(iei,/*0*/0x2332211004>>(xv*(xtv&&xv<10u)<<2)&15)
 NI A2(iex,/*01*/P(!x,y)Y(RmMA(r2f(iex,x,y))RT_A(rsz(yN,iex(x,fir(y))))Rs(as(0))Rc(ac(xtv&&xv-6<4u?-(xv==6||xv==9):"\0\1\x7f\x80 "[iei(x)]))Rf(y(af(A(0.,1.,WF,-WF,NF)[iei(x)])))R_(y(az(G(0ll,1,WL,-WL,NL)[iei(x)]))))0)   //x 0: y, ixsd's item at a key to add where the verb went first
 //(f 0), which ixsl replaces with its result. NI: out of line, as it was, and the test not split off into its callers
@@ -656,7 +657,7 @@ AX(prj,prj_(x,a,n))   //prj_: inlined into d3s, d4s (an amend at more than one l
 A2(com,/*01*/AK(yK,AT(tq,aA2(xR,y))))
 Z A iM(A x,L i)_(Q(xtM);A y=xy;Q(ytA);P(!yn,am(_R(xx),rs0(enl(io(yx,i)))))A z=aA(yn);Fj(zn,zA[j]=io(yA[j],i))am(_R(xx),sqz(z)))   //no columns: 0# of the prototype's row, a table when rows are dicts
 A ii(A x/*0*/,U i)_(X(RA(_R(xa))RC(ac(xc))RG(ai(xg))RH(ai(xh))RI(ai(xi))RL(al(xl))RF(af(xf))RS(as(xi))Rm(ii(xy,i))RM(iM(x,i))RE(az(*xL+i))RB(ai(xG[i>>3]>>(i&7)&1))RQV(UC k=TQA(xt);TQVN(xt)?AT(k,al(xl)):atq(k,xi))R_(xR))0)
-A io(A x/*0*/,L i)_(X(RE(i<(W)(xL[1]-*xL)?az(*xL+i):_R(cn[tl]))RT_E(i<(W)xn?ii(x,i):xn?mkn(ii(x,0)):xtA?_R(xx):_R(cn[xt]))Rt(xR)Rm(io(xy,i))RM(iM(x,i)))0)
+A io(A x/*0*/,L i)_(X(RE(i<(W)(xL[1]-*xL)?az(*xL+i):_R(cn[tl]))RT_E(i<(W)xn?ii(x,i):xn?mqn(ii(x,0)):xtA?_R(xx):_R(cn[xt]))Rt(xR)Rm(io(xy,i))RM(iM(x,i)))0)
 A1(fir,x(io(x,0)))A1(las,x(io(x,xN-1)))
 ZN U maxfU(CO U*a,U n)_(U v=0;F(n,v=MAX(v,a[i]))v)
 #define ambcn CO V*RES a,U m,CO U*RES b,V*RES c,U n
@@ -995,8 +996,8 @@ A ktan(A),kasn(A),kacs(A),katn(A),qstT(A),md5T(A),qesT(A),qegT(A),rndT(A),minvT(
 //`fdv(x;y): ints x floor-divided by a positive int y, exactly: what (-y)!x is, as a name, since -3! -8! -9! are system
 //functions (q's show, -8! and -9!) and the libraries divide by any y (2.9.0)
 Z A1(fdvC,P(_tP(x)||_t(x)>=tM||_n(x)-2,et(x))A a=ii(x,0),d=ii(x,1);x(0);P(!_tz(d),mr(a);et(d))L v=gl(d);P(v<=0||v==NL,et(a))A m=az(-v);A r=mod(m,a);mr(m);r)
-ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","dlt","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl","abs","wcol","rcol","fsz","ldir","wtn","senc","hh","mm","sec","tjn","exit","lk","ins","wmul","qmc","nsd","ewt","ech","tan","asin","acos","atan","qst","md5","qes","qeg","rnd","minv","mku","mkv","mkm","mkn","dmo","mod","fdv"};
- G(&kst,js1,qp,qt,frk,hex,err,qa,qe,dltC,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,wcolT,rcolT,fszT,ldirT,wtnT,sencT,hhC,mmC,secC,tjnC,qx,lkT,qins,wmulT,qmcT,nsdT,ewtT,qech,ktan,kasn,kacs,katn,qstT,md5T,qesT,qegT,rndT,minvT,mkmn,mksc,mkmo,mksp,dmoC,modC,fdvC,ed)[fI((V*)s,L(s),v)](x))   //found by a scan in this order: dlt (amber.k's deltas, each call) early, exit last
+ZN A sym1(I v,A x)_(V*amxf=am_ext_verb_lookup(v);P(amxf,((A1*)amxf)(x))Z CO C s[][4] __attribute__((aligned(4)))={"k","j","p","t","x","hex","err","argv","env","dlt","js","pri","prng","sin","cos","exp","ln","fb","sa","ua","pa","ga","at","pe","ema","wj","mkd","mkt","mkp","plt","cdl","aex","aim","bi","aj","arn","dgn","simd","vmd","para","csvr","csv0","csvx","astt","diag","ajs","wjb","mw","xs","srt","rdl","sbb","sbt","wsm","memb","gagg","sumn","ejx","cvm","prn","hnl","abs","wcol","rcol","fsz","ldir","wtn","senc","hh","mm","sec","tjn","exit","lk","ins","wmul","qmc","nsd","ewt","ech","tan","asin","acos","atan","qst","md5","qes","qeg","rnd","minv","mku","mkv","mkm","mkn","dmo","mod","fdv","qho","qhc","qlog","ser","des","hdel","exit"};
+ G(&kst,js1,qp,qt,frk,hex,err,qa,qe,dltC,qjs,qpri,prng,ksin,kcos,kexp,klog,qfb,qsa,qua,qpa,qga,qat,peachC,emaC,wjc,mkdt,mktm,mknp,plotC,candleC,arrowExport,arrowImport,binfo,ajc,arnT,dgnT,simdT,vmdT,parT,csvrT,csv0T,csvxT,astT,qdiag,ajsC,wjbC,mwC,xsC,qsrt,rdlC,sbbC,sbtC,wsmC,membC,gaggT,sumnT,ejxC,cvmC,prnT,hnlT,kabs,wcolT,rcolT,fszT,ldirT,wtnT,sencT,hhC,mmC,secC,tjnC,qx,lkT,qins,wmulT,qmcT,nsdT,ewtT,qech,ktan,kasn,kacs,katn,qstT,md5T,qesT,qegT,rndT,minvT,mkmn,mksc,mkmo,mksp,dmoC,modC,fdvC,qhopen,qhclose,qlog0,ser8,des9,qhdel,qexit,ed)[fI((V*)s,L(s),v)](x))   //found by a scan in this order: dlt (amber.k's deltas, each call) early, exit last
 /* ---- tacit trains: hook (f g) and fork (f g h) --------------------------
  * A general list of length 2 or 3 whose every element is a function becomes a
  * TRAIN when it is applied (a `::` in it is data, as in ngn/k, so such a list is
@@ -1017,7 +1018,7 @@ Z A trn1(A x,A y,I m){A*e=_A(x);P(e[0]==au||e[1]==au||e[m-1]==au,i1(x,y))if(m==2
 Z A trn2(A x,A y,A z,I m){A*e=_A(x);P(e[0]==au||e[1]==au||e[m-1]==au,i2(x,y,z))if(m==2){A g=N(ap1(e[1],z));return ap2(e[0],y,g);}A l=Nz(ap2(e[0],y,_R(z))),r=N(ap2(e[2],y,z),mr(l));A v=ap2(e[1],l,r);mr(l);return v;}
 NI A2(_1,/*01*/{I tn=istrain(x);if(tn&&!(_tz(y)&&gl_(y)>=0&&gl_(y)<(I)_n(x)))return trn1(x,y,tn);}P(!xtt,i1(x,y))U k=xK;P(1<k,k==2&&!xtp?prj(x,A8(y,GAP),2):prj(x,&y,1))
  X(Ro(run(x,&y,1))Rp(P(k>7,er(y))I m=xn-1,j=0;Ab8;F(m,b[i]=xA[i+1]==GAP&&!j?j++,y:_R(xA[i+1]))I l=MAX(0,1-j);MC(b+m,&y,8*l);_8(xx,b,m+l))
-  Rq(_1(xx,N(_1(xy,y))))Rr(w1(xE,xx,y))Rs(sym1(xv,y))Ru(v1[xv](y))Rw(AK(xv-1<3u&&yK==2?1:ytU?yK:1,AW(xv,aV(tr,1,&y))))Rx(ext(x,&y,1))R_(et(y)))0)
+  Rq(_1(xx,N(_1(xy,y))))Rr(w1(xE,xx,y))Rs(sym1(xv,y))Ri(qcall(xv,y))Ru(v1[xv](y))Rw(AK(xv-1<3u&&yK==2?1:ytU?yK:1,AW(xv,aV(tr,1,&y))))Rx(ext(x,&y,1))R_(et(y)))0)
 A3(_2,/*001*/{I tn=istrain(x);if(tn)return trn2(x,y,z,tn);}P(!xtt,i2(x,y,z))A a[]={y,z};U k=xK;P(2<k,yR;prj(x,a,2))
  X(Ro(yR;run(x,a,2))Rp(P(k>6,er(z))yR;I m=xn-1,j=0;Ab8;F(m,b[i]=xA[i+1]==GAP&&j<2?a[j++]:_R(xA[i+1]))I l=MAX(0,2-j);P(l+m>8,mrn(m,b);er8(a+j,2-j))MC(b+m,a+j,8*l);_8(xx,b,m+l))
   Rq(_1(xx,N(_2(xy,y,z))))Rr(z(w2(xE,xx,yR,z)))Rv(v2[xv](y,z))Rw(P(!xv,com(y,z))x=Nz(x1(yR));x(x1(z)))Rx(ext(x,A8(yR,z),2))R_(et(z)))0)

@@ -1,5 +1,5 @@
 / ============================================================================
-/ examples/peach_verify.k  -  binary serializer (-8!/-9!) and peach verifier.
+/ examples/peach_verify.k  -  binary serializer (`ser/`des) and peach verifier.
 / GNU AGPLv3 - see LICENSE and NOTICE.
 / ----------------------------------------------------------------------------
 / Run:  ./amber examples/peach_verify.k
@@ -8,11 +8,11 @@
 / peach now runs on a PERSISTENT POSIX thread pool (src/peachpool.c): workers
 / pull 1,024-element morsels and evaluate f straight into shared result slots,
 / under scoped atomic refcounting (ray_rc_sync) -- no fork(), no pipe, no
-/ binary IPC on the hot path. -8!/-9! (src/ser.c) stays as the `!`-verb
-/ serializer and is still verified here in its own right.
+/ binary IPC on the hot path. `ser/`des (src/ser.c, Amber's own format; -8!/-9!
+/ are q's since 2.9.0) are still verified here in their own right.
 / 
 / Nine things are checked, in order:
-/   1. (-9! -8! x) ~ x  over every shape the serializer claims to support.
+/   1. (`des `ser x) ~ x  over every shape the serializer claims to support.
 /   2. peach returns exactly what serial each returns, for every result shape
 /      (atoms, symbols, nested lists, dicts, tables) -- the thread pool is
 /      transparent to the caller.
@@ -43,8 +43,8 @@ ok:{[nm;b]n::n+1;$[b;;[f::f+1;`0:"  FAIL: ",nm]];}
 sec:{`0:"";`0:x;`0:(#x)#"-";}
 
 / ---- 1. serializer round trip ---------------------------------------------
-sec"1. binary serializer  (-9! -8! x) ~ x"
-rt:{[nm;v]ok[nm;.[{[v](-9!-8!v)~v};,v;{[e]0b}]];}
+sec"1. binary serializer  (`des `ser x) ~ x"
+rt:{[nm;v]ok[nm;.[{[v](`des@`ser@v)~v};,v;{[e]0b}]];}
 rt["int atom"        ;42]
 rt["long atom"       ;123456789012345]
 rt["float atom"      ;3.14159]
@@ -84,19 +84,19 @@ rt["wide table"      ;+`s`p!(1000#`a`b;1000#1.5 2.5)]
 / attributes must survive: a sorted column that arrives unsorted-flagged would
 / silently lose the O(log n) binary-search path in `?` on the far side.
 sa:`sa 1 2 3 4 5
-ok["sorted attribute preserved";(`at sa)~`at -9!-8!sa]
-ok["sorted attribute value"    ;(`at -9!-8!sa)~`s]
+ok["sorted attribute preserved";(`at sa)~`at@`des@`ser@sa]
+ok["sorted attribute value"    ;(`at@`des@`ser@sa)~`s]
 
-/ malformed input must be rejected cleanly, never crash: -9! is a parser for
-/ untrusted/possibly-truncated bytes (its `!`-verb contract), independent of
+/ malformed input must be rejected cleanly, never crash: `des is a parser for
+/ untrusted/possibly-truncated bytes, independent of
 / whether peach uses it.
 bad:{[nm;g]ok[nm;"caught"~.[g;,0;{[e]"caught"}]];}
-bad["reject empty input"    ;{-9!""}]
-bad["reject garbage header" ;{-9!"XXXXXXXX"}]
-bad["reject truncated body" ;{-9!8#-8!1 2 3 4 5}]
-bad["reject non-char input" ;{-9!1 2 3}]
-bad["reject trailing bytes" ;{-9!(-8!5),"junk"}]
-bad["reject lambda encode"  ;{-8!{x+1}}]
+bad["reject empty input"    ;{`des@""}]
+bad["reject garbage header" ;{`des@"XXXXXXXX"}]
+bad["reject truncated body" ;{`des@8#`ser@1 2 3 4 5}]
+bad["reject non-char input" ;{`des@1 2 3}]
+bad["reject trailing bytes" ;{`des@(`ser@5),"junk"}]
+bad["reject lambda encode"  ;{`ser@{x+1}}]
 
 / ---- 2. peach result shapes ------------------------------------------------
 sec"2. peach result shapes match serial each"

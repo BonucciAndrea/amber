@@ -490,7 +490,7 @@ A2(dex,y)A2(sub,U o=f;f=2;x=ari(x,y);f=o;x)X2(exc,RMT(ytm?el(y):ytt?exc(x,rsz(xN
  * integer atom, are intercepted; every other left argument (negative ones
  * included) and every char atom still reach mod() exactly as before, so no
  * existing `!` behaviour moves. */
- I(_t(x)-tc,L sv_=gl_(x);I(sv_==-8||sv_==-9,return sv_==-8?ser8(y):des9(y))I(sv_==-3,return kst(y)))   //-3!x: q's show, the text of x (2.9.0; it was k's divide by 3, which `fdv names)
+ I(_t(x)-tc,L sv_=gl_(x);I(sv_==-8,A r_=qser(y,0);mr(y);return r_;)I(sv_==-9,return qdes(y))I(sv_==-11,return qreplay(y))I(sv_==-3,return kst(y)))   //2.9.0: -8! -9! are q's bytes (Amber's own: `ser `des), -11! replays a log   //-3!x: q's show, the text of x (2.9.0; it was k's divide by 3, which `fdv names)
  I(_tz(x)&&!_tP(y)&&(yt==tM||yt==tm&&_tM(yx)),return exck(x,y))   //Amber 2.8.0: n!t keys a table on its first n columns, as q (0!kt unkeys; it was kt mod 0, kt)
  mod(x,y))R_(et(y)))
 // a temporal compared with a float (tari): as q casts the float to the temporal, the stored number (days, ms or ns) against

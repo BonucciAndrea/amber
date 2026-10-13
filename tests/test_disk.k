@@ -48,7 +48,7 @@ rt[`colStampNulls;2026.01.15D09:30:00.000000000 0Np]
 rt[`colMinutes;09:30 0N 09:31]
 rt[`colMonths;2026.01 0N 2026.03m]
 x:`wcol(T,"/c/dt";2026.01.01 2026.01.02;-1;0);t[`colDateFlat;(1:T,"/c/dt")5 6;0x0021]
-g:-9!0x414d4201010002000000000000001a192500001a1a250000;x:`wcol(T,"/c/kt";g;-1;0)
+g:`des@0x414d4201010002000000000000001a192500001a1a250000;x:`wcol(T,"/c/kt";g;-1;0)
 t[`colOldTime;(@g;(1:T,"/c/kt")5 6;`rcol T,"/c/kt";@`rcol T,"/c/kt");(`A;0x031a;2026.01.01 2026.01.02;`D)]
 v:asc 1000?1000;`wcol(T,"/c/s";v;-1;0);t[`colKeepsSorted;attr `rcol T,"/c/s";`s]
 dom:`ibm`msft`aapl;sy:100?dom;x:`wcol(T,"/c/e";dom?sy;#dom;0)
@@ -125,7 +125,7 @@ t[`setSplays;get`$":",T,"/db/u";dt]
 x:(`$":",T,"/f") set 1 2 3
 t[`setFile;get`$":",T,"/f";1 2 3]
 x:(`$":",T,"/fb") set 1010B
-t[`setBitsGroup;.[{(-8!x;=x)};,get`$":",T,"/fb";{x}];(-8!1010B;=1 0 1 0)]   / a bit mask comes back one, and = takes it (#94 Q6)
+t[`setBitsGroup;.[{(`ser@x;=x)};,get`$":",T,"/fb";{x}];(`ser@1010B;=1 0 1 0)]   / a bit mask comes back one, and = takes it (#94 Q6)
 x:`zzdisk set 7
 t[`setGlobal;get`zzdisk;7]
 / get reads only the binary format: a text file or table is 'format and never run (#94 Q11). dget and dload still

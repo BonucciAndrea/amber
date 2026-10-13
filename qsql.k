@@ -399,7 +399,16 @@ qrwp:{[pre;s]s:qml s;$[2>#s;s;[r:qfind s;$[0=#r;s;[p:r 0;ki:r 1;e:qendx[s;p];bod
 / handle is left verbatim via the `ERR sentinel (never a real qrw result, which
 / is always a char vector) so a rewrite failure can never corrupt a script.
 qtry:{[s]r:.[qrw;,s;{`ERR}];$[`ERR~r;s;r]}
-qrwf:{$[|/{0<#ss[x;y]}[x]'qkws;sv["\n";qtry'vs["\n";x]];x]}
+/ 2.9.0: a query split over lines, as q writes one (the lines after the first start with a blank), is one query: a line
+/ whose qSQL keyword has no from yet takes the indented lines after it until one brings the from. The query is
+/ rewritten whole and padded with newlines to the lines it had, so later errors keep their line numbers; a run
+/ that never finds its from is left line by line as before, so k code with a keyword in it is untouched
+qopn:{[g]$[~|/{0<#ss[x;y]}[g]'qkws;0;[g:@[g;&"\n"=g;:;" "];g:qdec g;r:qfind g," ";$[#r;0=#ss[(r 0)_g;"from"];0]]]}   / a keyword with no from after it yet
+/ A query in a lambda written over lines sees its args and locals too: the lines of the statement before it (back to the
+/ last line that starts unindented) go to the rewriter as the text before the query
+qtrp:{[p;s]r:.[qrwp;(p;s);{`ERR}];$[`ERR~r;s;r]}
+qjg:{[L]j:{[s;l]$[$[#l;|/(*l)=" \t";0];$[qopn s 0;(s[0],"\n",l;1);(l;0)];(l;0)]}\[("";0);L];b:&~j[;1];k:|\(!#L)*{(#x)&~|/(*x)=" \t"}'L; {[L;k;b;G]t:"\n"/G;$[~|/{0<#ss[x;y]}[t]'qkws;t;[p:$[b>k b;(" "/qdec'(b-k b)#(k b)_L)," ";""]; $[(1<#G)&~qopn t;[r:qtrp[p;t];r,(0|(#G)-1++/r="\n")#"\n"];"\n"/qtrp[p]'G]]]}[L;k]'[b;b_L]}
+qrwf:{$[|/{0<#ss[x;y]}[x]'qkws;sv["\n";qjg vs["\n";x]];x]}
 / ---- qSQL in a lambda (2.8.0) ------------------------------------------------
 / A query in a lambda sees the lambda's parameters and locals, as q: {[c]select from t where s=c}. The rewriter (qrwp)
 / passes the names of the innermost lambda the query is in -- its parameters (x y z when it has none) and the locals

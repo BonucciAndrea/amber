@@ -13,8 +13,14 @@
 - **More of q's semantics**: find of a missing item is the count (`1 2 3?4` is `3`, it was `0N`), int nulls stay null
   in arithmetic (`0N+1` is `0N`, `+/` skips them as `sum`), `-3!x` is q's show text, and an undefined name's error
   is the name. The two everyday q batteries went from 97.3% the same as q to 98.8% and 98.5%, the temporal one to 100%.
+- **Talks to q**: q's wire format both ways. `hopen`, `h x`, `neg[h] x`, `\p`, `.z.pg` `.z.ps` `.z.po` `.z.pc` `.z.w`,
+  the timer (`\t`, `.z.ts`), logs and `-11!` replay, q's logs too. A whole kdb+ tickerplant runs on Amber as is.
+- **Scripts read like q's**: a list, a lambda or a `select` split over indented lines is one statement, and a
+  `.q` script loads the q libraries first. `read0` `read1` `system` are in, and a missing item of a list of
+  lists is its empty list (`(1 2;3 4) 5` is `` `long$() ``, it was `0N 0N`).
 - **Changed, to match q**: `09:30:00` is a second (a time keeps its ms, `09:30:00.000`), `date+0N` is `0Nd`
-  (was 'domain), `"D"$"x"` is `0Nd` (was 'parse), a time minus a time is a time, and json writes `2026-03-15`.
+  (was 'domain), `"D"$"x"` is `0Nd` (was 'parse), a time minus a time is a time, json writes `2026-03-15`, and `-8!`/`-9!` are q's bytes
+  (Amber's own are `` `ser ``/`` `des `` now).
 
 ## 2.8.0
 

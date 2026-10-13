@@ -12,7 +12,7 @@
 **A low-latency array language: columnar, vectorised, in-memory.**
 
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
-![version](https://img.shields.io/badge/version-2.8.0-orange)
+![version](https://img.shields.io/badge/version-2.9.0-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
 ![tests](https://img.shields.io/badge/tests-3915%20K--suite%20cases-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
@@ -46,9 +46,24 @@ qby[t; `sym; (,`vwap)!,{wavg[x`sz;x`px]}]                        / vwap by symbo
 <a name="whats-new-260"></a>
 <a name="whats-new-270"></a>
 <a name="whats-new-280"></a>
-## What's new in 2.8.0
+<a name="whats-new-290"></a>
+## What's new in 2.9.0
 
-q code runs like q. `if` `do` `while`, `<>` `>=` `<=`, q's casts (`` `long$x ``, `"J"$s`, `` `date$n ``,
+q's other temporal types are in: minutes `09:30`, seconds `09:30:15`, months `2026.03m`, timespans
+`0D01:00:00.000000000`, and a typed null for each kind (`0Nd` to `0Nm`). A list of dates, or of any one kind, is
+a real vector now, like q's, so sorting, grouping, finding and comparing them runs at int speed (10-25x faster;
+`` `date$ `` of timestamps 250x), and it prints and reads back the way q writes it (`2026.01.01 0N`,
+`2026.01 2026.02m`, `` `date$() ``).
+
+More of q's semantics too: `x?y` gives the count when y isn't there (it was `0N`), int nulls stay null in
+arithmetic (`0N+1` is `0N`, `+/` skips them as `sum` does), `-3!x` is q's show text, and an undefined name's
+error is the name. Against q itself, two batteries of everyday q lines are now 98.8% and 98.5% the same, and
+the temporal one 100%. What changed meaning is in the [changelog](CHANGELOG.md).
+
+And Amber talks to q now: q's wire format both ways (`hopen`, `h x`, the `.z` handlers, the timer, logs and
+`-11!`), so a kdb+ tickerplant runs on it as is. `.q` scripts read like q's, over several lines too.
+
+2.8.0: q code runs like q. `if` `do` `while`, `<>` `>=` `<=`, q's casts (`` `long$x ``, `"J"$s`, `` `date$n ``,
 `` `year$d ``), `'` to signal and `@[f;x;h]` to trap, `upsert`, `` `t insert ``, `.Q.x` and `.j.x` with their dot,
 and qSQL inside a lambda sees its arguments and locals. A run of about 2,000 everyday q lines against q
 itself went from 80% the same to 97%, and the rest are k choices Amber keeps on purpose or types it

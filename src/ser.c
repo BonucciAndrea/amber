@@ -1,5 +1,5 @@
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
-/* ser.c  -  Amber compact binary serializer:  -8!x (encode)  -9!y (decode).
+/* ser.c  -  Amber compact binary serializer:  `ser x (encode)  `des y (decode); -8! and -9! were these before 2.9.0, q's bytes now (qipc.c).
  *
  * WHY THIS EXISTS.  Amber's only wire format was TEXT: `k rendered the value
  * and `. reparsed it.  peach shipped every worker's result that way, so a

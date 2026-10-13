@@ -357,7 +357,7 @@ t[`whereWrapNegative;*"\n"\.[.:;,"&9223372036854775807 1";{x}];"limit"]   / a to
 tv[`litNullFloat;"0N 1.5";0n 1.5]
 tv[`litFloatNull;"1.5 0N";1.5 0n]
 tv[`litNegNullFloat;"-0N 1.5";0n 1.5]
-t[`litNegNullBits;(-8!-0N 1.5)~-8!0n 1.5;1]   / the same bits as 0n (-0n has the sign bit)
+t[`litNegNullBits;(`ser@-0N 1.5)~`ser@0n 1.5;1]   / the same bits as 0n (-0n has the sign bit)
 tv[`litIntBool;"1 0b";1 0]
 tv[`litIntBools;"1 01b";1 0 1]
 tv[`litNullBools;"0N 1b 01b";0N 1 0 1]
@@ -692,9 +692,9 @@ t[`closeStdHandles;(6#.[{[d]>0};,0;{x}];6#.[{[d]>1};,0;{x}];6#.[{[d]>2};,0;{x}])
 t[`closeWideInt;(6#.[{[d]>0N};,0;{x}];6#.[{[d]>4294967296};,0;{x}];6#.[{[d]>-4294967296};,0;{x}]);3#,"domain"]
 t[`aimRange;(6#.[{[d]`aim[!5]};,0;{x}];6#.[{[d]`aim[1000+!3]};,0;{x}]);2#,"length"]   / Digest #11: a range is its items, not its two stored ends (read as addresses)
 t[`modBigFloat;(7!1e19;5!-0w;5!0w;7!-7.0;7!8.5;1%3!-0.0);(3.0;0n;0n;0.0;1.5;-0w)]   / Digest #15: the float remainder is exact, 0 to x (infinities: 0n)
-t[`findEmptyGeneric;(-8!1.0 2.0?();-8!1000000 2?();4#.[{[d]1.0 2.0?"a"};,0;{x}]);(-8!1 2?();-8!1 2?();"type")]   / Digest #30
-t[`literalPoolType;(4_5#(-8!0110B;0 1 1 0)0;4_5#{(-8!0110B;0 1 1 0)}[]0);2#,,0x03]   / Digest #36: a bit list stays a bit list next to an equal int list
-t[`dropSqueeze;({4_5#-8!-1_(0;1;())}[];(0 1)~-1_(0;1;());-1_(1;"a";2.5));(,0x04;1b;(1;"a"))]   / Digest #28: a negative drop squeezes in place too
+t[`findEmptyGeneric;(`ser@1.0 2.0?();`ser@1000000 2?();4#.[{[d]1.0 2.0?"a"};,0;{x}]);(`ser@1 2?();`ser@1 2?();"type")]   / Digest #30
+t[`literalPoolType;(4_5#(`ser@0110B;0 1 1 0)0;4_5#{(`ser@0110B;0 1 1 0)}[]0);2#,,0x03]   / Digest #36: a bit list stays a bit list next to an equal int list
+t[`dropSqueeze;({4_5#`ser@-1_(0;1;())}[];(0 1)~-1_(0;1;());-1_(1;"a";2.5));(,0x04;1b;(1;"a"))]   / Digest #28: a negative drop squeezes in place too
 t[`jsonNegZero;1%(`j?"-0";`j?"[-0,-0.0,0]");(-0w;-0w -0w 0w)]   / -0 keeps its sign
 t[`jsonLiterals;`j?"[1,null,2]";(1.0;0n;2.0)]
 t[`jsonRoundTrip;`j?`j@1e20 -1.5 2.0;1e20 -1.5 2.0]
@@ -868,8 +868,8 @@ t[`bitFind;(,11B)?2#1111B;0]
 t[`bitDistinct;#?(11B;2#1111B);1]
 t[`bitGroup;#=(11B;2#1111B);1]
 t[`bitDictKey;((11B;00B)!1 2)2#1111B;1]
-t[`bitSer;(-8!2#1111B)~-8!11B;1]
-t[`bitSerRound;(-9!-8!2#1111B)~11B;1]
+t[`bitSer;(`ser@2#1111B)~`ser@11B;1]
+t[`bitSerRound;(`des@`ser@2#1111B)~11B;1]
 t[`bitNotMatch;(2#1011B)~11B;0]
 
 / appending one bit clears it first: take and drop leave stale bits after the last item
@@ -884,7 +884,7 @@ t[`bitNotMatch2;(~01B)~10B;1]
 / indexing by a range crashed
 t[`bitRange;(1111B@!2;0110B@1+!2);(1 1;1 1)]
 / = (and so group) of a bit mask, as written or read back by -9!, is =1 0 1 0's answer, byte for byte (#94 Q6; it was 'type)
-tv[`bitGroupMask;"(=1010B;=-9!-8!1010B;-8!=1010B;=0#1010B;=-2_0000111100001111B)";(=1 0 1 0;=1 0 1 0;-8!=1 0 1 0;=0#1 0;0 1!(0 1 2 3 8 9 10 11;4 5 6 7 12 13))]
+tv[`bitGroupMask;"(=1010B;=`des@`ser@1010B;`ser@=1010B;=0#1010B;=-2_0000111100001111B)";(=1 0 1 0;=1 0 1 0;`ser@=1 0 1 0;=0#1 0;0 1!(0 1 2 3 8 9 10 11;4 5 6 7 12 13))]
 
 / ---- tail calls reuse the frame: no depth limit, and nothing freed twice ----
 / A call whose result is the function's result runs in the caller's frame, so
@@ -1118,7 +1118,7 @@ t[`amendSymbolListBelowRow;(IA["S25:+`a`b!(1 2 3;(`x`y;`z`w;`u`v))";"S25[1;`b;0]
 
 / ---- float literals, `F$ and JSON numbers are correctly rounded (issue #5) ----
 / fb gives a float's 64 bits, high byte first, so these check the exact double read
-fb:{8#|-8!x}
+fb:{8#|`ser@x}
 t[`floatRound1e308;fb 1e308;0x7fe1ccf385ebc8a0]
 t[`floatRoundTieEven;fb 9007199254740993.0;0x4340000000000000]   / 2^53+1, halfway: ties to even
 t[`floatRoundMax;fb 1.7976931348623157e308;0x7fefffffffffffff]   / the largest double, not 0w
@@ -1473,7 +1473,7 @@ t[`jsonMonadBack;`j?`j@(-:);"-:"]
 
 
 / ---- an empty item in parentheses is ::, as in ngn/k (#83 Q6); it was 'parse. ( ) is (), as () is, and an empty argument in [] is still elided ----
-t[`parenEmptyItem;{*"\n"\.[{`k@. x};,x;{x}]}'("(1;;2)";"(;)";"(1;)";"(;1)";"(;;)";"(1;(;))";"{(;x)}3";"(1;\n2)";"( )");("(1;::;2)";"(::;::)";"(1;::)";"(::;1)";"(::;::;::)";"(1;(::;::))";"(::;3)";"(1;::;2)";"()")]
+t[`parenEmptyItem;{*"\n"\.[{`k@. x};,x;{x}]}'("(1;;2)";"(;)";"(1;)";"(;1)";"(;;)";"(1;(;))";"{(;x)}3";"(1;\n2)";"( )");("(1;::;2)";"(::;::)";"(1;::)";"(::;1)";"(::;::;::)";"(1;(::;::))";"(::;3)";"1 2";"()")]   / 2.9.0: (1;<newline>2) is 1 2, as q
 t[`parenEmptyKept;{*"\n"\.[{`k@. x};,x;{x}]}'("()";"(1;2)";"{x+y}[1;]2";"[1;;2]";"(1;2";"(1;;2");("()";"1 2";,"3";,"2";"parse";"parse")]
 
 / ---- the allocator's large blocks (64 KB up; src/m.c colours them): vectors the parsers grow an item at a time
@@ -1525,7 +1525,7 @@ t[`cdBare;`x(("/bin/sh";"-c";"exec \"$0\"";`argv 0);"\\cd\n");"\"",(-1_`x(("/bin
 
 
 / ---- = and ? of a symbol vector store their indices at one width, whatever order the symbols were interned in: the find under = took a 64-bit path when the ids' range was wide (=x's lists were then 16-bit, not 32) ----
-t[`symGroupWidth;{i:4097#0 1 2;a:`$"grpwidthFirst";h:`$"grpwidthPad",/:$!5000;b:`$"grpwidthSecond";c:`$"grpwidthThird";d:`$"grpwidthD";e:`$"grpwidthE";f:`$"grpwidthF";s:(a;b;c);u:(d;e;f);((-8!.=s@i)~-8!.=u@i;(-8!s?s@i)~-8!u?u@i;-8!s?a,`grpwidthNone)}[];(1b;1b;-8!0 3)]
+t[`symGroupWidth;{i:4097#0 1 2;a:`$"grpwidthFirst";h:`$"grpwidthPad",/:$!5000;b:`$"grpwidthSecond";c:`$"grpwidthThird";d:`$"grpwidthD";e:`$"grpwidthE";f:`$"grpwidthF";s:(a;b;c);u:(d;e;f);((`ser@.=s@i)~`ser@.=u@i;(`ser@s?s@i)~`ser@u?u@i;`ser@s?a,`grpwidthNone)}[];(1b;1b;`ser@0 3)]
 
 
 / ---- a dict joined to a table of other columns is a list of dicts, as t,d (#105 Q1); it was 'domain. Keys that match: a table, as before ----
@@ -1577,7 +1577,7 @@ t[`tvFold;(|/2026.01.01 0N 2026.03.01;&/2026.01.01 0N 2026.03.01;+/09:30 00:10;+
 t[`tvFill;(2026.01.02^2026.01.01 0N;09:30 09:31^0N 09:45;0^0N 0Nd;-09:30 0N;ER"-2026.01.01 2026.01.02");(2026.01.01 2026.01.02;09:30 09:45;2000.01.01 2000.01.01;-09:30 0N;"type")]
 t[`tvItems;(2026.01.01 2026.01.02 2026.01.03 1;2026.01.01 2026.01.02 2026.01.03 1 0;2026.01.01 2026.01.02 2026.01.03 9;|09:30 0N;2#2026.01m;-1_2026.01.01 2026.01.02;2026.01.01 2026.01.02,2026.01.03;@2026.01.01 2026.01.02,5;{x}'09:30 09:31;@{x}'09:30 09:31);(2026.01.02;2026.01.02 2026.01.01;0Nd;0N 09:30;2026.01 2026.01m;,2026.01.01;2026.01.01 2026.01.02 2026.01.03;`A;09:30 09:31;`H)]
 t[`tvEmpty;(`date$();`timestamp$();(0#09:30)~`minute$();*0#2026.01.01;`k 0#,2026.01.01);(0#2026.01.01;0#2026.01.01D00:00:00.000000000;1;0Nd;"`date$()")]
-t[`tvSer;({x~-9!-8!x}'(2026.01.01 0N;09:30:15 0N;2026.01.15D09:30:00.000000000 0N;2026.01 0Nm);-8!2026.01.01;-8!2026.01.01 2026.01.02);(1 1 1 1;0x414d42011a19250000;0x414d420121000200000000000000192500001a250000)]   / a date's tag is 26 as before (TXC), a date list's 33
+t[`tvSer;({x~`des@`ser@x}'(2026.01.01 0N;09:30:15 0N;2026.01.15D09:30:00.000000000 0N;2026.01 0Nm);`ser@2026.01.01;`ser@2026.01.01 2026.01.02);(1 1 1 1;0x414d42011a19250000;0x414d420121000200000000000000192500001a250000)]   / a date's tag is 26 as before (TXC), a date list's 33
 t[`tvMake;(`mkd 9497 0N;`mkn 1 2;`mkm 0 13;`i$2026.01.01 0N;`i$2026.01.15D00:00:00.000000001 0Np);(2026.01.01 0N;0D00:00:00.000000001 0D00:00:00.000000002;2000.01 2001.02m;9497 0N;821750400000000001 0N)]
 t[`tvKeys;(`s#2026.01.01 2026.01.03;(2026.01.01 2026.01.03!1 2)2026.01.03;ER"`s#2026.01.03 2026.01.01";(`s#2026.01.01 2026.01.03!1 2)2026.01.02);(`s#2026.01.01 2026.01.03;2;"s-fail";1)]
 

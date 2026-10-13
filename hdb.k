@@ -52,7 +52,7 @@ dload:{[dir]dir:hdb.sl hdb.p dir;$[hdb.amc dir,"/.d";hdb.dl[dir;hdb.syms hdb.par
 / `a set 5 and get`a are globals; `:path set x writes a file, and a path ending in / splays a table.
 / A keyed table is 'type to splay, as q's set (it was written unkeyed); `:f set kt writes it whole, keyed. Amber's own
 / splay still writes a keyed table's unkeyed table
-set:{[h;v]$[(`s~@h)&~":"=*$h;[.[h;();:;v];h];[p:hdb.p h;$["/"~*|p;$[iskeyed v;`err"type";splay[p;v]];dset[p;v]];h]]}
+set:{[h;v]$[(`s~@h)&~":"=*$h;[.[h;();:;v];h];()~v;[`qlog h;h];[p:hdb.p h;$["/"~*|p;$[iskeyed v;`err"type";splay[p;v]];dset[p;v]];h]]}
 / get reads only the binary format: a file or a table in any other is 'format, never evaluated (q's get never runs a
 / file). dget and dload, Amber's own names, still read the text files Amber wrote before 2.7. A missing file is 'io, as before
 get:{[h]$[(`s~@h)&~":"=*$h;. h;[p:hdb.sl hdb.p h;$[-2=`fsz p;$[hdb.amc p,"/.d";hdb.dl[p;hdb.syms hdb.par p];`err"format"];hdb.amc p;`rcol p;-1=`fsz p;`err"io";`err"format"]]]}

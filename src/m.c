@@ -524,7 +524,15 @@ Z I bdir(S s)_((V)s;0)
 // 2.8.0: the source text of each script being run (a \l inside a script nests), and its qSQL rewrite; \m counts
 // them as held (RTS), or a script's \m reported its own text as an object nobody holds. Per thread: peach workers \l too
 Z AM_TLS_IE struct ld{A x,y;struct ld*n;}*ld;
-Z A bsl1(S s)_(I b=bdir(s);P(b==1,K1("{loaddb x;}",aCz(s)))I f=open(s,0,0);A x=b>1?frf(f):u1c(ai(f));close(f);N(x);P(!xn,x(au))C*p=xC,*e=p+xn-1;P(*e-10,x(err0("eoleof")))*e=0;I(*p=='#'&&p[1]=='!',p=strchrnul(p,10);p+=!!*p)struct ld l={x,0,ld};ld=&l;
+//2.9.0: \l of a bare name (amber.k) that is not here: the one in $AMBER_HOME, else beside the amber binary (as q finds q.k in
+//QHOME), so a script runs from any folder; b holds the path built
+C*getenv(S);
+Z S amres(S s,C*b,N n){I(!access(s,F_OK)||strchr(s,'/'),return s;)S h=getenv("AMBER_HOME");C e[4096];
+ I(!h||!*h,ssize_t k=readlink("/proc/self/exe",e,SZ e-1);I(k<=0,return s;)e[k]=0;C*d=strrchr(e,'/');I(!d,return s;)*d=0;h=e)
+ N hl=SL(h),sl=SL(s);I(hl+sl+2>n,return s;)MC(b,h,hl);b[hl]='/';MC(b+hl+1,s,sl+1);return access(b,F_OK)?s:b;}
+//a .q script loads the standard library first, as q's does, and then the script (0.c)
+V qstd(V){Z CO C*m[]={"amber.k","fin.k","std.k","qsql.k","temporal.k","sys.k","hdb.k","ipc.k"};F(L(m),A r=bsl(m[i]);I(r,mr(r))E(epr(0)))}
+Z A bsl1(S s)_(C rb[4096];s=amres(s,rb,SZ rb);I b=bdir(s);P(b==1,K1("{loaddb x;}",aCz(s)))I f=open(s,0,0);A x=b>1?frf(f):u1c(ai(f));close(f);N(x);P(!xn,x(au))I(xC[xn-1]-10,x=apc(x,10))x=mut(x);{N j=0;F(xn,C c=xC[i];I(!(c==13&&i+1<xn&&xC[i+1]==10),xC[j++]=c))x=AN((U)j,x);}C*p=xC,*e=p+xn-1;*e=0;I(*p=='#'&&p[1]=='!',p=strchrnul(p,10);p+=!!*p)struct ld l={x,0,ld};ld=&l;   //2.9.0: a script with CRLF lines, or no newline at its end, loads as q's do (it was 'eoleof)
   // amber 2.0.0: run the source through the K qSQL rewriter (qrwf, qsql.k) so
   // bare `select .. from ..` works in a .k file exactly as it does at the REPL
   // prompt -- no sel"..." wrapper. Guarded so nothing changes until qsql.k is
@@ -563,6 +571,8 @@ Z A bs_(S*p,S t)_(C b[256];S s=*p,e=strchrnul(s,10);P(e<t&&!*e,ed0())P(e-s+1>=L(
  // 2.8.0: q's \ts (time and space) is \t here. repl.k did this for the terminal only, so a script or the browser
  // engine took \ts for a shell command, and in the browser that crashed (there is no shell)
  I(c=='t'&&d=='s'&&(!b[2]||b[2]==32||b[2]==':'),{C*q=b+1;W((*q=q[1]),q++)}d=b[1])
+ P(c=='p'&&(!d||d==32),qport(b+1+(d==32)))   //2.9.0: \p n listens on port n, as q
+ I(c=='t'&&(!d||d==32),S q=b+1+(d==32);W(*q==32,q++)S e=q;W(C09(*e),e++)S g=e;W(*g==32||*g==13,g++)P(!*q,az(qtperiod()))P(!*g,qtimer(pl((S*)&q))))   //\t n: q's timer (n ms; \t alone its period); \t expr times it
  P(!d||d==10||d==32||d==':',G(&bsl,bst,bsd,bsbs,bsf,bsv,bsm,bs0)[si("ltd\\fvm",c)](b+1+(d==32)))
  // amber 1.9.5: an installed extension (src/ext.h) claims its own \\-commands
  // here, BEFORE the historical "anything else is a shell command" fallback --
@@ -591,7 +601,7 @@ B rep()_(I(am_ln_interactive(),N x=0;C*p=am_repl_getline("",&x);P(!p,0)evn(p,p+x
  Z C*b;Z W m,k;C*q;//b holds m bytes; its first k are an incomplete line, kept until its newline is read
  I(!b,P(!(b=malloc(m=256)),die("OOM")))
  W(1,I(k==m,C*t=realloc(b,2*m);P(!t,die("OOM"))b=t;m*=2)//a line longer than the buffer: grow it
-     L n=read(0,b+k,m-k);P(n<=0,0)q=memchr(b+k,10,n);k+=n;
+     qidle();L n=read(0,b+k,m-k);P(n<=0,0)q=memchr(b+k,10,n);k+=n;
      P(q,C*p=b;W(q,*q=0;evn(p,q,1);p=q+1;q=memchr(p,10,b+k-p))k=b+k-p;memmove(b,p,k);1))1)
 V repl(){W(rep())}
 

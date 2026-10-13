@@ -378,3 +378,4 @@ U os(S);W ov_(S,W);
 #define pnul(x) (_t(x)==tC&&memchr(_V(x),0,_n(x)))
 A evn(S,S,B);
 A frf(I),evg(U);
+A qser(A,UC),qdes(A),qcall(I,A),qhopen(A),qhclose(A),qport(S),qtimer(L),qlog0(A),qreplay(A),qhdel(A),qexit(A);V qidle(V),qloop(V);I qactive(V);L qtperiod(V);V qstd(V);   //qipc.c: q's IPC (2.9.0)

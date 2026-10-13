@@ -24,7 +24,7 @@
  *   4  u8 version  1
  *   5  u8 kind     0 flat: the raw payload of a B G H I L F C vector, or of a temporal one (2.9.0)
  *                  1 enum: int32 indexes into the database's sym file (a symbol column)
- *                  2 ser:  any other value as -8! bytes (nested lists, dicts, atoms, ...)
+ *                  2 ser:  any other value as `ser bytes (nested lists, dicts, atoms, ...)
  *                  3 time: a list of date, time or timestamp atoms as int64 values (before 2.9.0; loads as a typed list)
  *   6  u8 type     Amber type of the vector (kind 0), or of the atoms (kind 3), numbered as before 2.9 (a.h TXC)
  *   7  u8 attr     0 none, 1 `s, 2 `u, 3 `p, 4 `g  (trusted on the way back, as q does; any other byte is 'format)

@@ -244,6 +244,11 @@ t[`qrwfPlain;   qrwf"a:1+2";                   "a:1+2"]
 t[`qtryIdentity;qtry"x:from+select";           "x:from+select"]
 t[`qrwfMulti;   qrwf"a:1\nselect px from t\nb:2"; "a:1\nsel\"select px from t\"\nb:2"]
 t[`qrwfInString;qrwf"y:\"select px from t\"";  "y:\"select px from t\""]
+/ 2.9.0: a query over lines, q's way (the lines after the first indented), is rewritten whole and padded to its lines;
+/ in a lambda it sees the args; a keyword whose from never comes leaves the lines as they were
+t[`qrwfJoinLines;#"\n"\qrwf"x:select\n  a\n  from t\ny:1"; 4]
+t[`qrwfJoinRun;  {. qrwf"qjf:{[t]r:select s:sum a\n  by b from t;\n  r}";qjf ([]a:1 2 3;b:`x`y`x)}[]; ([b:`x`y] s:4 2)]
+t[`qrwfNoFrom;   qrwf"a:{update\n  x}"; "a:{update\n  x}"]
 
 / select ... by <symbol column> uses the 2.0.0 symbol-grouping fast path;
 / keys are first-appearance order (c,a,b) and aggregates are correct

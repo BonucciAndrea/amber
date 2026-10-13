@@ -36,7 +36,7 @@ qta:`d`t`n`h`j`y`e;qtv:`D`T`N`H`J`Y`E;qtl:qta,qtv;qlo:qtv!qta   / a temporal ato
 / Amber's temporal letters: `d`t`n`h`j`y`e, a date, time, timestamp, minute, second, month, timespan (q's d t p u v m n)
 qkwt:`abs`all`any`avg`ceiling`count`cos`deltas`dev`distinct`enlist`exp`first`flip`floor`group`inv`key`last`log`max`maxs`min`mins`neg`not`null`prd`prds`prev`ratios`reciprocal`reverse`sin`sqrt`string`sum`sums`tan`type`var`where`value`attr`differ`fills`within`like`in`wavg`wsum`union`ss`lj!101 105 105 101 105 101 101 109 101 101 101 101 101 101 101 101 101 101 101 101 101 108 101 108 101 101 101 101 108 109 109 101 101 101 101 101 101 108 101 101 101 101 101 104 105 108 101 101 101 101 101 105 101 104   / q's type of its keywords that are not 100h (a lambda's): 101 for most
 type:{$[`A~t:@x;$[#x;$[(u:@*x)in`d`t`n`h`j`y`e;$[&/u=@'x;0-qtyn u;0];0];0];(t in`o`p`q`r`u`v`w`x)&#w:&{x~@[{. x};y;{0b}]}[x]'!qkwt;qkwt(!qkwt)@*w;qtyn t]}   / q's type numbers (7 for ints, -9 a float, 98 a table; a general list of one temporal kind as q's vector of it, 14 for dates); @x gives Amber's letters
-key:{$[(@x)in`I`F`C`S;(`long`float`char`symbol)@`I`F`C`S?@x;!x]}   / key of a list is its type's name, as q
+key:{$[(`s~@x)&":"~*$x;$[-1<`fsz 1_$x;x;()];(@x)in`I`F`C`S;(`long`float`char`symbol)@`I`F`C`S?@x;!x]}   / key of a list is its type's name, as q
 value:{. x}
 first:{*x}
 last:{*|x}

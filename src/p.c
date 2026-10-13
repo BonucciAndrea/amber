@@ -204,8 +204,9 @@ Z A pt(C*v)_(C c=*s;                                                            
  // Amber 2.8.0: q's .Q.x .j.x .z.x .h.x are Amber's Q.x j.x z.x h.x: the dot in front is dropped (it read as . of Q.x,
  // so .Q.n was the int 123456789 and .j.j x a function)
  I(c=='.'&&s[1]=='z'&&s[2]=='.'&&s[3]=='s'&&!id1(s[4])&&(s==s0||!id1(s[-1])),S o=s;s+=4;I a[1]={'o'};return AO(o-s0,aV(tS,1,a)))   //.z.s: the lambda itself (o), as q
- I(c=='.'&&s[1]&&strchr("Qjzh",s[1])&&s[2]=='.'&&id0(s[3])&&(s==s0||!id1(s[-1])),c=*++s)
- P(id0(c),S p=s;A x=N(pP());I(s-p==1&&c-'y'<2u,k=MAX(k,c-'w'))
+ B zq_=0;I(c=='.'&&s[1]&&strchr("Qjzh",s[1])&&s[2]=='.'&&id0(s[3])&&(s==s0||!id1(s[-1])),zq_=s[1]=='z'&&strchr("pPnNdDtTzZ",s[3])&&!id1(s[4])&&s[4]!=':'&&s[4]!='[';c=*++s)
+ P(id0(c),S p=s;A x=N(pP());I(zq_,return AO(p-s0,aA2(x,au)))   //2.9.0: .z.D .z.p .z.n and the rest are q's values: sys.k's z.D[] (z.D alone is the function)
+ I(s-p==1&&c-'y'<2u,k=MAX(k,c-'w'))
   I((infixkw(p,s-p)||am_infix_dyad(p,s-p))&&*s!=':'&&!isparm(p,s-p)&&!am_name_nonfn(p,s-p),*v=1)AO(p-s0,x))
  P(C09(c)&&s[1]==':',B u=s[2]==':';s+=2+u;U i=20+c-'0';P(i>25,ep0())*v=1;Lt(tv-u)|i)
  P(c=='0'&&s[1]=='x',s+=2;p1(p0x()))
@@ -255,7 +256,7 @@ Z A pe_(A x,C*v)_(s=pw(s);C c=*s;                                               
 Z A pe(A x,C*v)_(P(pd>=PD,x?x(ez0()):ez0())pd++;A r=pe_(x,v);pd--;r)                         //pe_, at most PD deep: 'limit beyond
 //parse body (sequence of ;-separated expressions); an empty one is :: but in [] (an elided argument), so (1;;2) is (1;::;2), as ngn/k
 Z A pb(A x,C c)_(x=x?aA1(x):emp(tA);
- W(1,C v=0;A y=Nx(pe(0,&v));PSH(x,c-']'&&y==GAP?au:y);B(*s-';'&&*s-10)B(c==10&&*s==10)s++)
+ C l=0;W(1,C v=0;A y=Nx(pe(0,&v));I(!(c-10&&y==GAP&&(l==10||*s==10)),PSH(x,c-']'&&y==GAP?au:y))B(*s-';'&&*s-10)B(c==10&&*s==10)l=*s++)   //2.9.0: an empty item next to a line break is no item, so a q list split over lines, one item a line, reads as q's (it had an empty item at each line break)
  P(c==10&&!*s,x)P(*s-c,ep(x))s++;x)
 Z A pk_(S*p,C c)_(s0=s=*p;ppe=0;A x=pb(GAP,c);*p=s;P(x,xn==2?las(x):x)eD(s0,SL(s0),s-s0);eQ(s0,SL(s0),s-s0);0)                  //parse either a group of lines (c='\n') or till '\0' (c='\0')
 A pk(S*p,C c)_(P(!ray_rc_sync,pk_(p,c))plk(1);A x=pk_(p,c);plk(0);x)                               //pk_ under the peach parse lock (m.c plk)

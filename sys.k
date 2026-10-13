@@ -6,18 +6,28 @@
 / ============================================================================
 
 / ---- .z : clocks & handlers ----------------------------------------------
-z.p:{1000*`t[]-946684800000000}          / now  -> timestamp (nanos since 2000.01.01)
+z.p:{`mkp 1000*`t[]-946684800000000}     / now, a timestamp (2.9.0: q's types; they were their numbers). .z.p reads it
 z.P:{z.p[]}                              / local timestamp (no tz here)
-z.n:{tsms z.p[]}                         / nanoseconds since midnight
-z.d:{tsdate z.p[]}                       / today  -> date (days since 2000.01.01)
+z.n:{`mkn 86400000000000!`i$z.p[]}       / the time of day, a timespan
+z.N:{z.n[]}
+z.d:{`mkd fdiv[`i$z.p[];86400000000000]} / today, a date
 z.D:{z.d[]}
-z.t:{fdiv[z.n[];1000000]}                / time now -> ms since midnight
+z.t:{`mkt fdiv[`i$z.n[];1000000]}        / the time of day, a time
 z.T:{z.t[]}
-z.z:{z.d[]+(z.t[]%86400000)}            / datetime (days.fraction)
+z.z:{z.p[]}                              / q's datetime: a timestamp here
+z.Z:{z.p[]}
 z.w:{0}                                   / handle of current connection (0 = local)
 z.ts:{}                                   / timer callback (set by user)
-z.pg:{. x}                                / sync  message handler (evaluate)
-z.ps:{. x}                                / async message handler (evaluate)
+qvalue:{$[(@x)in`C`c;. qrw x;`S~@x;(. *x). 1_x;(`A~@x)&#x;[f:*x;$[`s~@f;(. f). 1_x;f . 1_x]];x]}   / q's value of a message: text evaluated (qSQL too), a list its first item applied to the rest (a name, its global)
+z.pg:{qvalue x}                           / sync  message handler (2.9.0: as q's value)
+z.ps:{qvalue x}                           / async message handler
+hsym:{$[":"=*s:$x;x;`$":",s]}            / a symbol as a file handle, as q
+hdel:{`hdel x;x}                          / delete a file, as q
+exit:{`exit x}                            / exit n: .z.exit x, then the process ends, as q
+hpath:{$[":"=*s:$x;1_s;s]}                / a file handle's path: `:a/b is "a/b"
+read0:{0:hpath x}                         / a text file's lines, as q
+read1:{$[`A~@x;[b:1:hpath x 0;$[2<#x;(x 2)#(x 1)_b;(x 1)_b]];1:hpath x]}   / a file's bytes (chars here, as md5's), or (file;offset;length) of them, as q
+system:{. (`c$92),x}                      / a \ command, as q: system"t 1+1", system"cd /tmp"; else the shell's, its output's lines
 z.po:{}                                   / port-open handler
 z.pc:{}                                   / port-close handler
 z.exit:{}                                 / exit handler

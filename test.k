@@ -161,7 +161,7 @@ t[`meta;(!meta tt)`c;`s`p`v]
 / a column a table lacks is filled with nulls of t's column, as q
 iu:+`a`b!(1 2;3 4);ik:xkey[`k;+`k`v`w!(1 2;3 4;5 6)]
 t[`insertByName;{.[insert;x;{x}]}'((iu;`b`a!5 6);(iu;+`b`a!(5 6;7 8));(iu;(`b`a!5 6;`b`a!7 8));(0#iu;`b`a!5 6);(iu;+(,`b)!,5 6);(+`a`b!(1 2;`x`y);+(,`a)!,5 6));(+`a`b!(1 2 6;3 4 5);+`a`b!(1 2 7 8;3 4 5 6);+`a`b!(1 2 6 8;3 4 5 7);+`a`b!(,6;,5);+`a`b!(1 2 0N 0N;3 4 5 6);+`a`b!(1 2 5 6;`x`y``))]
-t[`insertFill;insert[+`a`g`c`s`d!(1 2;(1;`x);"ab";("ab";"cd");2020.01.01 2020.01.02);+(,`a)!,,3];+`a`g`c`s`d!(1 2 3;(1;`x;0N);"ab ";("ab";"cd";"  ");2020.01.01 2020.01.02 0Nd)]   / item 0N of each column, as aj fills, as q (0N, " ", "", 0Nd; 2.9.0: a date has its null)
+t[`insertFill;insert[+`a`g`c`s`d!(1 2;(1;`x);"ab";("ab";"cd");2020.01.01 2020.01.02);+(,`a)!,,3];+`a`g`c`s`d!(1 2 3;(1;`x;0N);"ab ";("ab";"cd";"");2020.01.01 2020.01.02 0Nd)]   / item 0N of each column, as aj fills, as q (0N, " ", "", 0Nd; 2.9.0: a date has its null, a string is "" as q)
 t[`insertKeyed;{.[insert;x;{x}]}'((ik;`w`k`v!9 3 7);(ik;+`w`k`v!(9 8;3 4;7 6));(ik;xkey[`k;+`w`k`v!(9 8;3 4;7 6)]);(ik;+`w`k!(9 8;3 4)));(xkey[`k;+`k`v`w!(1 2 3;3 4 7;5 6 9)];xkey[`k;+`k`v`w!(1 2 3 4;3 4 7 6;5 6 9 8)];xkey[`k;+`k`v`w!(1 2 3 4;3 4 7 6;5 6 9 8)];xkey[`k;+`k`v`w!(1 2 3 4;3 4 0N 0N;5 6 9 8)])]
 t[`insertErrors;{.[insert;x;{*"\n"\x}]}'((iu;`b!5);(iu;`a`b`c!5 6 7);(iu;+`b`c!(5 6;7 8));(ik;`w`k`v!9 1 7);(ik;`w`v!9 7);(ik;+`w`v!(9 8;7 6));(ik;`k`v!3 7));(+`a`b!(1 2 0N;3 4 5);"mismatch";"mismatch";"insert";,"k";,"k";xkey[`k;+`k`v`w!(1 2 3;3 4 7;5 6 0N)])]   / as q: a column a row lacks takes a null (a key column: 'k), another column 'mismatch, a key t has 'insert
 t[`insertTypes;{.[insert;x;{*"\n"\x}]}'((iu;`a`b!(5;`x));(iu;`a`b!5 6.0);(iu;+`a`b!(5 6;`x`y));(+`a`d!(1 2;2020.01.01 2020.01.02);`a`d!(3;5));(+`a`c!(1 2;"xy");`a`c!(3;"zz"));(iu;xkey[`a;+`a`b!(,7;,8)]);(iu;ik));7#,"type"]   / q's 'type: an item of another type than its column's (a date column too), a keyed r into an unkeyed t
@@ -672,7 +672,7 @@ t[`serLeftKept9;{m:(-9 5000000000)0;m!-8!1 2;m}[];-9]
 
 / -9! keeps an attribute only when the data keeps it (sort, grade and find trust `s)
 t[`deserAttrKept;  (`at@-9!-8!`sa 1000 2000 3000;`at@-9!-8!`pa 3 3 1 1 2;`at@-9!-8!`ua 1 2 3);(`s;`p;`u)]
-t[`deserAttrBad;   {c:-8!`sa 1000 2000 3000;c[14 15 18 19]:(-8!3000 2000 1000)14 15 18 19;x:-9!c;(`at@x;<x;x?1000)}[];(`;2 1 0;2)]
+t[`deserAttrBad;   {c:`ser@`sa 1000 2000 3000;c[14 15 18 19]:(`ser@3000 2000 1000)14 15 18 19;x:`des@c;(`at@x;<x;x?1000)}[];(`;2 1 0;2)]
 / -9! reads a symbol of 256 bytes or more, which -8! writes whole (it was 'domain)
 t[`deserLongSym;.[{[d]y:(`$255#"a";`$256#"a";`$70000#"c";`b,`$2000#"e";(`$300#"f")!1);(y~-9!-8!y;#$*-9!-8!,`$300#"b")};,0;{x}];(1;300)]
 
@@ -858,6 +858,12 @@ t[`tvLibXbar;(5 xbar 09:32 09:36 0N;7 xbar 2026.01.01 2026.01.09;0D00:15:00.0000
 t[`tvLibParts;(hh 09:30:00.000 10:15:00.000;mm 09:30 10:15;sec 09:30:15 0Nv);(9 10;30 15;15 0N)]
 t[`tvLibBin;(2026.01.01 2026.01.05 2026.01.09'2026.01.06;09:30 09:40'09:35 09:45 09:00;2026.01.01 2026.01.05 within 2026.01.02 2026.01.06);(1;0 1 -1;0 1)]
 t[`tvLibTable;{t:([]d:2026.01.02 2026.01.01 2026.01.02 0N;v:1 2 3 4);(type t`d;`d xasc t;t[`d]>2026.01.01;first t`d)}[];(14;+`d`v!(0N 2026.01.01 2026.01.02 2026.01.02;4 2 1 3);1 0 1 0;2026.01.02)]
+/ 2.9.0: q's read0 read1 system (sys.k)
+\l sys.k
+"/tmp/amber_rt.txt" 0: ("one";"two")
+t[`read0;   read0`:/tmp/amber_rt.txt;("one";"two")]
+t[`read1;   (read1`:/tmp/amber_rt.txt;read1(`:/tmp/amber_rt.txt;4;3));("one\ntwo\n";"two")]
+t[`system;  (system"echo hi; echo there";system"t 1+1";hdel`:/tmp/amber_rt.txt);(("hi";"there");0;`:/tmp/amber_rt.txt)]
 fails:r@&{"FAIL"~4#x}'r[;1]
 `0:""
 `0:"================ AMBER TEST SUITE ================"

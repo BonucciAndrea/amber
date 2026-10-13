@@ -938,7 +938,7 @@ select sum sz by sym from trade where date=2026.01.02
   holds both tables. That holds after a `set`, not during one: a reader that loads the table while
   the files are being renamed can still see some old and some new. Two `set`s into one database at
   once share its `sym.tmp`, so run them one at a time. Symbols are stored as indexes into the database's `sym` file (it only grows).
-  Anything nested goes in as `-8!` bytes.
+  Anything nested goes in as `` `ser `` bytes (Amber's own format).
 * **Partitioned tables.** `\l db` (or `loaddb`) finds `db/<date or int>/<table>/` and defines each
   table as a small dict naming its partitions. Nothing is read until a query asks.
   `select`/`exec` keep only the partitions the where-clause allows on the partition column, then
@@ -973,21 +973,22 @@ like[("cat";"dog";"cab");"c*"]/ 101b
 
 ---
 
-## 10b. Binary serialization: `-8!` · `-9!`
+## 10b. Binary serialization: `` `ser `` · `` `des ``
 
-`-8!x` encodes any K value into a compact, contiguous byte vector (`tC`); `-9!y` decodes that
-vector back into the original value. The round trip is exact:
+Since 2.9.0 `-8!` and `-9!` speak q's bytes (§10c). Amber's own compact format lives on as
+`` `ser x `` and `` `des y ``: `` `ser `` encodes any K value into a contiguous byte vector (`tC`),
+`` `des `` decodes it back. The round trip is exact:
 
 ```k
-(-9! -8! x) ~ x            / true for every supported shape
-b:-8!+`a`b!(1 2 3;4 5 6)   / a table -> bytes
--9!b                       / -> the identical table
+(`des@`ser@x) ~ x            / true for every supported shape
+b:`ser@+`a`b!(1 2 3;4 5 6)   / a table -> bytes
+`des@b                       / -> the identical table
 ```
 
 | | |
 |---|---|
-| `-8!x` | encode `x` to a byte vector |
-| `-9!y` | decode a byte vector produced by `-8!` |
+| `` `ser x `` | encode `x` to a byte vector |
+| `` `des y `` | decode a byte vector made by `` `ser `` |
 
 **What round-trips.** Atoms (`` `i `` `` `l `` `` `f `` `` `c `` `` `s ``, date, time, timestamp),
 every vector type including bit vectors, symbol vectors, general/nested lists, dictionaries,
@@ -1003,15 +1004,35 @@ Two things worth knowing:
   `'type`: serializing a closure means serializing its captured environment and bytecode, which is
   a different feature from a data wire format.
 
-`-9!` is a parser for bytes that may have come from another process, so it is bounds-checked and
+`` `des `` is a parser for bytes that may have come from another process, so it is bounds-checked and
 depth-limited throughout; a truncated, corrupt or over-long buffer raises a clean `'domain` rather
 than reading past the end.
 
-`-8!`/`-9!` occupy the negative-integer `!` slots, as in q. Only `-8` and `-9` on an integer atom
-are intercepted; every other left argument still means `mod`.
+Before 2.9.0 this format was `-8!`/`-9!`; those are q's now.
 
 `peach` uses this as its worker wire format (§9a). See `examples/peach_verify.k` for the full
 verification suite.
+
+## 10c. Talking to q: IPC
+
+Amber speaks q's wire format, so a q process and an Amber one can talk to each other, either way round.
+
+```q
+\p 5000                 / listen, as q (or amber -p 5000)
+h:hopen 5000            / or `:host:5000
+h"1+1"                  / sync: 2
+h(`f;1;2)               / a function and its args
+neg[h]"x:1"             / async
+hclose h
+```
+
+- **The handlers** are q's: `.z.pg` `.z.ps` `.z.po` `.z.pc` `.z.w` `.z.ts`, and `\t 100` runs the timer.
+- **The bytes**: `-8!x` gives q's bytes for x, `-9!` reads them back. Remote errors come back as q's.
+- **Logs**: `` h:hopen`:log `` then `` h enlist(`upd;`t;x) `` appends, q's way; `` -11!`:log `` replays one
+  (q's too), `-11!(n;f)` the first n, `-11!(-2;f)` counts the good ones.
+- **Console handles**: `1 "text"`, `-1 "line"`, `2`/`-2` to stderr, `0 "expr"` evaluates.
+- **Tested against q itself**: a q client against an Amber server and the other way round, and a whole
+  kdb+ tickerplant (tp, rdb, cep, generator) running on Amber unchanged.
 
 ## 10a. Temporal
 
@@ -1145,7 +1166,8 @@ cast       long int float char sym bool cast           (std.k)
 parallel   peach (multi-core, thread pool)              (std.k) ; ts (\ts timing)
 .z/.Q/.j/.h  z.p z.d z.t … · Q.f Q.dd Q.trp Q.s … · j.j j.k (JSON) · h.ht (HTML)  (sys.k)
 on-disk    set get dset dget splay dload loaddb ptab Q.en Q.dpft partsave partload parts   (hdb.k, binary, mapped)
-ipc/tick   hopen hclose hsend hrecv hsync · u.def u.sub u.pub u.get u.end  (ipc.k)
+ipc/tick   hopen hclose · h x · neg[h] x · -8! -9! -11! · \p \t · .z.pg .z.ps .z.po .z.pc .z.w .z.ts · u.def u.sub u.pub  (ipc.k, sys.k)
+files/os   read0 read1 system hsym hdel exit       (sys.k)
 arrow      arrow.export arrow.import                    (Arrow C Data Interface)
 ```
 

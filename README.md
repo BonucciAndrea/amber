@@ -14,7 +14,7 @@
 ![ci](https://github.com/BonucciAndrea/amber/actions/workflows/ci.yml/badge.svg)
 ![version](https://img.shields.io/badge/version-2.9.0-orange)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue)
-![tests](https://img.shields.io/badge/tests-3915%20K--suite%20cases-brightgreen)
+![tests](https://img.shields.io/badge/tests-3909%20K--suite%20cases-brightgreen)
 ![build](https://img.shields.io/badge/build-C99%20·%20portable%20·%20gcc%20+%20clang-informational)
 
 </div>

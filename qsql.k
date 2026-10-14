@@ -413,8 +413,15 @@ qopn:{[g]$[~|/{0<#ss[x;y]}[g]'qkws;0;[g:@[g;&"\n"=g;:;" "];g:qdec g;r:qfind g," 
 / A query in a lambda written over lines sees its args and locals too: the lines of the statement before it (back to the
 / last line that starts unindented) go to the rewriter as the text before the query
 qtrp:{[p;s]r:.[qrwp;(p;s);{`ERR}];$[`ERR~r;s;r]}
-qjg:{[L]j:{[s;l]$[$[#l;|/(*l)=" \t";0];$[qopn s 0;(s[0],"\n",l;1);(l;0)];(l;0)]}\[("";0);L];b:&~j[;1];k:|\(!#L)*{(#x)&~|/(*x)=" \t"}'L; {[L;k;b;G]t:"\n"/G;$[~|/{0<#ss[x;y]}[t]'qkws;t;[p:$[b>k b;(" "/qdec'(b-k b)#(k b)_L)," ";""]; $[(1<#G)&~qopn t;[r:qtrp[p;t];r,(0|(#G)-1++/r="\n")#"\n"];"\n"/qtrp[p]'G]]]}[L;k]'[b;b_L]}
+/ 2.9.1: an indented line after a query's lines is one of them too when it starts with where, by or from, when they end in
+/ a comma, or when it is a comment (a where on a line of its own, after the line with the from, was left as a statement of
+/ its own: 'a). The comment goes to the rewriter as an empty line
+qcl:{[g;l]l:(+/&\(l=" ")|l="\t")_l;$[~|/{0<#ss[x;y]}[g]'qkws;0;("/"=*l)&1<#l;1;[w:(&/l?" \t")#l;e:{(-+/&\|(x=" ")|x="\t")_x}'qdec'vs["\n";g];e:e@&0<#'e;(w~"where")|(w~"from")|(w~"by")|$[#e;","=*|*|e;0]]]}
+qjg:{[L]j:{[s;l]$[$[#l;|/(*l)=" \t";0];$[qopn[s 0]|qcl[s 0;l];(s[0],"\n",l;1);(l;0)];(l;0)]}\[("";0);L];b:&~j[;1];k:|\(!#L)*{(#x)&~|/(*x)=" \t"}'L; {[L;k;b;G]t:"\n"/(1#G),{l:(+/&\(x=" ")|x="\t")_x;$[("/"=*l)&1<#l;"";x]}'1_G;$[~|/{0<#ss[x;y]}[t]'qkws;t;[p:$[b>k b;(" "/qdec'(b-k b)#(k b)_L)," ";""]; $[(1<#G)&~qopn t;[r:qtrp[p;t];r,(0|(#G)-1++/r="\n")#"\n"];"\n"/qtrp[p]'G]]]}[L;k]'[b;b_L]}
 qrwf:{$[|/{0<#ss[x;y]}[x]'qkws;sv["\n";qjg vs["\n";x]];x]}
+/ 2.9.1: value of text with a query in it rewrites it first, as a line typed or sent over IPC is (value "select from t
+/ where a>2" was 'a, in a script or a lambda)
+value:{$[`C~@x;$[|/{0<#ss[x;y]}[x]'qkws;. qtry x;. x];. x]}
 / ---- qSQL in a lambda (2.8.0) ------------------------------------------------
 / A query in a lambda sees the lambda's parameters and locals, as q: {[c]select from t where s=c}. The rewriter (qrwp)
 / passes the names of the innermost lambda the query is in -- its parameters (x y z when it has none) and the locals

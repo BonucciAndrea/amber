@@ -145,22 +145,44 @@ Z A dload(I f,UC t,W n,W nb){
  *   ff 01 t ...     a value as -8! writes it without the message header: the sym file (a symbol list, read to its end:
  *                   q does not keep its count up to date as it appends) and .d
  * q's types map to Amber's: byte short int long to its ints, real to float, the temporals as they are (same numbers) */
-Z A rcqv(I f,UC t,UC u,W n,W off){P(t>=20||!qtA[t],err0("nyi"))UC at=qtA[t];W w=qtW[t],nb=n*w;P(n>0xffffffffull,ez0())
- if(at!=tB&&t!=4&&w==((W)1<<Tw[at])>>3){A v=an((U)n,at);P(nb&&drall(f,_V(v),nb,off),mr(v);eo0())_at(v)=u<5?u:0;return v;}
- UC*b=malloc(nb?nb:1);P(!b,ez0())if(nb&&drall(f,b,nb,off)){free(b);return eo0();}
- A v=an((U)n,at);
+Z B qdir(UC t,UC at,W w)_(at!=tB&&t!=4&&w==((W)1<<Tw[at])>>3)   //q's items are Amber's as they are (copied, not converted)
+//n items of q's type t (1..19) at b, as an Amber list
+Z A qcv(UC t,W n,CO UC*b){P(t>=20||!qtA[t],err0("nyi"))UC at=qtA[t];W w=qtW[t];P(n>0xffffffffull,ez0())P(!n,emp(at))A v=an((U)n,at);
+ if(qdir(t,at,w)){MC(_V(v),b,(N)(n*w));return v;}
  if(at==tB){MS(_V(v),0,(n+7)>>3);UC*o=(UC*)_V(v);for(W i=0;i<n;i++)o[i>>3]|=(UC)((b[i]&1)<<(i&7));}
  else if(at==tF){F*o=(F*)_V(v);for(W i=0;i<n;i++){float g;MC(&g,b+4*i,4);o[i]=(F)g;}}
  else{L*o=(L*)_V(v);for(W i=0;i<n;i++){
   if(w==1)o[i]=b[i];
   else if(w==2){short s;MC(&s,b+2*i,2);o[i]=s==(short)0x8000?NL:s;}
   else{I s;MC(&s,b+4*i,4);o[i]=s==NIT?NL:s;}}}   //q's nulls (0Nh 0Ni) to Amber's 0N
- free(b);_at(v)=u<5?u:0;return v;}
-Z A rcq(I f,W sz,CO UC*m,A dom){
+ return v;}
+Z A rcqv(I f,UC t,UC u,W n,W off){P(t>=20||!qtA[t],err0("nyi"))UC at=qtA[t];W w=qtW[t],nb=n*w;P(n>0xffffffffull,ez0())
+ if(qdir(t,at,w)){A v=an((U)n,at);P(nb&&drall(f,_V(v),nb,off),mr(v);eo0())_at(v)=u<5?u:0;return v;}
+ UC*b=malloc(nb?nb:1);P(!b,ez0())if(nb&&drall(f,b,nb,off)){free(b);return eo0();}
+ A v=qcv(t,n,b);free(b);P(!v,0)_at(v)=u<5?u:0;return v;}
+/* 2.9.1: a nested column (strings, or lists of one type), as q 4 writes it. col has the page of header with t 77 at
+ * 0xff2, then n int64s: where each item starts in the data of col# (past its own page of header). An offset's top byte
+ * says how the item is kept there: 1 short (a byte 0x80+t-1 -- an atom's comes below 0x80 -- then a list's count in a
+ * byte, then the data), 0 as q holds a vector (m a t u, r, the count at 8, the data from 16; t 77 with no items: ()) */
+Z A qitem(CO UC*d,W dn,L e){W o=(W)e&0xffffffffffffffull;UC k=(UC)((W)e>>56);P(o>=dn,err0("format"))
+ if(k==1){UC c=d[o];I t=(I)c-0x7f;
+  if(t<0){P(-t>=20||!qtW[-t]||o+1+qtW[-t]>dn,err0("nyi"))A v=N(qcv((UC)-t,1,d+o+1));A a=ii(v,0);mr(v);return a;}   //an atom
+  P(t>=20||!qtW[t]||o+2>dn,err0("nyi"))W n=d[o+1];P(n>=0x80,err0("nyi"))P(o+2+n*qtW[t]>dn,err0("format"))return qcv((UC)t,n,d+o+2);}
+ P(k,err0("nyi"))P(o+16>dn,err0("format"))UC t=d[o+2];W n;MC(&n,d+o+8,8);
+ I(t==77||!t,P(n,err0("nyi"))return emp(tA))
+ P(t>=20||!qtW[t],err0("nyi"))P(n>(dn-o-16)/qtW[t],err0("format"))return qcv(t,n,d+o+16);}
+Z A rcqn(I f,W n,CO C*path){C p[4100];N l=SL(path);P(l+2>SZ p,eo0())MC(p,path,l);p[l]='#';p[l+1]=0;
+ I g=open(p,O_RDONLY);P(g<0,eo0())struct stat st;I(fstat(g,&st)||(W)st.st_size<0x1000,close(g);return err0("format"))
+ W dn=(W)st.st_size-0x1000;UC*d=malloc(dn?dn:1);L*ix=malloc(n?n*8:8);
+ I(!d||!ix,free(d);free(ix);close(g);return ez0())
+ I((dn&&drall(g,d,dn,0x1000))||(n&&drall(f,ix,n*8,0x1000)),free(d);free(ix);close(g);return eo0())close(g);
+ A r=an((U)n,tA);F(n,_A(r)[i]=au)F(n,A y=qitem(d,dn,ix[i]);I(!y,mr(r);r=0;break)_A(r)[i]=y)free(d);free(ix);return r;}
+Z A rcq(I f,W sz,CO UC*m,A dom,CO C*path){
  if(m[0]==0xfe)return rcqv(f,m[2],m[3],sz>=16?(sz-16)/(qtW[m[2]<20?m[2]:0]?qtW[m[2]<20?m[2]:0]:1):0,16);
  if(m[0]==0xfd){UC k[16];P(sz<0x1000||drall(f,k,16,0xff0),err0("format"))UC t=k[2],u=k[3];W n;MC(&n,k+8,8);if(!n&&sz>0x1000)n=(sz-0x1000)/(t&&t<20&&qtW[t]?qtW[t]:8);   //a count of 0 here too at times: the size says it
   P(n>0xffffffffull||0x1000+n*8>sz,err0("format"))
-  if(t<20)return t?rcqv(f,t,u,n,0x1000):err0("nyi");   //a nested column (strings) keeps its items in a col# file: not yet
+  if(t==77)return rcqn(f,n,path);   //a nested column: its items in col# (2.9.1)
+  if(t<20)return t?rcqv(f,t,u,n,0x1000):err0("nyi");
   L*ix=malloc(n?n*8:8);P(!ix,ez0())if(n&&drall(f,ix,n*8,0x1000)){free(ix);return eo0();}
   A r;if(!dom){r=an((U)n,tL);MC(_V(r),ix,(N)n*8);}
   else{U dn=_n(dom);CO I*sy=(CO I*)_V(dom);r=an((U)n,tS);I*o=(I*)_V(r);
@@ -182,7 +204,7 @@ A rcolT(A x){
  I f=open(path,O_RDONLY);P(f<0,x(eo0()))
  struct stat st;DHdr h;I e=fstat(f,&st);
  if(!e&&S_ISREG(st.st_mode)&&st.st_size>=8){UC m[4];
-  if(!drall(f,m,4,0)&&(m[0]==0xfe&&m[1]==0x20||m[0]==0xfd&&m[1]==0x20||m[0]==0xff&&m[1]==1)){A r=rcq(f,(W)st.st_size,m,dom);close(f);mr(x);return r;}}
+  if(!drall(f,m,4,0)&&(m[0]==0xfe&&m[1]==0x20||m[0]==0xfd&&m[1]==0x20||m[0]==0xff&&m[1]==1)){A r=rcq(f,(W)st.st_size,m,dom,path);close(f);mr(x);return r;}}
  // a file that opens but is too short for the header is damage, 'format (#94 Q14); 'io is a failed open, stat or
  // read, and a directory
  if(e||(W)st.st_size<DHB||drall(f,&h,SZ h,0)){close(f);return x(!e&&S_ISREG(st.st_mode)&&(W)st.st_size<DHB?err0("format"):eo0());}

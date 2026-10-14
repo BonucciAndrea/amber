@@ -270,7 +270,16 @@ t[`qSelect;sel"select n:count i, s:sum l by sym from qt";([sym:`ibm`msft] n:4 2;
 {`x(("/bin/rm";"-f";T,"/qnd/",x,"/qt/.d");"")}'("2026.01.02";"2026.01.03")
 loaddb T,"/qnd"
 t[`qNoDotD;(count qt;asc cols qt;sel"select sum l from qt where date=2026.01.03");(6;asc`date,`rcol QD,"/2026.01.02/qt/.d";([]l:,30))]
+/ 2.9.1: q 4's nested columns (tests/qnest: a splayed table q wrote, its items short and long, atoms and () among them)
+QN:DIR,"/qnest/v/"
+qn:{`rcol QN,x}
+t[`qNestStr;qn"s";(127#"a";128#"b";"";,"e";"x";"hello")]
+t[`qNestFloat;qn"f";(1.5;2.5 3.5;0#0n;200#1.0;0n;1 2.0)]
+t[`qNestBool;qn"b";(101b;0b;();1b;10b;0101b)]
+t[`qNestTs;qn"p";(2#2026.01.01D10:00:00.000000000;,2026.01.02D00:00:00.000000000;0#0Np;0#0Np;0Np,2026.01.01D00:00:00.000000000;,0Np)]
+t[`qNestInt;qn"i";(1 2;0N 3;!0;,7;0N;5 6 7)]
+t[`qNestTable;{v:get`$":",-1_QN;(count v;cols v;v[`s]5;v[`a]@&2<#'v`s)}[];(6;`a`s`f`b`p`i;"hello";0 1 5)]
 rm T
-hexpect[112]
+hexpect[118]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

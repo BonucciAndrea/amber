@@ -339,6 +339,10 @@ Z NI I ixca(A*p,A x,A y,A z,UC d,B g){UC kd[8];L ix[8];I n=g&&ixgs?ixgn(p):0;P(n
 Z NI __attribute__((cold)) V noupd(A*s){mr(*s);*s=err0("noupdate");}
 //g f:y, f a global that # _ @ or . calls (bM), which can set g: g held while f runs, as for g[i]f:y (ixfh); 0: f's error
 Z NI __attribute__((cold)) I bmh(A*p,A x,A y,UC d){y=v2[d](_R(x),y);mr(x);P(!y,0)I(*p,mr(*p))*p=y;return 1;}
+//2.9.1: the f: that bm/bM (b: a global) take out of line, one load in the loop as the one test before: bit 0 bm, bit 1 bM.
+//,: (12) either way, x,:y in place when the variable is x's only owner (catp); # _ @ . (14 15 18 19) on a global, as bmh
+Z CO UC bmk[32]={[12]=3,[14]=2,[15]=2,[18]=2,[19]=2};
+Z NI __attribute__((cold)) I bmo(A*p,A x,A y,UC d){P(d-12,bmh(p,x,y,d))P(catp(p,y),*p!=0)y=cat(x,y);P(!y,0)mr(x);*p=y;return 1;}
 Z NI __attribute__((cold)) A ixer(I e)_(e==1?ei0():e==2?el0():e==3?et0():0)   //ixca's error (4: one already set: the verb's, or a lookup's)
 A fzop(CO UC*,A*,A*);
 // Amber 2.5 (exp): the VM's start pinned to 64 bytes. Its dispatch loop's speed depended on where the linker happened
@@ -362,7 +366,7 @@ AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,d--,es8(a,n))/*d: per-thread VM recursio
    E(b++;UC n=m;A x=f;s+=n;U(*s=x((c==ba?_8:prj)(x,s-n+1,n)))))
   C6(bm,bM,bx,bX,by,bY,A*p=(c&1?gv:l)+BG,x=*p;I(__builtin_expect(c&1&&ray_rc_sync,0),noupd(s);goto l)  //          |      |                       |
    U(x,*s=ev(*s))A y=*s++;                                                                           //          |      |                       |
-   I(c==bm||c==bM,UC d_=*b++;I(__builtin_expect(c==bM&&(d_-14<2u||d_-18<2u),0),U(bmh(p,x,y,d_),*--s=0))E(y=v2[d_](x,y);U(y,*--s=0)*p=x(y)))   //mod asgn  |bm,i,d|.. x -> ..             |vars[i]:dyads[d][vars[i];x]
+   I(c==bm||c==bM,UC d_=*b++;I(__builtin_expect(bmk[d_]>>(c&1)&1,0),U(bmo(p,x,y,d_),*--s=0))E(y=v2[d_](x,y);U(y,*--s=0)*p=x(y)))   //mod asgn  |bm,i,d|.. x -> ..             |vars[i]:dyads[d][vars[i];x]
    E(UC d_=*b++;I e_=ixca(p,x,y,*s,d_,c&1);x=e_?ixer(e_):*p;mr(*s);I(c==bx||c==bX,mr(y);U(x,*s=0)s++)        //ind asgn  |bx,i,d|.. z y -> ..           |vars[i]:  .[vars[i];y;dyads[d];z]
                                     E(U(x,*s=y(0))U(*s=dot(x,y)))))                                 //ind asgn  |by,i,d|.. z y -> .. r         |vars[i]:r:.[vars[i];y;dyads[d];z]
   C(bG,U g_=BG;A x=*--s=gv[g_];U(x,evg(g_))xR)                                                                //get global|bG,i,i|.. -> .. globals[i]    |
@@ -388,7 +392,7 @@ AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,d--,es8(a,n))/*d: per-thread VM recursio
 #define MB 2048                                                                                     //max bytecode size
 #define M(a) {b[nb]=a;m[nb]=o;nb+=nb<MB-1;}                                                         //append byte
 #define MG(a) {U ig_=(a);M(ig_&255)M(ig_>>8)}                                                       //append a 2-byte little-endian global/var index
-Z A u;Z UC b[MB],m[MB];Z I lu[16],nb,nl,l[16],cdo,cr(A,B);                                              //u:lambda(src;b:bytes;m:map;l:locals;consts..)  lu:last usages
+Z A u;Z UC b[MB],m[MB];Z I lu[16],nb,nl,l[16],cdo,ndo,cr(A,B);                                              //u:lambda(src;b:bytes;m:map;l:locals;consts..)  lu:last usages  ndo: do's own counters among l
 ZN I li(I v)_(U i=fI(l,nl,v);P(i==nl,-1)lu[i]=nb;i)                                                 //index of a local variable (returns -1 if not found)
 Z B cm(A x/*0*/){X(Rv(!xv)Ru(1)RS(P(xn-1,0)S s=su(*xI);U n=SL(s);n&&s[n-1]==':')R_(0))}             //is x a valid modifier? i.e. :: or primitive monad or symbol ending with ":"
 // amber 2.3: two constants share a pool slot only if IDENTICAL. ~ calls -0.0 and
@@ -401,7 +405,7 @@ Z V cc(A x/*0*/,I o){U n=un,i=OFF;W(i<n&&!cid(x,ua),i++)I(i>=n,PSH(u,xR))M(i+bc-
 Z B lim;//cr: an expression exceeds a limit of the bytecode ('limit rather than 'compile)
 Z I cl(A x,A y/*00*/,B r){Q(cm(xx))I v=_v(xx),o=xo;                                                 //compile lvalue (x:assignmentNode,y:tree,r:wantResult)
  Y(R_(o)
-   RS(I(yn==1,I w=*yI,i=li(w);P(xx==av&&nl,I(i<0,i=nl;P(i>15,lim=1;o)l[nl++]=w;lu[i]=nb)M(bs+i)I(r,M(bg+i))OK)P(i>=0,M(bm)MG(i)M(v)I(r,M(bg+i))OK))
+   RS(I(yn==1,I w=*yI,i=li(w);P(xx==av&&nl>ndo,I(i<0,i=nl;P(i>15,lim=1;o)l[nl++]=w;lu[i]=nb)M(bs+i)I(r,M(bg+i))OK)P(i>=0,M(bm)MG(i)M(v)I(r,M(bg+i))OK))
       U i=gi(y);M(v?bM:bS)MG(i)I(v,M(v))I(r,M(bG)MG(i))OK)
    RA(I n=yn-1;P(!n,o)P(n>8u,lim=1;o)A z=yx;P(z==MKL&&(xx==av||_t(xx)==tu),M(bL)M(n)F(n,Nl(x,yA[i+1],0))I(r,P(xx-av,o))E(M(bP))OK)
       ZS(F(n,Nr(yA[n-i],1))M(bl)M(n)I i=zn-1?-1:li(*zI);I(i>=0,M(r?by:bx))E(i=gi(z);M(r?bY:bX))MG(i)M(v)OK)o))}
@@ -496,8 +500,10 @@ Z I cr(A x/*0*/,B r)_(I o=xo;                                                   
  // Amber 2.8.0: q's while[c;e;..] and do[n;e;..] (p.c builds the nodes): the test, a branch past the loop, the body, a
  // jump back (bk). do counts down a local of its own, one per nesting depth (loops one after another share it). A local
  // whose last use is in the loop is not moved out there (lu): the next pass reads it again. The loop's value is ::
+ // Amber 2.9.1: that counter is no local of the program's (ndo), so on a top-level line a: after a do is still global
+ // (t0:.z.p;do[n;..];t1:.z.p left t1 a local of the line, gone on the next one)
  P(y==WHL||y==DOL,I c=-1;
-  I(y==DOL,C h[4]={1,'d',(C)('0'+cdo),0};I w=(I)us(h);c=li(w);I(c<0,P(nl>15,lim=1;o)c=nl;l[nl++]=w)Nr(xy,1)M(bs+c))
+  I(y==DOL,C h[4]={1,'d',(C)('0'+cdo),0};I w=(I)us(h);c=li(w);I(c<0,P(nl>15,lim=1;o)c=nl;l[nl++]=w;ndo++)Nr(xy,1)M(bs+c))
   I t=nb;I(y==WHL,Nr(xy,1))E(A k=ai(0);M(bg+c)cc(k,o);mr(k);U q=b[nb-1]-bc;b[nb-1]=bV;M(q)M(_v(LTN)))
   M(bz)I z=nb;M(0)cdo+=y==DOL;F(n-2,I e_=cr(xA[i+2],0);P(e_-OK,cdo-=y==DOL;e_))cdo-=y==DOL;
   I(y==DOL,A k=ai(-1);M(bg+c)cc(k,o);mr(k);U q=b[nb-1]-bc;b[nb-1]=bV;M(q)M(_v(ADD))M(bs+c))
@@ -527,7 +533,7 @@ Z A1(cf,P(!xtA||!xn,x)P(xx==MKL,F(xn,A y=xa;YSA(cfn(x)))qte(N(drp(1,x))))P(xn==2
 Z I mxs(I i,I s)_(I r=s;W(1,UC c=MIN(bc,b[i++]);r=MAX(r,s);P(!c,r)s+=ds[c]+ks[c]*b[i];i+=di[c]+(c==bj)*b[i];I(c==bz,r=MAX(r,mxs(i+b[i-1],s))))r)//max stack
 Z B shy(A x/*0*/)_(!xtA?0:xn&&xx==GAP?shy(xA[xn-1]):xn==3&&cm(xx)&&_tSA(xy))                        //is last expr an assignment?
 // Amber 2.5 (exp): one compile of the body: OK, a cr() error offset, -2 a size limit, -3 the global table full
-Z I cpl1(A y,B s,I k,CO I*l0){nb=1;MS(lu,-1,SZ lu);MC(l,l0,OFF*k);nl=k;fzu=0;I r=cr(y,!s);P(r-OK,r)P(gfull,-3)
+Z I cpl1(A y,B s,I k,CO I*l0){nb=1;MS(lu,-1,SZ lu);MC(l,l0,OFF*k);nl=k;ndo=0;fzu=0;I r=cr(y,!s);P(r-OK,r)P(gfull,-3)
  I o=0;I(s,cc(au,o))P(un>255||nb>MB-2||nl>L(l)-2,-2)M(bu)P(nb>MB-2||un>255-bc+OFF,-2)
  F(nl,I j=lu[i];I(j>=0&&b[j]==bg,b[j]=bd))I sx=mxs(1,0);P(sx>255,-2)*b=sx;*m=-1;return OK;}
 // Compiled with float fusion first; if that hits a limit of the bytecode and fused code was emitted, compiled

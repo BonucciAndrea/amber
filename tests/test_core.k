@@ -1582,7 +1582,19 @@ t[`tvSer;({x~`des@`ser@x}'(2026.01.01 0N;09:30:15 0N;2026.01.15D09:30:00.0000000
 t[`tvMake;(`mkd 9497 0N;`mkn 1 2;`mkm 0 13;`i$2026.01.01 0N;`i$2026.01.15D00:00:00.000000001 0Np);(2026.01.01 0N;0D00:00:00.000000001 0D00:00:00.000000002;2000.01 2001.02m;9497 0N;821750400000000001 0N)]
 t[`tvKeys;(`s#2026.01.01 2026.01.03;(2026.01.01 2026.01.03!1 2)2026.01.03;ER"`s#2026.01.03 2026.01.01";(`s#2026.01.01 2026.01.03!1 2)2026.01.02);(`s#2026.01.01 2026.01.03;2;"s-fail";1)]
 
-hexpect[1005]
+/ 2.9.1: a do on a top-level line leaves the line's names global (its counter made them locals of the line: gone after it)
+dz0:0;do[3;dz0+:1];dz1:5
+do[2;dz2:9];dz3:1
+t[`doTopGlobal;(dz0;dz1;dz2;dz3);3 5 9 1]
+/ 2.9.1: v,:y where only v holds the list goes on the end of it in place; a list held elsewhere too is copied first
+t[`catOwnAlias;{a:1 2 3;b:a;a,:4;c:a;a,:5;(a;b;c)}[];(1 2 3 4 5;1 2 3;1 2 3 4)]
+t[`catOwnSelf;{a:1 2;a,:a;a,:a;a}[];1 2 1 2 1 2 1 2]
+t[`catOwnLoop;{v:!0;do[1000;v,:1 2];w:"";i:0;while[i<300;w,:"ab";i+:1];(#v;+/v;#w;-2#w)}[];(2000;3000;600;"ab")]
+t[`catOwnKinds;{a:1 2;a,:2.5;b:`x`y;b,:`z;c:1 2;c,:!3;d:(1;"a");d,:`q;e:01b;e,:10b;(a;b;c;d;e)}[];((1;2;2.5);`x`y`z;1 2 0 1 2;(1;"a";`q);0110b)]
+t[`catOwnGlobal;{gz0::1 2;w:gz0;gz0,:3;gz0,:4;(gz0;w)}[];(1 2 3 4;1 2)]
+t[`catOwnTable;{t:([]a:1 2;b:`x`y);u:t;t,:([]a:,3;b:,`z);t,:([]a:,4;b:,`w);c:1 2;s:([]a:c);s,:([]a:,3);(t;u;c;s)}[];(([]a:1 2 3 4;b:`x`y`z`w);([]a:1 2;b:`x`y);1 2;([]a:1 2 3))]
+
+hexpect[1012]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

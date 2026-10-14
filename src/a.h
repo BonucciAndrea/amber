@@ -107,7 +107,7 @@ static inline const void*amb_alchk(const void*p_,const char*f_,int l_){
 // v1.7 while README.md already advertised 1.9).
 #define AMBER_VERSION_MAJOR 2
 #define AMBER_VERSION_MINOR 9
-#define AMBER_VERSION_PATCH 0
+#define AMBER_VERSION_PATCH 1
 #define AMBER_VERSION M2(AMBER_VERSION_MAJOR) "." M2(AMBER_VERSION_MINOR) "." M2(AMBER_VERSION_PATCH)
 #define REFB  1
 // sole owner. Peach workers change counts atomically (RC_INC, RC_DECV). Only a holder of a counted reference raises a
@@ -212,7 +212,7 @@ CO C*peach_errmsg(V);//error category raised by the first failing item of the la
 CO C*errtext(V);//the calling thread's current error text (e.c)
 V plk(B);//take (1) / drop (0) the parse+compile lock inside a peach scope (m.c)
 C*sf(C*,L),*sl(C*,L),sup(A*,A*),tZ(L),*strchrnul(S,I);
-U gi(A);B grt(B);EX B gfull;
+U gi(A);B grt(B);EX B gfull;B catp(A*,A);A*gqv(A);
 B am_infix_dyad(S,U);//p.c: is a name a defined rank-2 global fn? -> infix
 B am_name_nonfn(S,U);//p.c: is a name BOUND to something that is not a rank-2 fn? -> not infix
 A unqL(A);//amber: O(n) integer distinct (f.c), 0 = not handled

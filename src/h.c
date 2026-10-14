@@ -93,7 +93,17 @@ ZN A insS(A x,A y/*01*/)_(P(_tP(x)||_tP(y),cat(x,y))B k=xtm&&_tM(xx);P(!xtM&&!k,
  insx(x,y))
 //the plain case first, and nothing else here: a row dict, or a table, of an unkeyed t's columns in t's order whose
 //items surely fit them is t,r, after one look at each column; the rest goes to insS
-Z NI __attribute__((cold)) A insg(A x,A y)_(K2("{[t;r]n:#v:. t;.[t;();:;v insert r];n+!(#. t)-n}",x,y))   //`t insert r (ins2; out of line)
+Z NI __attribute__((cold)) A insk2(A x,A y)_(K2("{[t;r]n:#v:. t;.[t;();:;v insert r];n+!(#. t)-n}",x,y))   //`t insert r (insg's other cases)
+//Amber 2.9.1: `t insert r into a global unkeyed table with rows, that only the global holds: r is lined up with t's first
+//row (insert's checks only look at the first item of a column, and its types), and the new rows go on the end of t where
+//it is (catp). It took a copy of t each time, so 20,000 inserts into a tickerplant table took 19 s (q: 50 ms)
+Z B insv(A t,A y){A c=_y(t);U n=_n(c);P(_tP(y)||_t(y)!=tA||_n(y)!=n,0)A*v=_A(y);P(_tP(*v)||!_tT(*v),0)U k=_N(*v);P(!k,0)   //y: one list per
+ F(n,A w=v[i],u=_A(c)[i];P(_tP(w)||!_tT(w)||_N(w)!=k,0)I(_t(w)!=_t(u)||_t(u)==tA,P(!insk(u,0,w),0)))return 1;}   //column, of one count, each surely fitting
+Z NI A insg(A x,A y){A*p=ray_rc_sync?0:gqv(x),t=p?*p:0;
+ P(!t||_tP(t)||_t(t)!=tM||_at(t)||!MINE(t)||!_N(t),insk2(x,y))
+ U n=_N(t);A r;I(insv(t,y),r=aM(_R(_x(t)),y))   //a list of t's columns, each surely fitting: those are the rows
+ E(A h=N(drp(1-(L)n,_R(t)));r=ins2(h,y);mr(h);N(r);r=N(drp(1,r)))U k=_N(r);   //h: t's first row
+ I(!catp(p,_R(r)),A z=N(cat(t,_R(r)));mr(*p);*p=z)mr(r);return aE(n,n+k);}
 A2(ins2,/*01*/I(!_tP(x)&&!_tP(y)&&xtM,A s=xx;I(ytm?insn(s,yx)&&insr(xy,yy,_n(s)):ytM&&insn(s,yx)&&(!yN||insc(xy,yy)),return cat(x,y)))
  P(_ts(x),insg(x,y))   //Amber 2.8.0: `t insert r inserts into the global t and gives the new rows' indices, as q
  insS(x,y))
@@ -111,6 +121,15 @@ A2(cat10,
  Ymt(P(ytm&&_tM(yx)&&(xtM||xtT&&!xn),xtA?x(yR):et(x))psh(x,yR))
  P(xtM||ytM,P(!yN,x)P(!xN,x(yR))P(xtT||ytT,x=N(blw(x));y=Nx(blw(yR));cat11(x,y))P(!xtM||!ytM,et(x))P(!mtc_(xx,yx),ed(x))A z=e2f(cat,xy,_R(yy));x(z?aM(_R(xx),z):0))Q(0);0)
 A2(cat11,y(cat10(x,y)))
+//Amber 2.9.1: x,:y where the variable is x's only owner: y's items go on the end of x where it is (aa), as q, not onto a
+//copy of x -- v,:x in a loop was O(#v) each time. Only where cat10 has nothing that can stop half way: two lists of one
+//type or two int lists (not a range, x), or an unkeyed table and a table of its columns in its order, each column so
+Z B catq(A x,A y)_(!_tP(x)&&!_tP(y)&&MINE(x)&&_tT(x)&&_tT(y)&&!_tE(x)&&_n(x)&&_N(y)&&(_t(x)==_t(y)||_tZ(x)&&_tZ(y)))
+Z B catm(A x,A y){P(_tP(x)||_tP(y)||_t(x)!=tM||_t(y)!=tM||_at(x)||!MINE(x)||!MINE(_y(x))||!mtc_(_x(x),_x(y)),0)A c=_y(x),d=_y(y);
+ P(_n(c)!=_n(d),0)F(_n(c),P(!catq(_A(c)[i],_A(d)[i]),0))return 1;}
+B catp(A*p,A y/*1*/){A x=*p;P(catq(x,y),*p=cat10(x,y);mr(y);*p!=0)   //1: done, *p is x,y (0 there: its error, as cat's); 0: not taken
+ P(!_tP(x)&&MINE(x)&&_tT(x)&&!_tE(x)&&_n(x)&&_tt(y),*p=psh(x,y);*p!=0)   //an atom: psh, as cat10 does it (v,:1)
+ P(catm(x,y),A c=_y(x),d=_y(y);F(_n(c),A*q=_A(c)+i;*q=cat10(*q,_A(d)[i]))mr(y);1)return 0;}
 A2(cat,/*01*/P(!_tP(x)&&_t(x)==tm&&_at(x)==1,cat11(mut(xR),y))P(!_tP(x)&&_t(x)==tA&&!_n(x)&&_t(xx)==tC&&!_n(xx)&&!_tP(y)&&_t(y)<tM,I(_t(y)==tA&&!_n(y)&&_at(y)-_at(x),y=mut(y);_at(y)=_at(x))y)   /*2.7: (),y is y, but ()'s attribute when y is empty too, as q; not 0#,1 2 (its prototype joins)*/cat11(xR,y))   //a dict made `s: joined without the mark (a copy), as in q
 A2(psh,/*11*/Q(xtMT);U n=xN;P(!n,enl(x(y)))P(!~n,y(ez(x)))   //no room for one more in 32 bits: 'limit
  P(xtE,psh(gZ(x),y))   //a range has no room to push into: its items do (sup below keeps it a range, so it looped)

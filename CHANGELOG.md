@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.9.1
+
+Fixes from running real q code, and appends that don't copy anymore.
+
+- **Appends in place**: `v,:x` and `` `t insert `` add to the end of the list or table when nothing else holds it, as
+  q's do. They copied the whole thing every time, so a loop of them got slower as it grew: 20,000 inserts into a
+  10-column tickerplant table went from 18 s to 23 ms, and `v,:1` in a loop is 110x quicker.
+- **Fixed**: on a top-level line, a name set after a `do` was a local of that line, gone on the next one
+  (`t0:.z.p; do[n;..]; t1:.z.p` left no `t1`).
+- **Fixed**: a query's `where` or `by` on a line of its own after the `from` line, a `where` going on past a comma,
+  and a comment between a query's lines. They were run as statements of their own (`'a`).
+- **Fixed**: `value` of text with a query in it, as in `value "select from t where a>2"` (it was `'a`).
+- **kdb+ string columns**: `\l db` reads q's nested columns too (a string per row, or a list), so a table with a
+  string column loads. It was `'nyi`.
+
 ## 2.9.0
 
 - **q's other temporals**: minutes `09:30`, seconds `09:30:15`, months `2026.03m`, timespans

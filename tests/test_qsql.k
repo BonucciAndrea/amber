@@ -250,6 +250,20 @@ t[`qrwfInString;qrwf"y:\"select px from t\"";  "y:\"select px from t\""]
 t[`qrwfJoinLines;#"\n"\qrwf"x:select\n  a\n  from t\ny:1"; 4]
 t[`qrwfJoinRun;  {. qrwf"qjf:{[t]r:select s:sum a\n  by b from t;\n  r}";qjf ([]a:1 2 3;b:`x`y`x)}[]; ([b:`x`y] s:4 2)]
 t[`qrwfNoFrom;   qrwf"a:{update\n  x}"; "a:{update\n  x}"]
+/ 2.9.1: and its where (or by) on a line of its own after the from, a where carried on past a comma, a comment between
+qwt:([]a:1 2 3 4;b:`x`y`x`y)
+t[`qrwfWhereLine;{. qrwf"qw1:select a\n  from qwt\n  where a<3";qw1}[];([]a:1 2)]
+t[`qrwfWhereComma;{. qrwf"qw2:select a\n  from qwt\n  where a>1,\n    a<4";qw2}[];([]a:2 3)]
+t[`qrwfWhereNote;{. qrwf"qw3:select a from qwt\n  / why\n  where a>3";qw3}[];([]a:,4)]
+t[`qrwfByLine;{. qrwf"qw4:select n:count i\n  by b\n  from qwt\n  where a>1";qw4}[];([b:`x`y] n:1 2)]
+t[`qrwfWhereLines;#"\n"\qrwf"x:select a\n  from qwt\n  / why\n  where a<3\ny:1";5]
+t[`qrwfWhereFn;{. qrwf"qwf:{[n]\n  select a\n    from qwt\n    where a>n}";qwf 2}[];([]a:3 4)]
+/ 2.9.1: value of text with a query in it, as q's (it was 'a, the query never rewritten)
+t[`valueQuery;(value"select a from qwt where a>3";{value x}"exec sum a from select from qwt where b=`y";value"1+1");(([]a:,4);6;2)]
+/ 2.9.1: `t insert r into a global table goes on the end of it where only the global holds it, and copies it when not
+t[`insOwn;{iq::([]a:1 2;b:`x`y);w:iq;r:`iq insert (3 4;`z`w);s:`iq insert (5;`v);(r;s;iq;w)}[];(2 3;,4;([]a:1 2 3 4 5;b:`x`y`z`w`v);([]a:1 2;b:`x`y))]
+t[`insOwnLoop;{iq::([]a:!0;b:0#`);do[500;`iq insert (1 2;`p`q)];(#iq;+/iq`a;-2#iq`b)}[];(1000;1500;`p`q)]
+t[`insOwnErr;{iq::([]a:1 2;b:`x`y);(@[{`iq insert x};(3.5;`z);{x}];@[{`iq insert x};(3 4;`z`w`v);{x}];#iq)}[];("type";"length";2)]
 
 / select ... by <symbol column> uses the 2.0.0 symbol-grouping fast path;
 / keys are first-appearance order (c,a,b) and aggregates are correct

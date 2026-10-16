@@ -253,8 +253,8 @@ Amber uses a terse array notation. A few things worth knowing:
   a vector gets big (32K items and up). Small vectors stay on one thread, no overhead.
 * **Grids preview Q-style.** `show t` prints the first `CROWS` rows (default 20) then `..`, with
   a dimmed `[N rows x M cols]` footer and ANSI syntax highlighting.
-* **Errors show a `^` caret** under the failing token plus a descriptive message; set
-  `AMBER_DIAG=1` for the full Rust-style report (see [Rust-style diagnostics](docs/REPL.md#rust-style-diagnostics)).
+* **Errors come as a Rust-style report**: `error[CODE]`, where it is, `^^^` under the token and a hint
+  (see [Rust-style diagnostics](docs/REPL.md#rust-style-diagnostics)). `AMBER_DIAG=0` gives the one-line caret form.
 * **Symbols have no `_`.** Use a quoted symbol `` `"a_b" ``.
 * Tables: `([]col:vals;…)`; keyed tables: `([key:vals]col:vals)`. A bare table at the prompt
   auto-renders as a grid.
@@ -287,8 +287,8 @@ notional` (trades), `ret logret rvol movavg movsum movmax movmin ema rollstd` (r
 `bars symstats` (aggregation), `bysym symrows gidx` (O(1) index), `genopt gentq` (generators).
 Walkthrough: `./amber examples/hft.k`.
 
-**Attributes.** Amber has all four q-style attributes in C: `` `sa`` sorted, `` `ua`` unique,
-`` `pa`` parted, `` `ga`` grouped (`` `at`` reads them, `meta` shows them). Sorted int vectors stored 16 bits or wider
+**Attributes.** Amber has all four of q's attributes in C: `` `s#x `` sorted, `` `u#x `` unique,
+`` `p#x `` parted, `` `g#x `` grouped (`attr` reads them, `meta` shows them; `` `sa `` and friends work too). Sorted int vectors stored 16 bits or wider
 give O(log n) kernel find; grouped + the group index give O(1) per-symbol slicing.
 
 <a name="documentation"></a>
@@ -314,7 +314,7 @@ give O(log n) kernel find; grouped + the group index give O(1) per-symbol slicin
 | `src/*.c`, `src/*.h` | the interpreter, ngn/k core + Amber extensions (`src/p.c` the `([]…)` parser; `src/ar.c` Arrow; `src/arena.{h,c}` the HFT arena, 32-byte aligned; `src/diagnostic.{h,c}` the Rust-style formatter; the native `aj` kernel in `src/a.c`; `src/inspect.{h,c}` the `\v` inspector; `src/ast.{h,c}` the `\ast` visualiser; `src/trace.{h,c}` the `\trace` profiler; `src/fmtutil.{h,c}` and `src/ansi.h` shared formatting/colour helpers; `src/simd.{h,c}` AVX2/NEON/scalar kernels; `src/parallel.{h,c}` the thread pool and its parallel kernels; `src/dsk.c` the on-disk column files; `src/vm.{h,c}` the bytecode disassembler behind `\disasm`; `src/csv.{h,c}` the native CSV parser behind `` `csvr``) |
 | `amber.k` | the q vocabulary (auto-loaded) |
 | `repl.k` | the REPL, banner, grid rendering, `\grid`/`\clear`, help; CRLF-safe module loader; reads its input through `` `rdl`` (the native editor) and exposes the optional `ext.*` hooks |
-| `src/ln.{h,c}`, `src/lnk.c` | the native line editor (raw `termios`, history, Tab completion) and the `` `rdl`` verb that the REPL reads through, this is what replaced `rlwrap` |
+| `src/ln.{h,c}`, `src/lnk.c` | the native line editor (raw `termios`, history) and the `` `rdl`` verb that the REPL reads through, this is what replaced `rlwrap` |
 | `src/ext.{h,c}`, `ext/` | **both** extension seams. Sections 1-5: the in-process registry, runtime verbs plus `\`-command / editor / startup hooks, and the (empty by default) directory `build.sh` compiles out-of-tree extensions from. Section 6: the out-of-process **dynamic C API** behind `libamber.so` (`amber_init`, `amber_eval_str`, `amber_get_vector_ptr`, …) |
 | `src/libamber.map` | the linker export map for the shared build: only `amber_*` and `am_ext_*` reach a host process's dynamic namespace, so the engine's terse internals (`mr`, `run`, `add`, …) cannot collide with a host's symbols |
 | `fin.k` | finance / HFT module (auto-loaded), see `\m` help |

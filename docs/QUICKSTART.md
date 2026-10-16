@@ -206,9 +206,9 @@ v:asc 2000000?1000000000                     / `s attribute set by asc
 `at v                                        / `s
 v ? 12345 67890                              / O(log n)  (see bench.k: ~1000x faster)
 
-/ binary serialization: -8! encodes any value to bytes, -9! decodes it back
-b:-8!+`a`b!(1 2 3;4 5 6)     / table -> compact byte vector
-(-9!b)~+`a`b!(1 2 3;4 5 6)   / 1b  -- exact, attributes and nulls included
+/ binary serialization: `ser encodes any value to bytes, `des decodes it back (-8!/-9! are q's bytes)
+b:`ser@+`a`b!(1 2 3;4 5 6)   / table -> compact byte vector
+(`des@b)~+`a`b!(1 2 3;4 5 6) / 1  -- exact, attributes and nulls included
 
 / multi-core: peach runs f over items on a pool of threads (no GIL)
 peach[{avg x?1.0}; 8#1000000]                / 8 heavy tasks across AMBER_THREADS cores

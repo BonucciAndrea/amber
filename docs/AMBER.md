@@ -1192,8 +1192,8 @@ form, a large slice of q's system vocabulary:
   `dset`/`dget` (value ↔ file), `splay`/`dload` (splayed table ↔ directory, one file per column with
   a `.d`), `Q.en`/`Q.dpft`/`loaddb`/`ptab` (partitioned databases), and the older
   `partsave`/`partload`/`parts`. Text files from before 2.7 still read through `dget`/`dload`, not `get`.
-* **`ipc.k`**: raw‑socket messaging (`hopen hclose hsend hrecv hsync`, a text protocol rather than the
-  q binary wire) and an in‑process tickerplant (`u.def u.sub u.pub u.get u.end`).
+* **`ipc.k`**: `hopen`/`hclose` over q's own wire format (`src/qipc.c`, §10c) and an in‑process
+  tickerplant (`u.def u.sub u.pub u.get u.end`).
 
 ## Help inside the REPL
 

@@ -15,9 +15,9 @@ above; they're recorded for completeness:
 - **HFT zero-allocation arena.** A thread-local 16 MB bump allocator for the transient buffers
   produced during evaluation, rewound per eval cycle to keep `malloc`/`free` jitter off the hot
   path. (q has no user-facing equivalent; it is managed internally there.)
-- **Rust-style diagnostics.** Opt-in (`AMBER_DIAG=1`) `error[CODE]` reports with a `-->` locator,
-  a gutter-aligned source line, `^^^` underlines and a `= help:` note. This is *richer* than q's
-  single-line `'error` and than Amber's own default caret line, which both remain.
+- **Rust-style diagnostics.** `error[CODE]` reports with a `-->` locator, a gutter-aligned source
+  line, `^^^` underlines and a `= help:` note, on by default. `AMBER_DIAG=0` or `` `diag 0 `` gives the
+  one-line caret form instead, closer to q's `'error`.
 
 ## 1. Temporal types: done (1.7)
 Native `date` / `time` / `timestamp` types with literal syntax (`2026.07.30`,
@@ -37,9 +37,9 @@ so `xasc`/`s#` work unchanged.
   `**:00:00.000`.
 
 ## 2. Missing atom types
-`short` (`h`), `real`/float32 (`e`), `byte` (`x`, `0x…`), `guid` (`g`, `0Ng`), plus the full
-set of typed nulls/infinities (`0Nh 0Ne 0Wp 0Nd …`). Amber has int (64-bit), float, char and symbol
-only, with `0N`/`0n` nulls; a `b` literal such as `101b` is an int vector.
+`short` (`h`), `real`/float32 (`e`), `byte` (`x`, `0x…`), `guid` (`g`, `0Ng`), their nulls (`0Nh 0Ne`),
+and the temporal infinities (`0Wd 0Wp …`). Amber has int (64-bit), float, char and symbol, the temporal
+types and their nulls (`0Nd` … `0Nm`, since 2.9); a `b` literal such as `101b` is an int vector.
 - **A `b` literal next to a strand.** Before an int strand it is indexed by it, as in q (`01b 1`
   is `01b[1]`, `1`; q gives `1b`; `01b 1 2` is `1 0N`). Before a float strand it joins it, and
   after any strand it is joined to it: `01b 1 2.5` is `0.0 1.0 1.0 2.5` (q: `'type`) and `1 01b` is `1 0 1` (q: `1`).
@@ -66,14 +66,11 @@ inside a **`.k` script** loaded once the stdlib is up (the loader runs each file
   `` ?[t;();0b;(,`c)!,0.5] ``), where q gives `'rank`. q gives one row only when an item applies
   one of its built-in aggregates. A check for the constant case cost every select of aggregates on a
   small table more than we could make free, so it is not made (#20 row 17).
-- **Differs from q:** `med` of an empty general column is `0n` (floats), q's answer for an empty
-  temporal column: an Amber temporal column is a general list too, so the two cannot be told apart.
+- **Differs from q:** `med` of an empty general column is `0n` (floats).
   With `` t:([]sym:`a`b;n:1 2;g:(1;"a")) ``, `select med g by sym from t where n>5` gives `g` as `0#0n`
   (q: `()`), and `med ()` is `0n` (q: `` `float$() ``) (#94 Q9).
-- Still missing: the general functional forms `?[t;where;by;select]` /
-  `![t;where;by;cols]`, and correlated subqueries. Note that `?` at arity 3+ is
-  already `ins` in this dialect, so the `?[…]` spelling cannot be added without
-  breaking k semantics; `![…]` at arity 4 is free.
+- **The functional forms work as q's**: `?[t;c;b;a]` (select, exec) and `![t;c;b;a]` (update, delete).
+  Still missing: correlated subqueries.
 - **Amber has:** bare + string `select/exec/update/delete`, plus the functional helpers
   `qwhere qselect qby fby xgroup ungroup`.
 
@@ -99,7 +96,7 @@ and q), and so does a null float atom filled by a symbol (`` `a^0n `` is `` `a `
 
 Since 2.5 `sums prds prd wsum wavg svar sdev` skip nulls too, and `cov scov cor` drop a pair
 with a null. Still k: on a dict, `sum` and `min` count the null (`sum `a`b!0N 1` is
-`-9223372036854775807`; q gives `1`), and `avgs` and `med` treat nulls as the primitives do. So do
+`0N`; q gives `1`), and `avgs` and `med` treat nulls as the primitives do. So do
 `sums` and `sum` of a general list, which add an int null in as `+` does (#116): `sums (1;0N;2.5)` is
 `(1;-9223372036854775807;-9.223372036854776e18)` and `sum (1;0N;2.5)` is `-9.223372036854776e18`
 (q: `(1;0N;0n)` and `0n`).
@@ -157,9 +154,8 @@ names write the binary format too and still read the old text files (AMBER.md §
   Amber writes q's own files into it (`.Q.dpft`, `set`), so q keeps reading it. `count`, `cols` and `tables` of a
   partitioned table are q's.
 - **Since 2.8.0:** `upsert` in memory (a keyed table by key, else appended) and `` `t insert r `` by name, as q.
-- **Still missing:** appending to a table on disk. `upsert` does not take a path, so no
-  `` `:db/t/ upsert t `` (q appends the rows to the column files), and amber.k's `insert` takes the
-  table itself, not a name or a path as q's `` `t insert r `` does (#94 Q13).
+- **Still missing:** appending to a table on disk. `upsert` and `insert` don't take a path, so no
+  `` `:db/t/ upsert t `` (q appends the rows to the column files).
 
 ## 5. IPC & the tick architecture: done (q's wire format, 2.9.0)
 **Since 2.9.0:** q's binary wire protocol, both ways: `hopen`/`hclose`, `h x` sync, `neg[h] x` async,
@@ -206,8 +202,9 @@ grouped pairs with `fin.k`'s group index
   Keeping the mark in these would put a test on every amend's path.
 
 ## 7. Enumerations, foreign keys, linked columns
-`` `sym$`` enumeration domains, `.Q.en`, foreign keys (`` `t$`` and dotted `order.customer.name`
-traversal), linked columns, `.Q.fk`. None in Amber.
+`.Q.en` enumerates a table's symbols against a database's sym file (§4), and `fkeys` is there (always
+empty). Missing: enumerated types (`` `s$`a`b `` gives the symbols back, not an enumeration), foreign keys
+(`` `t$ `` and dotted `order.customer.name`), linked columns, `.Q.fk`.
 
 ## 8. System namespaces: partial (`sys.k`)
 Amber now provides the common members (as `.`-style names `z.*`/`Q.*`/`j.*`/`h.*`):
@@ -215,8 +212,8 @@ Amber now provides the common members (as `.`-style names `z.*`/`Q.*`/`j.*`/`h.*
   z.pc z.ts z.exit` are real since 2.9.0: messages on a port and the timer call them, as q (§5).
   Missing: `.z.ph` (HTTP).
 - **`.Q.*`** **done**: `Q.f Q.fmt` (number format), `Q.s` (show), `Q.ty Q.qt Q.id Q.dd`,
-  `Q.gc Q.w` (mem placeholders), `Q.fc` (sequential fallback), `Q.trp` (protected).
-  Missing: `.Q.dpft .Q.en` (partition/enumerate), `.Q.hg/.Q.hp` (HTTP get/post),
+  `Q.w` (real memory since 2.9), `Q.gc`, `Q.fc` (sequential fallback), `Q.trp` (protected), `Q.en Q.dpft` (§4).
+  Missing: `.Q.hg/.Q.hp` (HTTP get/post),
   `.Q.j10/.Q.x10` (base64), `.Q.pv/.Q.pf` (partition vars).
 - **`.j.*`** JSON **done**: `j.j` (encode) / `j.k` (decode), both the core `` `j``.
 - **`.h.*`** markup **partial**: a minimal HTML table/row renderer (`h.ht h.hrow h.hc`).
@@ -231,7 +228,7 @@ prefix sums; `mmin`/`mmax` are O(n·w) window scans) plus **`ema`** (C kernel, O
   `deltas (1;2;2.5)` is `(1;1;0.5)`, keeping its `1` as `deltas 1 2 4` does (q: `(0N;1;0.5)`, though
   `1 1 2` for `deltas 1 2 4`). ngn/k's `-':` gives the same answers.
 - **Still missing:** `wj2`, `ajf`/`ajf0` (fill as-of), `ij`/`lj` fill variants, vectorised
-  `ssr`, and `rank`/`xrank` *over tables*. (`mmin`/`mmax` could also move to an O(n)
+  `ssr`. (`mmin`/`mmax` could also move to an O(n)
   monotonic-deque form; see BENCHMARKS.md.)
 
 ## 10. Linear algebra & math: partial (`std.k`)
@@ -245,14 +242,14 @@ prefix sums; `mmin`/`mmax` are O(n·w) window scans) plus **`ema`** (C kernel, O
 `parse`/`eval`/`reval` are implemented, along with a **text** `ser`/`deser` round-trip (portable
 Amber text via `` `k``, inverted by `eval`) and `protect` (like `.Q.trp`). Amber also has
 `sv vs ss ssr like`, string casts, and `` `k`` (k-repr).
-- **Done in 1.9.3:** the **binary** serialiser `-8!`/`-9!` (`src/ser.c`). `-8!x` encodes any K
-  value to a contiguous byte vector and `-9!y` decodes it back byte-exact, preserving attributes,
+- **Since 2.9.0** `-8!`/`-9!` are q's bytes (§5). Amber's own binary format, from 1.9.3, is `` `ser ``/`` `des ``
+  (`src/ser.c`): `` `ser x `` encodes any K value to a contiguous byte vector and `` `des y `` decodes it back
+  byte-exact, preserving attributes,
   nulls, infinities, nested empties and symbol *names* (not process-local ids). `peach` now uses
   it as its worker wire format instead of `` `k `` text. Lambdas and projections are
   out of scope and raise `'type`. Verified by `examples/peach_verify.k` (60 cases).
-- **Still missing:** `-18!` (compress), `-11!`
-  (replay log), the full `$` cast matrix (guid, byte), typed file reader `("SIF";",")0:file`,
-  `vs`/`sv` for base-N and temporal, `.Q.btoa` (base64), and the CSV writer `","0:t`, a
+- **Still missing:** `-18!` (compress), the full `$` cast matrix (guid, byte), typed file reader
+  `("SIF";",")0:file`, `vs`/`sv` for temporal values, `.Q.btoa` (base64), and the CSV writer `","0:t`, a
   table's lines of delimited text (q: `` ","0:([]a:1 2;s:`x`y) `` is `("a,s";"1,x";"2,y")`, a cell
   holding the delimiter in quotes, nulls empty, floats at `\P`'s precision, dates as `2026-01-01`;
   Amber gives `'type`). `` `csvr `` reads CSV, and `x 0: y` writes lines of text.
@@ -273,8 +270,8 @@ secondary threads buy you. `AMBER_THREADS` is the knob.
 
 ## 13. Console / environment niceties: partial
 `\ts` (via `ts`) and number formatting `.Q.f`/`.Q.fmt` are done.
-- **Still missing:** `\c` console dims, a real `\w` (workspace) report (`Q.w` is a placeholder),
-  `system"…"`, `getenv`/`setenv`, and editor tooling / a language server.
+- **Still missing:** `\c` console dims, a `\w` (workspace) report (`.Q.w[]` has the numbers since 2.9),
+  `getenv`/`setenv`, and editor tooling / a language server.
 - **Differs from q:** `\cd` with no argument names the working directory as the operating system
   does, where q prints `$PWD` when that names it (#116): started in `/tmp` (on macOS a link to
   `/private/tmp`), `\cd` is `"/private/tmp"` (q: `"/tmp"`; with `PWD` unset, `"/private/tmp"` too).
@@ -303,8 +300,8 @@ vectorised in 1.5, **native C kernel** in 1.9, **multi-core `peach`** (1.6, fork
 **native temporal types** (1.7), **C-kernel `wj`/`ema`** (1.7), **terminal charting**
 `plot`/`candle` (1.7), **Apache Arrow C Data Interface** (1.7), **all four attributes** in C
 (§6), the **moving-aggregate family** `m*` (§9), **`mmu`/`dot`** (§10), **`parse`/`eval`/`ser`**
-(§11), a **text-based on-disk layer** `dset`/`splay`/`partsave` (§4), and a **text IPC / in-process
-tickerplant** `hopen`/`u.*` (§5).
+(§11), a **binary, mapped on-disk layer** reading and writing q's databases (§4, 2.7 and 2.9), and
+**q's IPC** with an in-process tickerplant `u.*` (§5, 2.9).
 
 ### Nice next steps (highest value first)
 1. ~~**Binary serialiser (`` -8!``/`` -9!``)**~~ is **done in 1.9.3** (`src/ser.c`). `peach` and
@@ -317,8 +314,8 @@ tickerplant** `hopen`/`u.*` (§5).
 3. **Missing atom types** (§2): `short`/`real`/`byte`/`guid` and their typed nulls/infinities.
 4. **Attribute preservation through ops** (§6): keep/drop attributes by q's per-op rules instead
    of always dropping on a new allocation.
-5. **True partitioned/mmap HDB** (§4): a date-partitioned, memory-mapped on-disk format beyond
-   the current text splay, plus `.Q.dpft`/`.Q.en`.
+5. ~~**True partitioned/mmap HDB** (§4)~~ is **done in 2.7**, q's own files in 2.9: what's left there is
+   appending to disk, compression and partition map-reduce.
 6. **Live REPL syntax highlighting**, meaning colouring tokens *as you type*, not just on a line you've
    already run. This needs `repl.k`'s raw-keystroke input loop rewritten to re-tokenize and
    redraw the current line on every keypress (a fragile, previously-regression-prone path in
@@ -339,7 +336,8 @@ behaviour shows up as a test failure rather than a silent regression.
   `` b#+t`` yielded nulls. `qbyx` now compiles by-items with the same `qfn` machinery the
   select-list uses, so an unknown name raises as an undefined variable and, the reason the fix
   matters, `by time:1m xbar time` groups on the computed bucket instead of on one null key.
-- **A trapped error still renders a diagnostic to stderr *by default*.** `.[f;args;handler]`
+- ~~**A trapped error still renders a diagnostic to stderr *by default*.**~~ **Fixed in 2.9.0**: a trap is
+  silent, as q's. Before: `.[f;args;handler]`
   (and `protect`, documented as `.Q.trp`-like) catches the error correctly, but the Rust-style
   report is written at error-creation time, before the handler runs. Rather than defer rendering
   (which would change what an interactive line prints), 1.9 adds the `` `diag`` runtime switch:
@@ -360,18 +358,13 @@ behaviour shows up as a test failure rather than a silent regression.
   and with `y:1e16 1 1 1 1 1 1 1.0`, `(+/y;*|+\y)` is `1.0000000000000006e16 1e16`. q and ngn/k give
   the scan's answer for both forms of each (`0.10000000000000009`, `1.0`, `1e16`). Folding left would
   give up the fast sum.
-- **No long-typed infinity literal.** `0w`/`-0w` exist for floats; `0W`/`-0W` do not parse, so
-  the identity elements of `&/`/`|/` over an empty long vector can only be obtained from the
-  primitives themselves.
+- ~~**No long-typed infinity literal.**~~ **Fixed in 2.8.0**: `0W` and `-0W` parse, as q's.
 - **`5#0#0` promotes byte/narrow-int nulls to long nulls.** `cn[tG]` aliases the long null, so a
   take from an empty narrow vector widens the element type.
-- **Attribute syntax is `` `sa``/`` `ua``/`` `pa``/`` `ga`` (set) and `` `at`` (get), not q's
-  `` `s#``/`` `u#``/`` `p#``/`` `g#``.** Several doc passages still write `s#` informally when
-  describing the sorted attribute; the working syntax is `` `at(`sa 1 2 3)``.
-- **`f [a;b]` with a space is not a call.** K reads `[a;b]` as a bracketed statement block, so
-  the expression silently evaluates to a discarded projection `f[b;]`, with no error and no output.
-  Bit this repo's own qSQL suite (42 of 93 cases stopped running while the suite still reported
-  "ALL TESTS PASSED"); `tests/harness.k`'s `hexpect[n]` now guards against it.
+- ~~**Attribute syntax is `` `sa``/`` `ua``/`` `pa``/`` `ga``, not q's `` `s#``.**~~ **Since 2.7** q's
+  `` `s#x `` `` `u#x `` `` `p#x `` `` `g#x `` and `attr x` work too; `` `sa `` and friends are still there.
+- ~~**`f [a;b]` with a space is not a call.**~~ **Fixed in 2.8.0**: it's a call, as q's. `tests/harness.k`'s
+  `hexpect[n]` still guards the suite against the old reading.
 - **A newline inside parentheses separates items, as in ngn/k, so `;` at the end of a line leaves
   an empty item.** An empty item is `::` (issue #83, Q6), so in a script `x:(1;` / ` 2;` / ` 3)`
   on three lines is `(1;::;2;::;3)`, where q reads `(1;2;3)` (and 2.7.2 gave `'parse`); a `;` at
@@ -385,8 +378,8 @@ behaviour shows up as a test failure rather than a silent regression.
   fills an unmatched row: ints, floats, symbols, chars and general columns of atoms get q's nulls,
   but a general column whose first item is a list gets that list's nulls (q: an empty list), a
   column of strings gets blanks as long as its first string (q: `""`), a boolean column `0N`
-  (Amber's booleans are ints; q: `0b`), and a date, time or timestamp column `::`, since there is
-  no temporal null (q: `0Nd`, `0Nt`, `0Np`).
+  (Amber's booleans are ints; q: `0b`). A temporal column gets its typed null (`0Nd`, `0Nt`, `0Np`), as
+  q's, since 2.9.
 - **An amend that leaves no column of a table a list fills each to the table's row count**
   (`` t[`a]:9 `` with `t:([]a:1 2 3)` gives `9 9 9`; an empty table stays empty), as `update` does;
   q gives `'rank` for these (`` t[`a]:9 ``, `` @[t;`a;:;9] ``, `` @[t;`a`b;:;9] ``).
@@ -403,12 +396,11 @@ behaviour shows up as a test failure rather than a silent regression.
   rows goes one item per row (`` @[t;0 1;:;7 8] `` is `7 8`; q: each row `7 8`), and a dict with a verb
   other than `:` one value per row (`` @[t;0 1;+;`a`b!1 2] `` adds `1` to row 0 and `2` to row 1; q adds the
   dict to each row).
-- **Find gives `0N` for no match**, as in ngn/k: `1 2 3?5` is `0N`, where q gives the count, `3`.
-  amber.k's `in` and `ij` rely on it.
+- ~~**Find gives `0N` for no match**~~ **Since 2.9.0** it's the count, as q's: `1 2 3?5` is `3`.
 - **Find in a list whose items differ in rank looks for `y` as one item first** (#105 Q2), so it
   finds what `=` groups by (`` =(1;"ab") `` is `` (1;"ab")!(,0;,1) ``): `(1;"ab")?"ab"` is `1`,
   `(1;2 3;"ab";4)?"ab"` is `2` and `((1;2 3);4)?4` is `1`. Only where `y` is not an item does find map
-  over it, as q and ngn/k always do: `(1;"ab")?"cd"` is `0N 0N`. q gives `2 2`, `4 4` and `2` for the
+  over it, as q does: `(1;"ab")?"cd"` is `2 2`, as q's. q gives `2 2`, `4 4` and `2` for the first
   three (each char, not found; `=` groups as Amber does), and ngn/k `0N 0N`, `0N 0N` and `'rank`.
 - **A take from an empty general list gives empty strings**: `3#()` is `("";"";"")`, since an empty
   general list keeps a string as its type witness (CHANGELOG, "Empty general lists keep their type

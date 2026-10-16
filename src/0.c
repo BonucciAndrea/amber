@@ -46,7 +46,6 @@ I pg=4096;//pagesize
   "\n"
   "REPL line editing (native since 1.9.5 -- do NOT wrap amber in rlwrap):\n"
   "  arrows/Ctrl-A/E/B/F/K/U/W  edit          Up/Down or Ctrl-P/N   history\n"
-  "  Tab   complete globals, table columns, \\ commands and past lines\n"
   "  Ctrl-L clear   Ctrl-C abandon line   Ctrl-D exit on an empty line\n"
   "  History persists in ~/.amber_history.  AMBER_NO_EDIT=1 turns editing off.\n";
  Z I opt(S s)_(!strcmp(s,"-h")||!strcmp(s,"--help")?1:!strcmp(s,"-v")||!strcmp(s,"--version")?2:0)

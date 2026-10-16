@@ -106,61 +106,48 @@ pty, including that the terminal's `termios` is restored exactly after a normal 
 <a name="rust-style-diagnostics"></a>
 ## Rust-style diagnostics
 
-By default an error prints the terse core message with a `^` caret under the failing token:
-
-```
-'length: operands have mismatched counts
- prices+sizes
-       ^
-```
-
-Set **`AMBER_DIAG=1`** and the same errors are additionally rendered as a **Rust-compiler-style
-report**: an `error[CODE]` line, a `-->` locator, a gutter-aligned source line, `^^^` underlines,
-and a `= help:` note (all ANSI-coloured on a colour terminal):
-
-```sh
-AMBER_DIAG=1 ./amber                # interactive
-AMBER_DIAG=1 ./amber myscript.k     # running a script
-```
+An error prints as a **Rust-compiler-style report**: an `error[CODE]` line, a `-->` locator, a
+gutter-aligned source line, `^^^` under the token, and a `= help:` note (all ANSI-coloured on a colour
+terminal):
 
 ```text
-error[E0104]: Vector length mismatch
-  --> test.k:12:8
-   |
-12 |   prices + sizes
-   |   ^^^^^^   ^^^^^
-   |
-   = help: Both vectors must have matching lengths for element-wise `+`.
+error[E0103]: Vector length mismatch
+ --> <amber>:1:6
+  |
+1 | 1 2 3+1 2
+  |      ^ operands have different counts
+  |
+  = help: Conforming operations require vectors of matching lengths or atom-vector pairs.
+```
+
+`AMBER_DIAG=0` gives the terse k form instead, the message and a `^` caret:
+
+```sh
+AMBER_DIAG=0 ./amber                # interactive
+AMBER_DIAG=0 ./amber myscript.k     # running a script
 ```
 
 The formatter lives in `src/diagnostic.{h,c}` (a `Span` source-tracking struct + a
-`report_diagnostic()` renderer); the runtime error path (`src/e.c`) routes every parse / type /
-domain error through it when `AMBER_DIAG` is set, so the flag is entirely opt-in and changes
-nothing about the default output. You can exercise the formatter directly with the `` `dgn ``
-self-test builtin (returns `1` when the rendered report matches its expected shape):
+`report_diagnostic()` renderer), and the runtime error path (`src/e.c`) routes every parse / type /
+domain error through it. You can exercise it directly with the `` `dgn `` self-test builtin (returns
+`1` when the rendered report matches its expected shape):
 
 ```q
 `dgn 0        / 1  — diagnostic formatter self-test
 ```
 
-Turn it on for a session and leave it: it costs one `getenv` per error and never fires on success.
-
 <details>
-<summary>Turning the report off at runtime</summary>
+<summary>Switching it at runtime</summary>
 
-The diagnostic is rendered when the error is *created*, so code that catches an error with
-`.[f;args;handler]` still sees it on stderr. That is switchable at runtime, which helps for anything
-that provokes errors on purpose (a test suite, `protect`, a retry loop):
+`` `diag 0 `` turns the report off and gives back the previous setting, `` `diag 1 `` turns it on.
+A trapped error prints nothing either way since 2.9.0, as q's: `.[f;args;handler]` and `@[f;x;handler]`
+hand the message to the handler, and `` `err `` still has it.
 
 ```
-prev:`diag 0        / suppress the report, returns the previous setting (1)
-.[{1+`a};,0;{"caught"}]     / no output at all
-`diag prev          / restore
+prev:`diag 0        / the terse form from here on, returns the previous setting (1)
+.[{1+`a};,0;{"caught"}]     / "caught", nothing printed
+`diag prev          / back
 ```
-
-The compact `'type` caret line is not suppressed. It is buffered and still handed to the trap
-handler and to `` `err``, so a caught error can always be inspected. `AMBER_DIAG=0` in the
-environment still works and seeds the initial value.
 
 </details>
 

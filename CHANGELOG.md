@@ -7,6 +7,12 @@ Fixes from running real q code, and appends that don't copy anymore.
 - **`?` with misses is quick again**: since 2.9.0 a miss is the count, which took two more passes over the result
   after the find. The find writes the count itself now, 10% quicker than 2.9.0 on 100k and 1M lookups, as quick as
   before the change.
+- **Who may connect**: `\p 5000` listens on this machine only now, `\p 0.0.0.0:5000` (or `-p host:5000`) opens it
+  wider. `.z.pw` and q's `-u`/`-U` password files decide who gets in, a no being `'access` as in q, and a port open to
+  the network with none of them says so. Before, anyone who could reach the port could run code here.
+- **The `\` menu, redone**: six new pages (on disk, IPC, charts, speed, errors, every REPL command and key) and the
+  rest brought up to date, in columns that line up, readable on a light terminal and with a screen reader. Every
+  example on them is run by the tests, so none can go stale.
 - **Appends in place**: `v,:x` and `` `t insert `` add to the end of the list or table when nothing else holds it, as
   q's do. They copied the whole thing every time, so a loop of them got slower as it grew: 20,000 inserts into a
   10-column tickerplant table went from 18 s to 23 ms, and `v,:1` in a loop is 110x quicker.

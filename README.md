@@ -259,8 +259,9 @@ Amber uses a terse array notation. A few things worth knowing:
 * Tables: `([]col:vals;…)`; keyed tables: `([key:vals]col:vals)`. A bare table at the prompt
   auto-renders as a grid.
 
-Full reference: **[docs/AMBER.md](docs/AMBER.md)**. Built-in help: `\` then `\q \j \z` for the Amber
-vocabulary, ``\0 \+ \` \'`` for the core, `\v \ast \trace` for the session/diagnostic tools (see
+Full reference: **[docs/AMBER.md](docs/AMBER.md)**. Built-in help: `\` lists every topic, then `\q \j \z \m`
+for the q layer, ``\0 \+ \` \' \:`` for the core, `\o \i \g \r \e` for disk, IPC, charts, speed and errors,
+`\k` for every REPL command and key, `\v \ast \trace` for the session/diagnostic tools (see
 [REPL diagnostics](docs/REPL.md#repl-diagnostics-v--ast--trace)), and `\disasm` for the bytecode disassembler
 (see [Engine extensions](docs/INTERNALS.md#engine-extensions)).
 

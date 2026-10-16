@@ -135,6 +135,11 @@ if [ "$QUICK" = 0 ]; then
   if bash tests/test_stdin.sh; then echo "  -> PASS (tests/test_stdin.sh)"
   else echo "  -> FAIL (tests/test_stdin.sh)"; fail=1; fi
 
+  # Who may connect to \p: the bind, .z.pw, -u/-U and the open-port warning, with real servers and clients
+  say "port access (tests/test_ipc_auth.sh)"
+  if bash tests/test_ipc_auth.sh; then echo "  -> PASS (tests/test_ipc_auth.sh)"
+  else echo "  -> FAIL (tests/test_ipc_auth.sh)"; fail=1; fi
+
   # Bare qSQL in a loaded .k file (amber 2.0.0): the loader runs each file through
   # the qSQL rewriter, so `select .. from ..` works in a script with no sel"..."
   # wrapper; a non-qSQL script must be left untouched.
@@ -158,6 +163,14 @@ if [ "$QUICK" = 0 ]; then
   if command -v python3 >/dev/null 2>&1; then
     if python3 tests/test_paste.py; then echo "  -> PASS (tests/test_paste.py)"
     else echo "  -> FAIL (tests/test_paste.py)"; fail=1; fi
+  else echo "  -> SKIP (no python3)"; fi
+
+  # The \ help pages: every page renders, every example shows what its page says, every function it names
+  # exists. It reads the pages out of repl.k, so a page that goes stale fails here
+  say "help pages (tests/test_help.py)"
+  if command -v python3 >/dev/null 2>&1; then
+    if python3 tests/test_help.py; then echo "  -> PASS (tests/test_help.py)"
+    else echo "  -> FAIL (tests/test_help.py)"; fail=1; fi
   else echo "  -> SKIP (no python3)"; fi
 
   # Status bar (amber 2.0.0): \sb sets a 2-line bottom panel + scroll region that

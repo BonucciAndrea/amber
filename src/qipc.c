@@ -172,7 +172,24 @@ Z V qserve(I f){UC m;A v=qrcv(f,&m);I(m==255,I(!v,ecl())qdrop(f);return)
  I(!v,CO C*e=errtext();I(m==1,qsnde(f,e&&*e?e:"type"))ecl();return)
  qzw(f);I dq=amdiagq;amdiagq=1;A r=m==1?K1("{z.pg x}",v):m==0?K1("{z.ps x}",v):(mr(v),au);amdiagq=dq;   //a client's error is its answer, not printed here, as q
  I(m==1,I(r,I k=qsnd(f,r,2);I(k<0,qsnde(f,"type"))mr(r))E(CO C*e=errtext();qsnde(f,e&&*e?e:"error");ecl()))E(I(r,mr(r))E(qerrp()))qzw(0);}
-Z V qacc(V){I fd=accept(qls,0,0);I(fd<0,return)I(fd>=QH,close(fd);return)C c[1024];N n=0;W(n<SZ c,I(read(fd,c+n,1)!=1,close(fd);return)I(!c[n],break)n++)
+/* Who gets in. A client's handshake is "user:password", a capability byte and a 0. With -u or -U the user has to be in
+ * that file with that password (as text, or its md5 in hex, as q's files), and then .z.pw[`user;"password"] has to say
+ * yes when it's set. A no closes the connection with no answer, so the client's hopen is 'access, as q's.
+ * \p binds 127.0.0.1 unless a host is given (\p 0.0.0.0:5000), where q takes every interface. A port open past this
+ * machine with no file and no .z.pw says so once, when serving starts, so a script still gets to set .z.pw first */
+A md5T(A);
+Z C qpw[16384];Z N qpwn;Z I qwarn;   //-u/-U's file and its length; a port open past this machine, the warning not given yet
+I qpwfile(S f){I d=open(f,O_RDONLY);I(d<0,return 0)ssize_t k=read(d,qpw,SZ qpw-1);close(d);I(k<0||k==SZ qpw-1,return 0)qpw[k]=0;qpwn=(N)k;return 1;}
+Z I qyes(A r){I(!r,ecl();return 0)I y=_tz(r)&&gl(r);mr(r);return y;}
+Z I qpwz(S u,S p){A l=aA(2);_A(l)[0]=aCz(u);_A(l)[1]=aCz(p);I dq=amdiagq;amdiagq=1;A r=K1("{$[@[{z.pw;1};0;{0}];z.pw[`$x 0;x 1];1]}",l);amdiagq=dq;return qyes(r);}   //yes when .z.pw isn't set
+Z I qzpwset(V){I dq=amdiagq;amdiagq=1;A r=K1("{@[{z.pw;1};0;{0}]}",ai(0));amdiagq=dq;return qyes(r);}
+Z I qmd5ok(S h,N m,S p){P(m!=32,0)A d=md5T(aCz(p));I(!d,ecl();return 0)C x[33];F(16,snprintf(x+2*i,3,"%02x",((UC*)_V(d))[i]))mr(d);I y=1;F(32,y&=(h[i]|32)==x[i])return y;}
+Z I qpwok(S u,S p){P(!qpwn,1)N ulen=SL(u),plen=SL(p);S s=qpw;W(*s,S e=strchr(s,10);N n=e?(N)(e-s):SL(s);I(n&&s[n-1]==13,n--)   //a line: user:password
+  I(n>ulen&&s[ulen]==':'&&!memcmp(s,u,ulen),S h=s+ulen+1;N m=n-ulen-1;return m==plen&&!memcmp(h,p,plen)||qmd5ok(h,m,p);)s=e?e+1:s+n)return 0;}
+Z I qauth(S c){S q=strchr(c,':');C u[256];N k=q?(N)(q-c):SL(c);I(k>=SZ u,return 0)MC(u,c,k);u[k]=0;S p=q?q+1:"";return qpwok(u,p)&&qpwz(u,p);}
+Z V qwarn1(V){I(!qwarn,return)qwarn=0;I(qpwn||qzpwset(),return)C b[160];I n=snprintf(b,SZ b,"amber: port %d is open past this machine with no -u, -U or .z.pw: anyone who can reach it can run code here\n",qlp);I(write(2,b,(N)n)<0,{})}
+Z V qacc(V){I fd=accept(qls,0,0);I(fd<0,return)I(fd>=QH,close(fd);return)C c[1024];N n=0;W(n<SZ c-1,I(read(fd,c+n,1)!=1,close(fd);return)I(!c[n],break)n++)
+ I(n==SZ c-1,close(fd);return)I(n&&(UC)c[n-1]<32,n--)c[n]=0;I(!qauth(c),close(fd);return)   //no 0 in 1023 bytes: not a client. The capability byte off the end
  UC v=3;I(!qwr(fd,&v,1),close(fd);return)setsockopt(fd,IPPROTO_TCP,TCP_NODELAY,(I[]){1},4);qhk[fd]=2;A r=K1("{z.po x}",ai(fd));I(r,mr(r))E(ecl())}
 //an error in a timer or an async message: one line on the console, as q's ('2026.10.13T13:35:54.899 type), not the diagnostic
 Z V qerrp(V){CO C*e=errtext();I(e&&*e==39,e++)C b[96];struct timeval tv;gettimeofday(&tv,0);time_t t=tv.tv_sec;struct tm m;localtime_r(&t,&m);
@@ -186,8 +203,8 @@ Z I qpoll(B s,I ms){ST pollfd p[QH+2];I n=0;I(s,p[n].fd=0;p[n].events=POLLIN;n++
  I k=poll(p,(nfds_t)n,ms);I(k<0,return s)qtick();I in=0;
  F(n,I(p[i].revents,I f=p[i].fd;I(s&&!f,in=1)J(f==qls,qacc())E(qserve(f))))return in;}
 I qactive(V)_(qls>=0||qtp>0)
-V qidle(V){I(!qactive(),return)W(!qpoll(1,-1));}   //before a read of the terminal: serve until it has a key
-V qloop(V){W(qactive(),qpoll(0,-1));}               //after a script: serve while there is a port or a timer
+V qidle(V){I(!qactive(),return)qwarn1();W(!qpoll(1,-1));}   //before a read of the terminal: serve until it has a key
+V qloop(V){qwarn1();W(qactive(),qpoll(0,-1));}               //after a script: serve while there is a port or a timer
 // h x: to a connection, sync (wait for the answer, serving the async messages that come first), neg[h] x async;
 // h[] the next message's value; to a log, append x's items. et where h is no handle
 //q's 1 x and 2 x write text to stdout and stderr, -1 x and -2 x with a newline after each line (a list of strings: a line
@@ -207,24 +224,28 @@ A qcall(I h,A y/*1*/){I(h==1||h==2||h==-1||h==-2,return qcon1(h,y);)I(!h,P(_tP(y
 Z I qcon(S hs,S ps,S up){ST addrinfo h,*r=0;MS(&h,0,SZ h);h.ai_family=AF_INET;h.ai_socktype=SOCK_STREAM;I(getaddrinfo(*hs?hs:"127.0.0.1",ps,&h,&r)||!r,return -1)
  I f=socket(AF_INET,SOCK_STREAM,0);I(f<0,freeaddrinfo(r);return -1)I c=connect(f,r->ai_addr,r->ai_addrlen);freeaddrinfo(r);I(c<0,close(f);return -1)
  I(f>=QH,close(f);return -1)setsockopt(f,IPPROTO_TCP,TCP_NODELAY,(I[]){1},4);N n=SL(up);C b[600];I(n>500,n=500)MC(b,up,n);b[n]=3;b[n+1]=0;
- UC v;I(!qwr(f,b,n+2)||!qrd(f,&v,1),close(f);return -1)qhk[f]=1;return f;}
-A qhopen(A x/*1*/)_(P(_tz(x),L p=gl(x);C ps[24];snprintf(ps,SZ ps,"%lld",(long long)p);I f=qcon("",ps,"");P(f<0,eo0())ai(f))
+ UC v;I(!qwr(f,b,n+2),close(f);return -1)I(!qrd(f,&v,1),close(f);return -2)qhk[f]=1;return f;}   //-2: the server shut us out, 'access
+A qhopen(A x/*1*/)_(P(_tz(x),L p=gl(x);C ps[24];snprintf(ps,SZ ps,"%lld",(long long)p);I f=qcon("",ps,"");P(f<0,f<-1?err0("access"):eo0())ai(f))
  P(!(_ts(x)||_t(x)==tC),et(x))A s=_ts(x)?str(x):x;s=str0(s);S t=_V(s);I(*t==':',t++)
  C hb[256],pb[32],ubuf[512];hb[0]=pb[0]=ubuf[0]=0;S c=strchr(t,':');S e=c?c+1:0;B net=c&&C09(*e);   //host:port.. when a port follows the first colon
  I(net,N hl=MIN((N)(c-t),SZ hb-1);MC(hb,t,hl);hb[hl]=0;S q=e;W(C09(*q),q++)N pl=MIN((N)(q-e),SZ pb-1);MC(pb,e,pl);pb[pl]=0;I(*q==':',snprintf(ubuf,SZ ubuf,"%s",q+1))
-   mr(s);I f=qcon(hb,pb,ubuf);P(f<0,eo0())return ai(f);)
+   mr(s);I f=qcon(hb,pb,ubuf);P(f<0,f<-1?err0("access"):eo0())return ai(f);)
  I f=open(t,O_WRONLY|O_APPEND|O_CREAT,0666);mr(s);P(f<0||f>=QH,I(f>=0,close(f))eo0())qhk[f]=3;ai(f))
 A qexit(A x/*1*/)_(L c=_tz(x)?gl(x):0;A r=K1("{z.exit x}",az(c));I(r,mr(r))E(ecl())exit((I)c);au)   //exit n: .z.exit, then gone, as q
 A qhclose(A x/*1*/)_(P(!_tz(x),et(x))I f=(I)gl(x);P(!qok(f),ed0())qhk[f]=0;close(f);au)   //no .z.pc: we closed it
-// \p n: listen on n (0: stop); \p: the port
-A qport(S s)_(W(*s==' ',s++)P(!*s,ai(qlp))L p=pl((S*)&s);I(qls>=0,close(qls);qls=-1;qlp=0)P(!p,au)
- I f=socket(AF_INET,SOCK_STREAM,0);P(f<0,eo0())setsockopt(f,SOL_SOCKET,SO_REUSEADDR,(I[]){1},4);ST sockaddr_in a;MS(&a,0,SZ a);a.sin_family=AF_INET;a.sin_addr.s_addr=INADDR_ANY;
- a.sin_port=htons((UH)p);P(bind(f,(ST sockaddr*)&a,SZ a)<0||listen(f,64)<0,close(f);eo0())qls=f;qlp=(I)p;au)
+// \p n: listen on n on this machine only, \p host:n on host's interface (\p 0.0.0.0:n every one); 0 stops; \p: the port
+A qport(S s)_(W(*s==' ',s++)P(!*s,ai(qlp))C hb[256];hb[0]=0;S c=strchr(s,':');I(c,N hl=MIN((N)(c-s),SZ hb-1);MC(hb,s,hl);hb[hl]=0;s=c+1)
+ L p=pl((S*)&s);I(qls>=0,close(qls);qls=-1;qlp=0;qwarn=0)P(!p,au)
+ ST sockaddr_in a;MS(&a,0,SZ a);a.sin_family=AF_INET;a.sin_addr.s_addr=htonl(INADDR_LOOPBACK);
+ I(*hb&&inet_pton(AF_INET,hb,&a.sin_addr)!=1,ST addrinfo h,*r=0;MS(&h,0,SZ h);h.ai_family=AF_INET;h.ai_socktype=SOCK_STREAM;   //a name: its first address
+   P(getaddrinfo(hb,0,&h,&r)||!r,ed0())a.sin_addr=((ST sockaddr_in*)r->ai_addr)->sin_addr;freeaddrinfo(r))
+ I f=socket(AF_INET,SOCK_STREAM,0);P(f<0,eo0())setsockopt(f,SOL_SOCKET,SO_REUSEADDR,(I[]){1},4);
+ a.sin_port=htons((UH)p);P(bind(f,(ST sockaddr*)&a,SZ a)<0||listen(f,64)<0,close(f);eo0())qls=f;qlp=(I)p;qwarn=ntohl(a.sin_addr.s_addr)>>24!=127;au)
 // \t n: .z.ts every n ms (0: stop); \t: the period
 A qtimer(L n)_(qtp=n>0?n:0;qtn=qms()+qtp;au)
 L qtperiod(V)_(qtp)
 #else
-V qidle(V){}V qloop(V){}I qactive(V)_(0)A qcall(I h,A y)_(et(y))A qhopen(A x)_(en(x))A qhclose(A x)_(en(x))A qport(S s)_(en0())A qtimer(L n)_(en0())L qtperiod(V)_(0)
+V qidle(V){}V qloop(V){}I qactive(V)_(0)I qpwfile(S f)_(0)A qcall(I h,A y)_(et(y))A qhopen(A x)_(en(x))A qhclose(A x)_(en(x))A qport(S s)_(en0())A qtimer(L n)_(en0())L qtperiod(V)_(0)
 Z I qwr(I f,CO V*p,N n){return 0;}Z A qfile(S p){return en0();}A qexit(A x)_(en(x))
 #endif
 

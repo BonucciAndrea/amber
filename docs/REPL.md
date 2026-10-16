@@ -1,10 +1,29 @@
 # The Amber REPL
 
-Line editing, the diagnostic verbs (``, `st`, `	race`), the error report
-format, and the table grid modes.
+Line editing, the `\` help pages, the diagnostic verbs (`\v`, `\ast`, `\trace`), the error
+report format, and the table grid modes.
 
 Moved out of [`README.md`](../README.md) so the landing page stays a landing
 page. Nothing here changed in the move.
+
+---
+
+<a name="help-pages"></a>
+## The `\` help pages
+
+Type `\` for the list of topics, then a topic's key: `\q` for the q functions, `\j` for tables and joins,
+`\k` for every command and editing key, and so on. Each page fits an 80-column terminal, lines its columns
+up, and wraps long text under itself.
+
+- **Colour** follows `COLOR` and `NO_COLOR`, and a page reads the same without it. Keys are bold in the
+  terminal's own colour, so they read on a light screen as well as a dark one.
+- **Screen readers**: with `AMBER_NO_EDIT=1` the pages leave out the rules and the logo, which a reader
+  would otherwise spell out character by character.
+- **They're tested**: `tests/test_help.py` runs every example on every page and checks it gives the result
+  the page shows, checks every function a page names exists, and renders every page three ways.
+
+The pages are plain text at the end of `repl.k`, one per section, in a light markup: `# HEAD` a heading,
+`a¦b¦c` a row of columns, two leading spaces an example (with ` -> ` and its result), `~ ` a note.
 
 ---
 

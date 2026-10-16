@@ -136,7 +136,45 @@ runbatch:{[s]{line1 line0 (x,"\n")}'(`c$30)\-1_s;1}
 / eval INSIDE line1, both clock reads in k), so a folded paste reports the SUM of
 / its statements' run times.  Reset to 0 here at the start of every input line.
 line:{sblast::0;r:$[(|/x=`c$30);runbatch x;line1 line0 x];r}
-$["repl.k"~basename`argv 1;{cmds::@[cmds;x[1]1;:;{y;`0:x}2_x]}'{(&x~\:80#"-")_x:(1+*&x~\:,"/")_-1_x}@0:`argv 1;];
+/ ---- the \ help pages ------------------------------------------------------------------------------------
+/ The pages are the text after the block comment at the end of this file, one per section between rules of
+/ dashes: the key on its first line (\q, or "\ menu" for the menu), the title on its second. The rest is a
+/ light markup: "# HEAD" a heading, "a¦b¦c" a row (its columns line up down the page, the last one wraps
+/ under itself), two spaces an example (its " -> " result and " / " comment quieter), "| " a line kept as it
+/ is, "~ " a note. Colour follows COLOR and NO_COLOR and a page reads the same without it. Keys are bold in
+/ the terminal's own colour so they read on a light screen too, and AMBER_NO_EDIT (the screen reader setting)
+/ drops the rules and the logo, which a reader would spell out
+hc:0
+/ repl.k's functions see only this namespace, so the root's COLOR is read through .: and the two helpers below
+/ stand in for amber.k's hvl and ss
+henv:{(#k)>(k:!`env[])?`$x}
+hcol:{$[~1~.[{.:"COLOR"};,0;0];0;henv"NO_COLOR";0;1]}
+hp:0
+hvl:{+/~(0+x)<-64}
+hss:{[s;d]$[(#d)>#s;!0;&{x~y}[d]'(#d)':s]}
+hsg:{[c;s]$[hc&(0<#c)&0<#s;(`c$27),"[",c,"m",s,(`c$27),"[0m";s]}
+HA:"1;38;2;225;140;0"
+HK:"1"
+HX:""
+HM:"38;2;140;132;120"
+HR:"38;2;120;114;104"
+hpad:{[n;s]s,(0|n-hvl[s])#" "}
+hwr:{[n;s]$[0=#s;,"";(,"") {[n;r;x]$[(0<#*|r)&n<(hvl[*|r])+1+hvl[x];r,,x;@[r;-1+#r;{$[#x;x," ",y;y]}[;x]]]}[n]/" "\s]}
+hcut:{[s;d]p:hss[s;d];$[#p;((*p)#s;(*p)_s);(s;"")]}
+hex:{[s](c;r):hcut[s;" -> "];(c;m):hcut[c;" / "];hsg[HX;c],hsg[HM;m,r]}
+/ A row: the key, then its words wrapped under themselves. With a third column the words are padded and the
+/ example goes after them, on a line of its own if it doesn't fit. A key wider than half the page sits alone
+hr1:{[w;k;d;e](,"  ",hsg[HK;k]),{"      ",x}'hwr[w-6;d,$[#e;"  ",e;""]]}
+hr2:{[w;kw;k;d]i:4+kw;r:hwr[w-i;d];(,"  ",hsg[HK;hpad[kw;k]],"  ",*r),{[i;x](i#" "),x}[i]'1_r}
+hr3:{[w;kw;dw;k;d;e]i:4+kw;l:"  ",hsg[HK;hpad[kw;k]],"  ",hpad[dw;d];$[w<i+dw+2+hvl[e];(l;((i+dw+2)#" "),hex e);,l,"  ",hex e]}
+hrow:{[w;kw;dw;f]k:*f;d:$[1<#f;f 1;""];e:$[2<#f;f 2;""];$[kw>_w%2;hr1[w;k;d;e];#e;hr3[w;kw;dw;k;d;e];hr2[w;kw;k;d]]}
+hnote:{[w;s]r:hwr[w-4;s];hsg[HM]'(,"  › ",*r),{"    ",x}'1_r}
+hline:{[w;l;r;f;kw;dw]$[r;hrow[w;kw;dw;f];0=#l;,"";"# "~2#l;("";"  ",hsg[HA;2_l]);"  "~2#l;,"    ",hex 2_l;"| "~2#l;,"  ",2_l;"~ "~2#l;hnote[w;2_l];{"  ",x}'hwr[w-2;l]]}
+hfoot:{$[" "=x 1;"type a topic's key, like \\j   ·   \\\\ leaves Amber";"\\ back to every topic   ·   \\\\ leaves Amber"]}
+hpage:{[t]hc::hcol[];hp::henv"AMBER_NO_EDIT";w:50|88&tsz[]1;L:2_t;r:{0<#hss[x;"¦"]}'L;F:{[r;x]$[r;"¦"\x;()]}'[r;L]
+ kw:|/0,{$[#x;hvl[*x];0]}'F;dw:|/0,{$[2<#x;hvl[x 1];0]}'F;rl:$[hp;();,"  ",hsg[HR;,/(w-4)#,"─"]]
+ `0:("";"  ",$[hp;"amber · ";hsg[HA;"⬡ amber"],hsg[HM;"  ·  "]],t 1),rl,(,/hline[w]'[L;r;F;kw;dw]),(,""),rl,("  ",hsg[HM;hfoot@*t];"");}
+$["repl.k"~basename`argv 1;{cmds::@[cmds;x[1]1;:;{y;.[hpage;,x;{`0:,"help: ",$[`C~@x;x;$x]}]}1_x]}'{(&x~\:80#"-")_x:(1+*&x~\:,"/")_-1_x}@0:`argv 1;];
 / `bi 0 (process/build info) can throw 'domain on non-Linux builds (e.g. macOS);
 / trap it so the banner still renders.  Returns (heap;used;arch;compiler).
 binfo:{.[{`bi 0};,0;(10485760;0;"arm64";"Darwin";"1.9.5")]}
@@ -174,380 +212,480 @@ $[(~"kw"~`argv 0)&~"--non-interactive"~*x;repl.run[];]
 
 /
 --------------------------------------------------------------------------------
-
-  ⬡  AMBER help                                        type  \X  for a topic
-
-
-  LANGUAGE                                  Q-LAYER
-    \0  types & literals                      \q  scalars · aggregation · sets
-    \+  verbs   : + - * % ! & | ...           \j  tables · joins · qSQL
-    \'  adverbs   ' / \ ': /: \:              \z  temporal · attributes · show
-    \`  symbol builtins   `j `k `t ...        \m  finance / HFT   (fin.k)
-    \h  one-screen cheat-sheet
-
-
-  SESSION                                   DIAGNOSTICS
-    \l file.k   load a script                 \ast    expr   parse tree
-    \v          variables (inspector)         \trace  expr   4-phase timing + mem
-    \f          functions                     \disasm expr   VM bytecode
-    \d ns       namespace   ( \d . = root )
-    \t:n expr   time n runs (ms)            DISPLAY
-    \cd path    change directory              COLOR:0/1   PREC:n   CROWS:n
-    \grid MODE  clean rounded sharp heavy
-    \clear      clear screen                LINE EDITING   ( never use rlwrap )
-    \sb         toggle the status bar          Up/Down history · PgUp/PgDn scroll
-    a line left open ({ ( [) continues on the next line · Ctrl-C abandons it
-    \other      shell command                 Ctrl-A/E ends · Ctrl-W/U/K kill
-    \a          license (AGPLv3)              Ctrl-L clear · Ctrl-C abandon
-    \\          exit                          ~/.amber_history · AMBER_NO_EDIT=1
-
-
-  QUICK START
-    gentq 1000        meta trades        taq[trades;quotes]
-    genopt 2000       select from options where abs[strike-spot]<5
-    plot(select from taq[trades;quotes] where sym=`AAPL)`px
-
+\ menu
+help: type \X to open a topic
+# THE LANGUAGE
+\0¦types, literals and nulls
+\+¦verbs  : + - * % ! & | < > = ~ , ^ # _ $ ? @ .
+\'¦adverbs  ' / \ ': /: \:
+\:¦reading and writing files
+\`¦built-in names  `k `j `csvr `t `env ...
+\h¦the whole language on one screen
+# THE Q LAYER
+\q¦functions: maths, aggregates, moving windows, sets, strings
+\j¦tables, keyed tables, joins and qSQL
+\z¦dates, times, timestamps and spans
+\m¦finance and HFT
+# DATA AND SYSTEM
+\o¦on disk: splayed and partitioned tables, CSV, JSON
+\i¦talking to q: IPC, handlers, timers, logs
+\g¦charts, and how tables print
+\r¦speed: threads, peach and attributes
+\e¦errors and debugging
+\k¦every REPL command and editing key
+# QUICK START
+  gentq 1000
+  select n:count i, vwap:sz wavg px by sym from trades
+  plot trades`px
+--------------------------------------------------------------------------------
+\k
+REPL commands and editing keys
+# COMMANDS
+\l file¦load a script
+\d ns¦switch namespace (\d . is the root)
+\t expr¦time it in ms, \t:n expr runs it n times (\ts works too)
+\t n¦call .z.ts every n ms, \t 0 stops it
+\p n¦listen for q clients on port n, on this machine (\p 0.0.0.0:n opens it to the network)
+\v¦every global: name, type, shape, memory
+\f¦the functions defined
+\cd dir¦change directory (\cd alone shows it)
+\grid mode¦table borders: clean, rounded, sharp, heavy
+\clear¦clear the screen
+\sb¦status bar on or off
+\ast \trace \disasm¦look inside an expression (see \e)
+\a¦the licence (AGPLv3)
+\cmd¦anything else runs in the shell
+\\¦exit
+# EDITING
+Up Down¦history, kept in ~/.amber_history
+Ctrl-A Ctrl-E¦start or end of the line
+Ctrl-W Ctrl-U Ctrl-K¦delete a word, to the start, to the end
+PgUp PgDn¦scroll back through the session
+Ctrl-L¦clear the screen
+Ctrl-C¦abandon the line
+Ctrl-D¦exit, on an empty line
+{ ( [¦left open, the line goes on (...>) until it closes
+# STARTING
+./a¦this REPL, with every library loaded
+amber¦the bare interpreter, no libraries
+amber file.k¦run a script
+amber file.q¦run a q script, the q library loaded first
+amber file.q -p 5000¦serve q clients on port 5000 (options go after the script)
+AMBER_THREADS=n¦threads to use, every core by default
+AMBER_NO_EDIT=1¦plain line input, for screen readers and simple terminals
 --------------------------------------------------------------------------------
 \0
-Types:
-list atom
- `A        generic list   ()   ,"ab"   (0;`1;"2";{3};%)
- `I   `i   int            0N -9223372036854775807 01b
- `F   `f   float          -0w -0.0 0.0 0w 1.2e308 0n
- `C   `c   char           "a"   0x6263   "d\0\"\n\r\t"
- `S   `s   symbol         `   `a   `"file.txt"   `b`cd`"ef"
- `M   `m   table&dict     +`a`b!(0 1;"23")   (0#`)!()
-      `o   lambda         {1+x*y#z}  {[a;b]+/*/2#,a,b}
-      `p   projection     1+   {z}[0;1]   @[;i;;]
-      `q   composition    *|:   1+{x*y}@
-      `r   derived verb   +/   2\   {y,x}':
-      `u   monadic verb   +:   0::
-      `v   dyadic  verb   +   0:
-      `w   adverb         '   /:
-      `x   external func
-
+types, literals and nulls
+~ @x gives the type: a capital for a list, small for an atom. type x gives q's number
+# DATA
+`I `i¦int¦0  -12  0N  1 2 3  01b (booleans are ints)
+`F `f¦float¦1.5  1e9  0n  0w  -0w
+`C `c¦char¦"a"  "abc"  0x6263  "\n\t\"\\"
+`S `s¦symbol¦`a  `a`b  `"with space"
+`A¦general list¦(1;`a;"bc")  ()
+`M `m¦table, dict¦`a`b!1 2  +`a`b!(1 2;3 4)
+# DATES AND TIMES (see \z)
+`D `d¦date¦2026.10.15
+`T `t¦time¦09:30:00.000
+`N `n¦timestamp¦2026.10.15D09:30:00.000000000
+`E `e¦timespan¦0D00:05:00.000000000
+`H `h¦minute¦09:30
+`J `j¦second¦09:30:15
+`Y `y¦month¦2026.10m
+# FUNCTIONS
+`o¦lambda¦{x+y}  {[a;b]a*b}
+`p¦projection¦1+  f[;2]
+`q¦composition¦*|:
+`r¦derived verb¦+/  2\
+`u `v¦verb¦+:  +
+`w¦adverb¦'  /:
+`x¦external¦a C function
+# NULLS
+0N 0n `¦int, float, symbol
+0Nd 0Nt 0Np 0Nn¦date, time, timestamp, timespan
+0Nu 0Nv 0Nm¦minute, second, month
 --------------------------------------------------------------------------------
 \:
-I/O verbs
-  0:x read  lines
-x 0:y write lines
-  1:x read  bytes
-x 1:y write bytes
-   <s open          fd:<`"file.txt"
-   >i close         >fd
-
-x can be a file descriptor (int) or symbol or string such as
- "file.txt"
- "/path/to/file"
- "host:port"
- ":port"         /host defaults to 127.0.0.1
-
+reading and writing files
+~ x can be a file descriptor (an int), or a name: `"f.txt" "/path/f.txt" "host:port" ":port"
+# VERBS
+0:x¦read lines
+x 0:y¦write lines
+1:x¦read bytes
+x 1:y¦write bytes
+<s¦open¦fd:<`"f.txt"
+>i¦close¦>fd
+# THE Q WAY (see \o)
+read0 `:f  read1 `:f¦lines, bytes
+`:f 0: lines¦write lines
+hdel `:f¦delete a file
 --------------------------------------------------------------------------------
 \+
-Verbs:    : + - * % ! & | < > = ~ , ^ # _ $ ? @ . 0: 1:
-notation: [c]har [i]nt [n]umber(int|float|char) [s]ymbol [a]tom [d]ict
-          [f]unc(monad) [F]unc(dyad) [xyz]any
-special:  var:y     set    a:1;a -> 1
-          var::y    global a:1;{a::2}[];a -> 2
-          (v;..):y  unpack (b;(c;d)):(2 3;4 5);c -> 4
-          :x        return {:x+1;2}[3] -> 4
-          :[x;y;..] cond   :[0;`a;"\0";`b;`;`c;();`d;`e] -> `e
-          o[..]     recur  {:[x<2;x;+/o'x-1 2]}9 -> 34
-          [..]      progn  [0;1;2;3] -> 3
-
-::  self      f:(::);f 12 -> 12
- :  right     f:(:);f[1;2] -> 2   "abc":'"d" -> "ddd"
- +x flip      +("ab";"cd") -> ("ac";"bd")
-N+N add       1 2+3 -> 4 5
- -N negate    - 1 2 -> -1 -2
-N-N subtract  1-2 3 -> -1 -2
- *x first     *`a`b -> `a   *(0 1;"cd") -> 0 1
-N*N multiply  1 2*3 4 -> 3 8
- %N sqrt      %25 -> 5.0   %-1 -> 0n
-N%N divide    2 3%4 -> 0.5 0.75
- !i enum      !3 -> 0 1 2   !-3 -> -3 -2 -1
- !I odometer  !2 3 -> (0 0 0 1 1 1;0 1 2 0 1 2)
- !d keys      !`a`b!0 1 -> `a`b
- !S ns keys   a.b.c:1;a.b.d:2;!`a`b -> `c`d
-x!y dict      `a`b!1 2 -> `a`b!1 2
-i!I div       -10!1234 567 -> 123 56
-i!I mod       10!1234 567 -> 4 7
- &I where     &3 -> 0 0 0   &1 0 1 4 2 -> 0 2 3 3 3 3 4 4
- &x deepwhere &(0 1 0;1 0 0;1 1 1) -> (0 1 2 2 2;1 0 0 1 2)
-N&N min/and   2&-1 3 -> -1 2   0 0 1 1&0 1 0 1 -> 0 0 0 1
- |x reverse   |"abc" -> "cba"   |12 -> 12
-N|N max/or    2|-1 3 -> 2 3   0 0 1 1|0 1 0 1 -> 0 1 1 1
- <X ascend    <"abacus" -> 0 2 1 3 5 4
- >X descend   >"abacus" -> 4 5 3 1 0 2
- <s open      fd:<`"/path/to/file.txt"
- >i close     >fd
-N<N less      0 2<1 -> 1 0
-N>N more      0 1>0 2 -> 0 0
- =X group     ="abracadabra" -> "abrcd"!(0 3 5 7 10;1 8;2 9;,4;,6)
- =i unitmat   =3 -> (1 0 0;0 1 0;0 0 1)
-N=N equal     0 1 2=0 1 3 -> 1 1 0
- ~x not       ~(0 2;``a;"a \0";::;{}) -> (1 0;1 0;0 0 1;1;0)
-x~y match     2 3~2 3 -> 1   "4"~4 -> 0   0~0.0 -> 0
- ,x enlist    ,0 -> ,0   ,0 1 -> ,0 1   ,`a!1 -> +(,`a)!,,1
-x,y concat    0,1 2 -> 0 1 2  "a",1 -> ("a";1)
-d,d merge     (`a`b!0 1),`b`c!2 3 -> `a`b`c!0 2 3
- ^x null      ^(" a";0 1 0N;``a;0.0 0n) -> (1 0;0 0 1;1 0;0 1)
-a^y fill      1^0 0N 2 3 0N -> 0 1 2 3 1   "b"^" " -> "b"
-X^y without   "abracadabra"^"bc" -> "araadara"   (lists of one count fill, as q: 1 2 3^0N 5 0N -> 1 5 3)
- #x length    #"abc" -> 3   #4 -> 1   #`a`b`c!0 1 0 -> 3
-i#y take      5#"abc" -> "abcab"   -5#`a`b`c -> `b`c`a`b`c
-X#d take keys `c`d`f#`a`b`c`d!1 2 3 4 -> `c`d`f!3 4 0N
-I#y reshape   2 3#` -> (```;```)
-f#y replicate (3>#:')#(0;2 1 3;5 4) -> (0;5 4)   {2}#"ab" -> "aabb"
- _n floor     _12.34 -12.34 -> 12 -13
- _c lowercase _"Ab" -> "ab"
-i_Y drop      2_"abcde" -> "cde"   -2_`a`b`c -> ,`a
-X_d drop keys `a`c_`a`b`c!0 1 2 -> (,`b)!,1
-I_Y cut       2 4 4_"abcde" -> ("cd";"";,"e")
-f_Y weed out  (3>#:')_(0;2 1 3;5 4) -> ,2 1 3
-X_i delete    "abcde"_2 -> "abde"
- $x string    $(12;"ab";`cd;+) -> ("12";(,"a";,"b");"cd";,"+")
-i$C pad       5$"abc" -> "abc  "   -3$"a" -> "  a"
-s$y cast      `c$97 -> "a"   `i$-1.2 -> -1   `$"a" -> `a
-s$y int       `I$"-12" -> -12
- ?X distinct  ?"abacus" -> "abcus"
- ?i uniform   ?2 -> 0.6438163747387873 0.8852656305774402 /random
-X?y find      "abcde"?"bfe" -> 1 0N 4
-i?x roll      3?1000 -> 11 398 293   1?0 -> ,-8164324247243690787
-i?x deal      -3?1000 -> 11 398 293 /guaranteed distinct
- @x type      @1 -> `i   @"ab" -> `C   @() -> `A   @(@) -> `v
-x@y apply(1)  {x+1}@2 -> 3   "abc"@1 -> "b"   (`a`b!0 1)@`b -> 1
- .S get       a:1;.`a -> 1   b.c:2;.`b`c -> 2
- .C eval      ."1+2" -> 3
- .d values    .`a`b!0 1 -> 0 1
-x.y apply(n)  {x*y+1}. 2 3 -> 8   (`a`b`c;`d`e`f). 1 0 -> `d
-
-@[x;y;f]   amend  @["ABC";1;_:] -> "AbC"   @[2 3;1;{-x}] -> 2 -3
-@[x;y;F;z] amend  @["abc";1;:;"x"] -> "axc"   @[2 3;0;+;4] -> 6 3
-.[x;y;f]   drill  .[("AB";"CD");1 0;_:] -> ("AB";"cD")
-.[x;y;F;z] drill  .[("ab";"cd");1 0;:;"x"] -> ("ab";"xd")
-.[f;y;f]   try    .[+;1 2;"E:",] -> 3   .[+;1,`;"E:",] -> "E:'type\n"
-?[x;y;z]   splice ?["abcd";1 3;"xyz"] -> "axyzd"
-
---------------------------------------------------------------------------------
-\`
-Special symbols:
-   `j?C parse json   `j?"{\"a\":1,\"b\":[true,\"c\"]}" -> `a`b!(1.0;(1;,"c"))
-   `k@x pretty-print `k("ab";2 3) -> "(\"ab\";2 3)"
-   `p@C parse k
- `hex@C hexadecimal  `hex"ab" -> "6162"
- `pri@i primes       `pri 20  ->  2 3 5 7 11 13 17 19
-   `x@x fork-exec    `x(("/bin/wc";"-l");"a\nbc\nd\n") -> "3\n"
-   `t[] current time (microseconds)
-`argv[] list of cmd line args (also in global variable x)
- `env[] dict of env variables
-`prng[] `prng@I get/set pseudo-random number generator internal state
-                     s:`prng[];r:9?0;`prng s;r~9?0 -> 1
-        `prng@0 use current time to set state
- `err@C throw error
- `sin@N trigonometry `sin 12.34 -> -0.22444212919135995
- `exp@N exponential  `exp 1 -> 2.7182818284590455
-  `ln@N logarithm    `ln 2 -> 0.6931471805599453
-`exit@i exit
-
+verbs  : + - * % ! & | < > = ~ , ^ # _ $ ? @ .
+~ the arguments: [c]har [i]nt [n]umber [s]ymbol [a]tom [d]ict [f]unction (F takes two) [x y z] anything
+# ASSIGNING
+var:y¦set¦a:1;a -> 1
+var::y¦set a global¦a:1;{a::2}[];a -> 2
+(v;..):y¦unpack¦(b;(c;d)):(2 3;4 5);c -> 4
+:x¦return¦{:x+1;2}[3] -> 4
+$[c;t;f]¦cond¦$[0;`a;`b] -> `b
+o[..]¦recur¦{$[x<2;x;+/o'x-1 2]}9 -> 34
+[..]¦in order¦[0;1;2;3] -> 3
+# ARITHMETIC
+::¦self¦(::)12 -> 12
++x¦flip¦+("ab";"cd") -> ("ac";"bd")
+N+N¦add¦1 2+3 -> 4 5
+-N¦negate¦- 1 2 -> -1 -2
+N-N¦subtract¦1-2 3 -> -1 -2
+*x¦first¦*`a`b -> `a
+N*N¦multiply¦1 2*3 4 -> 3 8
+%N¦sqrt¦%25 -> 5.0
+N%N¦divide¦2 3%4 -> 0.5 0.75
+i!I¦mod¦10!1234 567 -> 4 7
+-i!I¦div¦-10!1234 567 -> 123 56
+N&N¦min, and¦2&-1 3 -> -1 2
+N|N¦max, or¦2|-1 3 -> 2 3
+_n¦floor¦_12.34 -12.34 -> 12 -13
+# LISTS
+!i¦enum¦!3 -> 0 1 2
+!I¦odometer¦!2 3 -> (0 0 0 1 1 1;0 1 2 0 1 2)
+&I¦where¦&1 0 1 2 -> 0 2 3 3
+|x¦reverse¦|"abc" -> "cba"
+<X >X¦up, down¦<"abacus" -> 0 2 1 3 5 4
+=X¦group¦="abba" -> "ab"!(0 3;1 2)
+=i¦unit matrix¦=2 -> (1 0;0 1)
+,x¦enlist¦,1 -> ,1
+x,y¦join¦0,1 2 -> 0 1 2
+#x¦count¦#"abc" -> 3
+i#y¦take¦5#"abc" -> "abcab"
+i_y¦drop¦2_"abcde" -> "cde"
+I_y¦cut¦2 4_"abcde" -> ("cd";,"e")
+f#y¦keep where f¦(3>)#1 5 2 -> 1 2
+?X¦distinct¦?"abacus" -> "abcus"
+X?y¦find (a miss is the count)¦"abcde"?"bfe" -> 1 5 4
+i?x¦random¦3?10
+@x¦type¦@1 -> `i
+# COMPARING
+N<N N>N N=N¦less, more, equal¦0 2<1 -> 1 0
+x~y¦match¦2 3~2 3 -> 1
+~x¦not¦~0 2 -> 1 0
+^x¦null¦^1 0N -> 0 1
+a^y¦fill¦1^0 0N -> 0 1
+# TYPES AND TEXT
+$x¦string¦$12 -> "12"
+i$C¦pad¦5$"abc" -> "abc  "
+s$y¦cast¦`c$97 -> "a"
+_c¦lower case¦_"Ab" -> "ab"
+x!y¦dict¦`a`b!1 2 -> `a`b!1 2
+!d .d¦keys, values¦!`a`b!1 2 -> `a`b
+.C¦eval¦."1+2" -> 3
+x@y x.y¦apply¦{x+1}@2 -> 3
+# AMEND, TRY
+@[x;i;f]¦amend¦@[2 3;1;-:] -> 2 -3
+@[x;i;F;y]¦amend¦@[2 3;0;+;4] -> 6 3
+.[x;i;f]¦drill¦.[(1 2;3 4);1 0;-:] -> (1 2;-3 4)
+.[f;args;h]¦try¦.[+;(1;`a);{"E"}] -> "E"
 --------------------------------------------------------------------------------
 \'
-Adverbs:   ' / \ ': /: \:
-   f' each1     #'("abc";3 4 5 6) -> 3 4
- x F' each2     2 3#'"ab" -> ("aa";"bbb")
-   X' binsearch 1 3 5 7 9'8 9 0 -> 3 4 -1
-   I'[X;..] case 2 0 1 2'[`a`b`c`d;1 2 3 4;"abcd"] -> ("a";`b;3;"d")
-   F/ fold      +/1 2 3 -> 6
-   F\ scan      +\1 2 3 -> 1 3 6
- x F/ seeded /  10+/1 2 3 -> 16
- x F\ seeded \  10+\1 2 3 -> 11 13 16
- i f/ n-do      5(2*)/1 -> 32
- i f\ n-dos     5(2*)\1 -> 1 2 4 8 16 32
- f f/ while     (1<){:[2!x;1+3*x;-2!x]}/3 -> 1
- f f\ whiles    (1<){:[2!x;1+3*x;-2!x]}\3 -> 3 10 5 16 8 4 2 1
-   f/ converge  {1+1.0%x}/1 -> 1.618033988749895
-   f\ converges (-2!)\100 -> 100 50 25 12 6 3 1 0
-   C/ join      "ra"/("ab";"cadab";"") -> "abracadabra"
-   C\ split     "ra"\"abracadabra" -> ("ab";"cadab";"")
-   I/ decode    24 60 60/1 2 3 -> 3723   2/1 1 0 1 -> 13
-   I\ encode    24 60 60\3723 -> 1 2 3   2\13 -> 1 1 0 1
-  i': window    3':"abcdef" -> ("abc";"bcd";"cde";"def")
-i f': stencil   3{x,"."}':"abcde" -> ("abc.";"bcd.";"cde.")
-  F': eachprior -':12 13 11 17 14 -> 12 1 -2 6 -3
-x F': seeded ': 10-':12 13 11 17 14 -> 2 1 -2 6 -3
-x F/: eachright 1 2*/:3 4 -> (3 6;4 8)
-x F\: eachleft  1 2*\:3 4 -> (3 4;6 8)
-
+adverbs  ' / \ ': /: \:
+# EACH
+f'¦each¦#'("abc";3 4 5 6) -> 3 4
+x F'¦each pair¦2 3#'"ab" -> ("aa";"bbb")
+X'¦binary search¦1 3 5 7 9'8 9 0 -> 3 4 -1
+x F/:¦each right¦1 2*/:3 4 -> (3 6;4 8)
+x F\:¦each left¦1 2*\:3 4 -> (3 4;6 8)
+F':¦each prior¦-':12 13 11 -> 12 1 -2
+i':¦windows¦3':"abcde" -> ("abc";"bcd";"cde")
+# OVER, SCAN
+F/ F\¦fold, running¦+/1 2 3 -> 6
+x F/¦with a start¦10+/1 2 3 -> 16
+i f/ i f\¦n times¦5(2*)/1 -> 32
+f f/¦while¦(100>)(2*)/1 -> 128
+f/ f\¦until it settles¦(-2!)\100 -> 100 50 25 12 6 3 1 0
+C/ C\¦join, split¦"/"\"a/b" -> (,"a";,"b")
+I/ I\¦decode, encode¦2/1 1 0 1 -> 13
+# TACIT
+(f g)¦hook: x f g x¦(=;|:)"abba" -> 1 1 1 1
+(f g h)¦fork: (f x) g (h x)¦(+/;%;#:)1 2 3 6 -> 3.0
+--------------------------------------------------------------------------------
+\`
+built-in names
+# DATA
+`k x¦as k text¦`k("ab";2 3) -> "(\"ab\";2 3)"
+`j?x¦parse JSON¦`j?"[1,2]" -> 1.0 2.0
+`p x¦parse k
+`csvr x¦a CSV file into a typed table
+`ser x  `des b¦Amber's binary format, and back
+`hex x¦hexadecimal¦`hex"ab" -> "6162"
+# MATHS
+`sin `cos `exp `ln `abs¦¦`ln 1 -> 0.0
+`pri n¦primes below n¦`pri 20 -> 2 3 5 7 11 13 17 19
+`prng[]¦random state: get it, set it, `prng 0 seeds from the clock
+# SYSTEM
+`t[]¦microseconds since the epoch
+`argv[]¦the command line
+`env[]¦the environment, as a dict
+`x(cmd;in)¦run a program, feed it, get its output
+`err"msg"¦raise an error
+`diag 0¦plain one-line errors (`diag 1 the full reports)
+`exit n¦exit
 --------------------------------------------------------------------------------
 \h
-: SET      RETURN    :[c;t;f]     COND
-+ add      flip
-- subtract negate    '  each|slide|bin
-* multiply first     /  fold|join |dec|comment
-% divide   sqrt      \  scan|split|enc|trace
-! mod|dict enum|key  ': eachprior
-& min|and  where     /: eachright
-| max|or   reverse   \: eachleft
-< less     ascend
-> more     descend   /
-= equal    group     multiline comment
-~ match    not       \
-, concat   enlist
-^ without  null      0: lines i/o
-# reshape  length    1: bytes i/o
-_ drop|cut floor
-$ cast     string
-? find|rnd uniq      ?[a;i;b]     splice
-@ apply(1) type      @[x;i;[f;]y] amend
-. apply(n) eval      .[x;i;[f;]y] drill
-grammar:  E:E;e|e e:nve|te| t:n|v v:tA|V n:t[E]|(E)|{E}|N
-limits:   8args 16locals 256globals 256bytecode 2048stack
-
+the whole language on one screen
+| : set  return   $[c;t;f] cond   ' each, slide, binary search
+| + add  flip                     / fold, join, decode, comment
+| - subtract  negate              \ scan, split, encode
+| * multiply  first               ': each prior   /: each right   \: each left
+| % divide  sqrt
+| ! mod, div, dict  enum, keys    0: lines   1: bytes
+| & min, and  where               ?[a;i;b] splice
+| | max, or  reverse              @[x;i;[f;]y] amend
+| < less  up                      .[x;i;[f;]y] drill
+| > more  down                    / on its own line: a comment block, to a \ line
+| = equal  group
+| ~ match  not
+| , join  enlist
+| ^ fill, without  null
+| # take, reshape  count
+| _ drop, cut  floor
+| $ cast, pad  string
+| ? find, random  distinct
+| @ apply  type
+| . apply  eval, values
+~ a lambda has at most 8 arguments, 14 names counting locals, 512 bytes of code; calls nest 2048 deep
 --------------------------------------------------------------------------------
 \q
-Amber q-layer : scalars, aggregation, uniform, ordering, sets, strings
-NOTE two-argument library functions take brackets:  f[x;y]  (no infix user verbs)
-
-
-SCALAR (monadic, call as  f x)
-  neg not null reciprocal sqrt floor ceiling signum abs exp log sin cos
-  til enlist string type key value first last reverse distinct group where flip count
-
-DYADIC (brackets)
-  mod[x;y]  div[x;y]  xbar[w;x]  xlog[base;x]
-
-AGGREGATION (list -> atom)
-  sum prd min max avg med var dev svar sdev  all any
-  wsum[x;y] wavg[x;y] cov[x;y] scov[x;y] cor[x;y]
-
-UNIFORM (list -> list)
-  sums prds mins maxs deltas ratios differ prev next
-
-ORDER / RANK
-  asc desc iasc idesc rank   xrank[n;x] xprev[n;x] rotate[n;x]
-  asc and xasc set the `s sorted attribute  ->  O(log n) search
-
-SETS (brackets)
-  in[x;y] except[x;y] inter[x;y] union[x;y] raze x sublist[n;x] cross[x;y]
-
-STRINGS
-  lower upper trim ltrim rtrim
-  ss[s;sub] ssr[s;from;to] sv[d;x] vs[d;x] like[x;pat]   (globs: * and ?)
-
+functions: maths, aggregates, moving windows, sets, strings
+~ two-argument functions sit between their arguments as in q (10 mod 3), or take brackets: mod[10;3]
+# MATHS
+neg abs signum sqrt exp log¦as in q
+floor ceiling round¦round[2;x] keeps 2 decimals
+sin cos reciprocal¦
+mod div xbar xlog¦remainder, quotient, bucket, log in a base
+# AGGREGATES
+sum prd min max avg med¦a list to one value
+var dev svar sdev¦variance, deviation (s: the sample ones)
+wsum wavg¦weighted: w wavg x
+cov scov cor¦covariance, correlation
+count first last all any¦
+# RUNNING AND MOVING
+sums prds mins maxs¦running total, product, low, high
+deltas ratios differ¦against the item before
+prev next xprev¦shift by one, or by n
+fills¦nulls take the last value before them
+msum mavg mmin mmax mcount¦over the last n: 3 msum x
+mdev mvar mprd¦
+ema¦exponential moving average: ema[a;x]
+# ORDER AND SETS
+asc desc iasc idesc¦sorted, or the order that sorts
+rank xrank¦place in sort order, or n buckets
+bin binr¦last at or below, first at or above, in a sorted list
+in except inter union distinct¦
+cross raze sublist cut rotate¦
+within¦x within (lo;hi)
+# EACH
+each peach prior¦f each x, f peach x on every core, f prior x
+over scan¦f over x, f scan x
+# STRINGS
+lower upper trim ltrim rtrim¦
+ss ssr like¦find, replace, match a pattern (* ? [a-z])
+sv vs string¦join, split, to text
+# EXAMPLES
+  10 mod 3 -> 1
+  3 msum 1 2 3 4 -> 1 3 6 9
+  2 3 wavg 10 20 -> 16.0
+  fills 1 0N 0N 4 -> 1 1 1 4
+  1 2 3 4 bin 2 -> 1
+  "abracadabra" ss "ra" -> 2 9
 --------------------------------------------------------------------------------
 \j
-Amber q-layer : tables, keyed tables, joins, qSQL
-
-BUILD / INSPECT
-  t:([]a:1 2;b:3 4)      table literal   ([key:..]col:..) = keyed table
-  t:+`a`b!(1 2;3 4)      (also: flip of a column dict)
-  show t                 grid    t`a col   t i row-dict   #t rows   cols t   meta t
-  istable isdict iskeyed  meta shows column type AND attribute (a)
-
-KEYED TABLES
-  xkey[`k;t]  unkey t  keys t  xcols[c;t]  xcolall[nm;t]  xasc[c;t]  xdesc[c;t]
-
-RESTRUCTURE
-  xgroup[k;t]  ungroup t  fby[(f;d);g]  insert[t;r]
-
-JOINS  (left operand drives ; c = `key..`time , last col is the sort/time key)
-  lj[t;kt] left     ij[t;kt] inner    uj[x;y] union    pj[t;kt] plus   ej[c;x;y] equi
-  aj[c;x;y] as-of   aj0[c;x;y] as-of(y time)   asof[t;d] single    wj[w;c;t;(q;aggs)] window
-  wj: w=(begins;ends) aligned to t ; aggs=((name;fn;col);..)
-
-qSQL TEMPLATE  (type it bare at the prompt - no  sel"..."  wrapper needed)
-  select [cols] [by grps] from t [where conds]   select avg px by sym from trades where px>100
-  exec col from t [where conds]                  one column / expression, not a table
-  update col:expr [by grps] from t [where conds] add or replace columns
-  delete [cols] from t [where conds]             drop rows (where) or named columns (cols)
-  bare column names in the expressions become x`col, so  wavg[sz;px]  just works
-  works after : and prefixes too:  r:select .. ;  5#select .. ;  count select ..
-  string forms still work:  sel"select .."  exq"exec .."  upd".."  del".."
-
-SELECT / GROUP-BY  (functional forms)
-  qwhere[t;mask]              select rows where mask
-  qselect[t; name!funcs]      computed columns (func takes the table)
-  qby[t; by; name!funcs]      group aggregate -> keyed table (func takes group sub-table)
-  e.g.  qby[trade;`sym; `vwap`n!({wavg[x`sz;x`px]};{#x})]
-
+tables, keyed tables, joins and qSQL
+# BUILD AND LOOK
+([]a:1 2;b:`x`y)¦a table, ([k:..]v:..) a keyed one
+flip `a`b!(1 2;3 4)¦a table from a dict of columns
+show meta cols count¦print it, its types, its columns, its rows
+t`a  t 0¦a column, a row as a dict
+xkey unkey keys¦`k xkey t sets the key
+xcol xcols xasc xdesc¦rename, reorder, sort by columns
+insert upsert¦add rows (`t insert x appends in place)
+# QSQL, AS IN Q
+select¦select [cols] [by grp] from t [where cond]
+select[n]¦select[5;>px] from t sorts then takes 5
+exec¦a column, or a dict of them
+update¦add or change columns (by works too)
+delete¦drop rows (where) or columns
+fby¦select from t where px=(max;px) fby sym
+xbar¦select sum sz by 10 xbar time from t
+~ here, in \l files and in .q scripts this is plain q; a .k script run directly writes sel"select ..."
+# JOINS
+lj ij¦left, inner, on a keyed table
+ej pj uj¦equi, plus, union
+aj aj0¦as-of: aj[`sym`time;trades;quotes]
+wj wj1¦window: wj[w;`sym`time;t;(q;(max;`bid))]
+# FUNCTIONAL FORMS
+qwhere qselect qby¦the same as functions, for inside lambdas
+xgroup ungroup¦nest the rows by key, and back
 --------------------------------------------------------------------------------
 \z
-Amber q-layer : temporal (tick bars), attributes, display
-
-TIME OF DAY  (milliseconds since midnight, like q `time)
-  hms[h;m;s]  build a time         minute t  minutes since midnight (q time.minute)
-  hh t   hour        (time.hh)      second t  seconds since midnight (q time.second)
-  mm t   min of hour (time.mm)      milli t   millisecond
-  sec t  sec of min  (time.ss*)     stime t   -> "HH:MM:SS.mmm"    ptime "09:30:00.5" -> ms
-  (* the q accessor is time.ss ; here it is sec, since ss = string-search)
-
-BARS  (tick.minute-style bucketing)
-  minbar[w;t]  w-minute bar (a time)      bar[w;u;t]  w u-unit bars in ms
-  xbar[w;x]    generic bucketing          minbar[5;trade`time] = 5-minute bars
-  1-min OHLCV:  qby[+@[+trade;,`time;minbar[1]@]; `sym`time; open/high/low/close/vol]
-  full worked example:  \l examples/tick.k
-
-ATTRIBUTES  (implemented in C ; speed up search ; meta shows them in `a`)
-  `sa x  set sorted   (`s)   sorted asc     -> binary-search find   O(log n)
-  `ua x  set unique   (`u)   distinct keys  -> hash-like membership
-  `pa x  set parted   (`p)   equal values in one run -> aj trusts the runs
-  `ga x  set grouped  (`g)   any order      -> group index          O(1) slice
-  `at x  read the attribute of x   ->  `s / `u / `p / `g  (or ` if none)
-  `sa/`ua/`pa check the data first ('s-fail 'u-fail 'p-fail) ; writing into x drops it
-  asc / xasc set `s for you.  fin.k: sortcol[c;t] partcol[c;t] groupcol[c;t]
-  set an attribute on a table column ; gentq marks sym `p (time is sorted within sym only).
-  bench.k  ~1000-2000x find speedup ;  bench-fin.k  O(1) per-symbol slicing
-
-DISPLAY
-  show x      grid-print table / keyed table / dict (first CROWS rows, then ..)
-  CROWS:n     set grid preview height (default 20 ; q-style)   CROWS:10
-  tsym[t;c]   show time columns c as HH:MM:SS strings
-  amfmt x     -> the grid as a list of lines
-
-PARALLEL  (std.k)
-  peach[f;y]  parallel each: fork AMBER_THREADS workers (default: online CPU count), f over slices of y
-              identical to f'y ; best for heavy per-item work.  AMBER_THREADS=1 = serial
-              demo:  AMBER_THREADS=8 ./amber examples/peach.k
-
+dates, times, timestamps and spans
+# LITERALS
+2026.10.15¦date
+09:30:00.000¦time of day
+2026.10.15D09:30:00.000000000¦timestamp (to the ns)
+0D00:05:00.000000000¦timespan
+09:30  09:30:15¦minute, second
+2026.10m¦month
+0Nd 0Nt 0Np 0Nn 0Nu 0Nv 0Nm¦the nulls
+# ARITHMETIC
+  2026.10.15+1 -> 2026.10.16
+  2026.10.16-2026.10.15 -> 1
+  2026.10.15D09:30:00.000000000+0D00:05:00.000000000 -> 2026.10.15D09:35:00.000000000
+  2026.10.15+09:30:00.000 -> 2026.10.15D09:30:00.000000000
+# PARTS AND CASTS
+year month day dow¦of a date
+hh mm sec milli¦of a time (sec, since ss is string search)
+minute second¦since midnight
+`date$ `time$ `minute$¦cast, as q
+"D"$ "T"$ "P"$ "N"$¦read text, bad text gives the null
+.z.p .z.d .z.t¦now: a timestamp, the date, the time
+# BARS
+0D00:05 xbar t¦5-minute bars of a timestamp
+minbar[5;t]¦5-minute bars of a time
+~ select last px by 0D00:01 xbar time from t gives 1-minute closes
 --------------------------------------------------------------------------------
 \m
-Amber finance / HFT module  (fin.k, auto-loaded after amber.k)
-
-DATA GENERATOR
-  gentq n     sets globals  trades  and  quotes  (n trades, 2n quotes)
-              realistic: per-symbol geometric random-walk mid, U-shaped intraday
-              volume/vol, spreads ~ price*vol, trades execute at the prevailing
-              NBBO (buy@ask/sell@bid, some price-improvement), liquidity-weighted
-              symbols.  numeric times ; time is `s sorted , sym is `p parted.
-  genopt n    sets global  options  : n random option contracts across
-              underlying x expiry x strike x call/put, Black-Scholes priced with
-              an IV smile + term structure.  cols: sym expiry strike right spot iv
-              price bid ask delta gamma vega theta volume oi.  (sym `p, strike `s)
-              tune the universe via  OBP OSIG OIV OQBPS OLIQW  (dicts on OUNI).
-
-ATTRIBUTES ON TABLE COLUMNS
-  sortcol[c;t] mark col c `s      partcol[c;t] mark `p      groupcol[c;t] mark `g 
-
-O(1) PER-SYMBOL INDEX
-  gidx x       vector -> value!positions        bysym t   -> sym!row-positions
-  symrows[t;g;s]  rows of t for symbol s in O(1)   (g:bysym t)
-
-QUOTE / ORDER-BOOK  (take a quote table)
-  mid q   spread q   spreadbps q   micro q (microprice)   imbal q (book imbalance)
-
-TRADE / TAQ  (aj trades to quotes first:  m:taq[trades;quotes])
-  taq[tr;qu]  as-of match      tsign m  Lee-Ready sign (+1 buy/-1 sell)
-  signedvol m signed volume    effspread m 2|px-mid|    notional m  px*sz
-
-PRICE SERIES  (a numeric vector)
-  ret x  logret x  rvol x  vwap t  twap t
-
-ROLLING / MOVING  (front-padded to length)
-  movavg[w;x] movsum[w;x] movmax[w;x] movmin[w;x]  ema[a;x]  rollstd[w;x]
-
-AGGREGATION
-  bars[w;t]  w-minute OHLCV keyed table     symstats t  per-symbol summary
-  pt x       print a table with `time formatted HH:MM:SS.mmm
-  worked example:  \l examples/hft.k
-
+finance and HFT (fin.k)
+# TEST DATA
+gentq n¦tables trades and quotes, n trades: random-walk prices, real spreads
+genopt n¦a table options: n contracts priced with Black-Scholes, with greeks
+# QUOTES
+mid spread spreadbps¦of a quote table
+micro imbal¦microprice, book imbalance
+# TRADES
+taq[t;q]¦each trade with the quote it hit
+tsign signedvol¦Lee-Ready side, signed volume
+effspread notional¦2|px-mid|, px*sz
+# PRICE SERIES
+ret logret rvol¦returns, log returns, realised volatility
+vwap twap¦volume and time weighted price
+movavg movsum movmax movmin¦moving windows
+ema rollstd¦exponential average, rolling deviation
+# TABLES
+bars[w;t]¦w-minute OHLCV bars
+symstats t¦a summary per symbol
+bysym t  symrows[t;g;s]¦each symbol's rows, found at once
+sortcol partcol groupcol¦mark a column `s, `p or `g
+pt t¦print with times as HH:MM:SS.mmm
+--------------------------------------------------------------------------------
+\o
+on disk: splayed and partitioned tables, CSV, JSON
+# TABLES ON DISK (q's layout, memory-mapped)
+`:db/t/ set t¦a file per column, symbols in db/sym
+t:get `:db/t¦map it back, pages load as they're read
+`:f set x  get `:f¦one value in one file
+.Q.dpft[d;p;f;t]¦one partition: .Q.dpft[`:db;2026.10.15;`sym;`t]
+\l db¦open a partitioned database (loaddb "db" too)
+select .. where date=d¦reads only that day, and only the columns named
+~ Amber reads the databases q writes, and q reads Amber's
+# FILES
+`csvr "f.csv"¦CSV straight into a typed table
+read0 `:f  read1 `:f¦lines, bytes
+`:f 0: lines¦write lines
+hdel `:f¦delete a file
+system "ls"¦run a shell command, its output as lines
+# FORMATS
+.j.j .j.k¦to JSON, from JSON
+-8!x  -9!b¦q's bytes, as on the wire
+`ser x  `des b¦Amber's own binary format
+--------------------------------------------------------------------------------
+\i
+talking to q: IPC, handlers, timers, logs
+# CONNECTING
+\p 5000¦listen on this machine (or start with amber file.q -p 5000)
+\p 0.0.0.0:5000¦listen on the network too, which is what q's \p 5000 does
+h:hopen 5000¦connect: a port, or `:host:5000
+h"1+1"¦run it there and wait for the answer
+h(`f;1;2)¦call a function there
+neg[h]"x:1"¦send it, don't wait
+hclose h¦close the connection
+# HANDLERS, AS IN Q
+.z.pg .z.ps¦answer a sync, an async message
+.z.po .z.pc¦a client connects, disconnects
+.z.w¦the handle being served
+# WHO GETS IN
+.z.pw¦.z.pw:{[u;p] ...} gets the user and password and says yes or no
+-u file  -U file¦user:password lines a client has to match (md5 passwords too)
+~ a no is 'access at the client. A port open to the network with neither prints a warning
+# TIMERS AND LOGS
+\t 1000¦call .z.ts every second, \t 0 stops it
+h:hopen `:log¦a log: h enlist(`upd;`t;x) appends to it
+-11!`:log¦replay it
+# CONSOLE
+1"text"  -1"line"¦to stdout, 2 and -2 to stderr
+~ tested against kdb+ itself, both ways round, with a whole tickerplant
+--------------------------------------------------------------------------------
+\g
+charts, and how tables print
+# CHARTS
+plot v¦a line, plot (a;b;c) a line per column
+plots d¦several series with a legend
+xyplot (xs;ys)¦y against a real x axis
+scatter (xs;ys)¦points
+hist v¦a histogram, hist (v;bins)
+barh d  heat d¦bars, or a matrix as coloured cells
+candle t¦OHLC candlesticks
+spark v¦a chart in one line of text
+tplot dplot pplot¦xyplot over a time, date or timestamp axis
+chart d¦any of them, from a dict of options
+# TABLES
+show t¦print it as a grid
+\grid mode¦borders: clean, rounded, sharp, heavy
+CROWS:20¦rows shown before the ..
+PREC:7¦decimals shown, PREC:0N shows every one
+COLOR:0¦no colour
+--------------------------------------------------------------------------------
+\r
+speed: threads, peach and attributes
+# THREADS
+AMBER_THREADS=n¦threads to use, every core by default, 1 for none
+f peach x¦f over x on every core, peach[f;x] too
+~ big sorts, finds, joins, group sums and float sums split over the threads by themselves
+# ATTRIBUTES
+`s#x¦sorted: ? and in use binary search
+`u#x¦unique: lookups are hashed
+`p#x¦parted: each value's rows sit together
+`g#x¦grouped: an index of each value's rows
+attr x¦which one x has
+~ asc and xasc set `s themselves, changing the list drops it
+# TIMING
+\t:n expr¦ms for n runs
+\trace expr¦where the time went: parse, compile, run, print
+~ arithmetic inside a lambda runs fused, in one pass over memory
+--------------------------------------------------------------------------------
+\e
+errors and debugging
+# LOOKING INSIDE
+\ast expr¦its parse tree, nothing runs
+\disasm expr¦the bytecode it compiles to, nothing runs
+\trace expr¦run it, with timings and scratch memory
+\v¦every global: name, type, shape, memory
+# CATCHING
+.[f;args;h]¦run f, on an error h gets the message
+@[f;x;h]¦the same for one argument
+`err"msg"¦raise one
+`diag 0¦plain one-line errors, `diag 1 the full reports
+# THE CODES
+E0101 value¦a name that isn't defined
+E0102 type¦the wrong type for this operation
+E0103 length¦lists of different lengths
+E0104 domain¦a value outside what's allowed
+E0105 parse¦a bracket or a string left open
+E0106 index¦an index past the end
+E0107 rank¦the wrong number of arguments
+E0108 limit¦too big, too deep, or out of memory
+E0109 io¦a file or a socket failed
+E0110 stack¦calls nested more than 2048 deep
+E0111 compile¦it parses but can't compile
+E0112 nyi¦not done for these types yet
+E0100¦any other error
 \

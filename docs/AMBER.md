@@ -1018,8 +1018,9 @@ verification suite.
 Amber speaks q's wire format, so a q process and an Amber one can talk to each other, either way round.
 
 ```q
-\p 5000                 / listen, as q (or amber -p 5000)
-h:hopen 5000            / or `:host:5000
+\p 5000                 / listen on this machine (or amber script.q -p 5000)
+\p 0.0.0.0:5000         / ... or on every interface, which q's \p 5000 does
+h:hopen 5000            / or `:host:5000, `:host:5000:user:password
 h"1+1"                  / sync: 2
 h(`f;1;2)               / a function and its args
 neg[h]"x:1"             / async
@@ -1027,6 +1028,10 @@ hclose h
 ```
 
 - **The handlers** are q's: `.z.pg` `.z.ps` `.z.po` `.z.pc` `.z.w` `.z.ts`, and `\t 100` runs the timer.
+- **Who gets in**: anyone on this machine, by default. `.z.pw:{[u;p] ...}` gets the user (a symbol) and the password
+  and says yes or no, as q's, and `-u file`/`-U file` hold `user:password` lines (the password as text or its md5).
+  A no is `'access` at the client. A port open past this machine with none of these prints a one-line warning,
+  since whoever reaches it can run anything here.
 - **The bytes**: `-8!x` gives q's bytes for x, `-9!` reads them back. Remote errors come back as q's.
 - **Logs**: `` h:hopen`:log `` then `` h enlist(`upd;`t;x) `` appends, q's way; `` -11!`:log `` replays one
   (q's too), `-11!(n;f)` the first n, `-11!(-2;f)` counts the good ones.
@@ -1192,13 +1197,25 @@ form, a large slice of q's system vocabulary:
 
 ## Help inside the REPL
 
-Type `\` for the menu, then a topic: `\q` (scalars, aggregation, sets, strings),
-`\j` (tables, keyed tables, joins, qSQL), `\z` (temporal, bars, attributes, display),
-`\m` (finance/HFT module). `\0 \+ \' \`` `\h` cover the core array language and its cheat-sheet.
+Type `\` for the menu, then a topic's key:
 
-**Session commands** (one-liners in the `\` menu itself, no separate topic page):
-`\l file.k` load a script, `\d ns` switch/show namespace, `\t:n expr` time `n` runs, `\f` list
-functions, `\cd path` change directory (`\cd` alone prints it), `\grid MODE` set the table border
+| | |
+|---|---|
+| `\0 \+ \' \: \`` | the language: types and literals, verbs, adverbs, files, the built-in `` `names `` |
+| `\h` | the whole language on one screen |
+| `\q \j \z \m` | the q layer: functions, tables and qSQL, dates and times, finance |
+| `\o \i \g \r \e` | on disk, IPC with q, charts and display, speed, errors and debugging |
+| `\k` | every REPL command and editing key |
+
+Every page is checked by `tests/test_help.py`: its examples have to give the result shown, and every
+function it names has to exist. Colour follows `COLOR` and `NO_COLOR`, keys are bold in the terminal's own
+colour so they read on a light screen too, and with `AMBER_NO_EDIT=1` (the screen reader setting) the pages
+drop their rules and logo. The pages are plain text at the end of `repl.k`, in a light markup described
+next to the code that draws them.
+
+**Session commands** (all on the `\k` page): `\l file.k` load a script, `\d ns` switch/show namespace,
+`\t:n expr` time `n` runs, `\t n` run `.z.ts` every n ms, `\p n` listen on a port, `\f` list functions,
+`\cd path` change directory (`\cd` alone prints it), `\grid MODE` set the table border
 (`clean`/`rounded`/`sharp`/`heavy`), `\clear` clear the screen, `\a` print the licence, `\\` exit.
 
 **Diagnostics:** `\v` a rich workspace inspector (every global as a Name/Type/Shape/Memory

@@ -165,8 +165,14 @@ names write the binary format too and still read the old text files (AMBER.md §
 **Since 2.9.0:** q's binary wire protocol, both ways: `hopen`/`hclose`, `h x` sync, `neg[h] x` async,
 `\p`/`-p`, the `.z.pg` `.z.ps` `.z.po` `.z.pc` `.z.w` handlers, `\t` and `.z.ts`, `-8!`/`-9!` as q's bytes,
 logs and `-11!` replay (q's logs too). A kdb+ tickerplant (tp, rdb, cep, hdb, gateway) runs on it unchanged (AMBER.md §10c).
+- **Who gets in, as q:** `.z.pw[user;password]` and the `-u`/`-U` password files (plain or md5 passwords); a no is
+  `'access` at the client.
+- **Differs from q:** `\p n` and `-p n` listen on 127.0.0.1 only, where q takes every interface. Give a host to open
+  more (`\p 0.0.0.0:5000`, `-p myhost:5000`), and with no `.z.pw` and no `-u`/`-U` that port prints a one-line warning.
+  `-u` checks the file like `-U` but doesn't fence clients into the start directory or block system commands, as q's does.
+  `\u` doesn't read the file again either: restart to pick up a new user.
 - **Still missing:** compressed messages going out (Amber reads q's compressed ones), websockets, TLS,
-  `.z.pw` auth, `.z.ph`/`.z.pp` (HTTP), and the deferred `-30!` reply.
+  `.z.ph`/`.z.pp` (HTTP), and the deferred `-30!` reply.
 
 ## 6. Attributes: 4 of 4 (setters); find accel on 1 (sorted)
 All four attributes are set in C: **sorted (`` `sa``)**, **unique (`` `ua``)**,

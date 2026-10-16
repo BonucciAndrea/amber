@@ -33,6 +33,8 @@ I pg=4096;//pagesize
   "options:\n"
   "  -h, --help       show this message and exit\n"
   "  -v, --version    print the interpreter version and exit\n"
+  "  -p [HOST:]PORT   after the script: serve q clients, on this machine only unless HOST is given\n"
+  "  -u FILE, -U FILE after the script: the user:password lines a client has to match\n"
   "\n"
   "REPL commands:\n"
   "  \\               help menu            \\\\              exit\n"
@@ -51,7 +53,8 @@ I pg=4096;//pagesize
  I main(I n,S*a)_(I(n>1,I o=opt(a[1]);
    P(o==1,write(1,USAGE,SL(USAGE));I(am_ext_usage,write(1,am_ext_usage,strlen(am_ext_usage)));0)
    P(o==2,write(1,"amber " AMBER_VERSION "\n",SL("amber " AMBER_VERSION "\n"));0))
-  kinit();kargs(n,a);I r=0;F(n-1,I(!strcmp(a[i],"-p")&&i+1<n,A p=qport(a[i+1]);I(!p,epr(0))E(mr(p))))   //2.9.0: -p n listens, as q
+  kinit();kargs(n,a);I r=0;F(n-1,I((!strcmp(a[i],"-u")||!strcmp(a[i],"-U"))&&i+1<n,P(!qpwfile(a[i+1]),write(2,"amber: can't read the -u/-U file\n",33)<0,1)))   //before -p, so its warning knows
+  F(n-1,I(!strcmp(a[i],"-p")&&i+1<n,A p=qport(a[i+1]);I(!p,epr(0))E(mr(p))))   //2.9.0: -p n listens, as q
   I(n>1,N l=SL(a[1]);I(l>2&&!strcmp(a[1]+l-2,".q"),qstd()))   //a .q script: the standard library first, as q
   I(n<2,repl())J(!bsl(a[1]),r=1;epr(0))E(I(qactive(),repl();qloop()))Q(bsm(""));r)   //a script that opened a port or a timer goes on serving, as q
 #endif

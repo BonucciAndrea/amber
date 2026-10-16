@@ -30,6 +30,7 @@ read1:{$[`A~@x;[b:1:hpath x 0;$[2<#x;(x 2)#(x 1)_b;(x 1)_b]];1:hpath x]}   / a f
 system:{. (`c$92),x}                      / a \ command, as q: system"t 1+1", system"cd /tmp"; else the shell's, its output's lines
 z.po:{}                                   / port-open handler
 z.pc:{}                                   / port-close handler
+/ z.pw (user;password -> yes or no) is left unset on purpose: unset, whoever -u/-U lets in gets in, as q's
 z.exit:{}                                 / exit handler
 
 / ---- .Q : utilities ------------------------------------------------------

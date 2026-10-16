@@ -20,9 +20,11 @@ serve() {
   P=$((P + 1)); printf '%s\n' "$1" > "$tmp/s$P.q"; shift
   "$AMBER" "$tmp/s$P.q" "$@" -p "${HOSTP:-}$P" > "$tmp/out$P" 2> "$tmp/err$P" < /dev/null &
   pids+=($!)
-  for _ in $(seq 50); do grep -qi ":$(printf '%04X' $P) " /proc/net/tcp 2>/dev/null && return; sleep 0.1; done
+  for _ in $(seq 100); do (exec 3<>"/dev/tcp/127.0.0.1/$P") 2>/dev/null && return; sleep 0.1; done
   no "server on $P" "never listened"
 }
+# ext_ip: an address of this machine past loopback, empty if it has none
+ext_ip() { hostname -I 2>/dev/null | tr ' ' '\n' | grep -v '^127\.' | grep -m1 '^[0-9][0-9.]*$'; }
 # try <handle> : what a client gets back, "ok 42" or the error
 try() {
   printf '%s\n' "r:@[{h:hopen x;v:h\"a\";hclose h;\"ok \",string v};$1;{\"err \",x}]" '-1 r;' 'exit 0' > "$tmp/c.q"
@@ -35,8 +37,11 @@ expect() { # name got want
 # 1. no -u/-U, no .z.pw: anyone on this machine gets in, and the port is bound to 127.0.0.1 only
 serve 'a:42'
 expect "open port, no checks" "$(try $P)" "ok 42"
-if grep -qi " 0100007F:$(printf '%04X' $P) " /proc/net/tcp; then ok "bound to 127.0.0.1 by default"
-else no "default bind" "$(grep -i ":$(printf '%04X' $P) " /proc/net/tcp)"; fi
+# not there from another address of this machine (WSL1 has no /proc/net/tcp to read the bind from)
+X=$(ext_ip)
+if [ -z "$X" ]; then echo "  SKIP bound to 127.0.0.1 by default: no address past loopback here"
+elif (exec 3<>"/dev/tcp/$X/$P") 2>/dev/null; then no "default bind" "$X:$P took a connection"
+else ok "bound to 127.0.0.1 by default"; fi
 [ -s "$tmp/err$P" ] && no "no warning on loopback" "$(cat "$tmp/err$P")" || ok "no warning on loopback"
 
 # 2. .z.pw decides

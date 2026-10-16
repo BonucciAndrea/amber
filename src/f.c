@@ -700,7 +700,11 @@ X2(fnd,
   fN(y)))
 #undef FSN
 //Amber 2.9.0: x?y of a list or a table as q's: a miss is the count of x (fnd, which the engine uses inside, keeps 0N)
-Z A fqm(A r,L n)_(P(!r||_tP(r)&&!_tz(r),r)P(_tz(r),gl_(r)==NL?(mr(r),az(n)):r)P(_t(r)==tL,B u=0;F(_n(r),u|=_L(r)[i]==NL)P(!u,r)r=mut(r);F(_n(r),I(_L(r)[i]==NL,_L(r)[i]=n))sqzZ(r))   //narrowed, as a find with no miss is
+// fqm's 64-bit result with a miss: written once at the width sqzZ gave it, which is tZ(n), every index being below n
+#define FQN(T) {T*RES q=(T*)_V(z);F(k,L v=p[i];q[i]=(T)(v==NL?n:v))}
+ZN A fqn(A r,L n)_(U k=_n(r);C t=tZ(n);A z=an(k,t);CO L*RES p=_L(r);S4(t-tG,FQN(G),FQN(H),FQN(I),FQN(L))mr(r);z)
+#undef FQN
+Z A fqm(A r,L n)_(P(!r||_tP(r)&&!_tz(r),r)P(_tz(r),gl_(r)==NL?(mr(r),az(n)):r)P(_t(r)==tL,B u=0;F(_n(r),u|=_L(r)[i]==NL)P(!u,r)fqn(r,n))   //narrowed, as a find with no miss is
  P(_t(r)==tA,r=mut(r);F(_n(r),_A(r)[i]=fqm(_A(r)[i],n))r)P(_t(r)==tm,A k=_R(_x(r)),v=fqm(_R(_y(r)),n);mr(r);am(k,v))r)   //a dict (a find of a dict's values): its values
 Z A fndq(A x,A y)_(UC t=xt;A ox=fqx;fqx=x;fqr=0;A r=fnd(x,y);B d=r&&r==fqr;fqx=ox;fqr=0;P(d||t>tM,r)fqm(r,_N(x)))   //fqx kept for a ? inside (a table's find runs k)
 X2(que,Rs(Z CO C s[][4] __attribute__((aligned(4)))={"j","k","hex"};G(&js0,val,unh,ed)[fI((V*)s,L(s),xv)](y))Ril(rnd(gl_(x),y))R_(fndq(x,y)))

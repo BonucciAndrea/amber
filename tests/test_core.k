@@ -411,6 +411,8 @@ t[`findMissHash;{v:1000000007!(!40000)*2654435761;r:v?(20000#v),20000#1+v;(r 0 1
 t[`findMissFlat;{r:(!40000)?(20000#!40000),20000#40000+!20000;(r 0 19999 20000 39999;@r)}0;(0 19999 40000 40000;`I)]
 t[`findMissWider;{r:(!128)?3000#5 128 -1;(5#r;@r;|/r)}0;(5 128 128 5 128;`I;128)]   / 128 needs 16 bits where the indices fit 8
 t[`findMissEach;{v:!40000;r:v?(40000#7;40000#40000);(r[0;0];r[1;0])}0;7 40000]
+/ a 64-bit answer with a miss (a range's x, made into another list inside find; the sorted search; a short list's and floats' scans; a general list's hash), narrowed in one pass: against the probes one at a time, and the width (`ser's type byte)
+t[`findMissNarrow;{r:x?y;(r~{x?y}[x]'y;(`ser r)4)}.'((!1000;(!10),5000);(`s#(!999),999;(!20),5000);(`s#(!127),127;(!20),500);(`s#(!32767),32767;(!20),50000);(1000+5#3 1 4 1 5;1003 1009 1001);(1.5 2.5;1.5 9.0);($!1000;$(500+!20),2000));((1b;0x05);(1b;0x05);(1b;0x05);(1b;0x06);(1b;0x04);(1b;0x04);(1b;0x05))]
 t[`distinctNan;{(#?x,(-x),1.0;#?x,1.0,-x)}0n;2 2]
 t[`distinctNanLength;{#?3000#x,(-x),1.0}0n;2]
 t[`findZeroStill;1.0 -0.0?0.0;1]
@@ -1650,7 +1652,7 @@ t[`findFewWidthRange;(`ser@(1000#!50)?3 7 9 11 49;`ser@(1000000*!1000)?1000000*3
 t[`inFewScan;{(`memb(y;x))~{|/x=y}[x]'y}[997!13*!1000;0 5 996 997 -1 70000 3];1b]
 t[`inFewScanAtom;(`memb(5;997!13*!1000);`memb(997;997!13*!1000));10b]
 
-hexpect[1050]
+hexpect[1051]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

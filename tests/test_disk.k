@@ -103,10 +103,12 @@ x:splay[T,"/db/t2";([]sym:`d`a`e;v:1 2 3)]
 t[`symGrows;dget T,"/db/sym";`a`b`c`d`e]
 t[`oldStillReads;dload T,"/db/t";dt]
 / a set that fails partway leaves the old table and the sym file: every file is written before any is renamed
-/ (#94 Q12). A directory where s's temporary file goes makes its write fail, after a's and the sym file's
-h:`$":",T,"/db/f/";x:h set ([]a:1 2;s:`x`y);x:mkd T,"/db/f/s.tmp";z:dget T,"/db/sym"
+/ (#94 Q12). A directory where the sym file's temporary file goes makes its write fail. Since 2.9.1 the table's own
+/ files go to a stage next to it (src/dsk.c), so the failure can't be put among them; none of the stage is left
+h:`$":",T,"/db/f/";x:h set ([]a:1 2;s:`x`y);x:mkd T,"/db/sym.tmp";z:dget T,"/db/sym"
 x:.[set;(h;([]a:!5;s:5#`zp`zq));{*"\n"\x}]
-t[`splayFailOld;(x;.[get;,h;{*"\n"\x}];z~dget T,"/db/sym";`ldir T,"/db/f");("io";([]a:1 2;s:`x`y);1;(,"s.tmp";(".d";,"a";,"s")))]
+t[`splayFailOld;(x;.[get;,h;{*"\n"\x}];z~dget T,"/db/sym";`ldir T,"/db/f";#{x@&{"."=*x}'x}@*`ldir T,"/db");("io";([]a:1 2;s:`x`y);1;(();(".d";,"a";,"s"));0)]
+x:`x(("/bin/rmdir";T,"/db/sym.tmp");"")
 wa:{x:`wcol((T,"/c/w1";1 2;-1;0);(T,"/c/w2";`k;-1;0));(x;`rcol T,"/c/w1";`rcol T,"/c/w2")}
 tv[`wcolAll;"wa[]";((T,"/c/w1";T,"/c/w2");1 2;`k)]   / a list of quadruples: all written, then renamed
 wd:{x:.[{`wcol((T,"/c/w3";1 2;-1;0);(T,"/c/w3";3 4;-1;0))};,0;{*"\n"\x}];(x;`fsz T,"/c/w3";`fsz T,"/c/w3.tmp")}
@@ -194,6 +196,16 @@ trade2:([]px:1.5 2.5;sym:`z`y;sz:1 2);x:Q.dpft[T,"/hdb2";2026.01.03;`sym;`trade2
 t[`dpftOrder;(`rcol T,"/hdb2/2026.01.03/trade2/.d";`rcol T,"/hdb2/2026.01.03/trade2/px");(`sym`px`sz;2.5 1.5)]   / the parted column first, as q's .Q.dpft
 x:loaddb T,"/hdb"
 t[`reload;#sel"select from trade";12]
+/ 2.9.1: a splayed table next to the partitions loads too (hdb.pok took any name under 10 characters for a partition)
+x:splay[T,"/hdb/ref";([]sym:`ibm`aapl;sector:`tech`tech)]
+t[`loaddbRef;asc loaddb T,"/hdb";`ref`trade]
+t[`pokShort;hdb.pok'("ref";"2026.01.02";"12";"2026.1.2");0 1 1 0]
+/ 2.9.1: a table rewritten whole is swapped in by two renames; one a crash cut between them is finished on loading
+x:splay[T,"/hdb/sw";([]a:1 2)]
+x:splay[T,"/hdb/.sw.amber-tmp";([]a:3 4)]
+x:`x(("/bin/mv";T,"/hdb/sw";T,"/hdb/.sw.amber-old");"")
+x:loaddb T,"/hdb"
+t[`swapFinished;((dload T,"/hdb/sw")`a;#{x@&{"."=*x}'x}@,/`ldir T,"/hdb");(3 4;0)]
 
 / ---- \l of a script that loads itself ---------------------------------------
 / each level nested the loader on the C stack with no limit and crashed (SIGSEGV); now 'stack after 512 levels, as q's
@@ -280,6 +292,6 @@ t[`qNestTs;qn"p";(2#2026.01.01D10:00:00.000000000;,2026.01.02D00:00:00.000000000
 t[`qNestInt;qn"i";(1 2;0N 3;!0;,7;0N;5 6 7)]
 t[`qNestTable;{v:get`$":",-1_QN;(count v;cols v;v[`s]5;v[`a]@&2<#'v`s)}[];(6;`a`s`f`b`p`i;"hello";0 1 5)]
 rm T
-hexpect[118]
+hexpect[121]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

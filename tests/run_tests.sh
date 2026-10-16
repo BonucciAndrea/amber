@@ -140,6 +140,12 @@ if [ "$QUICK" = 0 ]; then
   if bash tests/test_ipc_auth.sh; then echo "  -> PASS (tests/test_ipc_auth.sh)"
   else echo "  -> FAIL (tests/test_ipc_auth.sh)"; fail=1; fi
 
+  # On-disk writes that survive a kill at every write, sync and rename, a full disk and a failed sync, and a sym
+  # file two writers share
+  say "durable writes (tests/test_durable.sh)"
+  if bash tests/test_durable.sh; then echo "  -> PASS (tests/test_durable.sh)"
+  else echo "  -> FAIL (tests/test_durable.sh)"; fail=1; fi
+
   # Bare qSQL in a loaded .k file (amber 2.0.0): the loader runs each file through
   # the qSQL rewriter, so `select .. from ..` works in a script with no sel"..."
   # wrapper; a non-qSQL script must be left untouched.

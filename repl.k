@@ -587,6 +587,7 @@ t:get `:db/t¦map it back, pages load as they're read
 \l db¦open a partitioned database (loaddb "db" too)
 select .. where date=d¦reads only that day, and only the columns named
 ~ Amber reads the databases q writes, and q reads Amber's
+~ a write that dies (kill -9, a power cut, a full disk) leaves each table whole, old or new
 # FILES
 `csvr "f.csv"¦CSV straight into a typed table
 read0 `:f  read1 `:f¦lines, bytes

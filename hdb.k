@@ -18,7 +18,7 @@ hdb.p:{[p]s:$[in[@p;`s`S];$p;p];$[(0<#s)&":"=*s;1_s;s]}         / a path from a 
 hdb.sl:{[s]$[(1<#s)&"/"=*|s;-1_s;s]}                          / without a trailing /
 hdb.par:{[p]i:&p="/";$[0=#i;".";0=*|i;"/";(*|i)#p]}           / the directory p is in
 hdb.amc:{[f]$[0<`fsz f;[b:`c$4#1:f;("AMBC"~b)|/(2#b)~/:(`c$254 32;`c$253 32;`c$255 1)];0]}   / is f a binary Amber file, or one q wrote (2.9.0)
-hdb.cols:{[dir]$[-1<`fsz dir,"/.d";`rcol dir,"/.d";`$f@&{~("."=*x)|"#"=*|x}'f:(`ldir dir)1]}   / a table's columns: its .d, else its files (2.9.0: a db q wrote can come without .d)
+hdb.cols:{[dir]$[-1<`fsz dir,"/.d";`rcol dir,"/.d";`$f@&{~("."=*x)|("#"=*|x)|".tmp"~-4#x}'f:(`ldir dir)1]}   / a table's columns: its .d, else its files (2.9.0: a db q wrote can come without .d), never a .tmp a crash left
 hdb.isd:{[dir](hdb.amc dir,"/.d")|-1=`fsz dir,"/.d"}          / a binary splayed table (a .d, or none)
 
 / ---- the sym file ---------------------------------------------------------
@@ -33,7 +33,15 @@ hdb.syms:{[db]f:hdb.symf db;z:`fsz f;k:`$db;$[z<0;0#`;~in[k;HDBK];hdb.syml[db;f;
 / The indexes of v in db's syms (new names are added to the file first) and how many syms there are
 hdb.isq:{[db]f:hdb.symf db;$[0<`fsz f;(`c$255 1)~2#`c$4#1:f;0]}   / is db a database kdb+ wrote (its sym file q's): then Amber writes q's files into it (2.9.0)
 hdb.wr:{[db;w]$[hdb.isq db;`wcq w;`wcol w]}
-hdb.enum:{[db;v]d:hdb.syms db;u:?v;nw:u@&~in[u;d];$[#nw;[d:d,nw;hdb.wr[db;(hdb.symf db;d;-1;0)];hdb.symc[db;`fsz hdb.symf db;d]];0];(d?v;#d)}
+/ hdb.lk[db;f] runs f[0] holding db's lock (src/dsk.c `dlk), from reading the sym file to writing it back, so two
+/ processes adding symbols to one database can't lose each other's. An error in f lets go of it and goes on up
+hdb.lk:{[db;f]h:`dlk db;r:@[{(1b;x 0)};f;{(0b;x)}];`duk h;$[r 0;r 1;`err r 1]}
+hdb.enum:{[db;v]hdb.lk[db;hdb.enm0[db;v]]}
+/ hdb.rc d settles what a write that died left in directory d (src/dsk.c `drc); hdb.rp p does it for a table p that
+/ isn't there, under its directory's lock, before p is read
+hdb.rc:{[d]$[-2=`fsz d;`drc d;0]}
+hdb.rp:{[p]$[-1=`fsz p;[d:hdb.par p;$[-2=`fsz d;hdb.lk[d;{[d;z]hdb.rc d}[d]];0]];0]}
+hdb.enm0:{[db;v;z]d:hdb.syms db;u:?v;nw:u@&~in[u;d];$[#nw;[d:d,nw;hdb.wr[db;(hdb.symf db;d;-1;0)];hdb.symc[db;`fsz hdb.symf db;d]];0];(d?v;#d)}
 
 / ---- one value, one file -------------------------------------------------
 dset:{[f;x]f:hdb.p f;`wcol(f;x;-1;0);f}
@@ -41,16 +49,18 @@ dget:{[f]f:hdb.p f;$[hdb.amc f;`rcol f;. `c$1:f]}
 
 / ---- splayed tables -------------------------------------------------------
 / splay["db/trades";t] writes db/trades/<col> for each column and db/trades/.d, symbols into db/sym. One `wcol writes
-/ them all or none: each goes to its temporary file, and they are renamed only once all are written, the sym file
-/ first and .d last, so a set that fails leaves the old table (#94 Q12). The symbol columns' new names are found
+/ them all or none: each goes to its temporary file, synced, and they are renamed only once all are written, the sym
+/ file first and .d last, so a set that fails leaves the old table (#94 Q12). A new table or partition is written under
+/ a hidden name and renamed in whole, so a crash never leaves half of one (src/dsk.c). The symbol columns' new names are found
 / together, in the order they come, and the sym file grows by them once.
 hdb.atc:{[v]a:$`at v;$[#a;1+"supg"?*a;0]}                      / attribute code kept in the column file
 hdb.wq:{[f;s;n;v]$[`S~@v;(f;s?v;n;hdb.atc v);(f;v;-1;0)]}      / a column's (path;value;domain;attr) for `wcol
-hdb.splay:{[dir;db;t]t:$[iskeyed t;unkey t;t];c:cols t;v:(+t)c;b:`S=@'v;s:$[|/b;hdb.syms db;0#`];nw:$[|/b;[u:?,/?'v@&b;u@&~in[u;s]];0#`];s:s,nw;w:{[dir;s;n;c;v]hdb.wq[dir,"/",$c;s;n;v]}[dir;s;#s]'[c;v];w:$[#nw;(,(hdb.symf db;s;-1;0)),w;w],,(dir,"/.d";c;-1;0);hdb.wr[db;w];$[#nw;hdb.symc[db;`fsz hdb.symf db;s];0];dir}
+hdb.splay:{[dir;db;t]hdb.lk[db;hdb.spl0[dir;db;t]]}
+hdb.spl0:{[dir;db;t;z]hdb.rc hdb.par dir;hdb.rc db;t:$[iskeyed t;unkey t;t];c:cols t;v:(+t)c;b:`S=@'v;s:$[|/b;hdb.syms db;0#`];nw:$[|/b;[u:?,/?'v@&b;u@&~in[u;s]];0#`];s:s,nw;w:{[dir;s;n;c;v]hdb.wq[dir,"/",$c;s;n;v]}[dir;s;#s]'[c;v];w:$[#nw;(,(hdb.symf db;s;-1;0)),w;w],,(dir,"/.d";c;-1;0);hdb.wr[db;w];$[#nw;hdb.symc[db;`fsz hdb.symf db;s];0];dir}
 splay:{[dir;t]dir:hdb.sl hdb.p dir;hdb.splay[dir;hdb.par dir;t]}
 hdb.dl:{[dir;s]c:hdb.cols dir;+c!{[dir;s;c]`rcol(dir,"/",$c;s)}[dir;s]'c}
 hdb.old:{[dir]cs:. `c$1:dir,"/.d";+cs!{[dir;c]. `c$1:dir,"/",$c}[dir]'cs}   / a pre-2.7 text table
-dload:{[dir]dir:hdb.sl hdb.p dir;$[hdb.isd dir;hdb.dl[dir;hdb.syms hdb.par dir];hdb.old dir]}
+dload:{[dir]dir:hdb.sl hdb.p dir;hdb.rp dir;$[hdb.isd dir;hdb.dl[dir;hdb.syms hdb.par dir];hdb.old dir]}
 
 / ---- the q names ----------------------------------------------------------
 / `a set 5 and get`a are globals; `:path set x writes a file, and a path ending in / splays a table.
@@ -59,12 +69,12 @@ dload:{[dir]dir:hdb.sl hdb.p dir;$[hdb.isd dir;hdb.dl[dir;hdb.syms hdb.par dir];
 set:{[h;v]$[(`s~@h)&~":"=*$h;[.[h;();:;v];h];()~v;[`qlog h;h];[p:hdb.p h;$["/"~*|p;$[iskeyed v;`err"type";splay[p;v]];dset[p;v]];h]]}
 / get reads only the binary format: a file or a table in any other is 'format, never evaluated (q's get never runs a
 / file). dget and dload, Amber's own names, still read the text files Amber wrote before 2.7. A missing file is 'io, as before
-get:{[h]$[(`s~@h)&~":"=*$h;. h;[p:hdb.sl hdb.p h;$[-2=`fsz p;$[hdb.isd p;hdb.dl[p;hdb.syms hdb.par p];`err"format"];hdb.amc p;`rcol p;-1=`fsz p;`err"io";`err"format"]]]}
+get:{[h]$[(`s~@h)&~":"=*$h;. h;[p:hdb.sl hdb.p h;hdb.rp p;$[-2=`fsz p;$[hdb.isd p;hdb.dl[p;hdb.syms hdb.par p];`err"format"];hdb.amc p;`rcol p;-1=`fsz p;`err"io";`err"format"]]]}
 
 / ---- partitioned databases ------------------------------------------------
 / db/<partition>/<table>/<col>, partitions named by a date (2026.01.02) or an int, symbols in db/sym.
 hdb.pv:{[p]$p}                                                  / partition value -> directory name
-hdb.pok:{[s]d:in[s;"0123456789"];$[0=#s;0;&/d;1;(10=#s)&(".."~s 4 7)&&/d 0 1 2 3 5 6 8 9;1;0]}   / looks like a partition
+hdb.pok:{[s]d:in[s;"0123456789"];$[0=#s;0;&/d;1;~10=#s;0;(".."~s 4 7)&&/d 0 1 2 3 5 6 8 9;1;0]}   / looks like a partition (the length first: d past its end is 0N, which $[] takes for yes)
 hdb.pcn:{[p]$[`d~@p;`date;`int]}                                / the partition column's name
 Q.en:{[d;t]d:hdb.sl hdb.p d;dd:+t;{[d;dd;c]$[`S~@dd c;hdb.enum[d;dd c];0]}[d;dd]'cols t;t}
 Q.dpft:{[d;p;f;t]d:hdb.sl hdb.p d;v:. t;$[iskeyed v;`err"type";0];v:xasc[f;v];dd:+v;dd:@[dd;f;{`pa x}];c:!dd;c:(,f),c@&~c=f;hdb.splay[d,"/",(hdb.pv p),"/",$t;d;+c!dd c];t}   / f first, as q
@@ -92,9 +102,9 @@ hdb.mr:{[pt;pv;r3;pb;wh;lim]pc:pt`pc;cs:hdb.need[pt;(r3 0)," ",(hdb.js pb)," ",w
 
 / loaddb["db"] maps a database the way q's \l does and returns the names it defined: a partitioned table for
 / each table found under the partitions, a splayed table for each directory with a .d, a value for each file.
-loaddb:{[db]db:hdb.sl hdb.p db;e:`ldir db;ds:e 0;fs:e 1;pd:ds@&hdb.pok'ds;sd:ds@&~hdb.pok'ds;sd:sd@&{[db;s]-1<`fsz db,"/",s,"/.d"}[db]'sd;fs:fs@&{(~x~"sym")&~"."=*x}'fs;a:{[db;s]set[`$s;dload db,"/",s];`$s}[db]'sd;b:{[db;s]set[`$s;dget db,"/",s];`$s}[db]'fs;c:$[#pd;hdb.ldp[db;pd];0#`];a,b,c}
+loaddb:{[db]db:hdb.sl hdb.p db;$[-2=`fsz db;hdb.lk[db;{[db;z]hdb.rc db;{[db;p]hdb.rc db,"/",p}[db]'d@&hdb.pok'd:*`ldir db}[db]];0];e:`ldir db;ds:e 0;fs:e 1;pd:ds@&hdb.pok'ds;sd:ds@&{(~hdb.pok x)&~"."=*x}'ds;sd:sd@&{[db;s]-1<`fsz db,"/",s,"/.d"}[db]'sd;fs:fs@&{(~x~"sym")&(~"."=*x)&~".tmp"~-4#x}'fs;a:{[db;s]set[`$s;dload db,"/",s];`$s}[db]'sd;b:{[db;s]set[`$s;dget db,"/",s];`$s}[db]'fs;c:$[#pd;hdb.ldp[db;pd];0#`];a,b,c}
 hdb.rows:{[pt]+/{[pt;p]#`rcol (pt`db),"/",(hdb.pv p),"/",($pt`t),"/",$*pt`cols}[pt]'pt`pv}   / a partitioned table's rows: one column's count a partition
-hdb.ldp:{[db;pd]pc:hdb.pcn[. *pd];tn:?,/{[db;p]d:*`ldir db,"/",p;d}[db]'pd;{[db;pc;pd;tn]ps:pd@&{[db;tn;p]-2=`fsz db,"/",p,"/",tn}[db;tn]'pd;set[`$tn;hdb.pto[db;pc;tn;ps]];`$tn}[db;pc;pd]'tn}
+hdb.ldp:{[db;pd]pc:hdb.pcn[. *pd];tn:?,/{[db;p]d:*`ldir db,"/",p;d@&{~"."=*x}'d}[db]'pd;{[db;pc;pd;tn]ps:pd@&{[db;tn;p]-2=`fsz db,"/",p,"/",tn}[db;tn]'pd;set[`$tn;hdb.pto[db;pc;tn;ps]];`$tn}[db;pc;pd]'tn}
 
 / ---- the older value-partitioned layout (one table, dir/<value>/, par.txt) ---
 mkd:{`x(("/bin/mkdir";"-p";x);"");x}                         / mkdir -p

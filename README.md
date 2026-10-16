@@ -238,8 +238,8 @@ Amber uses a terse array notation. A few things worth knowing:
   `` `sym xasc t``, `5 within 3 9`, `` "/" sv `a`b`c`` all work infix, exactly like q, and the
   bracket form `f[x;y]` and prefix form `f x` still work. The infix set is a curated list
   (`in within like lj ij uj aj aj0 wj wj1 pj ej cross inter union except ss sv vs xasc xdesc`) plus
-  the built-in symbol verbs (``+ - * % ! & | < > = ~ , ^ # _ $ ? @ .``). Arbitrary user lambdas are
-  **not** infix.
+  the built-in symbol verbs (``+ - * % ! & | < > = ~ , ^ # _ $ ? @ .``). A name bound to a function of
+  two arguments is infix too, as in q (`f:{x+y}; 3 f 4`), and a lambda written in place isn't (`3 {x+y} 4`).
 * **`<>` `>=` `<=`, `if` `do` `while` work as in q** (since 2.8.0), and `type` gives q's numbers (`@x` the letter).
 * **qSQL is bare, at the prompt *and* in scripts.** Type `select … by … from … where …` (also
   `exec` / `update` / `delete`) with no `sel"…"` wrapper; bare column names like `wavg[sz;px]` just

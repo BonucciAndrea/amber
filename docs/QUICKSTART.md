@@ -157,6 +157,7 @@ Three notes on that block, because the obvious-looking variants do not work:
 
 The variables the engine itself reads at run time are exactly: `AMBER_THREADS` (threads for
 `peach` and big vectors), `AMBER_DIAG` (rich diagnostics on/off), `AMBER_NO_EDIT` and `AMBER_RLWRAP` (line editor),
+`AMBER_FSYNC` (`0` skips syncing on-disk writes),
 plus `AMBER_AI_*` once the [amber-ai](https://github.com/bonucciandrea/amber-ai) extension is
 installed. Nothing is installed system-wide; see [Isolation](#isolation).
 

@@ -10,6 +10,10 @@ Fixes from running real q code, and appends that don't copy anymore.
 - **Who may connect**: `\p 5000` listens on this machine only now, `\p 0.0.0.0:5000` (or `-p host:5000`) opens it
   wider. `.z.pw` and q's `-u`/`-U` password files decide who gets in, a no being `'access` as in q, and a port open to
   the network with none of them says so. Before, anyone who could reach the port could run code here.
+- **Databases survive a crash**: a table goes to disk whole or not at all, kill -9 or power cut included. Files are
+  synced before they're renamed in, a new or rewritten table is built under a hidden name and renamed in, and two
+  writers adding symbols take turns on the sym file. `AMBER_FSYNC=0` skips the syncs. Also fixed: `\l` of a
+  database skipped a splayed table sitting next to the partitions.
 - **The `\` menu, redone**: six new pages (on disk, IPC, charts, speed, errors, every REPL command and key) and the
   rest brought up to date, in columns that line up, readable on a light terminal and with a screen reader. Every
   example on them is run by the tests, so none can go stale.

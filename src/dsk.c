@@ -13,6 +13,7 @@
 #define _POSIX_C_SOURCE 200809L
 #endif
 #include"a.h" // Amber - GNU AGPLv3 - see LICENSE and NOTICE
+#include"parallel.h"
 /* dsk.c  -  on-disk columns (2.7): `wcol writes one, `rcol maps one back.
  *
  * A column file is one 4096-byte header page and then the data, so the data starts on a page boundary
@@ -41,10 +42,50 @@
 #include<errno.h>
 #include<stdlib.h>
 #include<sys/stat.h>
+#include<sys/file.h>
 #include<stdio.h>
+#include<unistd.h>
+#include<ftw.h>
+#include<dirent.h>
 A mfw(I,W,W);I tjk(A);A tjn(A);
 
+/* 2.9.1: durable writes. A file is fsynced before it's renamed in, and the directories it went into after, so a crash
+ * or a power cut leaves the old file or the new one, never a hole where the data was. A directory that isn't there yet
+ * (a new partition, a new table, a new database) is written whole under a hidden name next to it, .name.amber-tmp,
+ * and renamed in at the end: a crash leaves the database as it was, plus that hidden directory, which readers skip and
+ * the next write of it clears. A table that is there and written whole (its .d with it) is staged the same way and
+ * swapped in: renamed to .name.amber-old, the stage renamed in, the old one removed. A crash between the two renames
+ * leaves the stage complete and no table, and `drc puts it in (hdb.k runs it on loading and before writing, under the
+ * database's lock). Where a directory can't be renamed (a file in it mapped, on Windows), the files go in one by one
+ * as before. AMBER_FSYNC=0 skips the syncs (scratch data, benchmarks), never the renames. */
+Z I dsy=-1;
+Z B dsyn(V){if(dsy<0){CO C*e=getenv("AMBER_FSYNC");dsy=!(e&&e[0]=='0'&&!e[1]);}return (B)dsy;}
+Z I dfsy(I f){return dsyn()?fsync(f):0;}
+Z V dfsd(CO C*d){if(!dsyn())return;I f=open(*d?d:".",O_RDONLY);if(f>=0){fsync(f);close(f);}}   //a directory's entries. Best effort: not every system syncs a directory
+/* Files synced one after another wait for the disk once each; synced at once from a few threads, the file system
+ * flushes them together (a 1M-row partition: 2.4x main's write time one by one, see wcolN for what it is now) */
+TD ST{I*f;N n;I nt,bad;}DSJ;
+Z V dsy1(V*c_,int t){DSJ*c=c_;for(N i=(N)t;i<c->n;i+=(N)c->nt)if(c->f[i]>=0&&fsync(c->f[i]))__atomic_store_n(&c->bad,1,__ATOMIC_RELAXED);}
+Z I dsyall(I*f,N n){if(!dsyn()||!n)return 0;DSJ c={f,n,(I)(n<16?n:16),0};par_run(c.nt,dsy1,&c);return c.bad;}
+Z I drm1(CO C*p,CO ST stat*s,I t,ST FTW*w){(V)s;(V)t;(V)w;return remove(p);}
+Z V drmr(CO C*p){struct stat st;if(!lstat(p,&st))nftw(p,drm1,16,FTW_DEPTH|FTW_PHYS);}   //rm -r
+// the topmost directory above file p that isn't there, into r: 1 when there is one, 0 when p's directory is there
+Z B dmiss(CO C*p,C*r){N l=SL(p);for(N k=1;k<l;k++)if(p[k]=='/'&&p[k-1]!='/'){MC(r,p,k);r[k]=0;struct stat st;
+  if(stat(r,&st))return errno==ENOENT;}return 0;}
+Z V dstg(CO C*r,C*s,N cap,CO C*k){CO C*b=strrchr(r,'/');I pl=b?(I)(b-r+1):0;snprintf(s,cap,"%.*s.%s.amber-%s",pl,r,b?b+1:r,k);}   //r's stage (k tmp) or old name
+Z V dpar(CO C*p,C*d,N cap){CO C*b=strrchr(p,'/');I pl=b?(I)(b-p):0;snprintf(d,cap,"%.*s",pl,p);}   //p's directory, "" for .
+// a list of distinct strings
+TD ST{C**v;N n,c;}DL;
+Z I dlix(DL*l,CO C*s){for(N i=0;i<l->n;i++)if(!strcmp(l->v[i],s))return (I)i;return -1;}
+Z B dladd(DL*l,CO C*s){if(dlix(l,s)>=0)return 1;if(l->n==l->c){N c=l->c?2*l->c:8;C**v=realloc(l->v,c*SZ(C*));if(!v)return 0;l->v=v;l->c=c;}
+  C*d=strdup(s);if(!d)return 0;l->v[l->n++]=d;return 1;}
+Z V dlfree(DL*l){for(N i=0;i<l->n;i++)free(l->v[i]);free(l->v);l->v=0;l->n=l->c=0;}
+Z V dfsdl(DL*l){if(!dsyn()||!l->n)return;I*f=malloc(l->n*SZ(I));if(!f){for(N i=0;i<l->n;i++)dfsd(l->v[i]);return;}   //every directory in l, best effort
+ for(N i=0;i<l->n;i++)f[i]=open(*l->v[i]?l->v[i]:".",O_RDONLY);dsyall(f,l->n);for(N i=0;i<l->n;i++)if(f[i]>=0)close(f[i]);free(f);}
+
+
 #define DHB 4096u
+#define DPB 4200   //a path's buffer: the path, a stage name in it and .tmp
 enum{KFLAT,KENUM,KSER,KTIME};
 typedef struct{C mg[4];UC ver,kind,typ,att;W cnt,nb,dom;}DHdr;   //32 bytes, then zeros up to DHB
 
@@ -72,11 +113,10 @@ Z I drall(I f,V*b,W n,W off){C*p=b;while(n){W k0=n>((W)1<<30)?((W)1<<30):n;ssize
 Z CO UC qtA[20]={0,tB,0,0,tL,tL,tL,tL,tF,tF,tC,0,tNP,tMO,tDT,0,tSP,tMN,tSC,tTM};
 Z CO UC qtW[20]={0,1,0,0,1,2,4,8,4,8,1,0,8,4,4,0,8,4,4,4};
 Z B dqf;Z CO UC qtO[tSP+1]={[tB]=1,[tG]=7,[tH]=7,[tI]=7,[tL]=7,[tF]=9,[tC]=10,[tDT]=14,[tTM]=19,[tNP]=12,[tMN]=17,[tSC]=18,[tMO]=13,[tSP]=16};
-Z I dopen(C*path,C*tmp){snprintf(tmp,4100,"%s.tmp",path);I f=open(tmp,O_WRONLY|O_CREAT|O_TRUNC,0644);
+Z I dopen(CO C*path,C*tmp){snprintf(tmp,DPB,"%s.tmp",path);I f=open(tmp,O_WRONLY|O_CREAT|O_TRUNC,0644);
  if(f<0&&errno==ENOENT&&!dmkp(tmp))f=open(tmp,O_WRONLY|O_CREAT|O_TRUNC,0644);return f;}
-Z I dwtq(A x,C*path,C*tmp){   //1 written, 0 failed (error raised), -1 not a kind q has: Amber's file then
+Z I dwtq(A x,CO C*path,C*tmp,I*fo){   //1 written, 0 failed (error raised), -1 not a kind q has: Amber's file then
  P(_t(x)!=tA||_n(x)!=4,-1)A*a=_A(x);A v=a[1];L dn=gl_(a[2]);P(_tP(v),-1)UC t=_t(v);W n=_n(v);
- P(!dpath(a[0],path,4096-8),dpe(a[0]),0)
  UC*b;W m,o;
  if(dn>=0){P(!(t==tG||t==tH||t==tI||t==tL),-1)o=4096;m=o+n*8;b=calloc(1,m?m:1);P(!b,ez0(),0)
   b[0]=0xfd;b[1]=0x20;MC(b+16,"sym",3);b[0xff0]=0xfd;b[0xff2]=20;L*d=(L*)(b+o);
@@ -88,15 +128,16 @@ Z I dwtq(A x,C*path,C*tmp){   //1 written, 0 failed (error raised), -1 not a kin
   else if(q==7&&t!=tL){L*e=(L*)d;for(W i=0;i<n;i++)e[i]=t==tI?_I(v)[i]:t==tH?_H(v)[i]:_G(v)[i];}
   else MC(d,_V(v),(N)(n*w));}
  I f=dopen(path,tmp);if(f<0){free(b);eo0();return 0;}
- I bad=dwall(f,b,m);bad|=close(f);free(b);
+ I bad=dwall(f,b,m)||(!fo&&dfsy(f));free(b);
+ if(bad||!fo)bad|=close(f);
  if(bad){unlink(tmp);eo0();return 0;}
- return 1;}
-// One quadruple x to its .tmp file: 1 when written; 0 when not, with the error raised and no .tmp left of it.
-Z B dwt(A x,C*path,C*tmp){
- if(dqf){I r=dwtq(x,path,tmp);if(r>=0)return (B)r;}
+ if(fo)*fo=f;return 1;}
+// One quadruple x to path.tmp: 1 when written; 0 when not, with the error raised and no .tmp left of it. Synced and
+// closed, or with fo left open in *fo for the caller to sync with the rest.
+Z B dwt(A x,CO C*path,C*tmp,I*fo){
+ if(dqf){I r=dwtq(x,path,tmp,fo);if(r>=0)return (B)r;}
  P(_t(x)!=tA||_n(x)!=4,et0(),0)
- A*a=_A(x);A pth=a[0],v=a[1];L dn=gl_(a[2]),atr=gl_(a[3]);
- P(!dpath(pth,path,4096-8),dpe(pth),0)
+ A*a=_A(x);A v=a[1];L dn=gl_(a[2]),atr=gl_(a[3]);
  UC t=_t(v),kind,typ=t,att=0;W cnt,nb;CO V*src;A body=0;
  if(dn>=0){P(_tP(v)||!(t==tG||t==tH||t==tI||t==tL),et0(),0)
   if(t!=tI){body=cI(_R(v));P(!body,0)v=body;}   //find gives the narrowest int that holds the indexes
@@ -106,30 +147,82 @@ Z B dwt(A x,C*path,C*tmp){
   if(TQ(k)){kind=KTIME;typ=(UC)k;body=tjn(v);cnt=_n(body);nb=cnt*8;src=_V(body);}
   else{kind=KSER;typ=0;body=ser8(_R(v));P(!body,0)cnt=_n(body);nb=cnt;src=_V(body);}}
  C hdr[DHB];MS(hdr,0,DHB);DHdr*h=(DHdr*)hdr;MC(h->mg,"AMBC",4);h->ver=1;h->kind=kind;h->typ=(UC)TXC(typ);h->att=att;h->cnt=cnt;h->nb=nb;h->dom=dn>=0?(W)dn:0;
- snprintf(tmp,4100,"%s.tmp",path);
- I f=open(tmp,O_WRONLY|O_CREAT|O_TRUNC,0644);
- if(f<0&&errno==ENOENT&&!dmkp(tmp))f=open(tmp,O_WRONLY|O_CREAT|O_TRUNC,0644);
+ I f=dopen(path,tmp);
  if(f<0){if(body)mr(body);eo0();return 0;}
- I bad=dwall(f,hdr,DHB)||(nb&&dwall(f,src,nb));bad|=close(f);
+ I bad=dwall(f,hdr,DHB)||(nb&&dwall(f,src,nb))||(!fo&&dfsy(f));if(bad||!fo)bad|=close(f);
  if(body)mr(body);
  if(bad){unlink(tmp);eo0();return 0;}
- return 1;}
-// the names of quadruple x, written already, and the unlink of .tmp files i to j-1 of a list
-Z V dwnm(A x,C*path,C*tmp){dpath(_A(x)[0],path,4096-8);snprintf(tmp,4100,"%s.tmp",path);}
-Z V dwun(A x,U i,U j,C*path,C*tmp){for(;i<j;i++){dwnm(_A(x)[i],path,tmp);unlink(tmp);}}
+ if(fo)*fo=f;return 1;}
 // two quadruples naming one path would share its .tmp file, and one of them would be lost: 'domain before any write
 Z B dwdup(A x){U n=_n(x);F(n,A a=_A(x)[i];P(_t(a)!=tA||_n(a)!=4,0)A p=*_A(a);P(_t(p)!=tC,0)
  for(U j=0;j<i;j++){A q=*_A(_A(x)[j]);if(_n(q)==_n(p)&&!memcmp(_V(q),_V(p),_n(p)))return 1;})return 0;}
-Z A wcolN(A x){U n=_n(x);C path[4096],tmp[4100];P(dwdup(x),x(ed0()))
- for(U i=0;i<n;i++)if(!dwt(_A(x)[i],path,tmp)){dwun(x,0,i,path,tmp);return x(0);}
- for(U i=0;i<n;i++){dwnm(_A(x)[i],path,tmp);if(rename(tmp,path)){dwun(x,i,n,path,tmp);return x(eo0());}}
- A r=aA(n);F(n,_A(r)[i]=_R(*_A(_A(x)[i])))mr(x);return r;}
+/* Every file goes to its .tmp, synced, and only once all are written are they renamed, in the list's order: a splayed
+ * table is written so (the sym file first, .d last), and a write that fails before the renames leaves the old table as
+ * it was (#94 Q12). A file whose directory isn't there yet goes into that directory's stage (see the top), renamed in
+ * once the files and the directories in it are synced. Then the directories the renames changed are synced. */
+Z B disd(CO C*p){struct stat st;return !stat(p,&st)&&S_ISDIR(st.st_mode);}
+Z A wcolN(A x){U n=_n(x);P(dwdup(x),x(ed0()))
+ C path[DPB],tmp[DPB],r[DPB],s[DPB];C**sp=calloc(n?n:1,SZ(C*));I*ri=calloc(n?n:1,SZ(I)),*fd=malloc((n?n:1)*SZ(I));
+ P(!sp||!ri||!fd,free(sp);free(ri);free(fd);x(ez0()))F(n,fd[i]=-1)B kf=n<=256;   //kf: keep the files open, to sync them together
+ DL rt={0},st={0},ds={0};B sw[64]={0};U w=0,k=0;B ok=1;   //roots, their stages, in step (sw: the root is there, a swap); directories to sync
+ // a table written whole whose directory is there: its directory is a root to swap
+ for(U i=0;ok&&i<n;i++){A a=_A(x)[i];if(_t(a)!=tA||_n(a)!=4){et0();ok=0;break;}
+  if(!dpath(*_A(a),path,DPB-32)){dpe(*_A(a));ok=0;break;}
+  N l=SL(path);if(l>3&&!strcmp(path+l-3,"/.d")&&rt.n<64){dpar(path,r,SZ r);if(disd(r)&&dlix(&rt,r)<0){dstg(r,s,SZ s,"tmp");drmr(s);
+   if(!dladd(&rt,r)||!dladd(&st,s)){ez0();ok=0;break;}sw[rt.n-1]=1;}}}
+ for(U i=0;ok&&i<n;i++){A a=_A(x)[i];dpath(*_A(a),path,DPB-32);I j=-1;
+  if(dmiss(path,r)){j=dlix(&rt,r);if(j<0&&rt.n<64){dstg(r,s,SZ s,"tmp");drmr(s);if(!dladd(&rt,r)||!dladd(&st,s)){ez0();ok=0;break;}j=(I)rt.n-1;}}
+  else{dpar(path,r,SZ r);j=dlix(&rt,r);}
+  ri[i]=j;if(j>=0){snprintf(s,SZ s,"%s%s",st.v[j],path+SL(rt.v[j]));sp[i]=strdup(s);}else sp[i]=strdup(path);
+  if(!sp[i]){ez0();ok=0;}}
+ for(;ok&&w<n;w++)if(!dwt(_A(x)[w],sp[w],tmp,kf?fd+w:0)){ok=0;break;}   //w, k: how many written, renamed
+ if(ok&&dsyall(fd,w)){errno=EIO;eo0();ok=0;}
+ for(U i=0;i<n;i++)if(fd[i]>=0){if(close(fd[i])&&ok){eo0();ok=0;}fd[i]=-1;}
+ for(;ok&&k<n;k++){snprintf(tmp,SZ tmp,"%s.tmp",sp[k]);if(rename(tmp,sp[k])){eo0();ok=0;break;}}
+ /* the directories the renames changed are synced once, at the end: a file's own directory when it went straight in,
+  * the stage's parent when a stage did. What the files and directories inside a stage hold is journaled before the
+  * stage's rename on every journaling file system (ext4, XFS, APFS, NTFS), so it isn't synced on its own: two waits
+  * for the disk a partition, not six. Where nothing is journaled, a crash can lose the newest write, never the old */
+ if(ok){for(N j=0;ok&&j<rt.n;j++){C*R=rt.v[j],*T=st.v[j];
+   if(!sw[j]){if(rename(T,R)){eo0();ok=0;break;}}
+   else{dstg(R,s,SZ s,"old");drmr(s);
+    if(!rename(R,s)){if(rename(T,R)){I e=errno;rename(s,R);errno=e;eo0();ok=0;break;}drmr(s);}
+    else for(U i=0;i<n;i++)if(ri[i]==(I)j){dpath(*_A(_A(x)[i]),path,DPB-32);if(rename(sp[i],path)){eo0();ok=0;break;}}}   //one by one
+   dpar(R,s,SZ s);dladd(&ds,s);}
+  for(U i=0;i<n;i++)if(ri[i]<0){dpar(sp[i],s,SZ s);dladd(&ds,s);}
+  dfsdl(&ds);}
+ if(!ok){for(U i=k;i<w;i++){snprintf(tmp,SZ tmp,"%s.tmp",sp[i]);unlink(tmp);}}
+ for(N j=0;j<st.n;j++)drmr(st.v[j]);   //a stage renamed in is gone; one the files went out of one by one is cleared
+ for(U i=0;i<n;i++)free(sp[i]);free(sp);free(ri);free(fd);dlfree(&rt);dlfree(&st);dlfree(&ds);
+ P(!ok,x(0))A z=aA(n);F(n,_A(z)[i]=_R(*_A(_A(x)[i])))mr(x);return z;}
 A wcolT(A x){
  P(_t(x)==tA&&_n(x)&&_t(*_A(x))==tA,wcolN(x))
- C path[4096],tmp[4100];P(!dwt(x,path,tmp),x(0))
- if(rename(tmp,path)){unlink(tmp);return x(eo0());}
- A r=_R(*_A(x));mr(x);return r;}
+ A l=aA(1);_A(l)[0]=x;A r=wcolN(l);P(!r,0)A z=_R(*_A(r));mr(r);return z;}
 A wcolqT(A x){dqf=1;A r=wcolT(x);dqf=0;return r;}   //`wcq: as `wcol, in q's files (dwtq)
+
+/* `dlk dir: an exclusive lock on directory dir (made when it isn't there), held until `duk of what it gives back.
+ * hdb.k holds it from reading a database's sym file to writing it back, so two processes adding symbols to one
+ * database can't lose each other's names. flock is advisory and q doesn't take it; where a system can't lock a
+ * directory it goes on unlocked, as before. */
+A dlkT(A x){C p[4200];P(!dpath(x,p,4096-8),x(dpe(x)))N l=SL(p);p[l]='/';p[l+1]='x';p[l+2]=0;dmkp(p);p[l]=0;
+ I f=open(p,O_RDONLY);P(f<0,x(eo0()))while(flock(f,LOCK_EX)&&errno==EINTR);mr(x);return ai(f);}
+A dukT(A x){P(!_tz(x),x(et0()))I f=(I)gl(x);mr(x);P(f<3,et0())flock(f,LOCK_UN);close(f);return au;}
+/* `drc dir: settles what a write that died left in dir (see the top): .name.amber-old with no name is a swap cut
+ * between its renames, so the stage, complete by then, goes in (or the old one back when there's no stage); then
+ * every .name.amber-old and .name.amber-tmp left is removed, and every file.tmp (a file a write died in before its
+ * rename: q's \l would take it for a table). Run it holding the database's lock (hdb.k does). */
+A drcT(A x){C p[DPB],a[DPB],b[DPB],c[DPB];P(!dpath(x,p,DPB-300),x(dpe(x)))mr(x);DIR*d=opendir(p);P(!d,au)DL o={0},t={0};ST dirent*e;
+ while((e=readdir(d))){CO C*m=e->d_name;N l=SL(m);
+  if(l>4&&!strcmp(m+l-4,".tmp")){snprintf(b,SZ b,"%s/%s",p,m);struct stat st;if(!lstat(b,&st)&&S_ISREG(st.st_mode))unlink(b);continue;}
+  if(m[0]!='.'||l<12)continue;
+  if(!strcmp(m+l-10,".amber-old"))dladd(&o,m);else if(!strcmp(m+l-10,".amber-tmp"))dladd(&t,m);}
+ closedir(d);
+ for(N i=0;i<o.n;i++){CO C*m=o.v[i];I l=(I)SL(m)-11;snprintf(a,SZ a,"%s/%.*s",p,l,m+1);snprintf(b,SZ b,"%s/%s",p,m);
+  snprintf(c,SZ c,"%s/.%.*s.amber-tmp",p,l,m+1);struct stat st;
+  if(lstat(a,&st)){if(!rename(c,a)||!rename(b,a))dfsd(p);}
+  drmr(b);}
+ for(N i=0;i<t.n;i++){snprintf(b,SZ b,"%s/%s",p,t.v[i]);drmr(b);}
+ dlfree(&o);dlfree(&t);return au;}
 
 // the payload of a column file as a vector of type t and count n: mapped when it can be, read otherwise
 Z A dload(I f,UC t,W n,W nb){
@@ -266,4 +359,7 @@ A rcolT(A x){return x(en0());}
 A wcolqT(A x){return x(en0());}
 A fszT(A x){return x(en0());}
 A ldirT(A x){return x(en0());}
+A dlkT(A x){return x(en0());}
+A dukT(A x){return x(en0());}
+A drcT(A x){return x(en0());}
 #endif

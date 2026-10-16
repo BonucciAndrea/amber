@@ -113,9 +113,9 @@ Amber follows a terse **array grammar**, which differs from q in a few ways you 
   union except ss sv vs xasc xdesc`) may be written `x f y` just like q, as well as
   `f[x;y]`: `t lj kt`, `2 3 in 1 2`, `5 within 3 9`, `` `sym xasc t``, `` "/" sv `a`b`c`` all work,
   and are identical to the bracket call. Built‑in verbs
-  (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) are infix as usual. An *arbitrary* user lambda is
-  still bracket/prefix only (`{x+y}[a;b]`, not `a {x+y} b`); see the CHANGELOG for why lambda
-  infix is excluded.
+  (`+ - * % ! & | < > = ~ , ^ # _ $ ? @ .`) are infix as usual. A name bound to a function of two
+  arguments is infix too, as in q: `f:{x+y}; 3 f 4` is `7`, and so are the q layer's `wavg` `xbar`.
+  A lambda written in place isn't (`3 {x+y} 4` is `'type`), as in q.
 * **`<>` `>=` `<=` work as in q (since 2.8.0)** after a name, a number or a closing bracket: `x<>y`,
   `x>=y`. Anywhere else `<` and `>` keep their k reading (`<>x` is the grade of the grade down).
 * **`if`, `do` and `while` are there (since 2.8.0)**, as in q: `{r:0;do[3;r+:1];r}`, `while[x>1;x:x div 2]`,
@@ -933,12 +933,26 @@ select sum sz by sym from trade where date=2026.01.02
   already loaded then keeps the old file. A file rewritten in place under a loaded column (by `0:`
   or `1:`, `cp`, an append from q or another tool) can show through in the column (on Linux it
   does), and one cut short can make reading the column fault (SIGBUS on Linux).
-  A splayed table's files (and the sym file's new names) are all written before
-  any is renamed, `.d` last, so a `set` that fails leaves the old table; until the renames the disk
-  holds both tables. That holds after a `set`, not during one: a reader that loads the table while
-  the files are being renamed can still see some old and some new. Two `set`s into one database at
-  once share its `sym.tmp`, so run them one at a time. Symbols are stored as indexes into the database's `sym` file (it only grows).
-  Anything nested goes in as `` `ser `` bytes (Amber's own format).
+  Anything nested goes in as `` `ser `` bytes (Amber's own format). Symbols are stored as indexes into the
+  database's `sym` file (it only grows).
+* **Crashes (2.9.1).** A table is written whole or not at all, even when the process is killed or the
+  machine loses power halfway:
+  * Every file is fsynced before it's renamed in, and the directories after.
+  * A new table or partition is written under a hidden name next to it (`.name.amber-tmp`) and renamed in
+    once it's all there.
+  * A table rewritten whole is built the same way, then swapped in by two renames. A crash between them is
+    finished the next time the database is loaded, or written.
+  * Two processes adding symbols to one database take turns: the database's directory is locked (`flock`)
+    from reading `sym` to writing it back.
+  * A write that fails (a full disk, a failed sync, `'io`) leaves what was there.
+  * `tests/test_durable.sh` kills the writer at each of its writes, syncs and renames and checks every table
+    is all old or all new.
+
+  The syncs cost writes about 2x (ten 1M-row partitions: 0.18 s to 0.35 s on WSL's ext4). Reads and queries
+  don't change. `AMBER_FSYNC=0` skips the syncs (the renames stay) for scratch data you'd rather write fast.
+  Directories are synced once, after the renames, which is enough on a journaling file system (ext4, XFS,
+  APFS, NTFS). On one that isn't, a crash can lose the newest write but never the old data. The lock is
+  advisory: q doesn't take it, so don't write one database from q and Amber at once.
 * **Partitioned tables.** `\l db` (or `loaddb`) finds `db/<date or int>/<table>/` and defines each
   table as a small dict naming its partitions. Nothing is read until a query asks.
   `select`/`exec` keep only the partitions the where-clause allows on the partition column, then

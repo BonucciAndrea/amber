@@ -153,6 +153,9 @@ names write the binary format too and still read the old text files (AMBER.md §
 - **Since 2.9.0:** a database kdb+ wrote loads too (q's column files, enums and sym file, with or without `.d`), and
   Amber writes q's own files into it (`.Q.dpft`, `set`), so q keeps reading it. `count`, `cols` and `tables` of a
   partitioned table are q's.
+- **Since 2.9.1:** a write survives a crash whole. Files are synced before they're renamed in, a new or rewritten
+  table is built under a hidden name and renamed in, and the sym file is locked while symbols are added (AMBER.md
+  §9e). The lock is advisory and q doesn't take it, so don't write one database from q and Amber at once.
 - **Since 2.8.0:** `upsert` in memory (a keyed table by key, else appended) and `` `t insert r `` by name, as q.
 - **Still missing:** appending to a table on disk. `upsert` and `insert` don't take a path, so no
   `` `:db/t/ upsert t `` (q appends the rows to the column files).

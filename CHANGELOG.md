@@ -4,6 +4,9 @@
 
 Fixes from running real q code, and appends that don't copy anymore.
 
+- **`?` with misses is quick again**: since 2.9.0 a miss is the count, which took two more passes over the result
+  after the find. The find writes the count itself now, 10% quicker than 2.9.0 on 100k and 1M lookups, as quick as
+  before the change.
 - **Appends in place**: `v,:x` and `` `t insert `` add to the end of the list or table when nothing else holds it, as
   q's do. They copied the whole thing every time, so a loop of them got slower as it grew: 20,000 inserts into a
   10-column tickerplant table went from 18 s to 23 ms, and `v,:1` in a loop is 110x quicker.

@@ -109,6 +109,12 @@ Z V fndL_hash(V*c_,int t){FJ*c=c_;CO V*b=c->b;V*z=c->z;U wy=c->wy,wz=c->wz,s=(U)
  L*hk=c->hk;I*hv=c->hv;U sh=c->sh;W msk=c->msk;I miss=0;FNDW(W j=((W)v*GOLD)>>sh;k=-1;W(1,B(hv[j]<0,)B(hk[j]==v,k=hv[j])j=(j+1)&msk))c->miss[t]=miss;}
 #define PFND_MIN (1u<<15)   //Below this many probes thread start-up costs more than it saves
 Z I fndrun(FJ*c,V(*fn)(V*,int))_(int nt=c->n<PFND_MIN?1:par_thread_count(c->n);c->nt=(U)nt;I(nt<2,fn(c,0))E(par_run(nt,fn,c))I m=0;F(nt,m|=c->miss[i])m)
+// Amber 2.9.1: q's ? wants a miss as x's count, not 0N. fndq names its x in fqx; fndL, finding in that x, writes the
+// count in its one pass over the result, keeps it narrow, and leaves the vector in fqr, so fndq knows fqm (a scan and
+// a rewrite of every item, 64 bits wide) has nothing to do. Any other result still goes through fqm
+Z AM_TLS A fqx,fqr;
+#define FQW(T) {T*RES r=(T*)_V(u);S4(wz,F(n,G k=_G(z)[i];r[i]=(T)(k<0?(L)m:k)),F(n,H k=_H(z)[i];r[i]=(T)(k<0?(L)m:k)),\
+  F(n,I k=_I(z)[i];r[i]=(T)(k<0?(L)m:k)),F(n,L k=_L(z)[i];r[i]=(T)(k<0?(L)m:k)))}
 Z A fndL(A x,A y,B srt)_(
  P(srt,0)
  UC s=TST(xt);P(!(s==tH||s==tI||s==tL||xtS),0)   //a temporal list as its ints. amber 2.1: symbol vectors too (interned 32-bit ids, compared by value)
@@ -143,10 +149,12 @@ Z A fndL(A x,A y,B srt)_(
    free(hk);free(hv);)
  y(0);
  P(!miss,z)
+ I(x==fqx,C t2=tZ((L)m);A u=an(n,t2);S4(t2-tG,FQW(G),FQW(H),FQW(I),FQW(L))mr(z);fqr=u;return u;)   //q's ?: the count, narrow
  // a miss: the 64-bit vector with 0N where -1 was written
  A u=aL(n);L*RES r=uV;S4(wz,F(n,G k=_G(z)[i];r[i]=k<0?NL:k),F(n,H k=_H(z)[i];r[i]=k<0?NL:k),F(n,I k=_I(z)[i];r[i]=k<0?NL:k),F(n,L k=_L(z)[i];r[i]=k<0?NL:k))
  mr(z);u)
 #undef FNDW
+#undef FQW
 #undef FNDP
 
 // ---- amber: O(n) integer `?x` (distinct) -----------------------------------
@@ -523,7 +531,7 @@ X2(fnd,
 //Amber 2.9.0: x?y of a list or a table as q's: a miss is the count of x (fnd, which the engine uses inside, keeps 0N)
 Z A fqm(A r,L n)_(P(!r||_tP(r)&&!_tz(r),r)P(_tz(r),gl_(r)==NL?(mr(r),az(n)):r)P(_t(r)==tL,B u=0;F(_n(r),u|=_L(r)[i]==NL)P(!u,r)r=mut(r);F(_n(r),I(_L(r)[i]==NL,_L(r)[i]=n))sqzZ(r))   //narrowed, as a find with no miss is
  P(_t(r)==tA,r=mut(r);F(_n(r),_A(r)[i]=fqm(_A(r)[i],n))r)P(_t(r)==tm,A k=_R(_x(r)),v=fqm(_R(_y(r)),n);mr(r);am(k,v))r)   //a dict (a find of a dict's values): its values
-Z A fndq(A x,A y)_(UC t=xt;A r=fnd(x,y);P(t<=tM,fqm(r,_N(x)))r)
+Z A fndq(A x,A y)_(UC t=xt;A ox=fqx;fqx=x;fqr=0;A r=fnd(x,y);B d=r&&r==fqr;fqx=ox;fqr=0;P(d||t>tM,r)fqm(r,_N(x)))   //fqx kept for a ? inside (a table's find runs k)
 X2(que,Rs(Z CO C s[][4] __attribute__((aligned(4)))={"j","k","hex"};G(&js0,val,unh,ed)[fI((V*)s,L(s),xv)](y))Ril(rnd(gl_(x),y))R_(fndq(x,y)))
 
 Z A2 binF;

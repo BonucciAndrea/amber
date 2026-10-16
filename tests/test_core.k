@@ -406,6 +406,11 @@ t[`findNan;{(x,1.0)?-x}0n;0]
 t[`findNanNeg;{((-x),1.0)?x}0n;0]
 t[`findNanEach;{(1.0,x)?(-x),x}0n;1 1]
 t[`findNanMiss;{1.0 2.0?-x}0n;2]   / a miss is the count, as q (2.9.0)
+/ 2.9.1: the count written in the find's own pass, by the hash and the flat-table finds, narrow; enough probes that they run
+t[`findMissHash;{v:1000000007!(!40000)*2654435761;r:v?(20000#v),20000#1+v;(r 0 19999 20000 39999;+/r=40000)}0;(0 19999 40000 40000;20000)]
+t[`findMissFlat;{r:(!40000)?(20000#!40000),20000#40000+!20000;(r 0 19999 20000 39999;@r)}0;(0 19999 40000 40000;`I)]
+t[`findMissWider;{r:(!128)?3000#5 128 -1;(5#r;@r;|/r)}0;(5 128 128 5 128;`I;128)]   / 128 needs 16 bits where the indices fit 8
+t[`findMissEach;{v:!40000;r:v?(40000#7;40000#40000);(r[0;0];r[1;0])}0;7 40000]
 t[`distinctNan;{(#?x,(-x),1.0;#?x,1.0,-x)}0n;2 2]
 t[`distinctNanLength;{#?3000#x,(-x),1.0}0n;2]
 t[`findZeroStill;1.0 -0.0?0.0;1]
@@ -1594,7 +1599,7 @@ t[`catOwnKinds;{a:1 2;a,:2.5;b:`x`y;b,:`z;c:1 2;c,:!3;d:(1;"a");d,:`q;e:01b;e,:1
 t[`catOwnGlobal;{gz0::1 2;w:gz0;gz0,:3;gz0,:4;(gz0;w)}[];(1 2 3 4;1 2)]
 t[`catOwnTable;{t:([]a:1 2;b:`x`y);u:t;t,:([]a:,3;b:,`z);t,:([]a:,4;b:,`w);c:1 2;s:([]a:c);s,:([]a:,3);(t;u;c;s)}[];(([]a:1 2 3 4;b:`x`y`z`w);([]a:1 2;b:`x`y);1 2;([]a:1 2 3))]
 
-hexpect[1012]
+hexpect[1016]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

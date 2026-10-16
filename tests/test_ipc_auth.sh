@@ -24,11 +24,13 @@ serve() {
   no "server on $P" "never listened"
 }
 # ext_ip: an address of this machine past loopback, empty if it has none
-ext_ip() { hostname -I 2>/dev/null | tr ' ' '\n' | grep -v '^127\.' | grep -m1 '^[0-9][0-9.]*$'; }
+ext_ip() { { hostname -I 2>/dev/null; ipconfig getifaddr en0 2>/dev/null; } | tr ' ' '\n' | grep -v '^127\.' | grep -m1 '^[0-9][0-9.]*$'; }
+# in10 <cmd...>: run it, killed after 10 s (macOS has no timeout, perl's alarm does the same)
+in10() { if command -v timeout > /dev/null; then timeout 10 "$@"; else perl -e 'alarm 10; exec @ARGV' "$@"; fi; }
 # try <handle> : what a client gets back, "ok 42" or the error
 try() {
   printf '%s\n' "r:@[{h:hopen x;v:h\"a\";hclose h;\"ok \",string v};$1;{\"err \",x}]" '-1 r;' 'exit 0' > "$tmp/c.q"
-  timeout 10 "$AMBER" "$tmp/c.q" 2>&1 < /dev/null | tail -1
+  in10 "$AMBER" "$tmp/c.q" 2>&1 < /dev/null | tail -1
 }
 expect() { # name got want
   if [ "$2" = "$3" ]; then ok "$1"; else no "$1" "got [$2], wanted [$3]"; fi
@@ -58,7 +60,7 @@ a:42'
 expect ".z.pw: the user as a symbol" "$(try "\`::$P:alice:x")" "ok 42"
 
 # 3. -U file: plain passwords, and md5 ones as q's files have them
-printf 'alice:pw1\nbob:%s\n' "$(printf 'pw2' | md5sum | cut -c1-32)" > "$tmp/users"
+printf 'alice:pw1\nbob:6d5779b9b85bd4f11e44c9772e0de602\n' > "$tmp/users"   # bob's is the md5 of pw2
 serve 'a:42' -U "$tmp/users"
 expect "-U: plain password" "$(try "\`::$P:alice:pw1")" "ok 42"
 expect "-U: md5 password" "$(try "\`::$P:bob:pw2")" "ok 42"

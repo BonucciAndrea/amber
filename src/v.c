@@ -334,12 +334,13 @@ Z I NM(CO T*RES p,T*RES r,N n,N w,T*RES suf){                                  \
 // combining with the suffix of the block before it (the group's first with the last group's, kept in sf[0]). The
 // same compares in the same order per block, so the same results, ties and NaN reports included. The suffix
 // buffer is then (MWVHB+1)*(w+1) items (mwvhs). Narrower windows keep the one-block loop: their chains are short.
-// So do 8-, 16- and 32-bit ints (GRP 0): their one-block loop is no slower than the grouped one.
+// So do 8-, 16- and 32-bit ints (GRP 0): their one-block loop is no slower than the grouped one; 64-bit ints
+// take the shape below.
 #define MWVHB 8u
 #define MWVHLO 64u
 #define MWVHHI 4096u
 #define mwvhg(n,w) ((w)>=MWVHLO&&(w)<=MWVHHI&&(n)>=2*MWVHB*(w))
-#define mwvhs(t,n,w) (((t)==tF||(t)==tL)&&mwvhg(n,w)?(MWVHB+1)*((w)+1):((w)<(n)?(w):(n))+1)
+#define mwvhs(t,n,w) ((t)==tF&&mwvhg(n,w)?(MWVHB+1)*((w)+1):(t)==tL&&(w)>=MWVHLO&&(n)>=2*(w)?2*((w)+1):((w)<(n)?(w):(n))+1)
 #define MWVHN0(NM,T,GT,IDV,CHK)
 #define MWVHC0(NM)
 #define MWVHC1(NM) if(mwvhg(n,w))return NM##8(p,r,n,w,suf);
@@ -360,9 +361,25 @@ Z NI I NM##8(CO T*RES p,T*RES r,N n,N w,T*RES sbuf){                           \
     for(N j=0;j<ln;j++){T v=q[j];CHK;run=(run GT v)?run:v;T u=sf[0][j+1];o[j]=(u GT run)?u:run;}\
     if(ln==w&&b+w<n){T s=IDV;for(N j=w;j-->0;){T v=q[j];s=(v GT s)?v:s;sf[0][j]=s;}}}\
   return bad;}
+// 64-bit ints (GRP 2) take a cheaper shape: one block at a time, as the one-block loop, but its forward scan and
+// its backward suffix scan in the same loop (item j forward, item w-1-j backward), the suffixes going to a second
+// buffer that the next block's forward scan reads. Two chains overlap, and the block and its suffixes stay in L1 as
+// in the one-block loop. The same compares in the same order per scan, so the same results.
+#define MWVHN2(NM,T,GT,IDV,CHK)                                                \
+Z NI I NM##2(CO T*RES p,T*RES r,N n,N w,T*RES sbuf){                           \
+  I bad=0;T*sa=sbuf,*sb=sbuf+w+1;for(N j=0;j<=w;j++)sa[j]=IDV;sb[w]=IDV;        \
+  N b=0;for(;b+w<n;b+=w){CO T*RES q=p+b;T*RES o=r+b;T run=IDV,s=IDV;            \
+    for(N j=0;j<w;j++){T v=q[j];CHK;run=(run GT v)?run:v;T u=sa[j+1];o[j]=(u GT run)?u:run;\
+      N k=w-1-j;T x=q[k];s=(x GT s)?x:s;sb[k]=s;}                               \
+    {T*t=sa;sa=sb;sb=t;}}                                                      \
+  {CO T*RES q=p+b;T*RES o=r+b;T run=IDV;                                       \
+    for(N j=0;j<n-b;j++){T v=q[j];CHK;run=(run GT v)?run:v;T u=sa[j+1];o[j]=(u GT run)?u:run;}}\
+  return bad;}
+#define mwvh2(n,w) ((w)>=MWVHLO&&(n)>=2*(w))
+#define MWVHC2(NM) if(mwvh2(n,w))return NM##2(p,r,n,w,suf);
 #define MWVH2(T,SFX,LO,HI,CHK,GRP) MWVH(mvmax##SFX,T,>,LO,CHK,GRP) MWVH(mvmin##SFX,T,<,HI,CHK,GRP)
 MWVH2(G,G,(G)-128,(G)127,,0) MWVH2(H,H,(H)-32768,(H)32767,,0) MWVH2(I,I,(I)(-2147483647-1),(I)2147483647,,0)
-MWVH2(L,L,(L)NL,(L)WL,,1) MWVH2(F,F,-WF,WF,bad|=v!=v,1)
+MWVH2(L,L,(L)NL,(L)WL,,2) MWVH2(F,F,-WF,WF,bad|=v!=v,1)
 
 // Widen any supported numeric vector to double, mapping the integer nulls onto
 // 0n so the sum kernels see one uniform "absent" marker.

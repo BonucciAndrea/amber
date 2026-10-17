@@ -207,11 +207,95 @@ A wcolqT(A x){dqf=1;A r=wcolT(x);dqf=0;return r;}   //`wcq: as `wcol, in q's fil
 A dlkT(A x){C p[4200];P(!dpath(x,p,4096-8),x(dpe(x)))N l=SL(p);p[l]='/';p[l+1]='x';p[l+2]=0;dmkp(p);p[l]=0;
  I f=open(p,O_RDONLY);P(f<0,x(eo0()))while(flock(f,LOCK_EX)&&errno==EINTR);mr(x);return ai(f);}
 A dukT(A x){P(!_tz(x),x(et0()))I f=(I)gl(x);mr(x);P(f<3,et0())flock(f,LOCK_UN);close(f);return au;}
+/* 2.9.1: appending to a table on disk (q's `:db/t/ upsert t). `acl of (path;value;domain;attr) quadruples, every
+ * path in one directory, adds each value's items to the end of its column file, Amber's own (a flat vector, an enum's
+ * indexes) or q's (fe 20 flat, fd 20 enum), converting ints to the file's width: an append costs the new rows, not the
+ * table. Crash safety: each file's size and header go to dir/.amber-append (synced, renamed in) before any file is
+ * touched, then the items are written past each file's end and synced, then the headers take the new counts and are
+ * synced, then the journal goes. `drc finding a journal cuts each file back to its size and puts its header back, so
+ * a crash leaves the table as it was, never with columns of two lengths. A column it can't add to in place (`ser, a bit
+ * vector not on a byte, a different type) is 'nyi or 'type, and hdb.k rewrites the table then. Attributes are dropped. */
+#define DAJ ".amber-append"
+TD ST{C nm[256];W sz;UC h0[32],h1[16];UC n0,has1;}DAE;   //a journal entry: the file's name, its size, its first n0 bytes and 16 at 0xff0
+Z I dpwall(I f,CO V*b,W n,W off){CO C*p=b;while(n){W k0=n>((W)1<<30)?((W)1<<30):n;ssize_t k=pwrite(f,p,(N)k0,(off_t)off);if(k<0&&errno==EINTR)continue;if(k<=0)return -1;p+=k;n-=(W)k;off+=(W)k;}return 0;}
+// a journal in p, rolled back: each file cut to its old size, its old header bytes back; the journal removed
+Z V dapr(CO C*p){C j[DPB],f[DPB];snprintf(j,SZ j,"%s/" DAJ ".tmp",p);unlink(j);snprintf(j,SZ j,"%s/" DAJ,p);I d=open(j,O_RDONLY);if(d<0)return;
+ U n=0;if(read(d,&n,4)==4&&n<1000000)for(U i=0;i<n;i++){DAE e;if(read(d,&e,SZ e)!=(ssize_t)SZ e)break;e.nm[255]=0;
+  snprintf(f,SZ f,"%s/%s",p,e.nm);I g=open(f,O_WRONLY);if(g<0)continue;I r=ftruncate(g,(off_t)e.sz);
+  if(e.n0)r|=dpwall(g,e.h0,e.n0,0);if(e.has1)r|=dpwall(g,e.h1,16,0xff0);fsync(g);close(g);(V)r;}
+ close(d);unlink(j);dfsd(p);}
+// n items of int vector v (G H I L) as w-byte ints into o; 0 when one doesn't fit. q's files (am 0): bytes are 0..255
+// and a null goes to the width's null. Amber's (am 1): its narrow ints are plain signed numbers with no null (G is
+// signed, -fsigned-char), so 128 doesn't fit a byte and only a long column holds 0N; the table is rewritten wider then
+Z B dint(A v,W n,I w,UC*o,B am){UC t=_t(v);for(W i=0;i<n;i++){L x;I nul;
+  if(t==tG){x=_G(v)[i];nul=0;}else if(t==tH){x=_H(v)[i];nul=!am&&x==(L)(H)0x8000;}else if(t==tI){x=_I(v)[i];nul=!am&&x==(L)NIT;}else{x=_L(v)[i];nul=x==NL;}
+  if(am&&w<8){if(nul||x<-(1ll<<(8*w-1))||x>=(1ll<<(8*w-1)))return 0;if(w==1)o[i]=(UC)(G)x;else if(w==2){H y=(H)x;MC(o+2*i,&y,2);}else{I y=(I)x;MC(o+4*i,&y,4);}continue;}
+  if(w==1){if(nul||x<0||x>255)return 0;o[i]=(UC)x;}
+  else if(w==2){if(!nul&&(x<-32767||x>32767))return 0;H y=nul?(H)0x8000:(H)x;MC(o+2*i,&y,2);}
+  else if(w==4){if(!nul&&(x<-2147483647ll||x>2147483647ll))return 0;I y=nul?NIT:(I)x;MC(o+4*i,&y,4);}
+  else{L y=nul?NL:x;MC(o+8*i,&y,8);}}
+ return 1;}
+Z B dintt(UC t){return t==tG||t==tH||t==tI||t==tL;}
+/* what quadruple a adds to the file e describes: the bytes in *pl (*pn of them, at *off) and the new header bytes in h0
+ * and h1. 0 with the error raised when it can't */
+Z B dapp1(A a,DAE*e,UC*h0,UC*h1,UC**pl,W*pn,W*off){A v=_A(a)[1];L dn=gl_(_A(a)[2]);W sz=e->sz;
+ if(_tP(v)){en0();return 0;}
+ UC t=_t(v);W n=_n(v);UC*b=0;W m=0;
+ if(sz>=DHB&&e->n0==32&&!memcmp(e->h0,"AMBC",4)){DHdr h;MC(&h,e->h0,32);if(h.ver!=1||sz<DHB+h.nb){err0("format");return 0;}
+  if(h.kind==KENUM){if(dn<0||!dintt(t)){et0();return 0;}m=n*4;b=malloc(m?m:1);if(!b){ez0();return 0;}if(!dint(v,n,4,b,0)){free(b);et0();return 0;}h.dom=(W)dn;}
+  else if(h.kind==KFLAT){UC ft=(UC)TIC(h.typ);if(dn>=0){et0();return 0;}
+   if(dintt(ft)){if(!dintt(t)){et0();return 0;}I w=1<<(Tw[ft]-3);m=n*(W)w;b=malloc(m?m:1);if(!b){ez0();return 0;}if(!dint(v,n,w,b,1)){free(b);en0();return 0;}}   //wider than the file's ints: rewritten wider
+   else{if(ft!=t){et0();return 0;}if(t==tB&&(h.cnt&7)){en0();return 0;}m=dbytes(t,n);b=malloc(m?m:1);if(!b){ez0();return 0;}MC(b,_V(v),(N)m);}}
+  else{en0();return 0;}   //`ser and the old time kind: rewritten whole
+  *off=DHB+h.nb;h.cnt+=n;h.nb+=m;h.att=0;MC(h0,&h,32);}
+ else if(sz>=16&&e->h0[0]==0xfe&&e->h0[1]==0x20){UC q=e->h0[2];if(q>=20||!qtW[q]||dn>=0){et0();return 0;}W w=qtW[q];
+  /* an attribute keeps its index after the items, and writing over that the journal couldn't undo: rewritten whole */
+  {L c;MC(&c,e->h0+8,8);if(e->h0[3]||(c&&16+(W)c*w!=sz)||(sz-16)%w){en0();return 0;}}
+  m=n*w;b=malloc(m?m:1);if(!b){ez0();return 0;}
+  B good=1;
+  if(q>=4&&q<=7)good=dintt(t)&&dint(v,n,(I)w,b,0);   //byte short int long
+  else if(q==1){good=t==tB;if(good)for(W i=0;i<n;i++)b[i]=(UC)(((UC*)_V(v))[i>>3]>>(i&7)&1);}
+  else if(q==8){good=t==tF;if(good)for(W i=0;i<n;i++){float g=(float)_F(v)[i];MC(b+4*i,&g,4);}}
+  else{good=t<=tSP&&qtO[t]==q;if(good)MC(b,_V(v),(N)m);}
+  if(!good){free(b);et0();return 0;}
+  *off=sz;L c;MC(&c,e->h0+8,8);if(c){c+=(L)n;MC(h0+8,&c,8);}}   //q leaves the count 0 at times: the size says it then
+ else if(sz>=0x1000&&e->has1&&e->h0[0]==0xfd&&e->h0[1]==0x20&&e->h1[2]==20){if(dn<0||!dintt(t)){et0();return 0;}
+  {L c;MC(&c,e->h1+8,8);if(e->h1[3]||(c&&0x1000+(W)c*8!=sz)||(sz-0x1000)%8){en0();return 0;}}   //as above: an attribute, rewritten whole
+  m=n*8;b=malloc(m?m:1);if(!b){ez0();return 0;}
+  if(!dint(v,n,8,b,0)){free(b);et0();return 0;}*off=sz;L c;MC(&c,e->h1+8,8);if(c){c+=(L)n;MC(h1+8,&c,8);}}
+ else{en0();return 0;}
+ *pl=b;*pn=m;return 1;}
+A acolT(A x){if(_t(x)!=tA||!_n(x)||_t(*_A(x))!=tA)return x(et0());U n=_n(x);if(dwdup(x))return x(ed0());
+ C dir[DPB],path[DPB],j[DPB],jt[DPB];DAE*e=calloc(n,SZ(DAE));I*fd=malloc(n*SZ(I));UC**pl=calloc(n,SZ(UC*));W*pn=calloc(n,SZ(W)),*of=calloc(n,SZ(W));
+ UC(*h0)[32]=calloc(n,32);UC(*h1)[16]=calloc(n,16);B ok=1,jw=0;
+ if(!e||!fd||!pl||!pn||!of||!h0||!h1){ez0();ok=0;}else for(U i=0;i<n;i++)fd[i]=-1;
+ for(U i=0;ok&&i<n;i++){A a=_A(x)[i];if(_t(a)!=tA||_n(a)!=4){et0();ok=0;break;}
+  if(!dpath(*_A(a),path,DPB-300)){dpe(*_A(a));ok=0;break;}
+  dpar(path,j,SZ j);if(!i)MC(dir,j,SL(j)+1);else if(strcmp(dir,j)){ed0();ok=0;break;}   //one directory, one journal
+  CO C*bn=strrchr(path,'/');bn=bn?bn+1:path;if(SL(bn)>=255){ed0();ok=0;break;}MC(e[i].nm,bn,SL(bn)+1);
+  I f=open(path,O_RDWR);if(f<0){eo0();ok=0;break;}fd[i]=f;struct stat st;if(fstat(f,&st)){eo0();ok=0;break;}
+  W sz=(W)st.st_size;e[i].sz=sz;e[i].n0=(UC)(sz<32?sz:32);if(e[i].n0&&drall(f,e[i].h0,e[i].n0,0)){eo0();ok=0;break;}
+  if(sz>=0x1000){e[i].has1=1;if(drall(f,e[i].h1,16,0xff0)){eo0();ok=0;break;}}
+  MC(h0[i],e[i].h0,32);MC(h1[i],e[i].h1,16);if(!dapp1(a,&e[i],h0[i],h1[i],&pl[i],&pn[i],&of[i])){ok=0;break;}}
+ if(ok){snprintf(j,SZ j,"%s/" DAJ,dir);snprintf(jt,SZ jt,"%s/" DAJ ".tmp",dir);I jf=open(jt,O_WRONLY|O_CREAT|O_TRUNC,0644);
+  if(jf<0||dwall(jf,&n,4)||dwall(jf,e,(W)n*SZ(DAE))||dfsy(jf)){eo0();ok=0;}if(jf>=0&&close(jf)&&ok){eo0();ok=0;}
+  if(ok&&rename(jt,j)){eo0();ok=0;}if(!ok)unlink(jt);else{jw=1;dfsd(dir);}}
+ for(U i=0;ok&&i<n;i++)if(pn[i]&&dpwall(fd[i],pl[i],pn[i],of[i])){eo0();ok=0;}
+ if(ok&&dsyall(fd,n)){errno=EIO;eo0();ok=0;}
+ for(U i=0;ok&&i<n;i++)if((e[i].n0&&dpwall(fd[i],h0[i],e[i].n0,0))||(e[i].has1&&dpwall(fd[i],h1[i],16,0xff0))){eo0();ok=0;}
+ if(ok&&dsyall(fd,n)){errno=EIO;eo0();ok=0;}
+ if(fd)for(U i=0;i<n;i++)if(fd[i]>=0)close(fd[i]);
+ if(jw){if(ok){unlink(j);dfsd(dir);}else dapr(dir);}   //done, or the files back as they were
+ if(pl)for(U i=0;i<n;i++)free(pl[i]);
+ free(e);free(fd);free(pl);free(pn);free(of);free(h0);free(h1);
+ if(!ok)return x(0);
+ A z=aA(n);for(U i=0;i<n;i++)_A(z)[i]=_R(*_A(_A(x)[i]));mr(x);return z;}
+
 /* `drc dir: settles what a write that died left in dir (see the top): .name.amber-old with no name is a swap cut
  * between its renames, so the stage, complete by then, goes in (or the old one back when there's no stage); then
- * every .name.amber-old and .name.amber-tmp left is removed, and every file.tmp (a file a write died in before its
+ * every .name.amber-old and .name.amber-tmp left is removed (an append's journal rolled back first, see acolT), and every file.tmp (a file a write died in before its
  * rename: q's \l would take it for a table). Run it holding the database's lock (hdb.k does). */
-A drcT(A x){C p[DPB],a[DPB],b[DPB],c[DPB];P(!dpath(x,p,DPB-300),x(dpe(x)))mr(x);DIR*d=opendir(p);P(!d,au)DL o={0},t={0};ST dirent*e;
+A drcT(A x){C p[DPB],a[DPB],b[DPB],c[DPB];P(!dpath(x,p,DPB-300),x(dpe(x)))mr(x);dapr(p);DIR*d=opendir(p);P(!d,au)DL o={0},t={0};ST dirent*e;
  while((e=readdir(d))){CO C*m=e->d_name;N l=SL(m);
   if(l>4&&!strcmp(m+l-4,".tmp")){snprintf(b,SZ b,"%s/%s",p,m);struct stat st;if(!lstat(b,&st)&&S_ISREG(st.st_mode))unlink(b);continue;}
   if(m[0]!='.'||l<12)continue;
@@ -362,4 +446,5 @@ A ldirT(A x){return x(en0());}
 A dlkT(A x){return x(en0());}
 A dukT(A x){return x(en0());}
 A drcT(A x){return x(en0());}
+A acolT(A x){return x(en0());}
 #endif

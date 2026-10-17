@@ -516,7 +516,7 @@ binr:{(#x)-1+(|-x)'-y}                          / the first index of sorted x at
 inv:{`minv x}                                   / a square matrix's inverse (Gauss-Jordan, partial pivots; src/w.c), as q
 fkeys:{(0#`)!0#`}                               / Amber tables have no foreign keys
 xcol:{[n;t]$[iskeyed t;xkey[(#keys t)#n,(#n)_keys t;xcol[n;unkey t]];[c:cols t;+(n,(#n)_c)!. +t]]}   / renames the first #n columns, as q
-upsert:{[t;r]$[`s~@t;[.[t;();:;upsert[. t;r]];t];iskeyed t;qupk[t;qukt[t;r]];insert[t;r]]}
+upsert:{[t;r]$[`s~@t;$[":"~*$t;hdb.app[t;r];[.[t;();:;upsert[. t;r]];t]];iskeyed t;qupk[t;qukt[t;r]];insert[t;r]]}
 qupk:{[t;r]k:keys t;$[(1=#k)&(k~keys r)&(cols t)~cols r;[c:*k;i:(t0:!t)[c]?(r0:!r)c;f:&i<#t0 c;n:&i=#t0 c;v:.t;w:.r;(+(,c)!,(t0 c),(r0 c)n)!+(!+v)!{[i;f;n;a;b]@[a;i f;:;b f],b n}[i;f;n]'[. +v;. +w]];t,r]}   / one key column: r's rows found by it, replaced, and the new ones added; else t,r   / a keyed table's rows by key, replaced or added; else appended, as q
 qukt:{[t;r]$[iskeyed r;r;`M~@r;xkey[keys t;r];`m~@r;xkey[keys t;+(!r)!,'. r];xkey[keys t;+(cols t)!,'r]]}
 tables:{d:. 0#`;k:!d;v:. d;asc k@&(~"."in'$k)&{$[(`M~@x)|iskeyed x;1;`m~@x;in[`amberpt;!x];0]}'v}   / the global tables' names, as q (. 0#` is every global) (2.9.0: a partitioned one too)

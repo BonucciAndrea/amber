@@ -953,6 +953,18 @@ select sum sz by sym from trade where date=2026.01.02
   Directories are synced once, after the renames, which is enough on a journaling file system (ext4, XFS,
   APFS, NTFS). On one that isn't, a crash can lose the newest write but never the old data. The lock is
   advisory: q doesn't take it, so don't write one database from q and Amber at once.
+* **Appending (2.9.1).** `` `:db/t/ upsert t `` (or `` `:db/2026.01.02/t/ upsert t ``) adds the rows to the end
+  of each column file, as q's does, so it costs the new rows and not the table:
+  * The new symbols go to the sym file first.
+  * Ints are written at the column's width.
+  * q's files grow in q's format, so q keeps reading them.
+  * The columns have to be the table's (`'mismatch`). A keyed table is `'type`. A table not there yet is
+    written whole.
+  * Some columns can't grow in place: a nested one, ints too wide for the column's width (Amber keeps ints
+    narrow), and a q column with an attribute (q keeps its index after the items). Then the table is
+    rewritten, old rows and new, and the attribute is dropped. Appending also drops a column's attribute.
+  * Each file's size and header go to a journal (`.amber-append`) before anything is written. A crash
+    halfway is rolled back on the next load, so a table never has columns of two lengths.
 * **Partitioned tables.** `\l db` (or `loaddb`) finds `db/<date or int>/<table>/` and defines each
   table as a small dict naming its partitions. Nothing is read until a query asks.
   `select`/`exec` keep only the partitions the where-clause allows on the partition column, then

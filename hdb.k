@@ -40,7 +40,11 @@ hdb.enum:{[db;v]hdb.lk[db;hdb.enm0[db;v]]}
 / hdb.rc d settles what a write that died left in directory d (src/dsk.c `drc); hdb.rp p does it for a table p that
 / isn't there, under its directory's lock, before p is read
 hdb.rc:{[d]$[-2=`fsz d;`drc d;0]}
-hdb.rp:{[p]$[-1=`fsz p;[d:hdb.par p;$[-2=`fsz d;hdb.lk[d;{[d;z]hdb.rc d}[d]];0]];0]}
+hdb.rp:{[p]$[-1=`fsz p;[d:hdb.par p;$[-2=`fsz d;hdb.lk[hdb.dbof p;{[d;z]hdb.rc d}[d]];0]];hdb.isj p;hdb.lk[hdb.dbof p;{[p;z]`drc p}[p]];0]}
+/ hdb.isj d: an append died in table d, its journal (or half of one) left (src/dsk.c `acl); hdb.rj d rolls it back,
+/ the lock held already
+hdb.isj:{[d](-1<`fsz d,"/.amber-append")|-1<`fsz d,"/.amber-append.tmp"}
+hdb.rj:{[d]$[hdb.isj d;`drc d;0]}
 hdb.enm0:{[db;v;z]d:hdb.syms db;u:?v;nw:u@&~in[u;d];$[#nw;[d:d,nw;hdb.wr[db;(hdb.symf db;d;-1;0)];hdb.symc[db;`fsz hdb.symf db;d]];0];(d?v;#d)}
 
 / ---- one value, one file -------------------------------------------------
@@ -61,6 +65,16 @@ splay:{[dir;t]dir:hdb.sl hdb.p dir;hdb.splay[dir;hdb.par dir;t]}
 hdb.dl:{[dir;s]c:hdb.cols dir;+c!{[dir;s;c]`rcol(dir,"/",$c;s)}[dir;s]'c}
 hdb.old:{[dir]cs:. `c$1:dir,"/.d";+cs!{[dir;c]. `c$1:dir,"/",$c}[dir]'cs}   / a pre-2.7 text table
 dload:{[dir]dir:hdb.sl hdb.p dir;hdb.rp dir;$[hdb.isd dir;hdb.dl[dir;hdb.syms hdb.par dir];hdb.old dir]}
+
+/ `:db/t/ upsert t (2.9.1): the rows go on the end of each column file (src/dsk.c `acl), the new symbols into the sym
+/ file first, all under the database's lock, and a crash leaves the table as it was. A table not there yet is written
+/ whole. A column `acl can't add to in place ('nyi: a `ser column) means the table is rewritten, old rows and new.
+/ The columns must be the table's ('mismatch), and a keyed table is 'type, as q's
+hdb.bn:{[p]i:&p="/";$[#i;(1+*|i)_p;p]}                          / the last name in a path
+hdb.dbof:{[p]d:hdb.par p;$[hdb.pok hdb.bn d;hdb.par d;d]}       / a table's database: above its partition when it's in one
+hdb.app:{[h;r]p:hdb.sl hdb.p h;$[(~istable r)|iskeyed r;`err"type";0];db:hdb.dbof p;hdb.lk[db;hdb.ap0[p;db;r]];h}
+hdb.ap0:{[p;db;r;z]hdb.rc p;$[-2=`fsz p;hdb.ap1[p;db;r];hdb.spl0[p;db;r;0]]}
+hdb.ap1:{[p;db;r]c:hdb.cols p;$[(asc c)~asc cols r;0;`err"mismatch"];v:(+r)c;b:`S=@'v;s:$[|/b;hdb.syms db;0#`];nw:$[|/b;[u:?,/?'v@&b;u@&~in[u;s]];0#`];$[#nw;[s:s,nw;hdb.wr[db;(hdb.symf db;s;-1;0)];hdb.symc[db;`fsz hdb.symf db;s]];0];w:{[p;s;c;v]$[`S~@v;(p,"/",$c;s?v;#s;0);(p,"/",$c;v;-1;0)]}[p;s]'[c;v];a:@[{(1b;`acl x)};w;{(0b;x)}];$[a 0;0;"nyi"~a 1;hdb.spl0[p;db;(hdb.dl[p;hdb.syms db]),r;0];`err a 1]}
 
 / ---- the q names ----------------------------------------------------------
 / `a set 5 and get`a are globals; `:path set x writes a file, and a path ending in / splays a table.
@@ -102,7 +116,7 @@ hdb.mr:{[pt;pv;r3;pb;wh;lim]pc:pt`pc;cs:hdb.need[pt;(r3 0)," ",(hdb.js pb)," ",w
 
 / loaddb["db"] maps a database the way q's \l does and returns the names it defined: a partitioned table for
 / each table found under the partitions, a splayed table for each directory with a .d, a value for each file.
-loaddb:{[db]db:hdb.sl hdb.p db;$[-2=`fsz db;hdb.lk[db;{[db;z]hdb.rc db;{[db;p]hdb.rc db,"/",p}[db]'d@&hdb.pok'd:*`ldir db}[db]];0];e:`ldir db;ds:e 0;fs:e 1;pd:ds@&hdb.pok'ds;sd:ds@&{(~hdb.pok x)&~"."=*x}'ds;sd:sd@&{[db;s]-1<`fsz db,"/",s,"/.d"}[db]'sd;fs:fs@&{(~x~"sym")&(~"."=*x)&~".tmp"~-4#x}'fs;a:{[db;s]set[`$s;dload db,"/",s];`$s}[db]'sd;b:{[db;s]set[`$s;dget db,"/",s];`$s}[db]'fs;c:$[#pd;hdb.ldp[db;pd];0#`];a,b,c}
+loaddb:{[db]db:hdb.sl hdb.p db;$[-2=`fsz db;hdb.lk[db;{[db;z]hdb.rc db;d:*`ldir db;{[db;p]hdb.rc db,"/",p;hdb.rj'(db,"/",p,"/"),/:*`ldir db,"/",p}[db]'d@&hdb.pok'd;hdb.rj'(db,"/"),/:d@&{(~hdb.pok x)&~"."=*x}'d}[db]];0];e:`ldir db;ds:e 0;fs:e 1;pd:ds@&hdb.pok'ds;sd:ds@&{(~hdb.pok x)&~"."=*x}'ds;sd:sd@&{[db;s]-1<`fsz db,"/",s,"/.d"}[db]'sd;fs:fs@&{(~x~"sym")&(~"."=*x)&~".tmp"~-4#x}'fs;a:{[db;s]set[`$s;dload db,"/",s];`$s}[db]'sd;b:{[db;s]set[`$s;dget db,"/",s];`$s}[db]'fs;c:$[#pd;hdb.ldp[db;pd];0#`];a,b,c}
 hdb.rows:{[pt]+/{[pt;p]#`rcol (pt`db),"/",(hdb.pv p),"/",($pt`t),"/",$*pt`cols}[pt]'pt`pv}   / a partitioned table's rows: one column's count a partition
 hdb.ldp:{[db;pd]pc:hdb.pcn[. *pd];tn:?,/{[db;p]d:*`ldir db,"/",p;d@&{~"."=*x}'d}[db]'pd;{[db;pc;pd;tn]ps:pd@&{[db;tn;p]-2=`fsz db,"/",p,"/",tn}[db;tn]'pd;set[`$tn;hdb.pto[db;pc;tn;ps]];`$tn}[db;pc;pd]'tn}
 

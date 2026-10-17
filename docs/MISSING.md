@@ -157,8 +157,9 @@ names write the binary format too and still read the old text files (AMBER.md §
   table is built under a hidden name and renamed in, and the sym file is locked while symbols are added (AMBER.md
   §9e). The lock is advisory and q doesn't take it, so don't write one database from q and Amber at once.
 - **Since 2.8.0:** `upsert` in memory (a keyed table by key, else appended) and `` `t insert r `` by name, as q.
-- **Still missing:** appending to a table on disk. `upsert` and `insert` don't take a path, so no
-  `` `:db/t/ upsert t `` (q appends the rows to the column files).
+- **Since 2.9.1:** `` `:db/t/ upsert t `` adds the rows to the end of each column file, as q's, the new symbols to the
+  sym file first, and a crash leaves the table as it was. A column it can't grow in place (a nested one, ints wider
+  than the column's, a q column with an attribute) has its table rewritten instead. `insert` still doesn't take a path.
 
 ## 5. IPC & the tick architecture: done (q's wire format, 2.9.0)
 **Since 2.9.0:** q's binary wire protocol, both ways: `hopen`/`hclose`, `h x` sync, `neg[h] x` async,

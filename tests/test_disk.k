@@ -291,7 +291,41 @@ t[`qNestBool;qn"b";(101b;0b;();1b;10b;0101b)]
 t[`qNestTs;qn"p";(2#2026.01.01D10:00:00.000000000;,2026.01.02D00:00:00.000000000;0#0Np;0#0Np;0Np,2026.01.01D00:00:00.000000000;,0Np)]
 t[`qNestInt;qn"i";(1 2;0N 3;!0;,7;0N;5 6 7)]
 t[`qNestTable;{v:get`$":",-1_QN;(count v;cols v;v[`s]5;v[`a]@&2<#'v`s)}[];(6;`a`s`f`b`p`i;"hello";0 1 5)]
+/ 2.9.1: `:db/t/ upsert t adds the rows to the end of each column file (src/dsk.c `acl), the new symbols to db/sym first
+A:T,"/ap";ah:`$":",A,"/ta/"   / not t: loaddb A below defines a global per table, and t is the harness
+x:ah set ([]sym:`a`b;px:1 2.0;sz:10 20;tm:09:30:00.000 09:31:00.000)
+x:ah upsert ([]sym:`c`a;px:3 4.0;sz:30 40;tm:09:32:00.000 09:33:00.000)
+t[`appendRows;get ah;([]sym:`a`b`c`a;px:1 2 3 4.0;sz:10 20 30 40;tm:09:30:00.000 09:31:00.000 09:32:00.000 09:33:00.000)]
+t[`appendSyms;`rcol A,"/sym";`a`b`c]
+x:ah upsert ([]sym:,`d;px:,5.0;sz:,1000000;tm:,11:00:00.000)   / wider than the column's ints: the table is rewritten wider
+t[`appendWiden;((get ah)`sz;`fsz A,"/ta/.amber-append");(10 20 30 40 1000000;-1)]
+te[`appendMismatch;"ah upsert ([]sym:,`z;px:,1.0)"]
+x:(`$":",A,"/n/") set ([]a:1 2;s:("ab";"cd"))
+x:(`$":",A,"/n/") upsert ([]a:,3;s:,"ef")                      / a nested column can't grow in place: rewritten
+t[`appendSer;get`$":",A,"/n";([]a:1 2 3;s:("ab";"cd";"ef"))]
+x:(`$":",A,"/new/") upsert ([]a:1 2)
+t[`appendNew;get`$":",A,"/new";([]a:1 2)]
+tr:([]sym:`ibm`msft`ibm;px:1 2 3.0;sz:1 2 3)
+x:Q.dpft[A;2026.01.01;`sym;`tr]
+x:(`$":",A,"/2026.01.01/tr/") upsert ([]sym:,`zz;px:,9.0;sz:,9)
+x:loaddb A
+t[`appendPartition;((-1#ptab[`tr;,2026.01.01])`sym;-1#`rcol A,"/sym";`fsz A,"/2026.01.01/sym");(,`zz;,`zz;-1)]
+/ into a database kdb+ wrote: q's own files grow. Its sym column has `p, kept after the items, so the first append
+/ rewrites that partition; the second goes in place. q reads both back (sessions/2026-10-16-append)
+x:`x(("/bin/cp";"-r";QD;T,"/qa");"")
+x:loaddb T,"/qa"
+qr:{[s]r:1#ptab[`qt;,2026.01.02];c:(cols r)except`date;@[+c!(+r)c;`sym;:;,s]}
+x:(`$":",T,"/qa/2026.01.02/qt/") upsert qr`zz
+x:(`$":",T,"/qa/2026.01.02/qt/") upsert qr`yy
+x:loaddb T,"/qa"
+t[`appendQ;(count qt;(ptab[`qt;,2026.01.02])`sym;-2#`rcol T,"/qa/sym");(8;`ibm`ibm`msft`zz`yy;`zz`yy)]
+/ Amber's narrow ints are signed and have no null: an empty column then 1..200 kept 128 as -128, and 0N went in as
+/ -2147483648. Both rewrite the table wider now
+eh:`$":",A,"/te/";x:eh set ([]a:`long$());i:1;do[200;x:eh upsert ([]a:1000#i);i+:1]
+t[`appendSigned;(get eh)`a;,/1000#'1+!200]
+x:(`$":",A,"/tn/") set ([]a:1000#40000);x:(`$":",A,"/tn/") upsert ([]a:5 0N)
+t[`appendNull;-3#(get`$":",A,"/tn")`a;40000 5 0N]
 rm T
-hexpect[121]
+hexpect[131]
 hreport"AMBER ON-DISK"
 $[FAILN;`exit 1;]

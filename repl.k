@@ -582,6 +582,7 @@ on disk: splayed and partitioned tables, CSV, JSON
 # TABLES ON DISK (q's layout, memory-mapped)
 `:db/t/ set t¦a file per column, symbols in db/sym
 t:get `:db/t¦map it back, pages load as they're read
+`:db/t/ upsert t¦add rows to the end of each column file
 `:f set x  get `:f¦one value in one file
 .Q.dpft[d;p;f;t]¦one partition: .Q.dpft[`:db;2026.10.15;`sym;`t]
 \l db¦open a partitioned database (loaddb "db" too)

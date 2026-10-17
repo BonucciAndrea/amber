@@ -321,7 +321,7 @@ MWDQ(G,G,0) MWDQ(H,H,0) MWDQ(I,I,0) MWDQ(L,L,0) MWDQ(F,F,v!=v)
 // deque, mmin patched where a window holds the NaN.
 #define MWVH(NM,T,GT,IDV,CHK,GRP)                                              \
   MWVHN##GRP(NM,T,GT,IDV,CHK)                                                  \
-Z I NM(CO T*RES p,T*RES r,N n,N w,T*RES suf){                                  \
+Z MWVHA##GRP I NM(CO T*RES p,T*RES r,N n,N w,T*RES suf){                       \
   MWVHC##GRP(NM)                                                               \
   N m=w<n?w:n;I bad=0;for(N j=0;j<=m;j++)suf[j]=IDV;                           \
   for(N b=0;b<n;b+=w){N ln=n-b<w?n-b:w;T run=IDV;CO T*RES q=p+b;T*RES o=r+b;   \
@@ -341,6 +341,11 @@ Z I NM(CO T*RES p,T*RES r,N n,N w,T*RES suf){                                  \
 #define MWVHHI 4096u
 #define mwvhg(n,w) ((w)>=MWVHLO&&(w)<=MWVHHI&&(n)>=2*MWVHB*(w))
 #define mwvhs(t,n,w) ((t)==tF&&mwvhg(n,w)?(MWVHB+1)*((w)+1):(t)==tL&&(w)>=MWVHLO&&(n)>=2*(w)?2*((w)+1):((w)<(n)?(w):(n))+1)
+// The floats' one-block loop (GRP 1, MWVHA1) is kept out of line: mwC, which gcc's LTO inlines the others into,
+// grew with the grouped kernels' calls, and inside it the loop's per-block setup lost registers.
+#define MWVHA0
+#define MWVHA1 NI
+#define MWVHA2
 #define MWVHN0(NM,T,GT,IDV,CHK)
 #define MWVHC0(NM)
 #define MWVHC1(NM) if(mwvhg(n,w))return NM##8(p,r,n,w,suf);

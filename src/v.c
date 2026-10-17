@@ -229,29 +229,31 @@ enum{MWSUM,MWAVG,MWVAR,MWDEV,MWMIN,MWMAX,MWCNT};
   if(i>=w){F o=p[i-w];if(o==o){s-=o;if(NEEDSS)ss-=o*o;c--;}}}
 #define MWRECOMP(NEEDSS) {F a_=0,q_=0;N k_=0;                                     \
   for(N j=i+1-w;j<=i;j++){F u=p[j];if(u==u){a_+=u;if(NEEDSS)q_+=u*u;k_++;}}s=a_;ss=q_;c=k_;}
-// Where four blocks and the w items before them hold no NaN (one vectorised test), every `v==v` above is true and
-// c is w, so a step is s+=v, s-=o: the same additions in the same order, so the same results, without the two
-// compare-selects in each lane's add chain or the count. That group runs out of line
-// (NM##G), so the per-item loops above, all that a short vector runs, stay as they were. A group with a NaN runs
-// the interleaved code above, also out of line (NM##O) and with MWSTEPN for MWSTEP: a group starts at B>=w, so
-// MWSTEP's i>=w is always true there. The test stops at the first NaN it finds, and after a group with a NaN the
-// next `skip` groups go to NM##O untested: skip is 0 after the first, then 1, 2, 4... after each further tested
-// group with a NaN, and a tested NaN-free group resets the count. So a lone NaN costs only its own group, and a
-// vector with a NaN in every group is tested in about log2 of its groups, where the test would only have added
-// to the old code.
+// Where four blocks and the w items before them hold no NaN, every `v==v` above is true and c is w, so a step is
+// s+=v, s-=o: the same additions in the same order, so the same results, without the two compare-selects in each
+// lane's add chain or the count. NM##G runs a group that way, out of line, so the per-item loops above, all that a
+// short vector runs, stay as they were. It needs no pass of its own to find a NaN: one that enters a lane's sum
+// keeps it NaN, so NM##G looks at its four sums every MWGCHK steps and at the end, and returns 1 at the first NaN
+// (an infinity leaving the window makes one too; that group then goes the other way, with the same results).
+// A group with a NaN is then redone by the interleaved code above, also out of line (NM##O) and with MWSTEPN for
+// MWSTEP: a group starts at B>=w, so MWSTEP's i>=w is always true there. After a group with a NaN the next `skip`
+// groups go to NM##O directly: skip is 0 after the first, then 1, 2, 4... after each further group found with a
+// NaN, and a group found NaN-free resets the count. So a lone NaN costs only its own group, and a vector with a
+// NaN in every group tries NM##G on about log2 of its groups, each abandoned within MWGCHK steps of its NaN.
 #define MWSTEPN(NEEDSS) {F v=p[i];if(v==v){s+=v;if(NEEDSS)ss+=v*v;c++;}            \
   F o=p[i-w];if(o==o){s-=o;if(NEEDSS)ss-=o*o;c--;}}
 #define MWSTEPF(NEEDSS) {F v=p[i],o=p[i-w];s+=v;if(NEEDSS)ss+=v*v;s-=o;if(NEEDSS)ss-=o*o;}
 #define MWRECOMPF(NEEDSS) {F a_=0,q_=0;for(N j=i+1-w;j<=i;j++){F u=p[j];a_+=u;if(NEEDSS)q_+=u*u;}s=a_;ss=q_;}
 #define MWLANE(NEEDSS,EMIT,b,j) {N i=(k+(b))*B+(j);F s=S_[b],ss=Q_[b];MWSTEPF(NEEDSS)r[i]=(EMIT);S_[b]=s;Q_[b]=ss;}
-Z NI B mwnan(CO F*RES p,N n){N i=0;
-  for(;i+64<=n;i+=64){U a=0;for(N j=0;j<64;j++)a|=p[i+j]!=p[i+j];if(a)return 1;}
-  U a=0;for(;i<n;i++)a|=p[i]!=p[i];return a!=0;}
+#define MWGCHK 512
+#define MWNAN4 ((S_[0]!=S_[0])|(S_[1]!=S_[1])|(S_[2]!=S_[2])|(S_[3]!=S_[3]))
 #define MWRUN(NM,NEEDSS,EMIT)                                                  \
-Z NI V NM##G(CO F*RES p,F*RES r,N k,N w){CO N B=(N)MW_RESYNC;                  \
+Z NI B NM##G(CO F*RES p,F*RES r,N k,N w){CO N B=(N)MW_RESYNC;                  \
   F S_[4],Q_[4];CO N c=w;(V)c;                                                 \
   for(U b=0;b<4;b++){N i=(k+b)*B;F s,ss;MWRECOMPF(NEEDSS)r[i]=(EMIT);S_[b]=s;Q_[b]=ss;}\
-  for(N j=1;j<B;j++)for(U b=0;b<4;b++)MWLANE(NEEDSS,EMIT,b,j)}                 \
+  for(N j0=1;j0<B;j0+=MWGCHK){if(MWNAN4)return 1;N e=j0+MWGCHK<B?j0+MWGCHK:B;   \
+    for(N j=j0;j<e;j++)for(U b=0;b<4;b++)MWLANE(NEEDSS,EMIT,b,j)}               \
+  return MWNAN4;}                                                              \
 Z NI V NM##O(CO F*RES p,F*RES r,N k,N w){CO N B=(N)MW_RESYNC;                  \
   F S_[4],Q_[4];N C_[4];                                                       \
   for(U b=0;b<4;b++){N i=(k+b)*B;F s,ss;N c;MWRECOMP(NEEDSS)r[i]=(EMIT);S_[b]=s;Q_[b]=ss;C_[b]=c;}\
@@ -264,8 +266,8 @@ Z V NM(CO F*RES p,F*RES r,N n,N w){                                            \
   N nb=(n+B-1)/B,k=1,skip=0,nx=0;                                              \
   for(;k+4<=nb&&(k+4)*B<=n;k+=4){                                              \
     if(skip)skip--;                                                            \
-    else if(mwnan(p+k*B-w,4*B+w)){skip=nx;nx=nx?2*nx:1;}                       \
-    else{nx=0;NM##G(p,r,k,w);continue;}                                        \
+    else if(NM##G(p,r,k,w)){skip=nx;nx=nx?2*nx:1;}                             \
+    else{nx=0;continue;}                                                       \
     NM##O(p,r,k,w);}                                                           \
   for(;k<nb;k++){N i0=k*B,e=n<i0+B?n:i0+B;F s,ss;N c;                            \
     {N i=i0;MWRECOMP(NEEDSS)r[i]=(EMIT);}                                       \

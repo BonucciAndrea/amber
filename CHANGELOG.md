@@ -27,6 +27,9 @@ Fixes from running real q code, and appends that don't copy anymore.
 - **Fixed**: `value` of text with a query in it, as in `value "select from t where a>2"` (it was `'a`).
 - **kdb+ string columns**: `\l db` reads q's nested columns too (a string per row, or a list), so a table with a
   string column loads. It was `'nyi`.
+- **Quicker finds, grouped sums and `x[]+:1`**: `x?y` and `in` pick a way by the probes' shape, so ten keys into a
+  dict of a million are 30x quicker, two dicts of string keys join 30x quicker and `?x` is 7x. `select .. by` is up to
+  2x from 512 rows, and `x[]+:1` on a list of numbers is one add over the list (300x on 10k items).
 
 ## 2.9.0
 

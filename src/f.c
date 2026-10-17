@@ -10,10 +10,37 @@ Z U fH(CO H*a,U n,H v)_(U i=0;W(i<n&&a[i]!=v,i++)i)
   U fI(CO I*a,U n,I v)_(U i=0;W(i<n&&a[i]!=v,i++)i)
   U fL(CO L*a,U n,L v)_(U i=0;W(i<n&&a[i]!=v,i++)i)
 
+// find's scans (fGL..fLL), under clang: the first 8 items one by one, as before (a key there costs no more), then 64
+// bytes at a time in a loop with no exit inside it, which clang vectorises (the least of item^v, unsigned, is 0 where one
+// matched: an eor and a umin a vector; at 64 bits an and of item!=v, as arm64 has no vector unsigned min there), then the
+// item in the block that matched, one by one, as is the tail. clang leaves the plain loop scalar (a key in a big
+// dict, or a few looked up there); gcc vectorises it as it is, early exit and all, and makes the
+// blocks a scalar loop, so it keeps it. Bytes keep the plain loop under both: a byte list is found through fnd's
+// 256-entry table, not these scans
+#if defined(__clang__)
+#define FBK(T,UT,f) Z U f(CO T*RES a,U n,T v)_(U i=0;W(i<n&&i<8,B(a[i]==v)i++)P(i<8,i)enum{K=64/SZ(T)};for(;i+K<=n;i+=K){UT m=(UT)-1;for(U j=0;j<K;j++){UT d=(UT)a[i+j]^(UT)v;m=d<m?d:m;}B(!m)}W(i<n&&a[i]!=v,i++)i)
+FBK(H,UH,fHv)FBK(I,U,fIv)
+Z U fLv(CO L*RES a,U n,L v)_(U i=0;W(i<n&&i<8,B(a[i]==v)i++)P(i<8,i)for(;i+8<=n;i+=8){W m=-1;for(U j=0;j<8;j++)m&=a[i+j]!=v?~0ull:0;B(!m)}W(i<n&&a[i]!=v,i++)i)
+#else
+#define FBK(T,UT,f) Z U f(CO T*RES a,U n,T v)_(U i=0;W(i<n&&a[i]!=v,i++)i)
+FBK(H,UH,fHv)FBK(I,U,fIv)FBK(L,W,fLv)
+#endif
+#undef FBK
 Z L fGL(CO V*a,U n,L v)_(P(v!=(G)v,NL)U i=fG(a,n,v);i<n?i:NL)
-Z L fHL(CO V*a,U n,L v)_(P(v!=(H)v,NL)U i=fH(a,n,v);i<n?i:NL)
-Z L fIL(CO V*a,U n,L v)_(P(v!=(I)v,NL)U i=fI(a,n,v);i<n?i:NL)
-Z L fLL(CO V*a,U n,L v)_(             U i=fL(a,n,v);i<n?i:NL)
+Z L fHL(CO V*a,U n,L v)_(P(v!=(H)v,NL)U i=fHv(a,n,v);i<n?i:NL)
+Z L fIL(CO V*a,U n,L v)_(P(v!=(I)v,NL)U i=fIv(a,n,v);i<n?i:NL)
+Z L fLL(CO V*a,U n,L v)_(             U i=fLv(a,n,v);i<n?i:NL)
+#if defined(__clang__)
+// x of 16 items or fewer (a small dict's keys): the plain loops, with no test for the blocks on each call (at most
+// one block's worth, which saves less than the tests cost)
+Z L fGLs(CO V*a,U n,L v)_(P(v!=(G)v,NL)U i=fG(a,n,v);i<n?i:NL)
+Z L fHLs(CO V*a,U n,L v)_(P(v!=(H)v,NL)U i=fH(a,n,v);i<n?i:NL)
+Z L fILs(CO V*a,U n,L v)_(P(v!=(I)v,NL)U i=fI(a,n,v);i<n?i:NL)
+Z L fLLs(CO V*a,U n,L v)_(             U i=fL(a,n,v);i<n?i:NL)
+#define FSC(m) ((m)<=16?G(&fGLs,fHLs,fILs,fLLs):G(&fGL,fHL,fIL,fLL))
+#else
+#define FSC(m) G(&fGL,fHL,fIL,fLL)
+#endif
 
 //amber 2.2: find on FLOATS went through fLL, which compares the raw 64-bit
 // words -- so -0.0 and 0.0 were two different values, while `=`, `~`, `in` and
@@ -88,6 +115,12 @@ V free(V*);
 I posix_memalign(V**,N,N);
 Z V*amal(N b)_(V*p=0;P(posix_memalign(&p,64,b),(V*)0)p)
 #define RD(w,p,i) ((w)==0?(L)((CO G*)(p))[i]:(w)==1?(L)((CO H*)(p))[i]:(w)==2?(L)((CO I*)(p))[i]:((CO L*)(p))[i])
+// The key range of find's, distinct's and in's integer keys (n>0): one loop per width, so no width is tested per item
+// and the compiler vectorises the min/max (RD in the loop tested the width on every item, and the pass was most of
+// ?x when the keys fill a small range)
+#define RNGP(T) {CO T*RES p=(CO T*)a;T l=p[0],h=l;for(U i=1;i<n;i++){T v=p[i];l=v<l?v:l;h=v>h?v:h;}*lo=l;*hi=h;}
+ZN V rngW(CO V*a,U n,U w,L*lo,L*hi){S4(w,RNGP(G),RNGP(H),RNGP(I),RNGP(L))}
+#undef RNGP
 // amber 2.3: the probe loops are specialised per (probe width, result width),
 // so no width is re-tested per element, and the result is written at the
 // narrowest width that holds an index into x -- 2 bytes for a 1000-key table,
@@ -115,14 +148,94 @@ Z I fndrun(FJ*c,V(*fn)(V*,int))_(int nt=c->n<PFND_MIN?1:par_thread_count(c->n);c
 Z AM_TLS A fqx,fqr;
 #define FQW(T) {T*RES r=(T*)_V(u);S4(wz,F(n,G k=_G(z)[i];r[i]=(T)(k<0?(L)m:k)),F(n,H k=_H(z)[i];r[i]=(T)(k<0?(L)m:k)),\
   F(n,I k=_I(z)[i];r[i]=(T)(k<0?(L)m:k)),F(n,L k=_L(z)[i];r[i]=(T)(k<0?(L)m:k)))}
-Z A fndL(A x,A y,B srt)_(
- P(srt,0)
+ZN B isfqx(A x)_(x==fqx)   //is x q's ? x: the searches below ask only where a probe missed, out of line, so no other find reads the thread-local
+// q's ? where the answers were held in o (fndP, fnd's symbol search) and one missed (0N): the result, with the count m
+// for a miss at the narrowest width that holds it, left in fqr (out of line: q's ? with a miss only)
+ZN A fqo(CO L*o,U n,L m)_(C t=tZ(m);A z=an(n,t);P(!z,0)S4(t-tG,F(n,_G(z)[i]=(G)(o[i]==NL?m:o[i])),F(n,_H(z)[i]=(H)(o[i]==NL?m:o[i])),F(n,_I(z)[i]=(I)(o[i]==NL?m:o[i])),F(n,_L(z)[i]=o[i]==NL?m:o[i]))fqr=z;z)
+// find's and in's dispatch for a list of n probes into x of m typed keys (fnd, fndL, membC), in this order, each tier
+// tried only where the ones before it declined; an x of fewer than FPM items goes to the range pass and its tables at once:
+//  - x sorted (`s): SFMIN probes or more searched together (fndS; in: membs, where n*FEWQ <= m); fewer, one by one as
+//    before (below SFMIN the lockstep's set-up costs more instructions than it saves);
+//  - n <= FPMAX(w): each probe scanned for, a vector at a time, stopping at its item, with no pass over x first (fndP,
+//    membP);
+//  - x's range (rngW): a range a flat table (find) or a bitmap (in) covers takes it;
+//  - else, where a hash over x would be built, n*FEWQ <= m: a table over the distinct probes and x read once (fndF,
+//    membf); else the hash.
+// FPMAX: past it the scans cost more than the probes' table, or x's table, where the probes are spread over x or missing
+// (scans that find their items early cost little at any count). gcc's vector scan costs more an item than clang's blocks
+#if defined(__clang__)
+#define FPMAX(w) ((w)<3?12:8)
+#else
+#define FPMAX(w) ((w)<3?9:8)
+#endif
+#define FPN 16      /* FPMAX's bound (fndP's buffer) */
+#define FPM 32
+#define FEWQ 32
+#define SFMIN 16
+// FEW PROBES against a long haystack (n*32 <= m, as bench.k's 5,000 look-ups into 5M): the table is built over the
+// distinct probes, not over the haystack, and the haystack is read once, forward, keeping each probe's first hit and
+// stopping once every probe has one. Indexing the haystack instead cost a table of 2m slots (16M for 5M items, far
+// outside the caches) for a few thousand look-ups. A bitmap of 8 bits per table slot (16 KB for 5,000 probes, in L1)
+// tells most haystack items from the probes before the table is read: its bit is the hash's next three bits below
+// the slot's. f[i] gets the index of probe i's first hit (-1 for none); the result is 1 when some probe had none, 0 when
+// all were found, -1 when out of memory (nothing written then).
+#define FEWN 0x7fffffff
+#define FEWB 3
+#define FEWP(T) {CO T*RES p=(CO T*)h;for(U i0=0;i0<m;i0+=64){U e=m-i0<64?m-i0:64;W mk=0; \
+  for(U k=0;k<e;k++){W q=((W)(L)p[i0+k]*GOLD)>>sb;mk|=((bm[q>>6]>>(q&63))&1)<<k;} \
+  while(mk){U i=i0+(U)__builtin_ctzll(mk);mk&=mk-1;L v=(L)p[i]; \
+   for(W j=((W)v*GOLD)>>(64-lg);hv[j]>=0;j=(j+1)&msk)if(hk[j]==v){if(hv[j]==FEWN){hv[j]=(I)i;if(++fd==nd)goto all;}break;}}}}
+ZN I fndfew(CO V*h,U m,U wh,CO V*pr,U n,U wp,I*f){
+ W cap=16;U lg=4;while(cap<2*(W)n){cap<<=1;lg++;}
+ W msk=cap-1,nb=cap<<FEWB;U sb=64-(lg+FEWB);
+ L*hk=amal((N)cap*SZ(L));I*hv=hk?amal((N)cap*SZ(I)):0;U*sl=hv?amal((N)n*SZ(U)):0;W*bm=sl?amal((N)(nb>>6)*SZ(W)):0;
+ if(!bm){free(hk);free(hv);free(sl);return -1;}
+ MS(hv,0xff,(N)cap*SZ(I));MS(bm,0,(N)(nb>>6)*SZ(W));
+ U nd=0,fd=0;
+ for(U i=0;i<n;i++){L v=RD(wp,pr,i);W q=((W)v*GOLD)>>sb,j=q>>FEWB;
+  while(hv[j]>=0&&hk[j]!=v)j=(j+1)&msk;
+  if(hv[j]<0){hk[j]=v;hv[j]=FEWN;nd++;bm[q>>6]|=1ull<<(q&63);}   // FEWN: a probe not yet found
+  sl[i]=(U)j;}
+ // 64 items at a time: their bitmap bits into one word without a branch (most items are no probe, and a test per
+ // item mispredicted on every bitmap hit), then the table for each bit set, in order, so the first hit stays first
+ S4(wh,FEWP(G),FEWP(H),FEWP(I),FEWP(L))
+ all:;
+ I ms=0;for(U i=0;i<n;i++){I k=hv[sl[i]];k=k==FEWN?-1:k;f[i]=k;ms|=k<0;}
+ free(hk);free(hv);free(sl);free(bm);
+ return ms?1:0;}
+#undef FEWP
+#undef FEWB
+#undef FEWN
+// fndL's few probes, out of line: x's data a (m items, width wa), the probes b (n, width wb); the result as fndL's (the
+// narrowest width that holds an index into x, or 64 bits with 0N when one is missing; q's ? (x is fqx): the count for a
+// miss, at the narrowest width that holds it); 0 when out of memory
+ZN A fndF(CO V*a,U m,U wa,CO V*b,U n,U wb,A x){I*f=amal((N)n*SZ(I));if(!f)return 0;I ms=fndfew(a,m,wa,b,n,wb,f);if(ms<0){free(f);return 0;}
+ B c=ms&&isfqx(x);C tz=tZ(c?(L)m:(L)m-1);U wz=tz-tG;A z=ms&&!c?aL(n):an(n,tz);if(!z){free(f);return 0;}
+ I(ms&&!c,F(n,zL[i]=f[i]<0?NL:f[i]))
+ E(S4(wz,F(n,_G(z)[i]=(G)(f[i]<0?(L)m:f[i])),F(n,_H(z)[i]=(H)(f[i]<0?(L)m:f[i])),F(n,_I(z)[i]=(I)(f[i]<0?(L)m:f[i])),F(n,_L(z)[i]=f[i]<0?(L)m:f[i])))
+ free(f);I(c,fqr=z)return z;}
+// fndL's few probes (n <= FPMAX): each scanned for. The answer is the one fndL's table, or fnd's scans when fndL builds
+// none, gave: 64 bits with 0N on a miss either way; with none, the narrowest width that holds an index into x where fndL
+// builds a table (always for symbols, whose scans in fnd take that width too), else 64 bits; q's ? (x is fqx): the count
+// for a miss, as fndL's tables write it. Whether fndL builds one is asked only where no probe missed, and x's range only
+// where the count leaves it to the range (useL), and only as far as it decides it
+ZN B rnglim(CO V*a,U m,U w,W lim){L lo,hi;rngW(a,m<4096?m:4096,w,&lo,&hi);
+ for(U i=4096;(W)hi-(W)lo<lim&&i<m;i+=4096){L l,h;rngW((CO UC*)a+((N)i<<w),m-i<4096?m-i:4096,w,&l,&h);lo=l<lo?l:lo;hi=h>hi?h:hi;}
+ return (W)hi-(W)lo<lim;}   //is x's range (hi-lo+1) at most lim? (a range that wraps the 64-bit line is not)
+ZN A fndP(CO V*a,U m,U wx,CO V*b,U n,U wy,A x)_(TY(fGL)*f=G(&fGL,fHL,fIL,fLL)[wx];L o[FPN];B ms=0;
+ F(n,L k=f(a,m,RD(wy,b,i));ms|=k==NL;o[i]=k)
+ P(ms&&isfqx(x),fqo(o,n,m))
+ W nn=n,mm=m,sc=nn*mm,s2=2*(nn+mm);
+ B tw=!ms&&(xtS||sc>8*(nn+mm)||sc>s2+1&&rnglim(a,m,wx,sc-s2-1<LUTDOM?sc-s2-1:LUTDOM));   //fndL's useH, or its useL
+ C tz=tw?tZ((L)m-1):tL;A z=an(n,tz);P(!z,0)S4(tz-tG,F(n,_G(z)[i]=(G)o[i]),F(n,_H(z)[i]=(H)o[i]),F(n,_I(z)[i]=(I)o[i]),F(n,_L(z)[i]=o[i]))
+ z)
+Z A fndL(A x,A y)_(
  UC s=TST(xt);P(!(s==tH||s==tI||s==tL||xtS),0)   //a temporal list as its ints. amber 2.1: symbol vectors too (interned 32-bit ids, compared by value)
  U wx=xw-3,wy=yw-3,m=xn,n=yn;
  P(wx>3||wy>3||!m||!n,0)
  CO V*a=xV;CO V*b=yV;
- L lo=RD(wx,a,0),hi=lo;
- F(m,L v=RD(wx,a,i);I(v<lo,lo=v)I(v>hi,hi=v))
+ I(m>=FPM&&n<=FPMAX(wx),A z=fndP(a,m,wx,b,n,wy,x);P(!z,0)return y(z);)   //a few probes: scanned for (the order above)
+ L lo,hi;rngW(a,m,wx,&lo,&hi);
  P(hi<lo,0)
  W rg=(W)hi-(W)lo+1,nn=(W)n,mm=(W)m,scan=nn*mm;
  // rg==0: the keys span the whole 64-bit line and hi-lo+1 wrapped (amber 2.3: this
@@ -130,6 +243,9 @@ Z A fndL(A x,A y,B srt)_(
  B useL=rg&&rg<=LUTDOM&&scan>rg+2*(nn+mm);   /* flat table worth its memset?     */
  B useH=!useL&&scan>8*(nn+mm);           /* else: hash worth its build?      */
  P(!useL&&!useH,0)
+ // where the hash would be built, few probes against a long x (FEWQ): the probes' table, x read once (fndF). Not on a key
+ // range the flat table takes: a write an item into a table that stays in the caches costs less than fndF's pass
+ I(!useL&&nn*FEWQ<=mm,A z=fndF(a,m,wx,b,n,wy,x);P(!z,0)return y(z);)
  C tz=tZ((L)m-1);U wz=tz-tG;A z=an(n,tz);I miss=0;  // tZ(m-1): the width every index fits
  I(useL,
    I*lut=amal((N)rg*SZ(I));P(!lut,mr(z);0)
@@ -174,7 +290,6 @@ Z A fndL(A x,A y,B srt)_(
 //
 // Returns 0 -- "not handled, use the existing path" -- for any non-integer
 // type, a degenerate length, or an allocation failure. Never dies.
-#define UNQW(z,i,v,w) S4(w,((G*)(z))[i]=(G)(v),((H*)(z))[i]=(H)(v),((I*)(z))[i]=(I)(v),((L*)(z))[i]=(L)(v))
 
 // amber 2.3: SATURATION. Once as many distinct values have been seen as the
 // range [lo,hi] can hold, no later element can be new, and the scan stops -- a
@@ -203,35 +318,41 @@ Z A unqLUT(A x,L lo,W rg,U wx){
 // sized to 2n slots up front -- 256 MB for a 10M-element input, random-access
 // bound even when the input held a few thousand distinct values).
 #define BMDOM ((W)1<<26)
-Z A unqBM(A x,L lo,W rg,U wx){
+#define UNQBP(T) {CO T*RES p=(CO T*)a;T*RES q=(T*)r;for(U i=0;i<n;i++){T v=p[i];W s=(W)(L)v-(W)lo;W b=1ull<<(s&63);W*w=bm+(s>>6); \
+  if(!(*w&b)){*w|=b;q[m++]=v;if((W)m==rg)break;}}}   // saturated: see unqLUT
+ZN A unqBM(A x,L lo,W rg,U wx){
  U n=xn;CO V*a=xV;N nb=(N)((rg+63)>>6);
  W*bm=amal(nb*SZ(W));
  if(!bm)return 0;
  MS(bm,0,nb*SZ(W));
  A z=an(n,xt);V*r=zV;U m=0;
- for(U i=0;i<n;i++){L v=RD(wx,a,i);W s=(W)v-(W)lo;W b=1ull<<(s&63);W*w=bm+(s>>6);
-  if(!(*w&b)){*w|=b;UNQW(r,m,v,wx);m++;if((W)m==rg)break;}}   // saturated: see unqLUT
+ S4(wx,UNQBP(G),UNQBP(H),UNQBP(I),UNQBP(L))   // one loop per width, as unqLUT's
  free(bm);
  return AN(m,z);}
-Z A unqHASH(A x,U wx){
+#undef UNQBP
+// unqHASH's growth: a table twice the size, every stored key rehashed; the old one freed (0 when out of memory)
+ZN W*unqgrow(W*tab,W*cap,U*lg){
+ W ncap=*cap<<1;U nlg=*lg+1;W*nt=amal((N)ncap*SZ(W));if(!nt){free(tab);return 0;}
+ MS(nt,0,(N)ncap*SZ(W));
+ for(W s=0;s<*cap;s++)if(tab[s]){W kk=tab[s],j=(kk*GOLD)>>(64-nlg);while(nt[j])j=(j+1)&(ncap-1);nt[j]=kk;}
+ free(tab);*cap=ncap;*lg=nlg;return nt;}
+#define UNQHP(T) {CO T*RES p=(CO T*)a;T*RES q=(T*)r;for(U i=0;i<n;i++){T v=p[i];W k=(W)(L)v+1; \
+  if(!k){if(!has0){has0=1;q[m++]=v;}continue;} \
+  if((W)used*2>=cap){tab=unqgrow(tab,&cap,&lg);if(!tab){mr(z);return 0;}}   /* grow: rehash every stored key */ \
+  W j=(k*GOLD)>>(64-lg),msk=cap-1; \
+  while(tab[j]&&tab[j]!=k)j=(j+1)&msk; \
+  if(!tab[j]){tab[j]=k;used++;q[m++]=v;}}}
+ZN A unqHASH(A x,U wx){
  U n=xn;CO V*a=xV;
  W cap=1024;U lg=10;
  W*tab=amal((N)cap*SZ(W));
  if(!tab)return 0;
  MS(tab,0,(N)cap*SZ(W));
  A z=an(n,xt);V*r=zV;U m=0,used=0;B has0=0;
- for(U i=0;i<n;i++){L v=RD(wx,a,i);W k=(W)v+1;
-  if(!k){if(!has0){has0=1;UNQW(r,m,v,wx);m++;}continue;}
-  if((W)used*2>=cap){                         // grow: rehash every stored key
-   W ncap=cap<<1;U nlg=lg+1;W*nt=amal((N)ncap*SZ(W));if(!nt){free(tab);mr(z);return 0;}
-   MS(nt,0,(N)ncap*SZ(W));
-   for(W s=0;s<cap;s++)if(tab[s]){W kk=tab[s],j=(kk*GOLD)>>(64-nlg);while(nt[j])j=(j+1)&(ncap-1);nt[j]=kk;}
-   free(tab);tab=nt;cap=ncap;lg=nlg;}
-  W j=(k*GOLD)>>(64-lg),msk=cap-1;
-  while(tab[j]&&tab[j]!=k)j=(j+1)&msk;
-  if(!tab[j]){tab[j]=k;used++;UNQW(r,m,v,wx);m++;}}
+ S4(wx,UNQHP(G),UNQHP(H),UNQHP(I),UNQHP(L))   // one loop per width, as unqLUT's
  free(tab);
  return AN(m,z);}
+#undef UNQHP
 
 // amber: the same value-based idea as v.c's cntrangeF, applied to DISTINCT.
 // unqL below rejected every float outright (`if(!(xtH||xtI||xtL))return 0;`), so
@@ -326,14 +447,31 @@ Z V memb_hash(V*c_,int t){MSLICE W*tab=c->tab;U sh=c->sh;W msk=c->msk;B has0=c->
 #undef MHS
 #undef MSLICE
 Z V membrun(MJ*c,V(*fn)(V*,int)){int nt=c->n<PFND_MIN?1:par_thread_count(c->n);c->nt=(U)nt;I(nt<2,fn(c,0))E(par_run(nt,fn,c))}
+Z V ambinH(CO H*RES,U,CO L*RES,L*RES,U,U),ambinI(CO I*RES,U,CO L*RES,L*RES,U,U),ambinL(CO L*RES,U,CO L*RES,L*RES,U,U);   //bin's batched search, below
+// membC's few probes (n*32 <= m), out of line: the probes a (width wa) in y's data b (width wb, m items). membs: y sorted
+// (`s), a lockstep binary search per probe, as bin's. membf: y's range too wide for the bitmap, so the probes are
+// indexed and y read once (fndfew), where membC's hash is built over all of y for a few look-ups. 0: out of memory
+ZN A membs(CO V*b,U m,U wb,CO V*a,U n,U wa){A z=an(n,tG);G*RES r=_V(z);L*pr=amal((N)n*SZ(L)),*o=pr?amal((N)n*SZ(L)):0;
+ if(!o){free(pr);mr(z);return 0;}
+ F(n,pr[i]=RD(wa,a,i))U st=(U)(64-CLZ((W)m|1))+1;
+ S4(wb,,ambinH(b,m,pr,o,n,st),ambinI(b,m,pr,o,n,st),ambinL(b,m,pr,o,n,st))F(n,r[i]=o[i]>=0&&RD(wb,b,o[i])==pr[i])
+ free(pr);free(o);return z;}
+ZN A membP(CO V*b,U m,U wb,CO V*a,U n,U wa)_(A z=an(n,tG);G*RES r=_V(z);TY(fGL)*f=G(&fGL,fHL,fIL,fLL)[wb];F(n,r[i]=f(b,m,RD(wa,a,i))!=NL)z)   //membC's few probes (FPMAX): scanned for
+ZN A membf(CO V*b,U m,U wb,CO V*a,U n,U wa){A z=an(n,tG);G*RES r=_V(z);I*f=amal((N)n*SZ(I));
+ if(!f){mr(z);return 0;}
+ I ms=fndfew(b,m,wb,a,n,wa,f);if(ms<0){free(f);mr(z);return 0;}
+ F(n,r[i]=f[i]>=0)free(f);return z;}
 A1(membC,P(_t(x)-tA||_n(x)-2,et(x))A v=_A(x)[0],y=_A(x)[1];
  B va=_tz(v);UC vt=va?tl:_t(v),yt_=_t(y);
  P(_tP(y)||!(yt_==tH||yt_==tI||yt_==tL||yt_==tS)||!(va||vt==tH||vt==tI||vt==tL||vt==tS)||(vt==tS)!=(yt_==tS),x(emp(tA)))   //symbols against numbers: declined (an interned id is not a number: in[``;0] was 11b)
  U wy=_w(y)-3,m=_n(y),n=va?1:_n(v),wv=va?3:_w(v)-3;CO V*b=_V(y);L sv=va?gl_(v):0;CO V*a=va?&sv:_V(v);
  I(!m,I(va,return x(ai(0)))A z=an(n,tG);MS(_V(z),0,n);return x(z);)
- L lo=RD(wy,b,0),hi=lo;
- F(m,L t=RD(wy,b,i);I(t<lo,lo=t)I(t>hi,hi=t))
+ I(m>=FPM&&n,   //the order above fndrun: sorted (`s on symbols orders their names, not their ids), then a few probes scanned for
+   I(_at(y)==1&&yt_!=tS&&(W)n*FEWQ<=(W)m,A z=membs(b,m,wy,a,n,wv);P(!z,x(emp(tA)))return x(va?({A r_=ai(_G(z)[0]);mr(z);r_;}):z);)
+   I(n<=FPMAX(wy),A z=membP(b,m,wy,a,n,wv);return x(va?({A r_=ai(_G(z)[0]);mr(z);r_;}):z);))
+ L lo,hi;rngW(b,m,wy,&lo,&hi);
  W rg=(W)hi-(W)lo+1;
+ I(n&&(W)n*FEWQ<=(W)m&&!(rg&&rg<=BMDOM),A z=membf(b,m,wy,a,n,wv);P(!z,x(emp(tA)))return x(va?({A r_=ai(_G(z)[0]);mr(z);r_;}):z);)
  A z=an(n,tG);G*RES r=_V(z);
  I(rg&&rg<=BMDOM,N nb=(N)((rg+63)>>6);W*bm=amal(nb*SZ(W));P(!bm,mr(z);x(emp(tA)))MS(bm,0,nb*SZ(W));
   F(m,W s=(W)RD(wy,b,i)-(W)lo;bm[s>>6]|=1ull<<(s&63))
@@ -419,8 +557,7 @@ A unqL(A x){
  if(n<2||wx>3)return 0;
  I(n>=PDQ_MIN,A z_=unqP(x);I(z_,return z_;))   //2.5 (exp): parallel, the same answer; 0 when it declines
  CO V*a=xV;
- L lo=RD(wx,a,0),hi=lo;
- for(U i=1;i<n;i++){L v=RD(wx,a,i);if(v<lo)lo=v;if(v>hi)hi=v;}
+ L lo,hi;rngW(a,n,wx,&lo,&hi);
  W rg=(W)hi-(W)lo+1;
  // rg==0 means the span wrapped the whole 64-bit line (lo=LLONG_MIN,
  // hi=LLONG_MAX); treat that as "sparse", never as a 0-slot table.
@@ -477,9 +614,54 @@ Z A tfd(A x,A y)_(P(ytA&&!yn,y(aL(0)))B o;y=N(tky(x,y,&o));A c=xy;
  A z=N(K2("{[a;b]n:1+#*a;({[a;b;n;s;i]c:a i;u:(n*s 0)+c?c;(u?u;u?(n*(n-1)^s 1)+(n-1)^c?b i)}[a;b;n]/[((*a)?*a;(*a)?*b);1_!#a])1}",c,y));
  L m=_N(x);I(_tz(z),P(gl_(z)==m,z(az(NL))))E(I(_t(z)==tL,z=mut(z);F(_n(z),I(_L(z)[i]==m,_L(z)[i]=NL)))E(I(LH(tG,_t(z),tI),z=cL(z);F(_n(z),I(_L(z)[i]==m,_L(z)[i]=NL)))))   //its ? gives the count for a miss (q's, 2.9.0): 0N here, as fnd
  o?z(ii(z,0)):z)
+// A sorted (`s) haystack looked up with a list: the probes are searched SFL at a time in lockstep, a branchless
+// lower bound whose halving steps depend on the haystack's count alone, so the SFL loads of a step are independent
+// (the core overlaps their misses, as bin's batched search does) and no probe calls the search through a pointer.
+// Each probe is widened into z, searched there and overwritten with its index (or 0N): the first one equal to it,
+// as bGL..bLL give. A probe out of a narrow haystack's range is below or above every item, so it misses as there.
+#define SFL 16
+#define SFND(KT) {CO KT*RES h=(CO KT*)a;U i=0; \
+ for(;i+SFL<=n;i+=SFL){U o[SFL];for(U b=0;b<SFL;b++)o[b]=0; \
+  for(U k=m;k>1;){U d=k>>1;for(U b=0;b<SFL;b++)o[b]+=(L)h[o[b]+d]<r[i+b]?d:0;k-=d;} \
+  for(U b=0;b<SFL;b++){L v=r[i+b];U j=o[b]+((L)h[o[b]]<v);r[i+b]=j<m&&(L)h[j]==v?(L)j:NL;}} \
+ for(;i<n;i++){L v=r[i];U o=0;for(U k=m;k>1;){U d=k>>1;o+=(L)h[o+d]<v?d:0;k-=d;}U j=o+((L)h[o]<v);r[i]=j<m&&(L)h[j]==v?(L)j:NL;}}
+ZN A fndS(CO V*a,U m,U wx,A y)_(U n=yn;A z=aL(n);P(!z,y(0))L*RES r=zL;
+ S4(yw-3,F(n,r[i]=yg),F(n,r[i]=yh),F(n,r[i]=yi),F(n,r[i]=yl))mr(y);
+ I(!m,F(n,r[i]=NL)return z;)
+ S4(wx,,SFND(H),SFND(I),SFND(L))
+ z)
+#undef SFND
+#undef SFL
 #define FSN(T) for(;i<n;i++){L k=f(a,m,p[i]);B(k==NL)((T*)_V(z))[i]=(T)k;}   //fnd's symbol scan, at the narrow width T until a miss
+#define FSQ(T) for(;i<n;i++){L k=f(a,m,p[i]);((T*)_V(z))[i]=(T)(k==NL?(L)m:k);}
+ZN V fndSQ(A z,U wz,U i,U n,TY(fGL)*f,CO V*a,U m,CO I*p)_(S4(wz,FSQ(G),FSQ(H),FSQ(I),FSQ(L)))   //and from a miss in q's ?, the count for one (out of line: q's ? with a miss only)
+#undef FSQ
 ZN A fndD(A x,A y/*01*/)_(B t=ytM;A v=kv(&y);v=Ny(fnd(x,v));t?aM(y,v):am(y,v))   //fnd's dict of () or table of no rows, out of line
 ZN A fndM(A x,A y/*01*/)_(ytm&&_tA(yy)&&!_n(yy)||ytM&&!yN?fndD(x,y):r2f(fnd,x,y))   //fnd's dict, table or general list: its tests out of line too (in fnd they moved the code of every find)
+// x?y, x a general list and y a list of its items (a dict's keys looked up by another's: , + = of two dicts with string
+// keys): a hash over x's items, built once, where each item of y was a scan of x with ~ (quadratic). hA (o.c) hashes what ~
+// reads, so the items ~ matches hash alike; equal hashes are told apart with ~, and x's first match is kept, as the scan
+// gave. For 8 items of y or more (FAQ; fewer scan, as before), and only once scans grow dear: the items are scanned for
+// first, as before, until the scans have read m items of x in all (an item found early costs little, and the hash costs
+// about two passes over x); the hash then takes the rest. Scans, as before: all of y where an item of y has another rank
+// than x's (0: find looks for it whole, or for its items); the rest where x holds an item of a kind not hashed (a
+// function); an item of y of such a kind
+#define FAQ(n) ((n)>=8)
+#define FAP(v) {L v_=(v);I(v_==NL&&!w,w=aL(n);Fj(i,_L(w)[j]=_I(z)[j]))I(w,_L(w)[i]=v_)E(_I(z)[i]=(I)v_)}   //32 bits, 64 from the first miss (w), as the scans' results were pushed
+ZN A fndA(A x,A y,U k)_(P(_tmM(y),0)U m=xn,n=yN;P(!FAQ(n),0)B g=ytA;CO A*a=xA;
+ I(g,F(n,P(urnk(yA[i])+1!=k,0)))E(P(k-1,0))
+ A z=aI(n),w=0;U i=0;W rd=0;
+ for(;i<n&&rd<m;i++){A u=g?yA[i]:ii(y,i);U j=0;W(j<m&&!mtc_(a[j],u),j++)rd+=j+1;I(!g,mr(u))FAP(j<m?(L)j:NL)}
+ I(i<n,W cap=16;U lg=4;W(cap<2*(W)m,cap<<=1;lg++)W msk=cap-1;U sh=64-lg;
+  W*hh=malloc((N)cap*(SZ(W)+SZ(I)));I*ix=hh?(I*)(hh+cap):0;B e=!hh;
+  I(hh,MS(ix,0xff,(N)cap*SZ(I));F(m,W h=hA(a[i],&e);B(e)W j=(h*GOLD)>>sh;W(ix[j]>=0,B(hh[j]==h&&mtc_(a[ix[j]],a[i]))j=(j+1)&msk)I(ix[j]<0,hh[j]=h;ix[j]=(I)i)))
+  for(;i<n;i++){A u=g?yA[i]:ii(y,i);B f=e;W h=f?0:hA(u,&f);L v=NL;
+   I(f,Fj(m,I(mtc_(a[j],u),v=j;break)))
+   E(W j=(h*GOLD)>>sh;W(ix[j]>=0,I(hh[j]==h&&mtc_(a[ix[j]],u),v=ix[j];break)j=(j+1)&msk))
+   I(!g,mr(u))FAP(v)}
+  free(hh);)
+ I(w,mr(z);z=w)y(z))
+#undef FAP
 X2(fnd,
  R_(et(y))
  Rm(i1(xx,N(fnd(xy,y))))
@@ -488,7 +670,7 @@ X2(fnd,
  // The rank of x's first item says whether y is one item or a list of them; when the items differ in rank, y may be
  // one of them all the same, so it is looked for whole first ((1;"ab")?"ab" is 1, it was 0N 0N). An x of one rank
  // never matches there, so it is only a scan more on these two paths (digest #29)
- RA(U k=urnk(x),l=urnk(y);I(k-l-1,F(xn,P(mtc_(xa,y),y(az(i)))))P(k<l+1,r2f(fnd,x,y))P(k>l+1,xn?er(y):fnd0(y))
+ RA(U k=urnk(x),l=urnk(y);I(k-l-1,F(xn,P(mtc_(xa,y),y(az(i)))))P(k<l+1,A z=k==l&&FAQ(_n(y))?fndA(x,y,k):0;z?z:r2f(fnd,x,y))P(k>l+1,xn?er(y):fnd0(y))   //(the count test in line, y being a list (l>0): fndA's frame costs a few dozen instructions)
   X(RA(F(xn,P(mtc_(xa,y),y(az(i))))y(az(NL)))
     R_(F(xN,A z=ii(x,i);I m=mtc_(z,y);z(0);P(m,y(az(i))))y(az(NL))))0)
  RB(x=cG(xR);x(fnd(x,y)))
@@ -509,19 +691,23 @@ X2(fnd,
    // amber 2.3: SORTED only. `p (parted) was also sent here, but parted means
    // equal values are contiguous, not that they are ordered: `pa 3 3 1 1 2 found
    // 1 at 0N. A parted vector takes the ordinary hash/LUT path.
-   B srt=!_tP(x)&&xt!=tF&&xt!=tS&&_at(x)==1;TY(fGL)*f=xt==tF?fFL:(srt?G(&bGL,bHL,bIL,bLL):G(&fGL,fHL,fIL,fLL))[xw-3];V*a=xV;U m=xn;
+   B srt=!_tP(x)&&xt!=tF&&xt!=tS&&_at(x)==1;TY(fGL)*f=xt==tF?fFL:(srt?G(&bGL,bHL,bIL,bLL):FSC(xn))[xw-3];V*a=xV;U m=xn;
    Yt(az(f(a,m,gl(y))))
-   A zl_=fndL(x,y,srt);P(zl_,zl_)
    U n=yn;
+   I(srt,P(n>=SFMIN,fndS(a,m,xw-3,y)))E(A zl_=fndL(x,y);P(zl_,zl_))   //sorted: SFMIN probes or more searched together; fewer as an atom is, one by one
    // symbols: the width fndL gives, an index into x's (64 bits with 0N on a miss), here too. Which of the two a symbol
    // vector takes is set by its ids' range, so by the order its names were interned: =x's lists were 16 or 32 bits by it
    // A few items are looked up into o first, so the result is made once, at the width they need. More are written at the
-   // narrow width until a miss, and from there at 64 bits (the items before it widened once)
+   // narrow width until a miss, and from there at 64 bits (the items before it widened once). q's ? (x is fqx): the count
+   // for a miss, at the narrowest width that holds it; past 128 items, at the indices' width, so an x of 2^7, 2^15 or 2^31
+   // items (whose count needs a wider one) is left to fqm
    I(xtS,C tz=tZ((L)m-1);U wz=tz-tG;CO I*RES p=yV;
-     I(n<=128,L o[128];B ms=0;F(n,L k=f(a,m,p[i]);ms|=k==NL;o[i]=k)mr(y);A z=ms?aL(n):an(n,tz);P(!z,0)
+     I(n<=128,L o[128];B ms=0;F(n,L k=f(a,m,p[i]);ms|=k==NL;o[i]=k)mr(y);P(ms&&isfqx(x),fqo(o,n,m))
+       A z=ms?aL(n):an(n,tz);P(!z,0)
        I(ms,MC(_V(z),o,(N)n*SZ(L)))E(S4(wz,F(n,_G(z)[i]=(G)o[i]),F(n,_H(z)[i]=(H)o[i]),F(n,_I(z)[i]=(I)o[i]),F(n,_L(z)[i]=o[i])))return z;)
      A z=an(n,tz);P(!z,mr(y);0)U i=0;
      S4(wz,FSN(G),FSN(H),FSN(I),FSN(L))
+     I(i<n&&tZ((L)m)==tz&&isfqx(x),fndSQ(z,wz,i,n,f,a,m,p);mr(y);fqr=z;return z;)
      I(i<n,A u=aL(n);P(!u,mr(z);mr(y);0)L*RES r=_L(u);S4(wz,Fj(i,r[j]=_G(z)[j]),Fj(i,r[j]=_H(z)[j]),Fj(i,r[j]=_I(z)[j]),Fj(i,r[j]=_L(z)[j]))
        mr(z);z=u;for(;i<n;i++)r[i]=f(a,m,p[i]);)
      mr(y);return z;)
@@ -529,7 +715,11 @@ X2(fnd,
   fN(y)))
 #undef FSN
 //Amber 2.9.0: x?y of a list or a table as q's: a miss is the count of x (fnd, which the engine uses inside, keeps 0N)
-Z A fqm(A r,L n)_(P(!r||_tP(r)&&!_tz(r),r)P(_tz(r),gl_(r)==NL?(mr(r),az(n)):r)P(_t(r)==tL,B u=0;F(_n(r),u|=_L(r)[i]==NL)P(!u,r)r=mut(r);F(_n(r),I(_L(r)[i]==NL,_L(r)[i]=n))sqzZ(r))   //narrowed, as a find with no miss is
+// fqm's 64-bit result with a miss: written once at the width sqzZ gave it, which is tZ(n), every index being below n
+#define FQN(T) {T*RES q=(T*)_V(z);F(k,L v=p[i];q[i]=(T)(v==NL?n:v))}
+ZN A fqn(A r,L n)_(U k=_n(r);C t=tZ(n);A z=an(k,t);CO L*RES p=_L(r);S4(t-tG,FQN(G),FQN(H),FQN(I),FQN(L))mr(r);z)
+#undef FQN
+Z A fqm(A r,L n)_(P(!r||_tP(r)&&!_tz(r),r)P(_tz(r),gl_(r)==NL?(mr(r),az(n)):r)P(_t(r)==tL,B u=0;F(_n(r),u|=_L(r)[i]==NL)P(!u,r)fqn(r,n))   //narrowed, as a find with no miss is
  P(_t(r)==tA,r=mut(r);F(_n(r),_A(r)[i]=fqm(_A(r)[i],n))r)P(_t(r)==tm,A k=_R(_x(r)),v=fqm(_R(_y(r)),n);mr(r);am(k,v))r)   //a dict (a find of a dict's values): its values
 Z A fndq(A x,A y)_(UC t=xt;A ox=fqx;fqx=x;fqr=0;A r=fnd(x,y);B d=r&&r==fqr;fqx=ox;fqr=0;P(d||t>tM,r)fqm(r,_N(x)))   //fqx kept for a ? inside (a table's find runs k)
 X2(que,Rs(Z CO C s[][4] __attribute__((aligned(4)))={"j","k","hex"};G(&js0,val,unh,ed)[fI((V*)s,L(s),xv)](y))Ril(rnd(gl_(x),y))R_(fndq(x,y)))

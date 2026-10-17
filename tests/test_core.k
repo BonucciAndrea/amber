@@ -411,10 +411,33 @@ t[`findMissHash;{v:1000000007!(!40000)*2654435761;r:v?(20000#v),20000#1+v;(r 0 1
 t[`findMissFlat;{r:(!40000)?(20000#!40000),20000#40000+!20000;(r 0 19999 20000 39999;@r)}0;(0 19999 40000 40000;`I)]
 t[`findMissWider;{r:(!128)?3000#5 128 -1;(5#r;@r;|/r)}0;(5 128 128 5 128;`I;128)]   / 128 needs 16 bits where the indices fit 8
 t[`findMissEach;{v:!40000;r:v?(40000#7;40000#40000);(r[0;0];r[1;0])}0;7 40000]
+/ a 64-bit answer with a miss (a range's x, made into another list inside find; the sorted search; a short list's and floats' scans; a general list's hash), narrowed in one pass: against the probes one at a time, and the width (`ser's type byte)
+t[`findMissNarrow;{r:x?y;(r~{x?y}[x]'y;(`ser r)4)}.'((!1000;(!10),5000);(`s#(!999),999;(!20),5000);(`s#(!127),127;(!20),500);(`s#(!32767),32767;(!20),50000);(1000+5#3 1 4 1 5;1003 1009 1001);(1.5 2.5;1.5 9.0);($!1000;$(500+!20),2000));((1b;0x05);(1b;0x05);(1b;0x05);(1b;0x06);(1b;0x04);(1b;0x04);(1b;0x05))]
+/ and the searches that hold their answers apart (the few-probe scans, the probes' table, a few and many symbols) write the count themselves, as the flat table and the hash do, for an x find takes as it is (each case is a list made whole)
+t[`findMissTiers;{r:x?y;(r~{x?y}[x]'y;(`ser r)4)}.'(((999+!127),5000;1005 9999 1000);((1000000000*!99999),7;(1000000000*!100),3);((!999),999;(500#!1000),500#1000+!500);(`a`Q;`a`zz`b`Q`q);(`a`R;(`a`zz`b`R`q),`$"S",'$!200));((1b;0x05);(1b;0x06);(1b;0x05);(1b;0x04);(1b;0x04))]
+t[`findMissTiersEach;{r:x?y;(r[0;0];r[1;0];(`ser r 1)4)}[(!39999),39999;(40000#7;40000#40000)];(7;40000;0x06)]
 t[`distinctNan;{(#?x,(-x),1.0;#?x,1.0,-x)}0n;2 2]
 t[`distinctNanLength;{#?3000#x,(-x),1.0}0n;2]
 t[`findZeroStill;1.0 -0.0?0.0;1]
 t[`paNansOneValue;*"\n"\.[{`at(`pa x)};,0n 1.0 -0n;{x}];"p-fail"]   / `pa: every NaN is one value, in two runs here
+
+/ ---- distinct, find and in take the keys' range at every width: the extremes, -1 and a range that wraps ----
+/ ?x is checked against its first occurrences (x?x), find and in against the probes looked up one at a time
+t[`distinctWrap;?0N 9223372036854775807 -9223372036854775807 0 9223372036854775807 0N;0N 9223372036854775807 -9223372036854775807 0]
+t[`distinctShortEdges;{(?x)~x@&(x?x)=!#x}(-32768+7*!1000),32767 -32768;1b]
+t[`distinctIntEdges;{(?x)~x@&(x?x)=!#x}(2147483647-!1000),-2147483648 2147483647;1b]
+t[`distinctSparseMinus1;{(?x)~x@&(x?x)=!#x}[-1,(1000#7 3 9 -1)*1000000000000];1b]
+t[`findRangeEdges;{(x?y)~{x?y}[x]'y}[2147483647-!2000;2147483647 2147481648 2147481647 0 -1];1b]
+t[`inRangeEdges;{(`memb(y;x))~{|/x=y}[x]'y}[|-32768+!1000;-32768 -32767 -31769 -31768 0 -1 300];1b]
+/ ---- find and in with few probes against a long list: the probes are indexed and the list read once (n*32 <= m), or searched when sorted (in, as `memb) ----
+/ each answer is checked against the probes looked up one at a time (a scan each). findFewSym's 10 symbols are scanned for under clang (up to 12 probes); gcc scans up to 9, so it takes x's table there
+t[`findFewFirst;{(x?y)~{x?y}[x]'y}[1000000*2000#3 1 4 1 5 9 2 6;1000000*9 2 6 5 1 3 7 8 0 4 11 12 13 14];1b]
+t[`findFewNull;{(x?y)~{x?y}[x]'y}[0N,(1000#1 2 3),0N;0N 3 5 2 1 9 8 7 6 4];1b]
+t[`findFewWide;{(x?y)~{x?y}[x]'y}[1000000000000*!1000;1000000000000*5 7 9 999 1000 3 2 1 0];1b]
+t[`findFewSym;{(x?y)~{x?y}[x]'y}[`$"s",'$!1000;`s5`s6`s7`s8`s9`s10`s11`s12`s13`zz];1b]
+t[`inFewWide;{(`memb(y;x))~{|/x=y}[x]'y}[1000000000000*!1000;(1000000000000*1 2 3 5 8 13 21 34 55),7];1b]
+t[`inFewSorted;{(`memb(y;x))~{|/x=y}[x]'y}[`s#{x@<x}300+1000?1000;-1 0 300 301 302 303 400 500 700 1299 1300 2000];1b]
+t[`inFewSortedAtom;{(`memb(x 500;x);`memb(-5;x))}`s#{x@<x}1000?100000;10b]
 
 / ---- distinct of a generic list keeps the first of matching items ----
 / (compared as text, since ~ takes -0.0 for 0.0)
@@ -1554,6 +1577,11 @@ t[`amendTableDictColumnAnyName;.[{(IK["DN1:+`a`b!(1 2;3 4)";"DN1[`a;]:`x`y!5 6"]
 / ---- a cell assigned in a column not there, row first, adds the column as column first does, nulls elsewhere (#105 Q5); the row became a dict of other keys ----
 t[`amendTableRowNewCol;(.[+`a`b!(1 2;3 4);(0;`c);:;9];.[+`a`b!(1 2;3 4);(1;`c);:;`x];{t:+`a`b!(1 2;3 4);t[0;`c]:9;t}[];IA["NC1:+`a`b!(1 2;3 4)";"NC1[1;`c]:9"];IA["NC2:+`a`b!(`sa 1 2;3 4)";"NC2[0;`c]:9"];IA["NC3:(+`a`b!(1 2;3 4);0)";"NC3[0;0;`c]:9"];IA["NC4:`x`y!(+`a`b!(1 2;3 4);0)";"NC4[`x;1;`c]:9"];ER"NC5:+`a`b!(1 2;3 4);NC5[5;`c]:9");(+`a`b`c!(1 2;3 4;9 0N);+`a`b`c!(1 2;3 4;(0N;`x));+`a`b`c!(1 2;3 4;9 0N);(::;+`a`b`c!(1 2;3 4;0N 9));(::;+`a`b`c!(`sa 1 2;3 4;9 0N));(::;(+`a`b`c!(1 2;3 4;9 0N);0));(::;`x`y!(+`a`b`c!(1 2;3 4;0N 9);0));"index")]
 t[`amendTableRowNewColAsBefore;(.[+`a`b!(1 2;3 4);(0;`a);:;9];{t:+`a`b!(1 2;3 4);t[0;`c]+:1;t}[];.[+`a`b!(1 2;3 4);(0;`c);{9}]);(+`a`b!(9 2;3 4);(`a`b`c!1 3 1;`a`b!2 4);(`a`b`c!1 3 9;`a`b!2 4))]   / a column there; another verb, which column first would meet the nulls with
+/ ---- ? on a sorted (`s) list with a list: the probes are searched together; each answer is the first equal item, as one probe's ----
+t[`sortedFindFirst;(`s#1001 1002 1002 1002 1003 1007 1007)?1002 1002 1003 1004 1007 1000 1008 0N 1001 1002 1003 1004 1005 1006 1007 1008;1 1 4 7 5 7 7 7 0 1 4 7 7 7 5 7]
+t[`sortedFindAgrees;&/,/{[o],/{[o;n]h:`s#o+{x@<x}(!n),!n;p:(o-2)+!n+4;q:p,0N,-1,40000,-40000,3000000000;((h?q)~(0+h)?q;(h?|q)~(0+h)?|q)}[o]'0 1 2 15 16 17 33 100}'30000 100000 5000000000 -5000000000;1b]
+t[`sortedFindLarge;{h:`s#{x@<x}100000?1000;p:-2+20000?1004;(h?p)~(0+h)?p}[];1b]
+t[`sortedFindLeak;LK"h:`s#1000+!100;h?1000+!50;h?`i$1000+!50;h?0#0;h:0";""]
 
 / ---- 2.9.0: q's minute, second, month and timespan, and typed nulls (0Nd 0Nt 0Np 0Nn 0Nu 0Nv 0Nm) ----
 t[`tq2Lit;`k'(0D01:00:00.000000000;1D02:03:04.500000000;-0D00:00:01.000000000;09:30;09:30:15;2026.03m;1999.12m;09:30:00.000);("0D01:00:00.000000000";"1D02:03:04.500000000";"-0D00:00:01.000000000";"09:30";"09:30:15";"2026.03m";"1999.12m";"09:30:00.000")]
@@ -1612,6 +1640,35 @@ gaggOne:{[m;k;v],/{[v;m;k;o]((`gagg(o;k;v))~gaggRef[o;k;v;!#k];(`gagg(o;k;v;m))~
 gaggChk:{[n]h:1000003!7919*!n;v:-500+1000!104729*!n;m:0<3!h;,/,/{[m;vs;k]gaggOne[m;k]'vs}[m;(v;0.5*v)]'(10!h;1000003*100!h;`$'$'7!h;5000000000+10!h;1000003*h)}
 t[`gaggChunks;&/,/gaggChk'511 512 513 4095 4096 4097 8193;1b]
 
+
+/ ---- x?y of a general list with many items of y: x's items are hashed (8+ items of y, one per 16 of x); the answers, and the width, are the scans' ----
+t[`findStrHash;{(x?y)~{x?y}[x]'y}[$1000?50;$(!60),3 3 7];1b]
+t[`findStrHashMixed;{(x?y)~{x?y}[x]'y}[(`a;1;"x";2.5;"x";`a),$!20;("x";`a;1;2.5;"zz";"3"),$!10];1b]
+t[`findStrHashWidth;(`ser@($!20)?$19-!10;`ser@($!20)?$(19-!10),99);(0x414d420106000a00000000000000130000001200000011000000100000000f0000000e0000000d0000000c0000000b0000000a000000;0x414d420104000b00000000000000131211100f0e0d0c0b0a14)]
+t[`dictStrKeys;{k:$!40;j:$20+!40;a:k!!40;b:j!100+!40;s:(`$k)!!40;t:(`$j)!100+!40;((`$!a,b)~!s,t;(.a,b)~.s,t;(`$!a+b)~!s+t;(.a+b)~.s+t)}[];1111b]
+t[`findStrHashLate;{(x?y)~{x?y}[x]'y}[$!1000;$(100?1000),2000 3000];1b]   / the scans pass m items read, and the hash takes the rest
+t[`findStrHashUnhashed;{(x?y)~{x?y}[x]'y}[(`a;{x}),$!300;$(50?300),`a,999];1b]   / x holds a function: the rest are scanned
+t[`findStrHashRank;{(x?y)~{x?y}[x]'y}[$!300;(50#,,"5"),$(50?300)];1b]
+t[`findStrHashLateWidth;`ser@($!1000)?$(999-!20),5000;0x414d420105001500000000000000e703e603e503e403e303e203e103e003df03de03dd03dc03db03da03d903d803d703d603d503d403e803]
+t[`findStrHashLeak;LK"x:$!100;x?$50+!100;(x,`a)?x;(`a`b!$`a`b)?$`a`b`c`d`e`f`g`h;x:0";""]
+
+
+/ ---- find's scans take a block of items at a time past the first 8 (clang): an item at every place around the blocks, and misses ----
+t[`findScanBlocks;&/,/{[x;m]{[x;v](x?v)~*(&x=v),#x}[x]'(x 0 7 8 9 15 16 63 64 65 99),m}.'((-5000+!100;-50000 5000);(-50000+!100;-5 1000000);(1000000000000*!100;-5 7);(`$"k",'$!100;`zz`k100));1b]
+t[`findScanSmall;{x?y}'[16 17 33 100#\:1000+!100;1015 1016 1032 1099];15 16 32 99]
+
+
+/ ---- a few items of y looked up in a long x are scanned for, not indexed: the answers, and the table's width (a miss gives x's count, narrowed as a find with no miss is) ----
+t[`findFewScan;{(x?y)~{x?y}[x]'y}[997!13*!1000;(!10),1000];1b]
+t[`findFewScanWidth;(`ser@(1000#!1000)?100+!10;`ser@(1000#1000000000000*!1000)?1000000000000*100+!8;`ser@(`$"s",'$!1000)?`$"s",'$100+!12;`ser@(40#!40)?3 5 7);(0x414d420105000a000000000000006400650066006700680069006a006b006c006d00;0x414d4201070008000000000000006400000000000000650000000000000066000000000000006700000000000000680000000000000069000000000000006a000000000000006b00000000000000;0x414d420105000c000000000000006400650066006700680069006a006b006c006d006e006f00;0x414d420104000300000000000000030507)]
+t[`findFewScanMiss;`ser@(997!13*!1000)?(!10),1000;0x414d420105000b000000000000000000ff02190233014d004c03660280019a009903e803]
+
+/ ---- a few probes scanned for keep the width find gave them: the table's where fndL builds one (a range it covers, read only as far as it decides it), 64 bits where it does not; a miss gives x's count, narrowed (the last row); in scans for a few too ----
+t[`findFewWidthRange;(`ser@(1000#!50)?3 7 9 11 49;`ser@(1000000*!1000)?1000000*3 7 9 11 49;`ser@((4096#!10),10000+1000*!5904)?3 7 9 0 5;`ser@((4096#!10),10000+!5904)?3 7 9 0 5;`ser@(1000#!50)?3 7 9 11 99);(0x414d4201040005000000000000000307090b31;0x414d4201070005000000000000000300000000000000070000000000000009000000000000000b000000000000003100000000000000;0x414d42010700050000000000000003000000000000000700000000000000090000000000000000000000000000000500000000000000;0x414d42010500050000000000000003000700090000000500;0x414d4201050005000000000000000300070009000b00e803)]
+t[`inFewScan;{(`memb(y;x))~{|/x=y}[x]'y}[997!13*!1000;0 5 996 997 -1 70000 3];1b]
+t[`inFewScanAtom;(`memb(5;997!13*!1000);`memb(997;997!13*!1000));10b]
+
+hexpect[1057]
 hreport"AMBER CORE"
 $[FAILN;`exit 1;]
 

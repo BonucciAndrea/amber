@@ -193,8 +193,9 @@ Z A fcanon(A x)_(U n=xn;A y=aF(n);CO W*RES p=(CO W*)xV;W*RES q=(W*)yV;F(n,W v=p[
 // them, dicts and tables by keys and values) and the items of one hash are told apart with ~. Each item is named by
 // the least index of the items it matches, as in frT. 0, for the general path, on an item of a kind not hashed (a
 // function), more than 8 kinds in one hash, or two items of one hash that qA puts together and ~ apart.
+// hA is find's too (f.c fndA): items that ~ matches hash alike, which is all a hash table over them needs
 Z W hm(W h,W v)_(h=(h^v)*0x9e3779b97f4a7c15ull;h^h>>29)
-Z W hA(A x,B*e){UC t=xt;W h=t;
+W hA(A x,B*e){UC t=xt;W h=t;
  P(t==ti||t==tl,hm('i',gl_(x)))P(t==tf,hm(t,fco(*(L*)xV)))P(TQN(t),hm(t,*(L*)xV))P(_tP(x),hm(t,(U)x))
  P(t==tm||t==tM,hm(hm(h,hA(xx,e)),hA(xy,e)))P(t==tE,x=gZ(xR);h=hA(x,e);mr(x);h)P(!LH(tA,t,tS),*e=1;0)N n=xn;h=hm(LH(tB,t,tL)?'I':t,n);   //a range (!n) as its ints, as ~
  switch(t){case tA:F(n,h=hm(h,hA(xa,e)))break;case tB:F(n,h=hm(h,xG[i>>3]>>(i&7)&1))break;case tG:case tC:F(n,h=hm(h,xG[i]))break;

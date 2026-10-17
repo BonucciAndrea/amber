@@ -329,9 +329,9 @@ Z MWVHA##GRP I NM(CO T*RES p,T*RES r,N n,N w,T*RES suf){                       \
     if(ln==w&&b+w<n){T s=IDV;for(N j=w;j-->0;){T v=q[j];s=(v GT s)?v:s;suf[j]=s;}}}\
   return bad;}
 // Each block's scans are one chain of compare-selects, and with the blocks done one at a time nothing overlaps
-// them. For MWVHLO<=w<=MWVHHI (the blocks short enough that MWVHB of them and their suffixes stay in L1/L2) MWVHB
-// blocks go together: their MWVHB backward suffix scans in one loop, then their forward scans, each block
-// combining with the suffix of the block before it (the group's first with the last group's, kept in sf[0]). The
+// them. For MWVHLO<=w<=MWVHW1 (MWVHB blocks, their outputs and suffixes then fit in L1) MWVHB blocks go together:
+// their MWVHB backward suffix scans in one loop, then their forward scans, each block combining with the suffix
+// of the block before it (the group's first with the last group's, kept in sf[0]). The
 // same compares in the same order per block, so the same results, ties and NaN reports included. The suffix
 // buffer is then (MWVHB+1)*(w+1) items (mwvhs). Narrower windows keep the one-block loop: their chains are short.
 // So do 8-, 16- and 32-bit ints (GRP 0): their one-block loop is no slower than the grouped one; 64-bit ints
@@ -340,7 +340,7 @@ Z MWVHA##GRP I NM(CO T*RES p,T*RES r,N n,N w,T*RES suf){                       \
 #define MWVHLO 64u
 #define MWVHHI 4096u
 #define mwvhg(n,w) ((w)>=MWVHLO&&(w)<=MWVHHI&&(n)>=2*MWVHB*(w))
-#define mwvhs(t,n,w) ((t)==tF&&mwvhg(n,w)?(MWVHB+1)*((w)+1):(t)==tL&&(w)>=MWVHLO&&(n)>=2*(w)?2*((w)+1):((w)<(n)?(w):(n))+1)
+#define mwvhs(t,n,w) ((t)==tF&&mwvhg(n,w)?((w)<=MWVHW1?MWVHB+1:2)*((w)+1):(t)==tL&&(w)>=MWVHLO&&(n)>=2*(w)?2*((w)+1):((w)<(n)?(w):(n))+1)
 // The floats' one-block loop (GRP 1, MWVHA1) is kept out of line: mwC, which gcc's LTO inlines the others into,
 // grew with the grouped kernels' calls, and inside it the loop's per-block setup lost registers.
 #define MWVHA0
@@ -348,7 +348,7 @@ Z MWVHA##GRP I NM(CO T*RES p,T*RES r,N n,N w,T*RES suf){                       \
 #define MWVHA2
 #define MWVHN0(NM,T,GT,IDV,CHK)
 #define MWVHC0(NM)
-#define MWVHC1(NM) if(mwvhg(n,w))return NM##8(p,r,n,w,suf);
+#define MWVHC1(NM) if(mwvhg(n,w))return w<=MWVHW1?NM##8(p,r,n,w,suf):NM##2(p,r,n,w,suf);
 #define MWVHN1(NM,T,GT,IDV,CHK)                                                \
 Z NI I NM##8(CO T*RES p,T*RES r,N n,N w,T*RES sbuf){                           \
   I bad=0;T*sf[MWVHB+1];for(U b=0;b<=MWVHB;b++)sf[b]=sbuf+b*(w+1);              \
@@ -365,7 +365,8 @@ Z NI I NM##8(CO T*RES p,T*RES r,N n,N w,T*RES sbuf){                           \
   for(N b=g*w;b<n;b+=w){N ln=n-b<w?n-b:w;T run=IDV;CO T*RES q=p+b;T*RES o=r+b;  \
     for(N j=0;j<ln;j++){T v=q[j];CHK;run=(run GT v)?run:v;T u=sf[0][j+1];o[j]=(u GT run)?u:run;}\
     if(ln==w&&b+w<n){T s=IDV;for(N j=w;j-->0;){T v=q[j];s=(v GT s)?v:s;sf[0][j]=s;}}}\
-  return bad;}
+  return bad;}                                                                 \
+  MWVHN2(NM,T,GT,IDV,CHK)
 // 64-bit ints (GRP 2) take a cheaper shape: one block at a time, as the one-block loop, but its forward scan and
 // its backward suffix scan in the same loop (item j forward, item w-1-j backward), the suffixes going to a second
 // buffer that the next block's forward scan reads. Two chains overlap, and the block and its suffixes stay in L1 as
@@ -382,6 +383,9 @@ Z NI I NM##2(CO T*RES p,T*RES r,N n,N w,T*RES sbuf){                           \
   return bad;}
 #define mwvh2(n,w) ((w)>=MWVHLO&&(n)>=2*(w))
 #define MWVHC2(NM) if(mwvh2(n,w))return NM##2(p,r,n,w,suf);
+// Floats (GRP 1) group blocks while MWVHB of them with their outputs and suffixes fit in L1 (w<=MWVHW1); wider
+// windows take the two-scan loop above, whose block stays in L1 as the one-block loop's does.
+#define MWVHW1 128u
 #define MWVH2(T,SFX,LO,HI,CHK,GRP) MWVH(mvmax##SFX,T,>,LO,CHK,GRP) MWVH(mvmin##SFX,T,<,HI,CHK,GRP)
 MWVH2(G,G,(G)-128,(G)127,,0) MWVH2(H,H,(H)-32768,(H)32767,,0) MWVH2(I,I,(I)(-2147483647-1),(I)2147483647,,0)
 MWVH2(L,L,(L)NL,(L)WL,,2) MWVH2(F,F,-WF,WF,bad|=v!=v,1)

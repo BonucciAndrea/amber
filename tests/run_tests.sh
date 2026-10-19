@@ -274,9 +274,11 @@ if [ "$TSAN" = 1 ]; then
   $CC -fsigned-char -fwrapv -g -O1 -w -pthread -fsanitize=thread \
       -o o/tsan/amber o/tsan/*.o -lm -ldl || exit 1
   export TSAN_OPTIONS="halt_on_error=0 report_signal_unsafe=0 exitcode=99"
+  # newer kernels randomise mmap past what TSan's shadow allows ("unexpected memory mapping"): without ASLR it runs
+  NOASLR=""; setarch -R true 2>/dev/null && NOASLR="setarch -R"
   for s in $SUITES; do
     say "$s (tsan, AMBER_THREADS=4)"
-    out=$(AMBER_THREADS=4 o/tsan/amber "$s" 2>&1); rc=$?
+    out=$(AMBER_THREADS=4 $NOASLR o/tsan/amber "$s" 2>&1); rc=$?
     echo "$out" | grep -vE '^(simd|par):' | tail -6
     if echo "$out" | grep -Eq 'ThreadSanitizer: (data race|lock-order|deadlock)'; then
       echo "  ThreadSanitizer diagnostics:"

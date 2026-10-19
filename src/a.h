@@ -206,6 +206,7 @@ A aa(U,A),ii(A,U),io(A,L),aE(L,L),af(F),aCm(S,S),aCn(S,U),apc(A,C),an(U,C),aV(C,
 V cyc(V*,N,N),eS(A,U),eQ(S,U,U),exit(I),hexC(S,U,C*),kargs(I,S*),kinit(),*memmem(CO V*,N,CO V*,N),mrn(U,CO A*),mRn(U,CO A*),repl(),tilV(V*,L,L,U);
 B id0(UC),mtc_(A,A),tru(A),cxn_(UC,UC);V ecl(V);
 V par_prng_perturb(W);//decorrelate a peach worker's thread-local prng stream (r.c)
+V mgive(V);//peach: the parent's free lists to the depot, for any thread to take (m.c)
 V acs(U);//start a peach worker's colour counter (m.c)
 A peach_pool(A,A,U,I);//persistent thread-pool morsel-driven peach (src/peachpool.c)
 CO C*peach_errmsg(V);//error category raised by the first failing item of the last peach dispatch

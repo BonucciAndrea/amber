@@ -44,7 +44,13 @@ enum {
     OP_RECUR    = 126,
     OP_POP      = 127,
     OP_CONSTDYAD = 128,
-    OP_CONST0   = 129  /* CONST i is OP_CONST0+i */
+    OP_JUMPBACK = 129,   /* 2.8.0: do and while loop back   */
+    OP_DO       = 130,   /* 2.9.1: do's test and count down */
+    OP_CMPBR    = 131,   /* 2.9.1: compare the two on top, branch */
+    OP_CMPKBR   = 132,   /* 2.9.1: compare a constant with the top, branch */
+    OP_CMPLBR   = 133,   /* 2.9.1: compare a constant with a local, branch */
+    OP_CALLLOC  = 134,   /* 2.9.1: call the function a local holds */
+    OP_CONST0   = 135  /* CONST i is OP_CONST0+i */
 };
 
 /* extra operand bytes for opcodes >= OP_APPLY, indexed from OP_APPLY;
@@ -55,7 +61,7 @@ static const unsigned char EXTRA[] = {
     /* IDXASN */3, /* IDXASNG */3, /* IDXGET */3, /* IDXGETG */3,
     /* GETGLB */2, /* SETGLB */2, /* LIST */1, /* UNLIST */1,
     /* BRANCH */1, /* JUMP */1, /* RECUR */0, /* POP */0,
-    /* CONSTDYAD */2 /* CONST i has 0 extra bytes and is handled separately */
+    /* CONSTDYAD */2, /* JUMPBACK */2, /* DO */2, /* CMPBR */2, /* CMPKBR */3, /* CMPLBR */4, /* CALLLOC */2 /* CONST i has 0 extra bytes and is handled separately */
 };
 
 static const char *mnemonic(unsigned c) {
@@ -82,6 +88,12 @@ static const char *mnemonic(unsigned c) {
         case OP_RECUR:      return "RECUR";
         case OP_POP:        return "POP";
         case OP_CONSTDYAD:  return "CONSTDYAD";
+        case OP_JUMPBACK:   return "JUMPBACK";
+        case OP_DO:         return "DO";
+        case OP_CMPBR:      return "CMPBR";
+        case OP_CMPKBR:     return "CMPKBR";
+        case OP_CMPLBR:     return "CMPLBR";
+        case OP_CALLLOC:    return "CALLLOC";
         default:            return "CONST";
     }
 }
@@ -94,7 +106,11 @@ static unsigned decode_one(const unsigned char *bc, unsigned nb, unsigned pos, F
     const char *mn = mnemonic(c);
     unsigned len = 1;
 
-    if (c < OP_APPLY) {
+    if (c == OP_MONAD + 31) {   /* the fused float tree, bF j c p (b.c) */
+        len = 4;
+        if (pos + len > nb) { fprintf(ofp, "%5u  %-8s <truncated>\n", pos, "FUSED"); return nb - pos; }
+        fprintf(ofp, "%5u  %-8s skip=%u -> %u\n", pos, "FUSED", bc[pos + 1], pos + len + bc[pos + 1]);
+    } else if (c < OP_APPLY) {
         /* operand lives in the low bits of the opcode itself */
         unsigned base = c < OP_DYAD ? OP_MONAD : c < OP_SETLOC ? OP_DYAD
                        : c < OP_GETLOC ? OP_SETLOC : c < OP_DELLOC ? OP_GETLOC : OP_DELLOC;
@@ -119,6 +135,26 @@ static unsigned decode_one(const unsigned char *bc, unsigned nb, unsigned pos, F
             }
             case OP_CONSTDYAD:
                 fprintf(ofp, "%5u  %-8s const#%u dyad=%u\n", pos, mn, bc[pos + 1], bc[pos + 2]);
+                break;
+            case OP_JUMPBACK: {
+                unsigned d = bc[pos + 1] | ((unsigned)bc[pos + 2] << 8);
+                fprintf(ofp, "%5u  %-8s -%u -> %u\n", pos, mn, d, pos + 1 + 2 - d);
+                break;
+            }
+            case OP_CMPBR:
+                fprintf(ofp, "%5u  %-8s dyad=%u +%u -> %u\n", pos, mn, bc[pos + 1], bc[pos + 2], pos + len + bc[pos + 2]);
+                break;
+            case OP_CMPKBR:
+                fprintf(ofp, "%5u  %-8s const#%u dyad=%u +%u -> %u\n", pos, mn, bc[pos + 1], bc[pos + 2], bc[pos + 3], pos + len + bc[pos + 3]);
+                break;
+            case OP_CALLLOC:
+                fprintf(ofp, "%5u  %-8s local=%u n=%u\n", pos, mn, bc[pos + 1], bc[pos + 2]);
+                break;
+            case OP_CMPLBR:
+                fprintf(ofp, "%5u  %-8s local=%u const#%u dyad=%u +%u -> %u\n", pos, mn, bc[pos + 1], bc[pos + 2], bc[pos + 3], bc[pos + 4], pos + len + bc[pos + 4]);
+                break;
+            case OP_DO:
+                fprintf(ofp, "%5u  %-8s local=%u +%u -> %u\n", pos, mn, bc[pos + 1], bc[pos + 2], pos + len + bc[pos + 2]);
                 break;
             case OP_MODASN: case OP_MODASNG: case OP_IDXASN:
             case OP_IDXASNG: case OP_IDXGET: case OP_IDXGETG: {

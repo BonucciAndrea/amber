@@ -203,7 +203,7 @@ Z B fzbad1(F v)_(fzbad(&v,1))
 TD __int128 FZL;
 Z U fzfit(FZL lo,FZL hi){U w=0;W(w<3&&(lo<-((FZL)1<<((8<<w)-1))||hi>((FZL)1<<((8<<w)-1))-1),w++)return w;}
 // The block evaluator, made for int lanes of type T (L or I; UT its unsigned); DW: the width T stores (3 or 2)
-#if defined(__x86_64__) && defined(__ELF__) && defined(__GNUC__) && !defined(wasm) && !defined(__AVX2__)
+#if defined(__x86_64__) && defined(__ELF__) && defined(__GNUC__) && !defined(wasm) && !defined(__AVX2__) && !defined(__SANITIZE_THREAD__)   //not under TSan (simd.c)
 #define FZMV __attribute__((target_clones("avx2","default")))
 #else
 #define FZMV

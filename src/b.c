@@ -7,11 +7,11 @@
 #define OFF 4 //offset of constants in a function object
 #define n1 -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1
 #define p1  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1
-enum {bu,  bv=32,bs=64,bg=80,bd=96,ba=112,bp,bm,bM,bx,bX,by,bY,bG,bS,bl,bL,bz,bj,bo,bP,bV,bk,bc};      //opcodes
+enum {bu,  bv=32,bs=64,bg=80,bd=96,ba=112,bp,bm,bM,bx,bX,by,bY,bG,bS,bl,bL,bz,bj,bo,bP,bV,bk,bD,bQ,bR,bW,bA,bc};      //opcodes
 #define bF (bu+31) //Amber 2.5 (exp): fused float tree, bF j c p (the unused monad slot 31: no opcode moves)
-Z CO C di[]={[bF]=3,              [ba]= 1, 1, 3, 3, 3, 3, 3, 3, 2, 2, 1, 1, 1, 1, 0, 0, 2, 2, 0},      //Extra bytes after opcode (2-byte global/var index)
-ds[]={[bv]=n1,n1,n1,   p1,   p1,  [ba]= 1, 1,-1,-1,-1,-1,-1,-1, 1,-1, 1, 0,-1, 0, 1,-1, 0, 0, 1},      //stack size delta
-ks[]={                            [ba]=-1,-1, 0, 0, 0, 0, 0, 0, 0, 0,-1, 1, 0, 0, 0, 0, 0, 0, 0};      //stack size delta (coefficient for the next byte)
+Z CO C di[]={[bF]=3,              [ba]= 1, 1, 3, 3, 3, 3, 3, 3, 2, 2, 1, 1, 1, 1, 0, 0, 2, 2, 2, 2, 3, 4, 2, 0},      //Extra bytes after opcode (2-byte global/var index)
+ds[]={[bv]=n1,n1,n1,   p1,   p1,  [ba]= 1, 1,-1,-1,-1,-1,-1,-1, 1,-1, 1, 0,-1, 0, 1,-1, 0, 0, 0,-2,-1, 0, 1, 1},      //stack size delta
+ks[]={                            [ba]=-1,-1, 0, 0, 0, 0, 0, 0, 0, 0,-1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};      //stack size delta (coefficient for the next byte)
 #define BG (b+=2,b[-2]|(U)b[-1]<<8)                                                                 //read a 2-byte little-endian global/var index
 // amber 2.4: tail calls. A call whose result is the function's result (the next opcode is the
 // end, maybe after jumps out of a $[..]) to a lambda that takes exactly that many arguments and
@@ -345,28 +345,57 @@ Z CO UC bmk[32]={[12]=3,[14]=2,[15]=2,[18]=2,[19]=2};
 Z NI __attribute__((cold)) I bmo(A*p,A x,A y,UC d){P(d-12,bmh(p,x,y,d))P(catp(p,y),*p!=0)y=cat(x,y);P(!y,0)mr(x);*p=y;return 1;}
 Z NI __attribute__((cold)) A ixer(I e)_(e==1?ei0():e==2?el0():e==3?et0():0)   //ixca's error (4: one already set: the verb's, or a lookup's)
 A fzop(CO UC*,A*,A*);
+// 2.9.1: a frame is a few slots, so it's zeroed and filled with plain stores: memset and memcpy came out as a call and
+// rep stos / rep movs, 20-35 cycles to start each, most of a small lambda's call. The empty asm keeps GCC from turning
+// the loops back into them
+#define FZ(p,n) {A*q_=(p);W k_=(n);W(k_--,*q_++=0;__asm__ volatile(""));}
+#define FC(p,a,n) {A*q_=(p);CO A*r_=(a);U k_=(n);W(k_--,*q_++=*r_++;__asm__ volatile(""));}
+// 2.9.1: two small int atoms (ti, packed) under + - * & | < > = without the verb's dispatch (ari's ten type tests, then
+// arizz): the same answer, a packed int, or 0 to go the long way (a result past 32 bits, which the verb boxes). A loop
+// counter's i+:1 and i<n were most of an empty do's 45 ns. x is the left argument; nothing to free, packed atoms aren't counted
+Z __attribute__((always_inline)) inline A vfz(UC d,A x,A y){P(_t0(x)-ti||_t0(y)-ti,0)L a=(I)x,b=(I)y,r;
+ S(d,C(1,r=a+b)C(2,r=a-b)C(3,r=a*b)C(6,r=a<b?a:b)C(7,r=a>b?a:b)C(8,return ai(a<b))C(9,return ai(a>b))C(10,return ai(a==b))D(return 0))
+ return r==(I)r?ai(r):0;}
+// ints past 32 bits are longs on the heap (tl). x's number when it's an int and not a null (q's null rules: the long way)
+Z __attribute__((always_inline)) inline B vint(A x,L*v){UC t=_t0(x);P(t==ti,*v=(I)x;1)P(t||!x||_T(x)-tl,0)*v=*(L*)_V(x);return *v!=NL;}
+// + - * < > = with a long on either side, as arizz: wrapping 64-bit, a packed int when it fits (az), else a new long.
+// Nothing consumed: the caller lets go of x and y. A running total past 2^31 took the verb's whole dispatch every step
+Z __attribute__((always_inline)) inline A vfl(UC d,A x,A y){L a,b;P(!(d-1<3u||d-8<3u)||!vint(x,&a)||!vint(y,&b),0)
+ P(d>7,ai(d==8?a<b:d==9?a>b:a==b))L r=d==1?(L)((W)a+(W)b):d==2?(L)((W)a-(W)b):(L)((W)a*(W)b);return r==(I)r?ai(r):al(r);}
+#define URF(x) I(!_t0(x),mr(x))   //let go of x unless it's packed (never counted)
+// vfl for two stack values, which it takes: a long result goes in a long the stack alone held (x or y) when there's
+// one, so s:f[s;i] with s past 2^31 allocates nothing. 0: not ints (nothing taken)
+Z __attribute__((always_inline)) inline A vfm(UC d,A x,A y){L a,b;P(!(d-1<3u||d-8<3u)||!vint(x,&a)||!vint(y,&b),0)
+ A r;I(d>7,r=ai(d==8?a<b:d==9?a>b:a==b))E(L v=d==1?(L)((W)a+(W)b):d==2?(L)((W)a-(W)b):(L)((W)a*(W)b);
+  I(v==(I)v,r=ai(v))J(!_t0(x)&&MINE(x),*(L*)_V(x)=v;URF(y);return x;)J(!_t0(y)&&MINE(y),*(L*)_V(y)=v;URF(x);return y;)E(r=al(v)))
+ URF(x);URF(y);return r;}
 // Amber 2.5 (exp): the VM's start pinned to 64 bytes. Its dispatch loop's speed depended on where the linker happened
 // to put it: a change anywhere else (one constant in src/2.c, here) moved run() 16 bytes and made nbody 7% slower, and
 // that alignment luck is the 5-8% nbody swing seen between builds since 2.3. Pinned, unrelated changes no longer move it.
 A run(A,CO A*,U)__attribute__((aligned(64)));
-AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,d--,es8(a,n))/*d: per-thread VM recursion depth (peach workers run the VM concurrently)*/P(n-xk,d--,er8(a,n))UC*b=_V(xy),c,nl=_n(xA[3]);A own=0,l[nl+*b++],*s=l+L(l);MS(l,0,SZ l);I(n,MC(l,a,8*n))//virtual machine
- W((c=*b++),S(c,                                                                                    //          |BYTES |          STACK        |         EFFECT
-  C16(bu,U(*s=v1[c-bu](*s)))                                                                        //Monad     |bu+m  |.. x -> monads[m][x]   |
-  case bu+16:case bu+17:case bu+18:case bu+19:case bu+20:case bu+21:case bu+22:case bu+23:
-  case bu+24:case bu+25:case bu+26:case bu+27:case bu+28:case bu+29:case bu+30:{U(*s=v1[c-bu](*s))}break;
+AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,d--,es8(a,n))/*d: per-thread VM recursion depth (peach workers run the VM concurrently)*/P(n-xk,d--,er8(a,n))UC*b=_V(xy),c,nl=_n(xA[3]);A own=0,l[nl+*b++],*s=l+L(l);FC(l,a,n)I(nl>n,FZ(l+n,nl-n))//virtual machine   //2.9.1: zeroes only the locals: a stack slot is written before it's read
+ // 2.9.1: every byte is a case (0 ends the code), so the switch is a 256-entry table: no range check and no separate
+ // test for the end, 10 instructions an opcode down to 6
+ W(1,c=*b++;S(c,                                                                                    //          |BYTES |          STACK        |         EFFECT
+  case 0:goto l;                                                                                    //end       |0     |                       |
+  case bu+1 ... bu+30:{U(*s=v1[c-bu](*s))}break;                                                    //Monad     |bu+m  |.. x -> monads[m][x]   |
   C(bF,UC j=*b;A r=fzop(b,l,xA+OFF);b+=3;I(r,*--s=r;b+=j))                                          //Fused     |bF,j,c,p|.. -> .. r       |when fzop takes it: PC+:j
-  C32(bv,A x=*s++;U(*s=x(v2[c-bv](x,*s))))                                                          //dyad      |bv+d  |.. y x -> dyads[d][x;y]|
-  C16(bs,A*p=l+c%16;I(*p,mr(*p))*p=*s++)                                                            //set local |bs+i  |.. x -> ..             |locals[i]:x
-  C16(bg,A*p=l+c%16,x=*p;U(*--s=x)xR)                                                               //get local |bg+i  |.. -> .. locals[i]     |
+  C32(bv,A x=*s++;A r_=vfz(c-bv,x,*s);I(r_,*s=r_)J((r_=vfm(c-bv,x,*s)),*s=r_)E(U(*s=x(v2[c-bv](x,*s)))))                                                          //dyad      |bv+d  |.. y x -> dyads[d][x;y]|
+  C16(bs,A*p=l+c%16;I(*p&&!_t0(*p),mr(*p))*p=*s++)                                                  //(2.9.1: a packed atom, nonzero tag, is never counted: no call)                                                            //set local |bs+i  |.. x -> ..             |locals[i]:x
+  C16(bg,A*p=l+c%16,x=*p;U(*--s=x)I(!_t0(x),xR))                                                               //get local |bg+i  |.. -> .. locals[i]     |
   C16(bd,A*p=l+c%16,x=*p;U(*--s=x)*p=0)                                                             //del local |bd+i  |.. -> .. locals[i]     |locals[i]:NULL (freed)
-  C2(ba,bp,UC m=*b;A f=*s;                                                                          //apply|proj|ba,n  |.. z y x -> .. x[y;z]  |
+  C2(ba,bp,lba:;UC m=*b;A f=*s;                                                                          //apply|proj|ba,n  |.. z y x -> .. x[y;z]  |
    I(c==ba&&tlc(b+1)&&s+m+1==l+L(l)&&_t(f)==to&&_k(f)==m&&_n(_A(f)[3])+*(UC*)_V(_A(f)[1])<=L(l),        //tail call: the frame becomes f's
     A t[8];MC(t,s+1,8*m);*s=0;MS(s+1,0,8*m);F(nl,A y=l[i];I(y,mr(y)))MS(l,0,SZ l);I(own,mr(own))
     own=x=f;nl=_n(xA[3]);b=(UC*)_V(xy)+1;MC(l,t,8*m);s=l+L(l))
+   J(c==ba&&_t(f)==to&&_k(f)==m,b++;A x=f;s+=m;U(*s=x(run(x,s-m+1,m))))   //2.9.1: a lambda that takes them all, straight to its frame (_8 -> _1 -> run was 50 ns of a 75 ns call)
    E(b++;UC n=m;A x=f;s+=n;U(*s=x((c==ba?_8:prj)(x,s-n+1,n)))))
-  C6(bm,bM,bx,bX,by,bY,A*p=(c&1?gv:l)+BG,x=*p;I(__builtin_expect(c&1&&ray_rc_sync,0),noupd(s);goto l)  //          |      |                       |
+  C6(bm,bM,bx,bX,by,bY,I(c==bm&&!b[1],A*q_=l+b[0];A x_=*q_,y_=*s;UC d_=b[2];A r_=vfz(d_,x_,y_);I(r_,*q_=r_;s++;b+=3;break)   //2.9.1: i+:1 on a local, first:
+    L a_,c_;I(d_-1<3u&&vint(x_,&a_)&&vint(y_,&c_),L v_=d_==1?(L)((W)a_+(W)c_):d_==2?(L)((W)a_-(W)c_):(L)((W)a_*(W)c_);   //packed ints, then longs:
+     I(v_==(I)v_,*q_=ai(v_);URF(x_))J(!_t0(x_)&&MINE(x_),*(L*)_V(x_)=v_)E(*q_=al(v_);URF(x_))URF(y_);s++;b+=3;break))   //a long only this local holds changes in place
+   A*p=(c&1?gv:l)+BG,x=*p;I(__builtin_expect(c&1&&ray_rc_sync,0),noupd(s);goto l)                  //          |      |                       |
    U(x,*s=ev(*s))A y=*s++;                                                                           //          |      |                       |
-   I(c==bm||c==bM,UC d_=*b++;I(__builtin_expect(bmk[d_]>>(c&1)&1,0),U(bmo(p,x,y,d_),*--s=0))E(y=v2[d_](x,y);U(y,*--s=0)*p=x(y)))   //mod asgn  |bm,i,d|.. x -> ..             |vars[i]:dyads[d][vars[i];x]
+   I(c==bm||c==bM,UC d_=*b++;I(__builtin_expect(bmk[d_]>>(c&1)&1,0),U(bmo(p,x,y,d_),*--s=0))E(A r_=vfz(d_,x,y);I(r_,*p=r_)E(y=v2[d_](x,y);U(y,*--s=0)*p=x(y))))   //mod asgn  |bm,i,d|.. x -> ..             |vars[i]:dyads[d][vars[i];x]
    E(UC d_=*b++;I e_=ixca(p,x,y,*s,d_,c&1);x=e_?ixer(e_):*p;mr(*s);I(c==bx||c==bX,mr(y);U(x,*s=0)s++)        //ind asgn  |bx,i,d|.. z y -> ..           |vars[i]:  .[vars[i];y;dyads[d];z]
                                     E(U(x,*s=y(0))U(*s=dot(x,y)))))                                 //ind asgn  |by,i,d|.. z y -> .. r         |vars[i]:r:.[vars[i];y;dyads[d];z]
   C(bG,U g_=BG;A x=*--s=gv[g_];U(x,evg(g_))xR)                                                                //get global|bG,i,i|.. -> .. globals[i]    |
@@ -379,12 +408,35 @@ AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,d--,es8(a,n))/*d: per-thread VM recursio
   C(bL,UC n=*b++;A x=*s;U(xtt||xN==n,*s=el(x))F(n,*--s=ii(x,n-1-i)))                                //unlist    |bL,n  |.. x -> .. x[0] x[1]   |
   C(bj,UC n=*b++;b+=n)                                                                              //jump      |bj,n  |.. x -> ..             |PC+:n
   C(bk,CO UC*q=b;b=(UC*)q+2-(q[0]|(I)q[1]<<8))                                                      //jump back |bk,i,i|.. -> ..               |PC-:i (Amber 2.8.0: do, while)
-  C(bz,UC n=*b++;b+=n*!tru(*s++))                                                                   //branch    |bz,n  |.. x -> ..             |if x is falsy, PC+:n
+  // 2.9.1: do's test and count in one: a packed counter over 0 counts down in place; anything else (a long, a float)
+  // goes the long way, as the code this replaces did (0<x, then -1+x), so the counts and the errors are as before
+  C(bD,A*p=l+b[0];UC n=b[1];b+=2;A x=*p;                                                             //do        |bD,i,n|.. -> ..               |locals[i]>0: locals[i]-:1, else PC+:n
+   I(_t0(x)==ti,I((I)x>0,*p=ai((I)x-1))E(b+=n))
+   E(A r_=v2[_v(LTN)](ai(0),_R(x));U(r_,*--s=0)I(!tru(r_),b+=n)E(A v_=v2[_v(ADD)](ai(-1),_R(x));U(v_,*--s=0)mr(x);*p=v_)))
+  C(bz,UC n=*b++;A x_=*s++;b+=n*!(_t0(x_)==ti?(I)x_!=0:tru(x_)))
+  // 2.9.1: a comparison a branch tests, in one: while[i<n;..] and $[x>y;..] made a 0 or 1 just to test it. Ints compare
+  // in line (packed or long, no nulls); the rest as the verb, its result tested as bz does
+  C(bQ,UC d_=b[0],n=b[1];b+=2;A x=*s++,y=*s++;L a_,c_;B t_;                                          //cmp branch|bQ,d,n|.. y x -> ..           |if not x d y, PC+:n
+   I(vint(x,&a_)&&vint(y,&c_),t_=d_==8?a_<c_:d_==9?a_>c_:a_==c_;URF(x)URF(y))
+   E(A r_=v2[d_](x,y);URF(x);U(r_,*--s=0)t_=tru(r_))b+=n*!t_)
+  C(bR,UC i=b[0],d_=b[1],n=b[2];b+=3;A k_=xA[i+OFF],y=*s++;L a_,c_;B t_;                            //cmp branch|bR,i,d,n|.. y -> ..           |if not consts[i] d y, PC+:n
+   I(vint(k_,&a_)&&vint(y,&c_),t_=d_==8?a_<c_:d_==9?a_>c_:a_==c_;URF(y))
+   E(A r_=v2[d_](k_,y);U(r_,*--s=0)t_=tru(r_))b+=n*!t_)
+  // 2.9.1: f[x;y] with f a local: f stays in it, uncounted, through the call (a callee can't change its caller's
+  // locals), and a lambda that takes them all goes straight to its frame. Anything else, a tail call among them, goes
+  // as before: f pushed and the apply that follows (ba), at its count byte
+  C(bA,A f=l[b[0]];UC m=b[1];                                                                        //call local|bA,i,m|.. y x -> .. f[x;y]    |locals[i][x;y]
+   I(f&&_t(f)==to&&_k(f)==m&&!tlc(b+2),b+=2;A*a_=s;s+=m-1;U(*s=run(f,a_,m)))
+   E(*--s=f;U(f)I(!_t0(f),_R(f))b++;c=ba;goto lba))
+  C(bW,A v_=l[b[0]];UC i=b[1],d_=b[2],n=b[3];b+=4;A k_=xA[i+OFF];L a_,c_;B t_;                       //cmp branch|bW,j,i,d,n|.. -> ..           |if not consts[i] d locals[j], PC+:n (i<n)
+   I(vint(k_,&a_)&&vint(v_,&c_),t_=d_==8?a_<c_:d_==9?a_>c_:a_==c_)
+   E(A r_=v2[d_](k_,_R(v_));U(r_,*--s=0)t_=tru(r_))b+=n*!t_)                                                                   //branch    |bz,n  |.. x -> ..             |if x is falsy, PC+:n
   C(bo,*--s=xR)                                                                                     //recur     |bo    |.. -> .. o             |o is the current lambda
-  C(bP,mr(*s++))                                                                                    //pop       |bP    |.. x -> ..             |
-  C(bV,UC i=*b++;U(*s=v2[*b++](xA[i+OFF],*s)))                                                      //const dyad|bV,i,d|.. x -> .. r           |r:dyads[d][consts[i];x]
-  D(*--s=_R(xA[c-bc+OFF]))))                                                                        //const     |bc+i  |.. -> .. consts[i]     |
- l:d--;A u=*s;MS(l+nl,0,s-l-nl+1<<3);F(L(l),A x=l[i];I(x,mr(x)))I(!u,eS(xx,(UC)_C(xz)[(C*)b-1-_C(xy)]))I(own,mr(own))u)
+  C(bP,A x_=*s++;I(!_t0(x_),mr(x_)))                                                                                    //pop       |bP    |.. x -> ..             |
+  C(bV,UC i=*b++;UC d_=*b++;A k_=xA[i+OFF],r_=vfz(d_,k_,*s);I(r_,*s=r_)J((r_=vfl(d_,k_,*s)),URF(*s)*s=r_)E(U(*s=v2[d_](k_,*s))))                                                      //const dyad|bV,i,d|.. x -> .. r           |r:dyads[d][consts[i];x]
+  case bc ... 255:{A k_=xA[c-bc+OFF];*--s=_t0(k_)?k_:_R(k_);}break;                                   //const     |bc+i  |.. -> .. consts[i]     |
+  default:__builtin_unreachable();))
+ l:d--;A u=*s;F(nl,A x=l[i];I(x&&!_t0(x),mr(x)))F(l+L(l)-s-1,A x=s[1+i];I(x&&!_t0(x),mr(x)))I(!u,eS(xx,(UC)_C(xz)[(C*)b-1-_C(xy)]))I(own,mr(own))u)   //2.9.1: frees the locals and what's still on the stack under the result (below s is spent)
 
 #define Nr(a...) {I r_=cr(a);P(r_-OK,r_);}                                                          //compile rvalue; return on error
 #define Nl(a...) {I r_=cl(a);P(r_-OK,r_);}                                                          //compile lvalue; return on error
@@ -392,7 +444,18 @@ AX(run,Q(xto)Z AM_TLS_IE I d;P(++d>2048,d--,es8(a,n))/*d: per-thread VM recursio
 #define MB 2048                                                                                     //max bytecode size
 #define M(a) {b[nb]=a;m[nb]=o;nb+=nb<MB-1;}                                                         //append byte
 #define MG(a) {U ig_=(a);M(ig_&255)M(ig_>>8)}                                                       //append a 2-byte little-endian global/var index
-Z A u;Z UC b[MB],m[MB];Z I lu[16],nb,nl,l[16],cdo,ndo,cr(A,B);                                              //u:lambda(src;b:bytes;m:map;l:locals;consts..)  lu:last usages  ndo: do's own counters among l
+Z A u;Z UC b[MB],m[MB];Z I lu[16],nb,nl,l[16],cdo,ndo,lcd=-1,lgl=-1,cr(A,B);                                              //u:lambda(src;b:bytes;m:map;l:locals;consts..)  lu:last usages  ndo: do's own counters among l
+// 2.9.1: a branch (bz) right after a comparison < > = becomes one compare-and-branch: bv+d to bQ d, bV i d to bR i d.
+// lcd says where the last dyad began, so an operand byte is never read as an opcode; the caller then puts the offset
+// 2.9.1: s:e where e reads the local s once, in straight-line code (reads, math, calls, constants: no branch, no
+// fused tree, which reads locals itself), and s is set right after: that read moves s (bd) instead of copying it. Its
+// value then has one owner, so a long in s:f[s;i] is changed in place, not copied. An error in e ends the frame anyway
+Z V mvo(I st,A x){A t=_A(x)[1];P(_A(x)[0]-av||!_tS(t)||_n(t)-1,)U i=fI(l,nl,*(I*)_V(t));P(i>=(U)nl||i>15,)I k=-1,j=st;
+ W(j<nb,UC c=b[j];I(c==bg+i,P(k>=0,)k=j)J(c==bA&&b[j+1]==i,return)J(!(c&&c<bF||c-bv<32u||c-bg<16u||c==ba||c==bA||c==bp||c==bl||c==bG||c==bV||c==bo||c>=bc),return)j+=1+di[MIN(c,bc)];)
+ I(k>=0,b[k]=bd+i)}
+Z CO UC KSW[32]={[1]=1,[3]=3,[6]=6,[7]=7,[8]=9,[9]=8,[10]=10};   //the verb for k op' x where x op k was written (0: none)
+Z V mbz(I o){I(lcd>=0&&lcd==nb-1&&b[lcd]-bv-8<3u,UC d=b[lcd]-bv;b[lcd]=bQ;M(d);lcd=-1;return;)
+ I(lcd>=0&&lcd==nb-3&&b[lcd]==bV&&b[nb-1]-8<3u,I(lgl>=0&&lgl==lcd-1&&b[lgl]-bg<16u,b[lcd]=b[lgl]-bg;b[lgl]=bW)E(b[lcd]=bR)lcd=lgl=-1;return;)M(bz)}   //(bW: a local, i<n)
 ZN I li(I v)_(U i=fI(l,nl,v);P(i==nl,-1)lu[i]=nb;i)                                                 //index of a local variable (returns -1 if not found)
 Z B cm(A x/*0*/){X(Rv(!xv)Ru(1)RS(P(xn-1,0)S s=su(*xI);U n=SL(s);n&&s[n-1]==':')R_(0))}             //is x a valid modifier? i.e. :: or primitive monad or symbol ending with ":"
 // amber 2.3: two constants share a pool slot only if IDENTICAL. ~ calls -0.0 and
@@ -447,7 +510,7 @@ Z I fz(A x,B r){P(fzno||!r,-2)U n=xn;A y=xx,t=x;I o=xo;UC fl=0;
  UC p[72];I np=1,pk=255;p[0]=fl;A d=aA(1);_A(d)[0]=au;P(!fzp(t,p,&np,&d,&pk),mr(d);-2)
  _A(d)[0]=aCn((S)p,np);I c=fzc(d);mr(d);P(c>255,-2)
  I st=nb;M(bF)M(0)M(c)M(pk)fzno=1;I r_=cr(x,1);fzno=0;P(r_-OK,r_)
- I len=nb-st-4;I(len>255,__builtin_memmove(b+st,b+st+4,len);__builtin_memmove(m+st,m+st+4,len);nb-=4;F(16,I(lu[i]>=st+4,lu[i]-=4))return OK)
+ I len=nb-st-4;I(len>255,__builtin_memmove(b+st,b+st+4,len);__builtin_memmove(m+st,m+st+4,len);nb-=4;lcd=lgl=-1;F(16,I(lu[i]>=st+4,lu[i]-=4))return OK)
  b[st+1]=len;fzu=1;return OK;}
 Z I fus(A x,B r){U n=xn;A y=xx;I o=xo;                                                //OK when it emitted fused code, -2 when not an idiom, else the error
  I(n==2&&((_tA(y)&&_n(y)==2&&_A(y)[0]==aw+1&&_A(y)[1]==ADD)||(!_tP(y)&&_t(y)==tr&&_E(y)==1&&_n(y)==1&&_A(y)[0]==ADD)),A z=xy;// +/ (folded by cf() into a tr constant, or still a node) applied to a dyad node
@@ -493,7 +556,7 @@ Z I fus(A x,B r){U n=xn;A y=xx;I o=xo;                                          
    I(sc&&fnode(oa,0)&&fnode(ob,0)&&!numlit(ob),Nr(ob,1)Nr(sc,1)Nr(oa,1)cc(ai(y==SUB),xo);cc(FUS2,xo);M(ba)M(4)I(!r,M(bP))return OK;)))
  return -2;}
 Z I cr(A x/*0*/,B r)_(I o=xo;                                                                       //compile rvalue (x:tree,r:wantResult)
- XS(I i=xn-1?-1:li(*xI);I(i>=0,M(bg+i))J(xn==1&&*xI=='o',M(bo))E(M(bG)MG(gi(x)))I(!r,M(bP))OK)       // x.y      variable (possibly qualified)
+ XS(I i=xn-1?-1:li(*xI);I(i>=0,M(bg+i);lgl=nb-1)J(xn==1&&*xI=='o',M(bo))E(M(bG)MG(gi(x)))I(!r,M(bP))OK)       // x.y      variable (possibly qualified)
  P(!xtA||!xn,I(r,cc(x-GAP?x:au,o))OK)                                                               // 0        constant
  U n=xn;A y=xx;                                                                                     //
  P(y==GAP,F(n-1,Nr(xA[i+1],i==n-2&&r))OK)                                                           // [x;y]    block
@@ -504,24 +567,26 @@ Z I cr(A x/*0*/,B r)_(I o=xo;                                                   
  // (t0:.z.p;do[n;..];t1:.z.p left t1 a local of the line, gone on the next one)
  P(y==WHL||y==DOL,I c=-1;
   I(y==DOL,C h[4]={1,'d',(C)('0'+cdo),0};I w=(I)us(h);c=li(w);I(c<0,P(nl>15,lim=1;o)c=nl;l[nl++]=w;ndo++)Nr(xy,1)M(bs+c))
-  I t=nb;I(y==WHL,Nr(xy,1))E(A k=ai(0);M(bg+c)cc(k,o);mr(k);U q=b[nb-1]-bc;b[nb-1]=bV;M(q)M(_v(LTN)))
-  M(bz)I z=nb;M(0)cdo+=y==DOL;F(n-2,I e_=cr(xA[i+2],0);P(e_-OK,cdo-=y==DOL;e_))cdo-=y==DOL;
-  I(y==DOL,A k=ai(-1);M(bg+c)cc(k,o);mr(k);U q=b[nb-1]-bc;b[nb-1]=bV;M(q)M(_v(ADD))M(bs+c))
+  I t=nb;I(y==WHL,Nr(xy,1);mbz(o))E(M(bD)M(c))   //2.9.1: do tests and counts down in one bD (it was 0<c, a branch, then c:-1+c)
+  I z=nb;M(0)cdo+=y==DOL;F(n-2,I e_=cr(xA[i+2],0);P(e_-OK,cdo-=y==DOL;e_))cdo-=y==DOL;
   M(bk)I d=nb+2-t;M(d&255)M(d>>8)d=nb-z-1;P(d>255,lim=1;o)b[z]=d;F(nl,I(lu[i]>=t,lu[i]=-1))I(c>=0,lu[c]=-1)I(r,cc(au,o))OK)
  P(n==1,I(r,cc(y,o))OK)                                                                             // `a       quoted
  P(n==3&&cm(y)&&_tsSA(xy),
   YS(Nr(xz,1);Nr(xy,1);A z=enl(cS(drp(-1,str(ii(y,0)))));Nr(z,1);mr(z);M(ba)M(2)z=aA1(au);Nl(z,xy,r);z(0);OK)
-  Nr(xz,1);Nl(x,xy,r);OK)// x[y]+:z     assignment
- P(n>3&&(y==av||y==DLR),n--;I p[n];A*a=xA;F(n&~1,Nr(*++a,1);M(i&1?bj:bz)p[i]=nb;M(0))               // :[x;y;z] cond
+  I st_=nb;Nr(xz,1);mvo(st_,x);Nl(x,xy,r);OK)// x[y]+:z     assignment
+ P(n>3&&(y==av||y==DLR),n--;I p[n];A*a=xA;F(n&~1,Nr(*++a,1);I(i&1,M(bj))E(mbz(o))p[i]=nb;M(0))               // :[x;y;z] cond
   Nr(n&1?*++a:au,1);F(n&~1,I d=(i&1?nb-1:p[i+1])-p[i];I(i&1,I j=(n&~1)-1;W(i<j&&d>255,d=p[j]-2-p[i];j-=2))P(d>255,lim=1;o)b[p[i]]=d)I(!r,M(bP))OK)
  I(n==2&&y==FIR,A z=xy;I(ztA&&zn==2,P(zx-REV<3u,Nr(zy,1);M(bu+zx-REV+LAS-au)I(!r,M(bP))OK)))        // *|x      recognized idioms
  {I f_=fus(x,r);P(f_!=-2,f_)}                                                                        // amber 2.1 fused idioms
  {I f_=fz(x,r);P(f_!=-2,f_)}                                                                         // Amber 2.5 (exp) float fusion
+ // 2.9.1: x op k with k a constant goes out as k op' x, so it takes bV's one step (and bR's in a test) as k op x does:
+ // i<n, i+1, x=0. + * & | = are k op x, < and > swap. Checked equal for 25 kinds of x and 13 of k, errors included
+ P(n==3&&ytv&&KSW[yv]&&_tSA(xy)&&xz!=GAP&&!_tSA(xz),Nr(xy,1);cc(xz,o);Q(b[nb-1]>=bc);I i=b[nb-1]-bc;b[nb-1]=bV;M(i)M(KSW[yv]);lcd=nb-3;I(!r,M(bP))OK)
  I p=0;F(n-1,A z=xA[n-1-i];I(z-GAP,Nr(z,1))E(p=1;cc(GAP,o)))I(p,Nr(xx,1);M(bp)M(n-1))               // x[y;]    projection
  J(y==MKL,n--;P(n>255u,lim=1;o)M(bl)M(n))                                                                 // (x;y)    list
  J(n==2&&ytu,M(bu+yv))                                                                              // +x       monad
- J(n==3&&ytv,I(!p&&!_tSA(xy),Q(b[nb-1]>=bc);I i=b[nb-1]-bc;b[nb-1]=bV;M(i)M(yv))E(M(bv+yv)))        // x+y      dyad
- E(P(n>9,lim=1;o)Nr(xx,1)M(ba)M(n-1))                                                                     // x[y]     application
+ J(n==3&&ytv,I(!p&&!_tSA(xy),Q(b[nb-1]>=bc);I i=b[nb-1]-bc;b[nb-1]=bV;M(i)M(yv);lcd=nb-3)E(M(bv+yv);lcd=nb-1))   // x+y      dyad (lcd: where, for mbz)
+ E(P(n>9,lim=1;o)I(_tS(xx)&&_n(xx)==1&&fI(l,nl,*(I*)_V(xx))<(U)nl&&fI(l,nl,*(I*)_V(xx))<16u,I i=li(*(I*)_V(xx));M(bA)M(i)M(n-1))E(Nr(xx,1)M(ba)M(n-1)))   // x[y]     application (bA: x a local)
  I(!r,M(bP))OK)
 A1(qte,/*1*/xtS||xtA?aA1(x):x)                                                                      //quote
 Z A2(c2,/*00*/P(xtw&&!ytSA,1)/*P(x==TIL&&ytZ&&yn<4,F(yn,P(gl(ii(y,i))>100u,0))1)*/0)                //constant folding
@@ -530,10 +595,10 @@ Z A3(c3,/*000*/P(ADD<=x&&x<=MUL&&ytzZ&&ztzZ&&(ytt||ztt||yn==zn)&&MAX(xN,yN)<101,
 Z A cf(A);Z A1(cfn,B k=0;F(xn,k|=cfL(xa))P(!k,x)UC o=xo;A y=rsz(xn,au);F(xn,A u=xa;xa=au;ya=cfL(u)?cf(u):u;P(!ya,die("CF")))x=AO(o,x(y));   //a list with an item not constant: its list items fold as one alone does, as in ngn/k,
  F(xn,A y=xa;YSA(x))qte(N(drp(1,x))))                                                                //and then the list, if they all did
 Z A1(cf,P(!xtA||!xn,x)P(xx==MKL,F(xn,A y=xa;YSA(cfn(x)))qte(N(drp(1,x))))P(xn==2?c2(xx,xy):xn==3?c3(xx,xy,xz):0,qte(N(val(x))))A y=rsz(xn,au);F(xn,ya=cf(xa);xa=au;P(!ya,die("CF")))AO(xo,x(y)))
-Z I mxs(I i,I s)_(I r=s;W(1,UC c=MIN(bc,b[i++]);r=MAX(r,s);P(!c,r)s+=ds[c]+ks[c]*b[i];i+=di[c]+(c==bj)*b[i];I(c==bz,r=MAX(r,mxs(i+b[i-1],s))))r)//max stack
+Z I mxs(I i,I s)_(I r=s;W(1,UC c=MIN(bc,b[i++]);r=MAX(r,s+(c==bA));P(!c,r)s+=ds[c]+ks[c]*b[i]-(c==bA?b[i+1]:0);i+=di[c]+(c==bj)*b[i];I(c==bz||c==bD||c==bQ||c==bR||c==bW,r=MAX(r,mxs(i+b[i-1],s))))r)//max stack
 Z B shy(A x/*0*/)_(!xtA?0:xn&&xx==GAP?shy(xA[xn-1]):xn==3&&cm(xx)&&_tSA(xy))                        //is last expr an assignment?
 // Amber 2.5 (exp): one compile of the body: OK, a cr() error offset, -2 a size limit, -3 the global table full
-Z I cpl1(A y,B s,I k,CO I*l0){nb=1;MS(lu,-1,SZ lu);MC(l,l0,OFF*k);nl=k;ndo=0;fzu=0;I r=cr(y,!s);P(r-OK,r)P(gfull,-3)
+Z I cpl1(A y,B s,I k,CO I*l0){nb=1;MS(lu,-1,SZ lu);MC(l,l0,OFF*k);nl=k;ndo=0;fzu=0;lcd=lgl=-1;I r=cr(y,!s);P(r-OK,r)P(gfull,-3)
  I o=0;I(s,cc(au,o))P(un>255||nb>MB-2||nl>L(l)-2,-2)M(bu)P(nb>MB-2||un>255-bc+OFF,-2)
  F(nl,I j=lu[i];I(j>=0&&b[j]==bg,b[j]=bd))I sx=mxs(1,0);P(sx>255,-2)*b=sx;*m=-1;return OK;}
 // Compiled with float fusion first; if that hits a limit of the bytecode and fused code was emitted, compiled

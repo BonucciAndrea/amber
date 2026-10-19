@@ -24,7 +24,9 @@
  * mechanism needs an ELF platform with ifunc support (Linux glibc, FreeBSD);
  * Mach-O and wasm get the plain compile, exactly as before. The native build
  * (-march=native) is unaffected: its default clone already has AVX2. */
-#if defined(__x86_64__) && defined(__ELF__) && defined(__GNUC__) && !defined(wasm) && !defined(__AVX2__)
+/* Not under ThreadSanitizer: the loader runs an ifunc resolver before TSan's runtime is up, and the instrumented
+ * resolver crashed the TSan build at startup (every suite, rc 139). */
+#if defined(__x86_64__) && defined(__ELF__) && defined(__GNUC__) && !defined(wasm) && !defined(__AVX2__) && !defined(__SANITIZE_THREAD__)
   #define AMB_MV __attribute__((target_clones("avx2","default")))
 #else
   #define AMB_MV

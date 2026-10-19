@@ -183,6 +183,29 @@ A mf(U f,W i,W n)_(P(n<MFC,mfr(f,i,n))V*p=mm(pg+n,1);P(!p,ALK();B u=nreg==L(reg)
 // as the old global array. Only a free-list miss (mb -> mm) or an oversized
 // free (m0 -> mu) reaches the reg[] lock.
 Z AM_TLS_IE A bkt[24];DBG(Z U lck;)
+// 2.9.1: the depot. A block goes back on the list of the thread that frees it, so what peach workers made and the
+// parent let go of piled up on the parent's lists while the workers mapped new memory every call (20 calls of 200 MB
+// of results grew to 3.1 GB, a page fault each 4 KB). Now peach hands the parent's lists in as whole chains when it
+// starts a job (mgive, a pointer per class), and a thread whose list is empty takes a chain from here before it
+// splits a bigger block or maps more. Locked only in a peach scope, as the region table.
+#define DCH 64
+Z ST{A h[DCH];U n;}dep[24];
+#if !defined(wasm)
+Z pthread_mutex_t g_dep_mx=PTHREAD_MUTEX_INITIALIZER;
+#define DLK() do{if(ray_rc_sync)pthread_mutex_lock(&g_dep_mx);}while(0)
+#define DUL() do{if(ray_rc_sync)pthread_mutex_unlock(&g_dep_mx);}while(0)
+#else
+#define DLK() ((void)0)
+#define DUL() ((void)0)
+#endif
+// n is read without the lock as a hint, so every access to it is atomic (TSan: a plain write under the lock and an
+// atomic read beside it is still a race)
+#define DN(i) __atomic_load_n(&dep[i].n,__ATOMIC_RELAXED)
+#define DS(i,v) __atomic_store_n(&dep[i].n,(v),__ATOMIC_RELAXED)
+V mgive(){F(L(bkt),I(bkt[i]&&DN(i)<DCH,DLK();U k=DN(i);I(k<DCH,dep[i].h[k]=bkt[i];DS(i,k+1);bkt[i]=0;)DUL();))}
+Z A mdep(U i){I(!DN(i),return 0;)A x=0;DLK();U k=DN(i);I(k,x=dep[i].h[k-1];DS(i,k-1))DUL();P(!x,0)
+ U c=i<12?64:8;A y=x;W(--c&&yX,y=yX)A r=yX;yX=0;I(r,DLK();k=DN(i);I(k<DCH,dep[i].h[k]=r;DS(i,k+1);r=0)DUL())   //up to c blocks off the chain, the rest back
+ I(r,y=x;W(yX,y=yX)yX=r)bkt[i]=xX;DBG(xX=0;)return x;}//a batch of class i from the depot: its first block, the rest on this thread's list (all of it when the depot is full)
 // Colour. A block is aligned to its size (HD<<b) within a page-aligned region, so every block of 64 KB or more
 // put its payload 64 bytes past a multiple of the page, and of the L1 set stride; big vectors used together (a
 // window's input and output, a group-by's columns) fought over the same L1 sets. anc() moves such a payload, with
@@ -212,7 +235,7 @@ _Static_assert(CP/64<=256,"a colour is one byte, in lines");
 Z AM_TLS_IE U acn;//large blocks so far (this thread)
 V acs(U i){acn=i;}//a peach worker starts its colours at its number (1 up; the main thread at 0), so workers do not hand out one sequence in step
 Z W cap(A x/*0*/)_((HD<<xb)-HD)
-Z A mb(U i){I(i>=L(bkt),V*p=mm(HD<<i,0);P(!p,die("OOM"))return AP(p+HD);)A x=bkt[i];I(x,bkt[i]=xX;DBG(xX=0;)return x;)x=mb(i+1);A y=x+(HD<<i);MS(yV-HD,0,HD);yb=i;yX=bkt[i];bkt[i]=y;return x;}
+Z A mb(U i){I(i>=L(bkt),V*p=mm(HD<<i,0);P(!p,die("OOM"))return AP(p+HD);)A x=bkt[i];I(x,bkt[i]=xX;DBG(xX=0;)return x;)I((x=mdep(i)),return x;)x=mb(i+1);A y=x+(HD<<i);MS(yV-HD,0,HD);yb=i;yX=bkt[i];bkt[i]=y;return x;}
 NI Z A aunc(A x)_(A y=x-((W)_cl(x)<<6);MC((V*)(y-32),(V*)(x-32),32);_cl(y)=0;_b(y)++;y)//m0: a coloured block's header back to its start, with its true class
 // release one reference (r0). The decrement is atomic in a peach scope (RC_DECV)
 // and plain otherwise; only the LAST owner (previous count == REFB) frees. The

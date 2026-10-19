@@ -22,6 +22,17 @@ Fixes from running real q code, and appends that don't copy anymore.
 - **Appends in place**: `v,:x` and `` `t insert `` add to the end of the list or table when nothing else holds it, as
   q's do. They copied the whole thing every time, so a loop of them got slower as it grew: 20,000 inserts into a
   10-column tickerplant table went from 18 s to 23 ms, and `v,:1` in a loop is 110x quicker.
+- **peach starts in microseconds**: every worker queued on one lock to wake up and again to finish, so a peach cost
+  ~0.3 ms before any work. The work goes out with no lock now and sleeping workers wake each other, so 10 small items
+  take 5 us, not 300 (kdb+ 80, l 4).
+- **peach gives memory back**: what the workers made and the main thread let go of stayed with the main thread, so the
+  workers mapped new memory every call (20 calls making 200 MB each grew to 3.1 GB). It goes back to them now: 0.9 GB,
+  and 3x quicker.
+- **Loops and calls 3-6x quicker**: small ints skip the verbs' type checks, longs past 2^31 change in place when one
+  variable holds them, `do`, a test and its branch, and a call to a function in a local are one step each, and a call
+  no longer clears and copies its frame with `memset`. Per step: a `do` loop 86 -> 19 ns, `while` 74 -> 21, `$[..]` 97 ->
+  25, calling a lambda 125 -> 19, `each` with a lambda 93 -> 48. That's l's speed or better, and 3-7x kdb+'s.
+  `\disasm` shows loops right again.
 - **Fixed**: on a top-level line, a name set after a `do` was a local of that line, gone on the next one
   (`t0:.z.p; do[n;..]; t1:.z.p` left no `t1`).
 - **Fixed**: a query's `where` or `by` on a line of its own after the `from` line, a `where` going on past a comma,

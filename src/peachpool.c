@@ -22,15 +22,37 @@ typedef struct {
     char msg[40];        /* that item's error category, for the re-raise      */
 } Job;
 
+/* 2.9.1: a job goes out without a lock. A peach used to cost ~45 us per worker whatever the job (0.3 ms on 8 threads;
+ * kdb+ 0.07, l 0.03): every worker took the one pool mutex when it woke and again when it finished, so they queued
+ * behind each other, a futex handoff each. Now:
+ *  - the parent writes the job, then one 64-bit word w = generation << 32 | shares. A worker that sees a new
+ *    generation takes a share by compare-and-swap and then morsels; with no share left it sits the job out. A job of
+ *    3 morsels wakes 2 workers, not 7, and a worker late from an older job can't take a share of this one.
+ *  - a worker spins a while after a job (peach calls come in runs), then sleeps on its OWN mutex and condvar, so
+ *    waking one never waits on another. The parent wakes as many sleepers as there are shares.
+ *  - once the parent's own morsels run out, the shares nobody took are taken back (the cursor is past the end, so
+ *    they'd find nothing), so it never waits for a worker still waking up. active counts the shares taken and not
+ *    done; the last one wakes the parent, only if it went to sleep.
+ * w, the sleep flags, active and waiting are seq_cst, so a wake is never lost between a check and a sleep. */
+#define PP_SPIN 4000
 typedef struct {
-    pthread_mutex_t mx;
-    pthread_cond_t  cv_work, cv_done, cv_ready;
+    pthread_mutex_t m;
+    pthread_cond_t  c;
+    int sleeping;
+    char pad[64];        /* one worker's flag per cache line */
+} Slot;
+
+typedef struct {
+    pthread_mutex_t mx;  /* startup and the parent's sleep only */
+    pthread_cond_t  cv_done, cv_ready;
     pthread_t      *th;
+    Slot           *sl;
     int nth;             /* live worker threads (does NOT count the parent)   */
-    int gen;             /* bumped once per dispatch; workers wake on a change */
-    int active;          /* workers still processing the current generation   */
-    int ready;           /* workers that have parked at least once (startup)  */
+    int ready;           /* workers that have started (startup)               */
     int shutdown;
+    int active;          /* shares taken and not finished                     */
+    int waiting;         /* the parent sleeps on cv_done                      */
+    unsigned long long w;/* generation << 32 | shares left to take            */
     Job job;
 } Pool;
 
@@ -38,6 +60,15 @@ static Pool P;
 static pthread_mutex_t init_mx = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t err_mx = PTHREAD_MUTEX_INITIALIZER;   /* taken only when an item fails */
 static int P_ready = 0;
+#define SC __ATOMIC_SEQ_CST
+
+static inline void pp_relax(void) {
+#if defined(__x86_64__) || defined(__i386__)
+    __builtin_ia32_pause();
+#elif defined(__aarch64__)
+    __asm__ __volatile__("yield");
+#endif
+}
 
 /* Grab morsels until the input is exhausted. Runs on every worker AND on the
  * dispatching parent. Per-index work is byte-for-byte the serial each step:
@@ -74,44 +105,72 @@ static void run_morsels(Job *j) {
     }
 }
 
+/* a share of generation g: 1 taken, 0 none left or the job moved on */
+static int pp_take(unsigned g) {
+    unsigned long long w = __atomic_load_n(&P.w, SC);
+    while ((unsigned)(w >> 32) == g && (w & 0xffffffffu))
+        if (__atomic_compare_exchange_n(&P.w, &w, w - 1, 0, SC, SC)) return 1;
+    return 0;
+}
+
+/* up to k sleeping workers woken, each under its own lock. The parent wakes two and every worker that takes a share
+ * wakes two more while shares are left, so a cold pool wakes as a tree, not one syscall after another */
+static void pp_wake(int k) {
+    for (int i = 0; i < P.nth && k > 0; i++) {
+        Slot *t = &P.sl[i];
+        if (!__atomic_load_n(&t->sleeping, SC)) continue;
+        pthread_mutex_lock(&t->m); pthread_cond_signal(&t->c); pthread_mutex_unlock(&t->m);
+        k--;
+    }
+}
+static void pp_publish(unsigned long long w, int k) { __atomic_store_n(&P.w, w, SC); pp_wake(k); }
+
 static void *worker(void *arg) {
     long idx = (long)arg;
+    Slot *me = &P.sl[idx];
     ray_rc_sync = true;                    /* a worker only ever runs peach work */
     par_prng_perturb((W)(idx + 1));        /* its own decorrelated random stream */
     acs((U)(idx + 1));                     /* its own colours for large blocks (m.c) */
     pthread_mutex_lock(&P.mx);
-    int mygen = P.gen;
-    /* Announce we have latched our baseline generation and are about to park.
-     * pool_init() blocks until every worker has done this, so the FIRST dispatch
-     * (which bumps gen under mx) cannot slip past a worker that hadn't yet
-     * chosen its baseline -- the lost-wakeup that would otherwise hang the join.
-     * Later dispatches are safe without help: a worker between finishing a job
-     * and re-parking re-tests gen and picks up the new generation directly. */
+    unsigned seen = (unsigned)(__atomic_load_n(&P.w, SC) >> 32);   /* before pool_init returns, so before any job */
     P.ready++;
     pthread_cond_broadcast(&P.cv_ready);
+    pthread_mutex_unlock(&P.mx);
     for (;;) {
-        while (P.gen == mygen && !P.shutdown) pthread_cond_wait(&P.cv_work, &P.mx);
-        if (P.shutdown) { pthread_mutex_unlock(&P.mx); arena_free(); return 0; }   /* this thread's arena (xs sorts in one) goes with it */
-        mygen = P.gen;
-        pthread_mutex_unlock(&P.mx);
-
+        unsigned g = seen;
+        for (int s = 0; s < PP_SPIN; s++) {
+            g = (unsigned)(__atomic_load_n(&P.w, __ATOMIC_ACQUIRE) >> 32);
+            if (g != seen) break;
+            pp_relax();
+        }
+        if (g == seen) {
+            pthread_mutex_lock(&me->m);
+            __atomic_store_n(&me->sleeping, 1, SC);
+            while ((g = (unsigned)(__atomic_load_n(&P.w, SC) >> 32)) == seen) pthread_cond_wait(&me->c, &me->m);
+            __atomic_store_n(&me->sleeping, 0, SC);
+            pthread_mutex_unlock(&me->m);
+        }
+        if (__atomic_load_n(&P.shutdown, SC)) { arena_free(); return 0; }   /* this thread's arena (xs sorts in one) goes with it */
+        seen = g;
+        if (!pp_take(g)) continue;
+        if (__atomic_load_n(&P.w, SC) & 0xffffffffu) pp_wake(2);
         run_morsels(&P.job);
-
-        pthread_mutex_lock(&P.mx);
-        if (--P.active == 0) pthread_cond_broadcast(&P.cv_done);
+        if (__atomic_sub_fetch(&P.active, 1, SC) == 0 && __atomic_load_n(&P.waiting, SC)) {
+            pthread_mutex_lock(&P.mx); pthread_cond_signal(&P.cv_done); pthread_mutex_unlock(&P.mx);
+        }
     }
 }
+
+static unsigned long long pp_next(void) { return (((__atomic_load_n(&P.w, SC) >> 32) + 1) & 0xffffffffull) << 32; }
 
 /* Clean teardown at process exit so LeakSanitizer sees no live threads or a
  * dangling P.th allocation. */
 static void pool_shutdown(void) {
     if (!P_ready) return;
-    pthread_mutex_lock(&P.mx);
-    P.shutdown = 1; P.gen++;
-    pthread_cond_broadcast(&P.cv_work);
-    pthread_mutex_unlock(&P.mx);
+    __atomic_store_n(&P.shutdown, 1, SC);
+    pp_publish(pp_next(), P.nth);   /* every one, to see shutdown */
     for (int i = 0; i < P.nth; i++) pthread_join(P.th[i], 0);
-    free(P.th); P.th = 0; P_ready = 0;
+    free(P.th); P.th = 0; free(P.sl); P.sl = 0; P_ready = 0;
 }
 
 /* Lazily build the pool the first time peach runs natively. `nw_total` is the
@@ -123,12 +182,13 @@ static void pool_init(int nw_total) {
     if (!P_ready) {
         int want = nw_total - 1; if (want < 0) want = 0;
         pthread_mutex_init(&P.mx, 0);
-        pthread_cond_init(&P.cv_work, 0);
         pthread_cond_init(&P.cv_done, 0);
         pthread_cond_init(&P.cv_ready, 0);
-        P.gen = 0; P.active = 0; P.ready = 0; P.shutdown = 0; P.nth = 0;
+        P.w = 0; P.active = 0; P.waiting = 0; P.ready = 0; P.shutdown = 0; P.nth = 0;
         P.th = (pthread_t *)malloc(sizeof(pthread_t) * (want ? want : 1));
-        if (P.th) {
+        P.sl = (Slot *)calloc(want ? want : 1, sizeof(Slot));
+        if (P.sl) for (int i = 0; i < want; i++) { pthread_mutex_init(&P.sl[i].m, 0); pthread_cond_init(&P.sl[i].c, 0); }
+        if (P.th && P.sl) {
             /* Digest #5: a worker gets the main thread's stack size. The VM allows every thread the same
              * depth (2048), and the default for other threads can be far smaller (512 KB on macOS), so
              * deep recursion in a worker crashed the process where the main thread ran it fine. */
@@ -166,9 +226,9 @@ A peach_pool(A f, A dat, U n, I nw) {
         A u = aA0(n); for (U i = 0; i < n; i++) { A v = _1(f, ii(dat, i)); if (!v) { mr(u); return 0; } u = psh(u, v); } return sqz(u);
     }
 
+    mgive();                                      /* its free blocks to the depot, where the workers find them (m.c) */
     ray_rc_sync = true;                           /* parent joins the parallel scope */
 
-    pthread_mutex_lock(&P.mx);
     P.job.f = f; P.job.dat = dat; P.job.out = out;
     /* amber 2.3: the morsel shrinks with the input. A fixed 1,024-item grain
      * handed the WHOLE of any job under 1,025 items to whichever thread took
@@ -179,16 +239,26 @@ A peach_pool(A f, A dat, U n, I nw) {
     { U g = n / (U)(nw * 4); if (g < 1) g = 1; if (g > TASK_GRAIN) g = TASK_GRAIN;
       P.job.grain = g; }
     P.job.n = n; P.job.cursor = 0; P.job.err = n; P.job.msg[0] = 0;
-    P.active = P.nth;                             /* each worker decrements once */
-    P.gen++;
-    pthread_cond_broadcast(&P.cv_work);
-    pthread_mutex_unlock(&P.mx);
+    /* the parent takes morsels too: a share for each morsel past the first, at most one per worker */
+    U mo = (n + P.job.grain - 1) / P.job.grain;
+    int k = P.nth; if ((U)k > mo - 1) k = (int)(mo - 1);
+    __atomic_store_n(&P.active, k, SC);
+    pp_publish(pp_next() | (unsigned)k, k < 2 ? k : 2);
 
     run_morsels(&P.job);                          /* parent pulls its share */
 
-    pthread_mutex_lock(&P.mx);
-    while (P.active > 0) pthread_cond_wait(&P.cv_done, &P.mx);
-    pthread_mutex_unlock(&P.mx);
+    /* the cursor is past the end: shares nobody took would find nothing, so they're taken back */
+    { unsigned long long w = __atomic_load_n(&P.w, SC); U left;
+      while ((left = (U)(w & 0xffffffffu)) && !__atomic_compare_exchange_n(&P.w, &w, w & ~0xffffffffull, 0, SC, SC)) ;
+      if (left) __atomic_sub_fetch(&P.active, (int)left, SC); }
+    for (int s = 0; s < PP_SPIN && __atomic_load_n(&P.active, SC) > 0; s++) pp_relax();
+    if (__atomic_load_n(&P.active, SC) > 0) {
+        pthread_mutex_lock(&P.mx);
+        __atomic_store_n(&P.waiting, 1, SC);
+        while (__atomic_load_n(&P.active, SC) > 0) pthread_cond_wait(&P.cv_done, &P.mx);
+        __atomic_store_n(&P.waiting, 0, SC);
+        pthread_mutex_unlock(&P.mx);
+    }
 
     int err = P.job.err < n;
     ray_rc_sync = false;                          /* back to serial before assembling */

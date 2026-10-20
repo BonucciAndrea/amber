@@ -1,12 +1,24 @@
 /* parallel.c  -  see parallel.h.
  * GNU AGPLv3 - see LICENSE and NOTICE. */
+#if defined(__linux__) && !defined(_GNU_SOURCE)
+#define _GNU_SOURCE   /* sched_getaffinity, CPU_COUNT */
+#endif
 #include "parallel.h"
 #include "simd.h"
 #include <pthread.h>
 #include <stdlib.h>
 #include <unistd.h>
+#if defined(__linux__)
+#include <sched.h>
+#endif
 
-static int online_cpus(void) {
+/* The CPUs we may run on. Taskset, cpusets and benchmark runners (runexec --cores) give us fewer than are online,
+ * and a pool sized past that just queues threads on the same cores */
+int par_cpus(void) {
+#if defined(__linux__)
+    cpu_set_t s;
+    if (!sched_getaffinity(0, sizeof s, &s)) { int n = CPU_COUNT(&s); if (n > 0) return n; }
+#endif
 #if defined(_SC_NPROCESSORS_ONLN)
     long n = sysconf(_SC_NPROCESSORS_ONLN);
     if (n > 0) return (int)n;
@@ -21,9 +33,9 @@ int par_thread_count(size_t n) {
     if (e && *e) {
         t = 0;
         for (; *e >= '0' && *e <= '9'; e++) t = t * 10 + (*e - '0');
-        if (t < 1) t = online_cpus();
+        if (t < 1) t = par_cpus();
     } else {
-        t = online_cpus();
+        t = par_cpus();
     }
     if (t < 1) t = 1;
     if (t > PAR_MAX_THREADS) t = PAR_MAX_THREADS;

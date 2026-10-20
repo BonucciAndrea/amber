@@ -103,12 +103,9 @@ A1(frk,P(!xtA||xn-2,et(x))A y=kv(&x);P(!lC(x)||!ytC,y(ed(x)))F(xn,P(pnul(xa),y(e
 // sysconf(_SC_NPROCESSORS_ONLN)); this mirrors that same fix for peach so the
 // two parallel primitives in Amber agree on what "auto" means. AMBER_THREADS
 // still overrides explicitly, unchanged.
-Z I peachCPUs(){
-#if defined(_SC_NPROCESSORS_ONLN)
- L n=sysconf(_SC_NPROCESSORS_ONLN);if(n>0)return(I)n;
-#endif
- return 4;//last-resort fallback if sysconf itself is unavailable
-}
+// 2.9.1: the CPUs we may run on, not all online ones (taskset/runexec --cores), the same count par_thread_count uses
+int par_cpus(void);
+Z I peachCPUs(){return par_cpus();}
 Z I peachNW(){S*e=env;I n=-1;if(e)while(*e){S p=*e++;if(!strncmp(p,"AMBER_THREADS=",14)){n=0;S q=p+14;while(*q>='0'&&*q<='9')n=n*10+(*q++-'0');if(n<1)n=peachCPUs();break;}}return n<0?peachCPUs():n;}
 Z A eachR(A f,A y,U lo,U hi){U m=hi-lo;A u=aA0(m|!m);for(U i=0;i<m;i++){A v=_1(f,ii(y,lo+i));if(!v){mr(u);return 0;}u=psh(u,v);}return sqz(u);}
 // amber 1.9.5: thread-pool parallel-each.  peach[f;y] applies f to each item of

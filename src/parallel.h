@@ -16,8 +16,8 @@
  *
  * Thread count: AMBER_THREADS env var if set (same variable `peach`/std.k
  * already uses for process-level parallelism, kept consistent rather than
- * inventing a second knob), else the number of online CPUs
- * (sysconf(_SC_NPROCESSORS_ONLN)), capped at PAR_MAX_THREADS. AMBER_THREADS=1
+ * inventing a second knob), else the CPUs we may run on (par_cpus: the affinity
+ * mask on Linux, else the online count), capped at PAR_MAX_THREADS. AMBER_THREADS=1
  * forces serial (single-threaded simd_* only, still vectorised).
  */
 #ifndef AMBER_PARALLEL_H
@@ -37,6 +37,7 @@ extern "C" {
  * (1 below PAR_THRESHOLD, otherwise env/CPU-derived and capped). Exposed so
  * callers/tests/benchmarks can report what happened without guessing. */
 int par_thread_count(size_t n);
+int par_cpus(void);   /* CPUs this process may run on (affinity mask on Linux, else online) */
 
 void par_add_i64(const int64_t *a, const int64_t *b, int64_t *out, size_t n);
 void par_add_f64(const double  *a, const double  *b, double  *out, size_t n);

@@ -28,6 +28,9 @@ Fixes from running real q code, and appends that don't copy anymore.
 - **peach gives memory back**: what the workers made and the main thread let go of stayed with the main thread, so the
   workers mapped new memory every call (20 calls making 200 MB each grew to 3.1 GB). It goes back to them now: 0.9 GB,
   and 3x quicker.
+- **Threads fit the cores you give it**: pinned with taskset or a benchmark runner's `--cores`, Amber still started a
+  thread per CPU on the machine, so 14 threads fought over 4 cores. It counts the cores it may use now (`AMBER_THREADS`
+  still wins): a 4-core fft run went from 180 to 160 ms and 814 to 580 MB.
 - **Loops and calls 3-6x quicker**: small ints skip the verbs' type checks, longs past 2^31 change in place when one
   variable holds them, `do`, a test and its branch, and a call to a function in a local are one step each, and a call
   no longer clears and copies its frame with `memset`. Per step: a `do` loop 86 -> 19 ns, `while` 74 -> 21, `$[..]` 97 ->

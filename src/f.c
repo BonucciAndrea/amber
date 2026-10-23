@@ -738,6 +738,12 @@ ZN A fndA(A x,A y,U k)_(P(_tmM(y),0)U m=xn,n=yN;P(!FAQ(n),0)B g=ytA;CO A*a=xA;
   free(hh);)
  I(w,mr(z);z=w)y(z))
 #undef FAP
+// Floats past a few items: their words through fndL, as ints, once AMNF has given -0.0 and every NaN the one
+// spelling find counts them as (each probe used to scan x: 10M probes into 1000 floats took 1.7 s). The copies cost
+// a pass over x and y; fndL declines what it would decline for ints, and then the scan below runs as before.
+ZN A fndFW(A x,A y)_(U m=xn,n=yn;P(m<=16||n<=16,0)A a=aL(m),b=aL(n);P(!a||!b,I(a,mr(a))I(b,mr(b))0)
+ CO L*RES p=xV,*RES q=yV;L*RES u=_L(a),*RES v=_L(b);F(m,u[i]=AMNF(p[i]))F(n,v[i]=AMNF(q[i]))
+ A z=fndL(a,b);mr(a);P(!z,mr(b);0)mr(y);z)
 X2(fnd,
  R_(et(y))
  Rm(i1(xx,N(fnd(xy,y))))
@@ -770,7 +776,7 @@ X2(fnd,
    B srt=!_tP(x)&&xt!=tF&&xt!=tS&&_at(x)==1;TY(fGL)*f=xt==tF?fFL:(srt?G(&bGL,bHL,bIL,bLL):FSC(xn))[xw-3];V*a=xV;U m=xn;
    Yt(az(f(a,m,gl(y))))
    U n=yn;
-   I(srt,P(n>=SFMIN,fndS(a,m,xw-3,y)))E(A zl_=fndL(x,y);P(zl_,zl_))   //sorted: SFMIN probes or more searched together; fewer as an atom is, one by one
+   I(srt,P(n>=SFMIN,fndS(a,m,xw-3,y)))E(A zl_=xt==tF?fndFW(x,y):fndL(x,y);P(zl_,zl_))   //sorted: SFMIN probes or more searched together; fewer as an atom is, one by one
    // symbols: the width fndL gives, an index into x's (64 bits with 0N on a miss), here too. Which of the two a symbol
    // vector takes is set by its ids' range, so by the order its names were interned: =x's lists were 16 or 32 bits by it
    // A few items are looked up into o first, so the result is made once, at the width they need. More are written at the

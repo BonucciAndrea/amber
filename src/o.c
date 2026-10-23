@@ -367,7 +367,8 @@ ZN I gsnew(GS*t,L key,N r){
   F*a3=realloc(t->af,(N)nc*SZ(F));if(a3)t->af=a3;L*a4=realloc(t->al,(N)nc*SZ(L));if(a4)t->al=a4;L*a5=realloc(t->gc,(N)nc*SZ(L));if(a5)t->gc=a5;
   if(!a1||!a2||!a3||!a4||!a5)return -1;t->cap=nc;}
  I g=(I)t->ng++;t->gk[g]=key;t->gf[g]=(I)r;t->gc[g]=0;t->af[g]=t->a0f;t->al[g]=t->a0l;return g;}
-// grows the hash 2x, the keys rehashed into their new slots
+// grows the hash 2x, the keys rehashed into their new slots. GS_HSH keeps it a quarter full while it holds under 16K
+// groups (half full the probe loop mispredicted on every other row: count by sym on 1M rows, 1000 symbols, 5.2 ms)
 Z I gsrh(L**phk,I**phg,W*phc,U*phl){W nc=*phc<<1;U nl=*phl+1;L*nk=malloc((N)nc*SZ(L));I*ng_=calloc((N)nc,SZ(I));
  I(!nk||!ng_,free(nk);free(ng_);return 1;)L*hk=*phk;I*hg=*phg;
  for(W i=0;i<*phc;i++)if(hg[i]){W j=((W)hk[i]*GOLD)>>(64-nl);while(ng_[j])j=(j+1)&(nc-1);nk[j]=hk[i];ng_[j]=hg[i];}
@@ -380,7 +381,7 @@ Z I gsrh(L**phk,I**phg,W*phc,U*phl){W nc=*phc<<1;U nl=*phl+1;L*nk=malloc((N)nc*S
 #define GS_DIR {W q_=(W)key-(W)lo;g=slot[q_]-1;if(__builtin_expect(g<0,0)){GS_NEW slot[q_]=g+1;}}
 #define GS_HSH {W j_=((W)key*GOLD)>>sh;while(hg[j_]&&hk[j_]!=key)j_=(j_+1)&msk;\
  if(__builtin_expect(hg[j_]!=0,1))g=hg[j_]-1;else{GS_NEW hk[j_]=key;hg[j_]=g+1;\
-  if((W)ng*2>msk){if(gsrh(&t->hk,&t->hg,&t->hcap,&t->hlg)){t->ng=ng;return -1;}hk=t->hk;hg=t->hg;msk=t->hcap-1;sh=64-t->hlg;}}}
+  if((W)ng*(ng<16384?4:2)>msk){if(gsrh(&t->hk,&t->hg,&t->hcap,&t->hlg)){t->ng=ng;return -1;}hk=t->hk;hg=t->hg;msk=t->hcap-1;sh=64-t->hlg;}}}
 // phase 1: rows [s,e) to group numbers in cd (masked: the chosen rows listed in ix first, without a branch, as a
 // random mask mispredicts every other row); the count of numbers, -1 out of memory. One function per key width,
 // index and mask

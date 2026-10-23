@@ -166,6 +166,18 @@ Z V fndL_b4(V*c_,int t){FJ*c=c_;CO V*b=c->b;V*z=c->z;U wy=c->wy,wz=c->wz,s=(U)((
   k=r?(L)r-1:mv;
   I(__builtin_expect((!r)&(p->v[3]>=0),0),W(1,j=(j+1)&msk;p=h+j;U mt=B4MT(p,q);B(mt,k=p->v[CTZ(mt)])B(p->v[3]<0,))))
  c->miss[t]=miss;}
+#elif defined(__SSE2__)
+// x86: as arm64's, each matching lane keeps its index plus one; one lane at most matches, so two shuffles and ors
+// gather it (no ctz, no second load that waits on the compare: scout's find 10 -> 20 ms with them, main's hash
+// predicted every probe). 0 is a miss, an empty slot's -1 included
+Z V fndL_b4(V*c_,int t){FJ*c=c_;CO V*b=c->b;V*z=c->z;U wy=c->wy,wz=c->wz,s=(U)((W)c->n*t/c->nt),e=(U)((W)c->n*(t+1)/c->nt);
+ CO B4*RES h=c->b4;U sh=c->sh;W msk=c->msk;L mv=c->mv;I miss=0;__m128i one=_mm_set1_epi32(1);
+ FNDW(I q=(I)v;W j=((W)(uint32_t)q*GOLD)>>sh;CO B4*p=h+j;
+  __m128i m_=_mm_and_si128(_mm_cmpeq_epi32(_mm_loadu_si128((CO __m128i*)p->k),_mm_set1_epi32(q)),_mm_add_epi32(_mm_loadu_si128((CO __m128i*)p->v),one));
+  m_=_mm_or_si128(m_,_mm_shuffle_epi32(m_,0x4E));m_=_mm_or_si128(m_,_mm_shuffle_epi32(m_,0xB1));uint32_t r=(uint32_t)_mm_cvtsi128_si32(m_);
+  L f=r!=0;k=(((L)r-1)&-f)|(mv&(f-1));   //no branch: hits and misses come at random in a join
+  I(__builtin_expect((!r)&(p->v[3]>=0),0),W(1,j=(j+1)&msk;p=h+j;U mt=B4MT(p,q);B(mt,k=p->v[CTZ(mt)])B(p->v[3]<0,))))
+ c->miss[t]=miss;}
 #else
 Z V fndL_b4(V*c_,int t){FJ*c=c_;CO V*b=c->b;V*z=c->z;U wy=c->wy,wz=c->wz,s=(U)((W)c->n*t/c->nt),e=(U)((W)c->n*(t+1)/c->nt);
  CO B4*RES h=c->b4;U sh=c->sh;W msk=c->msk;L mv=c->mv;I miss=0;
@@ -298,14 +310,20 @@ Z A fndL(A x,A y)_(
    for(U i=m;i--;)lut[(W)RD(wx,a,i)-(W)lo]=(I)i;
    FJ c={.b=b,.z=zV,.n=n,.wy=wy,.wz=wz,.lut=lut,.lo=lo,.rg=rg};miss=fndrun(&c,fndL_lut);
    free(lut);)
- E(I(wx==2&&wy==2,W nb=4;U lg=2;W(nb<(mm>65536?mm/2:mm),nb<<=1;lg++)   //a bucket per key at most; 2 per bucket past 64K keys, the table out of the caches anyway (fewer lines)
+ // 4-byte keys and probes: fndL_b4's buckets, unless the first 256 probes nearly all hit (under 1 in 16 missed): then
+ // the probe loop of the hash below, whose branches the predictor learns there (scout's find: 10 ms on it, 19 on the
+ // buckets), where at random hits and misses the buckets' flat cost wins (half missing: 70 ms on it, 19 on them)
+ E(B useh=1;I(wx==2&&wy==2,W nb=4;U lg=2;W(nb<(mm>65536?mm/2:mm),nb<<=1;lg++)   //a bucket per key at most; 2 per bucket past 64K keys, the table out of the caches anyway (fewer lines)
    B4*h=amal((N)nb*SZ(B4));P(!h,mr(z);0)F(nb,MS(h[i].k,0,SZ h[i].k);MS(h[i].v,0xff,SZ h[i].v))
    CO I*RES ka=(CO I*)a;W bm=nb-1;
    for(U i=0;i<m;i++){I v=ka[i];W j=((W)(uint32_t)v*GOLD)>>(64-lg);   //first index kept: a key met again is skipped
      for(;;){B4*p=h+j;U u=0;B d=0;for(;u<4;u++){B(p->v[u]<0,)B(p->k[u]==v,d=1)}B(d,)B(u<4,p->k[u]=v;p->v[u]=(I)i)j=(j+1)&bm;}}
-   B fq=x==fqx&&tZ((L)m)==tz;FJ c={.b=b,.z=zV,.n=n,.wy=wy,.wz=wz,.b4=h,.sh=64-lg,.msk=bm,.mv=fq?(L)m:-1};miss=fndrun(&c,fndL_b4);
-   free(h);I(fq,fqr=z))
- E(W cap=16,need=2*mm;U lg;W(cap<need,cap<<=1;)
+   U nsmp=n<256?n:256,smiss=0;CO I*RES pb=(CO I*)b;
+   F(nsmp,I q=pb[i];W j=((W)(uint32_t)q*GOLD)>>(64-lg);W(1,B4*p=h+j;U mt=B4MT(p,q);I(mt,smiss+=p->v[CTZ(mt)]<0;break)I(p->v[3]<0,smiss++;break)j=(j+1)&bm))
+   I(smiss*16>=nsmp,useh=0;B fq=x==fqx&&tZ((L)m)==tz;FJ c={.b=b,.z=zV,.n=n,.wy=wy,.wz=wz,.b4=h,.sh=64-lg,.msk=bm,.mv=fq?(L)m:-1};miss=fndrun(&c,fndL_b4);
+    I(fq,fqr=z))
+   free(h);)
+ I(useh,W cap=16,need=2*mm;U lg;W(cap<need,cap<<=1;)
    {W c=cap;lg=0;W(c>1,c>>=1;lg++)}
    U sh=64-lg;W msk=cap-1;
    L*hk=amal((N)cap*SZ(L));I*hv=hk?amal((N)cap*SZ(I)):0;

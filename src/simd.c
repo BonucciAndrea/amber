@@ -510,6 +510,62 @@ static inline uint64_t amb_bits(double d) {
   #define AMB_GUARD_BLOCK  L
 #endif
 
+#if defined(__aarch64__)
+/* arm64: the guarded loops above stay scalar under clang (two doubles a block, and
+ * a byte store each), about 2 cycles a double, where an int compare is 0.2. Here
+ * sixteen doubles go per step: eight fcmgt/fcmlt, three uzp1 to narrow the masks
+ * to bytes, one 16-byte store; the NaN / -0.0 guard is a fcmeq and a cmeq beside
+ * each. Same bytes out, same *bad. */
+#include <arm_neon.h>
+static inline uint8x16_t amb_n8(const uint64x2_t *c) {
+    uint32x4_t w0 = vuzp1q_u32(vreinterpretq_u32_u64(c[0]), vreinterpretq_u32_u64(c[1])),
+               w1 = vuzp1q_u32(vreinterpretq_u32_u64(c[2]), vreinterpretq_u32_u64(c[3])),
+               w2 = vuzp1q_u32(vreinterpretq_u32_u64(c[4]), vreinterpretq_u32_u64(c[5])),
+               w3 = vuzp1q_u32(vreinterpretq_u32_u64(c[6]), vreinterpretq_u32_u64(c[7]));
+    uint16x8_t h0 = vuzp1q_u16(vreinterpretq_u16_u32(w0), vreinterpretq_u16_u32(w1)),
+               h1 = vuzp1q_u16(vreinterpretq_u16_u32(w2), vreinterpretq_u16_u32(w3));
+    return vshrq_n_u8(vuzp1q_u8(vreinterpretq_u8_u16(h0), vreinterpretq_u8_u16(h1)), 7);
+}
+#define AMB_NB(X) vornq_u64(vceqq_u64(vreinterpretq_u64_f64(X), nz), vceqq_f64(X, X))   /* -0.0 or NaN lanes */
+#define AMB_NN(X) vmvnq_u32(vreinterpretq_u32_u64(vceqq_f64(X, X)))                     /* NaN lanes */
+#define AMB_NOR8(T) vorrq_u64(vorrq_u64(vorrq_u64(T[0], T[1]), vorrq_u64(T[2], T[3])), vorrq_u64(vorrq_u64(T[4], T[5]), vorrq_u64(T[6], T[7])))
+/* Which operands can make the IEEE answer differ from the general path: there a
+ * NaN is the smallest float and -0.0 equals 0.0, so x>v is already right for a NaN
+ * x (false both ways) and only a NaN on the smaller side (x<v, or b in a>b) or a
+ * NaN or zero scalar needs the guard. GUARD is the full one, the NaN-only one, or
+ * none; anything it flags sends the caller down the general path as before. */
+#define AMB_G_FULL(X) AMB_NB(X)
+#define AMB_G_NAN(X)  vreinterpretq_u64_u32(AMB_NN(X))
+#define AMB_G_NONE(X) vdupq_n_u64(0)
+#define AMB_CMPS_N(VC, CMP, GUARD)                                             \
+    for (; i + 16 <= n; i += 16) { uint64x2_t c[8], t[8]; size_t k;            \
+        for (k = 0; k < 8; k++) { float64x2_t x = vld1q_f64(a + i + 2 * k); t[k] = GUARD(x); c[k] = VC(x, vv); } \
+        g = vorrq_u64(g, AMB_NOR8(t)); vst1q_u8(out + i, amb_n8(c)); }          \
+    for (; i < n; i++) { b |= AMB_BADBITS(amb_bits(a[i])); out[i] = (unsigned char)(a[i] CMP v); }
+void simd_cmps_f64(const double *a, double v, unsigned char *out, size_t n, int op, int *bad) {
+    int b = AMB_BADBITS(amb_bits(v)) ? 1 : 0; size_t i = 0;
+    float64x2_t vv = vdupq_n_f64(v); uint64x2_t nz = vdupq_n_u64(0x8000000000000000ULL), g = vdupq_n_u64(0);
+    if (b || v == 0.0) { if (op) { AMB_CMPS_N(vcgtq_f64, >, AMB_G_FULL) } else { AMB_CMPS_N(vcltq_f64, <, AMB_G_FULL) } }
+    else if (op)       { AMB_CMPS_N(vcgtq_f64, >, AMB_G_NONE) }
+    else               { AMB_CMPS_N(vcltq_f64, <, AMB_G_NAN) }
+    if (vmaxvq_u32(vreinterpretq_u32_u64(g))) b = 1;
+    *bad = b;
+}
+#define AMB_CMPV_N(VC, CMP, GX, GY)                                            \
+    for (; i + 16 <= n; i += 16) { uint64x2_t c[8], t[8]; size_t k;            \
+        for (k = 0; k < 8; k++) { float64x2_t x = vld1q_f64(a + i + 2 * k), y = vld1q_f64(b + i + 2 * k); \
+                                  t[k] = vorrq_u64(GX(x), GY(y)); c[k] = VC(x, y); } \
+        g = vorrq_u64(g, AMB_NOR8(t)); vst1q_u8(out + i, amb_n8(c)); }          \
+    for (; i < n; i++) { bb |= AMB_BADBITS(amb_bits(a[i])) | AMB_BADBITS(amb_bits(b[i])); \
+                         out[i] = (unsigned char)(a[i] CMP b[i]); }
+void simd_cmpv_f64(const double *a, const double *b, unsigned char *out, size_t n, int op, int *bad) {
+    int bb = 0; size_t i = 0;
+    uint64x2_t nz = vdupq_n_u64(0x8000000000000000ULL), g = vdupq_n_u64(0); (void)nz;
+    if (op) { AMB_CMPV_N(vcgtq_f64, >, AMB_G_NONE, AMB_G_NAN) } else { AMB_CMPV_N(vcltq_f64, <, AMB_G_NAN, AMB_G_NONE) }
+    if (vmaxvq_u32(vreinterpretq_u32_u64(g))) bb = 1;
+    *bad = bb;
+}
+#else
 AMB_MV void simd_cmps_f64(const double *a, double v, unsigned char *out, size_t n, int op, int *bad) {
     const double *p = a;
     unsigned char *o = out;
@@ -561,6 +617,8 @@ AMB_MV void simd_cmpv_f64(const double *a, const double *b, unsigned char *out, 
     AMB_GUARD_DONE(bb)
     *bad = bb;
 }
+
+#endif
 
 /* ==== amber 2.1: fused compare-and-count ==================================
  * +/x<y, +/x>y, +/x=y without the byte vector. op: 0 <, 1 >, 2 =. The float

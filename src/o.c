@@ -606,10 +606,26 @@ Z I penc(A k,int nt,A*pu,A*pcd){N n=_n(k);UC kt=_t(k);U wk=kt==tL?3:2;
  free(gk);free(gv);free(uk_);F(nt,free(c.lk[i]);free(c.lm[i]))
  I(r,I(cdA,mr(cdA))return 1;)
  *pu=u;I(pcd,*pcd=cdA)return 0;}
-// `senc k: (distinct;codes) of a big symbol vector on more than one thread, for a group-by with several aggregates
-// to hash once (qaggf); () otherwise -- on one thread gaggS hashing per aggregate is cheaper than the codes
-A sencT(A x){P(_tP(x)||_t(x)!=tS||_n(x)<PGAG_MIN||par_thread_count(_n(x))<2,x(emp(tA)))
- A u=0,cd=0;P(penc(x,par_thread_count(_n(x)),&u,&cd),x(emp(tA)))
+// one thread: a symbol vector's codes, first seen first, and its distinct symbols, through buckets of 4 ids and their
+// codes, as unqS4's (an empty slot's code is -1, its id 0: an id 0 that matches it is new). 1: out of memory
+TD struct{I k[4];I v[4];}SB4;
+Z I senc1(A x,A*pu,A*pcd){U n=xn;CO I*RES a=(CO I*)xV;U lg=6;W nb=64;SB4*h=malloc(nb*SZ(SB4));A cd=an(n,tI),u=an(n,tS);
+ I(!h||!cd||!u,free(h);I(cd,mr(cd))I(u,mr(u))return 1;)
+ F(nb,MS(h[i].k,0,SZ h[i].k);MS(h[i].v,0xff,SZ h[i].v))I*RES c=_I(cd),*RES r=_I(u);U m=0;
+ for(U i=0;i<n;i++){I v=a[i];W j=((W)(uint32_t)v*0x9E3779B97F4A7C15ull)>>(64-lg);I g=-1;
+  for(;;){SB4*p=h+j;U s=0;for(;s<4;s++){I(p->v[s]<0,break)I(p->k[s]==v,g=p->v[s];break)}
+   I(g>=0,break)I(s<4,p->k[s]=v;p->v[s]=g=(I)m;r[m++]=v;break)j=(j+1)&(nb-1);}
+  c[i]=g;
+  I((W)m>=nb&&g==(I)m-1,W nn=nb<<1;U nl=lg+1;SB4*h2=malloc(nn*SZ(SB4));I(!h2,free(h);mr(cd);mr(u);return 1;)   //grow: every id again
+   F(nn,MS(h2[i].k,0,SZ h2[i].k);MS(h2[i].v,0xff,SZ h2[i].v))
+   for(U q=0;q<m;q++){W b=((W)(uint32_t)r[q]*0x9E3779B97F4A7C15ull)>>(64-nl);for(;;){SB4*p=h2+b;U s=0;W(s<4&&p->v[s]>=0,s++)I(s<4,p->k[s]=r[q];p->v[s]=(I)q;break)b=(b+1)&(nn-1);}}
+   free(h);h=h2;nb=nn;lg=nl;)}
+ free(h);*pu=AN(m,u);*pcd=cd;return 0;}
+// `senc k: (distinct;codes) of a big symbol vector, for a group-by with several aggregates to hash once (qaggf); ()
+// otherwise. On one thread senc1's buckets: each aggregate's pass hashing again cost more (select 8 aggregates by sym
+// from 1M rows: 52 ms, q 17)
+A sencT(A x){P(_tP(x)||_t(x)!=tS||_n(x)<PGAG_MIN,x(emp(tA)))
+ A u=0,cd=0;P(par_thread_count(_n(x))<2?senc1(x,&u,&cd):penc(x,par_thread_count(_n(x)),&u,&cd),x(emp(tA)))
  return x(aV(tA,2,A(u,cd)));}
 // ---- `wmul (w;x): qSQL's fused wavg by group (qsql.k gag1) needs w*x and whether a product is null, so that a row
 // with a null value or weight adds no weight: both in one pass, (w*x;0 or 1), where k's * then a null scan made two.

@@ -246,7 +246,25 @@ Z X1(grq,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et
 A1(grp,UC a=_tP(x)||!_tT(x)||xtE?0:_at(x);A z=grq(x);P(!z||!a,z)UC t=a==1?1:a==3?0:2;P(_at(zx)==t,z)zx=mut(zx);_at(zx)=t;z)
 Z A1(cSI,Q(xtS||xtI)C t=tS^tI^xt;MINE(x)?(_at(x)=0,AT(t,x)):x(aV(t,xn,xV)))
 Z I penc(A,int,A*,A*);
-X1(unq,RM(K1("{$[#x;x@i@<i:&/'.=+.+x;x]}",x))   /*a table: its distinct rows, first seen first (issue #19); as q*/Rm(unq(val(x)))RE(x)RS(I(xn>=(1u<<16),A u_=0;I(!penc(x,par_thread_count(xn),&u_,0),return x(u_)))cSI(unq(cSI(x))))Ril(rndF(gl(x)))R_(et(x))RB(unq(cG(x)))
+//distinct symbols on one thread: the 4-byte ids hashed into buckets of 4, all 4 compared at once, so a seen id costs
+//one load and no branch per slot. The ids of short symbols are packed and spread over a huge range, so no direct
+//table fits (1M rows, 1000 symbols: 2.5 ms through the codes, q 0.6 ms). Empty slots hold 0; id 0 is kept aside
+Z I s4put(I*h,W nb,U lg,I v){W b=((W)(uint32_t)v*0x9E3779B97F4A7C15ull)>>(64-lg);
+ for(;;){I*p=h+4*b;P((p[0]==v)|(p[1]==v)|(p[2]==v)|(p[3]==v),0)
+  I e=!p[0]?0:!p[1]?1:!p[2]?2:!p[3]?3:-1;P(e>=0,p[e]=v;1)b=(b+1)&(nb-1);}}
+Z A unqS4(A x){U n=xn;CO I*RES a=(CO I*)xV;U lg=6;W nb=64;I*h=calloc(nb*4,SZ(I));P(!h,0)
+ A z=an(n,xt);I*RES r=(I*)zV;U m=0;B h0=0;
+ for(U i=0;i<n;i++){I v=a[i];
+  if(!v){I(!h0,h0=1;r[m++]=v)continue;}
+  if(s4put(h,nb,lg,v)){r[m++]=v;
+   if((W)m>=nb){W nn=nb<<1;U nl=lg+1;I*g=calloc(nn*4,SZ(I));if(!g){free(h);mr(z);return 0;}
+    for(U s=0;s<m;s++)if(r[s])s4put(g,nn,nl,r[s]);
+    free(h);h=g;nb=nn;lg=nl;}}}
+ free(h);return AN(m,z);}
+//a table: its distinct rows, first seen first (issue #19); as q. Each column folds into one dense code per row (its
+//distinct values, each row's place in them, re-ranked after every column so codes stay below the row count), then the
+//first row of each code. It used to group the rows as lists: 1.4 s for 1M rows of 2 columns, q 42 ms
+X1(unq,RM(K1("{$[#x;[c:.+x;k:{u:?y;w:(x*#u)+u?y;(?w)?w}/[{(?x)?x}@*c;1_c];x@k?!1+|/k];x]}",x))Rm(unq(val(x)))RE(x)RS(P(xn<2,x)I(xn<(1u<<16)||par_thread_count(xn)<2,A u_=unqS4(x);P(u_,x(u_)))I(xn>=(1u<<16),A u_=0;I(!penc(x,par_thread_count(xn),&u_,0),return x(u_)))cSI(unq(cSI(x))))Ril(rndF(gl(x)))R_(et(x))RB(unq(cG(x)))
  RGC(C a[256]={},r[256],t=xt;U n=0;Mx(F(xn,UC v=xg;I(!a[v],a[v]=1;r[n++]=v)))aV(t,n,r))
  R12(tA,tH,tI,tL,tF,tDT,tTM,tNP,tMN,tSC,tMO,tSP,P(xn<2,x)
   {A u_=xtA?unqT(x):unqL(x);P(u_,x(u_))}     /*amber: C hash/LUT distinct (or, for a generic list, unqT), 0 = not handled*/
@@ -349,7 +367,8 @@ ZN I gsnew(GS*t,L key,N r){
   F*a3=realloc(t->af,(N)nc*SZ(F));if(a3)t->af=a3;L*a4=realloc(t->al,(N)nc*SZ(L));if(a4)t->al=a4;L*a5=realloc(t->gc,(N)nc*SZ(L));if(a5)t->gc=a5;
   if(!a1||!a2||!a3||!a4||!a5)return -1;t->cap=nc;}
  I g=(I)t->ng++;t->gk[g]=key;t->gf[g]=(I)r;t->gc[g]=0;t->af[g]=t->a0f;t->al[g]=t->a0l;return g;}
-// grows the hash 2x, the keys rehashed into their new slots
+// grows the hash 2x, the keys rehashed into their new slots. GS_HSH keeps it a quarter full while it holds under 16K
+// groups (half full the probe loop mispredicted on every other row: count by sym on 1M rows, 1000 symbols, 5.2 ms)
 Z I gsrh(L**phk,I**phg,W*phc,U*phl){W nc=*phc<<1;U nl=*phl+1;L*nk=malloc((N)nc*SZ(L));I*ng_=calloc((N)nc,SZ(I));
  I(!nk||!ng_,free(nk);free(ng_);return 1;)L*hk=*phk;I*hg=*phg;
  for(W i=0;i<*phc;i++)if(hg[i]){W j=((W)hk[i]*GOLD)>>(64-nl);while(ng_[j])j=(j+1)&(nc-1);nk[j]=hk[i];ng_[j]=hg[i];}
@@ -362,7 +381,7 @@ Z I gsrh(L**phk,I**phg,W*phc,U*phl){W nc=*phc<<1;U nl=*phl+1;L*nk=malloc((N)nc*S
 #define GS_DIR {W q_=(W)key-(W)lo;g=slot[q_]-1;if(__builtin_expect(g<0,0)){GS_NEW slot[q_]=g+1;}}
 #define GS_HSH {W j_=((W)key*GOLD)>>sh;while(hg[j_]&&hk[j_]!=key)j_=(j_+1)&msk;\
  if(__builtin_expect(hg[j_]!=0,1))g=hg[j_]-1;else{GS_NEW hk[j_]=key;hg[j_]=g+1;\
-  if((W)ng*2>msk){if(gsrh(&t->hk,&t->hg,&t->hcap,&t->hlg)){t->ng=ng;return -1;}hk=t->hk;hg=t->hg;msk=t->hcap-1;sh=64-t->hlg;}}}
+  if((W)ng*(ng<16384?4:2)>msk){if(gsrh(&t->hk,&t->hg,&t->hcap,&t->hlg)){t->ng=ng;return -1;}hk=t->hk;hg=t->hg;msk=t->hcap-1;sh=64-t->hlg;}}}
 // phase 1: rows [s,e) to group numbers in cd (masked: the chosen rows listed in ix first, without a branch, as a
 // random mask mispredicts every other row); the count of numbers, -1 out of memory. One function per key width,
 // index and mask
@@ -588,10 +607,33 @@ Z I penc(A k,int nt,A*pu,A*pcd){N n=_n(k);UC kt=_t(k);U wk=kt==tL?3:2;
  free(gk);free(gv);free(uk_);F(nt,free(c.lk[i]);free(c.lm[i]))
  I(r,I(cdA,mr(cdA))return 1;)
  *pu=u;I(pcd,*pcd=cdA)return 0;}
-// `senc k: (distinct;codes) of a big symbol vector on more than one thread, for a group-by with several aggregates
-// to hash once (qaggf); () otherwise -- on one thread gaggS hashing per aggregate is cheaper than the codes
-A sencT(A x){P(_tP(x)||_t(x)!=tS||_n(x)<PGAG_MIN||par_thread_count(_n(x))<2,x(emp(tA)))
- A u=0,cd=0;P(penc(x,par_thread_count(_n(x)),&u,&cd),x(emp(tA)))
+// one thread: a symbol vector's codes, first seen first, and its distinct symbols, through buckets of 4 ids and their
+// codes, as unqS4's (an empty slot's code is -1, its id 0: an id 0 that matches it is new). 1: out of memory
+TD struct{I k[4];I v[4];}SB4;
+#if defined(__SSE2__)
+#include <emmintrin.h>
+#define SB4MT(p,q) (U)_mm_movemask_ps(_mm_castsi128_ps(_mm_cmpeq_epi32(_mm_loadu_si128((CO __m128i*)(p)->k),_mm_set1_epi32(q))))
+#else
+#define SB4MT(p,q) ((U)((p)->k[0]==(q))|(U)((p)->k[1]==(q))<<1|(U)((p)->k[2]==(q))<<2|(U)((p)->k[3]==(q))<<3)
+#endif
+Z I senc1(A x,A*pu,A*pcd){U n=xn;CO I*RES a=(CO I*)xV;U lg=6;W nb=64;SB4*h=malloc(nb*SZ(SB4));A cd=an(n,tI),u=an(n,tS);
+ I(!h||!cd||!u,free(h);I(cd,mr(cd))I(u,mr(u))return 1;)
+ F(nb,MS(h[i].k,0,SZ h[i].k);MS(h[i].v,0xff,SZ h[i].v))I*RES c=_I(cd),*RES r=_I(u);U m=0;
+ for(U i=0;i<n;i++){I v=a[i];W j=((W)(uint32_t)v*0x9E3779B97F4A7C15ull)>>(64-lg);SB4*p=h+j;
+  U mt=SB4MT(p,v);I g=mt?p->v[CTZ(mt)]:-1;   //a symbol seen before, in its first bucket: one compare of all 4, no branch per slot
+  I(g<0,for(;;){p=h+j;U s=0;for(;s<4;s++){I(p->v[s]<0,break)I(p->k[s]==v,g=p->v[s];break)}
+   I(g>=0,break)I(s<4,p->k[s]=v;p->v[s]=g=(I)m;r[m++]=v;break)j=(j+1)&(nb-1);})
+  c[i]=g;
+  I((W)m>=nb&&g==(I)m-1,W nn=nb<<1;U nl=lg+1;SB4*h2=malloc(nn*SZ(SB4));I(!h2,free(h);mr(cd);mr(u);return 1;)   //grow: every id again
+   F(nn,MS(h2[i].k,0,SZ h2[i].k);MS(h2[i].v,0xff,SZ h2[i].v))
+   for(U q=0;q<m;q++){W b=((W)(uint32_t)r[q]*0x9E3779B97F4A7C15ull)>>(64-nl);for(;;){SB4*p=h2+b;U s=0;W(s<4&&p->v[s]>=0,s++)I(s<4,p->k[s]=r[q];p->v[s]=(I)q;break)b=(b+1)&(nn-1);}}
+   free(h);h=h2;nb=nn;lg=nl;)}
+ free(h);*pu=AN(m,u);*pcd=cd;return 0;}
+// `senc k: (distinct;codes) of a big symbol vector, for a group-by with several aggregates to hash once (qaggf); ()
+// otherwise. On one thread senc1's buckets: each aggregate's pass hashing again cost more (select 8 aggregates by sym
+// from 1M rows: 52 ms, q 17)
+A sencT(A x){P(_tP(x)||_t(x)!=tS||_n(x)<PGAG_MIN,x(emp(tA)))
+ A u=0,cd=0;P(par_thread_count(_n(x))<2?senc1(x,&u,&cd):penc(x,par_thread_count(_n(x)),&u,&cd),x(emp(tA)))
  return x(aV(tA,2,A(u,cd)));}
 // ---- `wmul (w;x): qSQL's fused wavg by group (qsql.k gag1) needs w*x and whether a product is null, so that a row
 // with a null value or weight adds no weight: both in one pass, (w*x;0 or 1), where k's * then a null scan made two.

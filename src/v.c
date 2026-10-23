@@ -300,6 +300,22 @@ Z I NM(CO T*RES p,T*RES r,N n,N w,T*RES suf){                                  \
 #define MWVH2(T,SFX,LO,HI,CHK) MWVH(mvmax##SFX,T,>,LO,CHK) MWVH(mvmin##SFX,T,<,HI,CHK)
 MWVH2(G,G,(G)-128,(G)127,) MWVH2(H,H,(H)-32768,(H)32767,) MWVH2(I,I,(I)(-2147483647-1),(I)2147483647,)
 MWVH2(L,L,(L)NL,(L)WL,) MWVH2(F,F,-WF,WF,bad|=v!=v)
+// arm64: the ternaries above are an fcmp+fcsel pair on every link of the running
+// extreme's dependency chain (x86 has minsd/maxsd, which are exactly the ternary),
+// so the float pass ran at half x86's speed. fminnm/fmaxnm is one instruction and
+// agrees with the ternary everywhere but a NaN (reported as before) and a tie of
+// 0.0 with -0.0 (bit 2 here: the caller redoes the pass with the ternary kernel).
+#if defined(__aarch64__)
+#define MWVHN(NM,FN,IDV)                                                       \
+Z I NM(CO F*RES p,F*RES r,N n,N w,F*RES suf){                                  \
+  N m=w<n?w:n;I bad=0;for(N j=0;j<=m;j++)suf[j]=IDV;                           \
+  for(N b=0;b<n;b+=w){N ln=n-b<w?n-b:w;F run=IDV;CO F*RES q=p+b;F*RES o=r+b;   \
+    for(N j=0;j<ln;j++){F v=q[j];W u;memcpy(&u,&v,8);bad|=(v!=v)|(u==0x8000000000000000ull)<<1;\
+      run=FN(run,v);o[j]=FN(suf[j+1],run);}                                    \
+    if(ln==w&&b+w<n){F s=IDV;for(N j=w;j-->0;)suf[j]=s=FN(q[j],s);}}           \
+  return bad;}
+MWVHN(mnmaxF,__builtin_fmax,-WF) MWVHN(mnminF,__builtin_fmin,WF)
+#endif
 
 // Widen any supported numeric vector to double, mapping the integer nulls onto
 // 0n so the sum kernels see one uniform "absent" marker.
@@ -372,7 +388,12 @@ A mwC(A x){
      case tH: bad=mx?mvmaxH(p,r,n,(N)w,sf):mvminH(p,r,n,(N)w,sf);break;
      case tI: bad=mx?mvmaxI(p,r,n,(N)w,sf):mvminI(p,r,n,(N)w,sf);break;
      case tL: bad=mx?mvmaxL(p,r,n,(N)w,sf):mvminL(p,r,n,(N)w,sf);break;
+#if defined(__aarch64__)
+     default: bad=mx?mnmaxF(p,r,n,(N)w,sf):mnminF(p,r,n,(N)w,sf);
+              if(bad&2)bad=mx?mvmaxF(p,r,n,(N)w,sf):mvminF(p,r,n,(N)w,sf);break;}
+#else
      default: bad=mx?mvmaxF(p,r,n,(N)w,sf):mvminF(p,r,n,(N)w,sf);break;}
+#endif
    mr(sa);
    if(bad&&mx){
      // plain n-entry scratch from the bucket allocator (recycled after the first

@@ -432,6 +432,14 @@ Z A shslow(L op,B fl,B s,A x)_(A b=drp(fl?1:-1,_R(x));P(!b,0)A a=drp(fl?-1:1,_R(
 #define SHNEG0(v) ({W b_;MC(&b_,&(v),8);b_==0x8000000000000000ull;})
 #define SHCMP(T,OPR) {CO T*RES p=xV;I(s,N c=0;I(fl,for(N i=0;i<m;i++)c+=p[i] OPR p[i+1];)E(for(N i=0;i<m;i++)c+=p[i+1] OPR p[i];)return az((L)c);) \
   A z=aG((U)m);G*RES r=zV;I(fl,for(N i=0;i<m;i++)r[i]=p[i] OPR p[i+1];)E(for(N i=0;i<m;i++)r[i]=p[i+1] OPR p[i];)return z;}
+// floats: the NaN and -0.0 test in the same pass as the compare (it was a pass of its own: two reads of a 10M vector
+// for +/(1_x)<(-1)_x, 7.8 ms; the vector is far bigger than the caches, so each read costs its full time)
+#define SHNB(a) ({F a_=(a);W u_;MC(&u_,&a_,8);(W)(a_!=a_)|(W)(u_==0x8000000000000000ull);})
+#define SHCMPF(OPR) {CO F*RES p=xV;W bd=SHNB(p[m]); \
+  I(s,N c=0;I(fl,for(N i=0;i<m;i++){bd|=SHNB(p[i]);c+=p[i] OPR p[i+1];})E(for(N i=0;i<m;i++){bd|=SHNB(p[i]);c+=p[i+1] OPR p[i];}) \
+    I(bd,return shslow(op,fl,s,x))return az((L)c);) \
+  A z=aG((U)m);G*RES r=zV;I(fl,for(N i=0;i<m;i++){bd|=SHNB(p[i]);r[i]=p[i] OPR p[i+1];})E(for(N i=0;i<m;i++){bd|=SHNB(p[i]);r[i]=p[i+1] OPR p[i];}) \
+  I(bd,mr(z);return shslow(op,fl,s,x))return z;}
 #define SHARI(T,OPR,RT) {CO T*RES p=xV;A z=an((U)m,RT);RT##_*RES r=zV;I(fl,for(N i=0;i<m;i++)r[i]=p[i] OPR p[i+1];)E(for(N i=0;i<m;i++)r[i]=p[i+1] OPR p[i];)return z;}
 TD F tF_;TD L tL_;
 // symbols: interned, so equal ids ARE equal symbols and only a change of id needs
@@ -447,11 +455,10 @@ Z A shiftC(L code,A x){B s=code>=300;code-=s?300:200;B fl=code>=16;L op=code&15;
  P(_tP(x)||!(t==tG||t==tH||t==tI||t==tL||t==tF||t==tC)||_n(x)<2,shslow(op,fl,s,x))
  N n=_n(x),m=n-1;
  I(op>=8,                                                 // < > =
-  I(t==tF,{CO F*RES p=xV;int bad=0;F(n,F v=p[i];bad|=(v!=v)|SHNEG0(v))I(bad,return shslow(op,fl,s,x))})
   S(op*16+t,
-   C(8*16+tG,SHCMP(G,<))C(8*16+tH,SHCMP(H,<))C(8*16+tI,SHCMP(I,<))C(8*16+tL,SHCMP(L,<))C(8*16+tF,SHCMP(F,<))C(8*16+tC,SHCMP(UC,<))
-   C(9*16+tG,SHCMP(G,>))C(9*16+tH,SHCMP(H,>))C(9*16+tI,SHCMP(I,>))C(9*16+tL,SHCMP(L,>))C(9*16+tF,SHCMP(F,>))C(9*16+tC,SHCMP(UC,>))
-   C(10*16+tG,SHCMP(G,==))C(10*16+tH,SHCMP(H,==))C(10*16+tI,SHCMP(I,==))C(10*16+tL,SHCMP(L,==))C(10*16+tF,SHCMP(F,==))C(10*16+tC,SHCMP(G,==)))
+   C(8*16+tG,SHCMP(G,<))C(8*16+tH,SHCMP(H,<))C(8*16+tI,SHCMP(I,<))C(8*16+tL,SHCMP(L,<))C(8*16+tF,SHCMPF(<))C(8*16+tC,SHCMP(UC,<))
+   C(9*16+tG,SHCMP(G,>))C(9*16+tH,SHCMP(H,>))C(9*16+tI,SHCMP(I,>))C(9*16+tL,SHCMP(L,>))C(9*16+tF,SHCMPF(>))C(9*16+tC,SHCMP(UC,>))
+   C(10*16+tG,SHCMP(G,==))C(10*16+tH,SHCMP(H,==))C(10*16+tI,SHCMP(I,==))C(10*16+tL,SHCMP(L,==))C(10*16+tF,SHCMPF(==))C(10*16+tC,SHCMP(G,==)))
   return shslow(op,fl,s,x);)
  P(s||t==tC,shslow(op,fl,s,x))                           // +/ of arithmetic, char arithmetic: unfused
  I(t==tF,S(op,C(1,SHARI(F,+,tF))C(2,SHARI(F,-,tF))C(3,SHARI(F,*,tF))C(4,SHARI(F,/,tF)))return shslow(op,fl,s,x);)

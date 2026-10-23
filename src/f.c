@@ -149,14 +149,30 @@ Z V fndL_hash(V*c_,int t){FJ*c=c_;CO V*b=c->b;V*z=c->z;U wy=c->wy,wz=c->wz,s=(U)
 #if defined(__SSE2__)
 #include <emmintrin.h>
 #define B4MT(p,q) (U)_mm_movemask_ps(_mm_castsi128_ps(_mm_cmpeq_epi32(_mm_loadu_si128((CO __m128i*)(p)->k),_mm_set1_epi32(q))))
+#elif defined(__aarch64__)
+#include <arm_neon.h>
+Z CO uint32_t b4bit[4]={1,2,4,8};
+#define B4MT(p,q) (U)vaddvq_u32(vandq_u32(vceqq_u32(vld1q_u32((CO uint32_t*)(p)->k),vdupq_n_u32((uint32_t)(q))),vld1q_u32(b4bit)))
 #else
 #define B4MT(p,q) ((U)((p)->k[0]==(q))|(U)((p)->k[1]==(q))<<1|(U)((p)->k[2]==(q))<<2|(U)((p)->k[3]==(q))<<3)
 #endif
+#if defined(__aarch64__)
+// arm64: the bucket's hit as one value, not a mask, a ctz and a load that waits on both: lanes that match keep their
+// index plus one, umaxv takes it (0 when nothing matched, so the -1 of a miss falls out of the same subtraction).
+Z V fndL_b4(V*c_,int t){FJ*c=c_;CO V*b=c->b;V*z=c->z;U wy=c->wy,wz=c->wz,s=(U)((W)c->n*t/c->nt),e=(U)((W)c->n*(t+1)/c->nt);
+ CO B4*RES h=c->b4;U sh=c->sh;W msk=c->msk;L mv=c->mv;I miss=0;uint32x4_t one=vdupq_n_u32(1);
+ FNDW(I q=(I)v;W j=((W)(uint32_t)q*GOLD)>>sh;CO B4*p=h+j;uint32x4_t qq=vdupq_n_u32((uint32_t)q);
+  uint32_t r=vmaxvq_u32(vandq_u32(vceqq_u32(vld1q_u32((CO uint32_t*)p->k),qq),vaddq_u32(vld1q_u32((CO uint32_t*)p->v),one)));
+  k=r?(L)r-1:mv;
+  I(__builtin_expect((!r)&(p->v[3]>=0),0),W(1,j=(j+1)&msk;p=h+j;U mt=B4MT(p,q);B(mt,k=p->v[CTZ(mt)])B(p->v[3]<0,))))
+ c->miss[t]=miss;}
+#else
 Z V fndL_b4(V*c_,int t){FJ*c=c_;CO V*b=c->b;V*z=c->z;U wy=c->wy,wz=c->wz,s=(U)((W)c->n*t/c->nt),e=(U)((W)c->n*(t+1)/c->nt);
  CO B4*RES h=c->b4;U sh=c->sh;W msk=c->msk;L mv=c->mv;I miss=0;
  FNDW(I q=(I)v;W j=((W)(uint32_t)q*GOLD)>>sh;CO B4*p=h+j;U mt=B4MT(p,q);L f=mt!=0;k=((L)p->v[CTZ(mt|8)]&-f)|(mv&(f-1));
   I(__builtin_expect((!mt)&(p->v[3]>=0),0),W(1,j=(j+1)&msk;p=h+j;mt=B4MT(p,q);B(mt,k=p->v[CTZ(mt)])B(p->v[3]<0,))))
  c->miss[t]=miss;}
+#endif
 #define PFND_MIN (1u<<15)   //Below this many probes thread start-up costs more than it saves
 Z I fndrun(FJ*c,V(*fn)(V*,int))_(int nt=c->n<PFND_MIN?1:par_thread_count(c->n);c->nt=(U)nt;I(nt<2,fn(c,0))E(par_run(nt,fn,c))I m=0;F(nt,m|=c->miss[i])m)
 // Amber 2.9.1: q's ? wants a miss as x's count, not 0N. fndq names its x in fqx; fndL, finding in that x, writes the

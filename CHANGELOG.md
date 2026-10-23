@@ -4,6 +4,12 @@
 
 Fixes from running real q code, and appends that don't copy anymore.
 
+- **qSQL a lot quicker**: on 1M rows, `distinct select ...` 2 s -> 9 ms, `where` with a few constraints runs the
+  later ones on the rows the first kept (8.5 -> 2.5 ms), `lj`/`ij` 2-3x (a 1M-key `lj` 55 -> 15 ms), and a group-by
+  with several aggregates hashes its key once (8 of them by sym: 59 -> 19 ms). Under it: `in` and `?` on a few
+  symbols compare a block at a time, finds that miss a lot use 4-key buckets with no branch, dense keys a direct
+  table, and gathers with misses no branch either.
+- **Quicker on the Mac (arm64)**: float `|/` `&/` `mmin` `mmax`, float `<` `>` and bucket finds use NEON, ~1.8x.
 - **`?` with misses is quick again**: since 2.9.0 a miss is the count, which took two more passes over the result
   after the find. The find writes the count itself now, 10% quicker than 2.9.0 on 100k and 1M lookups, as quick as
   before the change.

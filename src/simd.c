@@ -400,27 +400,10 @@ AMB_MV int64_t simd_sum_i32(const int32_t *a, size_t n) {
  * where `+/x` over the same 80 MB took 3.5. Lane k still sees exactly the
  * elements i+k it saw before and the final combine is unchanged, so the result
  * is the same double, ties between 0.0 and -0.0 included. */
-/* 2.3: two versions of the same reduction, picked per build on measurements (10M
- * doubles, one thread): the explicit-vector one is ~10% faster in the portable build
- * (target_clones avx2), but under -march=native -funroll-loops GCC turns the plain
- * 16-lane loop into straight vmaxpd and the explicit one came out ~15% slower. */
-#if defined(AMBER_BUILD_NATIVE)
-#define AMB_MMF(FN, CMP)                                                       \
-    AMB_MV double FN(const double *a, size_t n, int *sawnan) {                 \
-        enum { LN = 16 };                                                      \
-        double m[LN]; int nl[LN]; size_t i = 0, k;                             \
-        for (k = 0; k < LN; k++) { m[k] = a[0]; nl[k] = 0; }                   \
-        for (; i + LN <= n; i += LN)                                           \
-            for (k = 0; k < LN; k++) {                                         \
-                double x = a[i + k];                                           \
-                nl[k] |= (x != x);                                             \
-                m[k] = x CMP m[k] ? x : m[k]; }                                \
-        { double r = m[0]; int nn = 0;                                         \
-          for (k = 0; k < LN; k++) { nn |= nl[k]; r = m[k] CMP r ? m[k] : r; } \
-          for (; i < n; i++) { double x = a[i]; nn |= (x != x); r = x CMP r ? x : r; } \
-          *sawnan = nn; return r; }                                            \
-    }
-#else
+/* 2.3 picked the plain 16-lane loop for the native build (GCC turned it into straight
+ * vmaxpd there and the explicit one was ~15% slower); on a 2026 Core Ultra under WSL
+ * gcc 13 it came out the slower one instead (|/x at 10M: native 4.85 ms, portable 4.37,
+ * +/x 3.70), so both builds take the explicit vectors now. */
 #define AMB_MMF(FN, CMP)                                                       \
     AMB_MV double FN(const double *a, size_t n, int *sawnan) {                 \
         enum { LN = 16, VL = VBYTES / 8, NV = LN / VL };                       \
@@ -441,7 +424,6 @@ AMB_MV int64_t simd_sum_i32(const int32_t *a, size_t n) {
           for (; i < n; i++) { double x = a[i]; nn |= (x != x); r = x CMP r ? x : r; } \
           *sawnan = nn; return r; }                                            \
     }
-#endif
 #if defined(__aarch64__)
 /* arm64: neither form above becomes a straight fmax loop (clang keeps the compare,
  * the NaN test and a bsl per vector, and the native build's 16 scalar lanes are

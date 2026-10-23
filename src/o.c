@@ -609,12 +609,19 @@ Z I penc(A k,int nt,A*pu,A*pcd){N n=_n(k);UC kt=_t(k);U wk=kt==tL?3:2;
 // one thread: a symbol vector's codes, first seen first, and its distinct symbols, through buckets of 4 ids and their
 // codes, as unqS4's (an empty slot's code is -1, its id 0: an id 0 that matches it is new). 1: out of memory
 TD struct{I k[4];I v[4];}SB4;
+#if defined(__SSE2__)
+#include <emmintrin.h>
+#define SB4MT(p,q) (U)_mm_movemask_ps(_mm_castsi128_ps(_mm_cmpeq_epi32(_mm_loadu_si128((CO __m128i*)(p)->k),_mm_set1_epi32(q))))
+#else
+#define SB4MT(p,q) ((U)((p)->k[0]==(q))|(U)((p)->k[1]==(q))<<1|(U)((p)->k[2]==(q))<<2|(U)((p)->k[3]==(q))<<3)
+#endif
 Z I senc1(A x,A*pu,A*pcd){U n=xn;CO I*RES a=(CO I*)xV;U lg=6;W nb=64;SB4*h=malloc(nb*SZ(SB4));A cd=an(n,tI),u=an(n,tS);
  I(!h||!cd||!u,free(h);I(cd,mr(cd))I(u,mr(u))return 1;)
  F(nb,MS(h[i].k,0,SZ h[i].k);MS(h[i].v,0xff,SZ h[i].v))I*RES c=_I(cd),*RES r=_I(u);U m=0;
- for(U i=0;i<n;i++){I v=a[i];W j=((W)(uint32_t)v*0x9E3779B97F4A7C15ull)>>(64-lg);I g=-1;
-  for(;;){SB4*p=h+j;U s=0;for(;s<4;s++){I(p->v[s]<0,break)I(p->k[s]==v,g=p->v[s];break)}
-   I(g>=0,break)I(s<4,p->k[s]=v;p->v[s]=g=(I)m;r[m++]=v;break)j=(j+1)&(nb-1);}
+ for(U i=0;i<n;i++){I v=a[i];W j=((W)(uint32_t)v*0x9E3779B97F4A7C15ull)>>(64-lg);SB4*p=h+j;
+  U mt=SB4MT(p,v);I g=mt?p->v[CTZ(mt)]:-1;   //a symbol seen before, in its first bucket: one compare of all 4, no branch per slot
+  I(g<0,for(;;){p=h+j;U s=0;for(;s<4;s++){I(p->v[s]<0,break)I(p->k[s]==v,g=p->v[s];break)}
+   I(g>=0,break)I(s<4,p->k[s]=v;p->v[s]=g=(I)m;r[m++]=v;break)j=(j+1)&(nb-1);})
   c[i]=g;
   I((W)m>=nb&&g==(I)m-1,W nn=nb<<1;U nl=lg+1;SB4*h2=malloc(nn*SZ(SB4));I(!h2,free(h);mr(cd);mr(u);return 1;)   //grow: every id again
    F(nn,MS(h2[i].k,0,SZ h2[i].k);MS(h2[i].v,0xff,SZ h2[i].v))

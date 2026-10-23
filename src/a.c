@@ -676,11 +676,11 @@ ZN V iC(ambcn){CO C*p=a;C*r=c;F(n,*r++=b[i]<m?p[b[i]]:32)memset(r,32,(n+31&-32)-
   if(!bad)for(U i=s;i<e;i++)r[i]=(T)p[b[i]];                                                                    \
   else if(m>65536)for(U i=s;i<e;i++)r[i]=b[i]<m?(T)p[b[i]]:(T)(NV);                                             \
   else for(U i=s;i<e;i++){U j=b[i];U q=-(U)(j<m);__asm__("":"+r"(q));T ok=(T)(I)q;T w=(T)p[j&q];r[i]=(w&ok)|((T)(NV)&~ok);}}
-ZN V iS(ambcn){CO I*p=a;I*r=c;P(!m,MS(r,0,(N)(n+7&-8)*4))GBLK(I,0,n+7&-8)}
-ZN V oG(ambcn){CO G*p=a;L*r=c;P(!m,F(n+3&-4,r[i]=NL))GBLK(L,NL,n+3&-4)}
-ZN V oH(ambcn){CO H*p=a;L*r=c;P(!m,F(n+3&-4,r[i]=NL))GBLK(L,NL,n+3&-4)}
-ZN V oI(ambcn){CO I*p=a;L*r=c;P(!m,F(n+3&-4,r[i]=NL))GBLK(L,NL,n+3&-4)}
-ZN V o8(ambcn,L v){CO L*p=a;L*r=c;P(!m,F(n+3&-4,r[i]=v))GBLK(L,v,n+3&-4)}
+ZN V iS(ambcn){CO I*p=a;I*r=c;I(!m,MS(r,0,(N)(n+7&-8)*4);return)GBLK(I,0,n+7&-8)}
+ZN V oG(ambcn){CO G*p=a;L*r=c;I(!m,F(n+3&-4,r[i]=NL)return)GBLK(L,NL,n+3&-4)}
+ZN V oH(ambcn){CO H*p=a;L*r=c;I(!m,F(n+3&-4,r[i]=NL)return)GBLK(L,NL,n+3&-4)}
+ZN V oI(ambcn){CO I*p=a;L*r=c;I(!m,F(n+3&-4,r[i]=NL)return)GBLK(L,NL,n+3&-4)}
+ZN V o8(ambcn,L v){CO L*p=a;L*r=c;I(!m,F(n+3&-4,r[i]=v)return)GBLK(L,v,n+3&-4)}
 ZN V oL(ambcn){o8(a,m,b,c,n,NL);}
 ZN V oF(ambcn){o8(a,m,b,c,n,NFL);}
 // Amber 2.5 (exp): a big gather split across threads (see patch header). es: bytes per output item.

@@ -442,8 +442,40 @@ AMB_MV int64_t simd_sum_i32(const int32_t *a, size_t n) {
           *sawnan = nn; return r; }                                            \
     }
 #endif
+#if defined(__aarch64__)
+/* arm64: neither form above becomes a straight fmax loop (clang keeps the compare,
+ * the NaN test and a bsl per vector, and the native build's 16 scalar lanes are
+ * worse), so |/x ran at half the speed of +/x. FMAX itself is one instruction and
+ * returns NaN when either side is one, so eight vectors of it give the max and
+ * the NaN test together. Only a NaN or a zero result (where the ternary's choice
+ * between 0.0 and -0.0 matters) goes back to the kernel above. */
+#include <arm_neon.h>
+AMB_MMF(amb_max_f64_t, >)
+AMB_MMF(amb_min_f64_t, <)
+#define AMB_MMN(FN, REF, VOP)                                                  \
+    double FN(const double *a, size_t n, int *sawnan) {                        \
+        if (n < 16) return REF(a, n, sawnan);                                  \
+        float64x2_t v0 = vld1q_f64(a), v1 = vld1q_f64(a + 2), v2 = vld1q_f64(a + 4), v3 = vld1q_f64(a + 6), \
+                    v4 = vld1q_f64(a + 8), v5 = vld1q_f64(a + 10), v6 = vld1q_f64(a + 12), v7 = vld1q_f64(a + 14); \
+        size_t i = 16;                                                         \
+        for (;; i += 16) {                                                     \
+            const double *p = i + 16 <= n ? a + i : a + n - 16;  /* the tail overlaps: max is idempotent */ \
+            v0 = VOP(v0, vld1q_f64(p));      v1 = VOP(v1, vld1q_f64(p + 2));   \
+            v2 = VOP(v2, vld1q_f64(p + 4));  v3 = VOP(v3, vld1q_f64(p + 6));   \
+            v4 = VOP(v4, vld1q_f64(p + 8));  v5 = VOP(v5, vld1q_f64(p + 10));  \
+            v6 = VOP(v6, vld1q_f64(p + 12)); v7 = VOP(v7, vld1q_f64(p + 14));  \
+            if (i + 16 >= n) break; }                                          \
+        v0 = VOP(VOP(VOP(v0, v1), VOP(v2, v3)), VOP(VOP(v4, v5), VOP(v6, v7))); \
+        double r = vgetq_lane_f64(VOP(v0, vdupq_laneq_f64(v0, 1)), 0);                       \
+        if (r != r || r == 0.0) return REF(a, n, sawnan);                      \
+        *sawnan = 0; return r;                                                 \
+    }
+AMB_MMN(simd_max_f64, amb_max_f64_t, vmaxq_f64)
+AMB_MMN(simd_min_f64, amb_min_f64_t, vminq_f64)
+#else
 AMB_MMF(simd_max_f64, >)
 AMB_MMF(simd_min_f64, <)
+#endif
 
 /* ==== amber item 4: direct float comparison ============================== */
 #define AMB_BADBITS(u) (((((u) & 0x7fffffffffffffffULL) > 0x7ff0000000000000ULL) \

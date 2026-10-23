@@ -665,11 +665,22 @@ ZN V iG(ambcn){CO G*p=a;G*r=c;F(n,*r++=p[*b++])}
 ZN V iH(ambcn){CO H*p=a;H*r=c;F(n,*r++=p[*b++])}
 ZN V iI(ambcn){CO I*p=a;I*r=c;F(n,*r++=p[*b++])}
 ZN V iC(ambcn){CO C*p=a;C*r=c;F(n,*r++=b[i]<m?p[b[i]]:32)memset(r,32,(n+31&-32)-n);}   //the items, then blanks to the block of 32: b is read only below n (it read up to 31 indices past the list)
-ZN V iS(ambcn){CO I*p=a;I*r=c;F(n+7&-8,*r++=b[i]<m?p[b[i]]: 0)}
-ZN V oG(ambcn){CO G*p=a;L*r=c;F(n+3&-4,*r++=b[i]<m?p[b[i]]:NL)}
-ZN V oH(ambcn){CO H*p=a;L*r=c;F(n+3&-4,*r++=b[i]<m?p[b[i]]:NL)}
-ZN V oI(ambcn){CO I*p=a;L*r=c;F(n+3&-4,*r++=b[i]<m?p[b[i]]:NL)}
-ZN V o8(ambcn,L v){CO L*p=a;L*r=c;F(n+3&-4,*r++=b[i]<m?p[b[i]]:v)}
+// The gathers that may meet an index out of range (a join's misses, half of them at random): a block of 256 indices
+// all in range is a plain gather; one with a miss, from a list in the caches (64K items at most), reads item 0 there
+// and keeps the null by a mask, so no branch. b[i]<m?p[b[i]]:v was a load the compiler could not hoist, a branch that
+// missed half the time (lj on 1M rows into 500 keys: 3.6 ns an item, 2.0 here). From a longer list the branch stays:
+// there the loads miss the caches, and the predicted branch starts them sooner than the mask's dependency does (a
+// 1M-key lj's symbol column: 3.3 ms with it, 5-7 without). The mask goes through an empty asm, or gcc makes the
+// branch again. An empty list: nulls
+#define GBLK(T,NV,NN) for(U s=0;s<(NN);s+=256){U e=s+256<(NN)?s+256:(NN),bad=0;for(U i=s;i<e;i++)bad|=b[i]>=m; \
+  if(!bad)for(U i=s;i<e;i++)r[i]=(T)p[b[i]];                                                                    \
+  else if(m>65536)for(U i=s;i<e;i++)r[i]=b[i]<m?(T)p[b[i]]:(T)(NV);                                             \
+  else for(U i=s;i<e;i++){U j=b[i];U q=-(U)(j<m);__asm__("":"+r"(q));T ok=(T)(I)q;T w=(T)p[j&q];r[i]=(w&ok)|((T)(NV)&~ok);}}
+ZN V iS(ambcn){CO I*p=a;I*r=c;P(!m,MS(r,0,(N)(n+7&-8)*4))GBLK(I,0,n+7&-8)}
+ZN V oG(ambcn){CO G*p=a;L*r=c;P(!m,F(n+3&-4,r[i]=NL))GBLK(L,NL,n+3&-4)}
+ZN V oH(ambcn){CO H*p=a;L*r=c;P(!m,F(n+3&-4,r[i]=NL))GBLK(L,NL,n+3&-4)}
+ZN V oI(ambcn){CO I*p=a;L*r=c;P(!m,F(n+3&-4,r[i]=NL))GBLK(L,NL,n+3&-4)}
+ZN V o8(ambcn,L v){CO L*p=a;L*r=c;P(!m,F(n+3&-4,r[i]=v))GBLK(L,v,n+3&-4)}
 ZN V oL(ambcn){o8(a,m,b,c,n,NL);}
 ZN V oF(ambcn){o8(a,m,b,c,n,NFL);}
 // Amber 2.5 (exp): a big gather split across threads (see patch header). es: bytes per output item.

@@ -246,7 +246,25 @@ Z X1(grq,Ril(K1("=/:/2#,!:",x))Rm(A y=kv(&x);y=Nx(grp(y));yy=x(i1(x,yy));y)R_(et
 A1(grp,UC a=_tP(x)||!_tT(x)||xtE?0:_at(x);A z=grq(x);P(!z||!a,z)UC t=a==1?1:a==3?0:2;P(_at(zx)==t,z)zx=mut(zx);_at(zx)=t;z)
 Z A1(cSI,Q(xtS||xtI)C t=tS^tI^xt;MINE(x)?(_at(x)=0,AT(t,x)):x(aV(t,xn,xV)))
 Z I penc(A,int,A*,A*);
-X1(unq,RM(K1("{$[#x;x@i@<i:&/'.=+.+x;x]}",x))   /*a table: its distinct rows, first seen first (issue #19); as q*/Rm(unq(val(x)))RE(x)RS(I(xn>=(1u<<16),A u_=0;I(!penc(x,par_thread_count(xn),&u_,0),return x(u_)))cSI(unq(cSI(x))))Ril(rndF(gl(x)))R_(et(x))RB(unq(cG(x)))
+//distinct symbols on one thread: the 4-byte ids hashed into buckets of 4, all 4 compared at once, so a seen id costs
+//one load and no branch per slot. The ids of short symbols are packed and spread over a huge range, so no direct
+//table fits (1M rows, 1000 symbols: 2.5 ms through the codes, q 0.6 ms). Empty slots hold 0; id 0 is kept aside
+Z I s4put(I*h,W nb,U lg,I v){W b=((W)(uint32_t)v*0x9E3779B97F4A7C15ull)>>(64-lg);
+ for(;;){I*p=h+4*b;P((p[0]==v)|(p[1]==v)|(p[2]==v)|(p[3]==v),0)
+  I e=!p[0]?0:!p[1]?1:!p[2]?2:!p[3]?3:-1;P(e>=0,p[e]=v;1)b=(b+1)&(nb-1);}}
+Z A unqS4(A x){U n=xn;CO I*RES a=(CO I*)xV;U lg=6;W nb=64;I*h=calloc(nb*4,SZ(I));P(!h,0)
+ A z=an(n,xt);I*RES r=(I*)zV;U m=0;B h0=0;
+ for(U i=0;i<n;i++){I v=a[i];
+  if(!v){I(!h0,h0=1;r[m++]=v)continue;}
+  if(s4put(h,nb,lg,v)){r[m++]=v;
+   if((W)m>=nb){W nn=nb<<1;U nl=lg+1;I*g=calloc(nn*4,SZ(I));if(!g){free(h);mr(z);return 0;}
+    for(U s=0;s<m;s++)if(r[s])s4put(g,nn,nl,r[s]);
+    free(h);h=g;nb=nn;lg=nl;}}}
+ free(h);return AN(m,z);}
+//a table: its distinct rows, first seen first (issue #19); as q. Each column folds into one dense code per row (its
+//distinct values, each row's place in them, re-ranked after every column so codes stay below the row count), then the
+//first row of each code. It used to group the rows as lists: 1.4 s for 1M rows of 2 columns, q 42 ms
+X1(unq,RM(K1("{$[#x;[c:.+x;k:{u:?y;w:(x*#u)+u?y;(?w)?w}/[{(?x)?x}@*c;1_c];x@k?!1+|/k];x]}",x))Rm(unq(val(x)))RE(x)RS(P(xn<2,x)I(xn<(1u<<16)||par_thread_count(xn)<2,A u_=unqS4(x);P(u_,x(u_)))I(xn>=(1u<<16),A u_=0;I(!penc(x,par_thread_count(xn),&u_,0),return x(u_)))cSI(unq(cSI(x))))Ril(rndF(gl(x)))R_(et(x))RB(unq(cG(x)))
  RGC(C a[256]={},r[256],t=xt;U n=0;Mx(F(xn,UC v=xg;I(!a[v],a[v]=1;r[n++]=v)))aV(t,n,r))
  R12(tA,tH,tI,tL,tF,tDT,tTM,tNP,tMN,tSC,tMO,tSP,P(xn<2,x)
   {A u_=xtA?unqT(x):unqL(x);P(u_,x(u_))}     /*amber: C hash/LUT distinct (or, for a generic list, unqT), 0 = not handled*/

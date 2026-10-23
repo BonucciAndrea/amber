@@ -284,7 +284,7 @@ Z A fndL(A x,A y)_(
  W rg=(W)hi-(W)lo+1,nn=(W)n,mm=(W)m,scan=nn*mm;
  // rg==0: the keys span the whole 64-bit line and hi-lo+1 wrapped (amber 2.3: this
  // used to pass as a zero-slot LUT and write past it). Sparse, so hash, as unqL does.
- B useL=rg&&rg<=LUTDOM&&scan>rg+2*(nn+mm);   /* flat table worth its memset?     */
+ B useL=rg&&(rg<=LUTDOM||rg<=4*mm&&rg<=((W)1<<23))&&scan>rg+2*(nn+mm);   /* flat table worth its memset? also dense keys (range at most 4x their count, 32 MB at most): a direct lookup, no compares, smaller than a hash of them (a 1M-key lj: find 41 -> 8 ms) */
  I(!useL&&m<=16&&n>128&&wx==2&&wy==2,A z=fndK4(a,m,b,n,x);P(!z,0)return y(z);)
  B useH=!useL&&scan>8*(nn+mm);           /* else: hash worth its build?      */
  P(!useL&&!useH,0)

@@ -279,9 +279,16 @@ qlastby:{[t;b;nk]d:+t;bc:d b;k:$[1=#b;*bc;qcard[bc]<qEXACT;qenc bc;()];$[0=#k;()
 / `select .. by .. where ..` copied every column of every selected row and then
 / threw the copy away.
 qsel0:{[u;m;hw;selp;r3;C]$[(selp~,"*")|0=#selp;qselall[u;m;hw;r3];[p:qmz[3;(C;selp;`nsd());{[C;s]it:qcut s;(it;(qnms[C;it])!{[C;e]qfn[C;(qname e)1]}[C]'it)};(C;selp)];it:p 0;d:p 1;$[r3 2;qselby[u;m;hw;r3 1;it;d];qselect[qflt[u;m;hw];d]]]]}
-selp:{[s]s:qnorm s;s:$[(6#s)~"select";trim 6_s;s];b:qbrk s;s:b 1;r:qsplit[s;" where "];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r:$[r 2;$[|/"sedu"=*r2 1;qnw[r;r2 1];(r2 1;r 1)];(r2 1;"")];wh:r 1;r3:qsplit0[r2 0;" by "];dz:("distinct"~r3 0)|"distinct "~9#r3 0;r3:$[dz;@[r3;0;:;$[r3 2;$["distinct"~r3 0;"";","/@[qcut trim 9_r3 0;0;{p:qname x;$[#p 0;(p 0),":";""],"distinct ",p 1}]];trim 9_r3 0]];r3];dz&:~r3 2;(qtry r 0;wh;r3;dz;b 0;qiq[r3 0;r3 1;r3 2;0<#wh])}   / sel's text, split: (source; where; select/by; distinct; [spec]; reads i)
-sel:{[s]p:qmz[0;s;selp;,s];wh:p 1;r3:p 2;dz:p 3;u:qfr p 0;$[(`M~@u)|`m~@u;;`err"type"];kk:$[(r3 2)|~(0=#r3 0)|(r3 0)~,"*";0#`;keys u];$[dz&#kk;`err"type";];u:unkey u;k:qik[p 5;u];r:qdi[k]$[qpt u;qpsel[u;r3;wh;p 4];qsi[k;u;wh;0<#wh;r3;p 4]];qkx[kk]$[dz;qdst r;r]}
+selp:{[s]s:qnorm s;s:$[(6#s)~"select";trim 6_s;s];b:qbrk s;s:b 1;r:qsplit[s;" where "];h:trim r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r:$[r 2;$[|/"sedu"=*r2 1;qnw[r;r2 1];(r2 1;r 1)];(r2 1;"")];wh:r 1;r3:qsplit0[r2 0;" by "];dz:("distinct"~r3 0)|"distinct "~9#r3 0;r3:$[dz;@[r3;0;:;$[r3 2;$["distinct"~r3 0;"";","/@[qcut trim 9_r3 0;0;{p:qname x;$[#p 0;(p 0),":";""],"distinct ",p 1}]];trim 9_r3 0]];r3];dz&:~r3 2;(qsid qtry r 0;wh;r3;dz;b 0;qiq[r3 0;r3 1;r3 2;0<#wh])}   / sel's text, split: (source; where; select/by; distinct; [spec]; reads i)
+sel:{[s]p:qmz[0;s;selp;,s];wh:p 1;r3:p 2;dz:p 3;u:qfr p 0;$[`M~@u;:qsel1[p;u;wh;r3;dz];];$[(`M~@u)|`m~@u;;`err"type"];kk:$[(r3 2)|~(0=#r3 0)|(r3 0)~,"*";0#`;keys u];$[dz&#kk;`err"type";];u:unkey u;k:qik[p 5;u];r:qdi[k]$[qpt u;qpsel[u;r3;wh;p 4];qsi[k;u;wh;0<#wh;r3;p 4]];qkx[kk]$[dz;qdst r;r]}
 qdst:{[r]$[iskeyed r;?r;[c:cols r;$[0=#r;r;1=#c;+c!,?(+r)c 0;+c!(qgrp[r;c])0]]]}   / distinct rows, in first-seen order   / select distinct: the distinct rows, as q
+/ sel on a plain table (not keyed, so not partitioned either): no keys to keep or put back, the same answer with
+/ fewer calls (a select from a 10-row table was ~25 small calls, 2.3 us; each one 60-120 ns)
+qsel1:{[p;u;wh;r3;dz]k:$[p 5;~|/in[`i,qI;!u];0];r:qdi[k]qsi[k;u;wh;0<#wh;r3;p 4];$[dz;qdst r;r]}
+/ the source of a query: a plain name (letters and digits, not starting with a digit) as a symbol, which qfr looks up
+/ with no parse (. "t" cost 730 ns, . `t 170); anything else stays text
+qsid:{$[`C~@x;$[#x;$[(*x)in"0123456789";x;&/x in qidc;`$x;x];x];x]}
+qidc:"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 qsi:{[k;u;wh;hw;r3;lim]m:qmask[u;wh];p:k&hw;u:qai[k&~p;u];qlim[qsel0[u;m;$[p;2;hw];r3 0;r3;(cols u),$[p;,qI;0#`]];lim]}   / select (sel, exec by): after a where, i is the kept rows' numbers, cut with them
 qrun:{[u;wh;r3;lim]qlim[qsel0[u;qmask[u;wh];0<#wh;r3 0;r3;cols u];lim]}   / select on a table in hand (hdb.k runs it per partition)
 
@@ -301,7 +308,7 @@ qpt:{[u]$[`m~@u;in[`amberpt;!u];0]}
 / so `exec a,b` yields two named columns (q semantics) instead of joining them into
 / one vector, which is what lets `plot exec px,ask ...` draw a line per column.
 / As q's, one item with a name (exec s:px-ask from t) is a dict too, and no item (exec from t) is the last row.
-exqp:{[s]s:qnorm s;s:$[(4#s)~"exec";trim 4_s;s];r:qsplit[s;" where "];h:r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r:$[r 2;$[|/"sedu"=*r2 1;qnw[r;r2 1];(r2 1;r 1)];(r2 1;"")];wh:r 1;eb:qsplit0[r2 0;" by "];it:$[#r2 0;qcut trim r2 0;()];(qtry r 0;wh;r2 0;eb;qiq[eb 0;eb 1;eb 2;0<#wh];it;qname'it)}   / exq's text, split
+exqp:{[s]s:qnorm s;s:$[(4#s)~"exec";trim 4_s;s];r:qsplit[s;" where "];h:r 0;r2:$[(5#h)~"from ";("";trim 5_h;1b);qsplit[h;" from "]];r:$[r 2;$[|/"sedu"=*r2 1;qnw[r;r2 1];(r2 1;r 1)];(r2 1;"")];wh:r 1;eb:qsplit0[r2 0;" by "];it:$[#r2 0;qcut trim r2 0;()];(qsid qtry r 0;wh;r2 0;eb;qiq[eb 0;eb 1;eb 2;0<#wh];it;qname'it)}   / exq's text, split
 exq:{[s]p:qmz[6;s;exqp;,s];wh:p 1;u:qfr p 0;$[(`M~@u)|`m~@u;;`err"type"];u:unkey u;eb:p 3;k:qik[p 4;u];pq:$[qpt u;qpexec[u;p 2;wh];(u;wh)];u:pq 0;wh:pq 1;$[eb 2;qexby[k;u;wh;eb];[t:$[#wh;qwk[k;u;qmask[u;wh]];u];$[#p 2;[C:cols t;it:p 5;v:{[C;t;e]qfn[C;e 1]t}[C;t]'p 6;$[(1=#it)&~#**p 6;*v;qmz[9;(C;it;`nsd());qnms;(C;it)]!v]];last t]]]}
 / exec e by b: a dict from the groups to e, as q (through select, then the key column and the value column)
 qexby:{[h;u;wh;eb]$[#eb 0;[it:qcut eb 0;e:{(qname x)1}'it;b:","/{"(",($y),"):",x}'[e;!#it]];b:""];r:qdi[h]qsi[h;u;wh;0<#wh;(b;eb 1;1b);""];k:+key r;v:+value r;k:$[1=#!k;k@*!k;key r];$[~#b;k!$[1=#!v;v@*!v;value r];(1=#it)&~#*qname@*it;k!v@*!v;k!+(qnms[cols u;it])!. v]}   / the items go in under hidden names (0) (1)..., so none meets a key's name; one item with no name gives its values, else a table under the items' names, as q
@@ -324,7 +331,7 @@ qasgby:{[t;nm;f;gi;rc;w]tp:$[#rc;qproj[t;rc];t];$[0=#gi;:qasg0[t;nm;f;tp;w];];gv
 qasg0:{[t;nm;f;tp;w]v:.[f;,0#tp;{`qa0err}];p:$[`qa0err~v;();isat v;0#,v;(`A~@v)||/`A=@'.+0#tp;();0#v];$[~w;p;in[nm;cols t];(+t)nm;isat v;(#t)#$[`A~@p;0N;p@0];(#t)#,()]}
 / update ... by: the groups of the rows the where-clause keeps (all of them without one), each expression once per group
 qupby:{[t;wh;byp;nm;fns;it]m:qmask[t;wh];w:0<#m;ix:$[w;&m;()];gi:{(qgrp[x 0;x 1])1}qbyx[$[w;t ix;t];byp];gi:$[w;ix@gi;gi];+((+t),nm!{[t;gi;w;n;f;e]qasgby[t;n;f;gi;qrefs[cols t;(qname e)1];w]}[t;gi;w]'[nm;fns;it])}
-updp:{[s]s:qnorm s;s:$[(6#s)~"update";trim 6_s;s];r:qsplit[s;" where "];r2:qsplit[r 0;" from "];r:$[r 2;$[|/"sedu"=*r2 1;qnw[r;r2 1];(r2 1;r 1)];(r2 1;"")];wh:r 1;r3:qsplit[r2 0;" by "];(qtry r 0;wh;r3;qiq[r3 0;r3 1;r3 2;0<#wh];qcut r3 0)}   / upd's text, split
+updp:{[s]s:qnorm s;s:$[(6#s)~"update";trim 6_s;s];r:qsplit[s;" where "];r2:qsplit[r 0;" from "];r:$[r 2;$[|/"sedu"=*r2 1;qnw[r;r2 1];(r2 1;r 1)];(r2 1;"")];wh:r 1;r3:qsplit[r2 0;" by "];(qsid qtry r 0;wh;r3;qiq[r3 0;r3 1;r3 2;0<#wh];qcut r3 0)}   / upd's text, split
 upd0:{[s]p:qmz[7;s;updp;,s];wh:p 1;r3:p 2;t:qfr p 0;r:keys t;t:unkey t;k:qik[p 3;t];C:(cols t),$[k;,qI;0#`];t:qai[k&r3 2;t];$[qpt t;`err"par";];it:p 4;p:qmz[8;(C;it;`nsd());{[C;it](qnms[C;it];{[C;e]qfn[C;(qname e)1]}[C]'it)};(C;it)];nm:p 0;fns:p 1;qkx[r]qdi[k]$[r3 2;qupby[t;wh;r3 1;nm;fns;it];0=#wh;+((+t),nm!{[t;f]v:f t;$[isat v;(#t)#v;v]}[t]'fns);[m:qmask[t;wh];idx:&m;sub:qwk[k;t;m];+((+t),nm!{[t;idx;sub;n;f]qasg[t;idx;n;f sub]}[t;idx;sub]'[nm;fns])]]}   / no where: each column is the value itself, attribute and all; r is the keys once read (upd has no local to spare)
 / 2.9.0: update and delete from `t change the global t and give its name back, as q (they were 'type)
 qbnm:{[s]$[~"`"in s;0;[f:qsplit[qnorm s;" from "];$[2>#f;0;[w:trim f 1;w:*" "\w;$[(1<#w)&("`"=*w)&~":"=w 1;`$1_w;0]]]]]}
@@ -435,7 +442,7 @@ value:{$[`C~@x;$[|/{0<#ss[x;y]}[x]'qkws;. qtry x;. x];. x]}
 qwds:{[s]b:qblank s;w:qword 0+b;i:&differ w;k:i _ b;f:(w i)&~(i>0)&"."=b 0|i-1;?`$k@&f}   / the names a text uses (not in strings or symbols, nor after a dot: .z.D's z is no local, 2.9.0)
 qlenv:{[pre;body]m:qsmask pre;o:(pre="{")&~m;c:(pre="}")&~m;d:+\o-c;D:$[#d;*|d;0];$[D<1;"";[b:*|&o&d=D;lt:(b+1)_pre;pn:$["["=*lt;[j:lt?"]";`$trim'";"\(1_j#lt)];`x`y`z];k:qtok lt;ln:`$(k 0)@&(k 1)&{(":"=*x)&~":"=x 1}'1_(k 0),,"";u:?(pn,ln)@&(pn,ln)in qwds body;$[0=#u;"";1=#u;"(,`",($*u),")!,",$*u;"(`",("`"/$u),")!(",(";"/$u),")"]]]}
 qtok:{[s]b:qblank s;w:qword 0+b;i:&differ w;(i _ s;w i)}   / a text's tokens, and which are words
-qfr:{r:$[(::)~e:`qeg 0;. x;qfre[x;e]];$[`s~@r;$[":"=*$r;r;. r];r]}   / 2.9.0: from `t is the global t, as q
+qfr:{r:$[(::)~e:`qeg 0;. x;qfre[$[`s~@x;$x;x];e]];$[`s~@r;$[":"=*$r;r;. r];r]}   / x a symbol: a plain name (qsid), looked up without the parser   / 2.9.0: from `t is the global t, as q
 qfre:{[s;e]r:qesb[s;!e];$[r~s;. s;(. "{[qE]",r,"}")e]}
 qesb:{[s;n],/{[n;t;f]$[f&in[`$t;n];"(qE`",t,")";t]}[n]'[bnd _ s;w bnd:&differ w:qword 0+qblank s]}
 qwe:{[f;s;e]o:`qes e;r:.[{(1;x y)};(f;s);{(0;x)}];`qes o;$[*r;r 1;`err r 1]}   / f s with a lambda's names e set, as they were after

@@ -227,7 +227,14 @@ gag1:{[d;k;m;p]$[(2=#p)&in[p 0;`dev`var];qvd[d;k;m;p];2=#p;qgg[p 0;k;d p 1;m];[w
 / means, each row's mean found by its key, one pass for the average square. A group whose mean is infinite (or 0w and
 / -0w's NaN) has no square that is not NaN: 0f there, as var gives (#83 Q10), where the group has an item that is not null
 qvd:{[d;k;m;p]v:d p 1;a:qgg[`avg;k;v;m];$[0=#a;();[e:v-(a 1)@(a 0)?k;b:qgg[`avg;k;e*e;m];$[0=#b;();[r:b 1;r:$[^&/r;@[r;&(^r)&0<(qgg[`sum;k;0+~^v;m])1;:;0.0];r];(b 0;$[`dev~p 0;sqrt r;r];b 2)]]]]}
-qaggf:{[t;b;sg;m]d:+t;bc:d b;k:$[1=#b;*bc;qcard[bc]<qEXACT;qenc bc;()];k:$[(1=#b)&1<+/{1+(2<#x)|in[*x;`dev`var]}'value sg;qsc k;k];$[0=#k;();[rs:gag1[d;k;m]'sg;$[&/value[{0<#x}'rs];[fr:(*value[rs])2;(+b!bc@\:fr)!+{v:x 1;$[`I=@v;`i$v;v]}'rs];()]]]}
+/ The plain aggregates (sum avg count min max first last of a column) run in one pass over the rows (`gagm), each
+/ with its own tables, the rows' groups found once; the others (wavg, dev, an expression) one at a time (gag1), all in
+/ the same group order, so the answers go back in the items' order. gag1 for all when fewer than 2 are plain or
+/ `gagm declines
+qgp:{(2=#x)&in[*x;`sum`avg`count`min`max`first`last]}
+qgmok:{1<+/qgp'. x}
+qgm:{[d;k;m;sg]v:. sg;i:&qgp'v;j:&~qgp'v;r:$[#m;`gagm(*'v i;k;d@(v i)[;1];m);`gagm(*'v i;k;d@(v i)[;1])];$[#r;(!sg)!(r,gag1[d;k;m]'v j)@<i,j;gag1[d;k;m]'sg]}
+qaggf:{[t;b;sg;m]d:+t;bc:d b;k:$[1=#b;*bc;qcard[bc]<qEXACT;qenc bc;()];k:$[(1=#b)&1<+/{1+(2<#x)|in[*x;`dev`var]}'value sg;qsc k;k];$[0=#k;();[rs:$[qgmok sg;qgm[d;k;m;sg];gag1[d;k;m]'sg];$[&/value[{0<#x}'rs];[fr:(*value[rs])2;(+b!bc@\:fr)!+{v:x 1;$[`I=@v;`i$v;v]}'rs];()]]]}
 
 
 / ---- select[...] : q's sorted and limited select ---------------------------

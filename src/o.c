@@ -635,6 +635,57 @@ Z I senc1(A x,A*pu,A*pcd){U n=xn;CO I*RES a=(CO I*)xV;U lg=6;W nb=64;SB4*h=mallo
 A sencT(A x){P(_tP(x)||_t(x)!=tS||_n(x)<PGAG_MIN,x(emp(tA)))
  A u=0,cd=0;P(par_thread_count(_n(x))<2?senc1(x,&u,&cd):penc(x,par_thread_count(_n(x)),&u,&cd),x(emp(tA)))
  return x(aV(tA,2,A(u,cd)));}
+// `gagm (ops;k;vs[;m]): several aggregates by one key in one pass: each chunk's rows get their group numbers once
+// (gaggS's phase 1), then every aggregate's update runs over that chunk (gsupd), each with tables of its own. The
+// answer is gagg's triple for each op, in the same group order; () when an op or a value is one gagg would decline,
+// or more than one thread runs (each gagg pass then runs on them). Each aggregate adds its rows in row order, so the
+// answers are gagg's to the bit (select sum,avg by sym on 1M rows: 2 passes over the rows were 5 ms, l 1.9)
+#define GM_MX 32
+A gaggM(A x){
+ P(_t(x)-tA||(_n(x)-3&&_n(x)-4),x(emp(tA)))
+ A*e=_A(x);A ops=e[0],k=e[1],vs=e[2],m=_n(x)==4?e[3]:0;
+ P(_tP(ops)||_t(ops)!=tS||_tP(vs)||_t(vs)!=tA||_n(ops)!=_n(vs)||!_n(ops)||_n(ops)>GM_MX,x(emp(tA)))
+ UC kt=_t(k);P(_tP(k)||!(kt==tG||kt==tH||kt==tI||kt==tL||kt==tS),x(emp(tA)))
+ N n=_n(k);P(n<GS_MIN||par_thread_count(n)>1,x(emp(tA)))
+ P(m&&(_tP(m)||_t(m)!=tG||_n(m)!=n),x(emp(tA)))
+ U no=_n(ops),wk=kt==tG?0:kt==tH?1:(kt==tI||kt==tS)?2:3;CO V*kp=_V(k);CO UC*mp=m?_V(m):0;
+ L gmn,gmx;{F w=WF;L b;MC(&b,&w,SZ b);gmn=o1(b);w=-WF;MC(&b,&w,SZ b);gmx=o1(b);}
+ I code[GM_MX];U wv[GM_MX];B vf[GM_MX];CO V*vp[GM_MX];L a0l[GM_MX];F a0f[GM_MX];
+ for(U o=0;o<no;o++){S nm=su(((CO I*)_V(ops))[o]);I c=!strcmp(nm,"sum")?GA_SUM:!strcmp(nm,"count")?GA_CNT:!strcmp(nm,"min")?GA_MIN:
+   !strcmp(nm,"max")?GA_MAX:!strcmp(nm,"avg")?GA_AVG:!strcmp(nm,"first")?GA_FST:!strcmp(nm,"last")?GA_LST:-1;P(c<0,x(emp(tA)))
+  A v=_A(vs)[o];UC vt=c==GA_CNT?tL:_t(v);
+  I(c!=GA_CNT&&c!=GA_FST&&c!=GA_LST,P(_tP(v)||!(vt==tG||vt==tH||vt==tI||vt==tL||vt==tF)||_n(v)!=n,x(emp(tA))))
+  I(c==GA_FST||c==GA_LST,P(_tP(v)||_N(v)!=n,x(emp(tA))))
+  code[o]=c;vf[o]=vt==tF;wv[o]=vt==tG?0:vt==tH?1:vt==tI?2:3;vp[o]=c==GA_CNT?0:_V(v);
+  a0l[o]=c==GA_MIN?(vf[o]?gmn:WL):c==GA_MAX?(vf[o]?gmx:NL+1):0;a0f[o]=c==GA_MIN?WF:c==GA_MAX?-WF:0;}
+ // the key range and the key index, as gaggS's
+ L lo,hi;B direct=0;
+ {N sd=n/4096;sd+=!sd;
+  lo=hi=GARD(wk,kp,0);if(n>4*GS_CH)for(N i=0;i<n;i+=sd){L v=GARD(wk,kp,i);if(v<lo)lo=v;if(v>hi)hi=v;}
+  if((W)hi-(W)lo<((W)1<<22)){for(N i=0;i<n;i++){L v=GARD(wk,kp,i);if(v<lo)lo=v;if(v>hi)hi=v;}
+   W rg=(W)hi-(W)lo+1;direct=rg&&rg<=((W)1<<22)&&rg<=8*(W)n+1024;}}
+ GS t={0};t.cap=n<1024?(U)n:1024;t.lo=lo;B fail=0;
+ t.gk=malloc(t.cap*SZ(L));t.gf=malloc(t.cap*SZ(I));t.af=malloc(t.cap*SZ(F));t.al=malloc(t.cap*SZ(L));t.gc=malloc(t.cap*SZ(L));
+ t.slot=direct?calloc((N)((W)hi-(W)lo+1),SZ(I)):0;t.hcap=direct?1:2048;t.hlg=11;t.hk=direct?0:malloc(2048*SZ(L));t.hg=direct?0:calloc(2048,SZ(I));
+ N ch_=n<GS_CH?n:GS_CH;I*cd=malloc((mp?2:1)*ch_*SZ(I));I*ix=mp&&cd?cd+ch_:0;
+ F*oaf[GM_MX]={0};L*oal[GM_MX]={0},*ogc[GM_MX]={0};I*olr[GM_MX]={0};U ocap=0,oini=0;A z=0;
+ if(!t.gk||!t.gf||!t.af||!t.al||!t.gc||(direct?!t.slot:!t.hk||!t.hg)||!cd){fail=1;goto done;}
+ {GSP1 p1=gsp1[wk][(direct?0:2)+!!mp];
+  for(N s=0;s<n;s+=GS_CH){N e_=s+GS_CH<n?s+GS_CH:n;I nc=p1(&t,kp,mp,s,e_,cd,ix);if(nc<0){fail=1;goto done;}
+   if(t.ng>ocap){U c=t.cap;for(U o=0;o<no;o++){F*a=realloc(oaf[o],(N)c*SZ(F));L*b=realloc(oal[o],(N)c*SZ(L));L*g=realloc(ogc[o],(N)c*SZ(L));I*r=realloc(olr[o],(N)c*SZ(I));
+     if(a)oaf[o]=a;if(b)oal[o]=b;if(g)ogc[o]=g;if(r)olr[o]=r;if(!a||!b||!g||!r){fail=1;goto done;}}ocap=c;}
+   for(U o=0;o<no;o++)for(U q=oini;q<t.ng;q++){oaf[o][q]=a0f[o];oal[o][q]=a0l[o];ogc[o][q]=0;}oini=t.ng;
+   for(U o=0;o<no;o++)gsupd(code[o],vf[o],wv[o],vp[o],cd,mp?ix:0,s,(U)nc,code[o]==GA_LST?olr[o]:t.gf,oaf[o],oal[o],ogc[o]);}}
+ for(U o=0;o<no;o++)if(vf[o]&&(code[o]==GA_MIN||code[o]==GA_MAX))for(U q=0;q<t.ng;q++){F d=oaf[o][q];if(d==0)d=0;L b;MC(&b,&d,SZ b);oal[o][q]=o1(b);}
+ {A rs[GM_MX];U nr=0;
+  for(;nr<no;nr++){rs[nr]=gares(code[nr],_A(vs)[nr],kt,wk,vf[nr],t.ng,t.gk,code[nr]==GA_LST?olr[nr]:t.gf,oaf[nr],oal[nr],ogc[nr]);B(!rs[nr],)}
+  I(nr<no,F(nr,mr(rs[i]))fail=1;goto done;)z=aV(tA,no,rs);}
+ done:
+ free(t.slot);free(t.hk);free(t.hg);free(cd);free(t.gk);free(t.gf);free(t.af);free(t.al);free(t.gc);
+ for(U o=0;o<no;o++){free(oaf[o]);free(oal[o]);free(ogc[o]);free(olr[o]);}
+ P(fail,x(emp(tA)))
+ return x(z);}
+#undef GM_MX
 // ---- `wmul (w;x): qSQL's fused wavg by group (qsql.k gag1) needs w*x and whether a product is null, so that a row
 // with a null value or weight adds no weight: both in one pass, (w*x;0 or 1), where k's * then a null scan made two.
 // A float list times a float list, or an int list (0N as 0n, as cF makes it) beside a float one; () otherwise (two

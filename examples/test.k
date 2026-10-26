@@ -64,9 +64,10 @@ lin:base?q
 bin:bAttr?q
 t[`attrCorrect;bin;lin]
 t[`attrIsSet;`at bAttr;`s]
-t0:`t[];rr0:bAttr?q;t1:`t[]
-t2:`t[];rr1:base?q;t3:`t[]
-t[`attrSpeedup;(t3-t2)>2*1|t1-t0;1]
+/ best of 5 each way: one timing of each, at us resolution, flipped on a busy CI runner
+ta:&/{t0:`t[];bAttr?q;`t[]-t0}'!5
+tb:&/{t0:`t[];base?q;`t[]-t0}'!5
+t[`attrSpeedup;tb>2*1|ta;1]
 
 / ---- tables / keyed tables ----
 tt:+`s`p`v!(`a`b`c;10 20 30;1.5 2.5 3.5)

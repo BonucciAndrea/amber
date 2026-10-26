@@ -16,7 +16,7 @@ t[`med;med 1 2 3 4 5;3.0]
 t[`medEven;med 1 2 3 4;2.5]
 t[`dev;dev 2 4 4 4 5 5 7 9;2.0]
 t[`svar;svar 2 4 4 4 5 5 7 9;4.571428571428571]
-t[`wsum;wsum[1 2 3;10 20 30];140]
+t[`wsum;wsum[1 2 3;10 20 30];140.0]   / a float, as q (digest #67)
 t[`wavg;wavg[10 20 30;1 2 3];7%3.0]
 t[`cor;0.0001>abs 1.0-cor[1 2 3;2 4 6];1]
 t[`cov;0.0001>abs cov[1 2 3;1 2 3]-2%3.0;1]

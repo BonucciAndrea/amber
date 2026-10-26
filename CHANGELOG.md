@@ -10,6 +10,8 @@ Fixes from running real q code, and appends that don't copy anymore.
   symbols compare a block at a time, finds that miss a lot use 4-key buckets with no branch, dense keys a direct
   table, and gathers with misses no branch either.
 - **Quicker on the Mac (arm64)**: float `|/` `&/` `mmin` `mmax`, float `<` `>` and bucket finds use NEON, ~1.8x.
+- **Moving windows quicker**: `msum` `mavg` skip the null tests when nothing is null, and `mmax`/`mmin` run several
+  van Herk blocks at once, so their compare chains overlap. 5-12% on `msum`/`mavg`, `mmax[1000]` 1.5x.
 - **`?` with misses is quick again**: since 2.9.0 a miss is the count, which took two more passes over the result
   after the find. The find writes the count itself now, 10% quicker than 2.9.0 on 100k and 1M lookups, as quick as
   before the change.

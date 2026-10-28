@@ -28,7 +28,7 @@ jobs:
   toolchains:
     name: ${{ matrix.cc }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -60,20 +60,33 @@ jobs:
           # noble moved to deb822, so the entry lives in
           # /etc/apt/sources.list.d/ubuntu.sources, NOT /etc/apt/sources.list --
           # rewriting only the latter is why this fix often looks applied and is not.
-          for f in /etc/apt/sources.list \
-                   /etc/apt/sources.list.d/*.list \
-                   /etc/apt/sources.list.d/*.sources; do
-            [ -f "$f" ] || continue
-            sudo sed -i 's|https\?://azure\.archive\.ubuntu\.com|http://archive.ubuntu.com|g' "$f"
+          # gcc-11 is the only one not on the runner image, so it is the only one
+          # that downloads, and it either installs in ~20 s or hangs until the
+          # job cap cancels it. So: short tries, a different mirror each time,
+          # and a compiler that is already there skips apt altogether.
+          if command -v ${{ matrix.cc }} >/dev/null && dpkg -s build-essential >/dev/null 2>&1; then
+            exit 0
+          fi
+          for m in archive.ubuntu.com mirrors.edge.kernel.org azure.archive.ubuntu.com; do
+            echo "== mirror $m"
+            for f in /etc/apt/sources.list \
+                     /etc/apt/sources.list.d/*.list \
+                     /etc/apt/sources.list.d/*.sources; do
+              [ -f "$f" ] || continue
+              sudo sed -i "s#https\?://\(azure\.archive\.ubuntu\.com\|archive\.ubuntu\.com\|mirrors\.edge\.kernel\.org\)/ubuntu#http://$m/ubuntu#g" "$f"
+            done
+            sudo rm -rf /var/lib/apt/lists/*
+            sudo dpkg --configure -a || true
+            sudo timeout 60 apt-get update -o Acquire::Retries=2 \
+              -o Acquire::http::Timeout=10 -o Acquire::https::Timeout=10 \
+              -o Acquire::ForceIPv4=true &&
+            sudo timeout 120 apt-get install -y --no-install-recommends \
+              -o Acquire::Retries=2 -o Acquire::http::Timeout=10 \
+              -o Acquire::https::Timeout=10 \
+              -o Acquire::ForceIPv4=true build-essential ${{ matrix.cc }} &&
+            exit 0
           done
-          sudo rm -rf /var/lib/apt/lists/*
-          sudo timeout 300 apt-get update -o Acquire::Retries=3 \
-            -o Acquire::http::Timeout=10 -o Acquire::https::Timeout=10 \
-            -o Acquire::ForceIPv4=true
-          sudo timeout 600 apt-get install -y --no-install-recommends \
-            -o Acquire::Retries=3 -o Acquire::http::Timeout=10 \
-            -o Acquire::https::Timeout=10 \
-            -o Acquire::ForceIPv4=true build-essential ${{ matrix.cc }}
+          exit 1
 
       - name: Toolchain info
         run: ${{ matrix.cc }} --version

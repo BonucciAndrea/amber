@@ -61,10 +61,20 @@ hdb.atc:{[v]a:$`at v;$[#a;1+"supg"?*a;0]}                      / attribute code 
 hdb.wq:{[f;s;n;v]$[`S~@v;(f;s?v;n;hdb.atc v);(f;v;-1;0)]}      / a column's (path;value;domain;attr) for `wcol
 hdb.splay:{[dir;db;t]hdb.lk[db;hdb.spl0[dir;db;t]]}
 hdb.spl0:{[dir;db;t;z]hdb.rc hdb.par dir;hdb.rc db;t:$[iskeyed t;unkey t;t];c:cols t;v:(+t)c;b:`S=@'v;s:$[|/b;hdb.syms db;0#`];nw:$[|/b;[u:?,/?'v@&b;u@&~in[u;s]];0#`];s:s,nw;w:{[dir;s;n;c;v]hdb.wq[dir,"/",$c;s;n;v]}[dir;s;#s]'[c;v];w:$[#nw;(,(hdb.symf db;s;-1;0)),w;w],,(dir,"/.d";c;-1;0);hdb.wr[db;w];$[#nw;hdb.symc[db;`fsz hdb.symf db;s];0];dir}
-splay:{[dir;t]dir:hdb.sl hdb.p dir;hdb.splay[dir;hdb.par dir;t]}
+splay:{[dir;t]dir:hdb.sl hdb.p dir;hdb.splay[dir;hdb.dbof dir;t]}   / hdb.dbof, not hdb.par: splaying into a
+/ partition (db/2026.01.03/trades) must enumerate against the DATABASE's sym, db/sym, which is what loaddb and ptab
+/ resolve the column against. hdb.par gave the partition its own db/2026.01.03/sym, so the column came back as
+/ whatever the root sym happened to hold at those indexes -- silently wrong symbols, no error. upsert already used
+/ hdb.dbof, so an append and a write of the same table disagreed. Q.dpft passes the database in and never hit this.
 hdb.dl:{[dir;s]c:hdb.cols dir;+c!{[dir;s;c]`rcol(dir,"/",$c;s)}[dir;s]'c}
 hdb.old:{[dir]cs:. `c$1:dir,"/.d";+cs!{[dir;c]. `c$1:dir,"/",$c}[dir]'cs}   / a pre-2.7 text table
-dload:{[dir]dir:hdb.sl hdb.p dir;hdb.rp dir;$[hdb.isd dir;hdb.dl[dir;hdb.syms hdb.par dir];hdb.old dir]}
+dload:{[dir]dir:hdb.sl hdb.p dir;hdb.rp dir;$[hdb.isd dir;hdb.dl[dir;hdb.syms hdb.dbof dir];hdb.old dir]}
+/ dcols[dir;cs] reads only the columns cs. A splayed table's columns are separate files, so the ones left out cost
+/ nothing: a flat column is mmapped (its pages come in as a query reads them) and a symbol column is the only one
+/ that is resolved against the sym file, so skipping it skips that whole pass. On a wide table this is the
+/ difference between touching one column and touching all of them.
+hdb.dlc:{[dir;s;cs]+cs!{[dir;s;c]`rcol(dir,"/",$c;s)}[dir;s]'cs}
+dcols:{[dir;cs]dir:hdb.sl hdb.p dir;hdb.rp dir;cs:$[`s~@cs;,cs;cs];$[hdb.isd dir;[c:hdb.cols dir;$[&/in[cs;c];hdb.dlc[dir;hdb.syms hdb.dbof dir;cs];`err"mismatch"]];cs#hdb.old dir]}
 
 / `:db/t/ upsert t (2.9.1): the rows go on the end of each column file (src/dsk.c `acl), the new symbols into the sym
 / file first, all under the database's lock, and a crash leaves the table as it was. A table not there yet is written
@@ -83,7 +93,7 @@ hdb.ap1:{[p;db;r]c:hdb.cols p;$[(asc c)~asc cols r;0;`err"mismatch"];v:(+r)c;b:`
 set:{[h;v]$[(`s~@h)&~":"=*$h;[.[h;();:;v];h];()~v;[`qlog h;h];[p:hdb.p h;$["/"~*|p;$[iskeyed v;`err"type";splay[p;v]];dset[p;v]];h]]}
 / get reads only the binary format: a file or a table in any other is 'format, never evaluated (q's get never runs a
 / file). dget and dload, Amber's own names, still read the text files Amber wrote before 2.7. A missing file is 'io, as before
-get:{[h]$[(`s~@h)&~":"=*$h;. h;[p:hdb.sl hdb.p h;hdb.rp p;$[-2=`fsz p;$[hdb.isd p;hdb.dl[p;hdb.syms hdb.par p];`err"format"];hdb.amc p;`rcol p;-1=`fsz p;`err"io";`err"format"]]]}
+get:{[h]$[(`s~@h)&~":"=*$h;. h;[p:hdb.sl hdb.p h;hdb.rp p;$[-2=`fsz p;$[hdb.isd p;hdb.dl[p;hdb.syms hdb.dbof p];`err"format"];hdb.amc p;`rcol p;-1=`fsz p;`err"io";`err"format"]]]}
 
 / ---- partitioned databases ------------------------------------------------
 / db/<partition>/<table>/<col>, partitions named by a date (2026.01.02) or an int, symbols in db/sym.

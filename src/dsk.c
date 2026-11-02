@@ -374,6 +374,14 @@ Z A rcq(I f,W sz,CO UC*m,A dom,CO C*path){
 
 // `rcol path or `rcol(path;syms): one column file back. A symbol column needs the database's syms (a sym
 // vector); without them its indexes come back as ints. A file q wrote reads too (rcq above)
+// amber 2.9.2: a symbol column is stored as int indexes into the database's sym file, and reading it back resolves
+// every index. One core does not saturate the store (5M rows is a 20MB read and a 20MB write), so the resolve is
+// split over par_run's threads -- the same AMBER_THREADS pool `peach` and the vector engine use. The bounds check
+// stays in the loop: it never fires, so it predicts, and the pass is bound by the store either way.
+TD struct{CO I*ix;CO I*sy;I*o;N n;U dn;int nt;I bad;}ENC;
+Z V encw(V*c_,int t){ENC*c=c_;N s=c->n*t/c->nt,e=c->n*(t+1)/c->nt;
+ CO I*RES ix=c->ix;CO I*RES sy=c->sy;I*RES o=c->o;U dn=c->dn;
+ for(N i=s;i<e;i++){U k=(U)ix[i];if(k>=dn){c->bad=1;return;}o[i]=sy[k];}}
 A rcolT(A x){
  A pth=x,dom=0;
  if(_t(x)==tA&&_n(x)==2){pth=_A(x)[0];dom=_A(x)[1];P(_t(dom)!=tS,x(et0()))}
@@ -404,7 +412,9 @@ A rcolT(A x){
     // the sym file only grows, so every index the column was written with is below its count then
     if(h.dom>dn){mr(iv);r=err0("sym");break;}
     r=an(n,tS);I*o=(I*)_V(r);
-    for(U i=0;i<n;i++){U k=(U)ix[i];if(k>=dn){mr(iv);mr(r);r=err0("sym");goto out;}o[i]=sy[k];}
+    {int nt=par_thread_count(n);ENC c={ix,sy,o,(N)n,dn,nt,0};
+     if(nt>1)par_run(nt,encw,&c);else encw(&c,0);
+     if(c.bad){mr(iv);mr(r);r=err0("sym");goto out;}}
     _at(r)=h.att;mr(iv))
   C(KSER,A b=dload(f,tC,h.cnt,h.nb);r=b?des9(b):0)
   C(KTIME,A b=dload(f,tL,h.cnt,h.nb);if(!b)break;CO L*q=(CO L*)_V(b);

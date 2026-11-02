@@ -21,9 +21,23 @@ A e1f(A1 f,A x){X(Rt(f(x))Rm(A y=kv(&x);am(x,Nx(e1f(f,y))))RA(U n=xn;P(!n,o1f(f,
   S4(xt-tG,F(n,P(!(ya=f(ai(xg))),mrn(i,yA);x(0))),F(n,P(!(ya=f(ai(xh))),mrn(i,yA);x(0))),F(n,P(!(ya=f(ai(xi))),mrn(i,yA);x(0))),F(n,P(!(ya=f(az(xl))),mrn(i,yA);x(0))))sqz(x(y)))
  R_(U n=xN;P(!n,o1f(f,x))A y=aA0(n);F(n,A z=f(ii(x,i));B(!z,y=y(0))PSH(y,z))x(y)))}
 B aeok(A);   //b.c: is this lambda elementwise over its one parameter? (then f'v is f v)
-Z A2(e1x,/*01*/A r=x1(yR);I(r,I(_n(r)==_N(y)&&LH(tB,_t(r),tF),mr(y);return r)mr(r))0)  //the whole vector in one call, kept only if it came back the right shape
+//Widen an int list to type t, so the one vector call lands on the SAME storage width the per-item loop would have
+//collected into. Without this, {x+1}'1 2 300 came back 16-bit where the loop makes it 32-bit: the same numbers, but
+//`ser records the width, and tests/test_core.k amendAllNumbersSyntax pins it against the loop's.
+Z A wid(A x,UC t)_(U n=_n(x);A z=an(n,t);P(!z,0)UC f=_t(x);
+ F(n,L v=f==tL?((CO L*)_V(x))[i]:f==tI?(L)((CO I*)_V(x))[i]:f==tH?(L)((CO H*)_V(x))[i]:f==tG?(L)((CO G*)_V(x))[i]:(L)(((CO UC*)_V(x))[i>>3]>>(i&7)&1);
+   I(t==tL,_L(z)[i]=v)J(t==tI,_I(z)[i]=(I)v)E(mr(z);return 0))
+ z)
+//f v in one call, taken only when it is indistinguishable from the per-item loop. The loop's own answer for item 0
+//fixes the type the loop would collect into (TT), and the operand is widened to it first. INTEGER results only: a
+//float one would also have to reproduce the loop's NaN sign bit, which it does not -- x-0n on a list sets it and
+//item by item it does not (test_core.k amendAllLessNaN), so floats are left to the loop.
+Z A2(e1x,/*01*/A z0=x1(ii(y,0));P(!z0,0)UC t0=_t(z0);mr(z0);P(!LH(ti,t0,tl),0)UC lt=TT[t0];U n=_N(y);
+ A r=x1(yR);I(r,I(_n(r)==n&&_t(r)==lt,mr(y);return r)mr(r))        //the operand as it is: the arithmetic often widens on its own ({x*x+1} overflows a short anyway)
+ P(_t(y)==lt,0)A w=wid(y,lt);P(!w,0)r=x1(w);                        //it did not, so widen the operand to the width the loop collects into and try once more
+ I(r,I(_n(r)==n&&_t(r)==lt,mr(y);return r)mr(r))0)
 Z A2(e1,/*01*/X(Ru(e1f(v1[xv],y)))Y(Rt(x1(y))Rm(A z=kv(&y);am(y,Ny(e1(x,z))))RA(U n=yn;P(!n,o1(x,y))y=mut(y);F(n,;P(!(ya=x1(ya)),ya=au;y(0)))sqz(y))
-                                    R_(U n=yN;P(!n,o1(x,y))I(n>1&&LH(tB,yt,tF)&&aeok(x),A r=e1x(x,y);I(r,return r))A u=aA0(n);F(n,A z=x1(ii(y,i));B(!z,u=u(0))PSH(u,z))y(u)))0)
+                                    R_(U n=yN;P(!n,o1(x,y))I(n>1&&LH(tB,yt,tL)&&aeok(x),A r=e1x(x,y);I(r,return r))A u=aA0(n);F(n,A z=x1(ii(y,i));B(!z,u=u(0))PSH(u,z))y(u)))0)
 A l2f(A2 f,A x,A y/*f01*/){X(Rt(f(x,y))Rm(A z=N(l2f(f,xy,y));       am(_R(xx),z) )R_(U n=xN;P(!n,x=fir(xR);x(o2f(f,x,y)))A u=aA0(n);F(n,A w=ii(x,i),v=f(w,yR);mr(w); B(!v,u=u(0))PSH(u,v))y(u)))}
 A r2f(A2 f,A x,A y/*f01*/){Y(Rt(f(x,y))Rm(A z=Ny(r2f(f,x,_R(yy)));y(am(_R(yx),z)))R_(U n=yN;P(!n,        o2f(f,x,fir(y)))A u=aA0(n);F(n,A v=f(x,ii(y,i));            B(!v,u=u(0))PSH(u,v))y(u)))}
 Z A3(l2,/*001*/Xv(l2f(v2[xv],y,z))Yt(x2(y,z))Ym(x=prj(x,A8((A)GAP,z),2);x(e1(x,yR)))  U n=yN;P(!n,y=fir(yR); y(o2(x,y,z)))A u=aA0(n);F(n,A w=ii(y,i),v=x2(w,zR);mr(w);B(!v,u=u(0))PSH(u,v))z(u))

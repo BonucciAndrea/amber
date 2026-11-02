@@ -6,10 +6,17 @@ Two things that were slow because they ran in the interpreter when they did not 
 
 - **`f'v` runs as one vector op when `f` is elementwise**: a monadic lambda whose body only ever extends
   elementwise -- arithmetic and comparison on its parameter and scalar constants -- is applied once to the whole
-  vector instead of once per boxed item. `+/{x*x+1}'v` over 10M ints: **319 ms -> 7.6 ms (42x)**. The lambda is
+  vector instead of once per boxed item. `+/{x*x+1}'v` over 10M ints: **319 ms -> 12 ms (26x)**. The lambda is
   proved elementwise by scanning its bytecode (`aeok`, src/b.c) against a whitelist of opcodes that extend
   elementwise; a call, branch, global, index or list fails the scan and the per-item loop runs as before, and the
   result's shape is checked before it is trusted, so `{5}'v`, `{|x}` or `{x+1 2}` keep their old answers.
+  Two things make the fused answer *byte*-identical to the loop's, not merely numerically equal, which a first cut
+  of this got wrong: the loop collects items into the width its own answer for one item has, so `{x+1}'1 2 300` is
+  32-bit where the plain vector op stays 16-bit -- the same numbers, but `` `ser `` records the width. The operand
+  is therefore widened to that type when the vector op does not land on it by itself (it usually does: `x*x`
+  overflows a short anyway, so the common case is still one pass). And INTEGER results only: `x-0n` on a list sets
+  the NaN sign bit where item-by-item does not, so a float result is left to the loop. Both are pinned by
+  `tests/test_core.k` (`amendAllNumbersSyntax`, `amendAllLessNaN`).
 - **`mmu` on two dense float matrices is a C kernel**: four rows and eight columns at a time, so the running sums
   stay in registers across the k loop. 600x600: **65 ms -> 22 ms (2.9x)**; `spectralnorm` 111 -> 83 ms. Everything
   else -- vectors, int or ragged rows -- still runs the k version (`mmuK` in std.k), which is unchanged.

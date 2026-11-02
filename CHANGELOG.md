@@ -24,7 +24,9 @@ On-disk data:
   `Q.dpft` passed the database in explicitly and was never affected.
 - **`dcols[dir;cs]` reads named columns only**. A splayed table's columns are separate files, so the ones left out
   cost nothing: a flat column is mmapped and a symbol column is the only one that is resolved against the sym file.
-  Reading one float column of a three-column 5M-row table: **7.9 ms -> 0.1 ms**; the whole table is unchanged.
+  Opening a three-column 5M-row table warm costs 7.7 ms; one float column of it costs 3.8 ms. The 2.8 ms that
+  separates them is the symbol column's resolve (0.56 ms per million rows) and the 0.96 ms is mapping the third
+  column, so what `dcols` saves is exactly the columns it skips. On a wider table it saves proportionally more.
 - **A symbol column resolves on several threads**: the index-to-symbol pass is split over `AMBER_THREADS` workers.
   5M rows 7.9 -> 6.8 ms; the pass is allocation-bound rather than bandwidth-bound, so this is modest.
 

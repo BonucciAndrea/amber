@@ -566,19 +566,19 @@ _Median of 5 timed runs after 2 warm-up passes. Kernel time only — process sta
 
 | Benchmark | C (-O3) | Amber | Amber qSQL | ngn/k | CBQN | J | Uiua | NumPy | Julia | DuckDB |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M | 12.26 | 16.52 | 37.92 | 581.59 | 66.74 | 364.31 | 995.76 | 45.23 | 9.05 | _not installed_ |
-| Reductions — `sum + max + dot`, 10M elements | 28.80 | 5.46 | 9.16 | 516.57 | 5.72 | 341.45 | 869.40 | 8.47 | 28.47 | _not installed_ |
-| Group-by aggregation — 100 groups over 10M rows | 9.33 | 7.81 | 7.56 | 638.79 | 83.94 | 352.45 | 2,387.12 | 16.13 | 12.36 | _not installed_ |
-| Inner join — 1M left rows against 1,000 sparse keys | 0.71 | 1.50 | 4.43 | 664.68 | 2.27 | 304.31 | _                            ─_ | 11.78 | 12.39 | _not installed_ |
+| Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M | 12.37 | 11.75 | 30.44 | 392.68 | 25.23 | 300.44 | 731.34 | 28.60 | 5.65 | _not installed_ |
+| Reductions — `sum + max + dot`, 10M elements | 14.78 | 5.50 | 9.85 | 341.71 | 3.94 | 290.99 | 671.15 | 9.15 | 14.85 | _not installed_ |
+| Group-by aggregation — 100 groups over 10M rows | 4.07 | 6.27 | 6.47 | 441.76 | 69.96 | 283.53 | 1,731.22 | 11.60 | 4.06 | _not installed_ |
+| Inner join — 1M left rows against 1,000 sparse keys | 0.52 | 0.91 | 3.28 | 459.09 | 1.62 | 266.89 | _                            ─_ | 8.74 | 4.30 | _not installed_ |
 
 Relative to the C baseline (lower is better; 1.00× means it matched plain C):
 
 | Benchmark | C (-O3) | Amber | Amber qSQL | ngn/k | CBQN | J | Uiua | NumPy | Julia | DuckDB |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M | 1.00× | 1.35× | 3.09× | 47.45× | 5.44× | 29.72× | 81.23× | 3.69× | 0.74× | — |
-| Reductions — `sum + max + dot`, 10M elements | 1.00× | 0.19× | 0.32× | 17.94× | 0.20× | 11.86× | 30.19× | 0.29× | 0.99× | — |
-| Group-by aggregation — 100 groups over 10M rows | 1.00× | 0.84× | 0.81× | 68.47× | 9.00× | 37.78× | 255.87× | 1.73× | 1.32× | — |
-| Inner join — 1M left rows against 1,000 sparse keys | 1.00× | 2.11× | 6.25× | 937.48× | 3.20× | 429.21× | — | 16.61× | 17.47× | — |
+| Vector arithmetic + mask — `sum((x*2.5)+y where x>50)`, 10M | 1.00× | 0.95× | 2.46× | 31.75× | 2.04× | 24.29× | 59.13× | 2.31× | 0.46× | — |
+| Reductions — `sum + max + dot`, 10M elements | 1.00× | 0.37× | 0.67× | 23.12× | 0.27× | 19.69× | 45.42× | 0.62× | 1.00× | — |
+| Group-by aggregation — 100 groups over 10M rows | 1.00× | 1.54× | 1.59× | 108.54× | 17.19× | 69.67× | 425.38× | 2.85× | 1.00× | — |
+| Inner join — 1M left rows against 1,000 sparse keys | 1.00× | 1.73× | 6.27× | 877.29× | 3.10× | 510.02× | — | 16.70× | 8.22× | — |
 
 **Timing mode per engine** — `kernel` means the engine timed its own kernel with a monotonic clock; `net` means it has no usable in-language clock and was measured as _total process time − startup baseline_:
 
@@ -587,10 +587,10 @@ Relative to the C baseline (lower is better; 1.00× means it matched plain C):
 | C (-O3) | baseline | kernel | — |
 | Amber | array primitives | kernel | — |
 | Amber qSQL | query layer | kernel | — |
-| ngn/k | array primitives | net | 0.75 |
-| CBQN | array primitives | kernel | 3.30 |
-| J | array primitives | net | 44.51 |
-| Uiua | array primitives | net | 28.96 |
+| ngn/k | array primitives | net | 0.89 |
+| CBQN | array primitives | kernel | 3.42 |
+| J | array primitives | net | 43.69 |
+| Uiua | array primitives | net | 28.09 |
 | NumPy | array primitives | kernel | — |
 | Julia | scalar loops (JIT) | kernel | — |
 | DuckDB | query layer | — | — |

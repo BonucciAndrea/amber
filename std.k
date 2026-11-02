@@ -44,7 +44,8 @@ mmax:{[w;x]$[~`A~@r:`mw(5;w;x);r;(@x)in`m`M;mwt[mmax;w;x];mmaxK[w;x]]}
 mprd:{[w;x]exp msum[w;log 0.0+x]}                        / moving product
 / moving weighted / correlation helpers
 dot:{+/x*y}                                              / vector dot product
-mmu:{[x;y]$[`A~@x;$[`A~@y;[yc:+y;{[yc;r]{[r;c]+/r*c}[r]'yc}[yc]'x];{+/x*y}[;y]'x];+/x*y]}   / matrix multiply  x mmu y; a vector is a row or a column, as q (two vectors: their dot product)
+mmuK:{[x;y]$[`A~@x;$[`A~@y;[yc:+y;{[yc;r]{[r;c]+/r*c}[r]'yc}[yc]'x];{+/x*y}[;y]'x];+/x*y]}  / matrix multiply in k: a vector is a row or a column, as q (two vectors: their dot product)
+mmu:{[x;y]$[0=#r:`mmu(x;y);mmuK[x;y];r]}   / x mmu y; `mmu is the C kernel for two dense float matrices and gives () for anything else, which mmuK then takes
 
 / ---- parse / eval / serialize ---------------------------------------------
 parse:{`p x}                                             / string -> parse tree (for inspection)

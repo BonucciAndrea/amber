@@ -13,6 +13,25 @@ Z CO C di[]={[bF]=3,              [ba]= 1, 1, 3, 3, 3, 3, 3, 3, 2, 2, 1, 1, 1, 1
 ds[]={[bv]=n1,n1,n1,   p1,   p1,  [ba]= 1, 1,-1,-1,-1,-1,-1,-1, 1,-1, 1, 0,-1, 0, 1,-1, 0, 0, 0,-2,-1, 0, 1, 1},      //stack size delta
 ks[]={                            [ba]=-1,-1, 0, 0, 0, 0, 0, 0, 0, 0,-1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};      //stack size delta (coefficient for the next byte)
 #define BG (b+=2,b[-2]|(U)b[-1]<<8)                                                                 //read a 2-byte little-endian global/var index
+// amber 2.9.2: f'v, where f is a monadic lambda whose body only ever extends elementwise (arithmetic and
+// comparison on its parameter and scalar constants), is f v: ONE call on the whole vector instead of n calls on n
+// boxed atoms. aeok proves that by scanning f's bytecode -- byte 0 is the frame's stack depth, so run() and this
+// both start at +1 -- against the whitelist below. A call, branch, global, index or list fails the scan, so a
+// lambda fuses only when every operation in BOTH an fzop tree and the plain fallback it skips over is
+// elementwise; w.c's e1 still checks the result's shape before it trusts the answer.
+Z CO C aem[32]={[0]=1,[2]=1,[4]=1,[11]=1,[13]=1,[15]=1},              //v1 slots that extend elementwise: : - % ~ ^ _
+      aed[32]={[1]=1,[2]=1,[3]=1,[4]=1,[6]=1,[7]=1,[8]=1,[9]=1,[10]=1};//v2 slots: + - * % & | < > = (! makes a dict on a list left; , ^ # _ $ ? @ . ~ reshape or aggregate)
+Z B aeca(A f,U i)_(P(i+OFF>=_n(f),0)UC t=_t(_A(f)[i+OFF]);LH(ti,t,tf))//constant i is a numeric ATOM: a vector one would broadcast, not extend
+B aeok(A f){P(_t0(f)||_t(f)-to||_k(f)-1,0)A b=_A(f)[1];P(_t(b)-tC,0)CO UC*p=(CO UC*)_V(b);U n=_n(b);P(n<2,0)
+ U i=1;W(i<n,UC c=p[i];
+  I(c==bF,i+=1+di[bF];continue)                                      //fused float tree: the fallback it skips over is the next bytes, scanned too
+  I(c<bv,P(!aem[c],0)i++;continue)                                   //monad
+  I(c<bs,P(!aed[c-bv],0)i++;continue)                                //dyad
+  I(c<ba,i++;continue)                                               //set/get/del local: a slot, no data of its own
+  I(c>=bc,P(!aeca(f,(U)(c-bc)),0)i++;continue)                       //load constant
+  I(c==bV,P(i+2>=n||p[i+2]>31||!aed[p[i+2]]||!aeca(f,p[i+1]),0)i+=3;continue)//consts[i] dyad x
+  return 0)                                                          //apply, project, branch, jump, recur, global, index, list, ..
+ return 1;}
 // amber 2.4: tail calls. A call whose result is the function's result (the next opcode is the
 // end, maybe after jumps out of a $[..]) to a lambda that takes exactly that many arguments and
 // fits in the current frame reuses the frame: no C recursion, no depth. {$[x;o x-1;0]}1000000.

@@ -1,5 +1,33 @@
 # Changelog
 
+## 2.9.2 (unreleased)
+
+Two things that were slow because they ran in the interpreter when they did not have to.
+
+- **`f'v` runs as one vector op when `f` is elementwise**: a monadic lambda whose body only ever extends
+  elementwise -- arithmetic and comparison on its parameter and scalar constants -- is applied once to the whole
+  vector instead of once per boxed item. `+/{x*x+1}'v` over 10M ints: **319 ms -> 7.6 ms (42x)**. The lambda is
+  proved elementwise by scanning its bytecode (`aeok`, src/b.c) against a whitelist of opcodes that extend
+  elementwise; a call, branch, global, index or list fails the scan and the per-item loop runs as before, and the
+  result's shape is checked before it is trusted, so `{5}'v`, `{|x}` or `{x+1 2}` keep their old answers.
+- **`mmu` on two dense float matrices is a C kernel**: four rows and eight columns at a time, so the running sums
+  stay in registers across the k loop. 600x600: **65 ms -> 22 ms (2.9x)**; `spectralnorm` 111 -> 83 ms. Everything
+  else -- vectors, int or ragged rows -- still runs the k version (`mmuK` in std.k), which is unchanged.
+
+On-disk data:
+
+- **A table splayed into a partition enumerated its symbols against the wrong sym file** (data loss). `splay` took
+  the table's directory's parent as the database, so `splay["db/2026.01.03/trades";t]` wrote `db/2026.01.03/sym`
+  while `loaddb`, `ptab` and `upsert` all resolve against `db/sym`. The column then read back as whatever the root
+  sym held at those indexes -- different symbols, no error. `splay`, `dload`, `dcols` and `get` now all use
+  `hdb.dbof`, which `upsert` already used: the parent, unless it looks like a partition, in which case one above.
+  `Q.dpft` passed the database in explicitly and was never affected.
+- **`dcols[dir;cs]` reads named columns only**. A splayed table's columns are separate files, so the ones left out
+  cost nothing: a flat column is mmapped and a symbol column is the only one that is resolved against the sym file.
+  Reading one float column of a three-column 5M-row table: **7.9 ms -> 0.1 ms**; the whole table is unchanged.
+- **A symbol column resolves on several threads**: the index-to-symbol pass is split over `AMBER_THREADS` workers.
+  5M rows 7.9 -> 6.8 ms; the pass is allocation-bound rather than bandwidth-bound, so this is modest.
+
 ## 2.9.1
 
 Fixes from running real q code, and appends that don't copy anymore.

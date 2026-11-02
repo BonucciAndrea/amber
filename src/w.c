@@ -20,8 +20,10 @@ A e1f(A1 f,A x){X(Rt(f(x))Rm(A y=kv(&x);am(x,Nx(e1f(f,y))))RA(U n=xn;P(!n,o1f(f,
  RGHIL(U n=xn;P(!n,o1f(f,x))A y=aA(n);
   S4(xt-tG,F(n,P(!(ya=f(ai(xg))),mrn(i,yA);x(0))),F(n,P(!(ya=f(ai(xh))),mrn(i,yA);x(0))),F(n,P(!(ya=f(ai(xi))),mrn(i,yA);x(0))),F(n,P(!(ya=f(az(xl))),mrn(i,yA);x(0))))sqz(x(y)))
  R_(U n=xN;P(!n,o1f(f,x))A y=aA0(n);F(n,A z=f(ii(x,i));B(!z,y=y(0))PSH(y,z))x(y)))}
+B aeok(A);   //b.c: is this lambda elementwise over its one parameter? (then f'v is f v)
+Z A2(e1x,/*01*/A r=x1(yR);I(r,I(_n(r)==_N(y)&&LH(tB,_t(r),tF),mr(y);return r)mr(r))0)  //the whole vector in one call, kept only if it came back the right shape
 Z A2(e1,/*01*/X(Ru(e1f(v1[xv],y)))Y(Rt(x1(y))Rm(A z=kv(&y);am(y,Ny(e1(x,z))))RA(U n=yn;P(!n,o1(x,y))y=mut(y);F(n,;P(!(ya=x1(ya)),ya=au;y(0)))sqz(y))
-                                    R_(U n=yN;P(!n,o1(x,y))A u=aA0(n);F(n,A z=x1(ii(y,i));B(!z,u=u(0))PSH(u,z))y(u)))0)
+                                    R_(U n=yN;P(!n,o1(x,y))I(n>1&&LH(tB,yt,tF)&&aeok(x),A r=e1x(x,y);I(r,return r))A u=aA0(n);F(n,A z=x1(ii(y,i));B(!z,u=u(0))PSH(u,z))y(u)))0)
 A l2f(A2 f,A x,A y/*f01*/){X(Rt(f(x,y))Rm(A z=N(l2f(f,xy,y));       am(_R(xx),z) )R_(U n=xN;P(!n,x=fir(xR);x(o2f(f,x,y)))A u=aA0(n);F(n,A w=ii(x,i),v=f(w,yR);mr(w); B(!v,u=u(0))PSH(u,v))y(u)))}
 A r2f(A2 f,A x,A y/*f01*/){Y(Rt(f(x,y))Rm(A z=Ny(r2f(f,x,_R(yy)));y(am(_R(yx),z)))R_(U n=yN;P(!n,        o2f(f,x,fir(y)))A u=aA0(n);F(n,A v=f(x,ii(y,i));            B(!v,u=u(0))PSH(u,v))y(u)))}
 Z A3(l2,/*001*/Xv(l2f(v2[xv],y,z))Yt(x2(y,z))Ym(x=prj(x,A8((A)GAP,z),2);x(e1(x,yR)))  U n=yN;P(!n,y=fir(yR); y(o2(x,y,z)))A u=aA0(n);F(n,A w=ii(y,i),v=x2(w,zR);mr(w);B(!v,u=u(0))PSH(u,v))z(u))
@@ -88,6 +90,37 @@ AX(e8,/*01..1*/P(n==1,e1(x,*a))P(n==2,A y=*a;y(e2(x,y,a[1])))Ab8;C t[8];L m=-1;F
 //primitive's own each there); anything else, and those words over a shorter list, is f'y as it was
 A2(ech2,/*01*/P(!_tP(x)&&_t(x)==to&&!_tP(y)&&_t(y)==tA&&_n(y)>15,K2("{$[(#qew)=i:qew?x;x'y;qewf[i;y]]}",x,y))A b[1]={y};e8(x,b,1))
 AA(ech8,/*10..0*/er(*a))   //each[f;x;y]: 'rank, as the lambda each was
+//`mmu(a;b): the dense float matrix product in C. a is m rows of k floats, b is k rows of n floats, and the answer is
+//m rows of n floats. Anything else -- a vector, int or ragged rows -- is DECLINED (an empty general list) and
+//std.k's mmu runs the K version it always had, so only the dense float case changes.
+//Four rows of a at a time: a row of b is read once for four output rows instead of once per output cell, which is
+//what lifts this off memory bandwidth -- the K version's +/r*c per cell reads a whole column of b for every cell.
+//MMJ columns at a time as well, so the 4xMMJ running sums stay in registers across the whole k loop: the inner
+//loop then costs one load of b and four FMAs per column, instead of also reloading and storing four c values for
+//every k (which is what the first cut of this spent its time on).
+#define MMJ 8
+Z V mmu4(F*RES c0,F*RES c1,F*RES c2,F*RES c3,CO F*RES a0,CO F*RES a1,CO F*RES a2,CO F*RES a3,CO A*RES br,U k,U n){
+ U j0=0;
+ for(;j0+MMJ<=n;j0+=MMJ){F t0[MMJ]={0},t1[MMJ]={0},t2[MMJ]={0},t3[MMJ]={0};
+  for(U q=0;q<k;q++){CO F*RES b=(CO F*)_V(br[q])+j0;F s0=a0[q],s1=a1[q],s2=a2[q],s3=a3[q];
+   for(U j=0;j<MMJ;j++){F v=b[j];t0[j]+=s0*v;t1[j]+=s1*v;t2[j]+=s2*v;t3[j]+=s3*v;}}
+  for(U j=0;j<MMJ;j++){c0[j0+j]+=t0[j];c1[j0+j]+=t1[j];c2[j0+j]+=t2[j];c3[j0+j]+=t3[j];}}
+ I(j0<n,for(U q=0;q<k;q++){CO F*RES b=(CO F*)_V(br[q]);F s0=a0[q],s1=a1[q],s2=a2[q],s3=a3[q];
+   for(U j=j0;j<n;j++){F v=b[j];c0[j]+=s0*v;c1[j]+=s1*v;c2[j]+=s2*v;c3[j]+=s3*v;}})}
+Z V mmu1(F*RES c0,CO F*RES a0,CO A*RES br,U k,U n){
+ for(U q=0;q<k;q++){CO F*RES b=(CO F*)_V(br[q]);F s0=a0[q];for(U j=0;j<n;j++)c0[j]+=s0*b[j];}}
+A1(mmuT,P(_tP(x)||xt-tA||xn-2,x(emp(tA)))A a=xA[0],b=xA[1];
+ P(_tP(a)||_t(a)-tA||!_n(a)||_tP(b)||_t(b)-tA||!_n(b),x(emp(tA)))
+ U m=_n(a),k=_n(b),n;CO A*ar=_A(a),*br=_A(b);
+ F(k,P(_tP(br[i])||_t(br[i])-tF,x(emp(tA))))n=_n(br[0]);P(!n,x(emp(tA)))
+ F(k,P(_n(br[i])-n,x(emp(tA))))
+ F(m,P(_tP(ar[i])||_t(ar[i])-tF||_n(ar[i])-k,x(emp(tA))))
+ A z=aA0(m);P(!z,x(0))
+ F(m,A r=aF(n);B(!r,z=z(0))MS(_V(r),0,(N)n*8);PSH(z,r))P(!z,x(0))
+ U i0=0;W(i0+4<=m,mmu4(_F(_A(z)[i0]),_F(_A(z)[i0+1]),_F(_A(z)[i0+2]),_F(_A(z)[i0+3]),
+   (CO F*)_V(ar[i0]),(CO F*)_V(ar[i0+1]),(CO F*)_V(ar[i0+2]),(CO F*)_V(ar[i0+3]),br,k,n);i0+=4)
+ W(i0<m,mmu1(_F(_A(z)[i0]),(CO F*)_V(ar[i0]),br,k,n);i0++)
+ x(z))
 __attribute__((noinline,cold)) A1(qech,x(ECH))   //`ech: the each verb (w.c ech2), which amber.k binds to each once
 //`qmc: qsql.k's parsed queries, so a query run again skips the parse. (c;k) is ,v for the v kept under key k in
 //kind c (an int 0-15), or () when there is none; (c;k;v) keeps v and gives it back. 64 a kind and a full kind starts

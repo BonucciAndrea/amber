@@ -16,7 +16,7 @@ t[`med;med 1 2 3 4 5;3.0]
 t[`medEven;med 1 2 3 4;2.5]
 t[`dev;dev 2 4 4 4 5 5 7 9;2.0]
 t[`svar;svar 2 4 4 4 5 5 7 9;4.571428571428571]
-t[`wsum;wsum[1 2 3;10 20 30];140]
+t[`wsum;wsum[1 2 3;10 20 30];140.0]   / a float, as q (digest #67)
 t[`wavg;wavg[10 20 30;1 2 3];7%3.0]
 t[`cor;0.0001>abs 1.0-cor[1 2 3;2 4 6];1]
 t[`cov;0.0001>abs cov[1 2 3;1 2 3]-2%3.0;1]
@@ -64,9 +64,10 @@ lin:base?q
 bin:bAttr?q
 t[`attrCorrect;bin;lin]
 t[`attrIsSet;`at bAttr;`s]
-t0:`t[];rr0:bAttr?q;t1:`t[]
-t2:`t[];rr1:base?q;t3:`t[]
-t[`attrSpeedup;(t3-t2)>2*1|t1-t0;1]
+/ best of 5 each way: one timing of each, at us resolution, flipped on a busy CI runner
+ta:&/{t0:`t[];bAttr?q;`t[]-t0}'!5
+tb:&/{t0:`t[];base?q;`t[]-t0}'!5
+t[`attrSpeedup;tb>2*1|ta;1]
 
 / ---- tables / keyed tables ----
 tt:+`s`p`v!(`a`b`c;10 20 30;1.5 2.5 3.5)

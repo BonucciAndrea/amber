@@ -132,6 +132,43 @@ wtol:{[tag;f;g;w;v]hpush[tag;1e-6>|/|(f[w;v])-g[w;v];"FAIL window kernel drifts 
  wchk[`$"mmaxI.",$w; mmax; mmaxK; w; vi];
  }'wins;
 
+/ ---- long vectors: the NaN-free groups of four resync blocks (from 5x4096 items) and the grouped van Herk
+/ blocks (64<=w<=4096, from 16w items). Integral data, so the sums are exact and compare with ~. gf holds two
+/ groups (items 4096-20479 and 20480-36863) and a tail. In gn the NaNs at 4095 (just before the first group),
+/ 4096 (its first item) and 12000 send the first group back to the per-item code, while the second group and
+/ the w items before it (from 16384) hold none, so one call runs both kinds; 38000 is in the tail
+gv:-500+1000!7919*!70000
+gf:0.0+40000#gv
+gn:@[gf;4095 4096 12000 38000;:;0n]
+{[w]wchk[`$"msumG.",$w; msum; msumK; w; gf];
+ wchk[`$"mavgG.",$w; mavg; mavgK; w; gf];
+ wchk[`$"msumGN.",$w; msum; msumK; w; gn];
+ wchk[`$"mavgGN.",$w; mavg; mavgK; w; gn];
+ wchk[`$"mcountGN.",$w; mcount; {[w;x]msumK[w;~^x]}; w; gn];
+ }'1 3 64 4095 4096;
+/ after two groups in a row with a NaN, the next 1, 2, 4... groups go to the per-item code untested. In gm
+/ (twelve groups) groups 0-2, 4-7 and 10 hold a NaN: 2 and 6 are skipped with a NaN, 3 is tested again and
+/ runs grouped, and 8, 9 and 11 are skipped without one
+gm:@[0.0+-500+1000!7919*!204800;4096+8000+16384*0 1 2 4 5 6 7 10;:;0n]
+{[w]wchk[`$"msumGM.",$w; msum; msumK; w; gm];
+ wchk[`$"mavgGM.",$w; mavg; mavgK; w; gm];
+ }'1 100 4096;
+t[`mvarG; {[w]mvar[w;gf]~mvarK[w;gf]}'3 100; 11b]
+/ van Herk by groups (floats and longs) against the one-block kernel (32-bit ints), and with 0n against mminK
+{[w]hpush[`$"mminVH.",$w;(mmin[w;5000000000+gv]~5000000000+mmin[w;`i$gv])&(mmin[w;0.0+gv])~0.0+mmin[w;`i$gv];"FAIL grouped van Herk"];
+ hpush[`$"mmaxVH.",$w;(mmax[w;5000000000+gv]~5000000000+mmax[w;`i$gv])&(mmax[w;0.0+gv])~0.0+mmax[w;`i$gv];"FAIL grouped van Herk"];
+ }'63 64 100 1000 4096 4097;
+gz:@[@[0.0+4000#gv;&7=97!!4000;:;-0.0];&0=500!!4000;:;0.0]
+gzn:@[gz;1500 2049;:;0n]
+{[w]wchk[`$"mminVHN.",$w; mmin; mminK; w; gzn];wchk[`$"mmaxVHN.",$w; mmax; mmaxK; w; gzn];
+ }'64 100 250;
+/ ties between 0.0 and -0.0: ~ equates them, so compare 1%r (0w against -0w). Zeros are every window's extreme
+/ here; the first 16w-1 results of the grouped kernel against the one-block kernel on those 16w-1 items
+{[w]n:16*w;z:(0.0 -0.0 1 2.0)@4!7919*!n+w;
+ t[`$"mminVHZ.",$w; 1%(n-1)#mmin[w;z]; 1%mmin[w;(n-1)#z]];
+ t[`$"mmaxVHZ.",$w; 1%(n-1)#mmax[w;-z]; 1%mmax[w;(n-1)#-z]];
+ }'64 100 250;
+
 / ---- the literal expectations from test-ext.k, unchanged -------------------
 t[`msumLit; msum[3;1 2 3 4 5];  1 3 6 9 12]
 t[`mavgLit; mavg[3;1 2 3 4 5];  1 1.5 2 3 4.0]
@@ -316,6 +353,6 @@ t[`mmaxKeyN;    mmax[2;(+(,`k)!,1 2 3)!+`a`b!(0N 0N 3;0n 0n 6.0)]; (+(,`k)!,1 2 
 t[`mminDictE;   mmin[2;(0#`)!0#0];                  (0#`)!0#0]
 t[`mmaxDictE;   mmax[2;(0#`)!0#0.0];                (0#`)!0#0.0]
 
-hexpect[399]
+hexpect[455]
 hreport"AMBER SORT / WINDOW DIFFERENTIAL"
 $[FAILN;`exit 1;]

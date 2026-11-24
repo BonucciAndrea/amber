@@ -518,7 +518,7 @@ Z B fzno,fzu;   //fzno: emit no fused code (the fallback being compiled, or the 
 Z B fzt(A t,I*k,I*v,B r){I(_tS(t),P(_n(t)!=1,0)++*v;return 1)P(numlit(t),1)P(!_tA(t)||_n(t)!=3,0)A d=_A(t)[0];
  P(d!=ADD&&d!=SUB&&d!=MUL&&d!=DVD&&d!=MNM&&d!=MXM&&!(r&&(d==LTN||d==GTN||d==EQL)),0)P(++*k>15,0)return fzt(_A(t)[1],k,v,0)&&fzt(_A(t)[2],k,v,0);}
 Z B fzp(A t,UC*p,I*np,A*d,I*pk){P(*np>60,0)
- I(_tS(t),I w=*_I(t),i=fI(l,nl,w);P(i<nl,p[(*np)++]='l';p[(*np)++]=i;*pk=i;1)P(w=='o',0)U g=gi(t);
+ I(_tS(t),I w=*_I(t),i=fI(l,nl,w);P(i<nl,p[(*np)++]='l';p[(*np)++]=i;*pk=i;1)P(w=='o',0)U g=gir(t);
   p[(*np)++]='g';p[(*np)++]=g&255;p[(*np)++]=g>>8;return 1)
  I(numlit(t),P(_n(*d)>250,0)p[(*np)++]='k';p[(*np)++]=_n(*d);PSH(*d,_R(t));return 1)
  P(!fzp(_A(t)[1],p,np,d,pk)||!fzp(_A(t)[2],p,np,d,pk),0)A o=_A(t)[0];p[(*np)++]=o==ADD?'+':o==SUB?'-':o==MUL?'*':o==DVD?'%':o==MNM?'&':o==MXM?'|':o==LTN?'<':o==GTN?'>':'=';return 1;}
@@ -575,7 +575,7 @@ Z I fus(A x,B r){U n=xn;A y=xx;I o=xo;                                          
    I(sc&&fnode(oa,0)&&fnode(ob,0)&&!numlit(ob),Nr(ob,1)Nr(sc,1)Nr(oa,1)cc(ai(y==SUB),xo);cc(FUS2,xo);M(ba)M(4)I(!r,M(bP))return OK;)))
  return -2;}
 Z I cr(A x/*0*/,B r)_(I o=xo;                                                                       //compile rvalue (x:tree,r:wantResult)
- XS(I i=xn-1?-1:li(*xI);I(i>=0,M(bg+i);lgl=nb-1)J(xn==1&&*xI=='o',M(bo))E(M(bG)MG(gi(x)))I(!r,M(bP))OK)       // x.y      variable (possibly qualified)
+ XS(I i=xn-1?-1:li(*xI);I(i>=0,M(bg+i);lgl=nb-1)J(xn==1&&*xI=='o',M(bo))E(M(bG)MG(gir(x)))I(!r,M(bP))OK)       // x.y      variable (possibly qualified)
  P(!xtA||!xn,I(r,cc(x-GAP?x:au,o))OK)                                                               // 0        constant
  U n=xn;A y=xx;                                                                                     //
  P(y==GAP,F(n-1,Nr(xA[i+1],i==n-2&&r))OK)                                                           // [x;y]    block

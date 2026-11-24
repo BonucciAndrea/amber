@@ -37,6 +37,13 @@ On-disk data:
 - **A symbol column resolves on several threads**: the index-to-symbol pass is split over `AMBER_THREADS` workers.
   5M rows 7.9 -> 6.8 ms; the pass is allocation-bound rather than bandwidth-bound, so this is modest.
 
+REPL:
+
+- **`\v` `\f` `\d` work again in repl.k**: the lookup that sends `\a`-style commands to their help never missed, so
+  every one-letter command got swallowed. `\v` also goes into the scroll-back now, it used to vanish on scrolling.
+- **`\d` is usable**: inside a namespace a name it doesn't have is read from the root, the way q's `.q` words are
+  seen everywhere, so `sum`, qSQL and your own root globals just work there. Assignments still stay in the namespace.
+
 ## 2.9.1
 
 Fixes from running real q code, and appends that don't copy anymore.

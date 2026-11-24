@@ -55,4 +55,22 @@ if [ $rc = 0 ] && cmp -s "$tmp/got" "$tmp/closed.want"
 then echo "  PASS stdout closed"
 else echo "  FAIL stdout closed (exit $rc)"; fail=1; fi
 
+# 5. under \d a name the namespace lacks is read from the root, and an
+#    assignment stays in the namespace (#131)
+printf 'r:42\n\\d .foo\nr+1\nr:7\nr\n. `r\n\\d .\nr\n.foo.r\n. `r\n' > "$tmp/ns.k"
+printf '43\n7\n7\n42\n7\n42\n' > "$tmp/ns.want"
+check "\\d reads fall back to the root" "$tmp/ns.k" "$tmp/ns.want"
+
+# 6. repl.k runs the one-letter commands, \v lands in the scroll-back like the
+#    rest, and qSQL and the library work inside a namespace (#131)
+printf 'aa:1 2 3\n\\v\n\\d .foo\nt:([]s:`a`b`a;v:10 20 30)\nexec v from select sum v by s from t\nsum 1 2\n' \
+  | AMBER_DIAG=0 "$AMBER" repl.k > "$tmp/repl.got" 2>&1
+ok=1
+grep -q '| aa ' "$tmp/repl.got" || ok=0
+grep -q '40 20$' "$tmp/repl.got" || ok=0
+grep -q '> 3$' "$tmp/repl.got" || ok=0
+grep -q 'error' "$tmp/repl.got" && ok=0
+if [ $ok = 1 ]; then echo "  PASS repl.k backslash commands and \\d"
+else echo "  FAIL repl.k backslash commands and \\d"; head -c 2000 "$tmp/repl.got" | cut -c1-120; fail=1; fi
+
 exit $fail

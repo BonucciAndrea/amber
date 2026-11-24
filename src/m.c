@@ -376,12 +376,17 @@ Z W gkk(A x/*0*/)_(Xs((U)xv)Q(xtS)xn?(W)_v(jS(drp(-1,xR)))<<32|(U)_v(ii(x,xn-1))
 // peach worker (`value`, a projection built at run time) reaches it concurrently,
 // so the lookup+append runs under the allocator lock (a no-op outside peach).
 U gi(A x/*0*/)_(W k=gkk(x);I(!(k>>32)&&id0(*su(k)),k|=(W)GD<<32)ALK();U i=fL(gk,gn,k);P(i<gn,AUL();i)P(gn>=L(gv),AUL();gfull=1;0)gk[gn]=k;gv[gn]=0;gn++;AUL();i)
+// #131: under \d a READ of a plain name the namespace lacks falls back to the root, the way q's .q words
+// are seen from every context (sum, qSQL's sel, ...). Assignments still go through gi, into the namespace
+Z W gnk(W k)_(W n=k|(W)GD<<32;U i;P(!GD||(i=fL(gk,gn,n))<gn&&gv[i],n)i=fL(gk,gn,k);i<gn&&gv[i]?k:n)
 A gg(A x/*1*/)_(//get value of global
  P(xtS&&!xn,x(0);A x=emp(tS),y=emp(tA);F(gn,I(gv[i],L k=gk[i];PSH(x,k-(U)k?jS(aV(tS,2,A((I)(k>>32),k))):as(k));PSH(y,_R(gv[i]))))am(x,y))//special case for 0#`
- W k=gkk(x);x(0);U i=fL(gk,gn,k);i<gn&&gv[i]?_R(gv[i]):err0(su((U)k)))
+ W k=gkk(x);I(!(k>>32)&&id0(*su(k)),k=gnk(k))x(0);U i=fL(gk,gn,k);i<gn&&gv[i]?_R(gv[i]):err0(su((U)k)))
 A*gp(A x/*1*/)_(U i=gi(x);x(0);P(gfull,gfull=0;ez0();(A*)0)gv+i)//get pointer to global; 0 (and 'limit) when the table is full
-A*gqv(A x/*0*/)_(W k=gkk(x);U i=fL(gk,gn,k);i<gn?gv+i:0)   //the slot gg reads x's value from (2.9.1, insert's): no name added, \d not applied
+A*gqv(A x/*0*/)_(W k=gkk(x);I(!(k>>32)&&id0(*su(k)),k=gnk(k))U i=fL(gk,gn,k);i<gn?gv+i:0)   //the slot gg reads x's value from (2.9.1, insert's): no name added, \d as gg
 A*gq(A x/*0*/)_(W k=gkk(x);I(!(k>>32)&&id0(*su(k)),k|=(W)GD<<32)U i=fL(gk,gn,k);i<gn?gv+i:0)//as gp, but 0 where x names none yet (none added)
+// \d's reads (#131): see gnk
+U gir(A x/*0*/)_(W k=gkk(x);P(!GD||k>>32||!id0(*su(k)),gi(x))ALK();B r=gnk(k)==k;U i=fL(gk,gn,k);AUL();r?i:gi(x))
 A gns(U k)_(U n=0;F(gn,n+=gk[i]>>32==k)A y=an(n,tS);n=0;F(gn,I(gk[i]>>32==k,_I(y)[n++]=(I)gk[i]))y)//list namespace (built on the heap: the table no longer fits a stack array)
 // amber 2.0.0: is `p[0..n)` the name of an already-defined rank-2 (dyadic) global
 // function?  The parser (p.c) uses this to make ANY binary library verb infix --
@@ -394,7 +399,7 @@ B am_infix_dyad(S p,U n){
     if (!n || n >= sizeof b) return 0;
     MC(b, p, n); b[n] = 0;
     k = us(b);
-    if (!(k >> 32)) k |= (W)GD << 32;
+    if (!(k >> 32)) k = gnk(k);
     i = fL(gk, gn, k);
     if (i >= gn || !gv[i]) return 0;
     v = gv[i];
@@ -427,7 +432,7 @@ B am_name_nonfn(S p, U n) {
     if (!n || n >= sizeof b) return 0;
     MC(b, p, n); b[n] = 0;
     k = us(b);
-    if (!(k >> 32)) k |= (W)GD << 32;
+    if (!(k >> 32)) k = gnk(k);
     i = fL(gk, gn, k);
     if (i >= gn || !gv[i]) return 0;        // unbound: leave the keyword list alone
     v = gv[i];

@@ -17,7 +17,24 @@
 #include "inspect.h"
 #include "fmtutil.h"
 #include <stdio.h>
+#include <stdarg.h>
 #include <string.h>
+
+void am_ln_sb_capture(const char*, unsigned long);  /* ln.c: tee into the status-bar scroll-back ring */
+
+/* All of \v's output goes through here, so it lands in the scroll-back ring
+ * like everything else the REPL prints and doesn't vanish when you scroll. */
+static void iv_out(const char *fmt, ...) {
+    char buf[1024];
+    va_list ap;
+    va_start(ap, fmt);
+    int n = vsnprintf(buf, sizeof buf, fmt, ap);
+    va_end(ap);
+    if (n < 0) return;
+    if ((size_t)n >= sizeof buf) n = (int)sizeof buf - 1;
+    am_ln_sb_capture(buf, (unsigned long)n);
+    fputs(buf, stdout);
+}
 
 #define IV_MAX 4096
 typedef struct {
@@ -167,7 +184,7 @@ void iv_add(const char *name, A v) {
 }
 
 void iv_print(void) {
-    if (!g_nrows) { fputs("(empty workspace)\n", stdout); fflush(stdout); return; }
+    if (!g_nrows) { iv_out("(empty workspace)\n"); fflush(stdout); return; }
 
     static const char *H_NAME = "Name", *H_TYPE = "Type",
                        *H_SHAPE = "Shape / Length", *H_MEM = "Memory";
@@ -187,15 +204,15 @@ void iv_print(void) {
         (int)ws, "--------------------------------------------------------------",
         (int)wm, "--------------------------------------------------------------");
 
-    fputs(rule, stdout);
-    printf("| %-*s | %-*s | %-*s | %-*s |\n",
+    iv_out("%s", rule);
+    iv_out("| %-*s | %-*s | %-*s | %-*s |\n",
         (int)wn, H_NAME, (int)wt, H_TYPE, (int)ws, H_SHAPE, (int)wm, H_MEM);
-    fputs(rule, stdout);
+    iv_out("%s", rule);
     for (int i = 0; i < g_nrows; i++)
-        printf("| %-*s | %-*s | %-*s | %-*s |\n",
+        iv_out("| %-*s | %-*s | %-*s | %-*s |\n",
             (int)wn, g_rows[i].name, (int)wt, g_rows[i].type,
             (int)ws, g_rows[i].shape, (int)wm, g_rows[i].mem);
-    fputs(rule, stdout);
+    iv_out("%s", rule);
     /* \v prints via C stdio; flush so the table shows immediately in the box
      * rather than waiting for a later command to flush it.  See ast_cmd(). */
     fflush(stdout);
